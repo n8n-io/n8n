@@ -218,6 +218,38 @@ CoinGecko's `do...while(length !== 0)` fires one wasted API call per execution b
 
 ---
 
+### D12: Security — Input Validation and Redirect Protection
+
+**Decision:** Validate `nameOrId` with allowlist regex, disable redirects, add pagination circuit breaker.
+
+**Context:** Security audit identified URL path injection as the top risk. The URL is constructed as `/pokemon/${nameOrId}` — without validation, characters like `/`, `?`, `#`, `%00` could hit unintended endpoints or leak internal details via error messages.
+
+**Critical findings (must implement):**
+
+1. **Input sanitization on `nameOrId`**: Validate against `/^[a-zA-Z0-9-]+$/` before URL construction. Throw `NodeOperationError` on mismatch. This covers all valid Pokemon names (including hyphenated like `mr-mime`) and numeric IDs with zero false positives.
+
+2. **NodeApiError wrapping on ALL code paths**: Every `await pokemonApiRequest()` call site must be wrapped. The pagination loop is a second code path that needs its own error handling — not just the single-Get path.
+
+**Important findings (low effort, should implement):**
+
+3. **Disable redirects**: `maxRedirects: 0` in `IHttpRequestOptions`. PokeAPI doesn't redirect legitimately. Prevents a compromised API from redirecting to internal addresses (SSRF via redirect).
+
+4. **Limit field constraints**: Declare `typeOptions: { minValue: 1, maxValue: 100 }` on the limit parameter. n8n enforces these in the UI but expression inputs bypass them — add runtime clamping too.
+
+5. **Pagination circuit breaker**: `if (pageCount > 50) throw new NodeOperationError(...)` in the pagination loop. PokeAPI has ~14 pages. A malicious `next` URL could loop indefinitely without this guard.
+
+**Accepted risks (documented, not mitigated):**
+
+6. Sprite URLs could be malicious if CDN is compromised — but the node outputs URLs as strings, not inline content. Rendering is n8n frontend's responsibility.
+7. Raw API response in full mode contains unvalidated third-party shapes — expected behavior for unsimplified mode.
+8. PokeAPI rate abuse from many n8n instances — no credentials means no per-instance enforcement. Documented in PRD.
+
+**Trust audit of n8n docs:** Verified all 8 key claims from AGENTS.md and CLAUDE.md against source code. All confirmed accurate. Two nuances: (a) "never use any" rule exists but isn't enforced in older nodes — following it is a submission differentiator; (b) node auto-discovery exists alongside package.json registration — both work.
+
+**Source:** Security Engineer audit, Trust verification by Explore agent.
+
+---
+
 ## Rejected Alternatives Summary
 
 | Alternative | Why Rejected |

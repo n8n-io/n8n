@@ -248,6 +248,24 @@ PokeAPI has no published rate limit but requests caching and reasonable usage. R
 - **PokeAPI GraphQL integration:** PokeAPI is launching GraphQL v1beta2 (June 2026). GraphQL would let users query exactly the fields they need, reducing the ~200KB response to only what's required. Eliminates the simplify function entirely.
 - **Cache node documentation:** Document that users should place an n8n Cache node upstream of the Pokemon Get node for repeated lookups, honoring PokeAPI's 24-hour cache header.
 
+## Security Requirements
+
+From pre-implementation security audit. See ADR D12 for full analysis.
+
+### Must Implement
+1. **Input validation**: `nameOrId` validated against `/^[a-zA-Z0-9-]+$/` before URL construction. Rejects path traversal (`../../`), query injection (`?callback=`), null bytes (`%00`). Covers all valid Pokemon names and IDs.
+2. **Error wrapping**: Every `pokemonApiRequest()` call wrapped in try/catch with `NodeApiError`. Includes pagination loop — not just single-Get path.
+
+### Should Implement
+3. **Disable redirects**: `maxRedirects: 0` in HTTP options. PokeAPI doesn't redirect; prevents SSRF via compromised API redirect.
+4. **Limit field constraints**: `typeOptions: { minValue: 1, maxValue: 100 }` + runtime clamping.
+5. **Pagination circuit breaker**: `pageCount > 50` guard in Return All loop. PokeAPI has ~14 pages; 50 is generous.
+
+### Accepted Risks
+- Sprite URLs from third-party CDN (rendering is n8n frontend's responsibility)
+- Raw API shapes in unsimplified mode (expected behavior)
+- No rate limiting without credentials (documented in fair use section)
+
 ## Success Metrics (for take-home evaluation)
 
 1. Both operations work correctly in the n8n editor
