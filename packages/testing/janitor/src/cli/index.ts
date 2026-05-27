@@ -9,4 +9,7 @@ export {
 	showTcrHelp,
 	showDiscoverHelp,
 	showOrchestrateHelp,
+	showAffectedPackagesHelp,
+	showScopeHelp,
+	showTestScopedHelp,
 } from './help.js';
