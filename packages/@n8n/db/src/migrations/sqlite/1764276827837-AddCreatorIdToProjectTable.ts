@@ -15,9 +15,11 @@ export class AddCreatorIdToProjectTable1764276827837 implements ReversibleMigrat
 		schemaBuilder: { addColumns, addForeignKey, column },
 		queryRunner,
 	}: MigrationContext) {
-		await addColumns(table.project, [
-			column('creatorId').uuid.comment('ID of the user who created the project'),
-		]);
+		await addColumns(
+			table.project,
+			[column('creatorId').uuid.comment('ID of the user who created the project')],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 
 		await addForeignKey(table.project, 'creatorId', ['user', 'id'], FOREIGN_KEY_NAME, 'SET NULL');
 
@@ -38,6 +40,6 @@ export class AddCreatorIdToProjectTable1764276827837 implements ReversibleMigrat
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.project, ['creatorId']);
+		await dropColumns(table.project, ['creatorId'], { ackThisRecreatesOnSqlite: true });
 	}
 }

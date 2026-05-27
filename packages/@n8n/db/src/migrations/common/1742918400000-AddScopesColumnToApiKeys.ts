@@ -14,7 +14,7 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 		queryRunner,
 		schemaBuilder: { addColumns, column },
 	}: MigrationContext) {
-		await addColumns('user_api_keys', [column('scopes').json]);
+		await addColumns('user_api_keys', [column('scopes').json], { ackThisRecreatesOnSqlite: true });
 
 		const userApiKeysTable = escape.tableName('user_api_keys');
 		const userTable = escape.tableName('user');
@@ -36,6 +36,6 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('user_api_keys', ['scopes']);
+		await dropColumns('user_api_keys', ['scopes'], { ackThisRecreatesOnSqlite: true });
 	}
 }

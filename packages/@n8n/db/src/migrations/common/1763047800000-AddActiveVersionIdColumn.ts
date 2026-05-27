@@ -12,7 +12,9 @@ export class AddActiveVersionIdColumn1763047800000 implements ReversibleMigratio
 	}: MigrationContext) {
 		const workflowsTableName = escape.tableName(WORKFLOWS_TABLE_NAME);
 
-		await addColumns(WORKFLOWS_TABLE_NAME, [column('activeVersionId').varchar(36)]);
+		await addColumns(WORKFLOWS_TABLE_NAME, [column('activeVersionId').varchar(36)], {
+			ackThisRecreatesOnSqlite: true,
+		});
 
 		await addForeignKey(
 			WORKFLOWS_TABLE_NAME,
@@ -43,7 +45,9 @@ export class AddActiveVersionIdColumn1763047800000 implements ReversibleMigratio
 			WORKFLOW_HISTORY_TABLE_NAME,
 			'versionId',
 		]);
-		await dropColumns(WORKFLOWS_TABLE_NAME, ['activeVersionId']);
+		await dropColumns(WORKFLOWS_TABLE_NAME, ['activeVersionId'], {
+			ackThisRecreatesOnSqlite: true,
+		});
 	}
 
 	// Create workflow_history records for workflows missing them

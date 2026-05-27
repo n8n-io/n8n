@@ -17,6 +17,8 @@ export class MakeExecutionStatusNonNullable1714133768521 implements Irreversible
 
 		await runQuery(query);
 
-		await schemaBuilder.addNotNull('execution_entity', 'status');
+		await schemaBuilder.addNotNull('execution_entity', 'status', {
+			ackThisRecreatesOnSqlite: true,
+		});
 	}
 }

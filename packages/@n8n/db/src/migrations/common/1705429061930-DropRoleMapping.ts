@@ -48,7 +48,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 			tablePrefix,
 		}: MigrationContext,
 	) {
-		await addColumns(table, [column('role').text]);
+		await addColumns(table, [column('role').text], { ackThisRecreatesOnSqlite: true });
 
 		const roleTable = escape.tableName('role');
 		const tableName = escape.tableName(table);
@@ -74,7 +74,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
             ${where}`;
 		await runQuery(swQuery);
 
-		await addNotNull(table, 'role');
+		await addNotNull(table, 'role', { ackThisRecreatesOnSqlite: true });
 
 		await dropForeignKey(
 			table,
@@ -82,7 +82,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 			['role', 'id'],
 			`FK_${tablePrefix}${foreignKeySuffixes[table]}`,
 		);
-		await dropColumns(table, [roleColumnName]);
+		await dropColumns(table, [roleColumnName], { ackThisRecreatesOnSqlite: true });
 	}
 
 	private async migrateDown(
@@ -95,7 +95,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		}: MigrationContext,
 	) {
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
-		await addColumns(table, [column(roleColumnName).int]);
+		await addColumns(table, [column(roleColumnName).int], { ackThisRecreatesOnSqlite: true });
 
 		const roleTable = escape.tableName('role');
 		const tableName = escape.tableName(table);
@@ -118,7 +118,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 				${where}`;
 		await runQuery(query);
 
-		await addNotNull(table, roleColumnName);
+		await addNotNull(table, roleColumnName, { ackThisRecreatesOnSqlite: true });
 		await addForeignKey(
 			table,
 			roleColumnName,
@@ -126,6 +126,6 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 			`FK_${tablePrefix}${foreignKeySuffixes[table]}`,
 		);
 
-		await dropColumns(table, ['role']);
+		await dropColumns(table, ['role'], { ackThisRecreatesOnSqlite: true });
 	}
 }

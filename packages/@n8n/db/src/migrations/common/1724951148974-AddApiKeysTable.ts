@@ -70,7 +70,7 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 		const idColumn = escape.columnName('id');
 		const createdAtColumn = escape.columnName('createdAt');
 
-		await addColumns('user', [column('apiKey').varchar()]);
+		await addColumns('user', [column('apiKey').varchar()], { ackThisRecreatesOnSqlite: true });
 
 		await createIndex('user', ['apiKey'], true);
 

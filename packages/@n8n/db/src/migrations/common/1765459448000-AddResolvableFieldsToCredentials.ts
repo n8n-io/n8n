@@ -6,11 +6,15 @@ const FOREIGN_KEY_NAME = 'credentials_entity_resolverId_foreign';
 
 export class AddResolvableFieldsToCredentials1765459448000 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, addForeignKey, column } }: MigrationContext) {
-		await addColumns(credentialsTableName, [
-			column('isResolvable').bool.notNull.default(false),
-			column('resolvableAllowFallback').bool.notNull.default(false),
-			column('resolverId').varchar(16),
-		]);
+		await addColumns(
+			credentialsTableName,
+			[
+				column('isResolvable').bool.notNull.default(false),
+				column('resolvableAllowFallback').bool.notNull.default(false),
+				column('resolverId').varchar(16),
+			],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 
 		await addForeignKey(
 			credentialsTableName,
@@ -29,10 +33,10 @@ export class AddResolvableFieldsToCredentials1765459448000 implements Reversible
 			FOREIGN_KEY_NAME,
 		);
 
-		await dropColumns(credentialsTableName, [
-			'isResolvable',
-			'resolvableAllowFallback',
-			'resolverId',
-		]);
+		await dropColumns(
+			credentialsTableName,
+			['isResolvable', 'resolvableAllowFallback', 'resolverId'],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 	}
 }

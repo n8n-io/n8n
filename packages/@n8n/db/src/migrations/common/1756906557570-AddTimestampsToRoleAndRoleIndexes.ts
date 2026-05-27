@@ -16,10 +16,14 @@ export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements Irreversi
 		// add the columns twice in the same statement.
 		await queryRunner.getTable(`${tablePrefix}${USER_TABLE_NAME}`);
 
-		await schemaBuilder.addColumns(ROLE_TABLE_NAME, [
-			new Column('createdAt').timestampTimezone().notNull.default('NOW()'),
-			new Column('updatedAt').timestampTimezone().notNull.default('NOW()'),
-		]);
+		await schemaBuilder.addColumns(
+			ROLE_TABLE_NAME,
+			[
+				new Column('createdAt').timestampTimezone().notNull.default('NOW()'),
+				new Column('updatedAt').timestampTimezone().notNull.default('NOW()'),
+			],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 
 		// This index should allow us to efficiently query project relations by their role
 		// This will be used for counting how many users have a specific project role

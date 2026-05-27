@@ -9,7 +9,7 @@ export class UpdateProcessedDataValueColumnToText1729607673464 implements Revers
 		await runQuery(`ALTER TABLE ${prefixedTableName} DROP COLUMN value;`);
 
 		await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
-		await addNotNull(processedDataTableName, 'value');
+		await addNotNull(processedDataTableName, 'value', { ackThisRecreatesOnSqlite: true });
 	}
 
 	async down({ schemaBuilder: { addNotNull }, runQuery, tablePrefix }: MigrationContext) {
@@ -19,6 +19,6 @@ export class UpdateProcessedDataValueColumnToText1729607673464 implements Revers
 		await runQuery(`ALTER TABLE ${prefixedTableName} DROP COLUMN value;`);
 
 		await runQuery(`ALTER TABLE ${prefixedTableName} RENAME COLUMN value_temp TO value`);
-		await addNotNull(processedDataTableName, 'value');
+		await addNotNull(processedDataTableName, 'value', { ackThisRecreatesOnSqlite: true });
 	}
 }

@@ -36,7 +36,9 @@ export class LinkRoleToUserTable1750252139168 implements ReversibleMigration {
 			});
 		}
 
-		await addColumns('user', [column('roleSlug').varchar(128).default("'global:member'").notNull]);
+		await addColumns('user', [column('roleSlug').varchar(128).default("'global:member'").notNull], {
+			ackThisRecreatesOnSqlite: true,
+		});
 
 		await runQuery(
 			`UPDATE ${userTableName} SET ${roleSlugColumn} = ${roleColumn} WHERE ${roleColumn} != ${roleSlugColumn}`,
@@ -54,6 +56,6 @@ export class LinkRoleToUserTable1750252139168 implements ReversibleMigration {
 
 	async down({ schemaBuilder: { dropForeignKey, dropColumns } }: MigrationContext) {
 		await dropForeignKey('user', 'roleSlug', ['role', 'slug']);
-		await dropColumns('user', ['roleSlug']);
+		await dropColumns('user', ['roleSlug'], { ackThisRecreatesOnSqlite: true });
 	}
 }

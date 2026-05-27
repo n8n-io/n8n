@@ -15,7 +15,7 @@ export class ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000
 {
 	async up({ schemaBuilder: { dropForeignKey, addForeignKey, dropNotNull } }: MigrationContext) {
 		await dropForeignKey(tableName, columnName, reference);
-		await dropNotNull(tableName, columnName);
+		await dropNotNull(tableName, columnName, { ackThisRecreatesOnSqlite: true });
 		await addForeignKey(tableName, columnName, reference, undefined, 'SET NULL');
 	}
 
@@ -26,7 +26,7 @@ export class ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000
 
 		await dropForeignKey(tableName, columnName, reference);
 		await mc.runQuery(`DELETE FROM ${tableName} WHERE ${columnName} IS NULL`);
-		await addNotNull(tableName, columnName);
+		await addNotNull(tableName, columnName, { ackThisRecreatesOnSqlite: true });
 		await addForeignKey(tableName, columnName, reference, undefined, 'CASCADE');
 	}
 }

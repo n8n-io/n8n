@@ -144,6 +144,7 @@ export class DropTable extends TableOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally — beware CASCADE FK data loss. */
 export class AddColumns extends TableOperation {
 	constructor(
 		tableName: string,
@@ -171,6 +172,7 @@ export class AddColumns extends TableOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally — beware CASCADE FK data loss. */
 export class DropColumns extends TableOperation {
 	constructor(
 		tableName: string,
@@ -225,6 +227,7 @@ export class DropForeignKey extends ForeignKeyOperation {
 	}
 }
 
+/** SQLite: TypeORM recreates the table internally via changeColumn — beware CASCADE FK data loss. */
 class ModifyNotNull extends TableOperation {
 	constructor(
 		tableName: string,

@@ -117,6 +117,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL`. — [Index Management](#index-management)
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage. — [Index Management](#index-management)
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
+- [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, or `dropNotNull`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
@@ -218,7 +219,7 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
     const { schemaBuilder: { addColumns, column, createIndex } } = ctx;
 
     // One-liner DSL calls stay inline — naming them adds no information.
-    await addColumns('my_table', [column('slug').varchar(255)]);
+    await addColumns('my_table', [column('slug').varchar(255)], { ackThisRecreatesOnSqlite: true });
 
     // The non-trivial step gets a named method.
     await this.backfillSlugs(ctx);
@@ -349,6 +350,49 @@ export class CreateMyTable1234567890000 implements ReversibleMigration {
   }
 }
 ```
+
+### SQLite table recreation risk
+
+Four DSL methods trigger **full table recreation** on SQLite — TypeORM internally creates a temp copy, drops the original, and renames:
+
+| Method | TypeORM internal call |
+|---|---|
+| `addColumns()` | `queryRunner.addColumns()` |
+| `dropColumns()` | `queryRunner.dropColumns()` |
+| `addNotNull()` | `queryRunner.changeColumn()` |
+| `dropNotNull()` | `queryRunner.changeColumn()` |
+
+All four require a final options parameter with `ackThisRecreatesOnSqlite: true` — TypeScript rejects calls that omit it.
+
+**The danger:** If the target table has incoming FK constraints with `CASCADE` from other tables, the `DROP TABLE` during recreation fires cascading deletes and **wipes rows from those referencing tables**.
+
+**Decision tree:**
+
+1. Does the target table have incoming FK constraints from other tables?
+   - **No** → Safe to use the DSL method directly (with the ack parameter).
+   - **Yes** → Continue to step 2.
+2. Is this an `addColumns` call where every new column is nullable or has a default?
+   - **Yes** → Use raw `ALTER TABLE ADD COLUMN` instead (avoids table recreation entirely):
+     ```typescript
+     await runQuery(
+       `ALTER TABLE ${escape.tableName('my_table')} ADD COLUMN ${escape.columnName('col')} TEXT`,
+     );
+     ```
+     See `1733133775640-AddMockedNodesColumnToTestDefinition.ts` for a real example.
+   - **No** → Continue to step 3.
+3. Set `withFKsDisabled = true as const` on the migration class. For common migrations, create a SQLite subclass in `sqlite/` that extends the common migration and adds the flag:
+   ```typescript
+   // sqlite/1234567890000-MyMigration.ts
+   import { MyMigration1234567890000 as BaseMigration } from '../common/1234567890000-MyMigration';
+
+   export class MyMigration1234567890000 extends BaseMigration {
+     withFKsDisabled = true as const;
+   }
+   ```
+
+**How `withFKsDisabled` works:** The migration wrapper calls `PRAGMA foreign_keys=OFF` before `up()`/`down()`, runs the migration inside a manual transaction, then re-enables foreign keys. This prevents CASCADE from firing during the internal table drop. It also sets `transaction = false` to avoid TypeORM's default transaction (since SQLite can't nest transactions with PRAGMA changes).
+
+> **Note:** On Postgres, these methods use `ALTER TABLE` directly and don't recreate the table. The risk is SQLite-specific.
 
 ### Column types
 
@@ -570,7 +614,11 @@ When a migration both adds a column and backfills data, structure it clearly wit
 ```typescript
 export class AddAndBackfillColumn1234567890000 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
-		await ctx.schemaBuilder.addColumns('my_table', [ctx.schemaBuilder.column('newCol').text]);
+		await ctx.schemaBuilder.addColumns(
+			'my_table',
+			[ctx.schemaBuilder.column('newCol').text],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 		await this.backfillNewCol(ctx);
 	}
 

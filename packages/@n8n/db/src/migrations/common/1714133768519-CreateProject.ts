@@ -80,7 +80,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		}: MigrationContext,
 	) {
 		const projectIdColumn = column('projectId').varchar(36).default('NULL');
-		await addColumns(relationTableName, [projectIdColumn]);
+		await addColumns(relationTableName, [projectIdColumn], { ackThisRecreatesOnSqlite: true });
 
 		const relationTable = escape.tableName(relationTableName);
 		const { t, c } = escapeNames(escape);
@@ -104,7 +104,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 
 		await addForeignKey(relationTableName, 'projectId', ['project', 'id']);
 
-		await addNotNull(relationTableName, 'projectId');
+		await addNotNull(relationTableName, 'projectId', { ackThisRecreatesOnSqlite: true });
 
 		// Index the new projectId column
 		await createIndex(relationTableName, ['projectId']);

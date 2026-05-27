@@ -14,6 +14,8 @@ import {
 	DropTable,
 } from './table';
 
+type RecreatesOnSqliteAck = { ackThisRecreatesOnSqlite: true };
+
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
 	column: (name: string) => new Column(name),
 	/* eslint-disable @typescript-eslint/promise-function-async */
@@ -22,9 +24,41 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 
 	dropTable: (tableName: string) => new DropTable(tableName, tablePrefix, queryRunner),
 
-	addColumns: (tableName: string, columns: Column[]) =>
+	/**
+	 * Adds columns to an existing table.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements this by
+	 * recreating the entire table (create temp → copy data → drop original → rename).
+	 * If other tables have incoming FK constraints with CASCADE on the target table,
+	 * the DROP triggers cascading deletes and **wipes data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * **Safer alternative:** When all new columns are nullable or have defaults,
+	 * raw `ALTER TABLE ADD COLUMN` avoids table recreation entirely.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	addColumns: (tableName: string, columns: Column[], _opts: RecreatesOnSqliteAck) =>
 		new AddColumns(tableName, columns, tablePrefix, queryRunner),
-	dropColumns: (tableName: string, columnNames: string[]) =>
+
+	/**
+	 * Drops columns from an existing table.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements this by
+	 * recreating the entire table. If other tables have incoming FK constraints with
+	 * CASCADE on the target table, the DROP triggers cascading deletes and **wipes
+	 * data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	dropColumns: (tableName: string, columnNames: string[], _opts: RecreatesOnSqliteAck) =>
 		new DropColumns(tableName, columnNames, tablePrefix, queryRunner),
 
 	/**
@@ -90,9 +124,38 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 			customConstraintName,
 		),
 
-	addNotNull: (tableName: string, columnName: string) =>
+	/**
+	 * Adds a NOT NULL constraint to an existing column.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements
+	 * `changeColumn` by recreating the entire table. If other tables have incoming
+	 * FK constraints with CASCADE on the target table, the DROP triggers cascading
+	 * deletes and **wipes data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	addNotNull: (tableName: string, columnName: string, _opts: RecreatesOnSqliteAck) =>
 		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),
-	dropNotNull: (tableName: string, columnName: string) =>
+
+	/**
+	 * Drops the NOT NULL constraint from an existing column.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements
+	 * `changeColumn` by recreating the entire table. If other tables have incoming
+	 * FK constraints with CASCADE on the target table, the DROP triggers cascading
+	 * deletes and **wipes data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	dropNotNull: (tableName: string, columnName: string, _opts: RecreatesOnSqliteAck) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
 
 	dropEnumCheck: (tableName: string, columnName: string) =>

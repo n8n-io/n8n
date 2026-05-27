@@ -7,14 +7,20 @@ const description = 'description';
 
 export class AddWorkflowHistoryAutoSaveFields1762847206508 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
-		await addColumns(tableName, [
-			column(name).varchar(128),
-			column(autosaved).bool.notNull.default(false),
-			column(description).text,
-		]);
+		await addColumns(
+			tableName,
+			[
+				column(name).varchar(128),
+				column(autosaved).bool.notNull.default(false),
+				column(description).text,
+			],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(tableName, [name, autosaved, description]);
+		await dropColumns(tableName, [name, autosaved, description], {
+			ackThisRecreatesOnSqlite: true,
+		});
 	}
 }
