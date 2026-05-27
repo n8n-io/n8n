@@ -1,9 +1,5 @@
 import { searxngSearch } from '../searxng-search';
 
-// ---------------------------------------------------------------------------
-// Mock fetch
-// ---------------------------------------------------------------------------
-
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -26,10 +22,6 @@ const MOCK_SEARXNG_RESPONSE = {
 		},
 	],
 };
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe('searxngSearch', () => {
 	it('sends correct request to SearXNG', async () => {
