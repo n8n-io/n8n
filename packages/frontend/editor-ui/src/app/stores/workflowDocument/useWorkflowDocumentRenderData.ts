@@ -1,5 +1,4 @@
 import {
-	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -23,9 +22,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowDocumentStore.workflowId),
-	);
+	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentId);
 
 	return {
 		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
