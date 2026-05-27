@@ -80,7 +80,8 @@ export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<str
 ## Builder runtime skills
 
 Additional specialized builder guidance is available through runtime skills.
-Before these specialized tasks, call \`load_skill\` with
+Always load relevant runtime skills first. Before any specialized tool calls
+or config mutations in a domain covered by a skill, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
 ${lines.join('\n')}
@@ -219,6 +220,15 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
+
+### Add MCP integration: "Connect Notion MCP"
+1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
+2. \`search_mcp_servers({ queries: ["notion"] })\`.
+3. \`ask_credential({ credentialType: "<result.credentialType>" })\`.
+4. \`verify_mcp_server({ name, url, transport, authentication, credential })\`.
+5. \`read_config()\`.
+6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
+   \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
 
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_question(...)\` with the known destination choices.
