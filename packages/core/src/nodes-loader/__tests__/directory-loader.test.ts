@@ -9,9 +9,18 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
+import * as path from 'path';
 
 jest.mock('node:fs');
 jest.mock('node:fs/promises');
+jest.mock('path', () => {
+	const actualPath = jest.requireActual<typeof import('path')>('path');
+
+	return {
+		...actualPath,
+		relative: jest.fn(actualPath.relative),
+	};
+});
 const mockFs = mock<typeof fs>();
 const mockFsPromises = mock<typeof fsPromises>();
 fs.realpathSync = mockFs.realpathSync;
@@ -832,6 +841,79 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should produce relative icon URLs when filePath is absolute (custom node regression)', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			// CustomDirectoryLoader uses fast-glob with `absolute: true`, so filePath
+			// is an absolute path like /home/user/.n8n/custom/node_modules/pkg/dist/nodes/Name/Name.node.js
+			const filePath = `${directory}/node_modules/n8n-nodes-testing/dist/nodes/TestNode/TestNode.node.js`;
+
+			const nodeWithIcon = createNode('nodeWithAbsIcon');
+			nodeWithIcon.description.icon = 'file:testNode.svg';
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+
+			loader.loadNodeFromFile(filePath);
+
+			// The icon URL must be a well-formed relative path, NOT an absolute path
+			// that would produce a malformed URL like /icons/CUSTOM//home/user/.n8n/custom/...
+			expect(nodeWithIcon.description.iconUrl).toBe(
+				'icons/CUSTOM/node_modules/n8n-nodes-testing/dist/nodes/TestNode/testNode.svg',
+			);
+			expect(nodeWithIcon.description.iconUrl).not.toContain('//');
+			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should produce relative iconBasePath when filePath is absolute and icon uses expression', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = `${directory}/node_modules/n8n-nodes-testing/dist/nodes/TestNode/TestNode.node.js`;
+
+			const nodeWithExprIcon = createNode('nodeWithExprIcon');
+			// Expression icons start with '=' per isExpression() check
+			nodeWithExprIcon.description.icon = '={{"file:" + $parameter.icon + ".svg"}}';
+			nodeWithExprIcon.description.iconBasePath = undefined;
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithExprIcon);
+
+			loader.loadNodeFromFile(filePath);
+
+			expect(nodeWithExprIcon.description.iconBasePath).toBe(
+				'icons/CUSTOM/node_modules/n8n-nodes-testing/dist/nodes/TestNode',
+			);
+			expect(nodeWithExprIcon.description.iconBasePath).not.toContain('//');
+		});
+
+		it('should normalize Windows path separators in custom icon URLs', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = `${directory}/node_modules/n8n-nodes-testing/dist/nodes/TestNode/TestNode.node.js`;
+			jest
+				.mocked(path.relative)
+				.mockReturnValueOnce(
+					'node_modules\\n8n-nodes-testing\\dist\\nodes\\TestNode\\testNode.svg',
+				)
+				.mockReturnValueOnce('node_modules\\n8n-nodes-testing\\dist\\nodes\\TestNode');
+
+			const nodeWithIcon = createNode('nodeWithWindowsIcon');
+			nodeWithIcon.description.icon = 'file:testNode.svg';
+			const nodeWithExprIcon = createNode('nodeWithWindowsExprIcon');
+			nodeWithExprIcon.description.icon = '={{"file:" + $parameter.icon + ".svg"}}';
+			nodeWithExprIcon.description.iconBasePath = undefined;
+
+			jest
+				.spyOn(classLoader, 'loadClassInIsolation')
+				.mockReturnValueOnce(nodeWithIcon)
+				.mockReturnValueOnce(nodeWithExprIcon);
+
+			loader.loadNodeFromFile(filePath);
+			loader.loadNodeFromFile(filePath);
+
+			expect(nodeWithIcon.description.iconUrl).toBe(
+				'icons/CUSTOM/node_modules/n8n-nodes-testing/dist/nodes/TestNode/testNode.svg',
+			);
+			expect(nodeWithExprIcon.description.iconBasePath).toBe(
+				'icons/CUSTOM/node_modules/n8n-nodes-testing/dist/nodes/TestNode',
+			);
 		});
 
 		it('should error if icon path is not contained within the package directory', () => {
