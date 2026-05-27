@@ -12,7 +12,7 @@ The key design choices visible in the code:
 - **Cursor-based pagination.** Return All follows PokeAPI's `next` field (not offset arithmetic), with a 50-page circuit breaker.
 - **`simplifyPokemonData` flattens the response.** The raw PokeAPI response is ~200KB with deeply nested objects. The simplify function extracts the high-value fields (types, abilities, stats as a flat map, sprite URL, species name) into a clean output.
 
-I didn't build this by writing code directly. I used a multi-agent engineering harness I've developed over 44+ sessions using Claude Code. The harness orchestrates specialist agents — builders, reviewers, QA, PM, Architect, security — coordinated by a lead agent, with me as product owner making final calls.
+I didn't build this by writing code directly. I used a multi-agent engineering harness I've developed over 44+ sessions, built on Claude Code's agent teams feature. The harness orchestrates specialist agents — builders, reviewers, QA, PM, Architect, security — coordinated by a lead agent, with me as product owner making final calls.
 
 **Before any code was written:**
 
