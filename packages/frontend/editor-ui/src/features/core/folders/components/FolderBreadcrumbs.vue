@@ -89,8 +89,6 @@ const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
 
-const rootBreadcrumbIcon = { type: 'icon' as const, value: 'chevrons-right' as const };
-
 const hasMoreItems = computed(() => {
 	return visibleBreadcrumbsItems.value[0]?.parentFolder !== undefined;
 });
@@ -243,7 +241,6 @@ onBeforeUnmount(() => {
 			<template v-if="currentProject" #prepend>
 				<ProjectBreadcrumb
 					:current-project="currentProject"
-					:icon="rootBreadcrumbIcon"
 					:is-dragging="isDragging"
 					@project-drop="onProjectDrop"
 					@project-hover="onProjectHover"
@@ -257,7 +254,6 @@ onBeforeUnmount(() => {
 		<div v-else-if="currentProject || isSharedContext" :class="$style['home-project']">
 			<ProjectBreadcrumb
 				:current-project="currentProject"
-				:icon="rootBreadcrumbIcon"
 				:is-shared="isSharedContext"
 				:is-dragging="isDragging"
 				@project-drop="onProjectDrop"
