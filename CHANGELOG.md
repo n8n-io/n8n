@@ -1,3 +1,11 @@
+## [2.22.4-exp.0](https://github.com/n8n-io/n8n/compare/n8n@2.22.4...n8n@2.22.4-exp.0) (2026-05-27)
+
+
+### Features
+
+* **editor:** Surface MCP access toggle on workflow cards ([#30683](https://github.com/n8n-io/n8n/issues/30683)) ([56ac791](https://github.com/n8n-io/n8n/commit/56ac7912c3c119bb44ecd2708ce50fa6b9a7b965))
+
+
 ## [2.22.4](https://github.com/n8n-io/n8n/compare/n8n@2.22.3...n8n@2.22.4) (2026-05-27)
 
 
