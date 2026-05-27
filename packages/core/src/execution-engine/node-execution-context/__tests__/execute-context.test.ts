@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,13 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	ExpressionError,
-	NodeConnectionTypes,
-	type WorkflowExpression,
-} from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
@@ -77,7 +73,7 @@ describe('ExecuteContext', () => {
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const executeContext = new ExecuteContext(
@@ -196,7 +192,7 @@ describe('ExecuteContext', () => {
 		});
 
 		it('should not validate parameter if skipValidation in options', () => {
-			const validateSpy = jest.spyOn(validateUtil, 'validateValueAgainstSchema');
+			const validateSpy = vi.spyOn(validateUtil, 'validateValueAgainstSchema');
 
 			executeContext.getNodeParameter('testParameter', 0, '', {
 				skipValidation: true,
@@ -264,7 +260,7 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			const sendMessageSpy = jest.spyOn(manualModeContext, 'sendMessageToUI');
+			const sendMessageSpy = vi.spyOn(manualModeContext, 'sendMessageToUI');
 
 			manualModeContext.logNodeOutput(json, numberArg, stringArg);
 
@@ -279,7 +275,7 @@ describe('ExecuteContext', () => {
 	describe('sendChunk', () => {
 		test('should send call hook with structured chunk', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
@@ -319,7 +315,7 @@ describe('ExecuteContext', () => {
 
 		test('should send chunk without content when content is undefined', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,

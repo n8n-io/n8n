@@ -195,6 +195,53 @@ description: Has no instructions.
 		}
 	});
 
+	it('hashes skill content independently of load locations', () => {
+		const linkedFiles = {
+			references: [{ path: 'references/guide.md', bytes: 5, sha256: 'abc123' }],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		};
+		const baseSkill = {
+			id: 'same-skill',
+			name: 'same-skill',
+			description: 'Same skill',
+			instructions: 'Use the same instructions.',
+			sourceName: 'same-skill',
+			path: '/ci/workspace/skills/same-skill/SKILL.md',
+			sourcePath: '/ci/workspace/skills/same-skill/SKILL.md',
+			directory: '/ci/workspace/skills/same-skill',
+			sourceDirectory: 'ci-category/same-skill',
+			category: 'ci-category',
+			linkedFiles,
+		};
+		const movedSkill = {
+			...baseSkill,
+			sourceName: 'renamed-folder',
+			path: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			sourcePath: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			directory: '/usr/local/lib/node_modules/n8n/skills/renamed-folder',
+			sourceDirectory: 'prod-category/renamed-folder',
+			category: 'prod-category',
+		};
+
+		const baseRegistry = createRuntimeSkillRegistry([baseSkill]);
+		const movedRegistry = createRuntimeSkillRegistry([movedSkill]);
+		const changedRegistry = createRuntimeSkillRegistry([
+			{ ...movedSkill, instructions: 'Use different instructions.' },
+		]);
+
+		expect(baseRegistry.skills[0].path).not.toBe(movedRegistry.skills[0].path);
+		expect(baseRegistry.skills[0].sourceDirectory).not.toBe(
+			movedRegistry.skills[0].sourceDirectory,
+		);
+		expect(baseRegistry.skills[0].hash).toBe(movedRegistry.skills[0].hash);
+		expect(baseRegistry.skillsHash).toBe(movedRegistry.skillsHash);
+		expect(baseRegistry.skillsHash).not.toBe(changedRegistry.skillsHash);
+	});
+
 	it('rejects duplicate skill ids and names', () => {
 		expect(() =>
 			createRuntimeSkillRegistry([
