@@ -101,6 +101,15 @@ export class LmChatAzureOpenAi implements INodeType {
 			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
 			const timeout = options.timeout;
+
+			const modelKwargs: Record<string, unknown> = {};
+			if (options.responseFormat) {
+				modelKwargs.response_format = { type: options.responseFormat };
+			}
+			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
+				modelKwargs.reasoning_effort = options.reasoningEffort;
+			}
+
 			const model = new AzureChatOpenAI({
 				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
 				// so the Responses API hits an invalid endpoint and causes a connection error.
@@ -123,11 +132,7 @@ export class LmChatAzureOpenAi implements INodeType {
 						}),
 					},
 				},
-				modelKwargs: options.responseFormat
-					? {
-							response_format: { type: options.responseFormat },
-						}
-					: undefined,
+				modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			});
 

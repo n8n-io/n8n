@@ -31,6 +31,7 @@ export interface AzureOpenAIOptions {
 	temperature?: number;
 	topP?: number;
 	responseFormat?: 'text' | 'json_object';
+	reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 /**

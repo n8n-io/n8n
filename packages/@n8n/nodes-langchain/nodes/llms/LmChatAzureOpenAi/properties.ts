@@ -92,6 +92,32 @@ export const properties: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Reasoning Effort',
+				name: 'reasoningEffort',
+				default: 'medium',
+				description:
+					'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses. Only applies to reasoning-capable deployments (e.g., o1, o3, gpt-5).',
+				type: 'options',
+				options: [
+					{
+						name: 'Low',
+						value: 'low',
+						description: 'Favors speed and economical token usage',
+					},
+					{
+						name: 'Medium',
+						value: 'medium',
+						description: 'Balance between speed and reasoning accuracy',
+					},
+					{
+						name: 'High',
+						value: 'high',
+						description:
+							'Favors more complete reasoning at the cost of more tokens generated and slower responses',
+					},
+				],
+			},
+			{
 				displayName: 'Presence Penalty',
 				name: 'presencePenalty',
 				default: 0,
