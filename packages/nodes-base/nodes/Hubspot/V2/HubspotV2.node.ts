@@ -30,7 +30,9 @@ import {
 	clean,
 	getAssociations,
 	getCallMetadata,
+	getContactIdByEmail,
 	getEmailMetadata,
+	getListId,
 	getMeetingMetadata,
 	getTaskMetadata,
 	hubspotApiRequest,
@@ -1146,50 +1148,71 @@ export class HubspotV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const version = this.getNode().typeVersion;
-		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
+		// v1 lists endpoints sunset 2026-04-30; migrated to v3 lists API.
+		// Docs: https://developers.hubspot.com/docs/api-reference/legacy/crm/lists/v1-list-api-migration-guide
 		if (resource === 'contactList') {
 			try {
-				//https://legacydocs.hubspot.com/docs/methods/lists/add_contact_to_list
 				if (operation === 'add') {
-					const listId = this.getNodeParameter('listId', 0) as string;
+					// Add records to a list. v3 takes contact ids only, so resolve emails first.
+					// Docs: https://developers.hubspot.com/docs/api-reference/crm/lists/memberships#add-records-to-a-list
+					const listId = await getListId.call(this, String(this.getNodeParameter('listId', 0)));
 					const by = this.getNodeParameter('by', 0) as string;
-					const body: { [key: string]: [] } = { emails: [], vids: [] };
+					const contactIds: string[] = [];
+					const invalidEmails: string[] = [];
 					for (let i = 0; i < length; i++) {
 						if (by === 'id') {
-							const id = this.getNodeParameter('id', i) as string;
-							body.vids.push(parseInt(id, 10) as never);
+							contactIds.push(String(this.getNodeParameter('id', i)));
 						} else {
 							const email = this.getNodeParameter('email', i) as string;
-							body.emails.push(email as never);
+							const contactId = await getContactIdByEmail.call(this, email);
+							if (contactId) {
+								contactIds.push(contactId);
+							} else {
+								invalidEmails.push(email);
+							}
 						}
 					}
-					responseData = await hubspotApiRequest.call(
-						this,
-						'POST',
-						`/contacts/v1/lists/${listId}/add`,
-						body,
-					);
+					const v3Response = contactIds.length
+						? ((await hubspotApiRequest.call(
+								this,
+								'PUT',
+								`/crm/lists/2026-03/${listId}/memberships/add`,
+								contactIds,
+							)) as IDataObject)
+						: {};
+					responseData = {
+						updated: (v3Response.recordIdsAdded as string[] | undefined) ?? [],
+						discarded: (v3Response.recordIdsDidNotExist as string[] | undefined) ?? [],
+						invalidVids: [],
+						invalidEmails,
+					};
 				}
-				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
-					const listId = this.getNodeParameter('listId', 0) as string;
-					const body: { [key: string]: [] } = { vids: [] };
+					// Remove records from a list.
+					// Docs: https://developers.hubspot.com/docs/api-reference/crm/lists/memberships#remove-records-from-a-list
+					const listId = await getListId.call(this, String(this.getNodeParameter('listId', 0)));
+					const contactIds: string[] = [];
 					for (let i = 0; i < length; i++) {
-						const id = this.getNodeParameter('id', i) as string;
-						body.vids.push(parseInt(id, 10) as never);
+						contactIds.push(String(this.getNodeParameter('id', i)));
 					}
-					responseData = await hubspotApiRequest.call(
+					const v3Response = (await hubspotApiRequest.call(
 						this,
-						'POST',
-						`/contacts/v1/lists/${listId}/remove`,
-						body,
-					);
+						'PUT',
+						`/crm/lists/2026-03/${listId}/memberships/remove`,
+						contactIds,
+					)) as IDataObject;
+					responseData = {
+						updated: (v3Response.recordIdsRemoved as string[] | undefined) ?? [],
+						discarded: (v3Response.recordIdsDidNotExist as string[] | undefined) ?? [],
+						invalidVids: [],
+						invalidEmails: [],
+					};
 				}
 
 				const itemData = generatePairedItemData(items.length);
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData },
 				);
 				returnData.push(...executionData);
@@ -1615,10 +1638,25 @@ export class HubspotV2 implements INodeType {
 								}
 							}
 
-							const endpoint = `/contacts/v1/contact/createOrUpdate/email/${email}`;
-							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, {
-								properties: body,
-							});
+							// v1 createOrUpdate sunset 2026-04-30; migrated to v3 batch upsert.
+							// v3 takes properties as a flat object and returns { id, new } instead of { vid, isNew }.
+							// Docs: https://developers.hubspot.com/docs/api-reference/crm/objects/contacts#batch-upsert
+							const properties = body.reduce<IDataObject>((acc, { property, value }) => {
+								acc[property as string] = value;
+								return acc;
+							}, {});
+							const upsertResponse = (await hubspotApiRequest.call(
+								this,
+								'POST',
+								'/crm/v3/objects/contacts/batch/upsert',
+								{ inputs: [{ idProperty: 'email', id: email, properties }] },
+							)) as IDataObject;
+							const upsertResult = (upsertResponse.results as IDataObject[] | undefined)?.[0] ?? {};
+							responseData = {
+								...upsertResult,
+								vid: upsertResult.id,
+								isNew: upsertResult.new ?? false,
+							};
 
 							if (additionalFields.associatedCompanyId) {
 								const companyAssociations: IDataObject[] = [];
@@ -1747,12 +1785,13 @@ export class HubspotV2 implements INodeType {
 								responseData = responseData.contacts;
 							}
 						}
-						//https://developers.hubspot.com/docs/methods/contacts/delete_contact
+						// v1 contact delete sunset 2026-04-30; migrated to v3.
+						// Docs: https://developers.hubspot.com/docs/api-reference/crm/objects/contacts#delete-a-contact
 						if (operation === 'delete') {
 							const contactId = this.getNodeParameter('contactId', i, undefined, {
 								extractValue: true,
 							}) as string;
-							const endpoint = `/contacts/v1/contact/vid/${contactId}`;
+							const endpoint = `/crm/v3/objects/contacts/${contactId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 							responseData =
 								responseData === undefined ? { vid: contactId, deleted: true } : responseData;
