@@ -82,6 +82,8 @@ const isActivationModalOpen = computed(() => {
 	return uiStore.isModalActiveById[WORKFLOW_ACTIVE_MODAL_KEY];
 });
 
+const isAnyModalOpen = computed(() => uiStore.isAnyModalOpen);
+
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
@@ -313,9 +315,20 @@ watch(
 		if (isActive && !wasActive) {
 			// Check if this is the first activation
 			if (!cachedSettings.value?.firstActivatedAt) {
-				setTimeout(() => {
-					openSuggestedActions();
-				}, 0); // Ensure UI is ready and availableActions.length > 0
+				if (isAnyModalOpen.value) {
+					// Defer opening until any open modal closes so the popover
+					// doesn't paint over it.
+					const stop = watch(isAnyModalOpen, (isOpen) => {
+						if (!isOpen) {
+							stop();
+							openSuggestedActions();
+						}
+					});
+				} else {
+					setTimeout(() => {
+						openSuggestedActions();
+					}, 0); // Ensure UI is ready and availableActions.length > 0
+				}
 			}
 
 			// Update firstActivatedAt after opening popover

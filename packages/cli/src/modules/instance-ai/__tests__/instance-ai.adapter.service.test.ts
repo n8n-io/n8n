@@ -7,6 +7,15 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
 import type { ExecutionError, IRunExecutionData, ITaskData } from 'n8n-workflow';
@@ -973,7 +982,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{ staticCacheDir: '/tmp' } as unknown as ConstructorParameters<
+		{ staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
@@ -1110,7 +1119,7 @@ function createDataTableAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1200,6 +1209,24 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+
+		it('resolves table references with the requested permission scope', async () => {
+			const { adapter } = createDataTableAdapterForTests();
+
+			const result = await adapter.resolveTableReference?.('dt-1', { permission: 'readRow' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['dataTable:readRow'],
+				false,
+				{ dataTableId: 'dt-1' },
+			);
+			expect(result).toEqual({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId: 'team-project-id',
+			});
 		});
 	});
 
@@ -1392,7 +1419,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1948,7 +1975,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -2214,7 +2241,7 @@ function createRunAdapterForTests(
 		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],

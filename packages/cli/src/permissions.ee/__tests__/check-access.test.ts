@@ -141,7 +141,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
 			expect(result).toBe(true);
 		});
 
@@ -163,7 +163,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
 			expect(result).toBe(true);
 		});
 
@@ -185,7 +185,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
 			expect(result).toBe(true);
 		});
 
@@ -227,7 +227,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['credential:read'], false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read']);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read'], undefined);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('workflow', expect.anything());
 		});
 
@@ -246,7 +246,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['workflow:execute'], false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute']);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute'], undefined);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('credential', expect.anything());
 		});
 
@@ -350,7 +350,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
 			expect(result).toBe(true);
 		});
 	});

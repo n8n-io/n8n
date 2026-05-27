@@ -168,7 +168,7 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	if (!destructive) {
 		options.push({
 			key: 'always-allow',
-			icon: 'check',
+			icon: 'check-check',
 			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
 			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
 			testId: 'instance-ai-panel-confirm-always-allow',
@@ -185,7 +185,6 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		key: 'deny',
 		icon: 'ban',
 		label: i18n.baseText('instanceAi.confirmation.deny'),
-		withArrow: false,
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
@@ -360,10 +359,12 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
+const PLAN_REVIEW_OPTIONS = ['approve', 'request-changes', 'deny'] as const;
+
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'approve' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
 		[],
 		{ num_tasks: numTasks },
 	);
@@ -378,7 +379,7 @@ function handlePlanRequestChanges(
 ) {
 	trackInputCompleted(
 		conf,
-		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'request-changes' }],
 		[],
 		{ num_tasks: numTasks, feedback },
 	);
@@ -388,6 +389,17 @@ function handlePlanRequestChanges(
 		approved: false,
 		userInput: feedback,
 	});
+}
+
+function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
+	trackInputCompleted(
+		conf,
+		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
+		[],
+		{ num_tasks: numTasks },
+	);
+	thread.resolveConfirmation(conf.requestId, 'denied');
+	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
 }
 </script>
 
@@ -457,6 +469,12 @@ function handlePlanRequestChanges(
 								feedback,
 								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 							)
+					"
+					@deny="
+						handlePlanDeny(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
 					"
 				/>
 
@@ -563,7 +581,7 @@ function handlePlanRequestChanges(
 						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="medium" bold>
+									<N8nText size="large" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
@@ -589,9 +607,12 @@ function handlePlanRequestChanges(
 }
 
 .root {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--background--light-3);
+	border: none;
+	border-radius: var(--radius--xl);
+	box-shadow:
+		var(--shadow--xs),
+		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	background-color: var(--background--surface);
 }
 
 .floatingRoot {
@@ -615,12 +636,12 @@ function handlePlanRequestChanges(
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--4xs) 0;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
 .approvalRowBody {
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);

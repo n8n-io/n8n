@@ -6,6 +6,7 @@ import type {
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
 import type { Response } from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
@@ -210,13 +211,28 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			return { suspended: false };
 		}
 		case 'error': {
-			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
+			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });
 			return { suspended: false };
 		}
 		default:
 			return { suspended: false };
 	}
+}
+
+function stringifyError(error: unknown): string {
+	try {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'object') {
+			return JSON.stringify(error, null, 2);
+		}
+		return `Error: ${String(error)}`;
+	} catch (e) {
+		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	}
+	return 'Unknown error';
 }
 
 /**

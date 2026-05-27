@@ -55,32 +55,32 @@ ${TRIGGER_SELECTION}
 ${NATIVE_NODE_PREFERENCE}
 
 3. **Build incrementally** — call \`add-plan-item\` for each item:
-   - Emit data tables FIRST. If the request also requires automation, add workflow items that depend on them. A plan may consist entirely of data-table items.
+   - Add workflow items only when the request requires automation. Standalone data-table work is not planner work — the orchestrator handles it directly with the \`data-table-manager\` skill plus \`data-tables\` / \`parse-file\`.
+   - If a workflow needs new or changed data tables, include table names, columns, seed/import needs, and existing-table requirements inside the workflow \`purpose\`. Do not create a separate data-table plan item.
    - Set \`summary\` and \`assumptions\` on your first call
    - Each call makes the item visible to the user immediately
    - \`purpose\`: Write a rich, user-focused description of what this item delivers and why. Include key requirements and behaviors from the user's request. 3-5 sentences. Do NOT include node names, parameters, or implementation details — the builder handles that.
    - \`triggerDescription\`: a few words describing trigger type (e.g. "Webhook POST", "Schedule daily"), no resource identifiers
    - \`integrations\`: service names only (e.g. "Slack", "Google Calendar"), no resource identifiers or qualifiers
-   - \`dependsOn\`: **CRITICAL** — set dependencies correctly. Data tables before workflows that use them. Workflows that produce data before workflows that consume it. Independent workflows should NOT depend on each other.
-   - \`columns\`: name and type only — no descriptions
+   - \`dependsOn\`: **CRITICAL** — set dependencies correctly. Workflows that produce data before workflows that consume it. Independent workflows should NOT depend on each other.
    - \`assumptions\`: design decisions only, no resource identifiers (channels, calendars, etc.)
-   - Use \`research\` kind for tasks requiring web research before other tasks can proceed (e.g. "find the API endpoint format for service X"). Research tasks run a dedicated web research agent.
    - After all items are added, call \`submit-plan\` to request user approval.
 
 4. **Handle approval** — \`submit-plan\` returns the user's decision:
    - If \`approved: true\`: reply with "Plan approved." and stop.
-   - If \`approved: false\`: read the \`feedback\` field. Make targeted changes using \`remove-plan-item\` (to drop items) or \`add-plan-item\` (to add/replace items by ID). Then call \`submit-plan\` again. Repeat until approved.
+   - If \`approved: false\` and \`denied: true\`: the user rejected the plan outright. Reply with "Plan denied." and stop. Do NOT revise or call \`submit-plan\` again.
+   - If \`approved: false\` (without \`denied\`): read the \`feedback\` field. Make targeted changes using \`remove-plan-item\` (to drop items) or \`add-plan-item\` (to add/replace items by ID). Then call \`submit-plan\` again. Repeat until approved.
 
 ## Critical Rules
 
 - **User time zone is in context as \`<current-datetime>\` / \`<user-timezone>\`.** Schedule times, cron expressions, and digest times must be stated in the user's time zone. Never write "instance default timezone" or leave the zone ambiguous — spell it out (e.g. "daily at 08:00 America/New_York").
-- **Dependencies are mandatory.** Every workflow must list the data table IDs it reads from or writes to in \`dependsOn\`. If workflow C needs data from A and B, it must depend on both.
-- **No duplicate items.** Each piece of work appears exactly once. Use \`workflow\` kind for workflows, \`data-table\` kind for all data table operations (create, delete, modify, seed), \`research\` kind for web research. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
-- **Data-table-only plans are valid.** When the request is purely about data tables (no triggers, schedules, or integrations), use only \`data-table\` items — don't wrap them in \`workflow\` or \`delegate\`. For creation, include \`columns\`; for other operations, omit \`columns\` and describe the operation in \`purpose\`. Include seed rows in \`purpose\` when the user wants sample data.
+- **Dependencies are mandatory.** If workflow C needs data from workflows A and B, it must depend on both. Do not add dependencies for standalone data-table work.
+- **No duplicate items.** Each piece of workflow or delegate work appears exactly once. Use \`workflow\` kind for workflows. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
+- **Data-table-only plans are invalid.** Pure data-table requests have no plan item; the orchestrator uses the \`data-table-manager\` skill and direct tools instead. If the user asked for a workflow plus tables, table requirements belong in the workflow \`purpose\`.
 - **Each item's \`purpose\` describes only that item.** Do not reference work handled by other plan items — each agent only sees its own spec, and cross-task context causes scope creep.
 - **Workflow verification is mandatory.** For **every** \`workflow\` item you add, also add a \`checkpoint\` item whose \`dependsOn\` includes that workflow's ID. Checkpoints are orchestrator-executed — the orchestrator runs them itself using its own tools, they are not delegated.
   - \`title\`: a user-readable verification goal, e.g. \`"Verify 'Daily API Email' workflow runs successfully"\`.
   - \`instructions\`: detailed steps the orchestrator must execute. Prefer \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). For workflows with real credentials and a testable trigger (manual, schedule), \`executions(action="run")\` is acceptable. State the pass condition in plain terms (e.g. "run completes without errors and produces at least one output row").
   - Do NOT list \`tools\` on a checkpoint — it is not a delegate task.
-  - Do NOT emit a checkpoint for a \`data-table\`, \`research\`, or \`delegate\` item. Checkpoints are for workflows only.
+  - Do NOT emit a checkpoint for a \`delegate\` item. Checkpoints are for workflows only.
 - **Always call \`submit-plan\` after the last \`add-plan-item\`.** On rejection, be surgical — change only what the user asked for. Never fabricate node names; search first if unsure.`;

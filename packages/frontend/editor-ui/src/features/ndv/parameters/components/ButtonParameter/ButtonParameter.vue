@@ -110,6 +110,8 @@ async function onSubmit() {
 					prompt.value,
 					getPath(target as string),
 					workflowDocumentStore.value.documentId,
+					ndvStore.activeNode,
+					ndvStore.pushRef,
 					5,
 				);
 				if (!updateInformation) return;
@@ -123,7 +125,7 @@ async function onSubmit() {
 					value: prompt.value,
 				});
 
-				useTelemetry().trackAiTransform('generationFinished', {
+				useTelemetry().trackAiTransform('generationFinished', ndvStore.pushRef, {
 					prompt: prompt.value,
 					code: updateInformation.value,
 				});
@@ -139,7 +141,7 @@ async function onSubmit() {
 
 		stopLoading();
 	} catch (error) {
-		useTelemetry().trackAiTransform('generationFinished', {
+		useTelemetry().trackAiTransform('generationFinished', ndvStore.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,
@@ -162,7 +164,7 @@ function onPromptInput(inputValue: string) {
 }
 
 onMounted(() => {
-	parentNodes.value = getParentNodes(workflowDocumentStore.value.documentId);
+	parentNodes.value = getParentNodes(workflowDocumentStore.value.documentId, ndvStore.activeNode);
 });
 
 function cleanTextareaRowsData() {

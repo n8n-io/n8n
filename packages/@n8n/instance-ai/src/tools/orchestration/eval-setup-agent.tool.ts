@@ -6,8 +6,8 @@
  * isolate side-effect nodes during eval runs. DataTable creation is always
  * handled upstream by `propose` and passed in via the task spec.
  *
- * Pattern mirrors data-table-agent.tool.ts. No HITL - the eval card already
- * captured the user's approval; this sub-agent operates post-approval.
+ * No HITL - the eval card already captured the user's approval; this sub-agent
+ * operates post-approval.
  */
 
 import { Agent, Tool } from '@n8n/agents';
