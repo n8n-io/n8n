@@ -71,6 +71,14 @@ const showChangesRequested = computed(() => reviewStatus.value === 'changes-requ
 
 const isShimmering = computed(() => Boolean(props.loading || props.updating));
 
+function isVerificationTask(task: PlannedTaskArg): boolean {
+	return task.kind === 'checkpoint' || task.title.toLowerCase().startsWith('verify ');
+}
+
+function isTaskExpandedByDefault(task: PlannedTaskArg): boolean {
+	return !isVerificationTask(task);
+}
+
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
 	if (task.deps.length) {
@@ -112,10 +120,21 @@ function handleDeny() {
 		data-test-id="instance-ai-plan-review"
 	>
 		<CollapsibleTrigger as-child>
-			<div :class="$style.header">
-				<N8nText bold>
-					{{ i18n.baseText(titleKey) }}
-				</N8nText>
+			<div
+				:class="[$style.header, !isExpanded && $style.headerCollapsed]"
+				data-test-id="instance-ai-plan-review-header"
+			>
+				<span :class="$style.headerTitleGroup">
+					<N8nText size="large">
+						{{ i18n.baseText(titleKey) }}
+					</N8nText>
+					<N8nIcon
+						icon="chevron-right"
+						size="medium"
+						:class="[$style.headerChevron, isExpanded && $style.headerChevronOpen]"
+						data-test-id="instance-ai-plan-review-chevron"
+					/>
+				</span>
 				<N8nText v-if="reviewStatus === 'approved'" size="small" bold color="success">
 					{{ i18n.baseText('instanceAi.planReview.approved') }}
 				</N8nText>
@@ -156,19 +175,36 @@ function handleDeny() {
 			</div>
 
 			<div v-else :class="$style.tasks">
-				<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
-					<div :class="$style.taskRow">
-						<span :class="$style.taskNumber">{{ idx + 1 }}</span>
-						<N8nText :class="$style.taskTitle">{{ task.title }}</N8nText>
-					</div>
+				<CollapsibleRoot
+					v-for="(task, idx) in plannedTasks"
+					v-slot="{ open: isTaskOpen }"
+					:key="task.id"
+					:class="$style.taskItem"
+					:default-open="isTaskExpandedByDefault(task)"
+				>
+					<CollapsibleTrigger as-child>
+						<button type="button" :class="$style.taskRow">
+							<span :class="$style.taskNumber">{{ idx + 1 }}</span>
+							<span :class="$style.taskTitleGroup">
+								<N8nText bold size="large" :class="$style.taskTitle">{{ task.title }}</N8nText>
+								<N8nIcon
+									icon="chevron-right"
+									size="medium"
+									:class="[$style.taskChevron, isTaskOpen && $style.taskChevronOpen]"
+								/>
+							</span>
+						</button>
+					</CollapsibleTrigger>
 
-					<div v-if="task.spec" :class="$style.taskDetail">
-						<N8nText tag="p" :class="$style.taskSpec">{{ getDescription(task) }}</N8nText>
-					</div>
-				</div>
+					<AnimatedCollapsibleContent>
+						<div v-if="task.spec" :class="$style.taskDetail">
+							<N8nText tag="p" :class="$style.taskSpec">{{ getDescription(task) }}</N8nText>
+						</div>
+					</AnimatedCollapsibleContent>
+				</CollapsibleRoot>
 			</div>
 
-			<ConfirmationFooter v-if="showActions" layout="row-end" bordered>
+			<ConfirmationFooter v-if="showActions" layout="row-between" bordered>
 				<N8nButton
 					variant="outline"
 					size="medium"
@@ -178,24 +214,26 @@ function handleDeny() {
 				>
 					{{ i18n.baseText('instanceAi.planReview.deny') }}
 				</N8nButton>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					:disabled="disabled"
-					data-test-id="instance-ai-plan-ask-for-edits"
-					@click="handleAskForEdits"
-				>
-					{{ i18n.baseText('instanceAi.planReview.askForEdits') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					size="medium"
-					:disabled="disabled"
-					data-test-id="instance-ai-plan-approve"
-					@click="handleApprove"
-				>
-					{{ i18n.baseText('instanceAi.planReview.approve') }}
-				</N8nButton>
+				<div :class="$style.footerActions">
+					<N8nButton
+						variant="outline"
+						size="medium"
+						:disabled="disabled"
+						data-test-id="instance-ai-plan-ask-for-edits"
+						@click="handleAskForEdits"
+					>
+						{{ i18n.baseText('instanceAi.planReview.askForEdits') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						size="medium"
+						:disabled="disabled"
+						data-test-id="instance-ai-plan-approve"
+						@click="handleApprove"
+					>
+						{{ i18n.baseText('instanceAi.planReview.approve') }}
+					</N8nButton>
+				</div>
 			</ConfirmationFooter>
 
 			<ConfirmationFooter v-else-if="showChangesRequested" layout="row-end" bordered>
@@ -234,6 +272,28 @@ function handleDeny() {
 	cursor: pointer;
 }
 
+.headerCollapsed {
+	border-bottom: 0;
+}
+
+.headerTitleGroup {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.headerChevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+	transition: transform var(--duration--snappy) var(--easing--ease-out);
+	transform-origin: center;
+}
+
+.headerChevronOpen {
+	transform: rotate(90deg);
+}
+
 .headerStatus {
 	display: flex;
 	align-items: center;
@@ -256,6 +316,12 @@ function handleDeny() {
 .tasks {
 	display: flex;
 	flex-direction: column;
+	padding-bottom: var(--spacing--xs);
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 
 .taskItem {
@@ -268,7 +334,13 @@ function handleDeny() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
 	padding: var(--spacing--2xs) var(--spacing--sm) 0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color);
+	text-align: left;
+	cursor: pointer;
 }
 
 .taskNumber {
@@ -278,19 +350,37 @@ function handleDeny() {
 	width: 20px;
 	height: 20px;
 	border-radius: 50%;
-	background: var(--color--foreground);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--xs);
+	background: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+	color: var(--text-color);
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	flex-shrink: 0;
 }
 
 .taskTitle {
-	flex: 1;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.taskTitleGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.taskChevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+	transition: transform var(--duration--snappy) var(--easing--ease-out);
+	transform-origin: center;
+}
+
+.taskChevronOpen {
+	transform: rotate(90deg);
 }
 
 .taskDetail {
@@ -302,5 +392,12 @@ function handleDeny() {
 	margin: 0;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.headerChevron,
+	.taskChevron {
+		transition: none;
+	}
 }
 </style>

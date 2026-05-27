@@ -5702,7 +5702,7 @@
 	"instanceAi.backgroundTask.running": "Working in the background...",
 	"instanceAi.backgroundTask.completed": "Background task finished",
 	"instanceAi.backgroundTask.failed": "Background task failed",
-	"instanceAi.planReview.title": "Review before building",
+	"instanceAi.planReview.title": "Review plan",
 	"instanceAi.planReview.titleResolved": "Plan",
 	"instanceAi.planReview.building": "Building plan...",
 	"instanceAi.planReview.awaitingApproval": "Awaiting approval",

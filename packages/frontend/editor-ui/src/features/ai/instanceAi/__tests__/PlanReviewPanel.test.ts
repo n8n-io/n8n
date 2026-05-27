@@ -20,6 +20,17 @@ const plannedTasks: PlannedTaskArg[] = [
 	},
 ];
 
+const plannedTasksWithVerifyStep: PlannedTaskArg[] = [
+	...plannedTasks,
+	{
+		id: 'verify-workflow',
+		title: "Verify 'Lead routing' workflow runs without errors",
+		kind: 'checkpoint',
+		spec: 'Call verify-built-workflow with the work item ID from the build outcome.',
+		deps: ['workflow'],
+	},
+];
+
 const renderComponent = createComponentRenderer(PlanReviewPanel, {
 	props: { plannedTasks },
 });
@@ -28,7 +39,7 @@ describe('PlanReviewPanel', () => {
 	it('renders the task list with title and spec for each task', () => {
 		const { getByText, getByTestId } = renderComponent();
 
-		expect(getByText('Review before building')).toBeInTheDocument();
+		expect(getByText('Review plan')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-plan-review')).toBeInTheDocument();
 		expect(getByText("Create 'Leads' data table")).toBeInTheDocument();
 		expect(getByText("Build 'Lead routing' workflow")).toBeInTheDocument();
@@ -42,6 +53,25 @@ describe('PlanReviewPanel', () => {
 		expect(getByTestId('instance-ai-plan-ask-for-edits')).toHaveTextContent('Ask for edits');
 		expect(getByTestId('instance-ai-plan-approve')).toHaveTextContent('Approve');
 		expect(queryByRole('textbox')).not.toBeInTheDocument();
+	});
+
+	it('collapses verification steps by default', async () => {
+		const { getByRole, getByText, queryByText } = renderComponent({
+			props: { plannedTasks: plannedTasksWithVerifyStep },
+		});
+
+		expect(getByText(/Route qualified leads to the sales team\./)).toBeInTheDocument();
+		expect(
+			queryByText(/Call verify-built-workflow with the work item ID from the build outcome\./),
+		).not.toBeInTheDocument();
+
+		await userEvent.click(
+			getByRole('button', { name: "3 Verify 'Lead routing' workflow runs without errors" }),
+		);
+
+		expect(
+			getByText(/Call verify-built-workflow with the work item ID from the build outcome\./),
+		).toBeInTheDocument();
 	});
 
 	it('marks the card as loading while the initial plan is being built', () => {
@@ -126,5 +156,17 @@ describe('PlanReviewPanel', () => {
 		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
+	});
+
+	it('shows a chevron and removes the header divider for collapsed plans', () => {
+		const { getByTestId } = renderComponent({
+			props: { readOnly: true, status: 'approved' },
+		});
+
+		const header = getByTestId('instance-ai-plan-review-header');
+		const chevron = getByTestId('instance-ai-plan-review-chevron');
+
+		expect(header.className).toContain('headerCollapsed');
+		expect(chevron).toHaveAttribute('data-icon', 'chevron-right');
 	});
 });

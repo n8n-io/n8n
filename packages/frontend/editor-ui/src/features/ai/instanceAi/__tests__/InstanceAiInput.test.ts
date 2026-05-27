@@ -643,8 +643,12 @@ describe('InstanceAiInput', () => {
 		});
 
 		const textbox = getByRole('textbox');
+		const planEditChip = getByTestId('instance-ai-plan-edit-context');
 
-		expect(getByTestId('instance-ai-plan-edit-context')).toHaveTextContent('Plan edits');
+		expect(planEditChip).toHaveTextContent('Ask for edits');
+		expect(planEditChip.querySelector('.n8n-tag')?.className).toContain('lg');
+		expect(planEditChip.querySelector('[data-icon="corner-down-right"]')).toBeInTheDocument();
+		expect(planEditChip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 		expect(textbox).toHaveAttribute('placeholder', 'What should we change?');
 		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();

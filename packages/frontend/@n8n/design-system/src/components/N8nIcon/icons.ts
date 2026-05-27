@@ -101,6 +101,7 @@ import IconLucideCog from '~icons/lucide/cog';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
+import IconLucideCornerDownRight from '~icons/lucide/corner-down-right';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
@@ -581,6 +582,7 @@ export const updatedIconSet = {
 	cog: IconLucideCog,
 	contrast: IconLucideContrast,
 	copy: IconLucideCopy,
+	'corner-down-right': IconLucideCornerDownRight,
 	crosshair: IconLucideCrosshair,
 	database: IconLucideDatabase,
 	'door-open': IconLucideDoorOpen,

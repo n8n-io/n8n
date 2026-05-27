@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIcon, N8nTag } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
@@ -303,27 +303,10 @@ const resizable = computed(() => {
 
 <template>
 	<div :class="$style.composer">
-		<div
-			v-if="props.isPlanEditMode"
-			:class="$style.contextChip"
-			data-test-id="instance-ai-plan-edit-context"
-		>
-			<div :class="$style.contextChipLabel">
-				<N8nIcon icon="message-square" size="small" />
-				<span>{{ i18n.baseText('instanceAi.input.planEditContext' as BaseTextKey) }}</span>
-			</div>
-			<N8nIconButton
-				icon="x"
-				variant="ghost"
-				size="xsmall"
-				:title="i18n.baseText('generic.close')"
-				data-test-id="instance-ai-plan-edit-cancel"
-				@click="emit('cancel-plan-edit')"
-			/>
-		</div>
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
+			:class="props.isPlanEditMode && $style.planEditInput"
 			:placeholder="placeholder"
 			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
@@ -336,8 +319,38 @@ const resizable = computed(() => {
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
 		>
-			<template v-if="attachedFiles.length > 0 && !props.isPlanEditMode" #attachments>
-				<div :class="$style.attachments">
+			<template #attachments>
+				<div
+					v-if="props.isPlanEditMode"
+					:class="$style.contextChip"
+					data-test-id="instance-ai-plan-edit-context"
+				>
+					<N8nTag
+						:text="i18n.baseText('instanceAi.planReview.askForEdits')"
+						:clickable="false"
+						size="lg"
+					>
+						<template #tag>
+							<span :class="$style.contextChipContent">
+								<N8nIcon icon="corner-down-right" size="small" />
+								<span :class="$style.contextChipText">{{
+									i18n.baseText('instanceAi.planReview.askForEdits')
+								}}</span>
+								<button
+									type="button"
+									:class="$style.contextChipClose"
+									:title="i18n.baseText('generic.close')"
+									:aria-label="i18n.baseText('generic.close')"
+									data-test-id="instance-ai-plan-edit-cancel"
+									@click.stop="emit('cancel-plan-edit')"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
+							</span>
+						</template>
+					</N8nTag>
+				</div>
+				<div v-else-if="attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"
@@ -378,27 +391,38 @@ const resizable = computed(() => {
 }
 
 .contextChip {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
 	align-self: flex-start;
 	max-width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--background--surface);
-	color: var(--color--text--tint-1);
-	box-shadow: var(--shadow--xs);
 }
 
-.contextChipLabel {
+.contextChipContent {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	min-width: 0;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--xs);
+}
+
+.contextChipText {
+	white-space: nowrap;
+}
+
+.contextChipClose {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+	padding: 0;
+	color: inherit;
+	cursor: pointer;
+	background: none;
+	border: 0;
+	border-radius: var(--radius--3xs);
+}
+
+.planEditInput {
+	gap: var(--spacing--2xs);
 }
 
 :global(.suggestions-fade-enter-active) {
