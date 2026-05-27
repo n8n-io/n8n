@@ -16,7 +16,7 @@ import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
@@ -29,7 +29,9 @@ import {
 	createSandbox,
 	createWorkspace,
 	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
 	setupSandboxWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	continueInstanceAiTraceContext,
@@ -54,9 +56,7 @@ import {
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
-	startDataTableAgentTask,
 	startDetachedDelegateTask,
-	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
@@ -108,7 +108,6 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { InstanceAiCompactionService } from './compaction.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
@@ -152,20 +151,88 @@ type RuntimeSandboxEntry = {
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
 };
+
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+const SHORT_RUN_ID_LEN = 8;
+const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
+
+function slugifySandboxName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+function slugifySandboxLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
 
 function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
+function buildThreadScopedSandboxName(
+	threadId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	if (runId) {
+		const runSlug = slugifySandboxName(runId, SHORT_RUN_ID_LEN);
+		if (runSlug) parts.push(runSlug);
+	}
+	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
+	if (threadSlug) parts.push(threadSlug);
+	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	if (!name) throw new UnexpectedError('Failed to build thread-scoped sandbox name');
+	return name;
+}
+
+function buildThreadScopedSandboxLabels(
+	threadId: string,
+	namePrefix: string | undefined,
+	runId: string | undefined,
+): Record<string, string> {
+	const baseName = getThreadScopedSandboxName(threadId);
+	const labels: Record<string, string> = {
+		'n8n-builder': slugifySandboxLabel(baseName, SANDBOX_LABEL_MAX_LEN),
+		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
+	};
+	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	if (runId) labels.run_id = slugifySandboxLabel(runId, SANDBOX_LABEL_MAX_LEN);
+	return labels;
+}
+
+function withThreadScopedSandboxIdentity(
+	config: SandboxConfig,
+	threadId: string,
+	runId?: string,
+): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = getThreadScopedSandboxName(threadId);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, runId);
 	return {
 		...config,
 		id: name,
 		name,
+		labels: {
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, runId),
+			...config.labels,
+		},
 	};
 }
 
@@ -261,10 +328,6 @@ function getAbortReason(signal: AbortSignal): string {
 // upserts the record (thumbs-down → later text comment = one record, not two).
 const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
-
-function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4);
-}
 
 function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
@@ -500,7 +563,6 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
-		private readonly compactionService: InstanceAiCompactionService,
 		private readonly aiService: AiService,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
@@ -511,6 +573,7 @@ export class InstanceAiService {
 		private readonly telemetry: Telemetry,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly errorReporter: ErrorReporter,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
@@ -660,34 +723,43 @@ export class InstanceAiService {
 		return base;
 	}
 
+	private async getOrCreateWorkspaceEntry(
+		threadId: string,
+		user: User,
+		runId?: string,
+	): Promise<RuntimeSandboxEntry | undefined> {
+		const existing = this.sandboxes.get(threadId);
+		if (existing) {
+			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
+				this.evictSandboxEntry(threadId, existing);
+			} else {
+				this.touchSandboxEntry(threadId, existing);
+				return existing;
+			}
+		}
+
+		const pending = this.sandboxCreations.get(threadId);
+		if (pending) return await pending;
+
+		const creation = this.createWorkspaceEntry(threadId, user, runId);
+		this.sandboxCreations.set(threadId, creation);
+		try {
+			return await creation;
+		} finally {
+			this.sandboxCreations.delete(threadId);
+		}
+	}
+
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
 	private async getOrCreateWorkspace(
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
+		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const existing = this.sandboxes.get(threadId);
-		if (existing) {
-			await this.ensureWorkspaceSetup(existing, context);
-			return existing;
-		}
-
-		const pending = this.sandboxCreations.get(threadId);
-		if (pending) {
-			const entry = await pending;
-			if (entry) await this.ensureWorkspaceSetup(entry, context);
-			return entry;
-		}
-
-		const creation = this.createWorkspaceEntry(threadId, user);
-		this.sandboxCreations.set(threadId, creation);
-		try {
-			const entry = await creation;
-			if (entry) await this.ensureWorkspaceSetup(entry, context);
-			return entry;
-		} finally {
-			this.sandboxCreations.delete(threadId);
-		}
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user, runId);
+		if (entry) await this.ensureWorkspaceSetup(entry, context);
+		return entry;
 	}
 
 	private async ensureWorkspaceSetup(
@@ -710,11 +782,20 @@ export class InstanceAiService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
+		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
+		const config = withThreadScopedSandboxIdentity(
+			await this.resolveSandboxConfig(user),
+			threadId,
+			runId,
+		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = createSandbox(config);
+		const sandbox = await createSandbox(config, {
+			logger: this.logger,
+			errorReporter: this.errorReporter,
+			useSnapshotFallback: true,
+		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
@@ -733,24 +814,90 @@ export class InstanceAiService {
 			workspace,
 			setupComplete: false,
 			setupPromise: undefined,
+			expiresAt: this.nextSandboxExpiry(),
 		};
 		this.sandboxes.set(threadId, entry);
+		this.scheduleSandboxExpiry(threadId, entry);
 		return entry;
 	}
 
+	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxes.get(threadId) !== entry) return;
+
+		this.sandboxes.delete(threadId);
+		if (entry.cleanupTimer) {
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
+		}
+	}
+
 	/** Destroy and remove the shared runtime workspace for a thread. */
-	private async destroySandbox(threadId: string): Promise<void> {
+	private async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry?.sandbox) return;
 
-		this.sandboxes.delete(threadId);
+		this.evictSandboxEntry(threadId, entry);
 		try {
 			await entry.workspace?.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
+				reason,
 				error: error instanceof Error ? error.message : String(error),
 			});
+		}
+	}
+
+	private get sandboxTtlMs(): number {
+		return this.instanceAiConfig?.builderSandboxTtlMs ?? DEFAULT_SANDBOX_TTL_MS;
+	}
+
+	private nextSandboxExpiry(): number {
+		return Date.now() + this.sandboxTtlMs;
+	}
+
+	private isSandboxEntryExpired(entry: RuntimeSandboxEntry): boolean {
+		return this.sandboxTtlMs > 0 && entry.expiresAt <= Date.now();
+	}
+
+	private touchSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		entry.expiresAt = this.nextSandboxExpiry();
+		this.scheduleSandboxExpiry(threadId, entry);
+	}
+
+	private isSandboxInUse(threadId: string): boolean {
+		return Boolean(
+			this.runState.getActiveRunId(threadId) ||
+				this.runState.hasSuspendedRun(threadId) ||
+				this.backgroundTasks.getRunningTasks(threadId).length > 0,
+		);
+	}
+
+	private scheduleSandboxExpiry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
+
+		// Provider auto-stop handles remote Daytona sandboxes. This timer only
+		// drops our in-process cache entry so the map cannot grow indefinitely.
+		const delay = Math.max(0, entry.expiresAt - Date.now());
+		entry.cleanupTimer = setTimeout(() => {
+			const current = this.sandboxes.get(threadId);
+			if (current !== entry) return;
+			if (this.isSandboxInUse(threadId)) {
+				this.touchSandboxEntry(threadId, entry);
+				return;
+			}
+			this.evictSandboxEntry(threadId, entry);
+		}, delay);
+		entry.cleanupTimer.unref();
+	}
+
+	private stopSandboxExpiryTimers(): void {
+		for (const entry of this.sandboxes.values()) {
+			if (!entry.cleanupTimer) continue;
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
 		}
 	}
 
@@ -813,7 +960,7 @@ export class InstanceAiService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
-		const modelName = await this.settingsService.resolveModelName(user);
+		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		const provider = createAnthropic({
 			baseURL: proxyBaseUrl + '/anthropic/v1',
@@ -1787,8 +1934,11 @@ export class InstanceAiService {
 
 		this.gatewayRegistry.disconnectAll();
 
+		this.stopSandboxExpiryTimers();
+
 		// Thread-scoped sandboxes survive service shutdown so a restarted process
-		// can reuse them. Thread deletion remains the teardown path.
+		// can reuse them. Explicit thread cleanup and idle TTL remain the
+		// teardown paths.
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
@@ -1841,9 +1991,11 @@ export class InstanceAiService {
 
 	private createAgentMemoryOptions() {
 		return {
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
+			observationalMemory: {
+				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+			},
 		};
 	}
 
@@ -2452,11 +2604,13 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
+		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		if (adminSettings.sandboxEnabled) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
 			const getSandboxEntry = async () => {
-				sandboxEntryPromise ??= this.getOrCreateWorkspace(threadId, user, context).catch(
+				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
 					(error: unknown) => {
 						sandboxEntryPromise = undefined;
 						throw error;
@@ -2465,9 +2619,22 @@ export class InstanceAiService {
 
 				return await sandboxEntryPromise;
 			};
+			const getSetupSandboxEntry = async () => {
+				return await this.getOrCreateWorkspace(threadId, user, context, runId);
+			};
 
 			runtimeWorkspace = createLazyRuntimeWorkspace({
+				ensureWorkspace: async () => (await getSetupSandboxEntry())?.workspace,
+			});
+			const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+				id: 'instance-ai-runtime-skill-workspace',
+				name: 'Instance AI runtime skill workspace',
 				ensureWorkspace: async () => (await getSandboxEntry())?.workspace,
+			});
+			runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+				source: baseRuntimeSkills,
+				workspace: runtimeSkillWorkspace,
+				logger: this.logger,
 			});
 		}
 
@@ -2493,6 +2660,8 @@ export class InstanceAiService {
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
 			localMcpServer: context.localMcpServer,
+			runtimeSkills,
+			runtimeSkillCatalog: baseRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			formBaseUrl: this.formBaseUrl,
@@ -2563,21 +2732,6 @@ export class InstanceAiService {
 				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: task.spec,
 					workflowId: task.workflowId,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
-			case 'manage-data-tables':
-				started = startDataTableAgentTask(taskContext, {
-					task: task.spec,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
-			case 'research':
-				started = await startResearchAgentTask(taskContext, {
-					goal: task.title,
-					constraints: task.spec,
 					plannedTaskId: task.id,
 					conversationContext,
 				});
@@ -3075,71 +3229,12 @@ export class InstanceAiService {
 				attachmentManifest = buildAttachmentManifest(classifiedAttachments);
 			}
 
-			const messageWithoutSummary =
+			const fullMessage =
 				!message && hasParseableAttachment
 					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${attachmentManifest}`
 					: attachmentManifest
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
-			const messageWithoutSummaryTokens = estimateTokens(messageWithoutSummary);
-
-			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { message: 'Recalling conversation...' },
-			});
-			const contextCompactionRun = tracing
-				? await tracing.startChildRun(tracing.messageRun, {
-						name: 'prepare: context',
-						canonicalName: 'instance-ai.context_compaction',
-						tags: ['context'],
-						metadata: { agent_role: 'context_compaction' },
-						inputs: {
-							threadId,
-							lastMessages: this.instanceAiConfig.lastMessages ?? 20,
-							currentInputTokens: messageWithoutSummaryTokens,
-						},
-					})
-				: undefined;
-			let conversationSummary: string | null | undefined;
-			try {
-				conversationSummary = await this.compactionService.prepareCompactedContext(
-					threadId,
-					memory,
-					modelId,
-					this.instanceAiConfig.lastMessages ?? 20,
-					0.8,
-					{
-						label: 'orchestrator-current-input',
-						text: messageWithoutSummary,
-					},
-				);
-				if (contextCompactionRun && tracing) {
-					await tracing.finishRun(contextCompactionRun, {
-						outputs: {
-							summarized: Boolean(conversationSummary),
-							summary: conversationSummary ?? '',
-							currentInputTokens: messageWithoutSummaryTokens,
-						},
-						metadata: { final_status: 'completed' },
-					});
-				}
-			} catch (error) {
-				if (contextCompactionRun && tracing) {
-					await tracing.failRun(contextCompactionRun, error, {
-						final_status: 'error',
-					});
-				}
-				throw error;
-			}
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { message: '' },
-			});
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -3149,18 +3244,12 @@ export class InstanceAiService {
 						metadata: { agent_role: 'prompt_build' },
 						inputs: {
 							message,
-							hasConversationSummary: Boolean(conversationSummary),
 							attachmentCount: attachments?.length ?? 0,
 						},
 					})
 				: undefined;
 			let streamInput: string | Message[];
 			try {
-				// Compose runtime input: conversation summary → background tasks → user message
-				const fullMessage = conversationSummary
-					? `${conversationSummary}\n\n${messageWithoutSummary}`
-					: messageWithoutSummary;
-
 				// Only include non-structured attachments as raw multimodal content
 				if (nonStructuredAttachments.length > 0) {
 					streamInput = [

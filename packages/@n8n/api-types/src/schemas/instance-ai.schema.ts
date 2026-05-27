@@ -69,7 +69,6 @@ export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
-	'researcher',
 	'delegate',
 	'browser-setup',
 	'planner',
@@ -742,10 +741,11 @@ export interface InstanceAiToolCallState {
 		| 'tasks'
 		| 'delegate'
 		| 'builder'
-		| 'data-table'
 		| 'researcher'
+		| 'data-table'
 		| 'planner'
 		| 'eval-setup'
+		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -762,9 +762,9 @@ export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
 	tools?: string[];
-	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate,
+	/** Agent kind for card dispatch (builder, data-table, delegate,
 	 * browser-setup, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
@@ -997,8 +997,6 @@ export function applyBranchReadOnlyOverrides(
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;
-	embedderModel: string;
-	semanticRecallTopK: number;
 	subAgentMaxSteps: number;
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
@@ -1016,8 +1014,6 @@ export interface InstanceAiAdminSettingsResponse {
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
-	embedderModel: z.string().optional(),
-	semanticRecallTopK: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
@@ -1061,10 +1057,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }
 
