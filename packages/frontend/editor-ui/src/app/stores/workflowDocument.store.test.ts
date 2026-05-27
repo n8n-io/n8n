@@ -58,6 +58,10 @@ describe('workflowDocument.store orchestration', () => {
 			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 		});
 		workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+		workflowDocumentStore.createGroup(
+			[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+			'Group 1',
+		);
 
 		// Verify all are populated
 		expect(workflowDocumentStore.allNodes).toHaveLength(2);
@@ -260,6 +264,10 @@ describe('workflowDocument.store orchestration', () => {
 			});
 			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
 			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+			workflowDocumentStore.createGroup(
+				[workflowDocumentStore.allNodes[0].id, workflowDocumentStore.allNodes[1].id],
+				'Group 1',
+			);
 
 			const data = workflowDocumentStore.serialize();
 
@@ -268,6 +276,9 @@ describe('workflowDocument.store orchestration', () => {
 			expect(data.connections).toHaveProperty('A');
 			expect(data.pinData).toHaveProperty('A');
 			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.nodeGroups).toEqual([
+				expect.objectContaining({ name: 'Group 1', nodeIds: expect.any(Array) }),
+			]);
 			expect(data.id).toBe('wf-42');
 		});
 
@@ -319,10 +330,11 @@ describe('workflowDocument.store orchestration', () => {
 				isArchived: false,
 				createdAt: '2026-04-01T00:00:00.000Z',
 				updatedAt: '2026-04-02T00:00:00.000Z',
-				nodes: [createNode({ name: 'A' }), createNode({ name: 'B' })],
+				nodes: [createNode({ name: 'A', id: 'node-a' }), createNode({ name: 'B', id: 'node-b' })],
 				connections: {
 					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 				},
+				nodeGroups: [{ id: 'group-1', name: 'Group A', nodeIds: ['node-a', 'node-b'] }],
 				settings: { executionOrder: 'v1', timezone: 'UTC' },
 				tags: ['tag-1', 'tag-2'],
 				pinData: { A: [{ json: { foo: 'bar' } }] },

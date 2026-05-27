@@ -6,7 +6,17 @@ import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-se
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
+// Direct method replacement (not jest.spyOn) because the root jest config
+// enables `restoreMocks: true` which restores spies between tests, but
+// `module.start()` calls `checkRequirements` and we need the stub to remain
+// active throughout the file.
+const originalCheckRequirements = PyTaskRunnerProcess.checkRequirements;
+beforeAll(() => {
+	PyTaskRunnerProcess.checkRequirements = async () => 'python';
+});
+afterAll(() => {
+	PyTaskRunnerProcess.checkRequirements = originalCheckRequirements;
+});
 
 describe('TaskRunnerModule in internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);

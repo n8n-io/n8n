@@ -10,6 +10,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import type {
 	ConversationMetrics,
 	ExecutionScenarioResult,
@@ -387,6 +389,53 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Workflow check rubric
+// ---------------------------------------------------------------------------
+
+function dimensionLabel(d: CheckDimension): string {
+	return d.replace(/_/g, ' ');
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const passed = outcomes.filter((o) => o.status === 'pass').length;
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const scored = passed + failed;
+	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const headerClass = failed > 0 ? 'fail' : 'pass';
+
+	const items = outcomes
+		.map((o) => {
+			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
+			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
+			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
+		})
+		.join('');
+
+	return `<div class="check-dimension"><div class="check-dimension-header"><strong>${escapeHtml(dimensionLabel(dimension))}</strong> <span class="${headerClass}">${headerCounts}</span></div><ul class="check-list">${items}</ul></div>`;
+}
+
+function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
+	if (!outcomes || outcomes.length === 0) return '';
+
+	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
+	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
+	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
+	const totalScored = totalPassed + totalFailed;
+	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
+	const openAttr = totalFailed > 0 ? 'open' : '';
+
+	const grouped = groupOutcomesByDimension(outcomes);
+	const groups = CHECK_DIMENSIONS.filter((d) => grouped[d]?.length > 0)
+		.map((d) => renderDimensionGroup(d, grouped[d]))
+		.join('');
+
+	return `<details class="section" ${openAttr}><summary>Workflow checks <span class="${summaryClass}">${summary}</span></summary>${groups}</details>`;
+}
+
+// ---------------------------------------------------------------------------
 // Workflow summary
 // ---------------------------------------------------------------------------
 
@@ -480,6 +529,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
+			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
 		</div>
@@ -588,6 +638,20 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-summary-inline { color: var(--text-muted); font-size: 12px; flex: 1; }
 	.scenario-detail { display: none; padding: 10px 12px; border-top: 1px solid var(--border-light); background: var(--bg-primary); }
 	.scenario.expanded .scenario-detail { display: block; }
+
+	/* Workflow check rubric (per built workflow) */
+	.check-dimension { margin: 8px 0 12px; }
+	.check-dimension-header { font-size: 12px; padding: 2px 0; text-transform: capitalize; color: var(--text-secondary); }
+	.check-list { list-style: none; padding: 2px 0 2px 10px; margin: 2px 0; font-size: 12px; }
+	.check { padding: 3px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; line-height: 1.5; }
+	.check code { background: var(--bg-tertiary); color: var(--text-primary); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+	.check-icon { font-weight: bold; font-size: 13px; min-width: 14px; }
+	.check-icon.pass { color: var(--color-pass); }
+	.check-icon.fail { color: var(--color-fail); }
+	.check-icon.n_a { color: var(--text-muted); }
+	.check.n_a code { color: var(--text-muted); }
+	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+	.check-kind-llm { color: var(--color-purple); }
 
 	/* Error and warning boxes */
 	.error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--color-fail); }

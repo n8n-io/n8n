@@ -55,6 +55,10 @@ export {
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
 export {
+	fetchFollowingRedirects,
+	type FollowRedirectsOptions,
+} from './utils/follow-redirects';
+export {
 	getConnectionHintNoticeField,
 	metadataFilterField,
 	getBatchingOptionFields,
