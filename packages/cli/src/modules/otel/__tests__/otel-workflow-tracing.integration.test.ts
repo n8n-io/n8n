@@ -30,6 +30,7 @@ beforeAll(async () => {
 	savedEnv = saveAndSetEnv({
 		N8N_OTEL_ENABLED: 'true',
 		N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'true',
+		N8N_OTEL_TRACES_PUBLISHED_ONLY: 'false',
 	});
 	const env = await initOtelTestEnvironment();
 	otel = env.otel;
