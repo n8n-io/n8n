@@ -2,6 +2,7 @@
 import { computed, shallowRef } from 'vue';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import N8nStepper from '@n8n/design-system/components/N8nStepper/Stepper.vue';
+import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 
 const props = withDefaults(
@@ -87,17 +88,19 @@ async function installSlackApp() {
 		<N8nStepper :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
-					<N8nButton
-						v-if="step.id === 'create-token'"
-						href="https://api.slack.com/apps"
-						target="_blank"
-						variant="subtle"
-						size="medium"
-						icon="slack"
-						data-testid="slack-app-configuration-token-link"
-					>
-						{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-					</N8nButton>
+					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
+						<N8nButton
+							href="https://api.slack.com/apps"
+							target="_blank"
+							variant="subtle"
+							size="medium"
+							icon="slack"
+							data-testid="slack-app-configuration-token-link"
+						>
+							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+						</N8nButton>
+						<AgentChannelSlackSetupSnapshots />
+					</div>
 
 					<N8nInput
 						v-else-if="step.id === 'copy-access-token'"
@@ -153,6 +156,7 @@ async function installSlackApp() {
 .slackSetup {
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
 .stepContent {
@@ -185,5 +189,11 @@ async function installSlackApp() {
 		cursor: not-allowed;
 		color: var(--color--text--tint-3);
 	}
+}
+
+.createTokenContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 </style>

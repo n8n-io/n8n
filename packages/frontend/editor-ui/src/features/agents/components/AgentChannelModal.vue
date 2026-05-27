@@ -332,10 +332,10 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--md);
 	min-height: var(--height--5xl);
-	aspect-ratio: 16/9;
+	aspect-ratio: 4/3;
 	overflow-y: auto;
 	scrollbar-width: thin;
-	scrollbar-color: transparent tra;
+	scrollbar-color: transparent transparent;
 }
 
 .customHeader {
