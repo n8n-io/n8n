@@ -28,6 +28,7 @@ import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
@@ -184,6 +185,7 @@ export abstract class BaseCommand<F = never> {
 			bridgeTimeout,
 			bridgeMemoryLimit,
 			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+			observability: Container.get(ExpressionObservabilityProvider),
 		});
 	}
 
