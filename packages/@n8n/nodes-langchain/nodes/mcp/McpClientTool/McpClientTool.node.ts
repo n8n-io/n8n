@@ -377,53 +377,24 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-<<<<<<< HEAD
-		const tools = mcpTools.map((tool) =>
-			logWrapper(
-				mcpToolToDynamicTool(
-					tool,
-					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
-						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-					}),
-				),
-				this,
-			),
-		);
-=======
 		try {
-			const tools = mcpTools.map((tool) => {
-				const prefixedName = buildMcpToolName(node.name, tool.name);
-				return logWrapper(
+			const tools = mcpTools.map((tool) =>
+				logWrapper(
 					mcpToolToDynamicTool(
-						{ ...tool, name: prefixedName },
-						createCallTool(
-							tool.name,
-							client,
-							config.timeout,
-							(errorMessage) => {
-								const error = new NodeOperationError(node, errorMessage, { itemIndex });
-								void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-								this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
-									error,
-								});
-							},
-							() => this.getExecutionCancelSignal(),
-						),
+						tool,
+						createCallTool(tool.name, client, config.timeout, (errorMessage) => {
+							const error = new NodeOperationError(node, errorMessage, { itemIndex });
+							void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+							this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
+						}),
 					),
 					this,
-				);
-			});
->>>>>>> 882dd9ce (fix(core): Drain webhook close functions to prevent MCP connection leaks (#28384))
+				),
+			);
 
 			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
-<<<<<<< HEAD
-		const toolkit = new McpToolkit(tools);
-=======
-			const toolkit = new StructuredToolkit(tools);
->>>>>>> 882dd9ce (fix(core): Drain webhook close functions to prevent MCP connection leaks (#28384))
+			const toolkit = new McpToolkit(tools);
 
 			return { response: toolkit, closeFunction: async () => await client.close() };
 		} catch (e) {
