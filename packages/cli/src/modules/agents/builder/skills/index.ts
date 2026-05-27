@@ -5,7 +5,7 @@ import { mcpSkill } from './mcp.skill';
 import { targetSkillsSkill } from './target-skills.skill';
 
 export function getBuilderRuntimeSkills(options: {
-	enabledModules?: readonly string[];
+	enabledModules: string[];
 }): RuntimeSkill[] {
 	const skills: RuntimeSkill[] = [
 		integrationsSkill(),
