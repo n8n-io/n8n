@@ -1,0 +1,13 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"compilerOptions": {
+		"composite": true,
+		"module": "CommonJS",
+		"moduleResolution": "node",
+		"rootDir": "src",
+		"outDir": "dist",
+		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+	},
+	"include": ["src/server/**/*.ts"],
+	"exclude": ["src/**/*.test.ts"]
+}

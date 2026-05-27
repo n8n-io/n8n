@@ -1,0 +1,60 @@
+{
+	"name": "@n8n/mcp-apps",
+	"version": "0.1.0",
+	"description": "MCP Apps UI resources and server helpers for n8n",
+	"main": "dist/server/index.js",
+	"types": "dist/server/index.d.ts",
+	"typesVersions": {
+		"*": {
+			"server": [
+				"dist/server/index.d.ts"
+			]
+		}
+	},
+	"exports": {
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"default": "./dist/server/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist/**/*"
+	],
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"build": "pnpm build:ui && pnpm build:server",
+		"build:ui": "vite build --mode workflow-preview",
+		"build:server": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.build.json",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"test": "vitest run",
+		"test:dev": "vitest",
+		"format": "biome format --write src",
+		"format:check": "biome ci src"
+	},
+	"dependencies": {
+		"@n8n/design-system": "workspace:*",
+		"vue": "catalog:frontend"
+	},
+	"devDependencies": {
+		"@modelcontextprotocol/ext-apps": "catalog:",
+		"@modelcontextprotocol/sdk": "1.26.0",
+		"@n8n/eslint-config": "workspace:*",
+		"@n8n/typescript-config": "workspace:*",
+		"@n8n/vitest-config": "workspace:*",
+		"@vitejs/plugin-vue": "catalog:frontend",
+		"@vue/test-utils": "catalog:frontend",
+		"rimraf": "catalog:",
+		"typescript": "catalog:",
+		"unplugin-icons": "catalog:frontend",
+		"vite": "catalog:",
+		"vite-plugin-singlefile": "catalog:",
+		"vite-svg-loader": "catalog:frontend",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"@modelcontextprotocol/sdk": "1.26.0"
+	}
+}

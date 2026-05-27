@@ -12,6 +12,21 @@ import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 
+jest.mock('@n8n/mcp-apps/server', () => ({
+	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
+	registerWorkflowPreviewApp: jest.fn(),
+	registerMcpAppTool: jest.fn(
+		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
+			server.registerTool(name, config, handler),
+	),
+}));
+
+import {
+	registerMcpAppTool,
+	registerWorkflowPreviewApp,
+	WORKFLOW_PREVIEW_APP_URI,
+} from '@n8n/mcp-apps/server';
+
 import { McpService } from '../mcp.service';
 import { NodeCatalogService } from '@/node-catalog';
 
@@ -366,6 +381,100 @@ describe('McpService', () => {
 			expect(server).toBeDefined();
 			// Builder tools service should have been initialized
 			expect(nodeCatalogService.initialize).toHaveBeenCalled();
+		});
+
+		describe('MCP Apps integration', () => {
+			beforeEach(() => {
+				(registerWorkflowPreviewApp as jest.Mock).mockClear();
+				(registerMcpAppTool as jest.Mock).mockClear();
+			});
+
+			it('registers the workflow preview app and wires it to the create-workflow tool when builder is enabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				const service = new McpService(
+					mockLogger(),
+					executionsConfig,
+					instanceSettings,
+					mockInstance(WorkflowFinderService),
+					mockInstance(WorkflowService),
+					mockInstance(UrlService),
+					mockInstance(CredentialsService),
+					activeExecutions,
+					mockInstance(GlobalConfig, {
+						endpoints: {
+							webhook: '/webhook',
+							webhookTest: '/webhook-test',
+							mcpBuilderEnabled: true,
+						},
+					}),
+					mockInstance(Telemetry),
+					mockInstance(WorkflowRunner),
+					mockInstance(RoleService),
+					mockInstance(ProjectService),
+					mockInstance(NodeCatalogService),
+					mockInstance(WorkflowCreationService),
+					mockInstance(NodeTypes),
+					mockInstance(ProjectRepository),
+					mockInstance(FolderRepository),
+					mockInstance(SharedWorkflowRepository),
+					mockInstance(ExecutionRepository),
+					mockInstance(ExecutionService),
+					mockInstance(DataTableProxyService),
+					mockInstance(CollaborationService),
+				);
+
+				await service.getServer(user);
+
+				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
+				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
+
+				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
+				expect(typeof toolName).toBe('string');
+				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
+				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
+			});
+
+			it('does not register MCP apps when builder is disabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				const service = new McpService(
+					mockLogger(),
+					executionsConfig,
+					instanceSettings,
+					mockInstance(WorkflowFinderService),
+					mockInstance(WorkflowService),
+					mockInstance(UrlService),
+					mockInstance(CredentialsService),
+					activeExecutions,
+					mockInstance(GlobalConfig, {
+						endpoints: {
+							webhook: '/webhook',
+							webhookTest: '/webhook-test',
+							mcpBuilderEnabled: false,
+						},
+					}),
+					mockInstance(Telemetry),
+					mockInstance(WorkflowRunner),
+					mockInstance(RoleService),
+					mockInstance(ProjectService),
+					mockInstance(NodeCatalogService),
+					mockInstance(WorkflowCreationService),
+					mockInstance(NodeTypes),
+					mockInstance(ProjectRepository),
+					mockInstance(FolderRepository),
+					mockInstance(SharedWorkflowRepository),
+					mockInstance(ExecutionRepository),
+					mockInstance(ExecutionService),
+					mockInstance(DataTableProxyService),
+					mockInstance(CollaborationService),
+				);
+
+				await service.getServer(user);
+
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registerMcpAppTool).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

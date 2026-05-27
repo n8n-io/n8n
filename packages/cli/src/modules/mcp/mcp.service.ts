@@ -9,6 +9,11 @@ import {
 	User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	registerMcpAppTool,
+	registerWorkflowPreviewApp,
+	WORKFLOW_PREVIEW_APP_URI,
+} from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 import {
 	createDeferredPromise,
@@ -350,6 +355,10 @@ export class McpService {
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
 
+		// Register the workflow preview MCP App resource so the host can load
+		// the iframe UI referenced by the create-workflow tool below.
+		registerWorkflowPreviewApp(server);
+
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
 			this.workflowCreationService,
@@ -361,7 +370,19 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 		);
-		server.registerTool(createTool.name, createTool.config, createTool.handler);
+		registerMcpAppTool(
+			server,
+			createTool.name,
+			{
+				...createTool.config,
+				_meta: {
+					ui: {
+						resourceUri: WORKFLOW_PREVIEW_APP_URI,
+					},
+				},
+			},
+			createTool.handler,
+		);
 
 		const searchProjectsTool = createSearchProjectsTool(
 			user,

@@ -38,6 +38,7 @@ catalog:
   '@lezer/html': 1.3.13
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
+  '@modelcontextprotocol/ext-apps': 1.3.2
   '@n8n/typeorm': 0.3.20-17
   '@n8n_io/ai-assistant-sdk': 1.21.0
   '@openrouter/ai-sdk-provider': ^2.8.0
@@ -113,6 +114,7 @@ catalog:
   uuid: 10.0.0
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
+  vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5
