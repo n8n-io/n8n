@@ -9,6 +9,10 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
+const experimentState = vi.hoisted(() => ({
+	isFeatureEnabled: { __v_isRef: true, value: false },
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -24,6 +28,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('@/experiments/instanceAiSetupList', () => ({
+	useInstanceAiSetupListExperiment: () => ({
+		isFeatureEnabled: experimentState.isFeatureEnabled,
+	}),
+}));
+
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: {
 		template: '<span data-test-id="credential-icon" />',
@@ -33,7 +43,17 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
+		props: [
+			'node',
+			'overrideCredType',
+			'projectId',
+			'standalone',
+			'hideIssues',
+			'hideAskAssistant',
+			'hideCredentialServiceNameInLabel',
+			'hideEmptyCredentialSelect',
+			'suggestedCredentialName',
+		],
 		emits: ['credentialSelected'],
 		setup(props: { overrideCredType: string }, { emit }: { emit: Function }) {
 			const onClick = () => {
@@ -45,7 +65,8 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 			};
 			return { onClick };
 		},
-		template: '<div data-test-id="credential-picker" @click="onClick" />',
+		template:
+			'<div data-test-id="credential-picker" :data-hide-credential-service-name-in-label="hideCredentialServiceNameInLabel ? \'true\' : \'false\'" :data-hide-empty-credential-select="hideEmptyCredentialSelect ? \'true\' : \'false\'" @click="onClick" />',
 	},
 }));
 
@@ -85,6 +106,7 @@ describe('InstanceAiCredentialSetup', () => {
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+		experimentState.isFeatureEnabled.value = false;
 	});
 
 	describe('credential list', () => {
@@ -376,6 +398,113 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByTestId('credential-picker'));
 
 			expect(getByText('instanceAi.credential.finalize.applied')).toBeTruthy();
+		});
+	});
+
+	describe('setup list experiment', () => {
+		it('renders credential requests as a setup list without wizard controls', () => {
+			experimentState.isFeatureEnabled.value = true;
+			const requests = [
+				...makeCredentialRequestsWithExisting(2),
+				{
+					credentialType: 'type2',
+					reason: 'Duplicate type',
+					existingCredentials: [{ id: 'existing-duplicate', name: 'Duplicate Cred' }],
+				},
+			];
+
+			const { getAllByTestId, getByTestId, queryByText, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			expect(getByTestId('instance-ai-credential-setup-list')).toBeInTheDocument();
+			expect(getAllByTestId('instance-ai-credential-setup-list-item')).toHaveLength(2);
+			expect(queryByText('1 of 3')).not.toBeInTheDocument();
+			expect(queryByText('instanceAi.credential.deny')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-credential-continue-button')).not.toBeInTheDocument();
+		});
+
+		it('keeps one credential setup item open at a time', async () => {
+			experimentState.isFeatureEnabled.value = true;
+			const requests = makeCredentialRequestsWithExisting(2);
+			const { getAllByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			expect(getAllByTestId('instance-ai-credential-setup-list-body')).toHaveLength(1);
+
+			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[1]);
+
+			expect(getAllByTestId('instance-ai-credential-setup-list-body')).toHaveLength(1);
+		});
+
+		it('applies selected credentials only from the final apply action', async () => {
+			experimentState.isFeatureEnabled.value = true;
+			const requests = makeCredentialRequestsWithExisting(2);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			const applyButton = getByTestId('instance-ai-credential-setup-apply');
+			expect(applyButton).toBeDisabled();
+
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(applyButton).toBeDisabled();
+
+			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[1]);
+			await userEvent.click(getByTestId('credential-picker'));
+
+			expect(applyButton).not.toBeDisabled();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(applyButton);
+
+			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: {
+					type1: 'cred-123',
+					type2: 'cred-123',
+				},
+			});
+		});
+
+		it('uses compact credential labels and hides empty credential selects in the setup list', () => {
+			experimentState.isFeatureEnabled.value = true;
+			const requests = makeCredentialRequestsWithExisting(1);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			expect(getByTestId('credential-picker')).toHaveAttribute(
+				'data-hide-credential-service-name-in-label',
+				'true',
+			);
+			expect(getByTestId('credential-picker')).toHaveAttribute(
+				'data-hide-empty-credential-select',
+				'true',
+			);
 		});
 	});
 });

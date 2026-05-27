@@ -86,6 +86,13 @@ const displayedMessages = computed(() => thread.messages.filter(messageHasVisibl
 const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
+const hasSetupConfirmation = computed(() =>
+	thread.pendingConfirmations.some(
+		(item) =>
+			item.toolCall.confirmation.setupRequests?.length ||
+			item.toolCall.confirmation.credentialRequests?.length,
+	),
+);
 
 // --- Execution tracking via push events (drives canvas relay) ---
 const executionTracking = useExecutionPushEvents();
@@ -726,6 +733,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:allow-chat-while-awaiting-confirmation="hasSetupConfirmation"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"

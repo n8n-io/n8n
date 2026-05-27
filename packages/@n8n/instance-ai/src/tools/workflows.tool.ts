@@ -510,6 +510,15 @@ async function handleSetup(
 			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
 			state.preTestSnapshot = null;
 		}
+		if (resumeData.userInput) {
+			return {
+				success: true,
+				correction: true,
+				reason: 'The user sent a correction while workflow setup was pending.',
+				userInput: resumeData.userInput,
+			};
+		}
+
 		return {
 			success: true,
 			deferred: true,

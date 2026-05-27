@@ -7,11 +7,12 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useInstanceAiSetupListExperiment } from '@/experiments/instanceAiSetupList';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
@@ -29,6 +30,14 @@ const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const { isFeatureEnabled: isSetupListEnabled } = useInstanceAiSetupListExperiment();
+
+interface CredentialSetupItem {
+	id: string;
+	credentialType: string;
+	request: InstanceAiCredentialRequest;
+	requests: InstanceAiCredentialRequest[];
+}
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -51,6 +60,35 @@ const isSubmitted = ref(false);
 const isDeferred = ref(false);
 
 const selections = ref<Record<string, string | null>>({});
+
+const credentialItems = computed<CredentialSetupItem[]>(() => {
+	const byType = new Map<string, InstanceAiCredentialRequest[]>();
+
+	for (const request of props.credentialRequests) {
+		const requests = byType.get(request.credentialType) ?? [];
+		byType.set(request.credentialType, [...requests, request]);
+	}
+
+	return [...byType.entries()].map(([credentialType, requests]) => ({
+		id: `credential-setup-${credentialType}`.replace(/[^A-Za-z0-9_-]/g, '-'),
+		credentialType,
+		request: mergeCredentialRequests(credentialType, requests),
+		requests,
+	}));
+});
+
+const openCredentialType = ref<string | null>(null);
+
+watch(
+	credentialItems,
+	(items) => {
+		const openItemExists = items.some((item) => item.credentialType === openCredentialType.value);
+		if (openItemExists) return;
+
+		openCredentialType.value = getFirstIncompleteCredentialItem(items)?.credentialType ?? null;
+	},
+	{ immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // Auto-select from existing credentials
@@ -89,7 +127,7 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 	if (name !== 'createNewCredential') return;
 	after((newCred) => {
 		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
-		const req = currentRequest.value;
+		const req = activeCredentialRequest.value;
 		if (!req) return;
 		const cred = newCred as { id: string; type: string };
 		if (cred.type === req.credentialType) {
@@ -108,16 +146,30 @@ onBeforeUnmount(() => {
 // ---------------------------------------------------------------------------
 
 function isStepComplete(credentialType: string): boolean {
-	return selections.value[credentialType] !== null;
+	return !!selections.value[credentialType];
 }
 
 const allSelected = computed(() =>
 	props.credentialRequests.every((r) => isStepComplete(r.credentialType)),
 );
 
+const allCredentialItemsSelected = computed(
+	() =>
+		credentialItems.value.length > 0 &&
+		credentialItems.value.every((item) => isStepComplete(item.credentialType)),
+);
+
 const anySelected = computed(() =>
 	props.credentialRequests.some((r) => isStepComplete(r.credentialType)),
 );
+
+const applyTooltip = computed(() =>
+	allCredentialItemsSelected.value
+		? ''
+		: i18n.baseText('instanceAi.workflowSetup.incompleteTooltip' as BaseTextKey),
+);
+
+const isApplyDisabled = computed(() => isSubmitted.value || !allCredentialItemsSelected.value);
 
 // ---------------------------------------------------------------------------
 // Auto-advance
@@ -154,6 +206,7 @@ watch(
 
 // Auto-continue when all credentials have been selected
 watch(allSelected, async (nowComplete, wasComplete) => {
+	if (isSetupListEnabled.value) return;
 	if (nowComplete && !wasComplete) {
 		await nextTick();
 		await handleContinue();
@@ -186,10 +239,14 @@ onMounted(async () => {
 // ---------------------------------------------------------------------------
 
 function getDisplayName(credentialType: string): string {
+	const appName = getCredentialAppName(credentialType);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+}
+
+function getCredentialAppName(credentialType: string): string {
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+	return getAppNameFromCredType(raw);
 }
 
 const hasExistingCredentials = computed(() => {
@@ -201,8 +258,19 @@ const hasExistingCredentials = computed(() => {
 	);
 });
 
+const activeCredentialRequest = computed(() => {
+	if (isSetupListEnabled.value) {
+		return (
+			credentialItems.value.find((item) => item.credentialType === openCredentialType.value)
+				?.request ?? credentialItems.value[0]?.request
+		);
+	}
+
+	return currentRequest.value;
+});
+
 function openNewCredentialModal() {
-	const req = currentRequest.value;
+	const req = activeCredentialRequest.value;
 	if (!req) return;
 	uiStore.openNewCredential(req.credentialType, false, false, props.projectId, req.suggestedName);
 }
@@ -231,6 +299,47 @@ function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 // ---------------------------------------------------------------------------
 // Event handlers
 // ---------------------------------------------------------------------------
+
+function mergeCredentialRequests(
+	credentialType: string,
+	requests: InstanceAiCredentialRequest[],
+): InstanceAiCredentialRequest {
+	const [firstRequest] = requests;
+	const existingCredentials = new Map<string, { id: string; name: string }>();
+
+	for (const request of requests) {
+		for (const credential of request.existingCredentials ?? []) {
+			existingCredentials.set(credential.id, credential);
+		}
+	}
+
+	return {
+		credentialType,
+		reason: firstRequest?.reason ?? '',
+		existingCredentials: [...existingCredentials.values()],
+		suggestedName: firstRequest?.suggestedName,
+	};
+}
+
+function getFirstIncompleteCredentialItem(
+	items: CredentialSetupItem[],
+): CredentialSetupItem | undefined {
+	return items.find((item) => !isStepComplete(item.credentialType)) ?? items[0];
+}
+
+function isCredentialItemOpen(item: CredentialSetupItem): boolean {
+	return openCredentialType.value === item.credentialType;
+}
+
+function openCredentialItem(item: CredentialSetupItem) {
+	openCredentialType.value = item.credentialType;
+}
+
+function getCredentialStatusLabel(item: CredentialSetupItem): string {
+	return isStepComplete(item.credentialType)
+		? i18n.baseText('instanceAi.workflowSetup.statusDone' as BaseTextKey)
+		: i18n.baseText('instanceAi.workflowSetup.statusTodo' as BaseTextKey);
+}
 
 function onCredentialSelected(
 	credentialType: string,
@@ -312,7 +421,95 @@ async function handleLater() {
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
+			<section
+				v-if="isSetupListEnabled && credentialItems.length"
+				:class="$style.accordion"
+				data-test-id="instance-ai-credential-setup-list"
+			>
+				<div :class="$style.items">
+					<article
+						v-for="item in credentialItems"
+						:key="item.id"
+						:class="$style.item"
+						data-test-id="instance-ai-credential-setup-list-item"
+					>
+						<button
+							type="button"
+							:class="$style.itemHeader"
+							:aria-expanded="isCredentialItemOpen(item)"
+							:aria-controls="`credential-setup-section-${item.id}`"
+							data-test-id="instance-ai-credential-setup-list-header"
+							@click="openCredentialItem(item)"
+						>
+							<span :class="$style.itemIcon">
+								<N8nIcon
+									v-if="isStepComplete(item.credentialType)"
+									icon="check"
+									size="medium"
+									color="success"
+								/>
+								<CredentialIcon v-else :credential-type-name="item.credentialType" :size="16" />
+							</span>
+
+							<span :class="$style.itemText">
+								<N8nText :class="$style.itemTitle" size="medium" color="text-dark" bold>
+									{{ getCredentialAppName(item.credentialType) }}
+								</N8nText>
+							</span>
+
+							<span
+								:class="[
+									$style.statusPill,
+									{ [$style.statusPillDone]: isStepComplete(item.credentialType) },
+								]"
+								data-test-id="instance-ai-credential-setup-status-pill"
+							>
+								{{ getCredentialStatusLabel(item) }}
+							</span>
+						</button>
+
+						<div
+							v-if="isCredentialItemOpen(item)"
+							:id="`credential-setup-section-${item.id}`"
+							:class="$style.itemBody"
+							data-test-id="instance-ai-credential-setup-list-body"
+						>
+							<div :class="$style.credentialBody">
+								<NodeCredentials
+									:node="syntheticNodeUi(item.request)"
+									:override-cred-type="item.credentialType"
+									:project-id="projectId"
+									:suggested-credential-name="item.request.suggestedName"
+									standalone
+									hide-issues
+									hide-ask-assistant
+									:hide-credential-service-name-in-label="true"
+									:hide-empty-credential-select="true"
+									@credential-selected="onCredentialSelected(item.credentialType, $event)"
+								/>
+							</div>
+						</div>
+					</article>
+				</div>
+
+				<ConfirmationFooter bordered>
+					<N8nTooltip :disabled="!applyTooltip" :content="applyTooltip">
+						<N8nButton
+							size="medium"
+							:label="i18n.baseText('instanceAi.workflowSetup.applySetup' as BaseTextKey)"
+							:disabled="isApplyDisabled"
+							data-test-id="instance-ai-credential-setup-apply"
+							@click="handleContinue"
+						/>
+					</N8nTooltip>
+				</ConfirmationFooter>
+			</section>
+
+			<div
+				v-else-if="currentRequest"
+				data-test-id="instance-ai-credential-card"
+				:class="$style.card"
+			>
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -439,6 +636,138 @@ async function handleLater() {
 </template>
 
 <style lang="scss" module>
+.accordion {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+}
+
+.items {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing--sm);
+}
+
+.item {
+	display: flex;
+	flex-direction: column;
+	background-color: transparent;
+
+	&:not(:last-child) {
+		padding-bottom: var(--spacing--xs);
+	}
+
+	& + & {
+		border-top: var(--border);
+		padding-top: var(--spacing--xs);
+	}
+}
+
+.itemHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--xs) 0;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	user-select: none;
+}
+
+.itemIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.itemText {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.itemTitle {
+	overflow: hidden;
+	font-size: var(--font-size--md);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.statusPill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	background-color: var(--tag--color--background);
+	color: var(--tag--color--text);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--xs);
+	white-space: nowrap;
+}
+
+.statusPillDone {
+	border-color: var(--border-color--success);
+	background-color: var(--background--success);
+	color: var(--text-color--success);
+}
+
+.itemBody {
+	padding: 0 0 var(--spacing--xs);
+}
+
+.credentialBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+
+	:global(.node-credentials) {
+		margin-top: 0;
+	}
+
+	:global(label.n8n-input-label > div:first-child .n8n-text) {
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	:global([data-test-id='credentials-label']) {
+		display: grid;
+		grid-template-columns: minmax(10rem, 32%) minmax(0, 1fr);
+		column-gap: var(--spacing--sm);
+		align-items: start;
+	}
+
+	:global([data-test-id='credentials-label'] > div:first-child) {
+		grid-column: 1;
+		min-width: 0;
+		padding-top: var(--spacing--3xs);
+	}
+
+	:global([data-test-id='credentials-label'] > *:not(:first-child)) {
+		grid-column: 2;
+		min-width: 0;
+		margin-top: 0;
+	}
+
+	:global([data-test-id='credentials-label'] button) {
+		font-size: var(--font-size--sm);
+	}
+}
+
 .card {
 	width: 100%;
 	display: flex;
@@ -515,5 +844,20 @@ async function handleLater() {
 
 .skippedIcon {
 	color: var(--color--text--tint-2);
+}
+
+@media (max-width: 40rem) {
+	.credentialBody {
+		:global([data-test-id='credentials-label']) {
+			grid-template-columns: 1fr;
+			row-gap: var(--spacing--3xs);
+		}
+
+		:global([data-test-id='credentials-label'] > div:first-child),
+		:global([data-test-id='credentials-label'] > *:not(:first-child)) {
+			grid-column: 1;
+			padding-top: 0;
+		}
+	}
 }
 </style>

@@ -245,6 +245,7 @@ const resumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
 	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	userInput: z.string().optional(),
 });
 
 interface CredentialToolContext {
@@ -389,6 +390,15 @@ async function handleSetup(
 
 	// State 2: Not approved — user clicked "Later" / skipped.
 	if (!resumeData.approved) {
+		if (resumeData.userInput) {
+			return {
+				success: true,
+				correction: true,
+				reason: 'The user sent a correction while credential setup was pending.',
+				userInput: resumeData.userInput,
+			};
+		}
+
 		return {
 			success: true,
 			deferred: true,

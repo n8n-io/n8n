@@ -36,6 +36,7 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
+		allowChatWhileAwaitingConfirmation?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -49,6 +50,7 @@ const props = withDefaults(
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
+		allowChatWhileAwaitingConfirmation: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -74,19 +76,32 @@ defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
-const isBusy = computed(() => props.isStreaming || props.isSubmitting);
+const canChatWhileAwaitingConfirmation = computed(
+	() => props.isAwaitingConfirmation && props.allowChatWhileAwaitingConfirmation,
+);
+const isComposerStreaming = computed(
+	() => props.isStreaming && !canChatWhileAwaitingConfirmation.value,
+);
+const isBusy = computed(() => isComposerStreaming.value || props.isSubmitting);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
-const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
+const isBlockedByConfirmation = computed(
+	() => props.isAwaitingConfirmation && !props.allowChatWhileAwaitingConfirmation,
+);
+const hasSendableContent = computed(() =>
+	canChatWhileAwaitingConfirmation.value ? hasNonWhitespaceDraftText.value : isComposerDirty.value,
+);
+const canSubmit = computed(
+	() => hasSendableContent.value && !isBusy.value && !isBlockedByConfirmation.value,
+);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
-		!isGatedBySetup.value,
+		!props.isAwaitingConfirmation,
 );
 const resolvedSuggestionsComponent = computed(
 	() => props.suggestionsComponent ?? InstanceAiPromptSuggestions,
@@ -98,7 +113,7 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
-	if (isGatedBySetup.value) {
+	if (isBlockedByConfirmation.value) {
 		return i18n.baseText(
 			isSetupListEnabled.value
 				? ('instanceAi.input.suspendedSetupPlaceholder' as BaseTextKey)
@@ -153,7 +168,11 @@ function resetDraftComposer() {
 }
 
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
+	const hasContent = canChatWhileAwaitingConfirmation.value
+		? message.length > 0
+		: message.length > 0 || attachmentCount > 0;
+
+	return hasContent && !isBusy.value && !isBlockedByConfirmation.value;
 }
 
 function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
@@ -293,12 +312,12 @@ const resizable = computed(() => {
 			ref="chatInputRef"
 			v-model="inputText"
 			:placeholder="placeholder"
-			:is-streaming="props.isStreaming"
+			:is-streaming="isComposerStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup"
+			:disabled="isBlockedByConfirmation"
 			:autosize="resizable"
 			show-voice
-			show-attach
+			:show-attach="!canChatWhileAwaitingConfirmation"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
@@ -321,7 +340,7 @@ const resizable = computed(() => {
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
 				:suggestions="props.suggestions"
-				:disabled="isBusy || isGatedBySetup"
+				:disabled="isBusy || props.isAwaitingConfirmation"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"

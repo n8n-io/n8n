@@ -45,6 +45,22 @@ export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
 
+function isSetupLikeConfirmation(conf: InstanceAiConfirmation): boolean {
+	return (conf.setupRequests?.length ?? 0) > 0 || (conf.credentialRequests?.length ?? 0) > 0;
+}
+
+function isUnresolvedConfirmation(
+	tc: InstanceAiToolCallState,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+): tc is InstanceAiToolCallState & { confirmation: InstanceAiConfirmation } {
+	return (
+		!!tc.confirmation &&
+		tc.confirmationStatus !== 'approved' &&
+		tc.confirmationStatus !== 'denied' &&
+		!resolved.has(tc.confirmation.requestId)
+	);
+}
+
 /**
  * Cross-runtime hooks the store wires up at creation time.
  *
@@ -68,11 +84,8 @@ function collectPendingConfirmations(
 ): void {
 	for (const tc of node.toolCalls) {
 		if (
-			tc.confirmation &&
-			tc.isLoading &&
-			tc.confirmationStatus !== 'approved' &&
-			tc.confirmationStatus !== 'denied' &&
-			!resolved.has(tc.confirmation.requestId) &&
+			isUnresolvedConfirmation(tc, resolved) &&
+			(tc.isLoading || isSetupLikeConfirmation(tc.confirmation)) &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
@@ -806,6 +819,32 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 	}
 
+	function getPendingSetupConfirmation(): PendingConfirmationItem | undefined {
+		return pendingConfirmations.value.find(
+			(item) =>
+				(item.toolCall.confirmation.setupRequests?.length ?? 0) > 0 ||
+				(item.toolCall.confirmation.credentialRequests?.length ?? 0) > 0,
+		);
+	}
+
+	async function dispatchSetupCorrection(
+		confirmation: PendingConfirmationItem,
+		message: string,
+	): Promise<boolean> {
+		const requestId = confirmation.toolCall.confirmation.requestId;
+		const ok = await confirmAction(requestId, {
+			kind: 'approval',
+			approved: false,
+			userInput: message,
+		});
+
+		if (ok) {
+			resolveConfirmation(requestId, 'denied');
+		}
+
+		return ok;
+	}
+
 	async function sendMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
@@ -815,10 +854,18 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
-			const optimistic = pushOptimisticUserMessage(message, attachments);
+			const setupCorrection = getPendingSetupConfirmation();
+			const optimistic = pushOptimisticUserMessage(
+				message,
+				setupCorrection ? undefined : attachments,
+			);
 			trackUserMessageSent(optimistic);
 
-			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
+			const wasDispatched = setupCorrection
+				? await dispatchSetupCorrection(setupCorrection, message)
+				: await dispatchUserMessage(message, attachments, pushRef);
+
+			if (!wasDispatched) {
 				removeOptimisticMessage(optimistic);
 			}
 		} finally {

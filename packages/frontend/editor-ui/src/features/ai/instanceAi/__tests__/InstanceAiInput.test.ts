@@ -20,6 +20,7 @@ type InputTestProps = {
 	isStreaming: boolean;
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
+	allowChatWhileAwaitingConfirmation: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -33,6 +34,7 @@ const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
+	allowChatWhileAwaitingConfirmation: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -236,6 +238,33 @@ describe('InstanceAiInput', () => {
 			'placeholder',
 			'Complete the setup above to continue',
 		);
+		expect(getByRole('textbox')).toBeDisabled();
+	});
+
+	it('allows chat messages while setup is awaiting confirmation when enabled by the caller', async () => {
+		setupListExperiment.isFeatureEnabled.value = true;
+
+		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isStreaming: true,
+				isAwaitingConfirmation: true,
+				allowChatWhileAwaitingConfirmation: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		expect(textbox).not.toBeDisabled();
+		expect(textbox).toHaveAttribute('placeholder', 'Ask anything...');
+
+		await userEvent.type(textbox, 'Use a different calendar for the reminders');
+		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		expect(emitted().submit?.[0]).toEqual([
+			'Use a different calendar for the reminders',
+			undefined,
+		]);
+		expect(textbox).toHaveValue('');
 	});
 
 	it('shows a ghost prompt in the placeholder when hovering a prompt suggestion', async () => {

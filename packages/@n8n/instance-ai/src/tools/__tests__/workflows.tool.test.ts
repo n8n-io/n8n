@@ -889,6 +889,26 @@ describe('workflows tool', () => {
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
 		});
 
+		it('returns a correction result when the user sends setup steering input', async () => {
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: false,
+					userInput: 'Use the same calendar for all reminder steps',
+				},
+			} as never);
+
+			expect(result).toEqual({
+				success: true,
+				correction: true,
+				reason: 'The user sent a correction while workflow setup was pending.',
+				userInput: 'Use the same calendar for all reminder steps',
+			});
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
 		it('forwards resumeData.nodeParameters to applyNodeChanges on apply', async () => {
 			// Regression: even though the FE sends `nodeParameters` in the confirm
 			// POST, the e2e test showed the workflow's parameter was empty after

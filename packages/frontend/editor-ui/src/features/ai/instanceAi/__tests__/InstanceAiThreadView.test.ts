@@ -44,13 +44,21 @@ const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
+		isAwaitingConfirmation: { type: Boolean, required: false },
+		allowChatWhileAwaitingConfirmation: { type: Boolean, required: false },
 	},
 	setup(props, { expose }) {
 		expose({ focus: vi.fn() });
 		return () =>
 			h(
 				'div',
-				{ 'data-test-id': 'instance-ai-input-stub' },
+				{
+					'data-test-id': 'instance-ai-input-stub',
+					'data-is-awaiting-confirmation': props.isAwaitingConfirmation ? 'true' : 'false',
+					'data-allow-chat-while-awaiting-confirmation': props.allowChatWhileAwaitingConfirmation
+						? 'true'
+						: 'false',
+				},
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
 			);
 	},
@@ -239,7 +247,87 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-input-stub')).toBeTruthy();
+		expect(getByTestId('instance-ai-input-stub')).toHaveAttribute(
+			'data-allow-chat-while-awaiting-confirmation',
+			'false',
+		);
 		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
+	});
+
+	it('allows chat while a workflow setup confirmation is pending', () => {
+		thread.isAwaitingConfirmation = true;
+		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-setup',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-setup',
+					toolName: 'setup-workflow',
+					args: {},
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: {
+						requestId: 'req-setup',
+						severity: 'info',
+						message: 'Set up workflow',
+						setupRequests: [{ node: { name: 'Google Calendar' } }],
+					},
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).toHaveAttribute(
+			'data-is-awaiting-confirmation',
+			'true',
+		);
+		expect(getByTestId('instance-ai-input-stub')).toHaveAttribute(
+			'data-allow-chat-while-awaiting-confirmation',
+			'true',
+		);
+	});
+
+	it('allows chat while a credential setup confirmation is pending', () => {
+		thread.isAwaitingConfirmation = true;
+		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-credential-setup',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-credential-setup',
+					toolName: 'credentials',
+					args: {},
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: {
+						requestId: 'req-credential-setup',
+						severity: 'info',
+						message: 'Set up credentials',
+						credentialRequests: [
+							{
+								credentialType: 'googleSheetsOAuth2Api',
+								reason: 'Needed for Google Sheets',
+								existingCredentials: [],
+							},
+						],
+					},
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).toHaveAttribute(
+			'data-is-awaiting-confirmation',
+			'true',
+		);
+		expect(getByTestId('instance-ai-input-stub')).toHaveAttribute(
+			'data-allow-chat-while-awaiting-confirmation',
+			'true',
+		);
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {

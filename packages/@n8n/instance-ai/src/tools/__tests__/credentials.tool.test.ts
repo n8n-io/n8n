@@ -46,6 +46,7 @@ function resumeCtx(resumeData: {
 	approved: boolean;
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
+	userInput?: string;
 }) {
 	const suspend = jest.fn();
 	return { resumeData, suspend } as never;
@@ -769,6 +770,27 @@ describe('credentials tool', () => {
 				success: true,
 				deferred: true,
 				reason: expect.stringContaining('User skipped credential setup'),
+			});
+		});
+
+		it('should return correction when user sends input while setup is pending', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: false, userInput: 'Use my production Slack credential' }),
+			);
+
+			expect(result).toEqual({
+				success: true,
+				correction: true,
+				reason: expect.stringContaining('credential setup was pending'),
+				userInput: 'Use my production Slack credential',
 			});
 		});
 

@@ -838,6 +838,126 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockPostMessage).toHaveBeenCalled();
 	});
 
+	test('sendMessage routes workflow setup steering through the pending confirmation', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages.push({
+			id: 'assistant-setup',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'agent-1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tool-setup',
+						toolName: 'workflows',
+						args: { action: 'setup' },
+						isLoading: true,
+						confirmationStatus: 'pending',
+						confirmation: {
+							requestId: 'req-setup',
+							severity: 'info',
+							message: 'Configure workflow',
+							setupRequests: [
+								{
+									node: {
+										id: 'google-calendar',
+										name: 'Google Calendar',
+										type: 'n8n-nodes-base.googleCalendar',
+										typeVersion: 1,
+										parameters: {},
+										position: [0, 0],
+									},
+									isTrigger: false,
+									needsAction: true,
+								},
+							],
+							workflowId: 'wf-1',
+						},
+					},
+				],
+			},
+		});
+
+		await runtime.sendMessage('Use the same calendar for all reminder steps');
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-setup', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'Use the same calendar for all reminder steps',
+		});
+		expect(runtime.resolvedConfirmationIds.get('req-setup')).toBe('denied');
+		expect(runtime.messages.at(-1)).toMatchObject({
+			role: 'user',
+			content: 'Use the same calendar for all reminder steps',
+		});
+	});
+
+	test('sendMessage routes credential setup steering through a pending non-loading confirmation', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages.push({
+			id: 'assistant-credential-setup',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'agent-1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tool-credential-setup',
+						toolName: 'credentials',
+						args: { action: 'setup' },
+						isLoading: false,
+						confirmationStatus: 'pending',
+						confirmation: {
+							requestId: 'req-credential-setup',
+							severity: 'info',
+							message: 'Configure credentials',
+							credentialRequests: [
+								{
+									credentialType: 'googleSheetsOAuth2Api',
+									reason: 'Needed for Google Sheets',
+									existingCredentials: [],
+								},
+							],
+						},
+					},
+				],
+			},
+		});
+
+		await runtime.sendMessage('Use my production Google Sheets credential');
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-credential-setup', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'Use my production Google Sheets credential',
+		});
+		expect(runtime.resolvedConfirmationIds.get('req-credential-setup')).toBe('denied');
+		expect(runtime.messages.at(-1)).toMatchObject({
+			role: 'user',
+			content: 'Use my production Google Sheets credential',
+		});
+	});
+
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {
 		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
 
