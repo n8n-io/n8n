@@ -23,7 +23,7 @@ export type TextareaRowData = {
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getNodeByName, workflowId } = useWorkflowsStore();
+	const { workflowId } = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 	if (!activeNode) return [];
@@ -33,7 +33,7 @@ export function getParentNodes() {
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 
