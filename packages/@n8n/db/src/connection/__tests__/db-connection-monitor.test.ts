@@ -59,6 +59,22 @@ describe('DbConnectionMonitor', () => {
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 		});
 
+		it('should mark connection as disconnected when a ping fails', async () => {
+			// The owner's connectionState.connected drives the /healthz/readiness endpoint and
+			// the 503-fast-fail middleware in abstract-server. If a failed ping doesn't propagate
+			// disconnected=false, in-flight requests keep hitting a poisoned pool instead of bailing.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			// @ts-expect-error private property
+			monitor.connected = true;
+			dataSource.query.mockRejectedValue(new Error('pool dead'));
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+		});
+
 		it('should report errors on failed ping', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
