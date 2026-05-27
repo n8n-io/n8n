@@ -135,6 +135,7 @@ jobs:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
+            packages/testing/playwright/test-results.json
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/.nyc_output/
           retention-days: 1

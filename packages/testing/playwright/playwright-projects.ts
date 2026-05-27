@@ -291,6 +291,17 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// Lift the Chromium tab V8 heap from the ~2 GB default to 8 GB and disable
+			// Chromium's memory-pressure heuristic. Canvas-execution at L+ scale
+			// (410+ nodes) overwhelms the default renderer during run-data fan-out —
+			// Chromium kills the tab as "Target crashed" before the success
+			// notification can fire. canvas-execution.spec.ts logs the actual V8
+			// `jsHeapSizeLimit` after mount so we can verify the args took effect.
+			// Memory-consumption specs measure server-side n8n heap (not browser),
+			// so this doesn't pollute their readings.
+			launchOptions: {
+				args: ['--js-flags=--max-old-space-size=8192', '--memory-pressure-off'],
+			},
 		},
 	});
 

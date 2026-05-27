@@ -915,6 +915,17 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-node-status-success');
 	}
 
+	/**
+	 * Nodes that show either a success OR a pinned indicator after execution.
+	 * The two test IDs are mutually exclusive in `CanvasNodeStatusIcons` (pinned
+	 * wins), so the combined count equals "nodes traversed during execution".
+	 */
+	getAllNodeExecutedIndicators(): Locator {
+		return this.page.locator(
+			'[data-test-id="canvas-node-status-success"], [data-test-id="canvas-node-status-pinned"]',
+		);
+	}
+
 	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
 		return this.page
 			.locator(
@@ -1048,6 +1059,69 @@ export class CanvasPage extends BasePage {
 
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
+	}
+
+	getTidyUpButton(): Locator {
+		return this.page.getByTestId('tidy-up-button');
+	}
+
+	async clickTidyUpButton(): Promise<void> {
+		await this.getTidyUpButton().click();
+	}
+
+	/**
+	 * Read the Vue Flow viewport transform — scale and translate values from
+	 * the underlying transformation matrix. Mirrors `getCanvasZoomLevel()`'s
+	 * approach so changes to the Vue Flow DOM stay localized to one place.
+	 */
+	async getCanvasViewport(): Promise<{ scale: number; translateX: number; translateY: number }> {
+		return await this.page.evaluate(() => {
+			const canvasViewport = document.querySelector(
+				'.vue-flow__transformationpane.vue-flow__container',
+			);
+			if (canvasViewport) {
+				const transform = window.getComputedStyle(canvasViewport).transform;
+				if (transform && transform !== 'none') {
+					const matrix = transform.match(/matrix\(([^)]+)\)/);
+					if (matrix) {
+						const values = matrix[1].split(',').map((value) => parseFloat(value.trim()));
+						return { scale: values[0], translateX: values[4], translateY: values[5] };
+					}
+				}
+			}
+			return { scale: 1, translateX: 0, translateY: 0 };
+		});
+	}
+
+	async duplicateSelectedNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+d');
+	}
+
+	async nudgeSelectedNodes(
+		direction: 'left' | 'right' | 'up' | 'down',
+		repeats = 1,
+	): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		for (let press = 0; press < repeats; press++) {
+			await this.page.keyboard.press(keyMap[direction]);
+		}
+	}
+
+	async panBy(deltaX: number, deltaY: number): Promise<void> {
+		const pane = this.canvasPane();
+		const box = await pane.boundingBox();
+		if (!box) throw new Error('Canvas pane not visible');
+		const startX = box.x + box.width / 2;
+		const startY = box.y + box.height / 2;
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down({ button: 'middle' });
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 20 });
+		await this.page.mouse.up({ button: 'middle' });
 	}
 
 	// Workflow History methods
