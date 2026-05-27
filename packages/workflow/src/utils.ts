@@ -370,6 +370,11 @@ const unsafeObjectProperties = new Set([
 	'prototype',
 	'constructor',
 	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
 	'mainModule',
 	'binding',
 	'_linkedBinding',
@@ -397,6 +402,16 @@ export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
 }
 
+const unsafeObjectPropertyTokenPattern = new RegExp(
+	`\\b(?:${[...unsafeObjectProperties]
+		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|')})\\b`,
+);
+
+export function containsUnsafeObjectPropertyToken(input: string) {
+	return unsafeObjectPropertyTokenPattern.test(input);
+}
+
 /**
  * Safely sets a property on an object, preventing prototype pollution.
  *
@@ -418,79 +433,6 @@ export function sanitizeXmlName(name: string) {
 	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
 
 	return name;
-}
-
-export function isDomainAllowed(
-	urlString: string,
-	options: {
-		allowedDomains: string;
-	},
-): boolean {
-	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
-		return true; // If no restrictions are set, allow all domains
-	}
-
-	try {
-		const url = new URL(urlString);
-
-		// Normalize hostname: lowercase and remove trailing dot
-		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-
-		// Reject empty hostnames
-		if (!hostname) {
-			return false;
-		}
-
-		const allowedDomainsList = options.allowedDomains
-			.split(',')
-			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
-			.filter(Boolean);
-
-		for (const allowedDomain of allowedDomainsList) {
-			// Handle wildcard domains (*.example.com)
-			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2);
-				// Ensure the suffix itself is valid
-				if (!domainSuffix) continue;
-
-				// Wildcard matches only subdomains, not the base domain itself
-				// *.example.com matches sub.example.com but NOT example.com
-				if (hostname.endsWith('.' + domainSuffix)) {
-					return true;
-				}
-			}
-			// Exact match
-			else if (hostname === allowedDomain) {
-				return true;
-			}
-		}
-
-		return false;
-	} catch (error) {
-		// If URL parsing fails, deny access to be safe
-		return false;
-	}
-}
-
-/**
- * Extracts the allow-listed domains configured on a credential via the
- * `allowedHttpRequestDomains` + `allowedDomains` properties.
- *
- * Returns the comma-separated allow-list string when the credential is in
- * 'domains' mode with a non-empty list, otherwise `undefined`. Callers that
- * need to reject 'none' mode or an empty 'domains' list must handle that
- * explicitly.
- */
-export function getCredentialAllowedDomains(
-	credentialData: Record<string, unknown> | undefined,
-): string | undefined {
-	if (!credentialData || credentialData.allowedHttpRequestDomains !== 'domains') {
-		return undefined;
-	}
-	const allowedDomains = credentialData.allowedDomains;
-	if (typeof allowedDomains !== 'string') return undefined;
-	const trimmed = allowedDomains.trim();
-	return trimmed === '' ? undefined : trimmed;
 }
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;

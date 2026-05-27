@@ -13,9 +13,13 @@ import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../util
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
-vi.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: vi.fn(),
-}));
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...actual,
+		proxyFetch: vi.fn(),
+	};
+});
 
 const MockedClient = Client as MockedClass<typeof Client>;
 
@@ -79,56 +83,69 @@ describe('utils', () => {
 	});
 
 	describe('getAuthHeaders', () => {
-		it('should return the headers for mcpOAuth2Api', async () => {
+		it('should return the headers and credentials for mcpOAuth2Api', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				oauthTokenData: {
 					access_token: 'access-token',
 				},
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
 		});
 
-		it('should return the headers for headerAuth', async () => {
+		it('should return the headers and credentials for headerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				name: 'Foo',
 				value: 'bar',
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'headerAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar' } });
+			expect(result).toEqual({ headers: { Foo: 'bar' }, credentials });
 		});
 
-		it('should return the headers for bearerAuth', async () => {
+		it('should return the headers and credentials for bearerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				token: 'access-token',
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'bearerAuth');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
 		});
 
-		it('should return the headers for multipleHeadersAuth', async () => {
+		it('should return the headers and credentials for multipleHeadersAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				headers: {
 					values: [
 						{ name: 'Foo', value: 'bar' },
 						{ name: 'Test', value: '123' },
 					],
 				},
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'multipleHeadersAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar', Test: '123' } });
+			expect(result).toEqual({
+				headers: { Foo: 'bar', Test: '123' },
+				credentials,
+			});
 		});
 
 		it('should return an empty object for none', async () => {

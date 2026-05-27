@@ -316,6 +316,84 @@ describe('LiveWebhooks', () => {
 		});
 	});
 
+	describe('findAccessControlOptions', () => {
+		const httpMethod: IHttpRequestMethods = 'GET';
+
+		const buildWebhookNode = (id: string, allowedOrigins: string): INode => ({
+			id,
+			name: NODE_NAME,
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				path: WEBHOOK_PATH,
+				httpMethod,
+				options: { allowedOrigins },
+			},
+		});
+
+		const setupFindAccessControlMocks = (workflowEntity: WorkflowEntity | null) => {
+			const webhookEntity = mock<WebhookEntity>({
+				workflowId: WORKFLOW_ID,
+				node: NODE_NAME,
+				webhookPath: WEBHOOK_PATH,
+				method: httpMethod,
+				isDynamic: false,
+			});
+
+			webhookService.findWebhook.mockResolvedValue(webhookEntity);
+			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
+			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: NODE_NAME, properties: [] },
+					webhook: jest.fn(),
+				}),
+			);
+		};
+
+		it('returns access control options from the active version, not the draft', async () => {
+			const draftOrigin = 'https://draft.example.com';
+			const activeOrigin = 'https://active.example.com';
+
+			const workflowEntity = {
+				id: WORKFLOW_ID,
+				activeVersionId: 'v1',
+				nodes: [buildWebhookNode('webhook-node-draft', draftOrigin)],
+				activeVersion: {
+					versionId: 'v1',
+					workflowId: WORKFLOW_ID,
+					nodes: [buildWebhookNode('webhook-node-active', activeOrigin)],
+					connections: {},
+				},
+			} as unknown as WorkflowEntity;
+
+			setupFindAccessControlMocks(workflowEntity);
+
+			const result = await liveWebhooks.findAccessControlOptions(WEBHOOK_PATH, httpMethod);
+
+			expect(result).toEqual({ allowedOrigins: activeOrigin });
+			expect(workflowRepository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({ relations: { activeVersion: true } }),
+			);
+		});
+
+		it('returns undefined when the workflow has no active version', async () => {
+			const workflowEntity = {
+				id: WORKFLOW_ID,
+				activeVersionId: null,
+				nodes: [buildWebhookNode('webhook-node-draft', 'https://draft.example.com')],
+				activeVersion: null,
+			} as unknown as WorkflowEntity;
+
+			setupFindAccessControlMocks(workflowEntity);
+
+			const result = await liveWebhooks.findAccessControlOptions(WEBHOOK_PATH, httpMethod);
+
+			expect(result).toBeUndefined();
+		});
+	});
+
 	describe('route family scoping', () => {
 		const workflowId = 'workflow-1';
 		const nodeName = 'Trigger';
