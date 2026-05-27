@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "0.57.14",
+  "version": "0.57.15",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
