@@ -1,6 +1,6 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-export class UseSlugAsPrimaryKeyInMcpRegistryServer1784000000014 implements IrreversibleMigration {
+export class UseSlugAsPrimaryKeyInMcpRegistryServer1784000000015 implements IrreversibleMigration {
 	async up({
 		copyTable,
 		runQuery,

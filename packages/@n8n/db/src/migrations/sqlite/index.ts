@@ -182,7 +182,8 @@ import { CreateAgentMemoryEntryTables1784000000009 } from '../common/17840000000
 import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
 import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
 import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
-import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000014 } from '../common/1784000000014-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000015 } from '../common/1784000000015-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -370,7 +371,8 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentHistoryTable1784000000011,
 	CreateInstanceAiObservationTables1784000000012,
 	SplitRedactionScopeInCustomRoles1784000000013,
-	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000014,
+	PersistInstanceAiPendingConfirmations1784000000014,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000015,
 ];
 
 export { sqliteMigrations };
