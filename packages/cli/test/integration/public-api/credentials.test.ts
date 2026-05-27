@@ -1534,6 +1534,97 @@ describe('PUT /credentials/:id/share', () => {
 		// projectScope middleware returns 403 when the user has no relation to the credential's project
 		expect([403, 404]).toContain(response.statusCode);
 	});
+
+	test('should allow revoke-only call when API key has credential:unshare but not credential:share', async () => {
+		const unshareOnlyOwner = await createOwnerWithApiKey({
+			scopes: ['credential:read', 'credential:list', 'credential:unshare'],
+		});
+		const unshareOnlyAgent = testServer.publicApiAgentFor(unshareOnlyOwner);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			unshareOnlyOwner.id,
+		);
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			personalProject,
+		);
+		const targetProject = await createTeamProject('team-project', unshareOnlyOwner);
+		await Container.get(SharedCredentialsRepository).save({
+			credentialsId: credentials.id,
+			projectId: targetProject.id,
+			role: 'credential:user',
+		});
+
+		const response = await unshareOnlyAgent
+			.put(`/credentials/${credentials.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(204);
+		const userSharings = (await getCredentialSharings(credentials)).filter(
+			(s) => s.role === 'credential:user',
+		);
+		expect(userSharings).toHaveLength(0);
+	});
+
+	test('should reject remove-sharee call when API key lacks credential:unshare', async () => {
+		const shareOnlyOwner = await createOwnerWithApiKey({
+			scopes: ['credential:read', 'credential:list', 'credential:share'],
+		});
+		const shareOnlyAgent = testServer.publicApiAgentFor(shareOnlyOwner);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			shareOnlyOwner.id,
+		);
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			personalProject,
+		);
+		const targetProject = await createTeamProject('team-project', shareOnlyOwner);
+		await Container.get(SharedCredentialsRepository).save({
+			credentialsId: credentials.id,
+			projectId: targetProject.id,
+			role: 'credential:user',
+		});
+
+		const response = await shareOnlyAgent
+			.put(`/credentials/${credentials.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(403);
+		// sharing untouched
+		const userSharings = (await getCredentialSharings(credentials)).filter(
+			(s) => s.role === 'credential:user',
+		);
+		expect(userSharings).toHaveLength(1);
+	});
+
+	test('should reject mixed add+remove call when API key lacks credential:unshare', async () => {
+		const shareOnlyOwner = await createOwnerWithApiKey({
+			scopes: ['credential:read', 'credential:list', 'credential:share'],
+		});
+		const shareOnlyAgent = testServer.publicApiAgentFor(shareOnlyOwner);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			shareOnlyOwner.id,
+		);
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			personalProject,
+		);
+		const [projectA, projectB] = await Promise.all([
+			createTeamProject('team-a', shareOnlyOwner),
+			createTeamProject('team-b', shareOnlyOwner),
+		]);
+		await Container.get(SharedCredentialsRepository).save({
+			credentialsId: credentials.id,
+			projectId: projectA.id,
+			role: 'credential:user',
+		});
+
+		// Replace projectA with projectB — this is both an add (B) and a remove (A)
+		const response = await shareOnlyAgent
+			.put(`/credentials/${credentials.id}/share`)
+			.send({ shareWithIds: [projectB.id] });
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 const credentialPayload = (): CredentialPayload => ({

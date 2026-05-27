@@ -204,7 +204,6 @@ const credentialsHandlers: CredentialsHandlers = {
 	],
 	shareCredential: [
 		isLicensed('feat:sharing'),
-		publicApiScope('credential:share'),
 		projectScope('credential:read', 'credential'),
 		async (req, res) => {
 			const { id: credentialId } = req.params;
@@ -229,7 +228,12 @@ const credentialsHandlers: CredentialsHandlers = {
 				[currentProjectIds, (id) => id],
 			);
 
+			const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
+
 			if (toShare.length > 0) {
+				if (!apiKeyScopes.includes('credential:share')) {
+					throw new ForbiddenError();
+				}
 				const canShare = await userHasScopes(req.user, ['credential:share'], false, {
 					credentialId,
 				});
@@ -239,6 +243,9 @@ const credentialsHandlers: CredentialsHandlers = {
 			}
 
 			if (toUnshare.length > 0) {
+				if (!apiKeyScopes.includes('credential:unshare')) {
+					throw new ForbiddenError();
+				}
 				const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
 					credentialId,
 				});
