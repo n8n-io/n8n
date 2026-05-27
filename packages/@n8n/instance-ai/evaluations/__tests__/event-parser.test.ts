@@ -305,7 +305,7 @@ describe('buildMetrics', () => {
 				data: {
 					type: 'agent-spawned',
 					agentId: 'a2',
-					payload: { agentId: 'a2', role: 'researcher' },
+					payload: { agentId: 'a2', role: 'data-table-manager' },
 				},
 			},
 		];
