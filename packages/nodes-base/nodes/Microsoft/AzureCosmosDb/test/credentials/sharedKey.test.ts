@@ -63,11 +63,13 @@ describe('Azure Cosmos DB', () => {
 
 			expect(foundResource).toBeUndefined();
 
-			expect(() => {
+			const throwFn = () => {
 				if (!foundResource) {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
-			}).toThrowError(new OperationalError('Unable to determine the resource type from the URL'));
+			};
+			expect(throwFn).toThrow(OperationalError);
+			expect(throwFn).toThrow('Unable to determine the resource type from the URL');
 		});
 
 		it('should throw OperationalError if no resource type found in URL path', async () => {
@@ -100,11 +102,13 @@ describe('Azure Cosmos DB', () => {
 
 			expect(foundResource).toBeUndefined();
 
-			expect(() => {
+			const throwFn = () => {
 				if (!foundResource) {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
-			}).toThrowError(new OperationalError('Unable to determine the resource type from the URL'));
+			};
+			expect(throwFn).toThrow(OperationalError);
+			expect(throwFn).toThrow('Unable to determine the resource type from the URL');
 		});
 
 		it('should properly construct the resourceId and payload', async () => {
