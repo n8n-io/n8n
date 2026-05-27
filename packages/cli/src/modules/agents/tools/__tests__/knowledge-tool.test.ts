@@ -1,6 +1,6 @@
 import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
-import { createSearchKnowledgeTool } from '../knowledge-tool';
+import { createSearchKnowledgeTool } from '../knowledge/tool';
 import type { JSONSchema7 } from 'json-schema';
 
 jest.unmock('node:fs');

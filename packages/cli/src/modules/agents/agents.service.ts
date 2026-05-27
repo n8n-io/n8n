@@ -820,7 +820,7 @@ export class AgentsService {
 		}
 
 		try {
-			const { createSearchKnowledgeTool } = await import('./tools/knowledge-tool');
+			const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
 			agent.tool(
 				createSearchKnowledgeTool({
 					agentId,

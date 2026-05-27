@@ -183,6 +183,7 @@ function preferenceScore(column: string, preferred: string[]) {
 
 type CsvColumnType = 'empty' | 'integer' | 'number' | 'boolean' | 'date' | 'string';
 
+// Bounded streaming accumulator for csv_profile; avoids loading full CSV columns into memory.
 export function createCsvColumnProfileState(distinctLimit: number) {
 	const distinctValues = new Set<string>();
 	const sampleValues: string[] = [];
