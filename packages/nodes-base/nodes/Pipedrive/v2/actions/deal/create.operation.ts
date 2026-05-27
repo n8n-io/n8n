@@ -186,8 +186,8 @@ const properties: INodeProperties[] = [
 					'The status of the deal. If not provided it will automatically be set to "open".',
 			},
 			{
-				displayName: 'User Name or ID',
-				name: 'user_id',
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUserIds',

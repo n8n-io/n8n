@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The ID of the Filter to use (will narrow down results if used together with owner_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',
@@ -100,15 +100,15 @@ const properties: INodeProperties[] = [
 					'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'User Name or ID',
-				name: 'user_id',
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUserIds',
 				},
 				default: '',
 				description:
-					'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The ID of the owner whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -152,8 +152,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.type = (filters.type as string[]).join(',');
 			}
 
-			if (filters.user_id) {
-				qs.user_id = filters.user_id;
+			if (filters.owner_id) {
+				qs.owner_id = filters.owner_id;
 			}
 
 			if (filters.done !== undefined) {

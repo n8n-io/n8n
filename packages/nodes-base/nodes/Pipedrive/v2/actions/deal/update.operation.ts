@@ -143,8 +143,8 @@ const properties: INodeProperties[] = [
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'User Name or ID',
-				name: 'user_id',
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUserIds',

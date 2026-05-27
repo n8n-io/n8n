@@ -98,15 +98,15 @@ const properties: INodeProperties[] = [
 				description: 'Status to filter deals by. Defaults to <code>all_not_deleted</code>',
 			},
 			{
-				displayName: 'User Name or ID',
-				name: 'user_id',
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUserIds',
 				},
 				default: '',
 				description:
-					'ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'ID of the owner to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -154,8 +154,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.status = filters.status;
 			}
 
-			if (filters.user_id) {
-				qs.user_id = filters.user_id;
+			if (filters.owner_id) {
+				qs.owner_id = filters.owner_id;
 			}
 
 			let responseData;
