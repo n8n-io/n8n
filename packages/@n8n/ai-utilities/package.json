@@ -18,6 +18,9 @@
       ],
       "http-proxy-agent": [
         "dist/esm/utils/http-proxy-agent.d.ts"
+      ],
+      "web-search": [
+        "dist/esm/web-search/index.d.ts"
       ]
     }
   },
@@ -46,6 +49,11 @@
       "types": "./dist/esm/utils/http-proxy-agent.d.ts",
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
+    },
+    "./web-search": {
+      "types": "./dist/esm/web-search/index.d.ts",
+      "import": "./dist/esm/web-search/index.js",
+      "require": "./dist/cjs/web-search/index.js"
     },
     "./*": "./*"
   },

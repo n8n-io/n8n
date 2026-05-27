@@ -505,3 +505,97 @@ describe('Typed RPC: $items() routes via getItems', () => {
 		expect(result).toBeUndefined();
 	});
 });
+
+describe('Typed RPC: $fromAI() routes via fromAi', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the resolved value of data.$fromAI(name)', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `resolved:${name}`,
+		};
+
+		const result = evaluator.evaluate("{{ $fromAI('placeholder_one') }}", data, caller);
+		expect(result).toBe('resolved:placeholder_one');
+	});
+
+	it('forwards name, description, type, and defaultValue verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$fromAI: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $fromAI('a') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description', 'number') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description', 'number', 42) }}", data, caller);
+
+		expect(calls).toEqual([
+			['a', undefined, undefined, undefined],
+			['a', 'description', undefined, undefined],
+			['a', 'description', 'number', undefined],
+			['a', 'description', 'number', 42],
+		]);
+	});
+
+	it('forwards arbitrary defaultValue shapes (number, string, boolean, null, object)', () => {
+		// `defaultValue` is `z.unknown()` because the host applies no shape
+		// constraint — it just returns the fallback via `??`. Verify the
+		// bridge structured-clones each shape through to the host.
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$fromAI: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', 42) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', 'fallback') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', true) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', null) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', { nested: 'value' }) }}", data, caller);
+
+		expect(calls.map((c) => c[3])).toEqual([42, 'fallback', true, null, { nested: 'value' }]);
+	});
+
+	it('$fromAi (mid-case) alias routes through the same handler', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `via-aliases:${name}`,
+		};
+
+		expect(evaluator.evaluate("{{ $fromAi('x') }}", data, caller)).toBe('via-aliases:x');
+	});
+
+	it('$fromai (all-lower) alias routes through the same handler', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `via-aliases:${name}`,
+		};
+
+		expect(evaluator.evaluate("{{ $fromai('x') }}", data, caller)).toBe('via-aliases:x');
+	});
+
+	it('handles missing data.$fromAI gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate("{{ $fromAI('placeholder') }}", data, caller);
+		expect(result).toBeUndefined();
+	});
+});
