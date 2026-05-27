@@ -108,6 +108,39 @@ describe('node grouping validation', () => {
 		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
 	});
 
+	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: [graph.nodes[0], graph.nodes[1]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) => makeNodeType({ name: node.type }),
+			existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c'] }],
+		});
+
+		expect(result).toEqual({ valid: false, reason: 'node-already-grouped', nodeIds: ['a'] });
+	});
+
+	it('allows grouping when existingNodeGroups is empty or omitted', () => {
+		const graph = makeLinearGraph();
+
+		expect(
+			validateNodeSelectionForGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => makeNodeType({ name: node.type }),
+				existingNodeGroups: [],
+			}).valid,
+		).toBe(true);
+
+		expect(
+			validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1]],
+				connectionsBySourceNode: graph.connections,
+			}).valid,
+		).toBe(true);
+	});
+
 	it('returns trigger-selected when the selection contains a trigger', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';

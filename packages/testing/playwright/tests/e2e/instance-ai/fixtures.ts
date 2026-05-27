@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import type { Expectation } from 'mockserver-client';
 import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
@@ -6,6 +7,18 @@ import { test as base, expect as baseExpect } from '../../../fixtures/base';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 const EXPECTATIONS_DIR = './expectations';
+const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
+export const SKIP_PROXY_SETUP_ANNOTATION = 'skip-proxy-setup';
+const SYSTEM_PROMPT_ANCHORS = [
+	INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR,
+	'You are the n8n Workflow Planner',
+	'You are an expert n8n workflow builder',
+	'You generate a short descriptive title for a conversation',
+] as const;
+const LEGACY_SYSTEM_ARRAY_PREFIX =
+	/\\\[\\\{"type":"text","text":"(?=You are the n8n Instance Agent)/g;
+const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
+const BODY_REGEX_WILDCARD = '[\\s\\S]*';
 
 function slugify(text: string): string {
 	return text
@@ -132,7 +145,9 @@ function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string
 				: undefined;
 	if (!system) return undefined;
 
-	const systemSnippet = escapeRegex(system.slice(0, 80));
+	const anchorIndex = system.indexOf(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR);
+	const systemSnippetStart = anchorIndex >= 0 ? anchorIndex : 0;
+	const systemSnippet = escapeRegex(system.slice(systemSnippetStart, systemSnippetStart + 80));
 	const latestMessageAnchor = getLatestMessageAnchor(parsed.messages);
 	const matcher = latestMessageAnchor
 		? `${systemSnippet}[\\s\\S]*${latestMessageAnchor}`
@@ -144,10 +159,68 @@ function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string
 	};
 }
 
+type BodyMatcher = {
+	type?: unknown;
+	regex?: unknown;
+	subString?: unknown;
+	[key: string]: unknown;
+};
+
+function isBodyMatcher(body: unknown): body is BodyMatcher {
+	return typeof body === 'object' && body !== null && !Array.isArray(body);
+}
+
+function stripRecordedSystemPromptAnchor(regex: string): string {
+	const anchorIndex = SYSTEM_PROMPT_ANCHORS.reduce<number>((nearest, anchor) => {
+		const index = regex.indexOf(anchor);
+		if (index < 0) return nearest;
+		if (nearest < 0) return index;
+		return Math.min(nearest, index);
+	}, -1);
+
+	if (anchorIndex < 0) return regex;
+
+	const latestTurnAnchorIndex = regex.indexOf(BODY_REGEX_WILDCARD, anchorIndex);
+	if (latestTurnAnchorIndex < 0) return regex;
+
+	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
+}
+
+function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expectation {
+	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
+	if (!isBodyMatcher(body)) return expectation;
+
+	if (body.type === 'REGEX' && typeof body.regex === 'string') {
+		body.regex = stripRecordedSystemPromptAnchor(
+			body.regex.replace(LEGACY_SYSTEM_ARRAY_PREFIX, ''),
+		);
+	}
+
+	const stringMatcher = body['string'];
+	if (
+		body.type === 'STRING' &&
+		typeof stringMatcher === 'string' &&
+		stringMatcher.startsWith(`${LEGACY_SYSTEM_STRING_PREFIX}${INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR}`)
+	) {
+		body['string'] = INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR;
+		body.subString = true;
+	}
+
+	return expectation;
+}
+
 type InstanceAiFixtures = {
 	anthropicApiKey: string;
 	instanceAiProxySetup: undefined;
 };
+
+async function safeFetch(input: string, init: RequestInit = {}): Promise<Response | undefined> {
+	try {
+		return await fetch(input, { ...init, signal: AbortSignal.timeout(10_000) });
+	} catch {
+		return undefined;
+	}
+}
 
 export const instanceAiTestConfig = {
 	timezoneId: 'America/New_York',
@@ -178,6 +251,14 @@ export const test = base.extend<InstanceAiFixtures>({
 				await use(undefined);
 				return;
 			}
+
+			const skipsProxySetup = testInfo.annotations.some(
+				(annotation) => annotation.type === SKIP_PROXY_SETUP_ANNOTATION,
+			);
+			if (skipsProxySetup) {
+				await use(undefined);
+				return;
+			}
 			const services = n8nContainer.services;
 			const testSlug = getInstanceAiTestSlug(testInfo);
 			const folder = `instance-ai/${testSlug}`;
@@ -185,11 +266,7 @@ export const test = base.extend<InstanceAiFixtures>({
 			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
 			// and user workflows before clearing the proxy so cleanup traffic from a
 			// previous test cannot be captured into this test's recording.
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
-			} catch {
-				// Endpoint may not be available
-			}
+			await safeFetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
 
 			await services.proxy.clearAllExpectations();
 
@@ -229,32 +306,23 @@ export const test = base.extend<InstanceAiFixtures>({
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
 					repeatLastResponse: false,
+					transform: loosenRecordedInstanceAiPromptMatcher,
 				});
 
-				// Load trace events for replay ID remapping
-				try {
-					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							slug: testSlug,
-							...(traceEvents.length > 0 ? { events: traceEvents } : {}),
-						}),
-					});
-				} catch {
-					// Trace endpoint may not be available
-				}
+				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						slug: testSlug,
+						...(traceEvents.length > 0 ? { events: traceEvents } : {}),
+					}),
+				});
 			} else {
-				// In recording mode, just activate the slug (no trace events to load)
-				try {
-					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ slug: testSlug }),
-					});
-				} catch {
-					// Trace endpoint may not be available
-				}
+				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ slug: testSlug }),
+				});
 			}
 
 			await use(undefined);
@@ -302,31 +370,21 @@ export const test = base.extend<InstanceAiFixtures>({
 					},
 				});
 
-				// Save tool trace events (slug-scoped)
-				try {
-					const traceResponse = await fetch(
-						`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
-					);
-					if (traceResponse.ok) {
-						const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
-						const events = body?.data?.events ?? [];
-						if (events.length > 0) {
-							await writeTraceFile(folder, events);
-						}
+				const traceResponse = await safeFetch(
+					`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
+				);
+				if (traceResponse?.ok) {
+					const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
+					const events = body?.data?.events ?? [];
+					if (events.length > 0) {
+						await writeTraceFile(folder, events);
 					}
-				} catch {
-					// Trace endpoint may not be available — skip silently
 				}
 			}
 
-			// Clear trace events for this test
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`, {
-					method: 'DELETE',
-				});
-			} catch {
-				// Trace endpoint may not be available
-			}
+			await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`, {
+				method: 'DELETE',
+			});
 		},
 		{ auto: true },
 	],

@@ -20,7 +20,9 @@ function makePublishedAgent(
 		projectId: 'project-1',
 		name: 'Scheduled Agent',
 		integrations,
-		publishedVersion: {
+		activeVersionId: 'v1',
+		activeVersion: {
+			versionId: 'v1',
 			publishedById: 'user-1',
 			schema: null,
 		},
@@ -162,7 +164,7 @@ describe('AgentScheduleService', () => {
 					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
 				},
 			],
-			{ publishedVersion: null },
+			{ activeVersionId: null, activeVersion: null },
 		);
 
 		await expect(service.activate(agent)).rejects.toBeInstanceOf(ConflictError);

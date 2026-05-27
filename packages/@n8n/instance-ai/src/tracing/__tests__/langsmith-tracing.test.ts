@@ -1,4 +1,4 @@
-import type { BuiltTool } from '@n8n/agents';
+import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
 import { jsonParse } from 'n8n-workflow';
 import type * as AsyncHooks from 'node:async_hooks';
@@ -1345,6 +1345,29 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
+	it('attaches runtime skill metadata to trace inputs without skill bodies', () => {
+		const inputs = buildAgentTraceInputs({
+			tools: createToolRegistry(),
+			runtimeSkills: createRuntimeSkillRegistry([
+				{
+					id: 'data-table-manager',
+					name: 'data-table-manager',
+					description: 'Manage n8n Data Tables directly.',
+					category: 'data',
+					recommendedTools: ['data-tables'],
+					instructions: 'Full skill instructions must stay out of trace inputs.',
+				},
+			]),
+		});
+
+		expect(inputs.runtime_skill_count).toBe(1);
+		expect(inputs.runtime_skill_names).toEqual(['data-table-manager']);
+		expect(inputs.runtime_skill_registry_hash).toEqual(expect.any(String));
+		expect(inputs.runtime_skill_categories).toEqual(['data']);
+		expect(JSON.stringify(inputs)).toContain('data-table-manager');
+		expect(JSON.stringify(inputs)).not.toContain('Full skill instructions');
+	});
+
 	it('redacts model secrets from trace metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -1726,9 +1749,9 @@ describe('createInstanceAiTraceContext', () => {
 			| undefined;
 		await activeTracing!.withActiveSpan(activeTracing!.rootRun, async () => {
 			childRun = await resumedTracing!.startChildRun(resumedTracing!.rootRun, {
-				name: 'prepare: context',
-				canonicalName: 'instance-ai.context_compaction',
-				metadata: { agent_role: 'context_compaction' },
+				name: 'prepare: prompt',
+				canonicalName: 'instance-ai.prompt_build',
+				metadata: { agent_role: 'prompt_build' },
 			});
 		});
 
