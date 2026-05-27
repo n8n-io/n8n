@@ -7,6 +7,7 @@ import {
 	type INodeTypeDescription,
 	type INode,
 	type INodeParameters,
+	type ICustomTelemetryTag,
 	type NodeParameterValue,
 	type INodeProperties,
 	type INodePropertyOptions,
@@ -53,6 +54,42 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		parameters: {},
 	};
 }
+
+type FixedCollectionCustomTelemetryTags = {
+	tag?: ICustomTelemetryTag[];
+};
+
+const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
+	typeof value === 'object' &&
+	value !== null &&
+	!Array.isArray(value) &&
+	'key' in value &&
+	'value' in value &&
+	typeof value.key === 'string' &&
+	typeof value.value === 'string';
+
+export const customTelemetryTagsToFixedCollection = (
+	tags: unknown,
+): FixedCollectionCustomTelemetryTags => {
+	const normalizedTags = customTelemetryTagsFromFixedCollection(tags);
+
+	return {
+		...(normalizedTags.length ? { tag: deepCopy(normalizedTags) } : {}),
+	};
+};
+
+export const customTelemetryTagsFromFixedCollection = (value: unknown): ICustomTelemetryTag[] => {
+	if (Array.isArray(value)) {
+		return value.filter(isCustomTelemetryTag);
+	}
+
+	if (typeof value !== 'object' || value === null || Array.isArray(value) || !('tag' in value)) {
+		return [];
+	}
+
+	const { tag } = value;
+	return Array.isArray(tag) ? tag.filter(isCustomTelemetryTag) : [];
+};
 
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
@@ -708,7 +745,7 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		foundNodeSettings.push('customTelemetryTags');
 		ret = {
 			...ret,
-			customTelemetryTags: deepCopy(node.customTelemetryTags),
+			customTelemetryTags: customTelemetryTagsToFixedCollection(node.customTelemetryTags),
 		};
 	}
 

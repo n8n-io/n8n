@@ -240,9 +240,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should render existing custom telemetry tags', async () => {
 			workflowDocumentStore.setSettings({
-				customTelemetryTags: {
-					tag: [{ key: 'team', value: 'platform' }],
-				},
+				customTelemetryTags: [{ key: 'team', value: 'platform' }],
 			});
 
 			const { getByTestId } = createComponent({ pinia });
@@ -278,12 +276,52 @@ describe('WorkflowSettingsVue', () => {
 				expect.any(String),
 				expect.objectContaining({
 					settings: expect.objectContaining({
-						customTelemetryTags: {
-							tag: [{ key: 'env', value: 'production' }],
-						},
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
 					}),
 				}),
 			);
+		});
+
+		it('should disable save when a custom telemetry tag has an empty key', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+			const section = getCustomTelemetryTagsElement(getByTestId);
+			const sectionQueries = within(section);
+			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
+
+			expect(addButton).not.toBeNull();
+			await userEvent.click(addButton);
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-error')).toHaveTextContent(
+				'Key must not be empty',
+			);
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+		});
+
+		it('should disable save when custom telemetry tag keys are duplicated after trim', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+			const section = getCustomTelemetryTagsElement(getByTestId);
+			const sectionQueries = within(section);
+			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
+
+			expect(addButton).not.toBeNull();
+			await userEvent.click(addButton);
+			await userEvent.click(addButton);
+			await flushPromises();
+			await waitFor(() => {
+				expect(getCustomTelemetryTagInputs(section)).toHaveLength(4);
+			});
+
+			const inputs = getCustomTelemetryTagInputs(section);
+			await userEvent.type(inputs[0], '  env  ');
+			await userEvent.type(inputs[2], 'env');
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-error')).toHaveTextContent(
+				'Duplicate keys are not allowed',
+			);
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
 		});
 
 		it('should preserve custom telemetry tag values that look like expressions as literals', async () => {
@@ -308,9 +346,7 @@ describe('WorkflowSettingsVue', () => {
 				expect.any(String),
 				expect.objectContaining({
 					settings: expect.objectContaining({
-						customTelemetryTags: {
-							tag: [{ key: 'workflowName', value: '={{ $workflow.name }}' }],
-						},
+						customTelemetryTags: [{ key: 'workflowName', value: '={{ $workflow.name }}' }],
 					}),
 				}),
 			);
@@ -318,12 +354,10 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should delete custom telemetry tag rows', async () => {
 			workflowDocumentStore.setSettings({
-				customTelemetryTags: {
-					tag: [
-						{ key: 'team', value: 'platform' },
-						{ key: 'env', value: 'production' },
-					],
-				},
+				customTelemetryTags: [
+					{ key: 'team', value: 'platform' },
+					{ key: 'env', value: 'production' },
+				],
 			});
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
@@ -341,9 +375,7 @@ describe('WorkflowSettingsVue', () => {
 				expect.any(String),
 				expect.objectContaining({
 					settings: expect.objectContaining({
-						customTelemetryTags: {
-							tag: [{ key: 'env', value: 'production' }],
-						},
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
 					}),
 				}),
 			);
@@ -351,9 +383,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should disable custom telemetry tag controls when user cannot update workflow', async () => {
 			workflowDocumentStore.setSettings({
-				customTelemetryTags: {
-					tag: [{ key: 'team', value: 'platform' }],
-				},
+				customTelemetryTags: [{ key: 'team', value: 'platform' }],
 			});
 			const readOnlyWorkflow = createTestWorkflow({
 				id: '1',

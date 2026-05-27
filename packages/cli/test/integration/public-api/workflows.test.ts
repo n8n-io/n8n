@@ -1427,12 +1427,10 @@ describe('POST /workflows', () => {
 				executionOrder: 'v1',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
-				customTelemetryTags: {
-					tag: [
-						{ key: 'env', value: 'production' },
-						{ key: 'category', value: 'data-cleaning' },
-					],
-				},
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1769,12 +1767,10 @@ describe('PUT /workflows/:id', () => {
 				timezone: 'America/New_York',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
-				customTelemetryTags: {
-					tag: [
-						{ key: 'env', value: 'production' },
-						{ key: 'category', value: 'data-cleaning' },
-					],
-				},
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 

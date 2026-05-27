@@ -36,12 +36,77 @@ export const workflowConnectionsSchema = z.custom<IConnections>(
 	},
 );
 
-export const workflowSettingsSchema = z.custom<IWorkflowSettings>(
-	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
-	{
-		message: 'Settings must be an object or null',
-	},
-);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const workflowSettingsObjectSchema = z
+	.object({})
+	.passthrough()
+	.superRefine((settings, ctx) => {
+		const customTelemetryTags: unknown = settings.customTelemetryTags;
+		if (customTelemetryTags === undefined) return;
+
+		if (!Array.isArray(customTelemetryTags)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['customTelemetryTags'],
+				message: 'Custom telemetry tags must be an array',
+			});
+			return;
+		}
+
+		const trimmedKeys: string[] = [];
+
+		customTelemetryTags.forEach((item, index) => {
+			if (!isRecord(item)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['customTelemetryTags', index],
+					message: 'Custom telemetry tag must be an object',
+				});
+				return;
+			}
+
+			const key = item.key;
+			if (typeof key !== 'string') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['customTelemetryTags', index, 'key'],
+					message: 'Key must be a string',
+				});
+			} else if (key.trim().length === 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['customTelemetryTags', index, 'key'],
+					message: 'Key must not be empty',
+				});
+			} else {
+				trimmedKeys.push(key.trim());
+			}
+
+			const value = item.value;
+			if (typeof value !== 'string') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['customTelemetryTags', index, 'value'],
+					message: 'Value must be a string',
+				});
+			}
+		});
+
+		if (trimmedKeys.length !== new Set(trimmedKeys).size) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['customTelemetryTags'],
+				message: 'Duplicate keys are not allowed in customTelemetryTags',
+			});
+		}
+	});
+
+export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z.union([
+	z.null(),
+	workflowSettingsObjectSchema,
+]);
 
 export const workflowStaticDataSchema = z.preprocess(
 	(val) => {

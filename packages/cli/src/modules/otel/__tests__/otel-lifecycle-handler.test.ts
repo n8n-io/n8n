@@ -181,13 +181,11 @@ describe('OtelLifecycleHandler', () => {
 				workflow: {
 					...baseCtx.workflow,
 					settings: {
-						customTelemetryTags: {
-							tag: [
-								{ key: ' environment ', value: 'production' },
-								{ key: 'workflowName', value: '={{ $workflow.name }}' },
-								{ key: 'mode', value: '={{ $mode }}' },
-							],
-						},
+						customTelemetryTags: [
+							{ key: ' environment ', value: 'production' },
+							{ key: 'workflowName', value: '={{ $workflow.name }}' },
+							{ key: 'mode', value: '={{ $mode }}' },
+						],
 					},
 				},
 			});
@@ -211,14 +209,12 @@ describe('OtelLifecycleHandler', () => {
 				workflow: {
 					...baseCtx.workflow,
 					settings: {
-						customTelemetryTags: {
-							tag: [
-								{ key: ' ', value: 'empty-key' },
-								{ key: 'nullish', value: '={{ undefined }}' },
-								{ key: 'objectValue', value: '={{ ({ nested: true }) }}' },
-								{ key: 'failed', value: '={{ $json.missing.value }}' },
-							],
-						},
+						customTelemetryTags: [
+							{ key: ' ', value: 'empty-key' },
+							{ key: 'nullish', value: '={{ undefined }}' },
+							{ key: 'objectValue', value: '={{ ({ nested: true }) }}' },
+							{ key: 'failed', value: '={{ $json.missing.value }}' },
+						],
 					},
 				},
 			});

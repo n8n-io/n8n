@@ -20,7 +20,12 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import {
+	collectParametersByTab,
+	createCommonNodeSettings,
+	customTelemetryTagsFromFixedCollection,
+	customTelemetryTagsToFixedCollection,
+} from '@/features/ndv/shared/ndv.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -103,7 +108,7 @@ const settingsNodeValues = computed<INodeParameters>(() => {
 	if (!node.value) return { parameters: {} };
 	return {
 		parameters: deepCopy(node.value.parameters),
-		customTelemetryTags: deepCopy(node.value.customTelemetryTags ?? {}),
+		customTelemetryTags: customTelemetryTagsToFixedCollection(node.value.customTelemetryTags),
 	};
 });
 
@@ -203,14 +208,15 @@ function handleChangeSettingsValue(updateData: IUpdateInformation) {
 			parameters: newParameters,
 		};
 	} else if (updateData.name.includes('.') || updateData.name.includes('[')) {
-		const newNode = deepCopy(node.value);
-		setParameterValue(newNode as unknown as INodeParameters, updateData.name, updateData.value);
+		const nodeSettings = {
+			customTelemetryTags: customTelemetryTagsToFixedCollection(node.value.customTelemetryTags),
+		};
+		setParameterValue(nodeSettings, updateData.name, updateData.value);
 
-		if (newNode.customTelemetryTags?.tag?.length === 0) {
-			newNode.customTelemetryTags = {};
-		}
-
-		node.value = newNode;
+		node.value = {
+			...node.value,
+			customTelemetryTags: customTelemetryTagsFromFixedCollection(nodeSettings.customTelemetryTags),
+		};
 	} else {
 		node.value = { ...node.value, [updateData.name]: updateData.value };
 	}

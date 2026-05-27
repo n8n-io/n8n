@@ -33,7 +33,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type {
-	ICustomTelemetryTags,
+	ICustomTelemetryTag,
 	INodeParameters,
 	INodeProperties,
 	WorkflowSettings,
@@ -68,7 +68,11 @@ import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforce
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { setValue } from '@/features/ndv/shared/ndv.utils';
+import {
+	customTelemetryTagsFromFixedCollection,
+	customTelemetryTagsToFixedCollection,
+	setValue,
+} from '@/features/ndv/shared/ndv.utils';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -337,43 +341,51 @@ const customTelemetryTagsParameters = computed<INodeProperties[]>(() => [
 ]);
 
 const customTelemetryTagsNodeValues = computed<INodeParameters>(() => ({
-	customTelemetryTags: workflowSettings.value.customTelemetryTags ?? {},
+	customTelemetryTags: customTelemetryTagsToFixedCollection(
+		workflowSettings.value.customTelemetryTags,
+	),
 }));
-
-const isCustomTelemetryTags = (value: unknown): value is ICustomTelemetryTags => {
-	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-	if (!('tag' in value)) return true;
-
-	const { tag } = value;
-
-	return (
-		tag === undefined ||
-		(Array.isArray(tag) &&
-			tag.every(
-				(item) =>
-					typeof item === 'object' &&
-					item !== null &&
-					'key' in item &&
-					'value' in item &&
-					typeof item.key === 'string' &&
-					typeof item.value === 'string',
-			))
-	);
-};
 
 const updateCustomTelemetryTags = (parameterData: IUpdateInformation) => {
 	const nodeValues = ref<INodeParameters>({
-		customTelemetryTags: workflowSettings.value.customTelemetryTags ?? {},
+		customTelemetryTags: customTelemetryTagsToFixedCollection(
+			workflowSettings.value.customTelemetryTags,
+		),
 	});
 	const value = parameterData.value === undefined ? null : parameterData.value;
 
 	setValue(nodeValues, parameterData.name, value);
 
-	const updatedTags = nodeValues.value.customTelemetryTags;
-	workflowSettings.value.customTelemetryTags = isCustomTelemetryTags(updatedTags)
-		? updatedTags
-		: {};
+	workflowSettings.value.customTelemetryTags = customTelemetryTagsFromFixedCollection(
+		nodeValues.value.customTelemetryTags,
+	);
 };
+
+const customTelemetryTags = computed<ICustomTelemetryTag[]>(
+	() => workflowSettings.value.customTelemetryTags ?? [],
+);
+
+const customTelemetryTagErrors = computed(() => {
+	const seen = new Set<string>();
+	return customTelemetryTags.value.map((tag) => {
+		const trimmedKey = tag.key.trim();
+		if (!trimmedKey) return i18n.baseText('workflowSettings.customTelemetryTags.error.emptyKey');
+		if (seen.has(trimmedKey)) {
+			return i18n.baseText('workflowSettings.customTelemetryTags.error.duplicateKey');
+		}
+		seen.add(trimmedKey);
+		return null;
+	});
+});
+
+const customTelemetryTagValidationError = computed(() => {
+	const error = customTelemetryTagErrors.value.find((tagError) => tagError !== null);
+	return error ?? null;
+});
+
+const hasCustomTelemetryTagErrors = computed(
+	() => customTelemetryTagValidationError.value !== null,
+);
 
 /**
  * Maps the two independent redaction toggles to/from the single `redactionPolicy` field.
@@ -712,6 +724,8 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 };
 
 const saveSettings = async () => {
+	if (hasCustomTelemetryTagErrors.value) return;
+
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
@@ -1770,6 +1784,16 @@ onBeforeUnmount(() => {
 							:is-read-only="isWorkflowSettingsReadOnly"
 							@value-changed="updateCustomTelemetryTags"
 						/>
+						<N8nText
+							v-if="customTelemetryTagValidationError"
+							size="small"
+							color="danger"
+							tag="p"
+							:class="$style['custom-telemetry-tags-error']"
+							data-test-id="workflow-settings-custom-telemetry-tags-error"
+						>
+							{{ customTelemetryTagValidationError }}
+						</N8nText>
 					</ElCol>
 				</ElRow>
 			</div>
@@ -1777,7 +1801,7 @@ onBeforeUnmount(() => {
 		<template #footer>
 			<div :class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
 				<N8nButton
-					:disabled="readOnlyEnv || !workflowPermissions.update"
+					:disabled="readOnlyEnv || !workflowPermissions.update || hasCustomTelemetryTagErrors"
 					:label="i18n.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
@@ -1903,6 +1927,10 @@ onBeforeUnmount(() => {
 	:global([data-test-id='fixed-collection-customTelemetryTags']) {
 		min-width: 0;
 	}
+}
+
+.custom-telemetry-tags-error {
+	margin-top: var(--spacing--2xs);
 }
 
 .time-saved-tabs {

@@ -87,12 +87,24 @@ describe('UpdateWorkflowDto', () => {
 
 		test('should preserve workflow custom telemetry tag settings', () => {
 			const settings = {
-				customTelemetryTags: {
-					tag: [
-						{ key: 'env', value: 'production' },
-						{ key: 'workflow_name', value: '={{ $workflow.name }}' },
-					],
-				},
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: '={{ $workflow.name }}' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom telemetry tag settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
 			};
 
 			const result = UpdateWorkflowDto.safeParse({ settings });
@@ -148,6 +160,48 @@ describe('UpdateWorkflowDto', () => {
 				name: 'settings as array',
 				request: { settings: [] },
 				expectedErrorPath: ['settings'],
+			},
+			{
+				name: 'duplicate workflow custom telemetry tag keys',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom telemetry tag keys after trim',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom telemetry tag key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom telemetry tag key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
 				name: 'staticData as array',
