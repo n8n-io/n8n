@@ -20,6 +20,8 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.stryker-tmp/
+**/reports/mutation/
 *.tsbuildinfo
 .stylelintcache
 *.swp
@@ -28,11 +30,13 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+sbom-source.cdx.json
 *.junit.xml
 junit.xml
 test-results.json
 *.0x
 packages/testing/playwright/playwright-report
+packages/testing/playwright/eval-report
 packages/testing/playwright/test-results
 packages/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json
@@ -70,3 +74,4 @@ packages/cli/src/commands/export/outputs
 .n8n
 lefthook-local.yml
 .playwright-mcp
+stryker.log

@@ -10,7 +10,14 @@ import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONValue } from '../utils/json';
 
-export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
+export type FinishReason =
+	| 'stop'
+	| 'max-iterations'
+	| 'length'
+	| 'content-filter'
+	| 'tool-calls'
+	| 'error'
+	| 'other';
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;
@@ -119,12 +126,20 @@ export interface RunOptions {
 	persistence?: AgentPersistenceOptions;
 }
 
+export interface AgentExecutionCounter {
+	incrementMessageCount(): void;
+	incrementToolCallCount(): void;
+	incrementTokenCount(tokenCount: number): void;
+}
+
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
 	/** Inherited telemetry from a parent agent. Used internally by asTool(). */
 	telemetry?: BuiltTelemetry;
+	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface PersistedExecutionOptions {
@@ -282,6 +297,8 @@ export interface SerializableAgentState {
 	finishReason?: FinishReason;
 	usage?: TokenUsage;
 	executionOptions?: PersistedExecutionOptions;
+	/** Number of completed LLM iterations at suspension time. */
+	iterationCount?: number;
 }
 
 export type AgentPersistenceOptions = {

@@ -1,5 +1,4 @@
-import { LangSmithTelemetry } from '@n8n/agents';
-import type { ModelConfig } from '@n8n/agents';
+import type { ModelConfig, LangSmithTelemetry as RuntimeLangSmithTelemetry } from '@n8n/agents';
 
 const DEFAULT_PROJECT_NAME = 'agent-builder';
 const UNKNOWN_MODEL_ID = 'unknown';
@@ -53,15 +52,15 @@ export interface BuilderTelemetryOptions {
  * tracer, so we only need to seed identifying metadata here — no manual
  * `RunTree` plumbing.
  */
-export function buildBuilderTelemetry(
+export async function buildBuilderTelemetry(
 	options: BuilderTelemetryOptions,
 	env: NodeJS.ProcessEnv = process.env,
-): LangSmithTelemetry | undefined {
+): Promise<RuntimeLangSmithTelemetry | undefined> {
 	if (!isLangSmithEnabled(env)) return undefined;
 
 	const project = env.LANGSMITH_PROJECT ?? env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 	const endpoint = env.LANGSMITH_ENDPOINT ?? env.LANGCHAIN_ENDPOINT;
-
+	const { LangSmithTelemetry } = await import('@n8n/agents');
 	return new LangSmithTelemetry({
 		project,
 		...(endpoint ? { endpoint } : {}),

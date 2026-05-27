@@ -1,10 +1,34 @@
 {
   "name": "@n8n/agents",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "tool": [
+        "dist/sdk/tool.d.ts"
+      ],
+      "catalog": [
+        "dist/sdk/catalog.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tool": {
+      "types": "./dist/sdk/tool.d.ts",
+      "default": "./dist/sdk/tool.js"
+    },
+    "./catalog": {
+      "types": "./dist/sdk/catalog.d.ts",
+      "default": "./dist/sdk/catalog.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -25,7 +49,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/azure": "catalog:",
     "@ai-sdk/cohere": "catalog:",
     "@ai-sdk/deepseek": "catalog:",
@@ -36,13 +60,12 @@
     "@ai-sdk/openai": "^3.0.41",
     "@ai-sdk/provider-utils": "^4.0.21",
     "@ai-sdk/xai": "^3.0.67",
-    "@libsql/client": "^0.17.0",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/ai-utilities": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",
     "ajv": "^8.18.0",
-    "pg": "catalog:",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
@@ -67,8 +90,6 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/json-schema": "^7.0.15",
-    "@types/pg": "^8.15.6",
-    "testcontainers": "catalog:"
+    "@types/json-schema": "^7.0.15"
   }
 }

@@ -101,12 +101,52 @@ export interface IExpressionEvaluator {
 }
 
 /**
- * Workflow data proxy from WorkflowDataProxy.getDataProxy().
- *
- * For Slice 1: We pass this directly via VM context (simple pass-through).
- * Later: Will implement deep lazy proxy for field-level data fetching.
+ * The methods on the per-node accessor returned by `data.$('NodeName')`.
+ * Mirrors the host-side `WorkflowDataProxy` `$()` return shape, restricted
+ * to the operations the typed-RPC handlers dispatch into. All optional —
+ * the underlying proxy is dynamic and the handlers tolerate missing
+ * methods via optional chaining at the call site.
  */
-export type WorkflowData = Record<string, unknown>;
+export interface NodeProxy {
+	first?: (branchIndex?: number, runIndex?: number) => unknown;
+	last?: (branchIndex?: number, runIndex?: number) => unknown;
+	all?: (branchIndex?: number, runIndex?: number) => unknown;
+}
+
+/**
+ * The methods on `data.$input` that typed-RPC handlers dispatch into.
+ * Mirrors the host-side `ProxyInput` shape (`packages/workflow/src/interfaces.ts`),
+ * restricted to the no-arg method forms the host enforces (`$input.first()`,
+ * `.last()`, `.all()` throw on any arguments). Properties like `.item`,
+ * `.context`, `.params` stay on `getValueAtPath` and aren't part of this
+ * type.
+ *
+ * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
+ * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
+ * which structured-clones the value and erases nominal types. The handlers
+ * pass the clone through verbatim, so a precise return type would be
+ * misleading. Matches the `NodeProxy` return type for the same reason.
+ */
+export interface InputProxy {
+	first?: () => unknown;
+	last?: () => unknown;
+	all?: () => unknown;
+}
+
+/**
+ * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
+ *
+ * `$` and `$input` are the typed-RPC accessors (`$('NodeName').first()`,
+ * `$input.first()`, etc.) and are called directly from typed-RPC handlers.
+ * Everything else flows through the generic data-access primitives
+ * (`getValueAtPath`, `getArrayElement`), which read paths off the index
+ * signature without needing per-key types.
+ */
+export interface WorkflowData {
+	$?: (nodeName: string) => NodeProxy | null | undefined;
+	$input?: InputProxy;
+	[key: string]: unknown;
+}
 
 /**
  * Options for evaluate().

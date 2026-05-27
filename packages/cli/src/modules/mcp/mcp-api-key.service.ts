@@ -78,6 +78,7 @@ export class McpServerApiKeyService {
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
+					authType: 'api_key',
 				};
 			}
 

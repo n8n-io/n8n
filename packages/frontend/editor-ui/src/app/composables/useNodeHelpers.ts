@@ -184,7 +184,7 @@ export function useNodeHelpers() {
 		workflow: WorkflowObjectAccessors,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowDocumentStore.value.pinData);
+		const pinDataNodeNames = Object.keys(workflowDocumentStore.value.pinnedDataByNodeName);
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];

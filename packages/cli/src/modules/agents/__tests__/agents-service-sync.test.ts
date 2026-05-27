@@ -12,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,9 +22,10 @@ import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -78,6 +80,8 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock(),
 			{ modules: [] } as unknown as AgentsConfig,
 			mock(),
+			mock<Telemetry>(),
+			mock<ChatIntegrationService>(),
 		);
 	});
 
