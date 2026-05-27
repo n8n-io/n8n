@@ -2936,8 +2936,8 @@ importers:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.20.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ldapts:
-        specifier: 4.2.6
-        version: 4.2.6
+        specifier: 8.1.7
+        version: 8.1.7
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -4426,8 +4426,8 @@ importers:
         specifier: 'catalog:'
         version: 2.2.4
       ldapts:
-        specifier: 4.2.6
-        version: 4.2.6
+        specifier: 8.1.7
+        version: 8.1.7
       lodash:
         specifier: 4.18.1
         version: 4.18.1
@@ -12999,15 +12999,6 @@ packages:
       supports-color:
         optional: true
 
-  debug@4.3.5:
-    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
     engines: {node: '>=6.0'}
@@ -15690,9 +15681,9 @@ packages:
     resolution: {integrity: sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==}
     engines: {node: '>= 0.6.3'}
 
-  ldapts@4.2.6:
-    resolution: {integrity: sha512-r1eOj2PtTJi+9aZxLirktoHntuYXlbQD9ZXCjiZmJx0VBQtBcWc+rueqABuh/AxMcFHNPDSJLJAXxoj5VevTwQ==}
-    engines: {node: '>=14'}
+  ldapts@8.1.7:
+    resolution: {integrity: sha512-TJl6T92eIwMf/OJ0hDfKVa6ISwzo+lqCWCI5Mf//ARlKa3LKQZaSrme/H2rCRBhW0DZCQlrsV+fgoW5YHRNLUw==}
+    engines: {node: '>=20'}
 
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
@@ -20757,7 +20748,7 @@ packages:
     engines: {node: '>=18'}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -23981,7 +23972,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.16.1(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.1)
+      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.3))
       chalk: 4.1.2
       commander: 13.1.0
       date-fns: 2.30.0
@@ -27213,7 +27204,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.16.1(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.16.1)
+      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.3))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -30010,7 +30001,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.16.1):
+  axios-retry@4.5.0(axios@1.16.1(debug@4.4.3)):
     dependencies:
       axios: 1.16.1(debug@4.4.3)
       is-retry-allowed: 2.2.0
@@ -31356,10 +31347,6 @@ snapshots:
       supports-color: 5.5.0
 
   debug@4.3.4:
-    dependencies:
-      ms: 2.1.2
-
-  debug@4.3.5:
     dependencies:
       ms: 2.1.2
 
@@ -34808,17 +34795,9 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
-  ldapts@4.2.6:
+  ldapts@8.1.7:
     dependencies:
-      '@types/asn1': 0.2.0
-      '@types/node': 20.19.21
-      '@types/uuid': 10.0.0
-      asn1: 0.2.6
-      debug: 4.3.5
       strict-event-emitter-types: 2.0.0
-      uuid: 13.0.1
-    transitivePeerDependencies:
-      - supports-color
 
   leac@0.6.0: {}
 

@@ -180,7 +180,7 @@
     "jsonschema": "1.4.1",
     "jsonwebtoken": "catalog:",
     "langsmith": "catalog:",
-    "ldapts": "4.2.6",
+    "ldapts": "8.1.7",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "n8n-core": "workspace:*",
