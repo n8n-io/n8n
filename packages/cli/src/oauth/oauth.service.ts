@@ -55,6 +55,7 @@ import {
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -79,6 +80,7 @@ export class OauthService {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly authService: AuthService,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
+		private readonly browserBindingService: OAuthBrowserBindingService,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -298,6 +300,15 @@ export class OauthService {
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
+		}
+
+		// Browser binding check runs before any origin-specific branch, so that
+		// dynamic-credential and N8N_SKIP_AUTH_ON_OAUTH_CALLBACK flows — which
+		// otherwise have no user-identity check at callback time — are also
+		// protected. A bindingHash is only set when binding was enabled at /auth;
+		// states without it pre-date the feature and are accepted.
+		if (typeof decryptedState.bindingHash === 'string' && decryptedState.bindingHash.length > 0) {
+			this.browserBindingService.verifyBindingOrThrow(req, decryptedState.bindingHash);
 		}
 
 		// Dynamic credentials: skip user-ownership check since the credential may be shared,

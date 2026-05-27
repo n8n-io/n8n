@@ -10,6 +10,7 @@ import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
@@ -21,13 +22,18 @@ export class OAuth2CredentialController {
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
+		private readonly browserBindingService: OAuthBrowserBindingService,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
-	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth): Promise<string> {
+	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth, res: Response): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		if (this.browserBindingService.isEnabled()) {
+			const nonce = this.browserBindingService.ensureBindingCookie(req, res);
+			csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
+		}
 		const uri = await this.oauthService.generateAOauth2AuthUri(credential, csrfData);
 		return uri;
 	}

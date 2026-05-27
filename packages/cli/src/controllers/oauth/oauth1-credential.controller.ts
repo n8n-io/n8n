@@ -6,6 +6,7 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 
 import { OAuthRequest } from '@/requests';
 
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 
 @RestController('/oauth1-credential')
@@ -13,13 +14,18 @@ export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
+		private readonly browserBindingService: OAuthBrowserBindingService,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
-	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
+	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
+		if (this.browserBindingService.isEnabled()) {
+			const nonce = this.browserBindingService.ensureBindingCookie(req, res);
+			csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
+		}
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {

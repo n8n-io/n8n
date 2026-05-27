@@ -41,7 +41,8 @@ describe('OAuth1CredentialController', () => {
 				user: mock<User>({ id: '123' }),
 				query: { id: '1' },
 			});
-			const authUri = await controller.getAuthUri(req);
+			const res = mock<Response>();
+			const authUri = await controller.getAuthUri(req, res);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
 			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
 			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(

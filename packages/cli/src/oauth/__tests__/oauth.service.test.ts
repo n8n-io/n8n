@@ -20,6 +20,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import {
 	OauthService,
@@ -48,6 +49,7 @@ describe('OauthService', () => {
 	const dynamicCredentialsProxy = mockInstance(DynamicCredentialsProxy);
 	const authService = mockInstance(AuthService);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
+	const browserBindingService = mockInstance(OAuthBrowserBindingService);
 
 	let service: OauthService;
 
@@ -91,6 +93,7 @@ describe('OauthService', () => {
 			dynamicCredentialsProxy,
 			authService,
 			oauthJweServiceProxy,
+			browserBindingService,
 		);
 	});
 
@@ -712,6 +715,84 @@ describe('OauthService', () => {
 			await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
 				'Unauthorized',
 			);
+		});
+
+		describe('browser binding', () => {
+			const buildEncodedState = (csrfData: object) => {
+				const state = { token: 'token', createdAt: timestamp, data: 'encrypted-data' };
+				cipher.decryptV2.mockResolvedValueOnce(JSON.stringify(csrfData));
+				return Buffer.from(JSON.stringify(state)).toString('base64');
+			};
+
+			it('calls verifyBindingOrThrow when state carries a bindingHash', async () => {
+				const encodedState = buildEncodedState({
+					cid: 'credential-id',
+					userId: 'user-id',
+					origin: 'static-credential',
+					bindingHash: 'hash-from-initiate',
+				});
+				const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+				const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
+
+				await (service as any).decodeCsrfState(encodedState, req);
+
+				expect(browserBindingService.verifyBindingOrThrow).toHaveBeenCalledWith(
+					req,
+					'hash-from-initiate',
+				);
+			});
+
+			it('skips verification when state has no bindingHash (pre-feature flow)', async () => {
+				const encodedState = buildEncodedState({
+					cid: 'credential-id',
+					userId: 'user-id',
+					origin: 'static-credential',
+				});
+				const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+				const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
+
+				await (service as any).decodeCsrfState(encodedState, req);
+
+				expect(browserBindingService.verifyBindingOrThrow).not.toHaveBeenCalled();
+			});
+
+			it('verifies binding before any origin-specific branch (dynamic-credential)', async () => {
+				const encodedState = buildEncodedState({
+					cid: 'credential-id',
+					origin: 'dynamic-credential',
+					bindingHash: 'dynamic-hash',
+				});
+				credentialsRepository.findOneBy.mockResolvedValueOnce(
+					mock<CredentialsEntity>({ id: 'credential-id' }),
+				);
+				const req = mock<AuthenticatedRequest>({ user: undefined as any });
+
+				await (service as any).decodeCsrfState(encodedState, req);
+
+				expect(browserBindingService.verifyBindingOrThrow).toHaveBeenCalledWith(
+					req,
+					'dynamic-hash',
+				);
+			});
+
+			it('propagates AuthError from binding mismatch', async () => {
+				const encodedState = buildEncodedState({
+					cid: 'credential-id',
+					userId: 'user-id',
+					origin: 'static-credential',
+					bindingHash: 'expected-hash',
+				});
+				browserBindingService.verifyBindingOrThrow.mockImplementationOnce(() => {
+					throw new AuthError('Browser binding mismatch');
+				});
+				const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }) });
+
+				await expect((service as any).decodeCsrfState(encodedState, req)).rejects.toThrow(
+					AuthError,
+				);
+			});
 		});
 	});
 
