@@ -6606,6 +6606,8 @@
 	"agents.channels.slack.setup.copyAccessToken.placeholder": "Token",
 	"agents.channels.slack.setup.copyAccessToken.showToken": "Show token",
 	"agents.channels.slack.setup.copyAccessToken.hideToken": "Hide token",
+	"agents.channels.slack.setup.copyAccessToken.hint": "This is unique to you and your workspace. Starts with xoxe.xoxp-",
+	"agents.channels.slack.setup.copyAccessToken.invalidToken": "This Slack app configuration token is invalid. Check the token and try again.",
 	"agents.channels.slack.setup.installApp.title": "Install app",
 	"agents.channels.slack.setup.installApp.description": "Install the Slack app and connect it to this agent.",
 	"agents.channels.slack.setup.installApp.button": "Install app",

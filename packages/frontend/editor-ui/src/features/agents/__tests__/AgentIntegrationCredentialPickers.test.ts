@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 
 import AgentAddTriggerModal from '../components/AgentAddTriggerModal.vue';
+import AgentChannelSlackSetup from '../components/AgentChannelSlackSetup.vue';
 import { clearAgentIntegrationStatusCache } from '../composables/useAgentIntegrationStatus';
 
 const {
@@ -532,6 +533,39 @@ describe('agent integration credential picker usage', () => {
 			triggers: ['slack'],
 		});
 		expect(onAgentChanged).toHaveBeenCalledOnce();
+	});
+
+	it('shows an invalid token error and keeps install available when Slack rejects the token', async () => {
+		const setupSlackApp = vi
+			.fn()
+			.mockRejectedValue(new Error('Slack could not create the Slack app: invalid_auth'));
+
+		const wrapper = mount(AgentChannelSlackSetup, {
+			props: { setupSlackApp },
+			global: {
+				stubs: {
+					...globalStubs,
+					N8nStepper: {
+						props: ['steps'],
+						template:
+							'<div><div v-for="step in steps" :key="step.id"><slot :step="step" /></div></div>',
+					},
+					AgentChannelSlackSetupSnapshots: { template: '<div />' },
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="slack-app-configuration-token"]').setValue('wrong-token');
+		await wrapper.find('[data-testid="slack-create-app"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-app-configuration-token-description"]').text()).toBe(
+			'agents.channels.slack.setup.copyAccessToken.invalidToken',
+		);
+		expect(
+			wrapper.find<HTMLButtonElement>('[data-testid="slack-create-app"]').element.disabled,
+		).toBe(false);
+		expect(setupSlackApp).toHaveBeenCalledWith('wrong-token');
 	});
 
 	it('waits for the Slack OAuth callback when noopener prevents a popup handle', async () => {

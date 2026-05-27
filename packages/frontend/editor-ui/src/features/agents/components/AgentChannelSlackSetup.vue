@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import N8nStepper from '@n8n/design-system/components/N8nStepper/Stepper.vue';
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +23,7 @@ const i18n = useI18n();
 const appConfigurationToken = shallowRef('');
 const showAppConfigurationToken = shallowRef(false);
 const setupLoading = shallowRef(false);
-const setupError = shallowRef(false);
+const setupError = shallowRef<'invalidToken' | 'generic' | null>(null);
 
 const steps = computed(() => [
 	{
@@ -64,19 +64,23 @@ const appConfigurationTokenVisibilityLabel = computed(() =>
 	),
 );
 
+function isInvalidSlackTokenError(error: unknown) {
+	return error instanceof Error && error.message.includes('invalid_auth');
+}
+
 async function installSlackApp() {
 	const token = appConfigurationToken.value.trim();
 	if (!token || !props.setupSlackApp || props.disabled || props.connected) return;
 
 	setupLoading.value = true;
-	setupError.value = false;
+	setupError.value = null;
 	try {
 		const completed = await props.setupSlackApp(token);
 		if (completed) {
 			appConfigurationToken.value = '';
 		}
-	} catch {
-		setupError.value = true;
+	} catch (error) {
+		setupError.value = isInvalidSlackTokenError(error) ? 'invalidToken' : 'generic';
 	} finally {
 		setupLoading.value = false;
 	}
@@ -102,30 +106,47 @@ async function installSlackApp() {
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
-					<N8nInput
-						v-else-if="step.id === 'copy-access-token'"
-						v-model="appConfigurationToken"
-						:type="appConfigurationTokenInputType"
-						size="large"
-						:placeholder="i18n.baseText('agents.channels.slack.setup.copyAccessToken.placeholder')"
-						data-testid="slack-app-configuration-token"
-						:disabled="disabled || setupLoading"
-						@keydown.enter.prevent="installSlackApp"
-					>
-						<template #suffix>
-							<button
-								type="button"
-								:class="$style.tokenVisibilityButton"
-								:aria-label="appConfigurationTokenVisibilityLabel"
-								:disabled="disabled || setupLoading"
-								data-testid="slack-app-configuration-token-visibility"
-								@click.stop="showAppConfigurationToken = !showAppConfigurationToken"
+					<div v-else-if="step.id === 'copy-access-token'" :class="$style.tokenInputContainer">
+						<N8nInput
+							v-model="appConfigurationToken"
+							:type="appConfigurationTokenInputType"
+							size="large"
+							:placeholder="
+								i18n.baseText('agents.channels.slack.setup.copyAccessToken.placeholder')
+							"
+							data-testid="slack-app-configuration-token"
+							:disabled="disabled || setupLoading"
+							@keydown.enter.prevent="installSlackApp"
+						>
+							<template #suffix>
+								<N8nIconButton
+									variant="ghost"
+									size="small"
+									:icon="showAppConfigurationToken ? 'eye-off' : 'eye'"
+									:class="$style.tokenVisibilityButton"
+									:aria-label="appConfigurationTokenVisibilityLabel"
+									:disabled="disabled || setupLoading"
+									data-testid="slack-app-configuration-token-visibility"
+									@click.stop="showAppConfigurationToken = !showAppConfigurationToken"
+								/>
+							</template>
+						</N8nInput>
+						<div :class="$style.setupDescriptionContainer">
+							<N8nText
+								:class="setupError === 'invalidToken' ? $style.setupError : $style.setupDescription"
+								size="small"
+								data-testid="slack-app-configuration-token-description"
 							>
-								<N8nIcon :icon="showAppConfigurationToken ? 'eye-off' : 'eye'" size="small" />
-							</button>
-						</template>
-					</N8nInput>
-
+								{{
+									i18n.baseText(
+										setupError === 'invalidToken'
+											? 'agents.channels.slack.setup.copyAccessToken.invalidToken'
+											: 'agents.channels.slack.setup.copyAccessToken.hint',
+									)
+								}}
+							</N8nText>
+						</div>
+					</div>
 					<template v-else-if="step.id === 'install-app'">
 						<N8nButton
 							variant="subtle"
@@ -138,7 +159,7 @@ async function installSlackApp() {
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.button') }}
 						</N8nButton>
 						<N8nText
-							v-if="setupError"
+							v-if="setupError === 'generic'"
 							:class="$style.setupError"
 							size="small"
 							data-testid="slack-app-setup-error"
@@ -167,28 +188,27 @@ async function installSlackApp() {
 	padding-top: var(--spacing--xs);
 }
 
+.setupDescriptionContainer {
+	display: flex;
+	align-items: center;
+	height: var(--height--xs);
+}
+
+.setupDescription {
+	color: var(--text-color--subtler);
+}
+
 .setupError {
 	color: var(--color--danger);
 }
 
-.tokenVisibilityButton {
+.tokenInputContainer {
 	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-
-	&:hover:not(:disabled) {
-		color: var(--color--text);
-	}
-
-	&:disabled {
-		cursor: not-allowed;
-		color: var(--color--text--tint-3);
-	}
+	flex-direction: column;
+	width: 100%;
+}
+.tokenVisibilityButton {
+	margin-right: calc(var(--spacing--3xs) * -1);
 }
 
 .createTokenContainer {
