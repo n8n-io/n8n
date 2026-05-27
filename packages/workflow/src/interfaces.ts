@@ -379,6 +379,16 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+
+	/**
+	 * If `true`, this credential can ONLY be used at runtime by nodes listed in
+	 * `supportedNodes`. The execution engine will refuse to decrypt the credential
+	 * for any other node — including the HTTP Request node and its tool variants,
+	 * which normally have full access to all credential types.
+	 *
+	 * Opt-in. Existing credentials without this flag are unaffected.
+	 */
+	restrictToSupportedNodes?: true;
 }
 
 export interface ICredentialTypes {
