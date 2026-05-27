@@ -2189,7 +2189,9 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
+		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
+			validateNodeGroups: false,
+		});
 	}
 
 	function revalidateNodeConnections(id: string, connectionMode: CanvasConnectionMode) {
