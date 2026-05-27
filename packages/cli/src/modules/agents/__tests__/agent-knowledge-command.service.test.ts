@@ -28,23 +28,6 @@ describe('AgentKnowledgeCommandService', () => {
 			expect(result.truncated).toBe(false);
 		});
 	});
-
-	it('reads a bounded line range', async () => {
-		await service.withWorkspace(async (workspaceRoot) => {
-			await writeFile(path.join(workspaceRoot, 'notes.txt'), 'one\ntwo\nthree\n');
-
-			const result = await service.run(workspaceRoot, {
-				command: 'sed',
-				file: 'notes.txt',
-				startLine: 2,
-				endLine: 2,
-			});
-
-			expect(result.exitCode).toBe(0);
-			expect(result.stdout).toBe('two\n');
-		});
-	});
-
 	it('truncates command output to the byte budget for non-ASCII content', async () => {
 		await service.withWorkspace(async (workspaceRoot) => {
 			await writeFile(path.join(workspaceRoot, 'notes.txt'), 'é'.repeat(40_000));

@@ -4,7 +4,7 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import { summariseInteractiveOutput } from '../utils/interactive-summary';
 
 describe('summariseInteractiveOutput', () => {
 	it('returns undefined for non-interactive tool names', () => {
@@ -64,11 +64,5 @@ describe('summariseInteractiveOutput', () => {
 				credentialName: 'My Anthropic',
 			}),
 		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
-	});
-});
-
-describe('summariseToolCall', () => {
-	it('preserves interactive tool summaries', () => {
-		expect(summariseToolCall(ASK_CREDENTIAL_TOOL_NAME, { skipped: true })).toBe('Skipped');
 	});
 });

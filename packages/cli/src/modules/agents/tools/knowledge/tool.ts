@@ -57,21 +57,26 @@ export function createSearchKnowledgeTool({
 			}
 
 			if (parsedInput.operation === 'list') {
-				return {
-					operation: 'list',
-					files: await knowledgeService.listWorkspaceFiles(agentId, projectId),
-				};
+				try {
+					return {
+						operation: 'list',
+						files: await knowledgeService.listWorkspaceFiles(agentId, projectId),
+					};
+				} catch (error) {
+					return {
+						operation: 'list',
+						files: [],
+						error: error instanceof Error ? error.message : String(error),
+					};
+				}
 			}
 
 			return await commandService.withWorkspace(async (workspaceRoot) => {
-				const files = await knowledgeService.materializeWorkspace(
-					agentId,
-					projectId,
-					workspaceRoot,
-					{ fileReferences: getRequiredFileReferences(parsedInput) },
-				);
-
+				let files: WorkspaceFiles = [];
 				try {
+					files = await knowledgeService.materializeWorkspace(agentId, projectId, workspaceRoot, {
+						fileReferences: getRequiredFileReferences(parsedInput),
+					});
 					return await handleKnowledgeOperation(parsedInput, workspaceRoot, files, commandService);
 				} catch (error) {
 					return {

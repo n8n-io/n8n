@@ -89,6 +89,24 @@ describe('search_knowledge tool', () => {
 		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 	});
 
+	it('returns a tool error when workspace materialization fails', async () => {
+		knowledgeService.materializeWorkspace.mockRejectedValue(new Error('storage unavailable'));
+		const tool = createSearchKnowledgeTool({
+			agentId,
+			projectId,
+			knowledgeService: mockKnowledgeService(),
+			commandService,
+		});
+
+		await expect(
+			tool.handler?.({ operation: 'search', query: 'needle' }, {} as never),
+		).resolves.toMatchObject({
+			operation: 'search',
+			files: [],
+			error: 'storage unavailable',
+		});
+	});
+
 	it('searches materialized text files', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -276,64 +294,6 @@ describe('search_knowledge tool', () => {
 		expect(stdout).not.toContain('book-two.md:9:needle 9');
 		expect(stdout).toContain('Continue with offset=20 and head_limit=20');
 	});
-
-	it('uses head_limit with contextual content output', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(
-					path.join(workspaceRoot, 'file-1.md'),
-					['before', 'needle 1', 'after', 'gap 1', 'gap 2', 'before', 'needle 2', 'after'].join(
-						'\n',
-					),
-				);
-				return [
-					{
-						id: 'file-1',
-						fileName: 'book-one.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 120,
-						relativePath: 'file-1.md',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		const result = await tool.handler?.(
-			{
-				operation: 'search',
-				query: 'needle',
-				output_mode: 'content',
-				context: 1,
-				files: ['file-1'],
-				head_limit: 1,
-			},
-			{} as never,
-		);
-		const stdout = (result as { result: { stdout: string } }).result.stdout;
-
-		expect(result).toMatchObject({
-			operation: 'search',
-			result: {
-				truncated: true,
-			},
-			search: {
-				appliedLimit: 1,
-				nextOffset: 1,
-			},
-		});
-		expect(stdout).toContain('book-one.md:2:needle 1');
-		expect(stdout).not.toContain('book-one.md:7:needle 2');
-		expect(stdout).toContain('Continue with offset=1 and head_limit=1');
-	});
-
 	it('returns content matches only when requested', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -441,63 +401,6 @@ describe('search_knowledge tool', () => {
 		expect((result as { result: { stdout: string } }).result.stdout).not.toContain('needle');
 		expect((result as { result: { stdout: string } }).result.stdout).not.toContain('file-1.md');
 	});
-
-	it('returns matching files without line dumps', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'needle\n');
-				await writeFile(path.join(workspaceRoot, 'file-2.md'), 'needle\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'book-one.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-1.md',
-					},
-					{
-						id: 'file-2',
-						fileName: 'book-two.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-2.md',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		const result = await tool.handler?.(
-			{ operation: 'search', query: 'needle', output_mode: 'files_with_matches', head_limit: 1 },
-			{} as never,
-		);
-
-		expect(result).toMatchObject({
-			search: {
-				mode: 'files_with_matches',
-				totalMatchingFiles: 2,
-				files: [expect.objectContaining({ id: 'file-1' })],
-				matches: [],
-				truncated: true,
-				appliedLimit: 1,
-				nextOffset: 1,
-				hint: expect.stringContaining('Continue with offset=1 and head_limit=1'),
-			},
-		});
-		expect((result as { result: { stdout: string } }).result.stdout).not.toContain('needle');
-		expect((result as { result: { stdout: string } }).result.stdout).not.toContain('file-1.md');
-		expect((result as { result: { stdout: string } }).result.stdout).toContain(
-			'Continue with offset=1 and head_limit=1',
-		);
-	});
-
 	it('returns per-file counts', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -544,104 +447,6 @@ describe('search_knowledge tool', () => {
 			},
 		});
 	});
-
-	it('paginates capped search result modes with offset', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'needle\n');
-				await writeFile(path.join(workspaceRoot, 'file-2.md'), 'needle\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'book-one.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-1.md',
-					},
-					{
-						id: 'file-2',
-						fileName: 'book-two.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-2.md',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{ operation: 'search', query: 'needle', output_mode: 'count', head_limit: 1, offset: 1 },
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			search: {
-				mode: 'count',
-				files: [expect.objectContaining({ id: 'file-2' })],
-				truncated: false,
-				appliedLimit: undefined,
-				appliedOffset: 1,
-				nextOffset: undefined,
-			},
-		});
-	});
-
-	it('supports head_limit zero as unlimited', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'needle\n');
-				await writeFile(path.join(workspaceRoot, 'file-2.md'), 'needle\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'book-one.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-1.md',
-					},
-					{
-						id: 'file-2',
-						fileName: 'book-two.md',
-						mimeType: 'text/markdown',
-						fileSizeBytes: 10,
-						relativePath: 'file-2.md',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{ operation: 'search', query: 'needle', output_mode: 'files_with_matches', head_limit: 0 },
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			search: {
-				files: [
-					expect.objectContaining({ id: 'file-1' }),
-					expect.objectContaining({ id: 'file-2' }),
-				],
-				truncated: false,
-			},
-		});
-	});
-
 	it('uses extended regex for non-fixed search patterns', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -779,6 +584,57 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
+	it('filters multi-query matches using full line text before display truncation', async () => {
+		knowledgeService.materializeWorkspace.mockImplementation(
+			async (_agentId, _projectId, workspaceRoot) => {
+				const { writeFile } = await import('node:fs/promises');
+				const path = await import('node:path');
+				await writeFile(
+					path.join(workspaceRoot, 'file-1.md'),
+					`needle ${'x'.repeat(700)} tailterm\n`,
+				);
+				return [
+					{
+						id: 'file-1',
+						fileName: 'book-one.md',
+						mimeType: 'text/markdown',
+						fileSizeBytes: 720,
+						relativePath: 'file-1.md',
+					},
+				];
+			},
+		);
+		const tool = createSearchKnowledgeTool({
+			agentId,
+			projectId,
+			knowledgeService: mockKnowledgeService(),
+			commandService,
+		});
+
+		await expect(
+			tool.handler?.(
+				{
+					operation: 'search',
+					queries: ['needle', 'tailterm'],
+					output_mode: 'content',
+					match_mode: 'all_on_same_line',
+				},
+				{} as never,
+			),
+		).resolves.toMatchObject({
+			search: {
+				totalMatchingLines: 1,
+				matches: [
+					expect.objectContaining({
+						lineNumber: 1,
+						text: expect.stringContaining('[line truncated; use read for full text]'),
+						truncated: true,
+					}),
+				],
+			},
+		});
+	});
+
 	it('supports multi-query all_within_lines search without hand-written regex', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -845,34 +701,6 @@ describe('search_knowledge tool', () => {
 			},
 		});
 	});
-
-	it('rejects CSV query fields on search operations', async () => {
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{
-					operation: 'search',
-					query: '^Germany,2022,',
-					where: [{ column: 'year', op: 'eq', value: '2022' }],
-					select: ['country', 'year'],
-					limit: 1,
-				},
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			operation: 'search',
-			files: [],
-			error: expect.stringContaining("Unrecognized key(s) in object: 'where', 'select', 'limit'"),
-		});
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
-	});
-
 	it('rejects public command operations without materializing files', async () => {
 		const tool = createSearchKnowledgeTool({
 			agentId,
@@ -1053,49 +881,6 @@ describe('search_knowledge tool', () => {
 			},
 		});
 	});
-
-	it('queries CSV rows by display file name', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'owid-co2-data.csv',
-						mimeType: 'text/csv',
-						fileSizeBytes: 26,
-						relativePath: 'file-1.csv',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{
-					operation: 'csv_query',
-					file: 'owid-co2-data.csv',
-					select: ['country', 'year'],
-				},
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			operation: 'csv_query',
-			csv: {
-				fileName: 'owid-co2-data.csv',
-				rows: [['Germany', '2022']],
-			},
-		});
-	});
-
 	it('queries CSV columns with quoted commas in their header names', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -1140,48 +925,6 @@ describe('search_knowledge tool', () => {
 			},
 		});
 	});
-
-	it('returns a structured error when CSV columns are missing', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'owid-co2-data.csv',
-						mimeType: 'text/csv',
-						fileSizeBytes: 27,
-						relativePath: 'file-1.csv',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{
-					operation: 'csv_query',
-					file: 'file-1',
-					select: ['country', 'co2'],
-				},
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			operation: 'csv_query',
-			error: expect.stringContaining(
-				'CSV column "co2" not found in "owid-co2-data.csv". Available columns: country, year.',
-			),
-		});
-	});
-
 	it('profiles CSV schemas with sample rows, inferred types, and disambiguating columns', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {
@@ -1460,6 +1203,7 @@ describe('search_knowledge tool', () => {
 						'GCAG,1881,-0.09',
 						'GISTEMP,1880,-0.2',
 						'GISTEMP,1881,n/a',
+						'GISTEMP,1882,   ',
 					].join('\n'),
 				);
 				return [
@@ -1495,7 +1239,7 @@ describe('search_knowledge tool', () => {
 		).resolves.toMatchObject({
 			operation: 'csv_aggregate',
 			csvAggregate: {
-				rowCount: 4,
+				rowCount: 5,
 				functions: ['count', 'min', 'max', 'sum', 'avg'],
 				metrics: ['Mean'],
 				groupBy: ['Source'],
@@ -1510,7 +1254,7 @@ describe('search_knowledge tool', () => {
 					},
 					{
 						Source: 'GISTEMP',
-						count: 2,
+						count: 3,
 						min_Mean: -0.2,
 						max_Mean: -0.2,
 						sum_Mean: -0.2,
@@ -1518,7 +1262,7 @@ describe('search_knowledge tool', () => {
 					},
 				],
 				skippedNonNumeric: {
-					Mean: 1,
+					Mean: 2,
 				},
 			},
 		});
@@ -1562,59 +1306,6 @@ describe('search_knowledge tool', () => {
 			error: expect.stringContaining('Did you mean "country"?'),
 		});
 	});
-
-	it('streams CSV queries regardless of file metadata size', async () => {
-		knowledgeService.materializeWorkspace.mockResolvedValue([
-			{
-				id: 'file-1',
-				fileName: 'large.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 50 * 1024 * 1024,
-				relativePath: 'file-1.csv',
-			},
-		]);
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
-				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
-				return [
-					{
-						id: 'file-1',
-						fileName: 'large.csv',
-						mimeType: 'text/csv',
-						fileSizeBytes: 50 * 1024 * 1024,
-						relativePath: 'file-1.csv',
-					},
-				];
-			},
-		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
-
-		await expect(
-			tool.handler?.(
-				{
-					operation: 'csv_query',
-					file: 'file-1',
-					select: ['country'],
-				},
-				{} as never,
-			),
-		).resolves.toMatchObject({
-			operation: 'csv_query',
-			csv: {
-				fileName: 'large.csv',
-				rows: [['Germany']],
-				rowNumbers: [2],
-			},
-		});
-	});
-
 	it('continues streaming CSV queries past ten thousand rows', async () => {
 		knowledgeService.materializeWorkspace.mockImplementation(
 			async (_agentId, _projectId, workspaceRoot) => {

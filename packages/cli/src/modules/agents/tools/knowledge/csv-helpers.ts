@@ -1,6 +1,8 @@
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
 
+import { distance } from 'fastest-levenshtein';
+
 import { resolveFileReference, type WorkspaceFiles } from './file-references';
 import type { CsvAggregateInput, CsvFilter } from './schemas';
 
@@ -98,28 +100,15 @@ function formatMissingCsvColumnError(fileName: string, requestedColumn: string, 
 function getClosestColumnMatches(requestedColumn: string, headers: string[]) {
 	const requested = requestedColumn.toLowerCase();
 	return headers
-		.map((header) => ({ header, distance: levenshteinDistance(requested, header.toLowerCase()) }))
-		.filter(({ header, distance }) => header.toLowerCase().includes(requested) || distance <= 3)
+		.map((header) => ({ header, distance: distance(requested, header.toLowerCase()) }))
+		.filter(({ header, distance: editDistance }) => {
+			return header.toLowerCase().includes(requested) || editDistance <= 3;
+		})
 		.sort(
 			(left, right) => left.distance - right.distance || left.header.localeCompare(right.header),
 		)
 		.slice(0, 3)
 		.map(({ header }) => header);
-}
-
-function levenshteinDistance(left: string, right: string) {
-	const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-	for (let leftIndex = 0; leftIndex < left.length; leftIndex++) {
-		const current = [leftIndex + 1];
-		for (let rightIndex = 0; rightIndex < right.length; rightIndex++) {
-			current[rightIndex + 1] =
-				left[leftIndex] === right[rightIndex]
-					? previous[rightIndex]
-					: Math.min(previous[rightIndex], previous[rightIndex + 1], current[rightIndex]) + 1;
-		}
-		previous.splice(0, previous.length, ...current);
-	}
-	return previous[right.length];
 }
 
 export type CsvDistinctTracker = ReturnType<typeof createCsvDistinctTracker>;
@@ -320,8 +309,9 @@ function createNumericAggregateState() {
 		max: undefined as number | undefined,
 		skipped: 0,
 		add(value: string) {
-			const numericValue = Number(value);
-			if (value === '' || !Number.isFinite(numericValue)) {
+			const trimmedValue = value.trim();
+			const numericValue = Number(trimmedValue);
+			if (trimmedValue === '' || !Number.isFinite(numericValue)) {
 				this.skipped++;
 				return;
 			}

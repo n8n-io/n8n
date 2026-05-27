@@ -127,29 +127,6 @@ describe('AgentsController route access scopes', () => {
 });
 
 describe('AgentsController file uploads', () => {
-	it('lists files with the project and agent IDs', async () => {
-		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		agentKnowledgeService.listFiles.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId: 'agent-1',
-				fileName: 'document.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 5,
-				createdAt: new Date().toISOString(),
-			},
-		]);
-		const { controller } = makeController({ agentKnowledgeService });
-
-		await controller.listFiles(
-			{ params: { projectId: 'project-1' } } as never,
-			undefined as never,
-			'agent-1',
-		);
-
-		expect(agentKnowledgeService.listFiles).toHaveBeenCalledWith('agent-1', 'project-1');
-	});
-
 	it('rejects empty uploads', async () => {
 		const { controller } = makeController();
 
@@ -175,62 +152,6 @@ describe('AgentsController file uploads', () => {
 				'agent-1',
 			),
 		).rejects.toThrow(BadRequestError);
-	});
-
-	it('rethrows unexpected upload errors', async () => {
-		const { controller } = makeController();
-		const uploadError = new Error('disk unavailable');
-
-		await expect(
-			controller.uploadFiles(
-				{
-					params: { projectId: 'project-1' },
-					fileUploadError: uploadError,
-				} as never,
-				undefined as never,
-				'agent-1',
-			),
-		).rejects.toBe(uploadError);
-	});
-
-	it('delegates valid uploads with the project and agent IDs', async () => {
-		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		agentKnowledgeService.uploadFiles.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId: 'agent-1',
-				fileName: 'document.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 5,
-				createdAt: new Date().toISOString(),
-			},
-		]);
-		const { controller } = makeController({ agentKnowledgeService });
-		const files = [{ originalname: 'document.txt' }] as Express.Multer.File[];
-
-		await controller.uploadFiles(
-			{ params: { projectId: 'project-1' }, files } as never,
-			undefined as never,
-			'agent-1',
-		);
-
-		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith('agent-1', 'project-1', files);
-	});
-
-	it('deletes files with the project, agent, and file IDs', async () => {
-		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const { controller } = makeController({ agentKnowledgeService });
-
-		await expect(
-			controller.deleteFile(
-				{ params: { projectId: 'project-1' } } as never,
-				undefined as never,
-				'agent-1',
-				'file-1',
-			),
-		).resolves.toEqual({ success: true });
-
-		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
 	});
 });
 

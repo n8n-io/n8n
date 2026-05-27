@@ -166,6 +166,7 @@
     "express-rate-limit": "7.5.0",
     "fast-glob": "catalog:",
     "fast-json-patch": "catalog:",
+    "fastest-levenshtein": "catalog:",
     "flat": "5.0.2",
     "flatted": "catalog:",
     "formidable": "3.5.4",

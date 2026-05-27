@@ -12,6 +12,7 @@ import type {
 import { mapFileReferences, type WorkspaceFiles } from './file-references';
 
 type SearchInput = Extract<ParsedSearchKnowledgeInput, { operation: 'search' }>;
+type InternalSearchMatch = SearchMatchOutput & { fullText: string };
 
 const DEFAULT_READ_RANGE_CONTEXT = 6;
 const MAX_SEARCH_MATCH_TEXT_LENGTH = 500;
@@ -53,7 +54,7 @@ export async function runSearchOperation(
 		files: requestedFiles,
 	});
 	let counts = parseCountOutput(countResult.stdout, files);
-	let multiQueryMatches: SearchMatchOutput[] | undefined;
+	let multiQueryMatches: InternalSearchMatch[] | undefined;
 	if (input.queries) {
 		contentResult = await runInternalCommand(commandService, workspaceRoot, {
 			command: 'git_grep',
@@ -131,13 +132,14 @@ export async function runSearchOperation(
 	const parsedMatches = parseSearchMatches(contentResult.stdout, files);
 	const matches = multiQueryMatches ?? parsedMatches;
 	const slicedMatches = sliceResults(matches, input.offset, input.head_limit);
+	const displayMatches = slicedMatches.items.map(toSearchMatchOutput);
 	const search = buildSearchResult({
 		mode: input.output_mode,
 		query: primaryPattern,
 		queries: input.queries,
 		matchMode: input.queries ? input.match_mode : undefined,
 		counts,
-		matches: slicedMatches.items,
+		matches: displayMatches,
 		offset: input.offset,
 		headLimit: input.head_limit,
 		nextOffset: slicedMatches.nextOffset,
@@ -148,7 +150,7 @@ export async function runSearchOperation(
 		files,
 		result: toDisplayResult(
 			contentResult,
-			formatSearchMatches(slicedMatches.items, slicedMatches, input.head_limit),
+			formatSearchMatches(displayMatches, slicedMatches, input.head_limit),
 			search.truncated || contentResult.truncated,
 		),
 		search,
@@ -192,26 +194,35 @@ function parseCountOutput(stdout: string, files: WorkspaceFiles) {
 	return counts;
 }
 
-function parseSearchMatches(stdout: string, files: WorkspaceFiles): SearchMatchOutput[] {
+function parseSearchMatches(stdout: string, files: WorkspaceFiles): InternalSearchMatch[] {
 	const byRelativePath = new Map(files.map((file) => [file.relativePath, file]));
 	return stdout.split('\n').flatMap((line) => {
 		const parsed = parseGrepLine(line);
 		if (!parsed?.isMatch) return [];
 		const file = byRelativePath.get(normaliseGrepPath(parsed.filePath));
 		if (!file || parsed.lineNumber === undefined) return [];
-		const { text, truncated } = truncateMatchText(line.slice(parsed.contentStartIndex));
+		const fullText = line.slice(parsed.contentStartIndex);
+		const { text, truncated } = truncateMatchText(fullText);
 		return [
 			{
 				fileId: file.id,
 				fileName: file.fileName,
 				relativePath: file.relativePath,
 				lineNumber: parsed.lineNumber,
+				fullText,
 				text,
 				readRange: toReadRange(parsed.lineNumber),
 				truncated,
 			},
 		];
 	});
+}
+
+function toSearchMatchOutput({
+	fullText: _fullText,
+	...match
+}: InternalSearchMatch): SearchMatchOutput {
+	return match;
 }
 
 function truncateMatchText(text: string) {
@@ -223,7 +234,7 @@ function truncateMatchText(text: string) {
 }
 
 function filterMultiQueryMatches(
-	matches: SearchMatchOutput[],
+	matches: InternalSearchMatch[],
 	queries: string[],
 	matchMode: SearchMatchMode,
 	caseInsensitive?: boolean,
@@ -232,13 +243,13 @@ function filterMultiQueryMatches(
 	if (matchMode === 'any') {
 		return matches.filter((match) =>
 			normalizedQueries.some((query) =>
-				normalizeSearchText(match.text, caseInsensitive).includes(query),
+				normalizeSearchText(match.fullText, caseInsensitive).includes(query),
 			),
 		);
 	}
 	if (matchMode === 'all_on_same_line') {
 		return matches.filter((match) => {
-			const text = normalizeSearchText(match.text, caseInsensitive);
+			const text = normalizeSearchText(match.fullText, caseInsensitive);
 			return normalizedQueries.every((query) => text.includes(query));
 		});
 	}
@@ -278,7 +289,7 @@ function buildCountsFromMatches(matches: SearchMatchOutput[], files: WorkspaceFi
 }
 
 function hasAllQueriesInNearbyWindow(
-	matches: SearchMatchOutput[],
+	matches: InternalSearchMatch[],
 	relativePath: string,
 	lineNumber: number,
 	queries: string[],
@@ -291,7 +302,7 @@ function hasAllQueriesInNearbyWindow(
 		if (lineNumber < start || lineNumber > end) return false;
 		const windowText = sameFileMatches
 			.filter((match) => match.lineNumber >= start && match.lineNumber <= end)
-			.map((match) => normalizeSearchText(match.text, caseInsensitive))
+			.map((match) => normalizeSearchText(match.fullText, caseInsensitive))
 			.join('\n');
 		return queries.every((query) => windowText.includes(query));
 	});

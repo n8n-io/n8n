@@ -2914,6 +2914,9 @@ importers:
       fast-json-patch:
         specifier: 'catalog:'
         version: 3.1.1
+      fastest-levenshtein:
+        specifier: 'catalog:'
+        version: 1.0.16
       flat:
         specifier: 5.0.2
         version: 5.0.2

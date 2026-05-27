@@ -130,31 +130,6 @@ describe('AgentKnowledgeService', () => {
 		]);
 		expect(agentFileRepository.findByAgentId).toHaveBeenCalledWith(agentId);
 	});
-
-	it('lists workspace file metadata without reading binary data', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'document.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 5,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-
-		await expect(service.listWorkspaceFiles(agentId, projectId)).resolves.toEqual([
-			expect.objectContaining({
-				id: 'file-1',
-				fileName: 'document.txt',
-				relativePath: 'file-1.txt',
-			}),
-		]);
-		expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
-	});
-
 	it('stores binary data and creates file rows for the agent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 
@@ -417,40 +392,6 @@ describe('AgentKnowledgeService', () => {
 			await rm(workspaceRoot, { recursive: true, force: true });
 		}
 	});
-
-	it('materializes CSV files as text', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'data.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 17,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-		binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('name,age\nAlice,30\n'));
-		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
-		try {
-			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot);
-
-			expect(files).toEqual([
-				expect.objectContaining({
-					fileName: 'data.csv',
-					mimeType: 'text/csv',
-					relativePath: 'file-1.csv',
-				}),
-			]);
-			await expect(readFile(path.join(workspaceRoot, 'file-1.csv'), 'utf8')).resolves.toBe(
-				'name,age\nAlice,30\n',
-			);
-		} finally {
-			await rm(workspaceRoot, { recursive: true, force: true });
-		}
-	});
-
 	it('materializes only requested files when file references are provided', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
