@@ -12,8 +12,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			outputFile: { junit: './junit.xml' },
 			coverage: {
 				enabled: false,
-				include: ['src/**'],
-				exclude: ['**/*.grammar'],
+				include: ['src/**/*.{ts,vue}'],
 				provider: 'v8',
 				reporter: ['text-summary', 'lcov', 'html-spa'],
 			},
