@@ -347,11 +347,7 @@ function isProcessGroupAlive(pgid: number): boolean {
 	}
 }
 
-function sendKillSignal(
-	proc: ChildProcess,
-	pid: number,
-	signal: 'SIGTERM' | 'SIGKILL',
-): void {
+function sendKillSignal(proc: ChildProcess, pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
 	try {
 		if (process.platform === 'win32') {
 			execSync(`taskkill /PID ${pid} /T /F`, { timeout: CONFIG.KILL_TIMEOUT_MS });
