@@ -92,4 +92,18 @@ describe('N8nDateRangePicker', () => {
 			expect(presetButton).toBeVisible();
 		});
 	});
+
+	describe('footer slot', () => {
+		it('replaces the default Apply button when provided', async () => {
+			const { container, getByRole, queryByRole } = render(DateRangePicker, {
+				slots: {
+					footer: '<button>Custom Footer</button>',
+				},
+			});
+			await openCalendarPopover(container);
+
+			expect(getByRole('button', { name: 'Custom Footer' })).toBeVisible();
+			expect(queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
+		});
+	});
 });

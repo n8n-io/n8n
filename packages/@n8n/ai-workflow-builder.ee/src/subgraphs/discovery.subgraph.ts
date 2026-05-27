@@ -11,6 +11,11 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
 import { Annotation, END, START, StateGraph, type BaseCheckpointSaver } from '@langchain/langgraph';
+import {
+	createResourceCacheKey,
+	extractResourceOperations,
+	type ResourceOperationInfo,
+} from '@n8n/ai-utilities/node-catalog';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
@@ -45,11 +50,6 @@ import {
 	buildSelectedNodesSummary,
 	createContextMessage,
 } from '@/utils/context-builders';
-import {
-	createResourceCacheKey,
-	extractResourceOperations,
-	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
 import {
 	executeSubgraphTools,

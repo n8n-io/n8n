@@ -54,7 +54,7 @@ describe(useNodeDirtiness, () => {
 			setup() {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
-				workflowsStore.workflow.id = TEST_WORKFLOW_ID;
+				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
 				workflowState = useWorkflowState();
 				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
@@ -164,11 +164,11 @@ describe(useNodeDirtiness, () => {
 
 			const workflowState = useWorkflowState();
 			workflowState.setWorkflowExecutionData({
-				id: workflowsStore.workflow.id,
+				id: workflowsStore.workflowId,
 				finished: true,
 				mode: 'manual',
 				status: 'success',
-				workflowData: workflowsStore.workflow,
+				workflowData: workflowDocumentStore.getSnapshot(),
 				startedAt: runAt,
 				createdAt: runAt,
 				data: createRunExecutionData({
@@ -326,7 +326,7 @@ describe(useNodeDirtiness, () => {
 
 			// Simulate updating pinned data for node 'b' (set metadata timestamp as usePinnedData.setData would)
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			workflowDocumentStore.touchPinnedDataLastUpdatedAt('b');
 
@@ -488,7 +488,7 @@ describe(useNodeDirtiness, () => {
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflow.id),
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes(workflow.nodes);
 		workflowDocumentStore.setConnections(workflow.connections);

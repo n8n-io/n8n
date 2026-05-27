@@ -2,7 +2,7 @@
 
 Extra information, specific to the frontend codebase. Use this when doing any frontend work.
 
-- When reviewing CSS/SCSS/Vue changes in `@n8n/design-system` or `editor-ui`, always use `design-system-rules` skill.
+- When reviewing CSS/SCSS/Vue changes in `@n8n/design-system` or `editor-ui`, always use `n8n:design-system` skill.
 - ALWAYS follow the guides in `@n8n/design-system/src/styleguide/*.mdx`
 - PREFER using **semantic tokens** for styling from `@n8n/design-system/src/css/_tokens.scss` or `@n8n/design-system/src/css/_primitives.scss`.
 - AVOID using legacy tokens from `@n8n/design-system/src/css/_tokens.legacy.scss`

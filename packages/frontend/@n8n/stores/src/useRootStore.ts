@@ -98,6 +98,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const urlBaseEditor = computed(() => state.value.urlBaseEditor);
 
+	const urlBaseWebhook = computed(() => state.value.urlBaseWebhook);
+
 	const instanceId = computed(() => state.value.instanceId);
 
 	const versionCli = computed(() => state.value.versionCli);
@@ -227,6 +229,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		restUrl,
 		restApiContext,
 		urlBaseEditor,
+		urlBaseWebhook,
 		versionCli,
 		instanceId,
 		pushRef,

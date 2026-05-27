@@ -45,12 +45,12 @@ describe('Zod validation errors surface to LLM and allow self-correction', () =>
 		expect(result.finishReason).toBe('stop');
 		expect(result.error).toBeUndefined();
 
-		// At least two tool-result messages: one error, one success
+		// At least two tool-call messages: one rejected, one resolved
 		const allMessages = filterLlmMessages(result.messages);
-		const toolResultMessages = allMessages.filter((m) =>
-			m.content.some((c) => c.type === 'tool-result'),
+		const toolCallMessages = allMessages.filter((m) =>
+			m.content.some((c) => c.type === 'tool-call'),
 		);
-		expect(toolResultMessages.length).toBeGreaterThanOrEqual(2);
+		expect(toolCallMessages.length).toBeGreaterThanOrEqual(2);
 
 		// The final response should mention a user (age 25 or similar)
 		const text = findLastTextContent(result.messages);

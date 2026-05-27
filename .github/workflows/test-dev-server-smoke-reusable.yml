@@ -1,0 +1,49 @@
+name: 'Test: Dev-server boot smoke'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to test'
+        required: true
+        type: string
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=6144'
+  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+
+jobs:
+  smoke:
+    name: Dev-server smoke
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install Browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Run dev-server smoke spec
+        # Run from repo root so PLAYWRIGHT_BROWSERS_PATH (relative) resolves
+        # correctly. cd-ing into the playwright package double-nests it.
+        run: pnpm --filter=n8n-playwright test:dev-server-smoke --reporter=list
+
+      - name: Upload Failure Artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: dev-server-smoke-report
+          path: |
+            packages/testing/playwright/test-results/
+            packages/testing/playwright/playwright-report/
+          retention-days: 7

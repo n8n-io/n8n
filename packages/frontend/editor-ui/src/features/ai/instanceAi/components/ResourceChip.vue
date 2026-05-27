@@ -16,8 +16,8 @@ const iconMap: Record<string, IconName> = {
 
 const urlMap: Record<string, (id: string) => string> = {
 	workflow: (id) => `/workflow/${id}`,
-	credential: () => '/credentials',
-	'data-table': () => '/data-tables',
+	credential: (id) => `/home/credentials/${id}`,
+	'data-table': () => '/home/datatables',
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');

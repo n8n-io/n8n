@@ -120,6 +120,14 @@ export const eventNamesAudit = [
 	'n8n.audit.role-mapping.rule.updated',
 	'n8n.audit.role-mapping.rule.deleted',
 	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.cluster.version-mismatch.detected',
+	'n8n.audit.cluster.version-mismatch.resolved',
+	'n8n.audit.cluster.hostid-clash.detected',
+	'n8n.audit.cluster.hostid-clash.resolved',
+	'n8n.audit.cluster.split-brain.detected',
+	'n8n.audit.cluster.split-brain.resolved',
+	'n8n.audit.cluster.instance-joined',
+	'n8n.audit.cluster.instance-left',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

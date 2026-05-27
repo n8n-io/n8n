@@ -41,8 +41,8 @@ test.describe(
 				timeout: 30_000,
 			});
 
-			// Close the preview first
-			await n8n.instanceAi.getPreviewCloseButton().click();
+			// Hide the preview first
+			await n8n.instanceAi.getPreviewToggleButton().click();
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();
 
 			// Click the artifact card to re-open the preview

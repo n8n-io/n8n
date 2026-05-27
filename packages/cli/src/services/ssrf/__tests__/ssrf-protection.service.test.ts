@@ -467,32 +467,71 @@ describe('SsrfProtectionService', () => {
 		});
 
 		describe('decimal/octal/hex IP representations', () => {
-			it('should block decimal IP representation via DNS resolution', async () => {
-				// 2130706433 = 127.0.0.1 in decimal — URL constructor treats it as hostname
-				const dnsResolver = createMockDnsResolver();
-				dnsResolver.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+			it('should block decimal IP representation for loopback', async () => {
+				// new URL('http://2130706433/').hostname === '127.0.0.1' — normalized before lookup
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://2130706433/'));
+			});
 
-				const { service } = createService({}, dnsResolver);
-				const result = await service.validateUrl('http://2130706433/');
+			it('should block decimal IP representation for RFC-1918', async () => {
+				// 167772161 === 10.0.0.1
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://167772161/'));
+			});
 
-				expectBlocked(result);
+			it('should block hex IP representation for loopback', async () => {
+				// 0x7f000001 === 127.0.0.1
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://0x7f000001/'));
+			});
+
+			it('should block hex IP representation for cloud metadata', async () => {
+				// 0xa9fea9fe === 169.254.169.254
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://0xa9fea9fe/'));
 			});
 		});
 
 		describe('IPv6-mapped IPv4 addresses', () => {
-			it('should block ::ffff:127.0.0.1', () => {
+			it('should block ::ffff:127.0.0.1 (dotted form)', () => {
 				const { service } = createService();
 				expectBlocked(service.validateIp('::ffff:127.0.0.1'));
 			});
 
-			it('should block ::ffff:10.0.0.1', () => {
+			it('should block ::ffff:10.0.0.1 (dotted form)', () => {
 				const { service } = createService();
 				expectBlocked(service.validateIp('::ffff:10.0.0.1'));
+			});
+
+			it('should block ::ffff:7f00:1 (hex-compressed form for 127.0.0.1)', () => {
+				// new URL auto-compresses ::ffff:127.0.0.1 to this form
+				const { service } = createService();
+				expectBlocked(service.validateIp('::ffff:7f00:1'));
+			});
+
+			it('should block ::ffff:a9fe:a9fe (hex-compressed form for 169.254.169.254)', () => {
+				const { service } = createService();
+				expectBlocked(service.validateIp('::ffff:a9fe:a9fe'));
+			});
+
+			it('should block validateUrl for bracketed IPv4-mapped IPv6 loopback', async () => {
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://[::ffff:127.0.0.1]/'));
+			});
+
+			it('should block validateUrl for bracketed IPv4-mapped IPv6 metadata', async () => {
+				const { service } = createService();
+				expectBlocked(await service.validateUrl('http://[::ffff:169.254.169.254]/'));
 			});
 
 			it('should allow ::ffff: with public IP', () => {
 				const { service } = createService();
 				expectAllowed(service.validateIp('::ffff:8.8.8.8'));
+			});
+
+			it('should allow ::ffff:808:808 (hex-compressed public IP)', () => {
+				const { service } = createService();
+				expectAllowed(service.validateIp('::ffff:808:808'));
 			});
 		});
 

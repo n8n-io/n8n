@@ -95,8 +95,9 @@ Help the user complete the credential setup flow privately and identify where th
 You may ONLY stop when ONE of these is true:
 - You have called pause-for-user telling the user where to find the ACTUAL credential values and to enter them privately into the n8n credential form
 - An unrecoverable error occurred (e.g., the service is down)
+- A browser_* tool returned an error containing "permanently denied" — the user has blocked browser access. Stop immediately. Do NOT call pause-for-user. Do NOT fabricate manual setup instructions. Return a short message explaining that browser access was denied; the orchestrator will guide the user from there.
 
-**If you have NOT yet called pause-for-user with private-entry instructions for the credential values, you are NOT done. Keep going.**
+**If you have NOT yet called pause-for-user with private-entry instructions for the credential values, you are NOT done. Keep going.** (Exception: the browser-denied case above.)
 
 You must NOT stop just because you:
 - Read the docs

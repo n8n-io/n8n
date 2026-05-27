@@ -275,6 +275,8 @@ describe('Workspace', () => {
 
 			const names = tools.map((t) => t.name);
 			expect(names).toContain('workspace_read_file');
+			expect(names).toContain('workspace_str_replace_file');
+			expect(names).toContain('workspace_batch_str_replace_file');
 			expect(names).toContain('workspace_write_file');
 			expect(names).toContain('workspace_list_files');
 			expect(names).toContain('workspace_file_stat');

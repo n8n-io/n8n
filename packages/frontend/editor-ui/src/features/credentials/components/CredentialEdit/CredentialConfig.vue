@@ -26,11 +26,9 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
-import EnvFeatureFlag from '@/features/shared/envFeatureFlag/EnvFeatureFlag.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -49,6 +47,7 @@ import { ElSwitch } from 'element-plus';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	mode: string;
@@ -73,6 +72,7 @@ type Props = {
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
+	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -89,6 +89,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	quickConnect: [];
+	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -96,7 +97,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
@@ -180,13 +181,21 @@ const oAuthCallbackUrl = computed(() => {
 	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 });
 
-const jwksUri = computed(() => rootStore.jwksUri);
-
 const showOAuthSuccessBanner = computed(() => {
 	return (
 		props.isOAuthType &&
 		props.requiredPropertiesFilled &&
 		props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
+const showOAuthNotConnectedBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.isResolvable &&
+		props.requiredPropertiesFilled &&
+		!props.isOAuthConnected &&
 		!props.authError
 	);
 });
@@ -197,6 +206,7 @@ const isNewCredential = computed(() => props.mode === 'new' && !props.credential
 
 const isAskAssistantAvailable = computed(
 	() =>
+		!props.hideAskAssistant &&
 		documentationUrl.value &&
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
@@ -243,7 +253,7 @@ function onDocumentationUrlClick(): void {
 		docs_link: documentationUrl.value,
 		credential_type: credentialTypeName.value,
 		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 
@@ -282,7 +292,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+			<FreeAiCreditsCallout
+				:credential-type-name="credentialType?.name"
+				@claimed="$emit('claimed')"
+			/>
 
 			<CredentialModeSelector
 				v-if="canWrite"
@@ -296,7 +309,11 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
+				<QuickConnectBanner
+					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
+					:text="quickConnectBannerText"
+					:disclaimer="quickConnectOption?.disclaimer"
+				/>
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -307,7 +324,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -351,6 +368,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:button-loading="isRetesting"
 					@click="$emit('retest')"
 				/>
+
+				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<GoogleAuthButton @click="$emit('oauth')" />
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-not-connected-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
 
 				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"
@@ -450,17 +491,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						"
 						:redact-value="true"
 					/>
-
-					<EnvFeatureFlag name="OAUTH2_JWE">
-						<CopyInput
-							v-if="isOAuthType && !isManagedOAuth"
-							:label="i18n.baseText('credentialEdit.credentialConfig.jwksUri.label')"
-							:value="jwksUri"
-							:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
-							:hint="i18n.baseText('credentialEdit.credentialConfig.jwksUri.hint')"
-							:toast-title="i18n.baseText('credentialEdit.credentialConfig.jwksUri.copiedToast')"
-						/>
-					</EnvFeatureFlag>
 				</template>
 				<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 					<div>

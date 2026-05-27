@@ -243,26 +243,78 @@ describe('KeyManagerService', () => {
 	});
 
 	describe('listKeys()', () => {
-		it('returns all keys when no type filter is provided', async () => {
+		it('forwards pagination and defaults to createdAt:desc when sortBy is not provided', async () => {
 			const rows = [makeKey({ id: 'k1' }), makeKey({ id: 'k2' })];
-			repository.find.mockResolvedValue(rows);
+			repository.findAndCountForList.mockResolvedValue({ items: rows, count: 2 });
 
-			const result = await Container.get(KeyManagerService).listKeys();
+			const result = await Container.get(KeyManagerService).listKeys({
+				skip: 0,
+				take: 10,
+			} as never);
 
-			expect(repository.find).toHaveBeenCalledWith();
-			expect(repository.findAllByType).not.toHaveBeenCalled();
-			expect(result).toBe(rows);
+			expect(repository.findAndCountForList).toHaveBeenCalledWith({
+				type: undefined,
+				sortField: 'createdAt',
+				sortDirection: 'DESC',
+				skip: 0,
+				take: 10,
+				createdAtFrom: undefined,
+				createdAtTo: undefined,
+			});
+			expect(result).toEqual({ items: rows, count: 2 });
 		});
 
-		it('filters by type when provided', async () => {
+		it('parses sortBy into sortField and sortDirection', async () => {
+			repository.findAndCountForList.mockResolvedValue({ items: [], count: 0 });
+
+			await Container.get(KeyManagerService).listKeys({
+				skip: 5,
+				take: 25,
+				sortBy: 'updatedAt:asc',
+			} as never);
+
+			expect(repository.findAndCountForList).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sortField: 'updatedAt',
+					sortDirection: 'ASC',
+					skip: 5,
+					take: 25,
+				}),
+			);
+		});
+
+		it('forwards type and date range parsed as Date instances', async () => {
+			repository.findAndCountForList.mockResolvedValue({ items: [], count: 0 });
+
+			await Container.get(KeyManagerService).listKeys({
+				skip: 0,
+				take: 10,
+				type: 'data_encryption',
+				sortBy: 'status:desc',
+				activatedFrom: '2026-04-01T00:00:00.000Z',
+				activatedTo: '2026-04-30T23:59:59.999Z',
+			} as never);
+
+			const call = repository.findAndCountForList.mock.calls[0][0];
+			expect(call.type).toBe('data_encryption');
+			expect(call.sortField).toBe('status');
+			expect(call.sortDirection).toBe('DESC');
+			expect(call.createdAtFrom).toBeInstanceOf(Date);
+			expect(call.createdAtFrom?.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+			expect(call.createdAtTo).toBeInstanceOf(Date);
+			expect(call.createdAtTo?.toISOString()).toBe('2026-04-30T23:59:59.999Z');
+		});
+
+		it('returns the repository result unchanged', async () => {
 			const rows = [makeKey({ id: 'k1' })];
-			repository.findAllByType.mockResolvedValue(rows);
+			repository.findAndCountForList.mockResolvedValue({ items: rows, count: 7 });
 
-			const result = await Container.get(KeyManagerService).listKeys('data_encryption');
+			const result = await Container.get(KeyManagerService).listKeys({
+				skip: 0,
+				take: 10,
+			} as never);
 
-			expect(repository.findAllByType).toHaveBeenCalledWith('data_encryption');
-			expect(repository.find).not.toHaveBeenCalled();
-			expect(result).toBe(rows);
+			expect(result).toEqual({ items: rows, count: 7 });
 		});
 	});
 

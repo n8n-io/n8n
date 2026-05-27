@@ -398,4 +398,89 @@ describe('ParseValidateHandler', () => {
 			expect(mockValidateWorkflow).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('validateJSON', () => {
+		const nonEmptyJson = {
+			id: 'test',
+			name: 'Test',
+			nodes: [{ type: 'n8n-nodes-base.set' }],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		it('should return empty array when workflow has no nodes', () => {
+			const emptyJson = { id: 'test', name: 'Test', nodes: [], connections: {} };
+
+			const result = handler.validateJSON(emptyJson);
+
+			expect(result).toHaveLength(0);
+			expect(mockFromJSON).not.toHaveBeenCalled();
+			expect(mockValidateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should return empty array when no graph or JSON issues', () => {
+			const mockBuilder = {
+				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			const result = handler.validateJSON(nonEmptyJson);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should collect graph errors and warnings', () => {
+			const mockBuilder = {
+				validate: jest.fn().mockReturnValue({
+					valid: false,
+					errors: [{ code: 'GRAPH_ERR', message: 'Graph error', nodeName: 'A' }],
+					warnings: [{ code: 'GRAPH_WARN', message: 'Graph warning' }],
+				}),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			const result = handler.validateJSON(nonEmptyJson);
+
+			expect(result.map((w) => w.code)).toEqual(['GRAPH_ERR', 'GRAPH_WARN']);
+		});
+
+		it('should collect JSON errors and warnings', () => {
+			const mockBuilder = {
+				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({
+				valid: false,
+				errors: [{ code: 'JSON_ERR', message: 'JSON error' }],
+				warnings: [{ code: 'JSON_WARN', message: 'JSON warning', nodeName: 'B' }],
+			});
+
+			const result = handler.validateJSON(nonEmptyJson);
+
+			expect(result.map((w) => w.code)).toEqual(['JSON_ERR', 'JSON_WARN']);
+		});
+
+		it('should combine graph and JSON validation issues into a single warnings array', () => {
+			const mockBuilder = {
+				validate: jest.fn().mockReturnValue({
+					valid: false,
+					errors: [{ code: 'GRAPH_ERR', message: 'Graph error' }],
+					warnings: [],
+				}),
+			};
+			mockFromJSON.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({
+				valid: false,
+				errors: [{ code: 'JSON_ERR', message: 'JSON error' }],
+				warnings: [],
+			});
+
+			const result = handler.validateJSON(nonEmptyJson);
+
+			expect(result.map((w) => w.code)).toEqual(['GRAPH_ERR', 'JSON_ERR']);
+			expect(mockFromJSON).toHaveBeenCalledWith(nonEmptyJson);
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson);
+		});
+	});
 });

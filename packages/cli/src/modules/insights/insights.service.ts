@@ -52,9 +52,7 @@ export class InsightsService {
 	@OnLeaderTakeover()
 	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		if (this.pruningService.isPruningEnabled) {
-			this.pruningService.startPruningTimer();
-		}
+		this.pruningService.startPruningTimer();
 	}
 
 	@OnLeaderStepdown()

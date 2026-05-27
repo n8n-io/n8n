@@ -411,14 +411,16 @@ class SDKInterpreter {
 	private visitIdentifier(node: ESTree.Identifier): unknown {
 		const name = node.name;
 
-		// Check for dangerous globals
-		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
-
-		// Check if it's a declared variable (including auto-renamed ones)
+		// Locally declared variables shadow the dangerous-globals blocklist,
+		// so a user-declared `const fetch = node(...)` resolves to their value
+		// rather than being rejected as access to the real `fetch` global.
 		const resolvedName = this.renamedVariables.get(name) ?? name;
 		if (this.variables.has(resolvedName)) {
 			return this.variables.get(resolvedName);
 		}
+
+		// Check for dangerous globals (only when not shadowed by a local)
+		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
 
 		// Check if it's an SDK function
 		if (this.sdkFunctions.has(name)) {

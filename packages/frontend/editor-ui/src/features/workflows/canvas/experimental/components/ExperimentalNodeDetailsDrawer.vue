@@ -8,7 +8,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { type INodeUi } from '@/Interface';
 import { computed, provide, ref, watch } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
 const { node, nodeIds, isReadOnly } = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 
 const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
 const contextMenuItems = useContextMenuItems(computed(() => nodeIds));
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const ndvCloseTimes = ref(0);
 

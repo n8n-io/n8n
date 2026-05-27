@@ -5,17 +5,17 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
-import type { AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
 
 import { cleanStoredUserMessage } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 
 // ---------------------------------------------------------------------------
-// Mastra V2 message shape (as stored in the DB)
+// Persisted message shapes
 // ---------------------------------------------------------------------------
 
-interface MastraToolInvocation {
+interface StoredToolInvocation {
 	state: 'result' | 'call' | 'partial-call';
 	toolCallId: string;
 	toolName: string;
@@ -23,99 +23,117 @@ interface MastraToolInvocation {
 	result?: unknown;
 }
 
-interface MastraContentPart {
+interface StoredContentPart {
 	type: string;
 	text?: string;
-	toolInvocation?: MastraToolInvocation;
+	toolCallId?: string;
+	toolName?: string;
+	input?: Record<string, unknown>;
+	result?: unknown;
 }
 
-interface MastraContentV2 {
-	format?: number;
-	parts?: MastraContentPart[];
-	toolInvocations?: MastraToolInvocation[];
-	reasoning?: Array<{ text: string }>;
-	content?: string;
-}
-
-export interface MastraDBMessage {
+export interface StoredAgentMessage {
 	id: string;
 	role: string;
-	/** Content from Mastra storage — unknown because it's read from DB via Record<string, unknown>. */
 	content: unknown;
 	type?: string;
 	createdAt: Date;
 }
 
+type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
+	id: string;
+	role: string;
+	content: unknown;
+	createdAt: Date;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Type guard: narrows unknown content to MastraContentV2 (object with format or known V2 fields). */
-function isV2Content(content: unknown): content is MastraContentV2 {
-	return content !== null && typeof content === 'object' && !Array.isArray(content);
-}
-
 function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
-	if (!isV2Content(content)) return '';
-
-	// V2 shortcut
-	if (content.content) return content.content;
-
-	// V2 parts array
-	if (content.parts) {
-		return content.parts
-			.filter((p) => p.type === 'text' && p.text)
-			.map((p) => p.text!)
-			.join('');
-	}
-
+	if (Array.isArray(content)) return extractTextFromParts(content);
 	return '';
 }
 
 function extractReasoningFromContent(content: unknown): string {
 	if (typeof content === 'string') return '';
-	if (!isV2Content(content)) return '';
-
-	// V2 top-level reasoning array
-	if (content.reasoning?.length) {
-		return content.reasoning.map((r) => r.text).join('');
-	}
-
-	// V2 reasoning parts
-	if (content.parts) {
-		return content.parts
-			.filter((p) => p.type === 'reasoning' && p.text)
-			.map((p) => p.text!)
-			.join('');
-	}
-
+	if (Array.isArray(content)) return extractReasoningFromParts(content);
 	return '';
 }
 
-function extractParts(content: unknown): MastraContentPart[] | undefined {
-	if (!isV2Content(content)) return undefined;
-	return content.parts;
+function extractTextFromParts(parts: unknown[]): string {
+	return parts
+		.filter(
+			(p): p is { type: 'text'; text: string } =>
+				typeof p === 'object' &&
+				p !== null &&
+				'type' in p &&
+				p.type === 'text' &&
+				'text' in p &&
+				typeof p.text === 'string',
+		)
+		.map((p) => p.text)
+		.join('');
 }
 
-function extractToolInvocations(content: unknown): MastraToolInvocation[] {
-	if (typeof content === 'string') return [];
-	if (!isV2Content(content)) return [];
+function extractReasoningFromParts(parts: unknown[]): string {
+	return parts
+		.filter(
+			(p): p is { type: 'reasoning'; text: string } =>
+				typeof p === 'object' &&
+				p !== null &&
+				'type' in p &&
+				p.type === 'reasoning' &&
+				'text' in p &&
+				typeof p.text === 'string',
+		)
+		.map((p) => p.text)
+		.join('');
+}
 
-	// V2 top-level toolInvocations (preferred)
-	if (content.toolInvocations?.length) return content.toolInvocations;
+function extractParts(content: unknown): StoredContentPart[] | undefined {
+	if (Array.isArray(content)) return content.filter(isStoredContentPart);
+	return undefined;
+}
 
-	// V2 parts-based tool invocations
-	if (content.parts) {
-		return content.parts
-			.filter((p) => p.type === 'tool-invocation' && p.toolInvocation)
-			.map((p) => p.toolInvocation!);
+function isStoredContentPart(value: unknown): value is StoredContentPart {
+	return typeof value === 'object' && value !== null && 'type' in value;
+}
+
+function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocation | undefined {
+	if (part.type === 'tool-call' && part.toolCallId && part.toolName) {
+		return {
+			state: 'call',
+			toolCallId: part.toolCallId,
+			toolName: part.toolName,
+			args: part.input ?? {},
+		};
 	}
+	if (part.type === 'tool-result' && part.toolCallId && part.toolName) {
+		return {
+			state: 'result',
+			toolCallId: part.toolCallId,
+			toolName: part.toolName,
+			args: part.input ?? {},
+			result: part.result,
+		};
+	}
+	return undefined;
+}
 
+function extractToolInvocations(content: unknown): StoredToolInvocation[] {
+	if (typeof content === 'string') return [];
+	if (Array.isArray(content))
+		return content.filter(isStoredContentPart).flatMap((part) => {
+			const invocation = nativeToolPartToInvocation(part);
+			return invocation ? [invocation] : [];
+		});
 	return [];
 }
 
-function buildToolCallState(invocation: MastraToolInvocation): InstanceAiToolCallState {
+function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCallState {
 	const isCompleted = invocation.state === 'result';
 	return {
 		toolCallId: invocation.toolCallId,
@@ -128,13 +146,13 @@ function buildToolCallState(invocation: MastraToolInvocation): InstanceAiToolCal
 }
 
 /**
- * Build a chronological timeline from V2 parts (preserves tool-call vs text ordering).
+ * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
  * Falls back to tool-calls-first heuristic when parts aren't available.
  */
 function buildTimeline(
 	textContent: string,
 	toolCalls: InstanceAiToolCallState[],
-	parts?: MastraContentPart[],
+	parts?: StoredContentPart[],
 ): InstanceAiTimelineEntry[] {
 	// If parts are available, use their ordering (chronologically accurate)
 	if (parts?.length) {
@@ -142,8 +160,8 @@ function buildTimeline(
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
 				timeline.push({ type: 'text', content: part.text });
-			} else if (part.type === 'tool-invocation' && part.toolInvocation) {
-				timeline.push({ type: 'tool-call', toolCallId: part.toolInvocation.toolCallId });
+			} else if ((part.type === 'tool-call' || part.type === 'tool-result') && part.toolCallId) {
+				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
 			}
 		}
 		return timeline;
@@ -168,7 +186,7 @@ function buildFlatAgentTree(
 	textContent: string,
 	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
-	parts?: MastraContentPart[],
+	parts?: StoredContentPart[],
 ): InstanceAiAgentNode {
 	return {
 		agentId: 'agent-001',
@@ -182,30 +200,112 @@ function buildFlatAgentTree(
 	};
 }
 
+function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
+	return (snapshot.updatedAt ?? snapshot.createdAt ?? new Date(0)).toISOString();
+}
+
+function snapshotCreatedAtMs(snapshot: AgentTreeSnapshot): number | undefined {
+	return snapshot.createdAt?.getTime();
+}
+
+function messageCreatedAtMs(message: { createdAt: Date }): number {
+	return message.createdAt.getTime();
+}
+
+function getNextConversationMessageTimestamp(
+	messages: ConversationStoredMessage[],
+	currentIndex: number,
+): number | undefined {
+	for (let i = currentIndex + 1; i < messages.length; i++) {
+		const role = messages[i].role;
+		if (role === 'user' || role === 'assistant') return messageCreatedAtMs(messages[i]);
+	}
+	return undefined;
+}
+
+function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
+	const groupId = snapshot.messageGroupId ?? snapshot.runId;
+	return {
+		id: groupId,
+		runId: snapshot.runId,
+		messageGroupId: snapshot.messageGroupId,
+		runIds: snapshot.runIds,
+		role: 'assistant',
+		createdAt: snapshotTimestamp(snapshot),
+		content: snapshot.tree.textContent,
+		reasoning: snapshot.tree.reasoning,
+		isStreaming: false,
+		agentTree: snapshot.tree,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
 
 /**
- * Converts raw Mastra DB messages into rich InstanceAiMessage objects
+ * Converts persisted native agent messages into rich InstanceAiMessage objects
  * with agent trees (from snapshots or reconstructed flat trees).
  */
 export function parseStoredMessages(
-	mastraMessages: MastraDBMessage[],
+	storedMessages: Array<AgentDbMessage | StoredAgentMessage>,
 	snapshots?: RunSnapshots,
 ): InstanceAiMessage[] {
 	const messages: InstanceAiMessage[] = [];
+	const snapshotList = snapshots ?? [];
 
-	// Snapshots are stored as a chronological array — the Nth snapshot
-	// corresponds to the Nth assistant message. We align from the END
-	// so old messages (before snapshots existed) get flat trees.
-	const assistantCount = mastraMessages.filter((m) => m.role === 'assistant').length;
-	const snapshotOffset = assistantCount - (snapshots?.length ?? 0);
-	let assistantIdx = 0;
+	const conversationMessages = storedMessages.filter(
+		(message): message is ConversationStoredMessage => 'role' in message,
+	);
+
+	// Snapshots are stored chronologically, so use their DB timestamps to place
+	// orphan snapshots before, between, or after assistant rows.
+	let nextSnapshotIdx = 0;
+	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
 	let lastUserMessageId: string | undefined;
 
-	for (const msg of mastraMessages) {
+	function appendChronologicalOrphansBefore(message: ConversationStoredMessage): void {
+		const messageTimestamp = messageCreatedAtMs(message);
+		while (nextSnapshotIdx < snapshotList.length) {
+			const snapshot = snapshotList[nextSnapshotIdx];
+			const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+			if (snapshotTimestamp === undefined || snapshotTimestamp >= messageTimestamp) return;
+
+			consumedSnapshots.add(snapshot);
+			messages.push(buildSnapshotMessage(snapshot));
+			nextSnapshotIdx++;
+		}
+	}
+
+	function takeSnapshotForAssistant(
+		message: ConversationStoredMessage,
+		messageIndex: number,
+	): AgentTreeSnapshot | undefined {
+		appendChronologicalOrphansBefore(message);
+
+		const snapshot = snapshotList[nextSnapshotIdx];
+		if (!snapshot) return undefined;
+
+		const nextMessageTimestamp = getNextConversationMessageTimestamp(
+			conversationMessages,
+			messageIndex,
+		);
+		const snapshotTimestamp = snapshotCreatedAtMs(snapshot);
+		if (
+			snapshotTimestamp === undefined ||
+			(nextMessageTimestamp !== undefined && snapshotTimestamp > nextMessageTimestamp)
+		) {
+			return undefined;
+		}
+
+		consumedSnapshots.add(snapshot);
+		nextSnapshotIdx++;
+		return snapshot;
+	}
+
+	for (const [messageIndex, msg] of conversationMessages.entries()) {
+		appendChronologicalOrphansBefore(msg);
 		const text = extractTextFromContent(msg.content);
 
 		if (msg.role === 'user') {
@@ -232,13 +332,7 @@ export function parseStoredMessages(
 			const toolCalls = invocations.map(buildToolCallState);
 			const parts = extractParts(msg.content);
 
-			// Match snapshot by position: Nth assistant message → Nth snapshot (aligned from end)
-			const snapshotIdx = assistantIdx - snapshotOffset;
-			const snapshot =
-				snapshots && snapshotIdx >= 0 && snapshotIdx < snapshots.length
-					? snapshots[snapshotIdx]
-					: undefined;
-			assistantIdx++;
+			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
 
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
@@ -266,6 +360,11 @@ export function parseStoredMessages(
 
 		// Skip tool/system messages — they are represented via tool invocations
 		// in the assistant message's content
+	}
+
+	for (const snapshot of snapshots ?? []) {
+		if (consumedSnapshots.has(snapshot)) continue;
+		messages.push(buildSnapshotMessage(snapshot));
 	}
 
 	// Deduplicate assistant messages by messageGroupId.

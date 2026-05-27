@@ -1,7 +1,6 @@
-import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
-import { patchThread } from './thread-patch';
+import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
 import type {
 	AttemptRecord,
 	WorkflowBuildOutcome,
@@ -26,7 +25,7 @@ const loopStorageSchema = z.record(z.string(), workItemRecordSchema);
 export type WorkflowLoopWorkItemRecord = z.infer<typeof workItemRecordSchema>;
 
 export class WorkflowLoopStorage {
-	constructor(private readonly memory: Memory) {}
+	constructor(private readonly memory: PatchableThreadMemory) {}
 
 	async getWorkItem(
 		threadId: string,
@@ -68,7 +67,7 @@ export class WorkflowLoopStorage {
 	}
 
 	private async loadAll(threadId: string): Promise<Record<string, WorkflowLoopWorkItemRecord>> {
-		const thread = await this.memory.getThreadById({ threadId });
+		const thread = await getThread(this.memory, threadId);
 		if (!thread?.metadata?.[METADATA_KEY]) return {};
 		return this.parse(thread.metadata[METADATA_KEY]);
 	}

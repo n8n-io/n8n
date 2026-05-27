@@ -25,6 +25,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -71,6 +73,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsEncryptionKeys = async () =>
+	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -91,8 +95,6 @@ const SettingsExternalSecrets = async () => {
 };
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
-const SettingsInstanceRegistryView = async () =>
-	await import('@/features/settings/instanceRegistry/views/SettingsInstanceRegistryView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
@@ -165,7 +167,21 @@ const allowResourceCenterRoute = (
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		redirect: '/home/workflows',
+		// Stub component — beforeEnter always navigates away, so it is never rendered.
+		// Required because vue-router resolves `redirect` before guards run, and we need
+		// stores populated by `initializeCore` to decide where to send the user.
+		component: { render: () => null },
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (
+				settingsStore.isModuleActive('instance-ai') &&
+				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				canMessageInstanceAi()
+			) {
+				return next({ name: INSTANCE_AI_VIEW });
+			}
+			next('/home/workflows');
+		},
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -927,6 +943,31 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'encryption-keys',
+				name: VIEWS.ENCRYPTION_KEYS_SETTINGS,
+				component: SettingsEncryptionKeys,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'encryptionKey:manage',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('ENCRYPTION_KEY_ROTATION');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'encryption-keys',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
 				component: SettingsLogStreamingView,
@@ -939,31 +980,6 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'instance-registry',
-				name: VIEWS.INSTANCE_REGISTRY,
-				component: SettingsInstanceRegistryView,
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'orchestration:read',
-						},
-						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('INSTANCE_REGISTRY');
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'instance-registry',
-							};
-						},
 					},
 				},
 			},

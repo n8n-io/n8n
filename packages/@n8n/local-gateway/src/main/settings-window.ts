@@ -1,10 +1,19 @@
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 
 let settingsWindow: BrowserWindow | null = null;
 
+function revealSettingsWindow(windowRef: BrowserWindow): void {
+	if (windowRef.isMinimized()) {
+		windowRef.restore();
+	}
+	windowRef.show();
+	app.focus({ steal: true });
+	windowRef.focus();
+}
+
 export function openSettingsWindow(preloadPath: string, rendererPath: string): void {
 	if (settingsWindow && !settingsWindow.isDestroyed()) {
-		settingsWindow.focus();
+		revealSettingsWindow(settingsWindow);
 		return;
 	}
 
@@ -24,7 +33,11 @@ export function openSettingsWindow(preloadPath: string, rendererPath: string): v
 		},
 	});
 
-	void settingsWindow.loadFile(rendererPath);
+	void settingsWindow.loadFile(rendererPath).then(() => {
+		if (settingsWindow && !settingsWindow.isDestroyed()) {
+			revealSettingsWindow(settingsWindow);
+		}
+	});
 
 	settingsWindow.on('closed', () => {
 		settingsWindow = null;

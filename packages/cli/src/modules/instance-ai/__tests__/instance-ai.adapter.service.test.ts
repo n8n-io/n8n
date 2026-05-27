@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -6,6 +6,15 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeLabel = label ? ` label="${esc(label)}"` : '';
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
 	},
 }));
 
@@ -973,7 +982,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{ staticCacheDir: '/tmp' } as unknown as ConstructorParameters<
+		{ staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
@@ -996,6 +1005,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	(
@@ -1109,7 +1119,7 @@ function createDataTableAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1126,6 +1136,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -1198,6 +1209,24 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+
+		it('resolves table references with the requested permission scope', async () => {
+			const { adapter } = createDataTableAdapterForTests();
+
+			const result = await adapter.resolveTableReference?.('dt-1', { permission: 'readRow' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['dataTable:readRow'],
+				false,
+				{ dataTableId: 'dt-1' },
+			);
+			expect(result).toEqual({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId: 'team-project-id',
+			});
 		});
 	});
 
@@ -1297,6 +1326,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
+	sharingEnabled?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1306,6 +1336,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		id: 'wf-new',
 		name: 'Test Workflow',
 		active: false,
+		versionId: 'version-id',
+		activeVersionId: null,
+		isArchived: false,
 		createdAt: new Date('2026-01-01'),
 		updatedAt: new Date('2026-01-01'),
 		nodes: [],
@@ -1346,16 +1379,27 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		archive: jest.fn().mockResolvedValue(undefined),
+		getMany: jest.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		archive: jest.fn().mockResolvedValue(savedWorkflow),
+		unarchive: jest.fn().mockResolvedValue(savedWorkflow),
+		activateWorkflow: jest.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
+	const mockEnterpriseWorkflowService = {
+		preventTampering: jest.fn(async (data: unknown) => data),
+	};
+	const mockTelemetry = { track: jest.fn() };
+	const mockLogger = {
+		error: jest.fn(),
+		warn: jest.fn(),
+		scoped: jest.fn(),
+	};
+	mockLogger.scoped.mockReturnValue(mockLogger);
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[0],
+		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[1],
@@ -1375,7 +1419,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1389,20 +1433,23 @@ function createWorkflowAdapterForTests(overrides?: {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		mockEnterpriseWorkflowService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[24],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
-			isSharingEnabled: jest.fn().mockReturnValue(false),
+			isSharingEnabled: jest.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
-		{ track: jest.fn() } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const context = service.createContext(mockUser, { threadId: 'thread-1' });
@@ -1417,6 +1464,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockSharedWorkflowRepository,
 		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
+		mockEnterpriseWorkflowService,
+		mockTelemetry,
+		mockLogger,
 		mockUser,
 	};
 }
@@ -1431,6 +1481,95 @@ describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('preserves node-level execution options when returning WorkflowJSON', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-settings',
+			name: 'Debug Workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: { category: 'randomData' },
+					notes: 'Keep execution settings',
+					notesInFlow: true,
+					executeOnce: true,
+					retryOnFail: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-settings');
+
+		expect(result.nodes[0]).toEqual(
+			expect.objectContaining({
+				notes: 'Keep execution settings',
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+			}),
+		);
+	});
+
+	it('lists active workflows by default', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list({ limit: 10, query: 'Test' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 10,
+			filter: {
+				isArchived: false,
+				query: 'Test',
+			},
+		});
+		expect(result).toEqual([
+			expect.objectContaining({
+				id: 'wf-new',
+				isArchived: false,
+			}),
+		]);
+	});
+
+	it('lists archived workflows when requested', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ status: 'archived' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: {
+				isArchived: true,
+			},
+		});
+	});
+
+	it('omits the archived filter when listing all workflows', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ status: 'all' });
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: {},
+		});
 	});
 
 	it('defaults to personal project when no projectId provided', async () => {
@@ -1474,6 +1613,18 @@ describe('createWorkflowAdapter', () => {
 		).rejects.toThrow('User does not have the required permissions in this project');
 	});
 
+	it('tracks workflow id when publishing a builder workflow', async () => {
+		const { adapter, mockTelemetry } = createWorkflowAdapterForTests();
+
+		await adapter.publish('wf-new');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder published workflow', {
+			thread_id: 'thread-1',
+			workflow_id: 'wf-new',
+			executed_by: 'ai',
+		});
+	});
+
 	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
 		const {
 			adapter,
@@ -1502,6 +1653,73 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('archives and unmarks the temporary shell when create update fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService, mockUser } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('archives and unmarks the temporary shell when credential tamper protection fails', async () => {
+		const {
+			adapter,
+			mockAiBuilderTemporaryWorkflowRepository,
+			mockEnterpriseWorkflowService,
+			mockWorkflowService,
+			mockUser,
+		} = createWorkflowAdapterForTests({ sharingEnabled: true });
+		const saveError = new Error('credential access denied');
+		mockEnterpriseWorkflowService.preventTampering.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('preserves the original create error when shell cleanup fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		const cleanupError = new Error('cleanup failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+		mockWorkflowService.archive.mockRejectedValueOnce(cleanupError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		expect(mockLogger.warn).toHaveBeenCalledWith(
+			'Failed to clean up AI-builder workflow shell after create failure',
+			{
+				threadId: 'thread-1',
+				workflowId: 'wf-new',
+				error: 'cleanup failed',
+			},
+		);
+	});
+
 	it('does not mark the workflow as AI-builder temporary when markAsAiTemporary is omitted', async () => {
 		const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
@@ -1509,6 +1727,22 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
+	it('persists pinData as an empty object (not undefined) when the SDK workflow has no pinData', async () => {
+		// Regression: explicit `pinData: undefined` round-tripped as SQL NULL,
+		// which then crashed `getDataLastExecutedNodeData` on test-webhook runs.
+		// Match the manual UI path, which stores `{}`.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 
@@ -1557,6 +1791,35 @@ describe('createWorkflowAdapter', () => {
 		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-archived');
 	});
 
+	it('unarchives a workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.unarchive('wf-1');
+
+		expect(mockWorkflowService.unarchive).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			'wf-1',
+		);
+	});
+
+	it('throws when archive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.archive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.archive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
+		);
+	});
+
+	it('throws when unarchive cannot find or access the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.unarchive.mockResolvedValueOnce(undefined);
+
+		await expect(adapter.unarchive('wf-missing')).rejects.toThrow(
+			'Workflow wf-missing not found or not accessible',
+		);
+	});
+
 	describe('instance read-only mode', () => {
 		it('blocks createFromWorkflowJSON when branchReadOnly is true', async () => {
 			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
@@ -1574,10 +1837,10 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
-		it('blocks delete when branchReadOnly is true', async () => {
+		it('blocks unarchive when branchReadOnly is true', async () => {
 			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
 
-			await expect(adapter.delete('wf-1')).rejects.toThrow(
+			await expect(adapter.unarchive('wf-1')).rejects.toThrow(
 				'Cannot modify workflows on a protected instance',
 			);
 		});
@@ -1712,7 +1975,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1731,6 +1994,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		mockRoleService as unknown as RoleService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -1924,7 +2188,15 @@ describe('resolveDataTableByIdOrName', () => {
 // createExecutionAdapter – run() forces save settings
 // ---------------------------------------------------------------------------
 
-function createRunAdapterForTests(workflow: Record<string, unknown>) {
+function createRunAdapterForTests(
+	workflow: Record<string, unknown>,
+	options?: {
+		activeExecution?: boolean;
+		execution?: ReturnType<typeof makeExecution>;
+		postExecutePromise?: Promise<unknown>;
+		threadId?: string;
+	},
+) {
 	const mockWorkflowFinderService = {
 		findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 	};
@@ -1934,12 +2206,17 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 	};
 
 	const mockActiveExecutions = {
-		has: jest.fn().mockReturnValue(false),
+		getPostExecutePromise: jest
+			.fn()
+			.mockReturnValue(options?.postExecutePromise ?? Promise.resolve()),
+		has: jest.fn().mockReturnValue(options?.activeExecution ?? false),
+		stopExecution: jest.fn(),
 	};
 
 	const mockExecutionRepository = {
-		findSingleExecution: jest.fn().mockResolvedValue(undefined),
+		findSingleExecution: jest.fn().mockResolvedValue(options?.execution),
 	};
+	const mockTelemetry = { track: jest.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -1964,7 +2241,7 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1983,13 +2260,14 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const adapter = service.createContext(mockUser).executionService;
+	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
 
-	return { adapter, mockWorkflowRunner };
+	return { adapter, mockActiveExecutions, mockTelemetry, mockWorkflowRunner };
 }
 
 describe('createExecutionAdapter run()', () => {
@@ -2035,5 +2313,79 @@ describe('createExecutionAdapter run()', () => {
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
 		});
+	});
+
+	it('tracks workflow id and success status when a builder execution finishes', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				execution: makeExecution({ status: 'success' }),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder executed workflow', {
+			thread_id: 'thread-1',
+			workflow_id: 'wf-1',
+			executed_by: 'ai',
+			pinned_node_count: 0,
+			exec_type: 'manual',
+			status: 'success',
+		});
+	});
+
+	it('tracks error status when a builder execution fails', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				execution: makeExecution({ status: 'error', error: { message: 'boom' } }),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+			}),
+		);
+	});
+
+	it('tracks timeout cancellation as an error status', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+
+		await expect(adapter.run('wf-1', undefined, { timeout: 1 })).resolves.toMatchObject({
+			status: 'error',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+			}),
+		);
 	});
 });

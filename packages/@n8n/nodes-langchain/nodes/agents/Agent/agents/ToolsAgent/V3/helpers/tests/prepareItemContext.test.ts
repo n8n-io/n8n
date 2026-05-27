@@ -1,7 +1,7 @@
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-import { mock } from 'jest-mock-extended';
 import type { Tool } from '@langchain/classic/tools';
+import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
@@ -9,31 +9,31 @@ import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
 import * as commonHelpers from '../../../common';
 import { prepareItemContext } from '../prepareItemContext';
 
-jest.mock('@utils/helpers', () => ({
-	getPromptInputByType: jest.fn(),
+vi.mock('@utils/helpers', () => ({
+	getPromptInputByType: vi.fn(),
 }));
 
-jest.mock('@utils/output_parsers/N8nOutputParser', () => ({
-	getOptionalOutputParser: jest.fn(),
+vi.mock('@utils/output_parsers/N8nOutputParser', () => ({
+	getOptionalOutputParser: vi.fn(),
 }));
 
-jest.mock('../../../common', () => ({
-	getTools: jest.fn(),
-	prepareMessages: jest.fn(),
-	preparePrompt: jest.fn(),
+vi.mock('../../../common', () => ({
+	getTools: vi.fn(),
+	prepareMessages: vi.fn(),
+	preparePrompt: vi.fn(),
 }));
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 });
 
 describe('processItem', () => {
 	it('should throw error when text parameter is empty', async () => {
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined as any);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined as any);
 
 		await expect(prepareItemContext(mockContext, 0)).rejects.toThrow(
 			'The "text" parameter is empty.',
@@ -44,11 +44,11 @@ describe('processItem', () => {
 		const mockTool = mock<Tool>();
 		const mockPrompt = mock<ChatPromptTemplate>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {
@@ -76,11 +76,11 @@ describe('processItem', () => {
 		const mockTool = mock<Tool>();
 		const mockPrompt = mock<ChatPromptTemplate>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {
@@ -101,11 +101,11 @@ describe('processItem', () => {
 		const mockTool = mock<Tool>();
 		const mockPrompt = mock<ChatPromptTemplate>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {
@@ -127,11 +127,11 @@ describe('processItem', () => {
 		const mockPrompt = mock<ChatPromptTemplate>();
 		const mockOutputParser = mock<any>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(mockOutputParser);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(mockOutputParser);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {
@@ -152,11 +152,11 @@ describe('processItem', () => {
 		const mockPrompt = mock<ChatPromptTemplate>();
 		const mockOutputParser = mock<any>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(mockOutputParser);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(mockOutputParser);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {
@@ -181,11 +181,11 @@ describe('processItem', () => {
 		const mockTool = mock<Tool>();
 		const mockPrompt = mock<ChatPromptTemplate>();
 
-		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
-		jest.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
-		jest.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
-		jest.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
-		jest.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
+		vi.spyOn(helpers, 'getPromptInputByType').mockReturnValue('test input');
+		vi.spyOn(outputParsers, 'getOptionalOutputParser').mockResolvedValue(undefined);
+		vi.spyOn(commonHelpers, 'getTools').mockResolvedValue([mockTool]);
+		vi.spyOn(commonHelpers, 'prepareMessages').mockResolvedValue([]);
+		vi.spyOn(commonHelpers, 'preparePrompt').mockReturnValue(mockPrompt);
 
 		mockContext.getNodeParameter.mockImplementation((param) => {
 			if (param === 'options') {

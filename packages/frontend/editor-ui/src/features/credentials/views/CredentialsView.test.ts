@@ -25,6 +25,11 @@ vi.mock('@/features/collaboration/projects/projects.api', () => ({
 	getProject: vi.fn(),
 }));
 
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
+}));
+
 const router = createRouter({
 	history: createWebHistory(),
 	routes: [

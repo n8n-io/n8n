@@ -344,6 +344,7 @@ describe('McpOAuthService', () => {
 				refreshToken: 'refresh-token-456',
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
 
 			const result = await service.exchangeAuthorizationCode(
 				client,

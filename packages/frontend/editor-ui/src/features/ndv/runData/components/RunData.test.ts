@@ -2,6 +2,7 @@ import { reactive, computed } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
+	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -11,12 +12,20 @@ import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
 import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	type ExecutionStatus,
+	type INodeExecutionData,
+	type ITaskData,
+	type ITaskMetadata,
+} from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
@@ -1298,6 +1307,65 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('trimmed execution data placeholder', () => {
+		const trimmedRun = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: {
+				main: [
+					[
+						{
+							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+							pairedItem: { item: 0 },
+						},
+					],
+				],
+			},
+			source: [null],
+		} as unknown as ITaskData;
+
+		it('shows the loading spinner for trimmed data while the workflow execution is still running', () => {
+			const { getByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state with an unpin button for trimmed pinned data after the workflow execution finished', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				pinnedData: [
+					{
+						json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+						pairedItem: { item: 0 },
+					},
+				],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1322,6 +1390,7 @@ describe('RunData', () => {
 		overrideOutputs,
 		lastSuccessfulExecution,
 		redactionInfo,
+		executionStatus,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1333,6 +1402,7 @@ describe('RunData', () => {
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
 		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
+		executionStatus?: ExecutionStatus;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1367,31 +1437,6 @@ describe('RunData', () => {
 					workflow: {
 						workflowNodes,
 					},
-					workflowExecutionData: {
-						id: '1',
-						finished: true,
-						mode: 'trigger',
-						startedAt: new Date(),
-						workflowData: {
-							id: '1',
-							name: 'Test Workflow',
-							versionId: '1',
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							active: false,
-							nodes: [],
-							connections: {},
-						},
-						data: {
-							resultData: {
-								runData: {
-									'Test Node': runs ?? [defaultRun],
-								},
-							},
-							...(redactionInfo ? { redactionInfo } : {}),
-						},
-					},
-					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
 				},
 			},
 		});
@@ -1406,13 +1451,32 @@ describe('RunData', () => {
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
-		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(workflowNodes[0]);
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		workflowsStore.workflow.id = testWorkflowId;
+		workflowsStore.setWorkflowId(testWorkflowId);
+
+		workflowsStore.setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				mode: 'trigger',
+				status: executionStatus ?? 'success',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': runs ?? [defaultRun],
+						},
+					},
+					...(redactionInfo ? { redactionInfo } : {}),
+				}),
+			}),
+		);
+
+		if (lastSuccessfulExecution) {
+			workflowsStore.setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+		}
 
 		if (pinnedData) {
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);

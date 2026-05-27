@@ -259,6 +259,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
 	}
@@ -307,13 +314,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		// Eval-mode bypass: only mock when the node is fully unconfigured, so
 		// nodes that probe multiple auth types still get production's throw.
+		// Delegates to the credentials helper with a null-id `INodeCredentialsDetails`;
+		// `EvalMockedCredentialsHelper` catches the resulting `CredentialNotFoundError`
+		// and schema-synthesizes (and applies the wire-server URL rewrite). Production
+		// helpers don't catch — but production never reaches this branch because
+		// `evalLlmMockHandler` is only set in eval mode.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
 			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
 			if (!hasOtherCreds) {
-				const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
-				return buildEvalMockCredentials(
-					additionalData.credentialsHelper.getCredentialsProperties(type),
-				) as T;
+				return (await additionalData.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: null, name: type },
+					type,
+					mode,
+					executeData,
+				)) as T;
 			}
 		}
 

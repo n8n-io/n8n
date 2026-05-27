@@ -151,6 +151,10 @@ export class ExecutionRecoveryService {
 
 		const runExecutionData = execution.data ?? createEmptyRunExecutionData();
 
+		// CAT-752: runData can be missing even tho according to the type it shouldn't be.
+		// We initialize it to avoid referencing a property of undefined later on.
+		runExecutionData.resultData.runData ??= {};
+
 		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {

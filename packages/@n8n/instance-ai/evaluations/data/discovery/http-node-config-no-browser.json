@@ -1,0 +1,21 @@
+{
+	"id": "http-node-config-no-browser",
+	"userMessage": "How do I set the request timeout on my HTTP Request node?",
+	"instanceState": {
+		"localGateway": { "status": "connected", "capabilities": ["browser"] },
+		"browserAvailable": true
+	},
+	"expectedToolInvocations": {
+		"noneOf": [
+			"browser-credential-setup",
+			"spawn_sub_agent:browser-credential-setup",
+			"browser_navigate",
+			"browser_snapshot",
+			"browser_screenshot",
+			"navigate_page",
+			"take_snapshot",
+			"take_screenshot"
+		]
+	},
+	"rationale": "Negative control. A pure node-config question must NOT trigger any browser tooling — neither the helper nor direct browser tool calls. Guards against an over-eager regression that would bias every credential-adjacent question into browser mode."
+}

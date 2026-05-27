@@ -397,6 +397,7 @@ export class JobProcessor {
 			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
+			waitTill: run.waitTill ?? null,
 		};
 	}
 
@@ -421,6 +422,7 @@ export class JobProcessor {
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
 			metadata: execution.data?.resultData?.metadata,
+			waitTill: execution.waitTill ?? null,
 		};
 	}
 

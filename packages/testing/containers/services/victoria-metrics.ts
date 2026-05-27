@@ -2,6 +2,7 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { CADVISOR_PORT } from './cadvisor';
 import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
@@ -93,6 +94,16 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				instance: 'postgres',
 				host: 'postgres-exporter',
 				port: EXPORTER_PORT,
+			});
+		}
+
+		// Add cAdvisor scrape target so per-container CPU/memory/IO is queryable.
+		if (services.includes('cadvisor')) {
+			scrapeTargets.push({
+				job: 'cadvisor',
+				instance: 'cadvisor',
+				host: 'cadvisor',
+				port: CADVISOR_PORT,
 			});
 		}
 

@@ -1,11 +1,17 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	TagRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 import { ImportService } from '../import.service';
@@ -24,6 +30,9 @@ jest.mock('@n8n/db', () => ({
 	CredentialsRepository: mock<CredentialsRepository>(),
 	TagRepository: mock<TagRepository>(),
 	DataSource: mock<DataSource>(),
+	// `DataTableColumn` (transitively imported by import.service) extends
+	// `WithTimestampsAndStringId`; provide a no-op so the class evaluates.
+	WithTimestampsAndStringId: class {},
 }));
 
 jest.mock('@/active-workflow-manager', () => ({
@@ -40,6 +49,9 @@ describe('ImportService', () => {
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
+	let mockDataTableDDLService: DataTableDDLService;
+	let mockWorkflowRepository: WorkflowRepository;
+	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -52,6 +64,9 @@ describe('ImportService', () => {
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
+		mockDataTableDDLService = mock<DataTableDDLService>();
+		mockWorkflowRepository = mock<WorkflowRepository>();
+		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = jest.fn(async (data: string) =>
@@ -87,6 +102,8 @@ describe('ImportService', () => {
 		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
+		// Passthrough so tests can read column fields off the result.
+		mockEntityManager.create = jest.fn().mockImplementation((_entity, data) => data);
 
 		// Mock transaction method
 		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -101,6 +118,9 @@ describe('ImportService', () => {
 			mockCipher,
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
+			mockDataTableDDLService,
+			mockWorkflowRepository,
+			mockWorkflowPublishHistoryRepository,
 		);
 	});
 
@@ -261,6 +281,7 @@ describe('ImportService', () => {
 					workflowentity: ['/test/input/workflowentity.jsonl'],
 				},
 				tableNames: ['user', 'workflow_entity'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -281,6 +302,7 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -294,6 +316,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -305,6 +328,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -318,6 +342,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -335,6 +360,37 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should route data-table user-row files into dataTableFiles', async () => {
+			const mockFiles = [
+				'user.jsonl',
+				'data_table_user_abc.jsonl',
+				'data_table_user_abc.2.jsonl',
+				'data_table_user_xyz.jsonl',
+			];
+
+			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			jest
+				.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/user.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_xyz.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+				dataTableFiles: {
+					abc: ['/test/input/data_table_user_abc.jsonl', '/test/input/data_table_user_abc.2.jsonl'],
+					xyz: ['/test/input/data_table_user_xyz.jsonl'],
+				},
 			});
 		});
 	});
@@ -969,6 +1025,283 @@ describe('ImportService', () => {
 				`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`,
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Successfully decompressed entities.zip');
+		});
+	});
+
+	describe('dropExistingDataTableUserTables', () => {
+		it('should drop dynamic tables for every entry in the destination registry', async () => {
+			mockEntityManager.query = jest.fn().mockResolvedValue([{ id: 'abc' }, { id: 'xyz' }]);
+
+			await importService.dropExistingDataTableUserTables(mockEntityManager);
+
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				expect.stringContaining('SELECT id FROM "data_table"'),
+			);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledTimes(2);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledWith('abc', mockEntityManager);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledWith('xyz', mockEntityManager);
+		});
+
+		it('should silently skip when the registry is missing on the destination', async () => {
+			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('table not found'));
+
+			await expect(
+				importService.dropExistingDataTableUserTables(mockEntityManager),
+			).resolves.not.toThrow();
+
+			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+
+		it('should respect the table prefix when querying the registry', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'sqlite', entityPrefix: 'n8n_' };
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
+
+			await importService.dropExistingDataTableUserTables(mockEntityManager);
+
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				expect.stringContaining('"n8n_data_table"'),
+			);
+		});
+	});
+
+	describe('recreateDataTableUserTablesFromRegistry', () => {
+		it('should recreate every backing table referenced in the imported registry', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }, { id: 'xyz' }]) // SELECT id FROM data_table
+				.mockResolvedValueOnce([
+					{ id: 'col-1', dataTableId: 'abc', name: 'foo', type: 'string', index: 0 },
+					{ id: 'col-2', dataTableId: 'xyz', name: 'bar', type: 'number', index: 0 },
+				]); // SELECT cols
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledTimes(2);
+			expect(mockDataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+				'abc',
+				expect.arrayContaining([expect.objectContaining({ name: 'foo', type: 'string' })]),
+				mockEntityManager,
+			);
+			expect(mockDataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+				'xyz',
+				expect.arrayContaining([expect.objectContaining({ name: 'bar', type: 'number' })]),
+				mockEntityManager,
+			);
+		});
+
+		it('should sort columns by index before recreating the backing table', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }])
+				.mockResolvedValueOnce([
+					{ id: 'col-2', dataTableId: 'abc', name: 'b', type: 'string', index: 1 },
+					{ id: 'col-1', dataTableId: 'abc', name: 'a', type: 'string', index: 0 },
+				]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			const call = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0];
+			const [, sortedColumns] = call;
+			expect((sortedColumns as Array<{ name: string }>).map((c) => c.name)).toEqual(['a', 'b']);
+		});
+
+		it('should drop existing tables before recreating to make the operation idempotent', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }])
+				.mockResolvedValueOnce([
+					{ id: 'col-1', dataTableId: 'abc', name: 'foo', type: 'string', index: 0 },
+				]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			const dropCallOrder = (mockDataTableDDLService.dropTable as jest.Mock).mock
+				.invocationCallOrder[0];
+			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock
+				.invocationCallOrder[0];
+			expect(dropCallOrder).toBeLessThan(createCallOrder);
+		});
+
+		it('should skip silently when the registry is missing', async () => {
+			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('relation does not exist'));
+
+			await expect(
+				importService.recreateDataTableUserTablesFromRegistry(mockEntityManager),
+			).resolves.not.toThrow();
+
+			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
+		});
+
+		it('should no-op when the registry is empty', async () => {
+			mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
+			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+
+		describe('row import', () => {
+			beforeEach(() => {
+				mockDataSource.driver.escapeQueryWithParameters = jest
+					.fn()
+					.mockImplementation((sql, params) => [sql, params]);
+			});
+
+			it('should insert rows into the recreated backing table when files are provided', async () => {
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: 'abc', name: 'flag', type: 'boolean', index: 0 },
+					])
+					.mockResolvedValue(undefined); // subsequent INSERTs
+
+				const row = {
+					id: 1,
+					createdAt: '2024-01-01 12:00:00',
+					updatedAt: '2024-01-01 12:00:00',
+					flag: 0,
+				};
+				jest.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					abc: ['/test/input/data_table_user_abc.jsonl'],
+				});
+
+				const insertCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO'),
+				);
+				expect(insertCalls).toHaveLength(1);
+				const [, params] = insertCalls[0];
+				// Boolean must have been normalised from 0 -> false (matters for cross-DB inserts)
+				expect((params as Record<string, unknown>).flag).toBe(false);
+				// id is preserved
+				expect((params as Record<string, unknown>).id).toBe(1);
+			});
+
+			it('should warn when archive has row files but registry is empty', async () => {
+				mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					orphan: ['/test/input/data_table_user_orphan.jsonl'],
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('but no entries in the data_table registry'),
+				);
+			});
+
+			it('should reset the id sequence after inserts on Postgres', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				// Mixed-case id matters: pg_get_serial_sequence folds unquoted
+				// identifiers to lowercase, so the param must be the quoted form.
+				const mixedCaseId = 'AbC123';
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: mixedCaseId }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: mixedCaseId, name: 'foo', type: 'string', index: 0 },
+					])
+					.mockResolvedValueOnce(undefined) // INSERT row
+					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
+					.mockResolvedValue(undefined);
+
+				jest.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						id: 5,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						foo: 'x',
+					}),
+				);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					[mixedCaseId]: [`/test/input/data_table_user_${mixedCaseId}.jsonl`],
+				});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(1);
+				const [, params] = setvalCalls[0];
+				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`, 'id']);
+			});
+
+			it('should NOT call setval on Postgres when no rows were inserted', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([])
+					.mockResolvedValue(undefined);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(0);
+			});
+		});
+	});
+
+	describe('advanceIdentitySequences', () => {
+		it('should run setval for each identity column on Postgres', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+
+			mockEntityManager.query = jest
+				.fn()
+				// information_schema lookup for "workflow_dependency"
+				.mockResolvedValueOnce([{ column_name: 'id' }])
+				// setval call returns nothing meaningful
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "insights_metadata" (has 'metaId')
+				.mockResolvedValueOnce([{ column_name: 'metaId' }])
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "user" (no identity columns)
+				.mockResolvedValueOnce([]);
+
+			await importService.advanceIdentitySequences(mockEntityManager, [
+				'workflow_dependency',
+				'insights_metadata',
+				'user',
+			]);
+
+			const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				([sql]) => typeof sql === 'string' && sql.includes('setval('),
+			);
+			expect(setvalCalls).toHaveLength(2);
+			// Quoted table identifier passed through to pg_get_serial_sequence
+			// (regclass folds unquoted names to lowercase, so the quoted form is required).
+			expect(setvalCalls[0][1]).toEqual(['"workflow_dependency"', 'id']);
+			expect(setvalCalls[1][1]).toEqual(['"insights_metadata"', 'metaId']);
+		});
+
+		it('should be a no-op on SQLite', async () => {
+			// SQLite is the default in beforeEach.
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, ['workflow_dependency']);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
+
+		it('should be a no-op when no tables are provided', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, []);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 		});
 	});
 });

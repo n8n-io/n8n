@@ -48,6 +48,9 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 	// n8n Chat hub messages
 	chat: true,
+
+	// Agent executions
+	agent: true,
 };
 
 const MIN_RUNTIME = 0;
@@ -185,8 +188,8 @@ export class InsightsCollectionService {
 			});
 		}
 
-		// time saved event
-		if (status === 'success') {
+		// time saved event (error workflows are operational, not productive work)
+		if (status === 'success' && ctx.runData.mode !== 'error') {
 			const finalTimeSaved = this.calculateTimeSaved(ctx);
 			if (finalTimeSaved !== undefined) {
 				this.bufferedInsights.add({

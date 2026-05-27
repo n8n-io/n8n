@@ -50,7 +50,11 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-	<N8nCard :class="[$style.card, props.archived && $style.cardArchived]" @click="handleClick">
+	<N8nCard
+		data-test-id="instance-ai-artifact-card"
+		:class="[$style.card, props.archived && $style.cardArchived]"
+		@click="handleClick"
+	>
 		<template #prepend>
 			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		</template>
@@ -103,8 +107,7 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

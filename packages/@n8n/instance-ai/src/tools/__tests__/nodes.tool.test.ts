@@ -1,3 +1,4 @@
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createNodesTool } from '../nodes.tool';
 
@@ -74,7 +75,8 @@ describe('nodes tool', () => {
 			(context.nodeService.exploreResources as jest.Mock).mockResolvedValue(mockResult);
 
 			const tool = createNodesTool(context, 'orchestrator');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -101,6 +103,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 
 			expect(tool.description).toContain('node types');
+			expect(tool.description).not.toContain('targeted guides');
 		});
 	});
 
@@ -119,7 +122,11 @@ describe('nodes tool', () => {
 			(context.nodeService.listAvailable as jest.Mock).mockResolvedValue(nodes);
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!({ action: 'list', query: 'http' } as never, {} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'list', query: 'http' } as never,
+				{} as never,
+			);
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
 			expect(result).toEqual({ nodes });
@@ -132,7 +139,8 @@ describe('nodes tool', () => {
 			context.nodeService.exploreResources = undefined;
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -158,7 +166,8 @@ describe('nodes tool', () => {
 			);
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'explore-resources',
 					nodeType: 'n8n-nodes-base.googleSheets',
@@ -187,7 +196,7 @@ describe('nodes tool', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
-			const result = await tool.execute!({ action: 'type-definition' } as never, {} as never);
+			const result = await executeTool(tool, { action: 'type-definition' } as never, {} as never);
 
 			expect(result).toMatchObject({
 				definitions: [],
@@ -199,7 +208,8 @@ describe('nodes tool', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'type-definition', nodeTypes: [] } as never,
 				{} as never,
 			);
@@ -207,6 +217,40 @@ describe('nodes tool', () => {
 			expect(result).toMatchObject({
 				definitions: [],
 				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should surface node-level builder hints from type definitions', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: jest.fn(),
+					getDescription: jest.fn(),
+					listSearchable: jest.fn(),
+					exploreResources: jest.fn(),
+					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+						content: 'export type IfNode = unknown;',
+						version: 'v23',
+						builderHint: 'Always include options, conditions, and combinator.',
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: 'n8n-nodes-base.if',
+						version: 'v23',
+						content: 'export type IfNode = unknown;',
+						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
 			});
 		});
 	});
@@ -217,7 +261,8 @@ describe('nodes tool', () => {
 			(context.nodeService.getDescription as jest.Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'describe', nodeType: 'unknown.node' } as never,
 				{} as never,
 			);

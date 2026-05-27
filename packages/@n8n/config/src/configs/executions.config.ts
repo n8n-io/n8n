@@ -55,6 +55,29 @@ class RecoveryConfig {
 	workflowDeactivationEnabled: boolean = false;
 }
 
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
+@Config
+class QueueRetentionConfig {
+	/**
+	 * How many completed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes completed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_COMPLETED', nonNegativeIntSchema)
+	keepLastCompleted: number = 0;
+
+	/**
+	 * How many failed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes failed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_FAILED', nonNegativeIntSchema)
+	keepLastFailed: number = 0;
+}
+
 const executionModeSchema = z.enum(['regular', 'queue']);
 
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
@@ -108,6 +131,9 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	@Nested
+	queueRetention: QueueRetentionConfig;
 
 	@Nested
 	recovery: RecoveryConfig;

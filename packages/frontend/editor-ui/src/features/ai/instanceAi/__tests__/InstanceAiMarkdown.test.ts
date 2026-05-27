@@ -1,20 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // Stub ChatMarkdownChunk to expose the processed content as plain text
 vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	default: {
-		template: '<div data-test-id="markdown-output">{{ source.content }}</div>',
+		template:
+			'<div data-test-id="markdown-output" :data-source-type="source.type">{{ source.type === "text" ? source.content : source.command?.title }}</div>',
 		props: ['source'],
 	},
 }));
 
-const renderComponent = createComponentRenderer(InstanceAiMarkdown);
+let thread: ThreadRuntime;
+const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown, {}, () => thread);
 
 function makeRegistry(
 	entries: Array<{ type: string; id: string; name: string; projectId?: string }>,
@@ -27,16 +28,17 @@ function makeRegistry(
 }
 
 describe('InstanceAiMarkdown', () => {
-	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-
 	beforeEach(() => {
 		createTestingPinia();
-		store = mockedStore(useInstanceAiStore);
+		thread = {
+			id: 'thread-1',
+			resourceNameIndex: new Map<string, ResourceEntry>(),
+		} as unknown as ThreadRuntime;
 	});
 
 	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
 		if (registry) {
-			store.resourceNameIndex = registry;
+			thread.resourceNameIndex = registry;
 		}
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';
@@ -88,6 +90,26 @@ describe('InstanceAiMarkdown', () => {
 		expect(result).toContain('[Test (v2.0)](n8n-resource://workflow/wf-1)');
 	});
 
+	it('should escape markdown link text and encode resource ids', () => {
+		const registry = makeRegistry([{ type: 'workflow', id: 'wf/1', name: 'Name [prod]' }]);
+		const result = getProcessedContent('Open Name [prod] now', registry);
+		expect(result).toContain('[Name \\[prod\\]](n8n-resource://workflow/wf%2F1)');
+	});
+
+	it('should not replace overlapping names inside generated links with escaped link text', () => {
+		const registry = makeRegistry([
+			{ type: 'workflow', id: 'wf-full', name: 'Name [prod]' },
+			{ type: 'workflow', id: 'wf-name', name: 'Name' },
+			{ type: 'workflow', id: 'wf-prod', name: 'prod' },
+		]);
+
+		const result = getProcessedContent('Open Name [prod] now', registry);
+
+		expect(result).toBe('Open [Name \\[prod\\]](n8n-resource://workflow/wf-full) now');
+		expect(result).not.toContain('wf-name');
+		expect(result).not.toContain('wf-prod');
+	});
+
 	it('should replace resource name appearing multiple times', () => {
 		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
 		const result = getProcessedContent('Open My Workflow and then close My Workflow', registry);
@@ -111,7 +133,16 @@ describe('InstanceAiMarkdown', () => {
 			'See [My Workflow](https://example.com) for details',
 			registry,
 		);
-		// The name inside [...] is preceded by [ — lookbehind should block replacement
+		expect(result).not.toContain('n8n-resource://');
+	});
+
+	it('should NOT replace names inside longer existing markdown link text', () => {
+		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
+		const result = getProcessedContent(
+			'See [the My Workflow docs](https://example.com) for details',
+			registry,
+		);
+		expect(result).toContain('[the My Workflow docs](https://example.com)');
 		expect(result).not.toContain('n8n-resource://');
 	});
 });

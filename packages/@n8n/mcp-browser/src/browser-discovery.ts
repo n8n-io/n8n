@@ -279,14 +279,7 @@ export function getInstallInstructions(
 
 /** Get instructions for installing the n8n AI Browser Bridge extension. */
 export function getExtensionInstallInstructions(): string {
-	// TODO: Replace with actual Chrome Web Store URL once published
-	return (
-		'Install the n8n AI Browser Bridge extension:\n' +
-		'  1. Open chrome://extensions in your browser\n' +
-		'  2. Enable "Developer mode" (toggle in top-right)\n' +
-		'  3. Click "Load unpacked" and select the mcp-browser-extension directory\n' +
-		'Once the extension is published to the Chrome Web Store, you can install it directly from there.'
-	);
+	return 'Install the n8n AI Browser Bridge extension from the Chrome Web Store.';
 }
 
 /** Singleton instance for convenience. */

@@ -132,7 +132,12 @@ export class ChatExecutionManager {
 		}
 
 		if (nodeType.onMessage) {
-			return await nodeType.onMessage(context, nodeExecutionData);
+			await workflow.expression.acquireIsolate();
+			try {
+				return await nodeType.onMessage(context, nodeExecutionData);
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		}
 
 		return [[nodeExecutionData]];

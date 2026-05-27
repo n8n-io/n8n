@@ -1,4 +1,5 @@
 ---
+name: n8n:create-issue
 description: Create Linear tickets or GitHub issues following n8n conventions. Use when the user asks to create a ticket, file a bug, open an issue, or says /create-issue.
 argument-hint: "[linear|github] <description of the issue>"
 compatibility:

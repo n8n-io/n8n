@@ -11,6 +11,8 @@ import {
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { DeploymentKey } from './deployment-key';
+import { EvaluationCollection } from './evaluation-collection.ee';
+import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -62,6 +64,8 @@ export {
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,
+	EvaluationCollection,
+	EvaluationConfig,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -107,6 +111,8 @@ export const entities = {
 	CredentialsEntity,
 	CredentialDependency,
 	DeploymentKey,
+	EvaluationCollection,
+	EvaluationConfig,
 	Folder,
 	Project,
 	ProjectRelation,

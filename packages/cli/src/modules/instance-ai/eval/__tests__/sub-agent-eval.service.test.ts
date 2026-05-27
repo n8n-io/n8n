@@ -10,15 +10,15 @@ function makeAgentResult(
 	overrides: Partial<{
 		text: string;
 		toolCalls: unknown[];
-		toolResults: unknown[];
 		finishReason: string;
 	}> = {},
 ) {
+	const text = overrides.text ?? 'done';
 	return {
-		text: 'done',
-		toolCalls: [],
-		toolResults: [],
-		finishReason: 'stop',
+		runId: 'agent-run-1',
+		messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		toolCalls: overrides.toolCalls ?? [],
+		finishReason: overrides.finishReason ?? 'stop',
 		...overrides,
 	};
 }
@@ -29,9 +29,9 @@ jest.mock('@n8n/instance-ai', () => ({
 	MAX_STEPS: { BUILDER: 60 },
 	createSubAgent: jest.fn(() => ({
 		generate: jest.fn().mockResolvedValue({
-			text: 'done',
+			runId: 'agent-run-1',
+			messages: [{ role: 'assistant', content: [{ type: 'text', text: 'done' }] }],
 			toolCalls: [],
-			toolResults: [],
 			finishReason: 'stop',
 		}),
 	})),
@@ -132,7 +132,7 @@ describe('SubAgentEvalService', () => {
 		expect(result.error).toMatch(/timed out/i);
 	});
 
-	it('serializes mastra-shaped tool calls and results', async () => {
+	it('serializes native tool calls and results', async () => {
 		adapter.createContext.mockReturnValue({
 			userId: user.id,
 			workflowService: {
@@ -143,12 +143,18 @@ describe('SubAgentEvalService', () => {
 
 		const { createSubAgent } = jest.requireMock('@n8n/instance-ai');
 		createSubAgent.mockReturnValue({
-			generate: jest.fn(async () => ({
-				text: 'ok',
-				toolCalls: [{ payload: { toolName: 'nodes', args: { action: 'list' } } }],
-				toolResults: [{ payload: { toolName: 'nodes', result: { success: true, items: [] } } }],
-				finishReason: 'stop',
-			})),
+			generate: jest.fn(async () =>
+				makeAgentResult({
+					text: 'ok',
+					toolCalls: [
+						{
+							tool: 'nodes',
+							input: { action: 'list' },
+							output: { success: true, items: [] },
+						},
+					],
+				}),
+			),
 		});
 
 		const result = await service.run(user, { role: 'builder', prompt: 'inspect' });

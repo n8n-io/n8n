@@ -37,6 +37,11 @@ beforeEach(() => {
 	mockNodeTypesState = {
 		allNodeTypes: [],
 		getNodeType: vi.fn().mockReturnValue({}),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	};
 	mockSettingsState = {
 		settings: {
@@ -49,6 +54,7 @@ beforeEach(() => {
 vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
+		injectNDVStore: vi.fn(() => mockNdvState),
 	};
 });
 

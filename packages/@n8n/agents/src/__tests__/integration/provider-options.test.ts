@@ -183,7 +183,7 @@ describe('external abort signal', () => {
 		});
 
 		expect(result.finishReason).toBe('error');
-		expect(result.getState().status).toBe('cancelled');
+		expect(agent.getState().status).toBe('cancelled');
 	});
 
 	it('cancels a stream() call via external AbortSignal', async () => {

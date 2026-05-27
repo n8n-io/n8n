@@ -144,7 +144,7 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 		const ndvInputDataWithPinnedData = computed(() => {
 			const data = ndvInputData.value;
 			return ndvInputNodeName.value
-				? (workflowDocumentStore.value.pinData?.[ndvInputNodeName.value] ?? data)
+				? (workflowDocumentStore.value.pinnedDataByNodeName?.[ndvInputNodeName.value] ?? data)
 				: data;
 		});
 
@@ -487,4 +487,8 @@ export function disposeNDVStore(store: NDVStore) {
 	if (pinia) {
 		delete pinia.state.value[store.$id];
 	}
+}
+
+export function injectNDVStore(): ReturnType<typeof useNDVStore> {
+	return useNDVStore();
 }
