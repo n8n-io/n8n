@@ -209,7 +209,30 @@ describe('RoleResolverService', () => {
 			expect(result.instanceRole).toBe('global:member');
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Role resolver expression evaluation failed, treating as false',
-				expect.objectContaining({ expression: '{{ throw new Error("bad") }}' }),
+				expect.objectContaining({
+					ruleId: 'r1',
+					expression: '{{ throw new Error("bad") }}',
+				}),
+			);
+		});
+
+		it('should emit a debug log for each evaluated rule', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({ id: 'r1', expression: '{{ false }}', role: 'global:admin' }),
+					makeRule({ id: 'r2', expression: '{{ true }}', role: 'global:member' }),
+				],
+			});
+
+			await resolveRolesSimple(config, makeContext());
+
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Role mapping rule evaluated',
+				expect.objectContaining({ ruleId: 'r1', matched: false }),
+			);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Role mapping rule evaluated',
+				expect.objectContaining({ ruleId: 'r2', matched: true }),
 			);
 		});
 

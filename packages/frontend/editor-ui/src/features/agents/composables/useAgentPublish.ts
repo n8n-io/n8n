@@ -36,7 +36,7 @@ export function useAgentPublish() {
 			// throw in insecure contexts — swallow so telemetry never surfaces
 			// as a publish failure. `trackPublishedAgent` itself is already safe.
 			try {
-				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
+				const fp = await buildAgentConfigFingerprint(updated.activeVersion?.schema ?? null, []);
 				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
 			} catch {
 				// Swallow fingerprint failures.

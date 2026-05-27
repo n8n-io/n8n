@@ -158,6 +158,132 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — targetResource registration', () => {
+		test('registers a builder sub-agent targetResource as a produced workflow', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-edit', name: 'Existing WF' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-edit')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: 'wf-edit', name: 'Existing WF' }),
+			);
+		});
+
+		test('ignores targetResource without an id (create flow)', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.size).toBe(0);
+		});
+
+		test('ignores credential targetResource (not surfaced in the artifacts panel)', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-cred-1',
+								role: 'browser-credential-setup',
+								kind: 'browser-setup',
+								status: 'active',
+								targetResource: { type: 'credential', id: 'cred-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.size).toBe(0);
+		});
+
+		test('falls back to Untitled when targetResource has no name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-edit' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-edit')?.name).toBe('Untitled');
+		});
+
+		test('later build-workflow result overwrites the placeholder name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'completed',
+								targetResource: { type: 'workflow', id: 'wf-edit' },
+								toolCalls: [
+									makeToolCall({
+										toolName: 'submit-workflow',
+										result: { workflowId: 'wf-edit', workflowName: 'Renamed' },
+									}),
+								],
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.size).toBe(1);
+			expect(producedArtifacts.value.get('wf-edit')?.name).toBe('Renamed');
+		});
+	});
+
 	describe('producedArtifacts — updates and merges', () => {
 		test('second write to the same workflow id updates the existing entry', async () => {
 			const { messages, producedArtifacts } = setup();
@@ -470,5 +596,39 @@ describe('useResourceRegistry', () => {
 				projectId: 'proj-3',
 			});
 		});
+
+		test.each(['schema', 'query'] as const)(
+			'registers data table from data-tables %s result with resolved metadata',
+			async (action) => {
+				const { messages, producedArtifacts } = setup();
+
+				messages.value = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolName: 'data-tables',
+									args: { action, dataTableId: 'Signups' },
+									result: {
+										dataTableId: 'dt-signups',
+										dataTableName: 'Signups',
+										projectId: 'proj-4',
+										...(action === 'schema' ? { columns: [] } : { count: 0, data: [] }),
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(producedArtifacts.value.get('dt-signups')).toEqual({
+					type: 'data-table',
+					id: 'dt-signups',
+					name: 'Signups',
+					projectId: 'proj-4',
+				});
+			},
+		);
 	});
 });

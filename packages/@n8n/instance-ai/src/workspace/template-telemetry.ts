@@ -47,6 +47,13 @@ export interface TelemetrySessionOptions {
 	workItemId: string;
 	/** Optional NL request from the user; truncated to 120 chars. */
 	userRequestExcerpt?: string;
+	/**
+	 * Version identifier of the curated templates bundle in use this run
+	 * (typically a short git SHA from the n8n-sdk-templates manifest).
+	 * Emitted on every search/read/session event so we can correlate usage
+	 * to specific bundle revisions.
+	 */
+	templatesVersion?: string | null;
 }
 
 export function createTemplateTelemetrySession(
@@ -56,6 +63,7 @@ export function createTemplateTelemetrySession(
 		thread_id: opts.threadId,
 		run_id: opts.runId,
 		work_item_id: opts.workItemId,
+		templates_version: opts.templatesVersion ?? null,
 	};
 
 	let searchCount = 0;
@@ -234,13 +242,13 @@ export function createTypedToolObserver(
 			if (!match) return;
 			pending.delete(event.payload.toolCallId);
 
-			const result = event.payload.result;
-			if (typeof result !== 'string') return;
+			const resultText = extractTypedToolResultText(event.payload.result);
+			if (resultText === null) return;
 
 			if (match.kind === 'read') {
-				session.observeTypedRead(match.filename, result.length);
+				session.observeTypedRead(match.filename, resultText.length);
 			} else {
-				session.observeTypedSearch(match.query, countResultLines(result));
+				session.observeTypedSearch(match.query, countResultLines(resultText));
 			}
 			return;
 		}
@@ -268,4 +276,16 @@ function matchTypedTemplateCall(
 		return { kind: 'search', query: pattern };
 	}
 	return undefined;
+}
+
+function extractTypedToolResultText(result: unknown): string | null {
+	if (typeof result === 'string') return result;
+	if (!isRecord(result)) return null;
+
+	const { content } = result;
+	return typeof content === 'string' ? content : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

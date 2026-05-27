@@ -39,6 +39,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -115,17 +116,16 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 
-const executionsCount = computed(() => sessionsStore.threads.length);
-const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
-	executionsCount,
-});
-
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const executionsCount = computed(() => sessionsStore.threads.length);
+const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
+	executionsCount,
+});
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -412,6 +412,18 @@ async function flushAutosave() {
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
 
+function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
+	return {
+		...config,
+		memory: {
+			...config.memory,
+			enabled: true,
+			storage: 'n8n',
+			lastMessages: config.memory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+		},
+	};
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
@@ -430,7 +442,11 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: deepCopy(localConfig.value),
+		// The memory toggle is gone, but older agent configs may still have
+		// session memory disabled. Normalize on save so legacy configs are
+		// corrected the next time the user makes a real edit, without mutating
+		// config during component mount.
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
 	});
 }
 
@@ -623,7 +639,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			projectId: projectId.value,
 			agentId: agentId.value,
 			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.publishedVersion),
+			isPublished: Boolean(agent.value?.activeVersionId),
 			connectedTriggers: connectedTriggers.value,
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
@@ -892,7 +908,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:connected-triggers="connectedTriggers"
 					:initial-prompt="initialPrompt"
 					:is-builder-configured="isBuilderConfigured"
-					:is-published="Boolean(agent?.publishedVersion)"
+					:is-published="Boolean(agent?.activeVersionId)"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"

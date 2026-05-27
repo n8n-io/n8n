@@ -26,6 +26,8 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS } from '../binaryChecks/types';
 import type {
 	MultiRunEvaluation,
 	TestCaseAggregation,
@@ -126,6 +128,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const workflowChecksSection = renderWorkflowChecksSection(evaluation);
+	if (workflowChecksSection.length > 0) lines.push(...workflowChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -135,6 +140,36 @@ export function formatComparisonMarkdown(
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
+}
+
+function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const aggregate = aggregateWorkflowChecks(evaluation);
+	if (!aggregate) return [];
+
+	const lines: string[] = [
+		'#### Workflow checks',
+		'',
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		'',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|---|',
+	];
+
+	const byDimension: Record<string, string[]> = {};
+	for (const name of Object.keys(aggregate.perCheck).sort()) {
+		const entry = aggregate.perCheck[name];
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		(byDimension[entry.dimension] ??= []).push(
+			`| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		);
+	}
+
+	for (const dim of CHECK_DIMENSIONS) {
+		if (byDimension[dim]) lines.push(...byDimension[dim]);
+	}
+	lines.push('');
+	return lines;
 }
 
 function formatHeading(commitSha?: string): string {
@@ -221,7 +256,7 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -371,23 +406,23 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${tc.testCase.prompt.slice(0, 70)}\``;
+		return slug ? `\`${slug}\`` : `\`${tc.testCase.conversation[0].text.slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.scenarios.length
+			const meanPassAtK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.scenarios.length
+			const meanPassHatK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
@@ -400,8 +435,8 @@ function renderPerTestCaseDetails(
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.scenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.scenarios.length;
+			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
+			const total = tc.executionScenarios.length;
 			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
@@ -476,7 +511,7 @@ function renderFailureDetails(
 	}> = [];
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase?.get(tc.testCase);
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns = sa.runs
 				.filter((r) => !r.success)
 				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
@@ -493,7 +528,7 @@ function renderFailureDetails(
 	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
-			: `${tc.testCase.prompt.slice(0, 50).trim()} / ${scenarioName}`;
+			: `${tc.testCase.conversation[0].text.slice(0, 50).trim()} / ${scenarioName}`;
 		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
@@ -534,7 +569,7 @@ function buildFailedRunsIndex(
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) continue; // testCase not in the slug map — skip rather than misattribute
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
 				if (!r.success) {
@@ -748,7 +783,7 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -803,24 +838,30 @@ function formatTerminalPerTestCase(
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? tc.testCase.prompt.slice(0, max);
+		return slug ?? tc.testCase.conversation[0].text.slice(0, max);
 	};
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
 			const meanPassAtK =
-				tc.scenarios.length > 0
+				tc.executionScenarios.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(tc.executionScenarios.reduce(
+								(sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0),
+								0,
+							) /
+								tc.executionScenarios.length) *
 								100,
 						)
 					: 0;
 			const meanPassHatK =
-				tc.scenarios.length > 0
+				tc.executionScenarios.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(tc.executionScenarios.reduce(
+								(sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0),
+								0,
+							) /
+								tc.executionScenarios.length) *
 								100,
 						)
 					: 0;
@@ -871,7 +912,7 @@ function formatTerminalPerTestCase(
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
 			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
-			for (const sa of tc.scenarios) {
+			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
 				const status = sr.success ? 'PASS' : 'FAIL';
 				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';

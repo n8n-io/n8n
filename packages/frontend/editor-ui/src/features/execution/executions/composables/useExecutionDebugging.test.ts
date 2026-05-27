@@ -40,7 +40,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		clearPinnedDataTimestamps: vi.fn(),
 		resetAllNodesIssues: vi.fn(),
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
-		pinData: {},
+		pinnedDataByNodeName: {},
 		settings: {},
 	} satisfies Partial<ReturnType<typeof useWorkflowDocumentStore>>,
 }));

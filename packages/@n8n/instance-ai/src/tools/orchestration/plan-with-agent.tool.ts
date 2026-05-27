@@ -31,6 +31,7 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
@@ -56,7 +57,7 @@ const PLANNER_DOMAIN_TOOL_NAMES = [
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 
-const RELEVANT_PRIOR_TOOL_NAMES = new Set([
+const RELEVANT_PRIOR_TOOL_NAMES = new Set<string>([
 	ASK_USER_TOOL_ID,
 	CREDENTIALS_TOOL_ID,
 	DATA_TABLES_TOOL_ID,
@@ -643,6 +644,28 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			}),
 		)
 		.handler(async (input: { guidance?: string }) => {
+			// ── Same-turn denial guard ─────────────────────────────────────
+			// If the user denied a plan earlier in this same message group, the
+			// orchestrator must not silently spawn another planner. Without this
+			// guard the LLM can ignore the "stop on denial" prompt and start a
+			// fresh planner with a new accumulator, defeating the denial.
+			if (context.plannedTaskService && context.messageGroupId) {
+				const existing = await context.plannedTaskService.getGraph(context.threadId);
+				if (
+					existing?.status === 'cancelled' &&
+					existing.messageGroupId === context.messageGroupId
+				) {
+					context.logger.info('plan tool blocked: user denied a plan earlier in this turn', {
+						threadId: context.threadId,
+						messageGroupId: context.messageGroupId,
+					});
+					return {
+						result:
+							'The user denied a plan earlier in this turn. Do not invoke the plan tool again — acknowledge briefly and wait for the next user message.',
+					};
+				}
+			}
+
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools = createToolRegistry();
 
@@ -722,6 +745,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					})
 					.tool(toolRegistryValues(tracedPlannerTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				attachRuntimeWorkspaceCapabilities(subAgent, {
+					runtimeSkills: context.runtimeSkills,
+				});
 				const telemetry = context.tracing?.getTelemetry?.({
 					agentRole: 'planner',
 					functionId: 'instance-ai.subagent.planner',
@@ -806,6 +832,15 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					return {
 						result: `Plan approved and ${taskCount} task${taskCount === 1 ? '' : 's'} dispatched.`,
 					};
+				}
+
+				// User explicitly denied the plan. submit-plan already cancelled the
+				// persisted graph, so the cancelled graph won't be picked up by the
+				// scheduler. Return a terminal result so the orchestrator stops cleanly.
+				if (accumulator.isDenied()) {
+					publishClearingEvent(context);
+					await clearDraftChecklist(context);
+					return { result: 'Plan denied by user. No tasks were dispatched.' };
 				}
 
 				// Planner finished without approval (no submit-plan or user didn't approve)

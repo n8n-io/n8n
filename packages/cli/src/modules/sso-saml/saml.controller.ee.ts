@@ -139,12 +139,17 @@ export class SamlController {
 			const loginResult = await this.samlService.handleSamlLogin(req, binding, metadataOverride);
 			// if RelayState is set to the test connection Url, this is a test connection
 			if (isConnectionTestRequest(payload)) {
+				const rawAttributesJson = JSON.stringify(loginResult.rawAttributes ?? {}, null, 2);
 				if (loginResult.authenticatedUser) {
-					return res.render('saml-connection-test-success', loginResult.attributes);
+					return res.render('saml-connection-test-success', {
+						...loginResult.attributes,
+						rawAttributesJson,
+					});
 				} else {
 					return res.render('saml-connection-test-failed', {
 						message: '',
 						attributes: loginResult.attributes,
+						rawAttributesJson,
 					});
 				}
 			}

@@ -57,7 +57,7 @@ export class AgentExecutionService {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
 			// Sync title from the SDK memory thread if we don't have one yet
 			if (!thread.title) {
-				await this.syncTitleFromMemory(threadId);
+				await this.syncTitleFromMemory(threadId, agentId);
 			}
 		}
 
@@ -122,7 +122,7 @@ export class AgentExecutionService {
 		// ends, so by this point the memory thread should have the title.
 		// Sync it to our execution thread on the first message.
 		if (created) {
-			await this.syncTitleFromMemory(threadId);
+			await this.syncTitleFromMemory(threadId, agentId);
 		}
 
 		return inserted.id;
@@ -147,9 +147,9 @@ export class AgentExecutionService {
 	 * The SDK's titleGeneration runs fire-and-forget after the first message,
 	 * so the title is typically available by the second message.
 	 */
-	private async syncTitleFromMemory(threadId: string): Promise<void> {
+	private async syncTitleFromMemory(threadId: string, agentId: string): Promise<void> {
 		try {
-			const memoryThread = await this.n8nMemory.getThread(threadId);
+			const memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 			if (memoryThread?.title) {
 				const emoji =
 					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
@@ -177,7 +177,7 @@ export class AgentExecutionService {
 		});
 		if (!thread) return false;
 
-		await this.n8nMemory.deleteThread(threadId);
+		await this.n8nMemory.getImplementation(thread.agentId).deleteThread(threadId);
 		await this.agentExecutionThreadRepository.delete({ id: threadId });
 		return true;
 	}

@@ -534,10 +534,18 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('createSearchIndex operation', () => {
-		const spy: jest.SpyInstance = jest.spyOn(Collection.prototype, 'createSearchIndex');
-		afterAll(() => jest.restoreAllMocks());
+		// Direct method replacement (not jest.spyOn) so the recorded calls survive
+		// the per-test `restoreMocks` reset in the root jest config.
+		const calls: unknown[][] = [];
+		const original = Collection.prototype.createSearchIndex;
 		beforeAll(() => {
-			spy.mockResolvedValueOnce(searchIndexName);
+			Collection.prototype.createSearchIndex = async function (...args: unknown[]) {
+				calls.push(args);
+				return searchIndexName;
+			} as typeof Collection.prototype.createSearchIndex;
+		});
+		afterAll(() => {
+			Collection.prototype.createSearchIndex = original;
 		});
 
 		testHarness.setupTest(
@@ -555,26 +563,29 @@ describe('MongoDB CRUD Node', () => {
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith({
-				name: searchIndexName,
-				definition: { mappings: {} },
-				type: 'vectorSearch',
-			});
+			expect(calls[0]).toEqual([
+				{
+					name: searchIndexName,
+					definition: { mappings: {} },
+					type: 'vectorSearch',
+				},
+			]);
 		});
 	});
 
 	describe('listSearchIndexes operation', () => {
 		describe('no index name provided', function () {
-			let spy: jest.SpyInstance;
+			const calls: unknown[][] = [];
+			const original = Collection.prototype.listSearchIndexes;
 			beforeAll(() => {
-				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
-				const mockCursor = {
-					toArray: async () => await Promise.resolve([]),
-				};
-				spy.mockReturnValue(mockCursor);
+				Collection.prototype.listSearchIndexes = function (...args: unknown[]) {
+					calls.push(args);
+					return { toArray: async () => await Promise.resolve([]) } as never;
+				} as typeof Collection.prototype.listSearchIndexes;
 			});
-
-			afterAll(() => jest.restoreAllMocks());
+			afterAll(() => {
+				Collection.prototype.listSearchIndexes = original;
+			});
 
 			testHarness.setupTest(
 				buildWorkflow({
@@ -588,21 +599,22 @@ describe('MongoDB CRUD Node', () => {
 			);
 
 			it('calls the spy with the expected arguments', function () {
-				expect(spy).toHaveBeenCalledWith();
+				expect(calls[0]).toEqual([]);
 			});
 		});
 
 		describe('index name provided', function () {
-			let spy: jest.SpyInstance;
+			const calls: unknown[][] = [];
+			const original = Collection.prototype.listSearchIndexes;
 			beforeAll(() => {
-				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
-				const mockCursor = {
-					toArray: async () => await Promise.resolve([]),
-				};
-				spy.mockReturnValue(mockCursor);
+				Collection.prototype.listSearchIndexes = function (...args: unknown[]) {
+					calls.push(args);
+					return { toArray: async () => await Promise.resolve([]) } as never;
+				} as typeof Collection.prototype.listSearchIndexes;
 			});
-
-			afterAll(() => jest.restoreAllMocks());
+			afterAll(() => {
+				Collection.prototype.listSearchIndexes = original;
+			});
 
 			testHarness.setupTest(
 				buildWorkflow({
@@ -617,22 +629,23 @@ describe('MongoDB CRUD Node', () => {
 			);
 
 			it('calls the spy with the expected arguments', function () {
-				expect(spy).toHaveBeenCalledWith(searchIndexName);
+				expect(calls[0]).toEqual([searchIndexName]);
 			});
 		});
 
 		describe('return values are transformed into the expected return type', function () {
-			let spy: jest.SpyInstance;
+			const original = Collection.prototype.listSearchIndexes;
 			beforeAll(() => {
-				spy = jest.spyOn(Collection.prototype, 'listSearchIndexes');
-				const mockCursor = {
-					toArray: async () =>
-						await Promise.resolve([{ name: searchIndexName }, { name: 'my-index-2' }]),
-				};
-				spy.mockReturnValue(mockCursor);
+				Collection.prototype.listSearchIndexes = function () {
+					return {
+						toArray: async () =>
+							await Promise.resolve([{ name: searchIndexName }, { name: 'my-index-2' }]),
+					} as never;
+				} as typeof Collection.prototype.listSearchIndexes;
 			});
-
-			afterAll(() => jest.restoreAllMocks());
+			afterAll(() => {
+				Collection.prototype.listSearchIndexes = original;
+			});
 
 			testHarness.setupTest(
 				buildWorkflow({
@@ -656,11 +669,16 @@ describe('MongoDB CRUD Node', () => {
 	});
 
 	describe('dropSearchIndex operation', () => {
-		let spy: jest.SpyInstance;
-		afterAll(() => jest.restoreAllMocks());
+		const calls: unknown[][] = [];
+		const original = Collection.prototype.dropSearchIndex;
 		beforeAll(() => {
-			spy = jest.spyOn(Collection.prototype, 'dropSearchIndex');
-			spy.mockResolvedValueOnce(undefined);
+			Collection.prototype.dropSearchIndex = async function (...args: unknown[]) {
+				calls.push(args);
+				return undefined;
+			} as typeof Collection.prototype.dropSearchIndex;
+		});
+		afterAll(() => {
+			Collection.prototype.dropSearchIndex = original;
 		});
 
 		testHarness.setupTest(
@@ -676,16 +694,21 @@ describe('MongoDB CRUD Node', () => {
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith(searchIndexName);
+			expect(calls[0]).toEqual([searchIndexName]);
 		});
 	});
 
 	describe('updateSearchIndex operation', () => {
-		let spy: jest.SpyInstance;
-		afterAll(() => jest.restoreAllMocks());
+		const calls: unknown[][] = [];
+		const original = Collection.prototype.updateSearchIndex;
 		beforeAll(() => {
-			spy = jest.spyOn(Collection.prototype, 'updateSearchIndex');
-			spy.mockResolvedValueOnce(undefined);
+			Collection.prototype.updateSearchIndex = async function (...args: unknown[]) {
+				calls.push(args);
+				return undefined;
+			} as typeof Collection.prototype.updateSearchIndex;
+		});
+		afterAll(() => {
+			Collection.prototype.updateSearchIndex = original;
 		});
 
 		testHarness.setupTest(
@@ -706,7 +729,7 @@ describe('MongoDB CRUD Node', () => {
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith(searchIndexName, { mappings: { dynamic: true } });
+			expect(calls[0]).toEqual([searchIndexName, { mappings: { dynamic: true } }]);
 		});
 	});
 });

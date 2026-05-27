@@ -6,6 +6,8 @@ import type {
 } from '../background-task-manager';
 import { InstanceAiLivenessPolicy } from '../liveness-policy';
 
+const day = 24 * 60 * 60_000;
+
 function makeSpawnOptions(
 	overrides: Partial<SpawnManagedBackgroundTaskOptions> = {},
 ): SpawnManagedBackgroundTaskOptions {
@@ -29,7 +31,7 @@ describe('BackgroundTaskManager', () => {
 
 	describe('liveness timeouts', () => {
 		const policy = new InstanceAiLivenessPolicy({
-			confirmationTimeoutMs: 10_000,
+			confirmationTimeoutMs: day,
 			backgroundTaskIdleTimeoutMs: 10_000,
 			backgroundTaskMaxLifetimeMs: 30_000,
 			activeRunIdleTimeoutMs: 10_000,
@@ -428,10 +430,10 @@ describe('BackgroundTaskManager', () => {
 
 			const other = manager.spawn(
 				makeSpawnOptions({
-					taskId: 'researcher',
-					role: 'web-researcher',
+					taskId: 'data-table-manager',
+					role: 'data-table-manager',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'web-researcher', workflowId: 'wf-1' },
+					dedupeKey: { role: 'data-table-manager', workflowId: 'wf-1' },
 				}),
 			);
 

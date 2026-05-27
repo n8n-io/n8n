@@ -498,6 +498,59 @@ describe('CredentialsHelper', () => {
 				expect(credentialsRepository.update).not.toHaveBeenCalled();
 			});
 
+			test('should fall back to the system resolver from the proxy when no override is set', async () => {
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: null,
+				} as unknown as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const resolverProvider = {
+					resolveIfNeeded: jest.fn(),
+					getSystemResolverId: jest.fn().mockReturnValue('system-resolver'),
+				};
+				dynamicCredentialProxy.setResolverProvider(resolverProvider);
+
+				const additionalDataWithCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						credentials: 'encrypted-credential-context',
+					},
+					workflowSettings: {},
+				} as IWorkflowExecuteAdditionalData;
+
+				try {
+					await credentialsHelper.updateCredentialsOauthTokenData(
+						nodeCredentials,
+						'oAuth2Api',
+						newOauthTokenData,
+						additionalDataWithCredentials,
+					);
+
+					expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
+						expect.objectContaining({
+							id: 'cred-789',
+							isResolvable: true,
+							resolverId: 'system-resolver',
+						}),
+						newOauthTokenData.oauthTokenData,
+						additionalDataWithCredentials.executionContext,
+						existingCredentialData,
+						additionalDataWithCredentials.workflowSettings,
+					);
+					expect(credentialsRepository.update).not.toHaveBeenCalled();
+				} finally {
+					dynamicCredentialProxy.setResolverProvider(undefined as any);
+				}
+			});
+
 			test('should skip dynamic proxy when credentials context is missing', async () => {
 				// Setup: Resolvable credential with resolver, but NO credentials context
 				const mockCredentialEntity = {
@@ -813,6 +866,7 @@ describe('CredentialsHelper', () => {
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
 			resolveIfNeeded: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		const mockAdditionalData = {

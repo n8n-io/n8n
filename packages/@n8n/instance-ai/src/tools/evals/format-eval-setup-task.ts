@@ -1,20 +1,15 @@
+import {
+	currentJsonExpression,
+	jsonFieldAccessor,
+	nodeItemJsonExpression,
+} from './column-ref-utils';
 import type { NamedRef } from './detect-agent-named-refs.service';
 import {
 	formatEvalDataTableColumnName,
 	formatEvalDataTableColumnNameMap,
 	formatEvalDataTableName,
 } from './ensure-eval-data-table.service';
-import type { MetricCatalogEntry } from './metric-catalog';
-
-interface EvalSetupMetric {
-	id: string;
-	name: string;
-	kind: string;
-	description: string;
-	prompt?: string;
-	cannedMetricKey?: MetricCatalogEntry['cannedMetricKey'];
-	defaultEnabled?: boolean;
-}
+import type { MetricProposal } from './metric-catalog';
 
 export interface FormatEvalSetupTaskInput {
 	workflowId: string;
@@ -25,28 +20,17 @@ export interface FormatEvalSetupTaskInput {
 	projectId?: string;
 	suggestedInputColumns: string[];
 	suggestedOutputColumns: string[];
-	enabledMetrics: EvalSetupMetric[];
+	enabledMetrics: MetricProposal[];
 	namedRefs?: NamedRef[];
+	targetAgentNodeName?: string;
 }
 
-function nodeRef(nodeName: string): string {
-	return `$(${JSON.stringify(nodeName)})`;
-}
-
-function jsonFieldAccess(field: string): string {
-	return /^[A-Za-z_][A-Za-z0-9_]*$/.test(field) ? `.${field}` : `[${JSON.stringify(field)}]`;
-}
-
-function nodeJsonRef(nodeName: string, field: string): string {
-	return `${nodeRef(nodeName)}.item.json${jsonFieldAccess(field)}`;
-}
-
-function rowJsonRef(field: string): string {
-	return `$json${jsonFieldAccess(field)}`;
+function taskString(value: string): string {
+	return JSON.stringify(value) ?? '""';
 }
 
 function evalTriggerJsonRef(column: string): string {
-	return `={{ ${nodeJsonRef('Eval Trigger', column)} }}`;
+	return `={{ $('Eval Trigger').item.json${jsonFieldAccessor(column)} }}`;
 }
 
 function formatProductionAdapter(
@@ -56,7 +40,7 @@ function formatProductionAdapter(
 ): string {
 	if (namedRefs.length === 0) return '';
 
-	// Set adapter assignments: one per unique normalized dataset column.
+	// Set adapter assignments: one per unique column, using canonical single-quote syntax.
 	const assignmentsByColumn = new Map<
 		string,
 		{ column: string; nodeName: string; field: string }
@@ -74,7 +58,7 @@ function formatProductionAdapter(
 	const assignments = [...assignmentsByColumn.values()]
 		.map(
 			(a) =>
-				`  - { name: "${a.column}", value: "={{ ${nodeJsonRef(a.nodeName, a.field)} }}", type: "string" }`,
+				`  - { name: ${taskString(a.column)}, value: ${taskString(`={{ ${nodeItemJsonExpression(a.nodeName, a.field)} }}`)}, type: "string" }`,
 		)
 		.join('\n');
 
@@ -103,8 +87,8 @@ function formatProductionAdapter(
 			.map((r) => {
 				const column = columnNameFor(r.column);
 				const replacement = isAgent
-					? `{{ ${rowJsonRef(column)} }}`
-					: `{{ ${nodeJsonRef(agentNodeName, column)} }}`;
+					? `{{ ${currentJsonExpression(column)} }}`
+					: `{{ ${nodeItemJsonExpression(agentNodeName, column)} }}`;
 				return `    - Replace \`${r.originalExpression}\` with \`${replacement}\``;
 			})
 			.join('\n');
@@ -123,15 +107,15 @@ PRODUCTION ADAPTER (REQUIRED — the agent and/or its connected sub-components c
 1. Insert a new \`n8n-nodes-base.set\` node named \`"Eval Production Adapter"\` (\`typeVersion: 3.4\`) immediately upstream of the agent on the PRODUCTION path. The agent's existing \`main\` input parent on the production path becomes the Set adapter's \`main\` input parent. The Set adapter's \`main\` output goes to the agent.
 2. Configure the Set adapter's \`assignments.assignments\` array (one entry per unique dataset column):
 ${assignments}
-3. Rewrite parameter expressions in each affected node — the agent and any sub-components (memory, tools, output parsers) that reference named source nodes. **The replacement form depends on the target:** the agent itself uses \`{{ $json.<col> }}\` (it receives \`$json\` directly), but sub-components must use \`{{ ${nodeRef(agentNodeName)}.item.json.<col> }}\` because their runtime context does not propagate \`$json\` from the agent's input row.
+3. Rewrite parameter expressions in each affected node — the agent and any sub-components (memory, tools, output parsers) that reference named source nodes. **The replacement form depends on the target:** the agent itself uses \`{{ $json.<col> }}\` (it receives \`$json\` directly), but sub-components must use the exact selected-agent expression listed below because their runtime context does not propagate \`$json\` from the agent's input row.
 ${rewrites}
 4. The eval branch wires \`EvaluationTrigger\` directly to the agent's \`main\` input as a SECOND incoming connection (no Set adapter between them — the trigger row already has \`$json.<column>\` shape).
 
-After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` for the agent. Sub-components reference the agent by name, so they resolve to the agent's last input row in both modes.`;
+After your edits the agent has TWO incoming \`main\` connections: one from the Eval Production Adapter (production runs) and one from the EvaluationTrigger (eval runs). Both produce \`$json.<column>\` for the agent. Sub-components reference the selected agent node by name, so they resolve to the agent's last input row in both modes.`;
 }
 
 function formatMetric(
-	m: EvalSetupMetric,
+	m: MetricProposal,
 	input: FormatEvalSetupTaskInput,
 	columnNameFor: (column: string) => string,
 ): string {
@@ -208,7 +192,7 @@ export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 		.join('\n\n');
 	const datasetSection = formatDatasetSection(input, dataTableColumns);
 	const setOutputsDataTableInstruction = formatSetOutputsDataTableInstruction(input);
-	const agentNodeName = input.detectedAiNodes[0] ?? '';
+	const agentNodeName = input.targetAgentNodeName ?? input.detectedAiNodes[0] ?? '';
 	const adapterSection = formatProductionAdapter(
 		input.namedRefs ?? [],
 		agentNodeName,

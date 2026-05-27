@@ -137,6 +137,7 @@ import IconLucideGlobe from '~icons/lucide/globe';
 import IconLucideGraduationCap from '~icons/lucide/graduation-cap';
 import IconLucideGrid2x2 from '~icons/lucide/grid-2x2';
 import IconLucideGripVertical from '~icons/lucide/grip-vertical';
+import IconLucideGroup from '~icons/lucide/group';
 import IconLucideHandCoins from '~icons/lucide/hand-coins';
 import IconLucideHandshake from '~icons/lucide/handshake';
 import IconLucideHardDrive from '~icons/lucide/hard-drive';
@@ -238,6 +239,7 @@ import IconLucideTrendingUp from '~icons/lucide/trending-up';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
+import IconLucideUngroup from '~icons/lucide/ungroup';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
@@ -616,6 +618,7 @@ export const updatedIconSet = {
 	'graduation-cap': IconLucideGraduationCap,
 	'grid-2x2': IconLucideGrid2x2,
 	'grip-vertical': IconLucideGripVertical,
+	group: IconLucideGroup,
 	'hand-coins': IconLucideHandCoins,
 	handshake: IconLucideHandshake,
 	'hard-drive': IconLucideHardDrive,
@@ -715,6 +718,7 @@ export const updatedIconSet = {
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,
 	'undo-2': IconLucideUndo2,
+	ungroup: IconLucideUngroup,
 	unlink: IconLucideUnlink,
 	upload: IconLucideUpload,
 	user: IconLucideUser,

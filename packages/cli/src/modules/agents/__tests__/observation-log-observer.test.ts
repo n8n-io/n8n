@@ -21,8 +21,7 @@ describe('n8n observation-log observer policy', () => {
 
 	it('builds the observer prompt from log tail and transcript delta', () => {
 		const prompt = buildN8nObservationLogObserverPrompt({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			now: new Date('2026-05-12T14:30:00.000Z'),
 			deltaMessages: [],
 			transcript: '[2026-05-12T14:29:00.000Z] user:\nRemember daily-report-prod.',
