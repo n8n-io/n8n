@@ -226,6 +226,7 @@ describe('NodeExecutionContext', () => {
 						return { token: 'test-token' };
 					}),
 				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 			};
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
@@ -280,6 +281,79 @@ describe('NodeExecutionContext', () => {
 				return;
 			}
 			expect(resolved).toBeUndefined();
+		});
+
+		it('refuses to decrypt a restricted credential for a node not in supportedNodes', async () => {
+			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { restrictedApi: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(false),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('restrictedApi')).rejects.toThrow(
+				/restricted to specific nodes/i,
+			);
+			expect(mockCredentialsHelper.isCredentialUsableByNode).toHaveBeenCalledWith(
+				'restrictedApi',
+				'n8n-nodes-base.httpRequest',
+			);
+			expect(mockCredentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('allows a restricted credential on a node listed in supportedNodes', async () => {
+			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
+			// Use an httpRequest node (fullAccess=true) so the test exercises only the
+			// restriction guard, not the non-fullAccess credential description checks.
+			const consumerNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			consumerNode.credentials = { restrictedApi: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				consumerNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('restrictedApi')).resolves.toEqual({ token: 'ok' });
+		});
+
+		it('does not affect credentials that omit restrictToSupportedNodes (existing behavior)', async () => {
+			const credentialDetails = { id: 'cred-x', name: 'Some Cred' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				// helper returns true for any credential that doesn't opt into restriction
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
 		});
 	});
 
