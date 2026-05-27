@@ -64,6 +64,7 @@ export function WorkflowExecuteAdditionalData(
 		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
 		// example skip running the `workflowExecuteBefore` hook in the tests.
 		restartExecutionId: undefined,
+		encryptedRunnerIdentity: undefined,
 	});
 }
 

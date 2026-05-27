@@ -141,7 +141,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed<IConnectedNode | undefined>(() => {
 	for (const parent of parentNodes.value) {
-		if (workflowDocumentStore?.value?.pinData?.[parent.name]) {
+		if (workflowDocumentStore?.value?.pinnedDataByNodeName?.[parent.name]) {
 			return parent;
 		}
 

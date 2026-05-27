@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -90,6 +90,7 @@
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",
+    "pdf-parse": "2.4.5",
     "proxy-from-env": "^1.1.0",
     "undici": "^6.21.0"
   },

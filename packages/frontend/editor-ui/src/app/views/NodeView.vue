@@ -1258,7 +1258,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore?.value?.pinnedDataByNodeName?.[chatTriggerNode.value.name];
 });
 
 const isChatHubAvailable = computed(() => {

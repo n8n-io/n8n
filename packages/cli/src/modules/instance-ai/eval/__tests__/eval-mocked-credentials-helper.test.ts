@@ -252,6 +252,165 @@ describe('EvalMockedCredentialsHelper', () => {
 
 				expect(helper.rewrittenCredentials.map((r) => r.nodeName)).toEqual(['A', 'B']);
 			});
+
+			describe('root token embedding', () => {
+				it('embeds the resolved root in the rewritten URL path', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['OpenAI Chat Model', 'My Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					expect(result.url).toBe(`${serverUrl}/eval/My%20Agent/v1`);
+				});
+
+				it('URL-encodes special characters in the root name', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['OpenAI Chat Model', 'Agent / spike test (v2)']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					expect(result.url).toBe(
+						`${serverUrl}/eval/${encodeURIComponent('Agent / spike test (v2)')}/v1`,
+					);
+				});
+
+				it('falls back to bare /v1 when the sub-node has no routing entry', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['Some Other Sub-Node', 'Some Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					// Sub-node "OpenAI Chat Model" isn't in the map — fall back to bare /v1.
+					// The wire server's unrouted-prefix handler will surface this.
+					expect(result.url).toBe(`${serverUrl}/v1`);
+				});
+
+				it('warns when a routing map is supplied but the sub-node is missing from it', async () => {
+					const warn = jest.fn();
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['Some Other Sub-Node', 'Some Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						{ warn } as unknown as Logger,
+						subNodeToRoot,
+					);
+
+					await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+						node: openAiNode,
+					} as IExecuteData);
+
+					expect(warn).toHaveBeenCalledTimes(1);
+					expect(warn.mock.calls[0][0]).toContain('OpenAI Chat Model');
+					expect(warn.mock.calls[0][0]).toContain('buildVendorLlmRouting');
+				});
+
+				it('does NOT warn when no routing map is supplied (legacy single-root fallback path)', async () => {
+					const warn = jest.fn();
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const helper = new EvalMockedCredentialsHelper(inner, serverUrl, {
+						warn,
+					} as unknown as Logger);
+
+					await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+						node: openAiNode,
+					} as IExecuteData);
+
+					expect(warn).not.toHaveBeenCalled();
+				});
+
+				it('routes to the right root when multiple sub-nodes feed different roots', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([
+						['OpenAI A', 'Agent A'],
+						['OpenAI B', 'Agent B'],
+					]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const resA = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: { name: 'OpenAI A', id: 'a' } as INode } as IExecuteData,
+					);
+					const resB = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: { name: 'OpenAI B', id: 'b' } as INode } as IExecuteData,
+					);
+
+					expect(resA.url).toBe(`${serverUrl}/eval/Agent%20A/v1`);
+					expect(resB.url).toBe(`${serverUrl}/eval/Agent%20B/v1`);
+				});
+			});
 		});
 	});
 

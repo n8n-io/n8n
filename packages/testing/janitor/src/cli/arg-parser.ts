@@ -14,7 +14,8 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate';
+	| 'orchestrate'
+	| 'filter-shard';
 
 export interface CliOptions {
 	command: Command;
@@ -50,6 +51,8 @@ export interface CliOptions {
 	shards?: number;
 	shardIndex?: number;
 	impact: boolean;
+	// filter-shard-specific options
+	url?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -61,6 +64,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	rules: 'rules',
 	discover: 'discover',
 	orchestrate: 'orchestrate',
+	'filter-shard': 'filter-shard',
 };
 
 interface FlagHandler {
@@ -167,6 +171,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--shard-index=': (opts, value) => {
 		opts.shardIndex = Number.parseInt(value, 10);
 	},
+	'--url=': (opts, value) => {
+		opts.url = value;
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -197,6 +204,7 @@ function createDefaultOptions(): CliOptions {
 		shards: undefined,
 		shardIndex: undefined,
 		impact: false,
+		url: undefined,
 	};
 }
 

@@ -83,7 +83,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getParentNodes: store.getParentNodes,
 		getChildNodes: store.getChildNodes,
 		connectionsBySourceNode: store.connectionsBySourceNode,
-		pinData: store.pinData as IPinData,
+		pinData: store.pinnedDataByNodeName as IPinData,
 	} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors);
 	return { mockDocumentStore: store };
 });
@@ -301,7 +301,7 @@ describe('useRunWorkflow({ router })', () => {
 		mockDocumentStore.workflowId = '123';
 		mockDocumentStore.name = 'Test Workflow';
 		mockDocumentStore.connectionsBySourceNode = {};
-		mockDocumentStore.pinData = {};
+		mockDocumentStore.pinnedDataByNodeName = {};
 		mockDocumentStore.getNodeByName = vi.fn();
 		mockDocumentStore.getParentNodes = vi.fn().mockReturnValue([]);
 		mockDocumentStore.getChildNodes = vi.fn().mockReturnValue([]);

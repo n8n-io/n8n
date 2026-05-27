@@ -1,7 +1,8 @@
 /**
- * Prepares and caches a Daytona Image descriptor with config files and
- * node_modules pre-installed, and resolves a versioned named snapshot
- * (`n8n/instance-ai:<n8nVersion>`) for sandbox creation.
+ * Prepares and caches a Daytona Image descriptor with config files,
+ * node_modules, and runtime skills pre-installed, and resolves a versioned
+ * named snapshot (`n8n/instance-ai:<n8nVersion>-<setupHash>`) for sandbox
+ * creation.
  *
  * Two strategies for `ensureSnapshot`:
  * - 'direct' mode (self-hosted): optimistic create via `snapshot.create`.
@@ -18,10 +19,15 @@
  */
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
+import type { RuntimeSkillSource } from '@n8n/agents';
+import { createHash } from 'node:crypto';
+import { dirname as posixDirname } from 'node:path/posix';
 
 import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
+import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 
 export type SnapshotMode = 'direct' | 'proxy';
 
@@ -30,9 +36,16 @@ export interface CreateSnapshotOptions {
 	onLogs?: (chunk: string) => void;
 }
 
+const DAYTONA_WORKSPACE_ROOT = '/home/daytona/workspace';
+const SETUP_HASH_LENGTH = 12;
+
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
 function b64(s: string): string {
 	return Buffer.from(s, 'utf-8').toString('base64');
+}
+
+function shellQuote(value: string): string {
+	return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
 function isAlreadyExistsError(error: unknown): error is TDaytonaError {
@@ -43,41 +56,64 @@ function isAlreadyExistsError(error: unknown): error is TDaytonaError {
 }
 
 export class SnapshotManager {
-	private cachedImage: Image | null = null;
+	private cachedImage: Promise<Image> | null = null;
 
 	private snapshotPromise: Promise<string | null> | null = null;
+
+	private setupHashPromise: Promise<string> | null = null;
+
+	private runtimeSkillBundlePromise: ReturnType<typeof buildRuntimeSkillWorkspaceBundle> | null =
+		null;
 
 	constructor(
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
 		private readonly errorReporter?: ErrorReporter,
+		private readonly runtimeSkillSource?: RuntimeSkillSource,
 	) {}
 
-	/** Get or prepare the image descriptor. Synchronous after first call. */
-	ensureImage(): Image {
-		if (this.cachedImage) return this.cachedImage;
+	/** Get or prepare the image descriptor. */
+	async ensureImage(): Promise<Image> {
+		this.cachedImage ??= this.prepareImage();
+		return await this.cachedImage;
+	}
 
+	private async prepareImage(): Promise<Image> {
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
+		const runtimeSkillBundle = await this.runtimeSkillBundle();
+		const runtimeSkillCommands =
+			runtimeSkillBundle === undefined
+				? []
+				: [...runtimeSkillBundle.files].map(([filePath, content]) => {
+						return `mkdir -p ${shellQuote(posixDirname(filePath))} && echo '${b64(content)}' | base64 -d > ${shellQuote(filePath)}`;
+					});
 
 		const { Image } = loadDaytona();
-		this.cachedImage = Image.base(base)
+		let image = Image.base(base)
 			.runCommands(
-				'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
+				`mkdir -p ${DAYTONA_WORKSPACE_ROOT}/src ${DAYTONA_WORKSPACE_ROOT}/chunks ${DAYTONA_WORKSPACE_ROOT}/node-types`,
 			)
 			.runCommands(
-				`echo '${b64(PACKAGE_JSON)}' | base64 -d > /home/daytona/workspace/package.json`,
-				`echo '${b64(TSCONFIG_JSON)}' | base64 -d > /home/daytona/workspace/tsconfig.json`,
-				`echo '${b64(BUILD_MJS)}' | base64 -d > /home/daytona/workspace/build.mjs`,
-			)
-			.runCommands('cd /home/daytona/workspace && npm install --ignore-scripts');
+				`echo '${b64(PACKAGE_JSON)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/package.json`,
+				`echo '${b64(TSCONFIG_JSON)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`,
+				`echo '${b64(BUILD_MJS)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/build.mjs`,
+			);
+
+		if (runtimeSkillCommands.length > 0) {
+			image = image.runCommands(...runtimeSkillCommands);
+		}
+
+		image = image.runCommands(`cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`);
 
 		this.logger.info('Builder image descriptor prepared', {
 			base,
-			dockerfileLength: this.cachedImage.dockerfile.length,
+			dockerfileLength: image.dockerfile.length,
+			runtimeSkillsHash: runtimeSkillBundle?.skillsHash,
+			runtimeSkillFiles: runtimeSkillBundle?.files.size ?? 0,
 		});
 
-		return this.cachedImage;
+		return image;
 	}
 
 	/**
@@ -88,12 +124,12 @@ export class SnapshotManager {
 	 *
 	 * Single source of truth for snapshot creation across:
 	 * - Runtime direct mode (lazy create on first builder invocation)
-	 * - CI release pipeline (`scripts/build-snapshot.mjs`)
+	 * - CI release pipeline (`scripts/build-snapshot.cjs`)
 	 */
 	async createSnapshot(daytona: Daytona, options?: CreateSnapshotOptions): Promise<string> {
-		const name = this.snapshotName();
+		const name = await this.snapshotName();
 		try {
-			await daytona.snapshot.create({ name, image: this.ensureImage() }, options);
+			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
 			this.logger.info('Created versioned Daytona snapshot', { name });
 			return name;
 		} catch (error) {
@@ -118,11 +154,14 @@ export class SnapshotManager {
 	 *   per process. On transient failure, clears the memo so the next
 	 *   request retries, and reports the error.
 	 */
-	async ensureSnapshot(daytona: Daytona, mode: SnapshotMode): Promise<string | null> {
+	async ensureSnapshot(daytona: Daytona | undefined, mode: SnapshotMode): Promise<string | null> {
 		if (!this.n8nVersion) return null;
-		const name = this.snapshotName();
+		const name = await this.snapshotName();
 
 		if (mode === 'proxy') return name;
+		if (!daytona) {
+			throw new Error('SnapshotManager: Daytona client is required to create a snapshot');
+		}
 
 		this.snapshotPromise ??= this.createSnapshot(daytona).catch((error) => {
 			this.errorReporter?.error(error, {
@@ -141,16 +180,48 @@ export class SnapshotManager {
 		return result;
 	}
 
-	private snapshotName(): string {
+	private async setupHash(): Promise<string> {
+		this.setupHashPromise ??= (async () => {
+			const runtimeSkillBundle = await this.runtimeSkillBundle();
+			return createHash('sha256')
+				.update(
+					JSON.stringify({
+						baseImage: this.baseImage ?? 'daytonaio/sandbox:0.5.0',
+						packageJson: PACKAGE_JSON,
+						tsconfigJson: TSCONFIG_JSON,
+						buildMjs: BUILD_MJS,
+						skillsHash: runtimeSkillBundle?.skillsHash ?? '',
+					}),
+				)
+				.digest('hex')
+				.slice(0, SETUP_HASH_LENGTH);
+		})();
+
+		return await this.setupHashPromise;
+	}
+
+	private async runtimeSkillBundle(): ReturnType<typeof buildRuntimeSkillWorkspaceBundle> {
+		this.runtimeSkillBundlePromise ??= buildRuntimeSkillWorkspaceBundle({
+			source: this.runtimeSkillSource ?? loadInstanceAiRuntimeSkillSource(),
+			root: DAYTONA_WORKSPACE_ROOT,
+			logger: this.logger,
+		});
+
+		return await this.runtimeSkillBundlePromise;
+	}
+
+	private async snapshotName(): Promise<string> {
 		if (!this.n8nVersion) {
 			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
-		return `n8n/instance-ai:${this.n8nVersion}`;
+		return `n8n/instance-ai:${this.n8nVersion}-${await this.setupHash()}`;
 	}
 
 	/** Invalidate cached image (e.g., when base image changes). */
 	invalidate(): void {
 		this.cachedImage = null;
 		this.snapshotPromise = null;
+		this.setupHashPromise = null;
+		this.runtimeSkillBundlePromise = null;
 	}
 }

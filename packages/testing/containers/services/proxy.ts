@@ -170,6 +170,7 @@ export class ProxyServer {
 			partialBodyMatching?: boolean;
 			sequential?: boolean;
 			repeatLastResponse?: boolean;
+			transform?: (expectation: Expectation, fileName: string) => Expectation;
 		} = {},
 	): Promise<void> {
 		try {
@@ -214,7 +215,7 @@ export class ProxyServer {
 						expectation.times = { remainingTimes: 1 };
 					}
 
-					expectations.push(expectation);
+					expectations.push(options.transform?.(expectation, file) ?? expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);
 				}

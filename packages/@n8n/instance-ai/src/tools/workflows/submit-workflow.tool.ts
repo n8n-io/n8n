@@ -168,7 +168,7 @@ export const submitWorkflowInputSchema = z.object({
 	filePath: z
 		.string()
 		.optional()
-		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
+		.describe('Path to the TypeScript workflow file (defaults to the builder task main file)'),
 	workflowId: z
 		.string()
 		.optional()
@@ -214,6 +214,11 @@ export const submitWorkflowOutputSchema = z.object({
 
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+
+export interface SubmitWorkflowToolOptions {
+	root?: string;
+	defaultFilePath?: string;
+}
 
 /**
  * Resolve a raw `filePath` tool argument into an absolute path under the sandbox root.
@@ -322,6 +327,7 @@ export function createSubmitWorkflowTool(
 	workspace: SandboxWorkspace,
 	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
+	options: SubmitWorkflowToolOptions = {},
 ) {
 	return new Tool('submit-workflow')
 		.description(
@@ -333,8 +339,11 @@ export function createSubmitWorkflowTool(
 		.output(submitWorkflowOutputSchema)
 		.handler(
 			async ({ filePath: rawFilePath, workflowId, projectId, name }: SubmitWorkflowInput) => {
-				const root = await getWorkspaceRoot(workspace);
-				const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
+				const root = options.root ?? (await getWorkspaceRoot(workspace));
+				const filePath =
+					rawFilePath || !options.defaultFilePath
+						? resolveSandboxWorkflowFilePath(rawFilePath, root)
+						: options.defaultFilePath;
 
 				const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
 				const reportAttempt = async (

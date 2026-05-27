@@ -798,6 +798,58 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 		});
 	});
 
+	describe('CSV parsing with includeEmptyCells', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'SpreadsheetFile',
+				type: 'n8n-nodes-base.spreadsheetFile',
+				id: 'test-node-id',
+			} as INode);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		});
+
+		const csvWithEmptyCell = 'id,name,city\n1,Alice,\n2,Bob,NYC\n';
+		const buildBinaryData = (): IBinaryData => ({
+			data: Buffer.from(csvWithEmptyCell, 'utf8').toString(BINARY_ENCODING),
+			mimeType: 'text/csv',
+			fileExtension: 'csv',
+			fileName: 'test.csv',
+		});
+
+		it('should drop empty-string cells by default (includeEmptyCells unset)', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(buildBinaryData());
+
+			const result = await execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob', city: 'NYC' });
+		});
+
+		it('should preserve empty-string cells when includeEmptyCells is true', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options') return { includeEmptyCells: true };
+				return undefined;
+			});
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(buildBinaryData());
+
+			const result = await execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].json).toEqual({ id: '1', name: 'Alice', city: '' });
+			expect(result[1].json).toEqual({ id: '2', name: 'Bob', city: 'NYC' });
+		});
+	});
+
 	describe('CSV parsing with empty lines', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();

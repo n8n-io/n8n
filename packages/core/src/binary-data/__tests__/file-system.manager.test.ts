@@ -207,7 +207,7 @@ describe('deleteMany()', () => {
 });
 
 describe('rename()', () => {
-	it('should rename a file', async () => {
+	it('should rename a file without deleting the temp directory', async () => {
 		fsp.rename = jest.fn().mockResolvedValue(undefined);
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
 
@@ -221,5 +221,6 @@ describe('rename()', () => {
 		expect(fsp.rename).toHaveBeenCalledTimes(2);
 		expect(fsp.rename).toHaveBeenCalledWith(oldPath, newPath);
 		expect(fsp.rename).toHaveBeenCalledWith(`${oldPath}.metadata`, `${newPath}.metadata`);
+		expect(fsp.rm).not.toHaveBeenCalled();
 	});
 });

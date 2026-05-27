@@ -16,11 +16,15 @@ jest.mock('@daytonaio/sdk', () => {
 		}
 	}
 	class Image {
-		dockerfile = 'FROM node:20\nRUN echo mock';
-		static base() {
-			return new Image();
+		dockerfile: string;
+		constructor(base = 'node:20') {
+			this.dockerfile = `FROM ${base}`;
 		}
-		runCommands() {
+		static base(base: string) {
+			return new Image(base);
+		}
+		runCommands(...commands: string[]) {
+			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
 			return this;
 		}
 	}
@@ -28,9 +32,16 @@ jest.mock('@daytonaio/sdk', () => {
 });
 
 import { DaytonaError } from '@daytonaio/sdk';
+import {
+	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	type RuntimeSkillLinkedFiles,
+	type RuntimeSkillSource,
+} from '@n8n/agents';
 
 import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
+
+const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}$/;
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -53,6 +64,42 @@ interface FakeDaytona {
 	snapshot: FakeSnapshotApi;
 }
 
+function emptyLinkedFiles(): RuntimeSkillLinkedFiles {
+	return {
+		references: [],
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
+}
+
+function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
+	return {
+		registry: {
+			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+			skillsHash,
+			skills: [
+				{
+					id: 'snapshot-skill',
+					name: 'snapshot-skill',
+					description: 'Snapshot skill',
+					hash: skillsHash,
+					linkedFiles: emptyLinkedFiles(),
+				},
+			],
+		},
+		loadSkill: async () =>
+			await Promise.resolve({
+				id: 'snapshot-skill',
+				name: 'snapshot-skill',
+				description: 'Snapshot skill',
+				instructions: 'Use baked skills.',
+			}),
+	};
+}
+
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
@@ -62,6 +109,51 @@ function makeFakeDaytona(): FakeDaytona {
 	};
 }
 
+describe('SnapshotManager.ensureImage', () => {
+	it('bakes runtime skill files and manifest into the Daytona image descriptor', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+
+		const image = await manager.ensureImage();
+
+		expect(image.dockerfile).toContain(
+			'/home/daytona/workspace/skills/data-table-manager/SKILL.md',
+		);
+		expect(image.dockerfile).toContain(
+			'/home/daytona/workspace/skills/data-table-manager/references/data-table-playbook.md',
+		);
+		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/registry.json');
+		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/.manifest.json');
+	});
+
+	it('changes the snapshot setup hash when the runtime skills hash changes', async () => {
+		const daytonaA = makeFakeDaytona();
+		const daytonaB = makeFakeDaytona();
+		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
+		daytonaB.snapshot.create.mockResolvedValue({ name: 'ignored-b' });
+		const managerA = new SnapshotManager(
+			undefined,
+			NOOP_LOGGER,
+			'1.123.0',
+			undefined,
+			createRuntimeSkillSource('hash-a'),
+		);
+		const managerB = new SnapshotManager(
+			undefined,
+			NOOP_LOGGER,
+			'1.123.0',
+			undefined,
+			createRuntimeSkillSource('hash-b'),
+		);
+
+		const snapshotA = await managerA.createSnapshot(daytonaA as never);
+		const snapshotB = await managerB.createSnapshot(daytonaB as never);
+
+		expect(snapshotA).toMatch(SNAPSHOT_NAME_PATTERN);
+		expect(snapshotB).toMatch(SNAPSHOT_NAME_PATTERN);
+		expect(snapshotA).not.toBe(snapshotB);
+	});
+});
+
 describe('SnapshotManager.createSnapshot', () => {
 	it('returns the snapshot name on successful create', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
@@ -70,10 +162,10 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		const result = await manager.createSnapshot(daytona as never);
 
-		expect(result).toBe('n8n/instance-ai:1.123.0');
+		expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 		expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
 		const callArgs = daytona.snapshot.create.mock.calls[0][0];
-		expect(callArgs).toEqual(expect.objectContaining({ name: 'n8n/instance-ai:1.123.0' }));
+		expect(callArgs.name).toMatch(SNAPSHOT_NAME_PATTERN);
 		expect(callArgs.image).toBeDefined();
 	});
 
@@ -84,7 +176,7 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		const result = await manager.createSnapshot(daytona as never);
 
-		expect(result).toBe('n8n/instance-ai:1.123.0');
+		expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 	});
 
 	it('treats messages mentioning "already exists" as success', async () => {
@@ -96,7 +188,7 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		const result = await manager.createSnapshot(daytona as never);
 
-		expect(result).toBe('n8n/instance-ai:1.123.0');
+		expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 	});
 
 	it('throws on transient errors', async () => {
@@ -123,10 +215,9 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		await manager.createSnapshot(daytona as never, { timeout: 1800, onLogs });
 
-		expect(daytona.snapshot.create).toHaveBeenCalledWith(
-			expect.objectContaining({ name: 'n8n/instance-ai:1.123.0' }),
-			expect.objectContaining({ timeout: 1800, onLogs }),
-		);
+		const [snapshotParams, options] = daytona.snapshot.create.mock.calls[0];
+		expect(snapshotParams.name).toMatch(SNAPSHOT_NAME_PATTERN);
+		expect(options).toMatchObject({ timeout: 1800, onLogs });
 	});
 });
 
@@ -161,7 +252,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 
 			const result = await manager.ensureSnapshot(daytona as never, 'proxy');
 
-			expect(result).toBe('n8n/instance-ai:1.123.0');
+			expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 			expect(daytona.snapshot.get).not.toHaveBeenCalled();
 			expect(daytona.snapshot.create).not.toHaveBeenCalled();
 		});
@@ -175,7 +266,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 
 			const result = await manager.ensureSnapshot(daytona as never, 'direct');
 
-			expect(result).toBe('n8n/instance-ai:1.123.0');
+			expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
 			expect(daytona.snapshot.get).not.toHaveBeenCalled();
 		});
@@ -187,7 +278,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 
 			const result = await manager.ensureSnapshot(daytona as never, 'direct');
 
-			expect(result).toBe('n8n/instance-ai:1.123.0');
+			expect(result).toMatch(SNAPSHOT_NAME_PATTERN);
 		});
 
 		it('returns null and clears memoization on transient errors', async () => {
@@ -201,7 +292,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			const second = await manager.ensureSnapshot(daytona as never, 'direct');
 
 			expect(first).toBeNull();
-			expect(second).toBe('n8n/instance-ai:1.123.0');
+			expect(second).toMatch(SNAPSHOT_NAME_PATTERN);
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(2);
 		});
 
@@ -213,7 +304,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			await manager.ensureSnapshot(daytona as never, 'direct');
 			const second = await manager.ensureSnapshot(daytona as never, 'direct');
 
-			expect(second).toBe('n8n/instance-ai:1.123.0');
+			expect(second).toMatch(SNAPSHOT_NAME_PATTERN);
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
 		});
 

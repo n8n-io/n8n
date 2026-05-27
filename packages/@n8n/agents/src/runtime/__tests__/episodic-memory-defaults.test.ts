@@ -17,13 +17,15 @@ type GenerateObjectCall = {
 	};
 };
 
-const mockGenerateObject = jest.fn<Promise<{ object: unknown }>, [GenerateObjectCall]>();
+type GenerateObjectResult = { object: unknown; usage?: { totalTokens?: number } };
+
+const mockGenerateObject = jest.fn<Promise<GenerateObjectResult>, [GenerateObjectCall]>();
 
 jest.mock('ai', () => {
 	const actual = jest.requireActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateObject: async (call: GenerateObjectCall): Promise<{ object: unknown }> =>
+		generateObject: async (call: GenerateObjectCall): Promise<GenerateObjectResult> =>
 			await mockGenerateObject(call),
 	};
 });
@@ -73,15 +75,13 @@ describe('episodic memory defaults', () => {
 		const extractorPrompt = buildEpisodicMemoryExtractorPrompt({
 			scope: { resourceId: 'user-1' },
 			observationScope: {
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 			},
 			now,
 			observations: [
 				{
 					id: 'obs-1',
-					scopeKind: 'thread',
-					scopeId: 'thread:thread-1:resource:user-1',
+					observationScopeId: 'thread-1',
 					marker: 'critical',
 					text: 'User switched memory store choice to Postgres.',
 					parentId: null,
@@ -138,8 +138,7 @@ describe('episodic memory defaults', () => {
 			createEpisodicMemoryExtractFn(fakeModel)({
 				scope: { resourceId: 'user-1' },
 				observationScope: {
-					scopeKind: 'thread',
-					scopeId: 'thread:thread-1:resource:user-1',
+					observationScopeId: 'thread-1',
 				},
 				now: new Date('2026-05-12T15:00:00.000Z'),
 				observations: [],
@@ -172,5 +171,47 @@ describe('episodic memory defaults', () => {
 				sources: [],
 			}),
 		).rejects.toThrow();
+	});
+
+	it('counts extraction and reflection generation tokens when usage is available', async () => {
+		const counter = {
+			incrementMessageCount: jest.fn(),
+			incrementToolCallCount: jest.fn(),
+			incrementTokenCount: jest.fn(),
+		};
+
+		mockGenerateObject.mockImplementationOnce(async ({ schema }) => {
+			const object = schema.parse({ entries: [] });
+			return await Promise.resolve({ object, usage: { totalTokens: 11 } });
+		});
+
+		await createEpisodicMemoryExtractFn(fakeModel)({
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			observations: [],
+			renderedObservations: '',
+			existingEntries: [],
+			executionCounter: counter,
+		});
+
+		mockGenerateObject.mockImplementationOnce(async ({ schema }) => {
+			const object = schema.parse({ drop: [], merge: [] });
+			return await Promise.resolve({ object, usage: { totalTokens: 13 } });
+		});
+
+		await createEpisodicMemoryReflectFn(fakeModel)({
+			scope: { resourceId: 'user-1' },
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			seedEntryIds: [],
+			entries: [],
+			sources: [],
+			executionCounter: counter,
+		});
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(11);
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(13);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 });

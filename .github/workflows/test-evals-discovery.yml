@@ -67,7 +67,7 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
           TRIALS: ${{ inputs.trials || 3 }}
         run: |
@@ -79,11 +79,11 @@ jobs:
           pnpm eval:discovery "${EVAL_ARGS[@]}" 2>&1 | tee discovery-eval-output.txt
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
+        if: ${{ always() && github.event.pull_request.number && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVAL_OUTCOME: ${{ steps.eval.outcome }}
-          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           if [ "$EVAL_OUTCOME" = "success" ]; then

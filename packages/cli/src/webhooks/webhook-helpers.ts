@@ -871,7 +871,7 @@ export async function executeWebhook(
 						runData.data.resultData.pinData = pinData;
 					}
 
-					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {

@@ -23,12 +23,25 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
+	z.object({
+		enabled: z.literal(false),
+	}),
+	z.object({
+		enabled: z.literal(true),
+		credential: z.string().trim().min(1),
+		topK: z.number().int().min(1).max(100).optional(),
+		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+	}),
+]);
+
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
 	lastMessages: z.number().int().min(1).max(200).optional(),
 	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
+	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
 
 const ThinkingConfigSchema = z.object({
@@ -120,6 +133,15 @@ export const AgentJsonConfigSchema = z.object({
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			maxIterations: z
+				.number()
+				.int()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe(
+					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
+				),
 			nodeTools: z
 				.object({
 					enabled: z.boolean(),

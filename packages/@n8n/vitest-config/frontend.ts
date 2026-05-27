@@ -13,6 +13,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			coverage: {
 				enabled: false,
 				include: ['src/**'],
+				exclude: ['**/*.grammar'],
 				provider: 'v8',
 				reporter: ['text-summary', 'lcov', 'html-spa'],
 			},
