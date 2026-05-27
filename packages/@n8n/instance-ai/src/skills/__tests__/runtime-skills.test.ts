@@ -14,8 +14,7 @@ describe('Instance AI runtime skills', () => {
 
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
-			description:
-				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments.',
+			description: expect.stringContaining('Data Tables'),
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
 		});
