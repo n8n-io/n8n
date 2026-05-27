@@ -134,6 +134,40 @@ describe('renderSbom — scope handling (regression)', () => {
 	});
 });
 
+describe('renderSbom — unused override detection', () => {
+	it('reports overrides whose PURL did not match any component', async () => {
+		const sbom = {
+			components: [
+				{ name: 'busboy', version: '1.6.0', purl: 'pkg:npm/busboy@1.6.0', licenses: [mit] },
+			],
+		};
+		const overrides = {
+			'pkg:npm/busboy@1.6.0': { license: 'MIT' },
+			'pkg:npm/ssh2@1.15.0': { license: 'MIT' },
+			'pkg:npm/utf7@1.0.2': { license: 'MIT' },
+		};
+
+		const { unusedOverrides, summary } = await renderSbom(sbom, overrides);
+		assert.deepEqual(unusedOverrides.sort(), [
+			'pkg:npm/ssh2@1.15.0',
+			'pkg:npm/utf7@1.0.2',
+		]);
+		assert.equal(summary.unusedOverrides, 2);
+	});
+
+	it('reports zero unused overrides when every override matches', async () => {
+		const sbom = {
+			components: [
+				{ name: 'busboy', version: '1.6.0', purl: 'pkg:npm/busboy@1.6.0', licenses: [] },
+			],
+		};
+		const overrides = { 'pkg:npm/busboy@1.6.0': { license: 'MIT' } };
+		const { unusedOverrides, summary } = await renderSbom(sbom, overrides);
+		assert.deepEqual(unusedOverrides, []);
+		assert.equal(summary.unusedOverrides, 0);
+	});
+});
+
 describe('renderSbom — disk text lookup', () => {
 	it('calls readDiskText with rawComponent (not override-mutated)', async () => {
 		const sbom = {

@@ -11,6 +11,9 @@ importers:
       '@actions/github':
         specifier: 9.0.0
         version: 9.0.0
+      '@cyclonedx/cdxgen':
+        specifier: 12.4.0
+        version: 12.4.0
       '@octokit/core':
         specifier: 7.0.6
         version: 7.0.6
@@ -36,9 +39,6 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
     devDependencies:
-      '@cyclonedx/cdxgen':
-        specifier: 12.4.0
-        version: 12.4.0
       conventional-changelog-angular:
         specifier: 8.3.0
         version: 8.3.0

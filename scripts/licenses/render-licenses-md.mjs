@@ -83,9 +83,10 @@ function qualifiedName(component) {
 	return component.group ? `${component.group}/${component.name}` : component.name;
 }
 
-function applyOverride(component, overrides) {
+function applyOverride(component, overrides, matchedKeys) {
 	const override = overrides[component.purl];
 	if (!override) return component;
+	matchedKeys?.add(component.purl);
 	return {
 		...component,
 		licenses: [{ license: { id: override.license } }],
@@ -142,6 +143,7 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 	const groups = new Map();
 	const texts = new Map();
 	const unresolved = [];
+	const matchedOverrideKeys = new Set();
 	let externalCount = 0;
 	let skippedFirstParty = 0;
 
@@ -152,7 +154,7 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 		}
 		externalCount++;
 
-		const component = applyOverride(rawComponent, overrides);
+		const component = applyOverride(rawComponent, overrides, matchedOverrideKeys);
 		const key = licenseKey(component.licenses);
 
 		if (!key) {
@@ -180,6 +182,8 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 		}
 	}
 
+	const unusedOverrides = Object.keys(overrides).filter((purl) => !matchedOverrideKeys.has(purl));
+
 	return {
 		markdown: buildMarkdown(groups, texts),
 		summary: {
@@ -188,8 +192,10 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 			externalComponents: externalCount,
 			uniqueLicenses: groups.size,
 			unresolved: unresolved.length,
+			unusedOverrides: unusedOverrides.length,
 		},
 		unresolved,
+		unusedOverrides,
 	};
 }
 
@@ -206,7 +212,7 @@ async function main() {
 	const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
 	const overrides = await loadOverrides();
 
-	const { markdown, summary, unresolved } = await renderSbom(sbom, overrides, {
+	const { markdown, summary, unresolved, unusedOverrides } = await renderSbom(sbom, overrides, {
 		readDiskText: resolvedNodeModules
 			? (component) => readLicenseFromDisk(resolvedNodeModules, component)
 			: undefined,
@@ -215,10 +221,21 @@ async function main() {
 	await writeFile(outputPath, markdown);
 	console.log(JSON.stringify(summary, null, 2));
 
+	if (unusedOverrides.length > 0) {
+		// Stale override: a PURL was overridden but no component matched it (e.g. after a version bump).
+		// Surface loudly so it's caught on the next bump instead of silently re-introducing unresolved licenses.
+		console.error('\nUnused overrides (stale — no matching component PURL):');
+		for (const purl of unusedOverrides) console.error('  ' + purl);
+	}
+
 	if (unresolved.length > 0) {
 		console.error('\nUnresolved (no license detected, no override):');
 		for (const line of unresolved) console.error('  ' + line);
 		process.exit(2);
+	}
+
+	if (unusedOverrides.length > 0) {
+		process.exit(3);
 	}
 }
 
