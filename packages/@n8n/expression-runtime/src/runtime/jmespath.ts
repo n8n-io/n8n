@@ -38,9 +38,8 @@ const unsafeJmespathPropertyPattern = new RegExp(
  *
  * Mirrors the host-side wrapper in `packages/workflow/src/workflow-data-proxy.ts`
  * so that expressions resolve `$jmespath` from the in-isolate runtime via
- * Tournament's polyfill, instead of falling through to the bridge's
- * `callFunctionAtPath` channel. This shrinks the host-callable surface
- * exposed by the data object.
+ * Tournament's polyfill. Running in-isolate avoids a host round-trip per
+ * top-level key the jmespath query walks.
  *
  * Behavioural parity with the host wrapper:
  *   - Throws `ExpressionError` (same name) when args are wrong.

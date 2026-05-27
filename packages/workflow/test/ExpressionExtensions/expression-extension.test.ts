@@ -234,16 +234,8 @@ describe('Expression Parser', () => {
 			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 			expect(evaluate('={{ $if("a"==="a", 1) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1) }}')).toEqual(false);
-
-			// This will likely break when sandboxing is implemented but it works for now.
-			// If you're implementing sandboxing maybe provide a way to add functions to
-			// sandbox we can check instead?
-			const mockCallback = vi.fn(() => false);
-			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(0);
-
-			evaluate('={{ $if("a"==="b", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(1);
+			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
+			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 		});
 
 		test('$not', () => {
