@@ -142,12 +142,29 @@ export interface ResolvedNodeParametersResult {
 	suppressed?: 'parameter-values-disabled';
 }
 
+/**
+ * Resolved-parameter bundle attached to a debug failedNode.
+ * Same payload as `ResolvedNodeParametersResult` minus `nodeName` (redundant —
+ * `failedNode.name` already carries it).
+ */
+export type ResolvedParametersDebugBundle = Omit<
+	ResolvedNodeParametersResult,
+	'nodeName' | 'suppressed'
+>;
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
 		type: string;
 		error: string;
 		inputData?: Record<string, unknown> | string;
+		/**
+		 * Re-resolved parameters for the failed node (parameters tree with expressions
+		 * intact + the same tree with expressions substituted + failed/empty expression
+		 * lists). Omitted when parameter values are gated off, when resolution itself
+		 * errors (debug must not fail), or when the snapshot lacks node-type info.
+		 */
+		resolvedParameters?: ResolvedParametersDebugBundle;
 	};
 	nodeTrace: Array<{
 		name: string;

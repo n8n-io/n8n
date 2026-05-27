@@ -763,6 +763,184 @@ describe('extractExecutionDebugInfo', () => {
 		expect(trace.startedAt).toBe(new Date(1704067200000).toISOString());
 		expect(trace.finishedAt).toBe(new Date(1704067200000 + 5000).toISOString());
 	});
+
+	// ── resolvedParameters on failedNode ──────────────────────────────────────
+
+	describe('failedNode.resolvedParameters', () => {
+		const debugNodeTypes = mock<NodeTypes>();
+
+		/** Build an execution that has a full workflow snapshot + a failed node entry. */
+		function makeFailedExecution(opts: {
+			nodes: INode[];
+			connections: IConnections;
+			failedNodeName: string;
+			parentRunData: Record<string, ITaskData[]>;
+		}) {
+			return {
+				id: 'exec-1',
+				mode: 'manual',
+				status: 'error',
+				startedAt: new Date('2026-01-01T00:00:00Z'),
+				stoppedAt: new Date('2026-01-01T00:00:01Z'),
+				workflowData: {
+					id: 'wf-1',
+					name: 'Test Workflow',
+					nodes: opts.nodes,
+					connections: opts.connections,
+					settings: {},
+				},
+				data: {
+					resultData: {
+						runData: {
+							...opts.parentRunData,
+							[opts.failedNodeName]: [
+								makeTaskData([], {
+									error: new Error("Referenced node doesn't exist"),
+									startTime: 2000,
+									executionTime: 10,
+								}),
+							],
+						},
+					},
+				} as unknown as IRunExecutionData,
+			};
+		}
+
+		it('surfaces the offending expression in failedExpressions when resolution itself threw', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				assignments: {
+					assignments: [
+						{ name: 'foo', value: 'bar', type: 'string' },
+						{ name: 'baz', value: '={{ $node["DoesNotExist"].json.x }}', type: 'string' },
+					],
+				},
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Edit Fields');
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle).toBeDefined();
+			expect(bundle?.failedExpressions).toHaveLength(1);
+			expect(bundle?.failedExpressions[0]).toMatchObject({
+				path: 'assignments.assignments[1].value',
+				raw: '={{ $node["DoesNotExist"].json.x }}',
+				reason: 'expression-error',
+			});
+			// `nodeName` is intentionally omitted — `failedNode.name` already has it.
+			expect((bundle as Record<string, unknown>)?.nodeName).toBeUndefined();
+		});
+
+		it('surfaces silent empty-resolution expressions even when runtime threw a different error', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('HTTP', 'n8n-nodes-base.httpRequest', {
+				// Pure expression that resolves to undefined — caught by the empty-resolution
+				// heuristic. (Template concatenations like `={{ $json.missing }}/api` resolve
+				// to a non-empty string "undefined/api" and are NOT flagged today.)
+				url: '={{ $json.missing }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'HTTP'),
+				failedNodeName: 'HTTP',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.emptyResolutions).toEqual([
+				expect.objectContaining({ path: 'url', raw: '={{ $json.missing }}' }),
+			]);
+		});
+
+		it('omits resolvedParameters when allowSendingParameterValues is false', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.x }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				false,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('omits resolvedParameters when nodeTypes is not passed (caller opted out)', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', { value: '={{ $json.x }}' });
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				// nodeTypes intentionally omitted
+			);
+
+			expect(result.failedNode).toBeDefined();
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('still returns debug info when the resolution helper itself throws', async () => {
+			// Failed node is present in runData but missing from the workflow snapshot →
+			// extractResolvedNodeParameters throws "Node X not found in execution snapshot".
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const execution = makeFailedExecution({
+				nodes: [trigger], // failed node intentionally missing
+				connections: {},
+				failedNodeName: 'Missing Node',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Missing Node');
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------

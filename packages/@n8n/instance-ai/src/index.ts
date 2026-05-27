@@ -412,6 +412,7 @@ export type {
 	ExecutionDebugInfo,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
+	ResolvedParametersDebugBundle,
 	ResolvedExpressionFailure,
 	EmptyExpressionResolution,
 	ExecutionSummary,

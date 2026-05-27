@@ -1080,6 +1080,7 @@ export class InstanceAiAdapterService {
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
+					nodeTypes,
 				);
 			},
 
@@ -3364,6 +3365,7 @@ export async function extractExecutionDebugInfo(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const execution = await executionRepository.findSingleExecution(executionId, {
 		includeData: true,
@@ -3437,6 +3439,28 @@ export async function extractExecutionDebugInfo(
 						: undefined,
 				};
 			}
+		}
+	}
+
+	// Attach resolved-parameter view for the failed node so the agent sees both the
+	// raw expression and what it resolved to (or which expression threw). Skipped
+	// when parameter values are gated off, and wrapped in try/catch so a resolution
+	// hiccup never breaks the rest of the debug payload.
+	if (failedNode && includeOutputData && nodeTypes) {
+		try {
+			const {
+				nodeName: _omitName,
+				suppressed: _omitSuppressed,
+				...bundle
+			} = await extractResolvedNodeParameters(
+				executionRepository,
+				nodeTypes,
+				executionId,
+				failedNode.name,
+			);
+			failedNode.resolvedParameters = bundle;
+		} catch {
+			// debug must always succeed — silently skip the resolved-params view.
 		}
 	}
 
