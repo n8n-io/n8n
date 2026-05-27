@@ -20,8 +20,6 @@ jest.mock('node:fs', () => ({
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
-import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
-import { WorkflowExecute } from '../workflow-execute';
 import {
 	types,
 	nodeTypes,
@@ -29,6 +27,8 @@ import {
 	nodeTypeArguments,
 	modifyNode,
 } from './mock-node-types';
+import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
+import { WorkflowExecute } from '../workflow-execute';
 
 describe('processRunExecutionData', () => {
 	const runHook = jest.fn().mockResolvedValue(undefined);
@@ -819,6 +819,90 @@ describe('processRunExecutionData', () => {
 			// Error should be captured
 			expect(toolRunData.error).toBeDefined();
 			expect(toolRunData.error?.message).toContain(errorMessage);
+		});
+
+		test('resumes agent when requested AI tool fails and agent continues on fail', async () => {
+			const errorMessage = 'Tool execution failed with validation error';
+			const errorThrowingNode: INodeType = {
+				...passThroughNode,
+				async execute(): Promise<INodeExecutionData[][]> {
+					throw new Error(errorMessage);
+				},
+			};
+
+			const toolNode = createNodeData({ name: 'errorTool', type: 'errorThrowingNode' });
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'test input that will fail' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.return((response?: EngineResponse) => [
+					[
+						{
+							json: {
+								agentResult: 'Agent completed',
+								toolError: response?.actionResponses?.[0]?.data.data?.ai_tool?.[0]?.[0]?.json.error,
+							},
+						},
+					],
+				])
+				.done();
+			const agentNode = createNodeData({ name: 'agentNode', type: 'agentNodeType' });
+			agentNode.continueOnFail = true;
+			const afterNode = createNodeData({ name: 'afterNode', type: types.passThrough });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+				errorThrowingNode: { type: errorThrowingNode, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(agentNode, toolNode, afterNode)
+				.addConnections({ from: agentNode, to: afterNode })
+				.addConnections({ from: toolNode, to: agentNode, type: 'ai_tool' })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: agentNode.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: agentNode,
+							source: { main: [{ previousNode: 'Start' }] },
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			const runData = result.data.resultData.runData;
+
+			expect(runData[toolNode.name][0].data?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				error: errorMessage,
+			});
+			expect(runData[agentNode.name].at(-1)?.data?.main?.[0]?.[0]?.json).toMatchObject({
+				agentResult: 'Agent completed',
+				toolError: errorMessage,
+			});
+			expect(runData[afterNode.name]).toHaveLength(1);
 		});
 	});
 
