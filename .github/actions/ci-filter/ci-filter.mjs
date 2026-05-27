@@ -74,7 +74,8 @@ export function parseFilters(input) {
 
 		if (currentFilter && rawLine.match(/^\s/)) {
 			const patterns = filters.get(currentFilter);
-			if (patterns) patterns.push(line);
+			const pattern = line.startsWith('- ') ? line.slice(2).trim() : line;
+			if (patterns && pattern) patterns.push(pattern);
 			continue;
 		}
 

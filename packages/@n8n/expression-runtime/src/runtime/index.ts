@@ -11,7 +11,7 @@ import { __prepareForTransfer } from './serialize';
 declare global {
 	namespace globalThis {
 		// Proxy creator function
-		var createDeepLazyProxy: (basePath?: string[]) => any;
+		var createDeepLazyProxy: (basePath?: string[]) => Record<string | symbol, unknown>;
 
 		// Context builder (closure-scoped alternative to resetDataProxies).
 		// Accepts a single callbacks bundle so adding new typed RPCs doesn't
