@@ -145,7 +145,9 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 			.expect(404);
 	});
 
-	test('rejects users without read scope and leaves their entry intact', async () => {
+	test('lets a user without project access clear their own entry', async () => {
+		// User had access in the past, connected, then lost project access.
+		// They must still be able to clear their own stored tokens.
 		const outsider = await createMember();
 		const credential = await saveResolvableCredential();
 		await seedUserEntry(credential.id, outsider.id);
@@ -153,12 +155,12 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 		await testServer
 			.authAgentFor(outsider)
 			.delete(`/credentials/${credential.id}/my-connection`)
-			.expect(403);
+			.expect(204);
 
 		const remaining = await userEntryRepository.find({
 			where: { credentialId: credential.id, userId: outsider.id },
 		});
-		expect(remaining).toHaveLength(1);
+		expect(remaining).toHaveLength(0);
 	});
 
 	test('rejects unauthenticated requests', async () => {

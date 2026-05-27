@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
-import { Delete, Options, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -182,19 +182,19 @@ export class DynamicCredentialsController {
 	 * Deletes the running user's per-user connection row(s) for the given
 	 * credential. Users can only disconnect their own connection — the absence
 	 * of a `:userId` route segment is intentional.
+	 *
+	 * Not gated by `credential:read`: a user who has since lost access to the
+	 * project (or to the credential) must still be able to clear their own
+	 * stored OAuth tokens. The delete is keyed on the caller's userId server
+	 * side, so the worst a user can do is clear their own row.
 	 */
 	@Delete('/:credentialId/my-connection')
-	@ProjectScope('credential:read')
 	async deleteMyConnection(
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			req.user,
-			['credential:read'],
-		);
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
 
 		if (!credential) {
 			throw new NotFoundError('Credential not found');
