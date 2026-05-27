@@ -305,7 +305,13 @@ const SALESFORCE_DATE_LITERALS = new Set([
 	'NEXT_FISCAL_YEAR',
 ]);
 
-export function getValue(value: any): string | number | boolean {
+// Salesforce node typeVersion at which numeric-looking strings stopped being
+// auto-coerced to unquoted SOQL numbers. See NODE-5116: string-typed Salesforce
+// fields (e.g. external IDs) need quoted literals regardless of content. Older
+// typeVersions keep the legacy coercion for backwards compatibility.
+const NUMERIC_STRING_QUOTING_VERSION = 1.1;
+
+export function getValue(value: any, nodeVersion = 1): string | number | boolean {
 	if (value === null || value === undefined) {
 		return 'null';
 	}
@@ -379,22 +385,28 @@ export function getValue(value: any): string | number | boolean {
 			}
 		}
 
-		// Detect numeric strings and return them unquoted (leading zeros are preserved as strings)
-		if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
+		// Legacy behavior (typeVersion < 1.1): auto-coerce numeric strings to unquoted
+		// SOQL numbers. Kept for existing workflows that rely on it for numeric SF fields
+		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1 — see NODE-5116.
+		if (nodeVersion < NUMERIC_STRING_QUOTING_VERSION && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
 			const numericValue = Number(value);
 			if (Number.isFinite(numericValue)) {
 				return numericValue;
 			}
 		}
 
-		// All other strings are escaped and quoted
+		// All other strings are escaped and quoted. From typeVersion 1.1 onwards this
+		// includes numeric-looking strings — the value input has no field-type info,
+		// and string-typed Salesforce fields (e.g. external IDs) require quoted literals
+		// regardless of content. Users wanting a numeric comparison must pass a number
+		// via an expression.
 		return `'${escapeSoqlString(value)}'`;
 	}
 
 	throw new Error(`Unsupported value type: ${typeof value}`);
 }
 
-export function getConditions(options: IDataObject): string | undefined {
+export function getConditions(options: IDataObject, nodeVersion = 1): string | undefined {
 	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 
 	if (!Array.isArray(conditions) || conditions.length === 0) {
@@ -404,7 +416,7 @@ export function getConditions(options: IDataObject): string | undefined {
 	const conditionStrings = conditions.map((condition: IDataObject) => {
 		const field = validateSoqlFieldName(condition.field as string);
 		const operator = validateSoqlOperator(condition.operation as string);
-		const value = getValue(condition.value);
+		const value = getValue(condition.value, nodeVersion);
 
 		return `${field} ${operator} ${value}`;
 	});
@@ -427,7 +439,13 @@ export function getDefaultFields(sobject: string) {
 	)[sobject];
 }
 
-export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
+export function getQuery(
+	options: IDataObject,
+	sobject: string,
+	returnAll: boolean,
+	limit = 0,
+	nodeVersion = 1,
+) {
 	const validSobject = validateSoqlObjectName(sobject);
 
 	const fields: string[] = [];
@@ -451,7 +469,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 			((getDefaultFields(validSobject) as string) || 'id,LastModifiedDate').split(','),
 		);
 	}
-	const conditions = getConditions(options);
+	const conditions = getConditions(options, nodeVersion);
 
 	let query = `SELECT ${fields.join(',')} FROM ${validSobject} ${conditions ? conditions : ''}`;
 

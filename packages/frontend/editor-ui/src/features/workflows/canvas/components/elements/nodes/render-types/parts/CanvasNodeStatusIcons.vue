@@ -26,7 +26,6 @@ const $style = useCssModule();
 
 const {
 	name,
-	hasPinnedData,
 	validationErrors,
 	hasValidationErrors,
 	executionStatus,
@@ -41,6 +40,7 @@ const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const route = useRoute();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this

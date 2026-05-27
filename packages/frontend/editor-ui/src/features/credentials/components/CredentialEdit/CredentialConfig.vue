@@ -190,6 +190,16 @@ const showOAuthSuccessBanner = computed(() => {
 	);
 });
 
+const showOAuthNotConnectedBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.isResolvable &&
+		props.requiredPropertiesFilled &&
+		!props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
 const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
@@ -358,6 +368,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:button-loading="isRetesting"
 					@click="$emit('retest')"
 				/>
+
+				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<GoogleAuthButton @click="$emit('oauth')" />
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-not-connected-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
 
 				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"

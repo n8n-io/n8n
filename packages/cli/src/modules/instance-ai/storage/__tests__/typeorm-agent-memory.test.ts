@@ -4,6 +4,9 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
 import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository';
+import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository';
+import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository';
+import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository';
 import type { InstanceAiResourceRepository } from '../../repositories/instance-ai-resource.repository';
 import type { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../typeorm-agent-memory';
@@ -22,20 +25,41 @@ function makeMessageRow(overrides: Partial<InstanceAiMessage> = {}): InstanceAiM
 	} as InstanceAiMessage;
 }
 
-describe('TypeORMAgentMemory', () => {
-	it('logs and skips invalid native message rows', async () => {
-		const scopedLogger = mock<Logger>();
-		const logger = mock<Logger>({
+function createMemory(deps: {
+	threadRepo?: InstanceAiThreadRepository;
+	messageRepo?: InstanceAiMessageRepository;
+	resourceRepo?: InstanceAiResourceRepository;
+	observationRepo?: InstanceAiObservationRepository;
+	observationCursorRepo?: InstanceAiObservationCursorRepository;
+	observationLockRepo?: InstanceAiObservationLockRepository;
+	logger?: Logger;
+}) {
+	const scopedLogger = mock<Logger>();
+	const logger =
+		deps.logger ??
+		mock<Logger>({
 			scoped: jest.fn(() => scopedLogger),
 		});
+
+	return {
+		memory: new TypeORMAgentMemory(
+			deps.threadRepo ?? mock<InstanceAiThreadRepository>(),
+			deps.messageRepo ?? mock<InstanceAiMessageRepository>(),
+			deps.resourceRepo ?? mock<InstanceAiResourceRepository>(),
+			deps.observationRepo ?? mock<InstanceAiObservationRepository>(),
+			deps.observationCursorRepo ?? mock<InstanceAiObservationCursorRepository>(),
+			deps.observationLockRepo ?? mock<InstanceAiObservationLockRepository>(),
+			logger,
+		),
+		scopedLogger,
+	};
+}
+
+describe('TypeORMAgentMemory', () => {
+	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		messageRepo.find.mockResolvedValueOnce([makeMessageRow()]);
-		const memory = new TypeORMAgentMemory(
-			mock<InstanceAiThreadRepository>(),
-			messageRepo,
-			mock<InstanceAiResourceRepository>(),
-			logger,
-		);
+		const { memory, scopedLogger } = createMemory({ messageRepo });
 
 		await expect(memory.getMessages('thread-1')).resolves.toEqual([]);
 
@@ -50,9 +74,6 @@ describe('TypeORMAgentMemory', () => {
 	});
 
 	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {
-		const logger = mock<Logger>({
-			scoped: jest.fn(() => mock<Logger>()),
-		});
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const resourceRepo = mock<InstanceAiResourceRepository>();
 		threadRepo.find.mockResolvedValueOnce([
@@ -61,12 +82,7 @@ describe('TypeORMAgentMemory', () => {
 				resourceId: 'instance-ai-subagent:00000000-0000-4000-8000-000000000001:builder',
 			},
 		] as InstanceAiThread[]);
-		const memory = new TypeORMAgentMemory(
-			threadRepo,
-			mock<InstanceAiMessageRepository>(),
-			resourceRepo,
-			logger,
-		);
+		const { memory } = createMemory({ threadRepo, resourceRepo });
 
 		await memory.deleteThreadsByResourceIdPrefix(
 			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',

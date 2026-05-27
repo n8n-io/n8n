@@ -59,6 +59,22 @@ export const getNodeAllMessage = z
 	.strict();
 
 /**
+ * `$input.first()` — fetch the first item of the current node's input.
+ * Host enforces zero arguments; the schema has no fields besides `type`.
+ */
+export const getInputFirstMessage = z.object({ type: z.literal('getInputFirst') }).strict();
+
+/**
+ * `$input.last()` — fetch the last item of the current node's input.
+ */
+export const getInputLastMessage = z.object({ type: z.literal('getInputLast') }).strict();
+
+/**
+ * `$input.all()` — fetch every item of the current node's input.
+ */
+export const getInputAllMessage = z.object({ type: z.literal('getInputAll') }).strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -69,6 +85,9 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getNodeFirstMessage,
 	getNodeLastMessage,
 	getNodeAllMessage,
+	getInputFirstMessage,
+	getInputLastMessage,
+	getInputAllMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

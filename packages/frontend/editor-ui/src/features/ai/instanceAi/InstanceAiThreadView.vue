@@ -401,10 +401,23 @@ watch(
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
+function focusChatInputIfFocusIsIdle() {
+	const activeElement = document.activeElement;
+	if (
+		activeElement instanceof HTMLElement &&
+		activeElement !== document.body &&
+		activeElement !== document.documentElement
+	) {
+		return;
+	}
+
+	chatInputRef.value?.focus();
+}
+
 // Focus input on initial render (ref rebinds when messages load)
 watch(chatInputRef, (el) => {
 	if (el) {
-		void nextTick(() => el.focus());
+		void nextTick(focusChatInputIfFocusIsIdle);
 	}
 });
 
@@ -414,29 +427,59 @@ watch(
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
 			userScrolledUp.value = false;
-			void nextTick(() => {
-				chatInputRef.value?.focus();
-			});
+			void nextTick(focusChatInputIfFocusIsIdle);
 		}
 	},
 );
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 const inputAreaHeight = ref(120);
-let resizeObserver: ResizeObserver | null = null;
+const scrollButtonBottomOffset = ref(144);
+let inputContainerResizeObserver: ResizeObserver | null = null;
+let inputSwapResizeObserver: ResizeObserver | null = null;
+
+function updateScrollButtonBottomOffset() {
+	const container = inputContainerRef.value;
+	const inputSwap = inputSwapRef.value;
+	if (!container || !inputSwap) {
+		scrollButtonBottomOffset.value = inputAreaHeight.value + 24;
+		return;
+	}
+
+	const containerBottom = container.getBoundingClientRect().bottom;
+	const inputSwapTop = inputSwap.getBoundingClientRect().top;
+	scrollButtonBottomOffset.value = Math.max(24, containerBottom - inputSwapTop + 24);
+}
 
 watch(
 	inputContainerRef,
 	(el) => {
-		resizeObserver?.disconnect();
+		inputContainerResizeObserver?.disconnect();
 		if (el) {
-			resizeObserver = new ResizeObserver((entries) => {
+			inputContainerResizeObserver = new ResizeObserver((entries) => {
 				for (const entry of entries) {
 					inputAreaHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
 				}
+				updateScrollButtonBottomOffset();
 			});
-			resizeObserver.observe(el);
+			inputContainerResizeObserver.observe(el);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	inputSwapRef,
+	(el) => {
+		inputSwapResizeObserver?.disconnect();
+		if (el) {
+			inputSwapResizeObserver = new ResizeObserver(() => {
+				updateScrollButtonBottomOffset();
+			});
+			inputSwapResizeObserver.observe(el);
+			updateScrollButtonBottomOffset();
 		}
 	},
 	{ immediate: true },
@@ -472,13 +515,14 @@ async function syncRouteToStore() {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
-	void nextTick(() => chatInputRef.value?.focus());
+	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
 	thread.closeSSE();
 	contentResizeObserver?.disconnect();
-	resizeObserver?.disconnect();
+	inputContainerResizeObserver?.disconnect();
+	inputSwapResizeObserver?.disconnect();
 });
 
 const workflowPreviewRef =
@@ -630,13 +674,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 					<!-- Scroll to bottom button -->
 					<div
 						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${inputAreaHeight + 8}px` }"
+						:style="{ bottom: `${scrollButtonBottomOffset}px` }"
 					>
-						<Transition name="fade">
+						<Transition name="scroll-button-fade">
 							<N8nIconButton
 								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
 								icon="arrow-down"
+								size="large"
+								icon-size="large"
 								:class="$style.scrollToBottomButton"
 								@click="
 									scrollToBottom(true);
@@ -662,7 +708,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel
 										v-if="hasFloatingConfirmation"
@@ -984,14 +1030,34 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 }
 
 .scrollToBottomButton {
-	pointer-events: auto;
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	--button--color: var(--icon-color--strong);
+	--button--color--background: var(--background--surface);
+	--button--color--background-hover: var(--color--foreground--tint-2);
+	--button--color--background-active: var(--color--foreground--tint-2);
+	--button--shadow: var(--shadow--xs);
+	--button--shadow--hover: var(--shadow--xs);
+	--button--shadow--active: var(--shadow--xs);
+	--button--border-color: var(--border-color);
+	--button--border-color--hover: var(--border-color);
+	--button--border-color--active: var(--border-color);
+	--button--border--shadow: 0 0 0 1px var(--button--border-color);
+	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	--button--radius: var(--radius--full);
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
+	pointer-events: auto;
+
+	&.scrollToBottomButton {
+		background-color: var(--background--surface);
+		border: var(--border);
+		border-radius: var(--radius--full);
+		box-shadow: var(--shadow--xs);
+		color: var(--icon-color--strong);
+
+		&:hover {
+			background-color: var(--color--foreground--tint-2);
+			box-shadow: var(--shadow--xs);
+		}
 	}
 }
 
@@ -1076,6 +1142,16 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.scroll-button-fade-enter-from,
+.scroll-button-fade-leave-to {
+	opacity: 0;
+}
+
+.scroll-button-fade-enter-active,
+.scroll-button-fade-leave-active {
+	transition: opacity 0.12s ease;
 }
 
 .preview-panel-slide-enter-active,
