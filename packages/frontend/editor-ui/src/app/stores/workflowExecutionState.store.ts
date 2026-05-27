@@ -20,7 +20,7 @@ import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
 export type WorkflowExecutionStateChangePayload = {
-	workflowId: WorkflowDocumentId;
+	documentId: WorkflowDocumentId;
 	field: WorkflowExecutionStateField;
 };
 
@@ -61,7 +61,8 @@ export function getWorkflowExecutionStateStoreId(id: WorkflowDocumentId) {
  */
 export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
-		const workflowId = id;
+		const documentId = id;
+		const [workflowId] = id.split('@');
 
 		// --- State ---
 
@@ -101,7 +102,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		function fireChange(action: ChangeAction, field: WorkflowExecutionStateField) {
 			void onWorkflowExecutionStateChange.trigger({
 				action,
-				payload: { workflowId, field },
+				payload: { documentId, field },
 			});
 		}
 
@@ -431,12 +432,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 
 		function addToCurrentExecutions(executions: ExecutionSummary[]) {
 			let added = false;
-			// `execution.workflowId` from the backend is the bare workflow id; strip the
-			// `@version` suffix off the store key for the comparison.
-			const rawWorkflowId = workflowId.split('@')[0];
 			executions.forEach((execution) => {
 				const exists = currentWorkflowExecutions.value.find((ex) => ex.id === execution.id);
-				if (!exists && execution.workflowId === rawWorkflowId) {
+				if (!exists && execution.workflowId === workflowId) {
 					currentWorkflowExecutions.value.push(execution);
 					added = true;
 				}
@@ -560,10 +558,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				uiStore.lastSelectedNode = nameData.new;
 			}
 
-			// `workflowId` is already a `WorkflowDocumentId` (`'<id>@<version>'`); detect
-			// "no workflow" via the raw id portion since `'@latest'` is non-empty/truthy.
-			if (workflowId.split('@')[0]) {
-				const workflowDocumentStore = useWorkflowDocumentStore(workflowId);
+			if (workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 				workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
 				workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 			}
@@ -595,6 +591,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		}
 
 		return {
+			documentId,
 			workflowId,
 			// Read API
 			activeExecutionId: readonly(activeExecutionId),

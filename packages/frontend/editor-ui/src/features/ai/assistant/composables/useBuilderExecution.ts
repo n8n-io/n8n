@@ -9,10 +9,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useToast } from '@/app/composables/useToast';
 import { isChatNode } from '@/app/utils/aiUtils';
-import {
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -26,10 +23,10 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const router = useRouter();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionState = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionState = computed(() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
 	const toast = useToast();
@@ -47,7 +44,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		!isReady.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 	);
 
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+	const isWorkflowRunning = computed(() => workflowExecutionState.value.isWorkflowRunning);
 	const isExecutionWaitingForWebhook = computed(
 		() => workflowExecutionState.value.executionWaitingForWebhook,
 	);

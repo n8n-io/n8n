@@ -26,10 +26,7 @@ import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	N8nButton,
@@ -60,6 +57,9 @@ const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
@@ -175,10 +175,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (
-		!useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			.executionWaitingForWebhook
-	) {
+	if (!workflowExecutionStateStore.value.executionWaitingForWebhook) {
 		return false;
 	}
 
@@ -191,7 +188,7 @@ const isListeningForEvents = computed(() => {
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = workflowsStore.executedNode;

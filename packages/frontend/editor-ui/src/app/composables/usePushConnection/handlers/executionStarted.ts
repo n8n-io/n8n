@@ -15,8 +15,11 @@ import type { IRunExecutionData } from 'n8n-workflow';
  */
 export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		workflowDocumentStore.documentId,
 	);
 	const isIframe = window !== window.parent;
 
@@ -42,10 +45,6 @@ export async function executionStarted({ data }: ExecutionStarted) {
 	// Initialize or reinitialize execution data to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (!executionDataStore.execution?.data || needsInit) {
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-
 		executionDataStore.setExecution({
 			id: data.executionId,
 			finished: false,

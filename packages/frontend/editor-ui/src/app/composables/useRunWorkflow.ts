@@ -39,10 +39,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import {
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -81,14 +78,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionState = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 	);
 	// `inject()` only resolves inside a setup context; callers from async event
 	// handlers must pass `workflowState` in.
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
-
-	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({

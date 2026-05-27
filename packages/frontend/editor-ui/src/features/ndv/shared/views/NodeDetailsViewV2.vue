@@ -34,10 +34,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import {
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import InputPanel from '../../panel/components/InputPanel.vue';
@@ -309,7 +306,7 @@ const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning)
 
 const isExecutionWaitingForWebhook = computed(
 	() =>
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
 			.executionWaitingForWebhook,
 );
 

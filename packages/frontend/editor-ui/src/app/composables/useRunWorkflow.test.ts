@@ -55,6 +55,7 @@ type Writable<T> = { -readonly [K in keyof T]: T[K] };
 
 const { mockDocumentStore } = vi.hoisted(() => {
 	const store = {
+		documentId: '123@latest',
 		workflowId: '123',
 		name: 'Test Workflow',
 		allNodes: [],

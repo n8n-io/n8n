@@ -148,8 +148,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
-	const isWorkflowRunning = computed(() => currentExecutionStateStore.value.isWorkflowRunning);
-
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
 	const getAllLoadedFinishedExecutions = computed(() => {
@@ -672,7 +670,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isWorkflowSaved,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		isWorkflowRunning,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,

@@ -535,7 +535,7 @@ async function onExecuteWithMockData() {
 
 	await runWorkflow({
 		triggerNode:
-			useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
 				.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }

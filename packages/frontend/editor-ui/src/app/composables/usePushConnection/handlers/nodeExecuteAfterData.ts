@@ -14,11 +14,11 @@ import {
  */
 export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterData) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		workflowDocumentStore.value.documentId,
 	);
 	const schemaPreviewStore = useSchemaPreviewStore();
 

@@ -51,7 +51,8 @@ describe('workflowExecutionState.store', () => {
 			const id = createWorkflowDocumentId('wf-42');
 			const workflowExecutionStateStore = useWorkflowExecutionStateStore(id);
 			expect(workflowExecutionStateStore.$id).toBe(getWorkflowExecutionStateStoreId(id));
-			expect(workflowExecutionStateStore.workflowId).toBe(id);
+			expect(workflowExecutionStateStore.documentId).toBe(id);
+			expect(workflowExecutionStateStore.workflowId).toBe('wf-42');
 		});
 
 		it('different workflowIds produce isolated state stores', () => {
@@ -1207,7 +1208,7 @@ describe('workflowExecutionState.store', () => {
 			expect(spy).toHaveBeenCalled();
 			expect(spy.mock.calls[0][0]).toMatchObject({
 				action: 'update',
-				payload: { workflowId: id, field: 'executionWaitingForWebhook' },
+				payload: { documentId: id, field: 'executionWaitingForWebhook' },
 			});
 		});
 

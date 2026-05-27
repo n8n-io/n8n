@@ -38,7 +38,7 @@ const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const workflowExecutionState = computed(() =>
-	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();

@@ -40,13 +40,13 @@ const {
 	mockNodeHelpers,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
-		isWorkflowRunning: false,
 		executedNode: undefined as string | undefined,
 		workflowId: '123',
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
 	},
 	mockWorkflowExecutionStateStore: {
+		isWorkflowRunning: false,
 		executionWaitingForWebhook: false,
 		chatPartialExecutionDestinationNode: undefined as string | undefined,
 	},
@@ -205,7 +205,7 @@ describe('useNodeExecution', () => {
 		uiStore = useUIStore();
 
 		// Reset store properties to defaults
-		mockWorkflowsStore.isWorkflowRunning = false;
+		mockWorkflowExecutionStateStore.isWorkflowRunning = false;
 		mockWorkflowsStore.executedNode = undefined;
 		mockWorkflowExecutionStateStore.executionWaitingForWebhook = false;
 		mockWorkflowExecutionStateStore.chatPartialExecutionDestinationNode = undefined;
@@ -356,7 +356,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -371,7 +371,7 @@ describe('useNodeExecution', () => {
 				name: 'n8n-nodes-base.scheduleTrigger',
 				group: ['schedule'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -386,7 +386,7 @@ describe('useNodeExecution', () => {
 				name: MANUAL_TRIGGER_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -398,7 +398,7 @@ describe('useNodeExecution', () => {
 
 	describe('isExecuting', () => {
 		it('should return true when node is running and not listening', () => {
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -449,7 +449,7 @@ describe('useNodeExecution', () => {
 		});
 
 		it('should return workflow running message when another node is executing', () => {
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Other Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -716,7 +716,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 
@@ -868,7 +868,7 @@ describe('useNodeExecution', () => {
 				name: WEBHOOK_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
-			mockWorkflowsStore.isWorkflowRunning = true;
+			mockWorkflowExecutionStateStore.isWorkflowRunning = true;
 			mockWorkflowsStore.executedNode = 'Test Node';
 			const node = ref(createTestNode({ name: 'Test Node' }));
 

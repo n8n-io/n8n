@@ -240,7 +240,11 @@ describe('NodeExecuteButton', () => {
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
-		workflowsStore.isWorkflowRunning = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
+			'isWorkflowRunning',
+			'get',
+		).mockReturnValue(true);
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button').textContent).toBe('Stop Listening');
@@ -250,7 +254,11 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
-		workflowsStore.isWorkflowRunning = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
+			'isWorkflowRunning',
+			'get',
+		).mockReturnValue(true);
 
 		const { getByRole } = renderComponent();
 		expect(getByRole('button')).toHaveAttribute('aria-busy', 'true');
@@ -275,7 +283,11 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
-		workflowsStore.isWorkflowRunning = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
+			'isWorkflowRunning',
+			'get',
+		).mockReturnValue(true);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
@@ -330,7 +342,11 @@ describe('NodeExecuteButton', () => {
 	});
 
 	it('stops execution when clicking button while workflow is running', async () => {
-		workflowsStore.isWorkflowRunning = true;
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
+			'isWorkflowRunning',
+			'get',
+		).mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		useWorkflowState().setActiveExecutionId('test-execution-id');
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);

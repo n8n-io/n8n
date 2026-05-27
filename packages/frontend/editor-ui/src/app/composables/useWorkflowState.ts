@@ -102,8 +102,9 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(ws.workflowId),
+			workflowDocumentStore.documentId,
 		);
 		const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 
@@ -111,7 +112,6 @@ export function useWorkflowState() {
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		workflowExecutionStateStore.setExecutionWaitingForWebhook(false);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (typeof activeExecutionId === 'string') {

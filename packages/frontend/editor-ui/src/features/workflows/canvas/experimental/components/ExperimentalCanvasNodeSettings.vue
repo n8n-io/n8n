@@ -5,12 +5,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import {
-	createWorkflowDocumentId,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
@@ -26,7 +22,6 @@ const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
 }>();
 
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
@@ -40,7 +35,7 @@ const foreignCredentials = computed(() =>
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(
 	() =>
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
 			.executionWaitingForWebhook,
 );
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
