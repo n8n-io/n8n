@@ -167,6 +167,39 @@ describe('parseStoredMessages', () => {
 			expect(tc?.renderHint).toBe('tasks');
 		});
 
+		it('should surface rejected tool calls via `error`, not `result`', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Do something',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-rej',
+							toolName: 'workflows',
+							input: { name: 'x' },
+							state: 'rejected',
+							error: 'Workflow not found',
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const tc = result[1].agentTree?.toolCalls[0];
+			expect(tc?.isLoading).toBe(false);
+			expect(tc?.result).toBeUndefined();
+			expect(tc?.error).toBe('Workflow not found');
+		});
+
 		it('should parse reasoning from native parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{

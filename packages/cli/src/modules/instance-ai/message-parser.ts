@@ -21,6 +21,7 @@ interface StoredToolInvocation {
 	toolName: string;
 	args: Record<string, unknown>;
 	result?: unknown;
+	error?: string;
 }
 
 /**
@@ -143,7 +144,7 @@ function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocati
 			toolCallId: part.toolCallId,
 			toolName: part.toolName,
 			args,
-			result: { error: part.error },
+			error: part.error,
 		};
 	}
 	return {
@@ -171,6 +172,7 @@ function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCal
 		toolName: invocation.toolName,
 		args: invocation.args,
 		result: isCompleted ? invocation.result : undefined,
+		error: isCompleted ? invocation.error : undefined,
 		isLoading: !isCompleted,
 		renderHint: getRenderHint(invocation.toolName),
 	};
