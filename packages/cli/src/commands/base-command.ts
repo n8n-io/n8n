@@ -20,7 +20,7 @@ import {
 	ErrorReporter,
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
-import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError, Expression, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -174,6 +174,17 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+
+		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
+			this.globalConfig.expressionEngine;
+		await Expression.initExpressionEngine({
+			engine,
+			poolSize,
+			maxCodeCacheSize,
+			bridgeTimeout,
+			bridgeMemoryLimit,
+			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+		});
 	}
 
 	protected async stopProcess() {
@@ -186,7 +197,11 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
+			await Promise.all([
+				CrashJournal.cleanup(),
+				this.dbConnection.close(),
+				Expression.disposeExpressionEngine(),
+			]);
 		} finally {
 			process.exit();
 		}
