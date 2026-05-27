@@ -15,6 +15,9 @@ export type Command =
 	| 'rules'
 	| 'discover'
 	| 'orchestrate'
+	| 'affected-packages'
+	| 'scope'
+	| 'test-scoped'
 	| 'filter-shard';
 
 export interface CliOptions {
@@ -51,6 +54,12 @@ export interface CliOptions {
 	shards?: number;
 	shardIndex?: number;
 	impact: boolean;
+	// Affected-packages / scope options
+	changedFiles?: string;
+	runner?: 'jest' | 'vitest';
+	packageDir?: string;
+	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
+	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
 }
@@ -64,6 +73,9 @@ const SUBCOMMANDS: Record<string, Command> = {
 	rules: 'rules',
 	discover: 'discover',
 	orchestrate: 'orchestrate',
+	'affected-packages': 'affected-packages',
+	scope: 'scope',
+	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
 };
 
@@ -171,6 +183,19 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--shard-index=': (opts, value) => {
 		opts.shardIndex = Number.parseInt(value, 10);
 	},
+	'--changed-files=': (opts, value) => {
+		opts.changedFiles = value;
+	},
+	'--runner=': (opts, value) => {
+		if (value === 'jest' || value === 'vitest') {
+			opts.runner = value;
+		} else {
+			throw new Error(`Unknown --runner=${value}. Expected 'jest' or 'vitest'.`);
+		}
+	},
+	'--package-dir=': (opts, value) => {
+		opts.packageDir = value;
+	},
 	'--url=': (opts, value) => {
 		opts.url = value;
 	},
@@ -204,6 +229,10 @@ function createDefaultOptions(): CliOptions {
 		shards: undefined,
 		shardIndex: undefined,
 		impact: false,
+		changedFiles: undefined,
+		runner: undefined,
+		packageDir: undefined,
+		passthroughArgs: [],
 		url: undefined,
 	};
 }
@@ -218,9 +247,28 @@ function parseSubcommand(args: string[]): { command: Command; startIdx: number }
 	return { command: 'analyze', startIdx: 0 };
 }
 
+/**
+ * For test-scoped, unrecognised flags must forward to the underlying runner
+ * (jest/vitest) — they can't be silently dropped because consumers compose
+ * extra flags via turbo + npm script chains. For all other subcommands the
+ * passthrough list stays empty and unused.
+ */
+const PASSTHROUGH_COMMANDS = new Set<Command>(['test-scoped']);
+
 function parseFlags(args: string[], startIdx: number, options: CliOptions): void {
+	const allowPassthrough = PASSTHROUGH_COMMANDS.has(options.command);
+	let passthroughActive = false;
 	for (let i = startIdx; i < args.length; i++) {
 		const arg = args[i];
+
+		if (passthroughActive) {
+			options.passthroughArgs.push(arg);
+			continue;
+		}
+		if (arg === '--') {
+			passthroughActive = true;
+			continue;
+		}
 
 		// Handle simple flags
 		const handler = FLAG_HANDLERS[arg];
@@ -230,12 +278,17 @@ function parseFlags(args: string[], startIdx: number, options: CliOptions): void
 		}
 
 		// Handle value flags
+		let matched = false;
 		for (const [prefix, valueHandler] of Object.entries(VALUE_FLAG_HANDLERS)) {
 			if (arg.startsWith(prefix)) {
 				const value = arg.slice(prefix.length);
 				valueHandler(options, value);
+				matched = true;
 				break;
 			}
+		}
+		if (!matched && allowPassthrough) {
+			options.passthroughArgs.push(arg);
 		}
 	}
 }
