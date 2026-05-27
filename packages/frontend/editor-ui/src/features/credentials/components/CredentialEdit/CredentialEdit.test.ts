@@ -763,4 +763,182 @@ describe('CredentialEdit', () => {
 			}),
 		);
 	});
+
+	describe('per-user OAuth banner', () => {
+		const createPiniaForBannerTest = () =>
+			createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+
+		const setupOAuthCredential = (overrides: Partial<Record<string, unknown>>) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+				},
+				createdAt: '2026-05-22T10:00:00.000Z',
+				updatedAt: '2026-05-22T10:00:00.000Z',
+				id: 'cred-banner',
+				name: 'Google BigQuery account',
+				type: 'googleBigQueryOAuth2Api',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+				...overrides,
+			});
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[googleOAuth2Api.name]: googleOAuth2Api,
+				[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
+			};
+
+			return credentialsStore;
+		};
+
+		test('shows banner for static OAuth credential when oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'static-token' },
+				},
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('shows banner for resolvable credential when connectedByMe is true', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+				oauthTokenData: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('hides banner for resolvable credential when connectedByMe is false, even if shared oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'shared-token' },
+				},
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
+		});
+
+		test('shows the not-connected warning banner for resolvable credential when connectedByMe is false', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+			expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+		});
+
+		test('hides the not-connected warning banner when the current user is connected', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+	});
 });

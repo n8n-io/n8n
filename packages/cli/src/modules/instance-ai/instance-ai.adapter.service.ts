@@ -131,6 +131,8 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
+type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
+
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
  * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
@@ -184,7 +186,7 @@ export class InstanceAiAdapterService {
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private templatesService: BuilderTemplatesService | undefined;
+	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -265,7 +267,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private getTemplatesService(): BuilderTemplatesService {
+	private getTemplatesService(): BuilderTemplatesServiceInstance {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
@@ -1429,6 +1431,14 @@ export class InstanceAiAdapterService {
 			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
+		const referenceScopes = {
+			read: ['dataTable:read'],
+			readRow: ['dataTable:readRow'],
+			writeRow: ['dataTable:writeRow'],
+			update: ['dataTable:update'],
+			delete: ['dataTable:delete'],
+		} satisfies Record<DataTableReferencePermission, Scope[]>;
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1471,6 +1481,15 @@ export class InstanceAiAdapterService {
 					options,
 				);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
+			},
+
+			async resolveTableReference(dataTableId: string, options?: DataTableReferenceOptions) {
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					referenceScopes[options?.permission ?? 'read'],
+					dataTableId,
+					options,
+				);
+				return { id: resolvedId, name: tableName, projectId };
 			},
 
 			async getSchema(dataTableId, options) {
@@ -2478,6 +2497,13 @@ interface DataTableRecord {
 	name: string;
 	projectId: string;
 }
+
+type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+type DataTableReferenceOptions = {
+	projectId?: string;
+	permission?: DataTableReferencePermission;
+};
 
 interface DataTableIdOrNameRepository {
 	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;

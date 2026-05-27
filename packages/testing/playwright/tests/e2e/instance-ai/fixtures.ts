@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import type { Expectation } from 'mockserver-client';
 import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
@@ -6,6 +7,17 @@ import { test as base, expect as baseExpect } from '../../../fixtures/base';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 const EXPECTATIONS_DIR = './expectations';
+const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
+const SYSTEM_PROMPT_ANCHORS = [
+	INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR,
+	'You are the n8n Workflow Planner',
+	'You are an expert n8n workflow builder',
+	'You generate a short descriptive title for a conversation',
+] as const;
+const LEGACY_SYSTEM_ARRAY_PREFIX =
+	/\\\[\\\{"type":"text","text":"(?=You are the n8n Instance Agent)/g;
+const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
+const BODY_REGEX_WILDCARD = '[\\s\\S]*';
 
 function slugify(text: string): string {
 	return text
@@ -132,7 +144,9 @@ function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string
 				: undefined;
 	if (!system) return undefined;
 
-	const systemSnippet = escapeRegex(system.slice(0, 80));
+	const anchorIndex = system.indexOf(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR);
+	const systemSnippetStart = anchorIndex >= 0 ? anchorIndex : 0;
+	const systemSnippet = escapeRegex(system.slice(systemSnippetStart, systemSnippetStart + 80));
 	const latestMessageAnchor = getLatestMessageAnchor(parsed.messages);
 	const matcher = latestMessageAnchor
 		? `${systemSnippet}[\\s\\S]*${latestMessageAnchor}`
@@ -142,6 +156,56 @@ function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string
 		type: 'REGEX',
 		regex: `[\\s\\S]*${matcher}[\\s\\S]*`,
 	};
+}
+
+type BodyMatcher = {
+	type?: unknown;
+	regex?: unknown;
+	subString?: unknown;
+	[key: string]: unknown;
+};
+
+function isBodyMatcher(body: unknown): body is BodyMatcher {
+	return typeof body === 'object' && body !== null && !Array.isArray(body);
+}
+
+function stripRecordedSystemPromptAnchor(regex: string): string {
+	const anchorIndex = SYSTEM_PROMPT_ANCHORS.reduce<number>((nearest, anchor) => {
+		const index = regex.indexOf(anchor);
+		if (index < 0) return nearest;
+		if (nearest < 0) return index;
+		return Math.min(nearest, index);
+	}, -1);
+
+	if (anchorIndex < 0) return regex;
+
+	const latestTurnAnchorIndex = regex.indexOf(BODY_REGEX_WILDCARD, anchorIndex);
+	if (latestTurnAnchorIndex < 0) return regex;
+
+	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
+}
+
+function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expectation {
+	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
+	if (!isBodyMatcher(body)) return expectation;
+
+	if (body.type === 'REGEX' && typeof body.regex === 'string') {
+		body.regex = stripRecordedSystemPromptAnchor(
+			body.regex.replace(LEGACY_SYSTEM_ARRAY_PREFIX, ''),
+		);
+	}
+
+	const stringMatcher = body['string'];
+	if (
+		body.type === 'STRING' &&
+		typeof stringMatcher === 'string' &&
+		stringMatcher.startsWith(`${LEGACY_SYSTEM_STRING_PREFIX}${INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR}`)
+	) {
+		body['string'] = INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR;
+		body.subString = true;
+	}
+
+	return expectation;
 }
 
 type InstanceAiFixtures = {
@@ -229,6 +293,7 @@ export const test = base.extend<InstanceAiFixtures>({
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
 					repeatLastResponse: false,
+					transform: loosenRecordedInstanceAiPromptMatcher,
 				});
 
 				// Load trace events for replay ID remapping

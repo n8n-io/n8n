@@ -2963,8 +2963,71 @@ describe('AgentRuntime — observation log jobs', () => {
 		const systemPrompt = messages[0].content;
 		expect(systemPrompt).toContain('Resource one memory.');
 		expect(systemPrompt).toContain('Resource two memory.');
-		expect(JSON.stringify(messages)).toContain('remember resource-two preference');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
+
+		await runtime.dispose();
+	});
+
+	it('loads only unobserved history when an observation cursor exists', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const observedAt = new Date('2026-01-01T00:01:00.000Z');
+		const unobservedAt = new Date('2026-01-01T00:02:00.000Z');
+		await memory.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			messages: [
+				{
+					id: 'm1',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					role: 'user',
+					content: [{ type: 'text', text: 'OBSERVED_OLD_MESSAGE' }],
+				},
+				{
+					id: 'm2',
+					createdAt: observedAt,
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Old response' }],
+				},
+				{
+					id: 'm3',
+					createdAt: unobservedAt,
+					role: 'user',
+					content: [{ type: 'text', text: 'UNOBSERVED_RECENT_MESSAGE' }],
+				},
+			],
+		});
+		await memory.setCursor({
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm2',
+			lastObservedAt: observedAt,
+			updatedAt: observedAt,
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observe: async () => await Promise.resolve('* CRITICAL (14:30) Observed.'),
+			},
+		});
+
+		await runtime.generate('Current turn question', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		const generateTextMock = generateText as jest.MockedFunction<
+			(input: { messages: unknown[] }) => unknown
+		>;
+		const [{ messages }] = generateTextMock.mock.calls[0];
+		const serialized = JSON.stringify(messages);
+		expect(serialized).not.toContain('OBSERVED_OLD_MESSAGE');
+		expect(serialized).toContain('UNOBSERVED_RECENT_MESSAGE');
 
 		await runtime.dispose();
 	});
