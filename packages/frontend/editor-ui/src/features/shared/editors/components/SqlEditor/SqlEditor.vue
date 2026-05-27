@@ -38,7 +38,6 @@ import {
 	expressionCloseBracketsConfig,
 } from '../../plugins/codemirror/expressionCloseBrackets';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -73,7 +72,6 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const ndvStore = injectNDVStore();
 const container = ref<HTMLDivElement>();
 const sqlEditor = ref<HTMLDivElement>();
 const isFocused = ref(false);
@@ -115,7 +113,7 @@ const extensions = computed(() => {
 			foldGutter(),
 			dropCursor(),
 			bracketMatching(),
-			mappingDropCursor(ndvStore.value),
+			mappingDropCursor(),
 		]);
 	}
 

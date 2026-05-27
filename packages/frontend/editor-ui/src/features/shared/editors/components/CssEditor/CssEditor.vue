@@ -24,7 +24,6 @@ import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { TargetNodeParameterContext } from '@/Interface';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 type Props = {
 	modelValue: string;
@@ -45,7 +44,6 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const ndvStore = injectNDVStore();
 const cssEditor = ref<HTMLElement>();
 const editorValue = ref<string>(props.modelValue);
 
@@ -72,7 +70,7 @@ const extensions = computed(() => [
 	dropCursor(),
 	indentOnInput(),
 	highlightActiveLine(),
-	mappingDropCursor(ndvStore.value),
+	mappingDropCursor(),
 ]);
 
 const {

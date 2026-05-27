@@ -1,8 +1,9 @@
-import type { NDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { unwrapExpression } from '@/app/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { WORKFLOW_DOCUMENT_FACET } from './completions/constants';
 
 const setDropCursorPos = StateEffect.define<number | null>({
 	map(pos, mapping) {
@@ -31,18 +32,15 @@ interface MeasureRequest<T> {
 //
 // We can't use CodeMirror's dropCursor because it depends on HTML drag events while our drag-and-drop uses mouse events
 // We could switch to drag events later but some features of the current drag-n-drop might not be possible with drag events
-function createDrawDropCursor(ndvStore: NDVStore) {
+function createDrawDropCursor() {
 	return ViewPlugin.fromClass(
 		class {
 			cursor: HTMLElement | null = null;
 
 			measureReq: MeasureRequest<{ left: number; top: number; height: number } | null>;
 
-			ndvStore: NDVStore;
-
 			constructor(readonly view: EditorView) {
 				this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
-				this.ndvStore = ndvStore;
 			}
 
 			update(update: ViewUpdate) {
@@ -104,8 +102,10 @@ function createDrawDropCursor(ndvStore: NDVStore) {
 		{
 			eventObservers: {
 				mousemove(event) {
-					if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping')
-						return;
+					const workflowDocumentId = this.view.state.facet(WORKFLOW_DOCUMENT_FACET);
+					if (!workflowDocumentId) return;
+					const ndvStore = useNDVStore(workflowDocumentId);
+					if (!ndvStore.isDraggableDragging || ndvStore.draggableType !== 'mapping') return;
 					const pos = this.view.posAtCoords(eventToCoord(event), false);
 					this.setDropPos(pos);
 				},
@@ -160,6 +160,6 @@ export async function dropInCodeEditor(view: EditorView, event: MouseEvent, valu
 	return dropValueInEditor(view, dropPos, valueToInsert);
 }
 
-export function mappingDropCursor(ndvStore: NDVStore): Extension {
-	return [dropCursorPos, createDrawDropCursor(ndvStore)];
+export function mappingDropCursor(): Extension {
+	return [dropCursorPos, createDrawDropCursor()];
 }

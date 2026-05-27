@@ -39,7 +39,6 @@ import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
 import type { TargetNodeParameterContext } from '@/Interface';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 type Props = {
 	modelValue: string;
@@ -60,7 +59,6 @@ const emit = defineEmits<{
 	'update:model-value': [value: string];
 }>();
 
-const ndvStore = injectNDVStore();
 const htmlEditor = ref<HTMLElement>();
 const extensions = computed(() => [
 	bracketMatching(),
@@ -87,7 +85,7 @@ const extensions = computed(() => [
 	dropCursor(),
 	indentOnInput(),
 	highlightActiveLine(),
-	mappingDropCursor(ndvStore.value),
+	mappingDropCursor(),
 	...(props.isReadOnly ? [EditorState.readOnly.of(true)] : []),
 ]);
 const {

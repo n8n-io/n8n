@@ -16,7 +16,6 @@ import { mappingDropCursor } from '@/features/shared/editors/plugins/codemirror/
 import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keymap';
 import { expressionCloseBrackets } from '@/features/shared/editors/plugins/codemirror/expressionCloseBrackets';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 type Props = {
 	modelValue: string;
@@ -37,13 +36,12 @@ const emit = defineEmits<{
 }>();
 
 const root = ref<HTMLElement>();
-const ndvStore = injectNDVStore();
 const extensions = computed(() => [
 	inputTheme(props.isReadOnly),
 	Prec.highest(keymap.of(editorKeymap)),
 	n8nLang(),
 	n8nAutocompletion(),
-	mappingDropCursor(ndvStore.value),
+	mappingDropCursor(),
 	dropCursor(),
 	history(),
 	expressionCloseBrackets(),

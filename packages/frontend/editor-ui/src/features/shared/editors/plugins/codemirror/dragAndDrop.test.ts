@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { setActivePinia } from 'pinia';
 import { mappingDropCursor } from './dragAndDrop';
+import { WORKFLOW_DOCUMENT_FACET } from './completions/constants';
 import { n8nLang } from './n8nLang';
 
 describe('CodeMirror drag and drop', () => {
@@ -19,10 +20,13 @@ describe('CodeMirror drag and drop', () => {
 		const createEditor = () => {
 			const parent = document.createElement('div');
 			document.body.appendChild(parent);
-			const ndvStore = useNDVStore(createWorkflowDocumentId(''));
 			const state = EditorState.create({
 				doc: 'test {{ $json.foo }} \n\nnewline',
-				extensions: [mappingDropCursor(ndvStore), n8nLang()],
+				extensions: [
+					mappingDropCursor(),
+					WORKFLOW_DOCUMENT_FACET.of(createWorkflowDocumentId('')),
+					n8nLang(),
+				],
 			});
 			const editor = new EditorView({ parent, state });
 			editors.push(editor);

@@ -56,7 +56,8 @@ import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import type { TargetNodeParameterContext } from '@/Interface';
 import type { CodeNodeLanguageOption } from '../components/CodeNodeEditor/CodeNodeEditor.vue';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { WORKFLOW_DOCUMENT_FACET } from '../plugins/codemirror/completions/constants';
 
 export type CodeEditorLanguageParamsMap = {
 	json: {};
@@ -95,7 +96,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 	id?: MaybeRefOrGetter<string>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = injectNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const hasChanges = ref(false);
@@ -299,7 +300,8 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 			closeBrackets(),
 			highlightActiveLine(),
 			highlightActiveLineGutter(),
-			mappingDropCursor(ndvStore.value),
+			WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
+			mappingDropCursor(),
 			indentationMarkers({
 				highlightActiveBlock: true,
 				markerType: 'fullScope',

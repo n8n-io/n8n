@@ -6,7 +6,6 @@ import { computed, ref, watch } from 'vue';
 
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
 import { mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '../../plugins/codemirror/n8nLang';
 import { infoBoxTooltips } from '../../plugins/codemirror/tooltips/InfoBoxTooltip';
@@ -36,7 +35,6 @@ const emit = defineEmits<{
 	focus: [];
 }>();
 
-const ndvStore = injectNDVStore();
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
 	Prec.highest(keymap.of(editorKeymap)),
@@ -44,7 +42,7 @@ const extensions = computed(() => [
 	n8nAutocompletion(),
 	inputTheme({ isReadOnly: props.isReadOnly, rows: props.rows }),
 	history(),
-	mappingDropCursor(ndvStore.value),
+	mappingDropCursor(),
 	dropCursor(),
 	expressionCloseBrackets(),
 	EditorView.lineWrapping,
