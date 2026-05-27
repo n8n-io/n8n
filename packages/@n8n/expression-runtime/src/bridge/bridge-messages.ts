@@ -75,6 +75,25 @@ export const getInputLastMessage = z.object({ type: z.literal('getInputLast') })
 export const getInputAllMessage = z.object({ type: z.literal('getInputAll') }).strict();
 
 /**
+ * `$items(nodeName?, outputIndex?, runIndex?)` — fetch the execution data of
+ * a node by name (or the current node's input if `nodeName` is omitted).
+ *
+ * `runIndex` accepts negative values: the host uses `-1` as a sentinel for
+ * "latest run" (see `WorkflowDataProxy.$items` —
+ * `runIndex === undefined ? -1 : runIndex`). The schema uses
+ * `z.number().int()` without `.nonnegative()` so expressions can pass `-1`
+ * explicitly if they need to.
+ */
+export const getItemsMessage = z
+	.object({
+		type: z.literal('getItems'),
+		nodeName: z.string().optional(),
+		outputIndex: z.number().int().nonnegative().optional(),
+		runIndex: z.number().int().optional(),
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -88,6 +107,7 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getInputFirstMessage,
 	getInputLastMessage,
 	getInputAllMessage,
+	getItemsMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

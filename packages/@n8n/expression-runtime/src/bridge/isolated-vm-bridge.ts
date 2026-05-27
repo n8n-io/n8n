@@ -494,6 +494,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetInputLast(data);
 					case 'getInputAll':
 						return this.handleGetInputAll(data);
+					case 'getItems':
+						return this.handleGetItems(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -568,6 +570,22 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 	private handleGetInputAll(data: WorkflowData): unknown {
 		return data.$input?.all?.();
+	}
+
+	/**
+	 * Handler for `$items(nodeName?, outputIndex?, runIndex?)` — the
+	 * global accessor for a node's execution data. Reads the literal
+	 * `$items` property off `data` (host-wired by `WorkflowDataProxy`)
+	 * and forwards the validated args verbatim. The host applies its own
+	 * defaults when fields are `undefined`.
+	 *
+	 * @private
+	 */
+	private handleGetItems(
+		msg: Extract<BridgeMessage, { type: 'getItems' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
 	}
 
 	/**

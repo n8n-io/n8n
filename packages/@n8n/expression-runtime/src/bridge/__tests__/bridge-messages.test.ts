@@ -44,6 +44,21 @@ describe('bridgeMessageSchema', () => {
 			},
 		);
 
+		it('parses a valid getItems envelope (no args)', () => {
+			const parsed = bridgeMessageSchema.parse({ type: 'getItems' });
+			expect(parsed.type).toBe('getItems');
+		});
+
+		it('parses a valid getItems envelope (all args)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'getItems',
+				nodeName: 'Foo',
+				outputIndex: 0,
+				runIndex: 2,
+			});
+			expect(parsed.type).toBe('getItems');
+		});
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -61,6 +76,37 @@ describe('bridgeMessageSchema', () => {
 				expect(() => bridgeMessageSchema.parse({ type, branchIndex: 0 })).toThrow();
 			},
 		);
+	});
+
+	describe('getItems', () => {
+		it('accepts negative runIndex (host -1 sentinel for "latest")', () => {
+			// Unlike branchIndex/runIndex on getNode*, getItems allows negative
+			// runIndex because WorkflowDataProxy.$items uses -1 as a sentinel
+			// for "latest run". The schema is `z.number().int()` without
+			// .nonnegative() — guard the behaviour explicitly.
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'getItems', nodeName: 'Foo', runIndex: -1 }),
+			).not.toThrow();
+		});
+
+		it('rejects non-integer runIndex', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'getItems', nodeName: 'Foo', runIndex: 1.5 }),
+			).toThrow();
+		});
+
+		it('rejects negative outputIndex', () => {
+			// outputIndex is still nonnegative — there's no host sentinel for it.
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'getItems', nodeName: 'Foo', outputIndex: -1 }),
+			).toThrow();
+		});
+
+		it('rejects extra fields (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'getItems', nodeName: 'Foo', branchIndex: 0 }),
+			).toThrow();
+		});
 	});
 
 	describe('.strict() enforcement', () => {
