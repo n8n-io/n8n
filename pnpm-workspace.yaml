@@ -57,6 +57,8 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
   axios: 1.16.1

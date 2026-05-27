@@ -264,6 +264,9 @@
 		},
 		"POST /n8n-packages/export": {
 			"status": "gap"
+		},
+		"POST /n8n-packages/import": {
+			"status": "gap"
 		}
 	}
 }
