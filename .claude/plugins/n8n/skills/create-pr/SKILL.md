@@ -88,6 +88,13 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    )"
    ```
 
+7. **Offer monitoring**: After the PR URL prints, ask the user one yes/no
+   question: "Do you want me to run `/loop /n8n:pr-monitor` to auto-fix trivial
+   CI failures and cubic-dev-ai comments, restart flaky e2e tests, and re-queue
+   the PR if it's evicted from the merge queue for unrelated reasons?"
+   If the user says yes, invoke `/loop /n8n:pr-monitor` (the current branch's
+   PR is the default). If no, do nothing. See [pr-monitor](../pr-monitor/SKILL.md).
+
 ## PR Body Guidelines
 
 Based on `.github/pull_request_template.md`:
