@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - name: SQLite Pooled
-            runner: blacksmith-2vcpu-ubuntu-2204
+            runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
