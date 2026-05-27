@@ -23,16 +23,24 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const connectedActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => [
-	{
-		id: 'edit',
-		label: i18n.baseText('generic.edit'),
-	},
-	{
-		id: 'disconnect',
-		label: i18n.baseText('generic.disconnect'),
-	},
-]);
+const connectedActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
+	const actions: Array<DropdownMenuItemProps<ChannelAction>> = [
+		{
+			id: 'disconnect',
+			label: i18n.baseText('generic.disconnect'),
+		},
+	];
+
+	// Slack is a one-way install, so there is no editable setup state after connecting.
+	if (props.integration.type !== 'slack') {
+		actions.unshift({
+			id: 'edit',
+			label: i18n.baseText('generic.edit'),
+		});
+	}
+
+	return actions;
+});
 
 function toIconName(icon: string): IconName {
 	return icon as IconName;

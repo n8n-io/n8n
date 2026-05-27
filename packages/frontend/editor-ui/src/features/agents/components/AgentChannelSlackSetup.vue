@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue';
-import { N8nButton, N8nIconButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import N8nStepper from '@n8n/design-system/components/N8nStepper/Stepper.vue';
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
