@@ -164,7 +164,9 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution
 	return undefined;
 }
 
-const DATA_TABLE_MUTATION_ACTIONS = new Set([
+const DATA_TABLE_PREVIEW_ACTIONS = new Set([
+	'schema',
+	'query',
 	'create',
 	'insert-rows',
 	'update-rows',
@@ -174,8 +176,10 @@ const DATA_TABLE_MUTATION_ACTIONS = new Set([
 	'rename-column',
 ]);
 
-/** Per-action check that the result indicates a successful mutation. */
+/** Per-action check that the result contains a table reference worth previewing. */
 const RESULT_VALIDATORS: Record<string, (result: Record<string, unknown>) => boolean> = {
+	schema: (r) => Array.isArray(r.columns),
+	query: (r) => Array.isArray(r.data),
 	'insert-rows': (r) => typeof r.insertedCount === 'number',
 	'update-rows': (r) => typeof r.updatedCount === 'number',
 	'add-column': (r) => r.column !== null && r.column !== undefined && typeof r.column === 'object',
@@ -198,8 +202,9 @@ function extractDataTableId(
 	}
 
 	const isValid = RESULT_VALIDATORS[action];
-	if (isValid?.(result) && typeof args?.dataTableId === 'string') {
-		return args.dataTableId;
+	if (isValid?.(result)) {
+		if (typeof result.dataTableId === 'string') return result.dataTableId;
+		if (typeof args?.dataTableId === 'string') return args.dataTableId;
 	}
 
 	return undefined;
@@ -244,7 +249,7 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		const action = typeof args?.action === 'string' ? args.action : '';
 		if (
 			tc.toolName === 'data-tables' &&
-			DATA_TABLE_MUTATION_ACTIONS.has(action) &&
+			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'

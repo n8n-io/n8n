@@ -184,7 +184,7 @@ export class AgentsBuilderService {
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({ modelRecommendationsSection });
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
@@ -199,13 +199,13 @@ export class AgentsBuilderService {
 			.storage(this.n8nMemory.getImplementation(agentId))
 			.lastMessages(40);
 
-		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.configuration({ maxIterations: 30 });
 
 		const telemetry = await buildBuilderTelemetry({
 			agentId,

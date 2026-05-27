@@ -8,6 +8,7 @@
 	"files": {
 		"ignore": [
 			"**/.turbo",
+			"**/bin/.cache",
 			"**/components.d.ts",
 			"**/coverage",
 			"**/dist",

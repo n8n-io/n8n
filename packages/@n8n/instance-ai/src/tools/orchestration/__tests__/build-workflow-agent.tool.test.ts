@@ -1,12 +1,25 @@
-import type { BuiltTool } from '@n8n/agents';
+import {
+	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	type BuiltTool,
+	type RuntimeSkillLinkedFiles,
+	type RuntimeSkillSource,
+	type Workspace,
+} from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiEvent,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import {
+	RUNTIME_SKILL_MANIFEST_FILE,
+	SANDBOX_RUNTIME_SKILLS_DIR,
+	buildRuntimeSkillWorkspaceBundle,
+	materializeRuntimeSkillsIntoWorkspace,
+} from '../../../skills/materialize-runtime-skills';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
@@ -32,6 +45,7 @@ const {
 	determineVerificationReadiness,
 	getBuilderSessionMemory,
 	builderWorkflowWorkspaceLayout,
+	materializeBuilderRuntimeSkills,
 	mergeLatestVerificationIntoOutcome,
 	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
@@ -70,6 +84,77 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		abortSignal: new AbortController().signal,
 		...overrides,
 	} as OrchestrationContext;
+}
+
+function emptyRuntimeSkillLinkedFiles(): RuntimeSkillLinkedFiles {
+	return {
+		references: [],
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
+}
+
+function createPathTemplatedRuntimeSkillSource(): RuntimeSkillSource {
+	const skillDirTemplate = '$' + '{N8N_SKILL_DIR}';
+	const workspaceDirTemplate = '$' + '{N8N_WORKSPACE_DIR}';
+
+	return {
+		registry: {
+			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+			skillsHash: 'hash',
+			skills: [
+				{
+					id: 'path-skill',
+					name: 'path-skill',
+					description: 'Path skill',
+					hash: 'hash',
+					linkedFiles: emptyRuntimeSkillLinkedFiles(),
+				},
+			],
+		},
+		loadSkill: async () =>
+			await Promise.resolve({
+				id: 'path-skill',
+				name: 'path-skill',
+				description: 'Path skill',
+				instructions: `Use ${skillDirTemplate} inside ${workspaceDirTemplate}.`,
+			}),
+	};
+}
+
+function createRuntimeSkillWorkspace() {
+	const writes = new Map<string, string>();
+	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+		await Promise.resolve();
+	});
+	const readFile = jest.fn(async (path: string) => {
+		const content = writes.get(path);
+		if (content === undefined) throw new Error(`ENOENT: ${path}`);
+		return await Promise.resolve(content);
+	});
+	const executeCommand = jest.fn(async (command: string) => {
+		return await Promise.resolve({
+			success: true,
+			exitCode: 0,
+			stdout: command === 'echo $HOME' ? '/home/daytona\n' : '',
+			stderr: '',
+			executionTimeMs: 0,
+		});
+	});
+
+	return {
+		executeCommand,
+		readFile,
+		writes,
+		workspace: {
+			filesystem: { readFile, writeFile },
+			sandbox: { executeCommand },
+		} as unknown as Workspace,
+	};
 }
 
 function createMockDomainContext(
@@ -167,6 +252,64 @@ describe('getBuilderSessionMemory', () => {
 
 	it('skips memory when the context has no memory store', () => {
 		expect(getBuilderSessionMemory({}, true)).toBeUndefined();
+	});
+});
+
+describe('materializeBuilderRuntimeSkills', () => {
+	it('materializes from the raw runtime skill catalog, not an already-materialized source', async () => {
+		const rawSource = createPathTemplatedRuntimeSkillSource();
+		const firstTarget = createRuntimeSkillWorkspace();
+		const firstMaterialized = await materializeRuntimeSkillsIntoWorkspace({
+			source: rawSource,
+			workspace: firstTarget.workspace,
+			root: '/home/daytona/first',
+		});
+		if (!firstMaterialized) throw new Error('Expected first materialization');
+
+		const builderTarget = createRuntimeSkillWorkspace();
+		await materializeBuilderRuntimeSkills(
+			createMockContext({
+				runtimeSkillCatalog: rawSource,
+				runtimeSkills: firstMaterialized.source,
+			}),
+			builderTarget.workspace,
+			'/home/daytona/builder',
+		);
+
+		const skillFile = builderTarget.writes.get('/home/daytona/builder/skills/path-skill/SKILL.md');
+		expect(skillFile).toContain('/home/daytona/builder/skills/path-skill');
+		expect(skillFile).toContain('/home/daytona/builder');
+		expect(skillFile).not.toContain('/home/daytona/first');
+	});
+
+	it('uses prebaked skills while preserving the scoped builder workspace root', async () => {
+		const rawSource = createPathTemplatedRuntimeSkillSource();
+		const builderTarget = createRuntimeSkillWorkspace();
+		const bakedRoot = '/home/daytona/workspace';
+		const builderRoot = '/home/daytona/builder';
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: rawSource,
+			root: bakedRoot,
+		});
+		if (!bundle) throw new Error('Expected runtime skill bundle');
+		builderTarget.writes.set(
+			`${bakedRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`,
+			bundle.files.get(bundle.manifestPath) ?? '',
+		);
+
+		const result = await materializeBuilderRuntimeSkills(
+			createMockContext({ runtimeSkillCatalog: rawSource }),
+			builderTarget.workspace,
+			builderRoot,
+		);
+
+		expect(
+			builderTarget.writes.get(`${builderRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/path-skill/SKILL.md`),
+		).toBeUndefined();
+		const skill = await result.source?.loadSkill('path-skill');
+		expect(skill?.instructions).toContain(`${bakedRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/path-skill`);
+		expect(skill?.instructions).toContain(builderRoot);
+		expect(skill?.instructions).not.toContain(`${builderRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}`);
 	});
 });
 
@@ -1535,6 +1678,47 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(context.logger.warn).not.toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.anything(),
+		);
+	});
+
+	it('passes parse-file to the builder when attachments registered it', async () => {
+		const publish = jest.fn<undefined, [string, InstanceAiEvent]>();
+		const context = createMockContext({
+			isReplanFollowUp: true,
+			eventBus: {
+				publish,
+				subscribe: jest.fn(),
+				getEventsAfter: jest.fn(),
+				getNextEventId: jest.fn(),
+				getEventsForRun: jest.fn().mockReturnValue([]),
+				getEventsForRuns: jest.fn().mockReturnValue([]),
+			},
+			domainContext: createMockDomainContext(),
+			domainTools: mockToolRegistry({
+				'build-workflow': mockBuiltTool('build-workflow'),
+				nodes: mockBuiltTool('nodes'),
+				workflows: mockBuiltTool('workflows'),
+				'data-tables': mockBuiltTool('data-tables'),
+				'parse-file': mockBuiltTool('parse-file'),
+				'ask-user': mockBuiltTool('ask-user'),
+				research: mockBuiltTool('research'),
+			}),
+			spawnBackgroundTask: jest.fn().mockReturnValue({
+				status: 'started',
+				taskId: 'build-task',
+				agentId: 'agent-builder',
+			}),
+		});
+		const tool = createBuildWorkflowAgentTool(context);
+
+		await executeTool(tool, { task: 'Build a workflow that imports the attached CSV' });
+
+		const publishedEvent = publish.mock.calls[0]?.[1];
+		if (publishedEvent?.type !== 'agent-spawned') {
+			throw new Error('Expected builder to publish an agent-spawned event');
+		}
+		expect(publishedEvent.payload.tools).toEqual(
+			expect.arrayContaining(['data-tables', 'parse-file']),
 		);
 	});
 
