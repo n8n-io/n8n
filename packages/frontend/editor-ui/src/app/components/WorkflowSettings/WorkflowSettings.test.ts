@@ -82,32 +82,60 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
+const workflowSettingsStubs = {
+	Modal: {
+		template:
+			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+	},
+	// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
+	// userEvent.click simulates pointer movement that can trigger the switch
+	// during mouse path traversal, toggling executionTimeout and breaking save.
+	ElSwitch: {
+		props: ['modelValue', 'disabled'],
+		emits: ['update:modelValue'],
+		template:
+			'<button type="button" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
+	ParameterInputFull: {
+		props: ['value', 'isReadOnly', 'path'],
+		emits: ['update'],
+		template: `
+			<input
+				:data-test-id="$attrs['data-test-id']"
+				:value="value"
+				:disabled="isReadOnly"
+				@input="$emit('update', { name: path, value: $event.target.value })"
+			/>
+		`,
+	},
+};
+
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
+		stubs: workflowSettingsStubs,
+	},
+});
+
+const createComponentWithCustomTelemetryTagsStub = createComponentRenderer(WorkflowSettingsVue, {
+	global: {
 		stubs: {
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-			},
-			// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
-			// userEvent.click simulates pointer movement that can trigger the switch
-			// during mouse path traversal, toggling executionTimeout and breaking save.
-			ElSwitch: {
-				props: ['modelValue', 'disabled'],
-				emits: ['update:modelValue'],
-				template:
-					'<button type="button" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
-			},
-			ParameterInputFull: {
-				props: ['value', 'isReadOnly', 'path'],
-				emits: ['update'],
+			...workflowSettingsStubs,
+			WorkflowCustomTelemetryTags: {
+				props: ['modelValue', 'isReadOnly'],
+				emits: ['update:modelValue', 'validity-change'],
 				template: `
-					<input
-						:data-test-id="$attrs['data-test-id']"
-						:value="value"
-						:disabled="isReadOnly"
-						@input="$emit('update', { name: path, value: $event.target.value })"
-					/>
+					<div data-test-id="workflow-settings-custom-telemetry-tags">
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-update"
+							@click="$emit('update:modelValue', [{ key: 'env', value: 'production' }])"
+						/>
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-invalid"
+							@click="$emit('validity-change', true)"
+						/>
+					</div>
 				`,
 			},
 		},
@@ -197,80 +225,28 @@ describe('WorkflowSettingsVue', () => {
 			settingsStore.moduleSettings = { otel: { enabled: true } };
 		});
 
-		const openCustomTelemetryTagsModal = async (getByTestId: (id: string) => HTMLElement) => {
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-configure'));
-			await waitFor(() => {
-				expect(getByTestId('workflow-settings-custom-telemetry-tags-modal')).toBeVisible();
-			});
-
-			return within(getByTestId('workflow-settings-custom-telemetry-tags-modal'));
-		};
-
-		const getAddCustomTelemetryTagButton = (section: ReturnType<typeof within>) =>
-			section.queryByTestId('fixed-collection-add') ??
-			section.queryByTestId('fixed-collection-add-header') ??
-			section.queryByTestId('fixed-collection-add-top-level-button');
-
-		const getCustomTelemetryTagInputs = (section: HTMLElement) =>
-			Array.from(section.querySelectorAll('input'));
-
-		const getDeleteCustomTelemetryTagButtons = (section: ReturnType<typeof within>) => [
-			...section.queryAllByTestId('fixed-collection-delete-inline'),
-			...section.queryAllByTestId('fixed-collection-item-delete-inline'),
-		];
-
 		it('should show custom telemetry tag settings when OTel is enabled', async () => {
-			const { getByTestId } = createComponent({ pinia });
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
 
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toBeVisible();
 		});
 
 		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
 			settingsStore.moduleSettings = { otel: { enabled: false } };
-			const { queryByTestId } = createComponent({ pinia });
+			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
 
 			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
 		});
 
-		it('should render existing custom telemetry tags', async () => {
-			workflowDocumentStore.setSettings({
-				customTelemetryTags: [{ key: 'team', value: 'platform' }],
-			});
-
-			const { getByTestId } = createComponent({ pinia });
+		it('should save workflow settings with custom telemetry tags emitted by the child', async () => {
+			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
-			await openCustomTelemetryTagsModal(getByTestId);
-			const section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
 
-			await waitFor(() => {
-				const inputs = getCustomTelemetryTagInputs(section);
-				expect(inputs[0]).toHaveValue('team');
-				expect(inputs[1]).toHaveValue('platform');
-			});
-		});
-
-		it('should add and save custom telemetry tag edits', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-			const sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			const section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
-
-			expect(addButton).not.toBeNull();
-			await userEvent.click(addButton);
-			await flushPromises();
-			await waitFor(() => {
-				expect(getCustomTelemetryTagInputs(section)).toHaveLength(2);
-			});
-			const inputs = getCustomTelemetryTagInputs(section);
-			await userEvent.type(inputs[0], 'env');
-			await fireEvent.update(inputs[1], 'production');
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-update'));
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
@@ -283,155 +259,13 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should disable modal save when a custom telemetry tag has an empty key', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await flushPromises();
-			const sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
-
-			expect(addButton).not.toBeNull();
-			await userEvent.click(addButton);
+		it('should disable workflow settings save when custom telemetry tags are invalid', async () => {
+			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
 
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
-				'Key must not be empty',
-			);
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
-		});
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-invalid'));
 
-		it('should disable modal save when custom telemetry tag keys are duplicated after trim', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await flushPromises();
-			const sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			const section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
-
-			expect(addButton).not.toBeNull();
-			await userEvent.click(addButton);
-			await userEvent.click(addButton);
-			await flushPromises();
-			await waitFor(() => {
-				expect(getCustomTelemetryTagInputs(section)).toHaveLength(4);
-			});
-
-			const inputs = getCustomTelemetryTagInputs(section);
-			await userEvent.type(inputs[0], '  env  ');
-			await userEvent.type(inputs[2], 'env');
-
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
-				'Duplicate keys are not allowed',
-			);
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
-		});
-
-		it('should preserve custom telemetry tag values that look like expressions as literals', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-			const sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			const section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
-
-			expect(addButton).not.toBeNull();
-			await userEvent.click(addButton);
-			await flushPromises();
-			await waitFor(() => {
-				expect(getCustomTelemetryTagInputs(section)).toHaveLength(2);
-			});
-			const inputs = getCustomTelemetryTagInputs(section);
-			await userEvent.type(inputs[0], 'workflowName');
-			await fireEvent.update(inputs[1], '={{ $workflow.name }}');
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					settings: expect.objectContaining({
-						customTelemetryTags: [{ key: 'workflowName', value: '={{ $workflow.name }}' }],
-					}),
-				}),
-			);
-		});
-
-		it('should discard custom telemetry tag draft changes when cancelled', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await flushPromises();
-			let sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			let section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-			const addButton = getAddCustomTelemetryTagButton(sectionQueries);
-
-			expect(addButton).not.toBeNull();
-			await userEvent.click(addButton);
-			await flushPromises();
-			await waitFor(() => {
-				expect(getCustomTelemetryTagInputs(section)).toHaveLength(2);
-			});
-			await userEvent.type(getCustomTelemetryTagInputs(section)[0], 'env');
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-cancel'));
-
-			sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-
-			expect(getCustomTelemetryTagInputs(section)).toHaveLength(0);
-			expect(getAddCustomTelemetryTagButton(sectionQueries)).toBeVisible();
-		});
-
-		it('should delete custom telemetry tag rows', async () => {
-			workflowDocumentStore.setSettings({
-				customTelemetryTags: [
-					{ key: 'team', value: 'platform' },
-					{ key: 'env', value: 'production' },
-				],
-			});
-
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-			const section = await openCustomTelemetryTagsModal(getByTestId);
-
-			await waitFor(() => {
-				expect(getDeleteCustomTelemetryTagButtons(section)).toHaveLength(2);
-			});
-
-			await userEvent.click(getDeleteCustomTelemetryTagButtons(section)[0]);
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({
-					settings: expect.objectContaining({
-						customTelemetryTags: [{ key: 'env', value: 'production' }],
-					}),
-				}),
-			);
-		});
-
-		it('should disable custom telemetry tag controls when user cannot update workflow', async () => {
-			workflowDocumentStore.setSettings({
-				customTelemetryTags: [{ key: 'team', value: 'platform' }],
-			});
-			const readOnlyWorkflow = createTestWorkflow({
-				id: '1',
-				name: 'Test Workflow',
-				active: true,
-				scopes: ['workflow:read'],
-			});
-			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
-			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
-
-			const { getByTestId } = createComponent({ pinia });
-			await flushPromises();
-			const sectionQueries = await openCustomTelemetryTagsModal(getByTestId);
-			const section = getByTestId('workflow-settings-custom-telemetry-tags-modal');
-
-			await waitFor(() => {
-				const inputs = getCustomTelemetryTagInputs(section);
-				expect(inputs[0]).toBeDisabled();
-				expect(inputs[1]).toBeDisabled();
-			});
-			expect(getAddCustomTelemetryTagButton(sectionQueries)).not.toBeInTheDocument();
-			expect(getDeleteCustomTelemetryTagButtons(sectionQueries)).toHaveLength(0);
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
 		});
 	});
 

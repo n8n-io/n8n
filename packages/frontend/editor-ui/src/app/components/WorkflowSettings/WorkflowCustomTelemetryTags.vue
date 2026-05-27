@@ -65,6 +65,7 @@ const parameters = computed<INodeProperties[]>(() => [
 						name: 'key',
 						type: 'string',
 						default: '',
+						placeholder: i18n.baseText('workflowSettings.customTelemetryTags.tag.key.placeholder'),
 						noDataExpression: true,
 						isNodeSetting: true,
 					},
@@ -75,6 +76,9 @@ const parameters = computed<INodeProperties[]>(() => [
 						name: 'value',
 						type: 'string',
 						default: '',
+						placeholder: i18n.baseText(
+							'workflowSettings.customTelemetryTags.tag.value.placeholder',
+						),
 						noDataExpression: true,
 						isNodeSetting: true,
 					},
