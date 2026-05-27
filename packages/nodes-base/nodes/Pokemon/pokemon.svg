@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Pokéball icon -->
+  <circle cx="30" cy="30" r="28" fill="#fff" stroke="#222" stroke-width="2"/>
+  <!-- Top half (red) -->
+  <path d="M2 30 A28 28 0 0 1 58 30 Z" fill="#e3350d"/>
+  <!-- Middle band -->
+  <rect x="2" y="27" width="56" height="6" fill="#222"/>
+  <!-- Center button -->
+  <circle cx="30" cy="30" r="8" fill="#fff" stroke="#222" stroke-width="2"/>
+  <circle cx="30" cy="30" r="4" fill="#fff" stroke="#555" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-base.pokemon",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Miscellaneous"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://pokeapi.co/docs/v2"
+			}
+		]
+	},
+	"alias": ["pokeapi", "pokemon api", "pokedex"]
+}
