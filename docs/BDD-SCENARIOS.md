@@ -347,12 +347,12 @@ And it shows the correct icon and description
          │ E2E (2-3) │  Playwright — real PokeAPI, real editor
          │  US-7 #8  │
         ─┼───────────┼─
-        │ Workflow (3-4) │  NodeTestHarness — nock mocks, pinData
-        │  US-1,2,3,5   │
+        │  Workflow (2)  │  NodeTestHarness — nock mocks, pinData
+        │  US-1,2,3,5   │  (get.workflow.test.ts + Pokemon.workflow.test.ts)
        ─┼───────────────┼─
-      │   Unit (15-20)     │  Jest + nock — logic, validation, errors
-      │  US-0,1,2,3,4,5,6 │
-     ─┼────────────────────┼─
+      │      Unit (66)        │  Jest + nock — logic, validation, errors
+      │  US-0,1,2,3,4,5,6    │  24 describe suites in Pokemon.node.test.ts
+     ─┼──────────────────────┼─
 ```
 
 ---
@@ -424,8 +424,8 @@ pnpm dev
 ## Acceptance Checklist (final validation)
 
 ### Automated
-- [ ] All unit tests pass: `cd packages/nodes-base && pnpm test Pokemon`
-- [ ] All workflow tests pass (NodeTestHarness)
+- [x] All unit tests pass: `cd packages/nodes-base && pnpm test Pokemon` — **66 unit tests, 24 describe suites** in Pokemon.node.test.ts
+- [x] All workflow tests pass (NodeTestHarness) — **2 workflow tests** (get.workflow.test.ts + Pokemon.workflow.test.ts) across 3 test suites total
 - [ ] Playwright E2E tests pass: `pnpm --filter=n8n-playwright test:local tests/e2e/nodes/pokemon-node.spec.ts`
 - [ ] `pnpm lint` passes in packages/nodes-base
 - [ ] `pnpm typecheck` passes in packages/nodes-base

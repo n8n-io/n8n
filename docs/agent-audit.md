@@ -106,7 +106,7 @@ Build Pokemon node scaffold: file structure, types, API helper, tests. Issue #7.
 
 ### Decisions & Findings
 - Created 10 TDD cycles: description → API helper → error wrapping → input validation → simplify → null sprite → multi-type → pagination → circuit breaker → registration
-- 47 tests passing after review fixes
+- Final test count after all merges: 66 unit tests in Pokemon.node.test.ts (grew through subsequent builder passes)
 - Fixed: `maxRedirects` not in `IHttpRequestOptions` → used `disableFollowRedirect: true`
 - Added `clampLimit()` for runtime limit safety
 - Added `validateNameOrId()` with `.toLowerCase()` normalization
@@ -222,3 +222,60 @@ Investigate why agent team members aren't navigable for PO.
 - tmux IS installed but session not running inside tmux
 - PO stated they never used tmux — root cause still unclear
 - Recommended: launch Claude inside tmux for split-pane experience
+
+---
+
+## b-fixes (post-review fix builder)
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T15:30:00Z | **Terminated:** 2026-05-27T16:00:00Z
+
+### Task
+Address senior reviewer feedback from PR #11 and finalize the node implementation. PR #12.
+
+### Decisions & Findings
+- Added whitespace trimming on `nameOrId` input (`nameOrId?.trim() ?? ''`)
+- Improved 404 error message to include the Pokemon name being looked up
+- Added Playwright E2E test scenarios (pokemon-node.spec.ts) for US-7
+- 66 unit tests + 2 workflow test files passing after fixes
+- Total: 3 test suites (Pokemon.node.test.ts, get.workflow.test.ts, Pokemon.workflow.test.ts)
+
+### Corrections Received
+None — PR #12 merged without further review rounds.
+
+---
+
+## b-followup (US-4/5 implementation builder)
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T15:00:00Z | **Terminated:** 2026-05-27T15:30:00Z
+
+### Task
+Ensure US-4 (AI Agent Tool Use) and US-5 (Return All) were truly done per PO directive. Issues #4, #5.
+
+### Decisions & Findings
+- US-4: Confirmed `usableAsTool: true` and `action` strings present in PokemonDescription.ts — no additional code needed
+- US-5: Confirmed `returnAll` toggle, `pokemonApiRequestAllPages`, and circuit breaker all implemented in scaffold
+- Issues #4 and #5 closed — code already present from b-scaffold and b-merge work
+- No new commits required; verified existing implementation met acceptance criteria
+
+### Corrections Received
+None — PO accepted "done > perfect" given patch-file submission format.
+
+---
+
+## b-docs (documentation sync builder — this agent)
+**Type:** Builder | **Model:** Sonnet | **Team:** pokemon-build
+**Spawned:** 2026-05-27T17:00:00Z | **Terminated:** ongoing
+
+### Task
+Audit all docs/ files and sync with final implementation state. Directed by Lead.
+
+### Decisions & Findings
+- **REVIEW-DISCUSSION.md:** Lead Decisions table showed "Return All: Cut" — reversed to "Kept" per ADR D3 and actual code
+- **PRD-POKEMON-NODE.md:** Fixed `maxRedirects: 0` → `disableFollowRedirect: true`; added Return All toggle to Get Many UI mockup
+- **ADR-001:** Fixed `maxRedirects: 0` → `disableFollowRedirect: true` in D12 with explanation
+- **BDD-SCENARIOS.md:** Updated acceptance checklist with actual test counts (66 unit, 2 workflow files, 3 suites); updated testing pyramid
+- **agent-audit.md:** Added b-fixes, b-followup, b-docs entries; updated stale test count in b-scaffold entry
+- **prompts.md:** Added prompts #46–#48 for post-#45 session activity
+
+### Corrections Received
+None — initial pass.

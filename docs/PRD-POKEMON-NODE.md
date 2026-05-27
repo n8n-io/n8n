@@ -161,10 +161,15 @@ On the canvas, the node shows:
 ├─────────────────────────────────┤
 │ Operation: [ Get Many   ▼ ]     │
 │                                 │
+│ Return All: [ OFF ]             │
+│   "Return all results or only   │
+│    up to a given limit"         │
+│                                 │
 │ Limit: [ 20 ]                   │
-│   "How many to return.          │
+│   "Max number of results.       │
 │    Returns name and URL only —  │
 │    use Get for full details."   │
+│   (hidden when Return All = ON) │
 └─────────────────────────────────┘
 ```
 
@@ -257,7 +262,7 @@ From pre-implementation security audit. See ADR D12 for full analysis.
 2. **Error wrapping**: Every `pokemonApiRequest()` call wrapped in try/catch with `NodeApiError`. Includes pagination loop — not just single-Get path.
 
 ### Should Implement
-3. **Disable redirects**: `maxRedirects: 0` in HTTP options. PokeAPI doesn't redirect; prevents SSRF via compromised API redirect.
+3. **Disable redirects**: `disableFollowRedirect: true` in HTTP options. PokeAPI doesn't redirect; prevents SSRF via compromised API redirect.
 4. **Limit field constraints**: `typeOptions: { minValue: 1, maxValue: 100 }` + runtime clamping.
 5. **Pagination circuit breaker**: `pageCount > 50` guard in Return All loop. PokeAPI has ~14 pages; 50 is generous.
 

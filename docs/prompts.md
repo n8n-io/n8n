@@ -499,4 +499,26 @@ Answered 4 clarification questions:
 
 ---
 
+## Prompt 46 — Senior Review Feedback + E2E (PO → Lead)
+**Timestamp:** 2026-05-27 ~16:45
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Address the senior review feedback and make sure the E2E tests are there too.
+
+*Context: Prompted PR #12 which addressed whitespace trimming on nameOrId, improved 404 error messages, and added Playwright E2E test scenarios for US-7. Merged as fix(nodes): address senior review feedback + add E2E tests.*
+
+---
+
+## Prompt 47 — Audit All Docs (PO → Lead)
+**Timestamp:** 2026-05-27 ~17:00
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Audit ALL documentation in the n8n repo docs/ directory and ensure everything is accurate, up-to-date, and consistent with the actual code.
+
+*Context: Post-implementation docs audit. Lead spawned b-docs agent to compare all docs/ files against the final implementation state and fix inconsistencies.*
+
+---
+
 ## Ongoing — Prompts will be appended as the session continues.

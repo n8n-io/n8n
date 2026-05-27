@@ -135,7 +135,7 @@ All three reviewers debated live via team messaging. Final decisions:
 | Decision | Choice | Rationale | Source |
 |----------|--------|-----------|--------|
 | Resource selector | **Removed** | Single resource = clutter, matches OpenWeatherMap | PM + QA + Architect |
-| Return All | **Cut** | List returns stubs only, misleading at scale | All three |
+| Return All | **Kept** (reversed by PO) | PO overruled cut — standard n8n convention, demonstrates pagination skill. Field description warns stubs only. | PO + ADR D3 |
 | Simplify on getMany | **Hidden** via displayOptions | No-op toggle is bad UX | QA + PM |
 | Operation value | `getAll` (value) / "Get Many" (displayName) | Matches CoinGecko convention | Architect + PM |
 | `group` | `['input']` | Read-only data node | PM |

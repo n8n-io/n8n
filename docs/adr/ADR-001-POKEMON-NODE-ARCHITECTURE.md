@@ -232,7 +232,7 @@ CoinGecko's `do...while(length !== 0)` fires one wasted API call per execution b
 
 **Important findings (low effort, should implement):**
 
-3. **Disable redirects**: `maxRedirects: 0` in `IHttpRequestOptions`. PokeAPI doesn't redirect legitimately. Prevents a compromised API from redirecting to internal addresses (SSRF via redirect).
+3. **Disable redirects**: `disableFollowRedirect: true` in `IHttpRequestOptions`. PokeAPI doesn't redirect legitimately. Prevents a compromised API from redirecting to internal addresses (SSRF via redirect). Note: `maxRedirects` is not a valid field in `IHttpRequestOptions`; the correct option is `disableFollowRedirect`.
 
 4. **Limit field constraints**: Declare `typeOptions: { minValue: 1, maxValue: 100 }` on the limit parameter. n8n enforces these in the UI but expression inputs bypass them — add runtime clamping too.
 
