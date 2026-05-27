@@ -1726,9 +1726,9 @@ describe('createInstanceAiTraceContext', () => {
 			| undefined;
 		await activeTracing!.withActiveSpan(activeTracing!.rootRun, async () => {
 			childRun = await resumedTracing!.startChildRun(resumedTracing!.rootRun, {
-				name: 'prepare: context',
-				canonicalName: 'instance-ai.context_compaction',
-				metadata: { agent_role: 'context_compaction' },
+				name: 'prepare: prompt',
+				canonicalName: 'instance-ai.prompt_build',
+				metadata: { agent_role: 'prompt_build' },
 			});
 		});
 

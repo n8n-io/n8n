@@ -1,4 +1,4 @@
-import { Agent } from '@n8n/agents';
+import { Agent, Memory } from '@n8n/agents';
 
 import {
 	addSafeMcpTools,
@@ -182,18 +182,19 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	}
 
 	if (options.memory) {
-		agent.memory({
-			memory: options.memory,
-			lastMessages: memoryConfig.lastMessages ?? 20,
-			...(memoryConfig.embedderModel && memoryConfig.semanticRecallTopK
-				? {
-						semanticRecall: {
-							topK: memoryConfig.semanticRecallTopK,
-							embedder: memoryConfig.embedderModel,
-						},
-					}
-				: {}),
-		});
+		const lastMessages = memoryConfig.lastMessages ?? 20;
+		const mem = new Memory().storage(options.memory).lastMessages(lastMessages);
+
+		if (memoryConfig.observationalMemory) {
+			const { observerThresholdTokens, reflectorThresholdTokens } =
+				memoryConfig.observationalMemory;
+			mem.observationalMemory({
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+			});
+		}
+
+		agent.memory(mem);
 	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
@@ -205,7 +206,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			memory: options.memory
 				? {
 						lastMessages: memoryConfig.lastMessages ?? 20,
-						semanticRecallTopK: memoryConfig.semanticRecallTopK,
+						...(memoryConfig.observationalMemory
+							? {
+									observationalMemory: {
+										enabled: true,
+										observerThresholdTokens:
+											memoryConfig.observationalMemory.observerThresholdTokens,
+										reflectorThresholdTokens:
+											memoryConfig.observationalMemory.reflectorThresholdTokens,
+									},
+								}
+							: {}),
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,

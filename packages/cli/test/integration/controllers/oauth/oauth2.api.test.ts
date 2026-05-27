@@ -160,6 +160,52 @@ describe('OAuth2 API', () => {
 		});
 	});
 
+	describe('callback route accessibility', () => {
+		// The callback route must be reachable without
+		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
+		// still enforces session-bound validation for static credentials.
+		it('should reach the handler when called without authentication', async () => {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await testServer.authlessAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: 'invalid_state' })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: expect.any(String) }),
+				}),
+			);
+		});
+
+		it('should reject an unauthenticated callback for a static credential', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			await testServer.authlessAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Unauthorized' },
+			});
+		});
+	});
+
 	it('should handle a valid callback without auth', async () => {
 		const oauthService = Container.get(OauthService);
 		const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
@@ -262,9 +308,10 @@ describe('OAuth2 API', () => {
 			await shareCredentialWithUsers(credential, [sharee]);
 
 			const oauthService = Container.get(OauthService);
-			const renderSpy = (Response.render = jest.fn(function () {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
-			}));
+				return this;
+			});
 
 			// Build a callback state whose decrypted userId equals the requesting member,
 			// so the userId equality check inside decodeCsrfState passes and the credential

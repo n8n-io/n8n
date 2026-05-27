@@ -261,5 +261,6 @@ describe('rename()', () => {
 		expect(mockFsp.rename).toHaveBeenCalledTimes(2);
 		expect(mockFsp.rename).toHaveBeenCalledWith(oldPath, newPath);
 		expect(mockFsp.rename).toHaveBeenCalledWith(`${oldPath}.metadata`, `${newPath}.metadata`);
+		expect(mockFsp.rm).not.toHaveBeenCalled();
 	});
 });

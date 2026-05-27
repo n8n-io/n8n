@@ -3,14 +3,12 @@ import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
-import type * as CompactionMod from './compaction';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
 import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
 import type * as DataTableAgentToolMod from './tools/orchestration/data-table-agent.tool';
 import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
-import type * as ResearchWithAgentToolMod from './tools/orchestration/research-with-agent.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as BuilderSandboxFactoryMod from './workspace/builder-sandbox-factory';
@@ -57,7 +55,6 @@ const defineLazyExport = <TValue>(name: string, load: () => TValue): void => {
 	});
 };
 
-const loadCompaction = lazyModule(() => require('./compaction') as typeof CompactionMod);
 const loadLangsmithTracing = lazyModule(
 	() => require('./tracing/langsmith-tracing') as typeof LangsmithTracingMod,
 );
@@ -80,10 +77,6 @@ const loadDataTableAgentTool = lazyModule(
 );
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
-);
-const loadResearchWithAgentTool = lazyModule(
-	() =>
-		require('./tools/orchestration/research-with-agent.tool') as typeof ResearchWithAgentToolMod,
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -108,9 +101,6 @@ export type {
 } from '@n8n/agents';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
-export type { CompactionInput } from './compaction';
-export const generateCompactionSummary: typeof CompactionMod.generateCompactionSummary =
-	lazyFunction(() => loadCompaction().generateCompactionSummary);
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
@@ -183,9 +173,6 @@ export const startDataTableAgentTask: typeof DataTableAgentToolMod.startDataTabl
 
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
-
-export const startResearchAgentTask: typeof ResearchWithAgentToolMod.startResearchAgentTask =
-	lazyFunction(() => loadResearchWithAgentTool().startResearchAgentTask);
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
@@ -400,7 +387,6 @@ export type {
 export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
-export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
 export {
 	classifyAttachments,
 	buildAttachmentManifest,
