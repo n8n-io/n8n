@@ -14,14 +14,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
 
-	/**
-	 * Hard cap on the context window size (in tokens). When set, the effective
-	 * context window is the lesser of this value and the model's native capability.
-	 * 0 = use the model's full context window.
-	 */
-	@Env('N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS')
-	maxContextWindowTokens: number = 500_000;
-
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
@@ -30,13 +22,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
 	lastMessages: number = 20;
 
-	/** Embedder model for semantic recall (empty = disabled). */
-	@Env('N8N_INSTANCE_AI_EMBEDDER_MODEL')
-	embedderModel: string = '';
+	/** Token threshold for Observer to trigger compression of message history. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
+	observerMessageTokens: number = 30_000;
 
-	/** Number of semantically similar messages to retrieve. */
-	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
-	semanticRecallTopK: number = 5;
+	/** Token threshold for Reflector to condense observations. */
+	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
+	reflectorObservationTokens: number = 40_000;
 
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
@@ -96,7 +88,7 @@ export class InstanceAiConfig {
 
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
-	builderSandboxTtlMs: number = 10 * 60 * 1000;
+	builderSandboxTtlMs: number = 15 * 60 * 1000;
 
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')

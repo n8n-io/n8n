@@ -189,7 +189,6 @@ export class AgentsBuilderService {
 			enabledModules,
 		});
 		const runtimeSkills = getBuilderRuntimeSkills({
-			modelRecommendationsSection,
 			enabledModules,
 		});
 
@@ -207,7 +206,6 @@ export class AgentsBuilderService {
 			.storage(this.n8nMemory.getImplementation(agentId))
 			.lastMessages(40);
 
-		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)

@@ -1,17 +1,11 @@
 import { z } from 'zod';
 
-import type { PlannedTaskGraph } from '../types';
+import { STORED_PLANNED_TASK_KINDS, type PlannedTaskGraph } from '../types';
 import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiPlannedTasks';
 
-const plannedTaskKindSchema = z.enum([
-	'delegate',
-	'build-workflow',
-	'manage-data-tables',
-	'research',
-	'checkpoint',
-]);
+const plannedTaskKindSchema = z.enum(STORED_PLANNED_TASK_KINDS);
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
 

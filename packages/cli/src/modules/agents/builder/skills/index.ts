@@ -1,30 +1,20 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
-import { configMutationSkill } from './config-mutation.skill';
 import { integrationsSkill } from './integrations.skill';
-import { llmSelectionSkill } from './llm-selection.skill';
 import { mcpSkill } from './mcp.skill';
-import { memorySkill } from './memory.skill';
-import { researchSkill } from './research.skill';
 import { targetSkillsSkill } from './target-skills.skill';
-import { toolsSkill } from './tools.skill';
-import type { BuilderRuntimeSkillsOptions } from './types';
 
-export function getBuilderRuntimeSkills({
-	modelRecommendationsSection,
-	enabledModules,
-}: BuilderRuntimeSkillsOptions): RuntimeSkill[] {
+export function getBuilderRuntimeSkills(options: { enabledModules?: readonly string[] }): RuntimeSkill[] {
 	const skills: RuntimeSkill[] = [
-		configMutationSkill(),
-		llmSelectionSkill(modelRecommendationsSection),
-		toolsSkill(),
-		memorySkill(),
 		integrationsSkill(),
 		targetSkillsSkill(),
-		researchSkill(),
+		// FIXME: Research is disabled until the builder has a supported research tool.
+		// Re-enable this skill only when the builder can actually perform research
+		// instead of merely loading instructions that tell it to research.
+		// researchSkill(),
 	];
 
-	if (enabledModules?.includes('mcp')) {
+	if (options.enabledModules?.includes('mcp')) {
 		skills.push(mcpSkill());
 	}
 
