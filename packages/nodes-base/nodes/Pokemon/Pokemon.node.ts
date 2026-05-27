@@ -12,6 +12,7 @@ import {
 	pokemonApiRequest,
 	pokemonApiRequestAllPages,
 	simplifyPokemonData,
+	toDataObject,
 	validateNameOrId,
 	clampLimit,
 	type IPokemonDetailResponse,
@@ -55,12 +56,13 @@ export class Pokemon implements INodeType {
 						url,
 						nameOrId,
 					);
-					const outputData = simplify ? simplifyPokemonData(responseData) : responseData;
+					const outputData = simplify
+						? toDataObject(simplifyPokemonData(responseData))
+						: (responseData as IDataObject);
 					returnData.push(
-						...this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray([outputData as IDataObject]),
-							{ itemData: { item: i } },
-						),
+						...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray([outputData]), {
+							itemData: { item: i },
+						}),
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {

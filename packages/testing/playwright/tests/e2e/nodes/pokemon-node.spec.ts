@@ -34,5 +34,26 @@ test.describe(
 
 			await expect(n8n.ndv.getParameterInput('returnAll')).toBeVisible();
 		});
+
+		test('should execute Get and return pikachu data', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Pokemon', { closeNDV: false });
+
+			await n8n.ndv.fillParameterInputByName('nameOrId', 'pikachu');
+			await n8n.ndv.execute();
+
+			await expect(n8n.ndv.outputPanel.get()).toContainText('pikachu');
+		});
+
+		test('should execute Get Many and return multiple items', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Pokemon', { closeNDV: false });
+
+			await n8n.ndv.selectOptionInParameterDropdown('operation', 'Get Many');
+			await n8n.ndv.fillParameterInputByName('limit', '3');
+			await n8n.ndv.execute();
+
+			await expect(n8n.ndv.outputPanel.get()).toContainText('3 items');
+		});
 	},
 );

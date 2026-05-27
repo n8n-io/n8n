@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, JsonObject } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 // ─── API Response Interfaces ──────────────────────────────────────────────────
@@ -51,7 +51,6 @@ export interface IPokemonDetailResponse {
 }
 
 export interface IPokemonSimplified {
-	[key: string]: unknown;
 	id: number;
 	name: string;
 	height: number;
@@ -164,6 +163,10 @@ export async function pokemonApiRequestAllPages(
 }
 
 // ─── Data Transformation ──────────────────────────────────────────────────────
+
+export function toDataObject(data: IPokemonSimplified): IDataObject {
+	return { ...data } as IDataObject;
+}
 
 export function simplifyPokemonData(data: IPokemonDetailResponse): IPokemonSimplified {
 	return {

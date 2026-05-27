@@ -807,7 +807,7 @@ describe('Pokemon Node — execute get 404 not found', () => {
 		});
 		const node = new Pokemon();
 
-		await expect(node.execute.call(ctx)).rejects.toThrow();
+		await expect(node.execute.call(ctx)).rejects.toThrow(/notapokemon/);
 	});
 });
 
