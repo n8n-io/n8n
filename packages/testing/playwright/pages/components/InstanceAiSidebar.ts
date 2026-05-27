@@ -15,6 +15,10 @@ export class InstanceAiSidebar {
 		return this.getThreadItems().filter({ hasText: title });
 	}
 
+	private getThreadLinkByTitle(title: string): Locator {
+		return this.getThreadByTitle(title).getByRole('link', { name: title });
+	}
+
 	getThreadByHref(path: string): Locator {
 		return this.root.locator(`a[href="${path}"]`);
 	}
@@ -26,7 +30,7 @@ export class InstanceAiSidebar {
 	async renameThreadByTitle(title: string, newTitle: string): Promise<void> {
 		const threadItem = this.getThreadByTitle(title);
 		await expect(threadItem).toBeVisible({ timeout: 5_000 });
-		await threadItem.dblclick();
+		await this.getThreadLinkByTitle(title).dispatchEvent('dblclick');
 
 		const input = this.getRenameInput();
 		await expect(input).toBeVisible({ timeout: 5_000 });

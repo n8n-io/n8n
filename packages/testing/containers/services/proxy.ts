@@ -48,6 +48,8 @@ export const proxy: Service<ProxyResult> = {
 				.withNetwork(network)
 				.withNetworkAliases(HOSTNAME)
 				.withExposedPorts(PORT)
+				// Keep MockServer heap predictable under parallel container load.
+				.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
 				.withWaitStrategy(Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`))
 				.withLabels({
 					'com.docker.compose.project': projectName,
