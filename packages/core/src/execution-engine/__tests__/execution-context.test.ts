@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
@@ -11,6 +10,7 @@ import {
 	type Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { establishExecutionContext } from '../execution-context';
 import { ExecutionContextService } from '../execution-context.service';
@@ -1211,7 +1211,7 @@ describe('establishExecutionContext', () => {
 	});
 
 	describe('manual execution credential context', () => {
-		let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
 
 		const buildRunDataWithManualTrigger = () =>
 			createRunExecutionData({

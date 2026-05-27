@@ -98,6 +98,7 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	credentialIntegrations: AgentCredentialIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
 }
@@ -160,6 +161,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	userId?: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -289,14 +291,33 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
+	private createAgentExecutionCounter({
+		agentId,
+		userId,
+	}: {
+		agentId: string;
+		userId?: string;
+	}): AgentExecutionCounter {
+		const attribution = userId ? { user_id: userId } : {};
 		return {
 			incrementMessageCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					message_count: 1,
+				}),
 			incrementTokenCount: (tokenCount) =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					token_count: tokenCount,
+				}),
 			incrementToolCallCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					tool_call_count: 1,
+				}),
 		};
 	}
 
@@ -761,8 +782,15 @@ export class AgentsService {
 	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
-			params;
+		const {
+			agent,
+			agentId,
+			projectId,
+			credentialProvider,
+			nodeToolsEnabled,
+			credentialIntegrations,
+			integrationType,
+		} = params;
 
 		// Inject get_environment unconditionally. It surfaces info the model
 		// can't know on its own (current date, instance timezone, day of week)
@@ -798,6 +826,62 @@ export class AgentsService {
 				agent.tool(createRichInteractionTool(integrationType));
 			} catch (toolError) {
 				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
+		}
+
+		if (credentialIntegrations.length > 0) {
+			try {
+				const {
+					createIntegrationActionTool,
+					createIntegrationContextTool,
+					getIntegrationToolConnectionDescriptors,
+				} = await import('./integrations/integration-tools');
+				const { IntegrationMessageContextService } = await import(
+					'./integrations/integration-message-context.service'
+				);
+				const { ChatIntegrationActionExecutor } = await import(
+					'./integrations/integration-action-executor'
+				);
+				const { ChatIntegrationContextQueryExecutor } = await import(
+					'./integrations/integration-context-query-executor'
+				);
+
+				const messageContextStore = Container.get(IntegrationMessageContextService);
+				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
+				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
+				const integrationRegistry = Container.get(ChatIntegrationRegistry);
+
+				for (const descriptor of getIntegrationToolConnectionDescriptors(
+					credentialIntegrations,
+					agentId,
+					(integrationConfig) => {
+						const integration = integrationRegistry.get(integrationConfig.type);
+						return {
+							contextQueries: integration?.contextQueries,
+							actions: integration?.actions,
+						};
+					},
+				)) {
+					agent.tool(
+						createIntegrationContextTool({
+							descriptor,
+							messageContextStore,
+							queryExecutor,
+						}),
+					);
+					agent.tool(
+						createIntegrationActionTool({
+							descriptor,
+							messageContextStore,
+							actionExecutor,
+						}),
+					);
+				}
+			} catch (toolError) {
+				this.logger.warn('Failed to inject integration context/action tools', {
 					agentId,
 					error: toolError instanceof Error ? toolError.message : String(toolError),
 				});
@@ -865,7 +949,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -996,6 +1080,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			userId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1098,14 +1183,15 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const { agentInstance, toolRegistry, agentId, userId, message, memory, projectId, source } =
+			config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1203,6 +1289,7 @@ export class AgentsService {
 		threadId: string,
 		userId: string,
 		projectId: string,
+		telemetryUserId?: string,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1237,7 +1324,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1837,6 +1924,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
+			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
 			integrationType,
 		});
 
