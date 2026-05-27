@@ -590,7 +590,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
 		const resolverId =
-			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
 
 		if (
 			credentialsEntity.isResolvable &&

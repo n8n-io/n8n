@@ -203,6 +203,55 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
 	});
 
+	it('uses the provided root for default file path and build cwd', async () => {
+		const root = '/home/test/workspace/builders/builder-1';
+		const calls: Array<{ command: string; cwd?: string }> = [];
+		const workflowService = {
+			createFromWorkflowJSON: jest.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
+			}),
+		};
+		const workspace: SandboxWorkspace = {
+			sandbox: {
+				executeCommand: async (command: string, _args?: string[], options?: { cwd?: string }) => {
+					await Promise.resolve();
+					calls.push({ command, cwd: options?.cwd });
+					if (command.startsWith('node --import tsx build.mjs')) {
+						return {
+							exitCode: 0,
+							stdout: JSON.stringify({
+								success: true,
+								workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+								warnings: [],
+							}),
+							stderr: '',
+						};
+					}
+					return { exitCode: 0, stdout: '', stderr: '' };
+				},
+			},
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			workspace,
+			new Map(),
+			undefined,
+			{ root },
+		);
+
+		await executeTool(tool, { name: 'Test' });
+
+		expect(calls.some((call) => call.command === `cat '${root}/src/workflow.ts' 2>/dev/null`)).toBe(
+			true,
+		);
+		expect(calls.find((call) => call.command.startsWith('node --import tsx build.mjs'))?.cwd).toBe(
+			root,
+		);
+	});
+
 	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
 		const attempts: SubmitWorkflowAttempt[] = [];
 		const workflowService = {
@@ -301,6 +350,20 @@ describe('classifySubmitFailure', () => {
 			reason: 'workflow_save_failed',
 		});
 		expect(remediation.guidance).toContain('Stop editing');
+	});
+
+	it('treats a not-found workflowId as code-fixable so the agent can drop the id', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Workflow not found'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('Omit the workflowId');
 	});
 
 	it('routes missing or inaccessible credential save failures to setup', () => {

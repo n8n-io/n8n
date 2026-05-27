@@ -23,6 +23,7 @@ import { mockExistingCredential } from './credentials.test-data';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
@@ -76,6 +77,7 @@ describe('CredentialsService', () => {
 	const credentialsHelper = mock<CredentialsHelper>();
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
+	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -95,6 +97,7 @@ describe('CredentialsService', () => {
 		credentialsHelper,
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
+		connectionStatusProxy,
 	);
 
 	beforeEach(() => {

@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
+import { useSpeechSynthesis } from '@vueuse/core';
 import {
 	buildDisplayGroups,
+	type DisplayGroup,
 	type ChatMessage,
 	type InteractivePayload,
 } from '../composables/agentChatMessages';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
+import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 
@@ -33,6 +36,59 @@ function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
+
+function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'toolRun') {
+		return group.finalMessage?.content ?? '';
+	}
+
+	return group.message.role === 'assistant' ? group.message.content : '';
+}
+
+function isAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'toolRun') return true;
+	return group.message.role === 'assistant';
+}
+
+function getAssistantRunContent(groupId: string): string {
+	const index = displayGroups.value.findIndex((group) => group.id === groupId);
+	if (index === -1) return '';
+
+	const lines: string[] = [];
+	for (let i = index; i >= 0; i--) {
+		const group = displayGroups.value[i];
+		if (!isAssistantGroup(group)) break;
+
+		const content = getAssistantGroupContent(group).trim();
+		if (content) lines.unshift(content);
+	}
+
+	return lines.join('\n\n');
+}
+
+function shouldShowAssistantActions(groupId: string): boolean {
+	const index = displayGroups.value.findIndex((group) => group.id === groupId);
+	if (index === -1) return false;
+
+	const group = displayGroups.value[index];
+	if (!isAssistantGroup(group)) return false;
+	if (!getAssistantRunContent(groupId)) return false;
+
+	const nextGroup = displayGroups.value[index + 1];
+	return !nextGroup || !isAssistantGroup(nextGroup);
+}
+
+const spokenMessageId = ref<string | null>(null);
+const spokenText = computed(() => {
+	if (!spokenMessageId.value) return '';
+	return getAssistantRunContent(spokenMessageId.value);
+});
+const speech = useSpeechSynthesis(spokenText, {
+	pitch: 1,
+	rate: 1,
+	volume: 1,
+});
+const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
 
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
@@ -77,6 +133,24 @@ function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
 }
 
+function isSpeakingMessage(messageId: string): boolean {
+	return spokenMessageId.value === messageId && speech.status.value === 'play';
+}
+
+function toggleReadAloud(messageId: string): void {
+	if (!isSpeechSynthesisAvailable.value) return;
+
+	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
+		speech.stop();
+		spokenMessageId.value = null;
+		return;
+	}
+
+	speech.stop();
+	spokenMessageId.value = messageId;
+	speech.speak();
+}
+
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
 // purpose: the watcher with `immediate: true` fires after setup / initial
 // render, and `onMounted` covers cases where the post-flush scroll measured an
@@ -119,6 +193,26 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
+
+watch(
+	() => speech.status.value,
+	(status) => {
+		if (status === 'end') {
+			spokenMessageId.value = null;
+		}
+	},
+);
+
+watch(spokenText, (value) => {
+	if (!value && spokenMessageId.value) {
+		speech.stop();
+		spokenMessageId.value = null;
+	}
+});
+
+onBeforeUnmount(() => {
+	speech.stop();
+});
 </script>
 
 <template>
@@ -154,6 +248,14 @@ watch(
 						<div :class="$style.markdownContent">
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
+					</div>
+					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+						<AgentChatMessageActions
+							:content="getAssistantRunContent(group.id)"
+							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
+							:is-speaking="isSpeakingMessage(group.id)"
+							@read-aloud="toggleReadAloud(group.id)"
+						/>
 					</div>
 					<AgentTypingIndicator
 						v-if="
@@ -199,6 +301,14 @@ watch(
 							<AgentMarkdownChunk :source="group.message.content" />
 						</div>
 					</div>
+					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+						<AgentChatMessageActions
+							:content="getAssistantRunContent(group.id)"
+							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
+							:is-speaking="isSpeakingMessage(group.id)"
+							@read-aloud="toggleReadAloud(group.id)"
+						/>
+					</div>
 
 					<div
 						v-if="group.message.interactive && !group.message.interactive.resolvedAt"
@@ -241,7 +351,7 @@ watch(
 	padding-bottom: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--sm);
 	scrollbar-width: none;
 
 	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
@@ -259,6 +369,18 @@ watch(
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
+}
+
+.messageActions {
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+}
+
+.message.assistant:hover .messageActions,
+.message.assistant:focus-within .messageActions {
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .message.user .content {

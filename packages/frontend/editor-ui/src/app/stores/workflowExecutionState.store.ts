@@ -1,18 +1,23 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, readonly, ref } from 'vue';
+import { computed, inject, readonly, ref, type ComputedRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { ExecutionSummary, IRunExecutionData } from 'n8n-workflow';
+import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
 	useExecutionDataStore,
 } from './executionData.store';
+import { createWorkflowDocumentId, useWorkflowDocumentStore } from './workflowDocument.store';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
+
+const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
 export type WorkflowExecutionStateId = string;
 
@@ -140,25 +145,55 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			return null;
 		});
 
-		const activeExecutionRunData = computed(
-			() => activeExecution.value?.data?.resultData?.runData ?? null,
-		);
+		/**
+		 * Resolves the execution id whose data backs the "active execution" view.
+		 * Tri-state fallback:
+		 *  - string activeExecutionId  -> that id
+		 *  - null activeExecutionId    -> IN_PROGRESS sentinel (pending run)
+		 *  - undefined activeExecutionId + string displayedExecutionId
+		 *                              -> displayed id (preserves the last view
+		 *                                 after active is cleared)
+		 *  - otherwise                 -> undefined
+		 */
+		function getResolvedActiveExecutionId(): string | undefined {
+			if (typeof activeExecutionId.value === 'string') return activeExecutionId.value;
+			if (activeExecutionId.value === null) return IN_PROGRESS_EXECUTION_ID;
+			if (typeof displayedExecutionId.value === 'string') return displayedExecutionId.value;
+			return undefined;
+		}
+
+		const activeExecutionRunData = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return null;
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
+			// Track the timestamp so in-place mutations to runData (which keep
+			// the runData object reference) still propagate.
+			void executionDataStore.executionResultDataLastUpdate;
+			return executionDataStore.executionRunData;
+		});
+
+		const activeExecutionExecutedNode = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return undefined;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executedNode;
+		});
 
 		const activeExecutionStartedData = computed(() => {
-			if (typeof activeExecutionId.value !== 'string') return undefined;
-			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-				.executionStartedData;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return undefined;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionStartedData;
 		});
 
 		const activeExecutionPairedItemMappings = computed(() => {
-			if (typeof activeExecutionId.value !== 'string') return {};
-			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-				.executionPairedItemMappings;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return {};
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionPairedItemMappings;
 		});
 
 		const activeExecutionResultDataLastUpdate = computed(() => {
-			if (typeof activeExecutionId.value !== 'string') return undefined;
-			return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return undefined;
+			return useExecutionDataStore(createExecutionDataId(executionId))
 				.executionResultDataLastUpdate;
 		});
 
@@ -168,6 +203,26 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			if (!runData.hasOwnProperty(nodeName)) return null;
 			return runData[nodeName];
 		}
+
+		/**
+		 * Per-node-name execution issues map for the active or displayed
+		 * execution. Mirrors the fallback chain in `activeExecution`
+		 * (active id → displayed id → empty). Map identity changes when the
+		 * active/displayed execution swaps; per-name `ComputedRef` entries
+		 * inside each Map are owned by the per-execution data store and gate
+		 * downstream propagation via `isEqual`.
+		 */
+		const activeExecutionIssuesByNodeName = computed(() => {
+			if (typeof activeExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
+					.executionIssuesByNodeName;
+			}
+			if (typeof displayedExecutionId.value === 'string') {
+				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
+					.executionIssuesByNodeName;
+			}
+			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
+		});
 
 		const lastSuccessfulExecution = computed(() => {
 			const lid = lastSuccessfulExecutionId.value;
@@ -425,6 +480,95 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			if (touched) fireChange(CHANGE_ACTION.UPDATE, 'state');
 		}
 
+		/**
+		 * Orchestrates `setExecution` across the pending / IN_PROGRESS / id-keyed
+		 * stores. Three branches:
+		 *  - `null`                       -> clears pending + displayed (full reset path)
+		 *  - id === IN_PROGRESS sentinel  -> stages a pending scaffold and points
+		 *                                    activeExecutionId at it (`null`),
+		 *                                    also writes the IN_PROGRESS data store
+		 *  - real id                      -> writes the id-keyed data store and
+		 *                                    promotes displayedExecutionId so reads
+		 *                                    see the new execution before the
+		 *                                    activeExecutionId transition lands
+		 */
+		function setActiveExecution(execution: IExecutionResponse | null) {
+			if (execution === null) {
+				setPendingExecution(null);
+				clearDisplayedExecution();
+				return;
+			}
+			if (execution.id === IN_PROGRESS_EXECUTION_ID) {
+				setPendingExecution(execution);
+				setActiveExecutionId(null);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					execution,
+				);
+				return;
+			}
+			trackExecutionId(execution.id);
+			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+			// When activeExecutionId isn't yet pointing at this execution,
+			// clear pending state and set displayedExecutionId so reads see it.
+			if (typeof activeExecutionId.value !== 'string') {
+				setPendingExecution(null);
+				setActiveExecutionId(undefined);
+				setDisplayedExecutionId(execution.id);
+			}
+		}
+
+		function setActiveExecutionRunData(runData: IRunExecutionData) {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return;
+			useExecutionDataStore(createExecutionDataId(executionId)).setExecutionRunData(runData);
+		}
+
+		function clearActiveExecutionStartedData() {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return;
+			useExecutionDataStore(createExecutionDataId(executionId)).clearExecutionStartedData();
+		}
+
+		function addActiveNodeExecutionStartedData(data: NodeExecuteBefore['data']) {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return;
+			useExecutionDataStore(createExecutionDataId(executionId)).addNodeExecutionStartedData(data);
+		}
+
+		/**
+		 * Cross-store rename for the active execution. Reaches into:
+		 *  - executionData store (runData keys, pinData, sources, workflowData, executedNode)
+		 *  - this store (selectedTriggerNodeName, chatPartialDest)
+		 *  - uiStore (lastSelectedNode, dirty flag)
+		 *  - workflowDocument store (node metadata, workflow-level pinData)
+		 */
+		function renameActiveExecutionNode(nameData: { old: string; new: string }) {
+			const uiStore = useUIStore();
+			uiStore.markStateDirty();
+
+			const executionId = getResolvedActiveExecutionId();
+			if (executionId) {
+				useExecutionDataStore(createExecutionDataId(executionId)).renameExecutionDataNode(
+					nameData.old,
+					nameData.new,
+				);
+			}
+
+			renameExecutionStateNode(nameData.old, nameData.new);
+
+			if (uiStore.lastSelectedNode === nameData.old) {
+				uiStore.lastSelectedNode = nameData.new;
+			}
+
+			if (workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowId),
+				);
+				workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
+				workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
+			}
+		}
+
 		function resetExecutionState() {
 			// Dispose every per-execution data store ever bound to this workflow,
 			// plus the IN_PROGRESS placeholder (sentinel reused across runs).
@@ -466,6 +610,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
 			activeExecution,
 			activeExecutionRunData,
+			activeExecutionExecutedNode,
 			activeExecutionStartedData,
 			activeExecutionPairedItemMappings,
 			activeExecutionResultDataLastUpdate,
@@ -474,6 +619,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			getAllLoadedFinishedExecutions,
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
+			activeExecutionIssuesByNodeName,
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,
@@ -499,6 +645,11 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			appendChatMessage,
 			setSelectedTriggerNodeName,
 			renameExecutionStateNode,
+			setActiveExecution,
+			setActiveExecutionRunData,
+			clearActiveExecutionStartedData,
+			addActiveNodeExecutionStartedData,
+			renameActiveExecutionNode,
 			resetExecutionState,
 			// Events
 			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,

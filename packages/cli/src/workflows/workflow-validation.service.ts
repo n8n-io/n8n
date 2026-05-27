@@ -16,6 +16,7 @@ import {
 import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
@@ -42,6 +43,7 @@ export class WorkflowValidationService {
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	/**
@@ -228,7 +230,9 @@ export class WorkflowValidationService {
 		const errors: string[] = [];
 
 		// A credential is covered if it has its own resolver OR the workflow has a defined resolver
-		const workflowResolverId = workflowSettings?.credentialResolverId;
+		// (workflow override, or the seeded system resolver looked up via the proxy).
+		const workflowResolverId =
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 		if (!workflowResolverId) {
 			const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
 			if (credentialsWithoutResolver.length > 0) {

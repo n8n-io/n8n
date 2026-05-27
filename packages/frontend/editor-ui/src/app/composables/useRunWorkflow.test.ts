@@ -83,7 +83,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getParentNodes: store.getParentNodes,
 		getChildNodes: store.getChildNodes,
 		connectionsBySourceNode: store.connectionsBySourceNode,
-		pinData: store.pinData as IPinData,
+		pinData: store.pinnedDataByNodeName as IPinData,
 	} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors);
 	return { mockDocumentStore: store };
 });
@@ -301,7 +301,7 @@ describe('useRunWorkflow({ router })', () => {
 		mockDocumentStore.workflowId = '123';
 		mockDocumentStore.name = 'Test Workflow';
 		mockDocumentStore.connectionsBySourceNode = {};
-		mockDocumentStore.pinData = {};
+		mockDocumentStore.pinnedDataByNodeName = {};
 		mockDocumentStore.getNodeByName = vi.fn();
 		mockDocumentStore.getParentNodes = vi.fn().mockReturnValue([]);
 		mockDocumentStore.getChildNodes = vi.fn().mockReturnValue([]);
@@ -324,6 +324,22 @@ describe('useRunWorkflow({ router })', () => {
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
 			);
+		});
+
+		it('should use the passed-in workflowState when injection is unavailable', async () => {
+			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
+
+			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
+
+			vi.mocked(pushConnectionStore).isConnected = true;
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+				executionId: '123',
+				waitingForWebhook: false,
+			});
+
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
+			expect(setActiveExecutionId).toHaveBeenCalled();
 		});
 
 		it('should successfully run a workflow', async () => {

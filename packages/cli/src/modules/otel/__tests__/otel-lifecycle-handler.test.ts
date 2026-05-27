@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -7,9 +8,11 @@ import type {
 import { mock } from 'jest-mock-extended';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
 
+import type { OwnershipService } from '@/services/ownership.service';
+
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
-import type { OtelConfig } from '../otel.config';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
+import type { OtelConfig } from '../otel.config';
 import type { TracingContext, TraceContextService } from '../tracing-context';
 
 const emptyExecutionData = {
@@ -22,6 +25,8 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		const config = mock<OtelConfig>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
 
 		const parentTracingContext: TracingContext = {
@@ -52,8 +57,42 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				config,
+				ownershipService,
+				logger,
+			);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
+		});
+
+		it('should look up project via OwnershipService and pass id to the tracer', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({ id: 'proj-1' } as never);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: { id: 'proj-1' } }),
+			);
+		});
+
+		it('should start workflow span without project if project lookup fails', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+
+			await expect(handler.onWorkflowStart(baseCtx)).resolves.not.toThrow();
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: undefined }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch project for OTEL span',
+				expect.objectContaining({ workflowId: 'wf-1', executionId: 'exec-sub' }),
+			);
 		});
 
 		it('should use own tracingContext when present (webhook case)', async () => {
@@ -122,6 +161,8 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		const config = mock<OtelConfig>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
 
 		const prePauseContext: TracingContext = {
@@ -133,8 +174,57 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				config,
+				ownershipService,
+				logger,
+			);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
+		});
+
+		it('should look up project via OwnershipService on resume', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'resume-proj',
+			} as never);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: undefined as never,
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('wf-1');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: { id: 'resume-proj' } }),
+			);
+		});
+
+		it('should start workflow span without project if project lookup fails on resume', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('DB error'));
+
+			await expect(
+				handler.onWorkflowResume({
+					type: 'workflowExecuteResume',
+					workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+					workflowInstance: undefined as never,
+					executionData: undefined as never,
+					executionId: 'exec-resume',
+				} as never),
+			).resolves.not.toThrow();
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: undefined }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to fetch project for OTEL span',
+				expect.objectContaining({ workflowId: 'wf-1', executionId: 'exec-resume' }),
+			);
 		});
 
 		it('should start a new root span linked to the pre-wait origin and not overwrite the persisted origin', async () => {
@@ -168,11 +258,19 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		const config = mock<OtelConfig>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				config,
+				ownershipService,
+				logger,
+			);
 		});
 
 		const makeCtx = (
@@ -234,6 +332,8 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		const config = mock<OtelConfig>();
+		const ownershipService = mock<OwnershipService>();
+		const logger = mock<Logger>();
 		let handler: OtelLifecycleHandler;
 
 		const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
@@ -269,12 +369,24 @@ describe('OtelLifecycleHandler', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 			config.includeNodeSpans = true;
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				config,
+				ownershipService,
+				logger,
+			);
 		});
 
 		it('should skip node spans when includeNodeSpans is false', () => {
 			config.includeNodeSpans = false;
-			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			handler = new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				config,
+				ownershipService,
+				logger,
+			);
 
 			handler.onNodeStart(makeStartCtx());
 			handler.onNodeEnd(makeEndCtx());

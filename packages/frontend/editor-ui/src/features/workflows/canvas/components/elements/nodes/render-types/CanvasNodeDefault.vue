@@ -33,25 +33,28 @@ const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	name,
 	label,
 	subtitle,
 	connections,
 	isDisabled,
 	isReadOnly,
 	isSelected,
-	hasPinnedData,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasExecutionErrors,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,

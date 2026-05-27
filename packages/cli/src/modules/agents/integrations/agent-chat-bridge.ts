@@ -5,10 +5,13 @@ import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
+import { IntegrationMessageContextService } from './integration-message-context.service';
+import { buildIntegrationConnectionId, type IntegrationMessageContext } from './integration-tools';
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
 import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 
@@ -29,6 +32,15 @@ interface AgentExecutor {
 		resumeData: unknown;
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
+}
+
+function isIntegrationActionSuspendPayload(value: unknown): boolean {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'type' in value &&
+		value.type === 'integration_action'
+	);
 }
 
 /**
@@ -86,6 +98,7 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
 		private readonly integration: AgentCredentialIntegrationConfig,
+		private readonly messageContextStore?: IntegrationMessageContextService,
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
 		if (this.integrationImpl?.needsShortCallbackData) {
@@ -114,7 +127,13 @@ export class AgentChatBridge {
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
-					memory: { threadId: memory.threadId.id, resourceId: memory.resourceId },
+					memory: {
+						threadId: memory.threadId.id,
+						resourceId: memory.resourceId,
+						...(memory.resourceId !== undefined && {
+							resourceId: memory.resourceId,
+						}),
+					},
 					integrationType,
 				});
 			},
@@ -130,6 +149,7 @@ export class AgentChatBridge {
 			logger,
 			n8nProjectId,
 			integration,
+			Container.get(IntegrationMessageContextService),
 		);
 	}
 
@@ -180,18 +200,12 @@ export class AgentChatBridge {
 	// Thread ID resolution — single place to apply per-platform formatting
 	// ---------------------------------------------------------------------------
 
-	/**
-	 * Resolve the thread ID to pass to the agents service.
-	 *
-	 * Delegates to `integration.formatThreadId.fromSdk` when the platform
-	 * provides one (e.g. Slack encodes channel + ts), otherwise falls back
-	 * to the raw Chat SDK `thread.id`.
-	 *
-	 * Every call site that hands a threadId to `AgentExecutor` MUST use this
-	 * helper so platform-specific formatting is never accidentally skipped.
-	 */
-	private resolveThreadId(thread: Thread<unknown, unknown>) {
-		return toInternalThreadId(this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id);
+	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
+		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
+	}
+
+	private toAgentThreadId(platformThreadId: string) {
+		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
 	}
 
 	/**
@@ -217,16 +231,23 @@ export class AgentChatBridge {
 		const text = message.text?.trim();
 		if (!text) return;
 
-		const threadId = this.resolveThreadId(thread);
-		// threadId.id already encodes platform + user identity (e.g. Telegram:
-		// "chat:botId-userId") so it serves as a per-chat-user resourceId that
-		// scopes memory correctly without leaking the n8n user identity.
+		const platformThreadId = this.resolvePlatformThreadId(thread);
+		const threadId = this.toAgentThreadId(platformThreadId);
+		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
+			messageId: message.id,
+			interactingUserId: message.author.userId,
+		});
+		// threadId.id is agent-prefixed for observation storage; resourceId keeps
+		// the platform identity so episodic recall remains agent + resource scoped.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished({
 			agentId: this.agentId,
 			projectId: this.n8nProjectId,
 			message: text,
-			memory: { threadId, resourceId: message.author.userId },
+			memory: {
+				threadId,
+				resourceId: integrationMemoryResourceId(this.integration.type, platformThreadId),
+			},
 			integrationType: this.integration.type,
 		});
 
@@ -477,6 +498,9 @@ export class AgentChatBridge {
 		}
 
 		const payload = suspendPayload as RichSuspendPayload | Record<string, unknown> | undefined;
+		if (isIntegrationActionSuspendPayload(payload)) {
+			return;
+		}
 		const hasComponents =
 			payload &&
 			'components' in payload &&
@@ -784,20 +808,6 @@ export class AgentChatBridge {
 				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
 			});
 		}
-
-		// TODO(chat-sdk-bug): Remove when Chat SDK normalises Slack interaction
-		// payloads. Slack sends `team: { id: "T..." }` (object) but Chat SDK's
-		// streaming path expects `team_id: "T..."` (string) on the raw message.
-		interface ThreadWithRaw {
-			_currentMessage?: { raw?: Record<string, unknown> };
-		}
-		const threadInternal = event.thread as unknown as ThreadWithRaw;
-		if (threadInternal?._currentMessage?.raw) {
-			const raw = threadInternal._currentMessage.raw;
-			if (raw.team && typeof raw.team === 'object' && !raw.team_id) {
-				raw.team_id = (raw.team as Record<string, string>).id;
-			}
-		}
 	}
 
 	/**
@@ -832,6 +842,58 @@ export class AgentChatBridge {
 		}
 	}
 
+	private async updateLatestMessageContext(
+		threadId: string,
+		resourceId: string,
+		thread: Thread<unknown, unknown>,
+		options: { messageId?: string; interactingUserId?: string } = {},
+	): Promise<IntegrationMessageContext | undefined> {
+		if (!this.messageContextStore) return undefined;
+
+		const context: IntegrationMessageContext = {
+			integrationConnectionId: buildIntegrationConnectionId(this.integration),
+			platform: this.integration.type,
+			target: {
+				type: 'thread',
+				threadId: thread.id,
+				channelId: thread.channelId,
+			},
+			...(options.messageId ? { messageId: options.messageId } : {}),
+			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
+			updatedAt: new Date().toISOString(),
+		};
+
+		try {
+			await this.messageContextStore.setLatest(threadId, resourceId, context);
+			return context;
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to update latest message context', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
+	private withInteractionContext(
+		resumeData: unknown,
+		context: IntegrationMessageContext | undefined,
+		user: Author,
+	): unknown {
+		if (!context || !resumeData || typeof resumeData !== 'object') return resumeData;
+		return {
+			...resumeData,
+			interaction: {
+				messageContext: context,
+				user: {
+					id: user.userId,
+					name: user.userName,
+				},
+			},
+		};
+	}
+
 	/**
 	 * Handle a button/select action. Action IDs use one of three prefixes:
 	 * - `ri-btn:{runId}:{toolCallId}:{index}` — rich interaction button
@@ -854,9 +916,21 @@ export class AgentChatBridge {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
+		const platformThreadId = this.resolvePlatformThreadId(thread);
+		const threadId = this.toAgentThreadId(platformThreadId);
+		const messageContext = await this.updateLatestMessageContext(
+			threadId.id,
+			event.user.userId,
+			thread,
+			{
+				messageId: event.messageId,
+				interactingUserId: event.user.userId,
+			},
+		);
+		const resumeData = this.withInteractionContext(parsed.resumeData, messageContext, event.user);
 
 		await this.cleanUpBeforeResume(event);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
+		await this.executeResume(thread, parsed.runId, parsed.toolCallId, resumeData);
 	}
 
 	// ---------------------------------------------------------------------------

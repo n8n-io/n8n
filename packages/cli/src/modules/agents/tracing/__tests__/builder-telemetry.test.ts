@@ -38,17 +38,17 @@ describe('isLangSmithEnabled', () => {
 });
 
 describe('buildBuilderTelemetry', () => {
-	it('returns undefined when tracing is not enabled', () => {
-		expect(buildBuilderTelemetry(baseOptions, {})).toBeUndefined();
+	it('returns undefined when tracing is not enabled', async () => {
+		expect(await buildBuilderTelemetry(baseOptions, {})).toBeUndefined();
 	});
 
-	it('returns a LangSmithTelemetry instance when an API key is present', () => {
-		const telemetry = buildBuilderTelemetry(baseOptions, { LANGSMITH_API_KEY: 'ls-key' });
+	it('returns a LangSmithTelemetry instance when an API key is present', async () => {
+		const telemetry = await buildBuilderTelemetry(baseOptions, { LANGSMITH_API_KEY: 'ls-key' });
 		expect(telemetry).toBeInstanceOf(LangSmithTelemetry);
 	});
 
-	it('seeds identifying metadata for the run', () => {
-		const telemetry = buildBuilderTelemetry(baseOptions, { LANGSMITH_API_KEY: 'ls-key' });
+	it('seeds identifying metadata for the run', async () => {
+		const telemetry = await buildBuilderTelemetry(baseOptions, { LANGSMITH_API_KEY: 'ls-key' });
 		// Calling build() would trigger dynamic OTel imports; inspect the builder's
 		// internal state via a safe cast to a partial shape instead.
 		const internal = telemetry as unknown as {
@@ -65,8 +65,8 @@ describe('buildBuilderTelemetry', () => {
 		});
 	});
 
-	it('records the resolved model id when given a typed config object', () => {
-		const telemetry = buildBuilderTelemetry(
+	it('records the resolved model id when given a typed config object', async () => {
+		const telemetry = await buildBuilderTelemetry(
 			{ ...baseOptions, model: { id: 'openai/gpt-4o', apiKey: 'redacted' } },
 			{ LANGSMITH_API_KEY: 'ls-key' },
 		);

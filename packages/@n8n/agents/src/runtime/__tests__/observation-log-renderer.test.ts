@@ -5,8 +5,7 @@ function entry(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntr
 	const marker: ObservationLogMarker = overrides.marker ?? 'important';
 	return {
 		id: overrides.id ?? crypto.randomUUID(),
-		scopeKind: overrides.scopeKind ?? 'thread',
-		scopeId: overrides.scopeId ?? 'thread-1',
+		observationScopeId: overrides.observationScopeId ?? 'thread-1',
 		marker,
 		text: overrides.text ?? 'User chose the observation log model.',
 		parentId: overrides.parentId ?? null,

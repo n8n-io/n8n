@@ -3,6 +3,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { analyzeAgentInputColumns } from './analyze-agent-input-columns.service';
 import {
 	extractJsonColumnRefs,
+	extractNamedRefMatches,
 	isRecord,
 	nodeHasName,
 	nodeTypeEndsWith,
@@ -15,15 +16,16 @@ export interface EvalDataTarget {
 	dataTableId: string;
 	evaluationTriggerName: string;
 	targetNodeName?: string;
+	targetAgentNodeName?: string;
 	inputColumns: string[];
 	expectedOutputColumns: string[];
 	actualOutputColumns: string[];
 	metricNodeNames: string[];
 	/**
 	 * Pairs from setMetrics nodes: for each metric, the expected_* column
-	 * (read from the eval trigger row via `expectedAnswer`) and the target
+	 * (read from the eval trigger row via `expectedAnswer`) and the agent
 	 * output field (read from $json via `actualAnswer`). Used by eval-data
-	 * to populate expected_* columns from a past execution's target output.
+	 * to populate expected_* columns from a past execution's agent output.
 	 */
 	expectedToActualPairs: Array<{ expectedColumn: string; actualField: string }>;
 }
@@ -86,6 +88,21 @@ function collectReachableNodeNames(workflow: WorkflowJSON, startName: string): s
 	return [...seen];
 }
 
+function nodeByName(workflow: WorkflowJSON): Map<string, WorkflowNode> {
+	return new Map(workflow.nodes.filter(nodeHasName).map((node) => [node.name, node]));
+}
+
+function isAiAgentNode(node: WorkflowNode | undefined): boolean {
+	return Boolean(node?.type.includes('n8n-nodes-langchain.agent'));
+}
+
+function extractEvalTriggerColumnRefs(text: string): string[] {
+	return unique([
+		...extractJsonColumnRefs(text),
+		...extractNamedRefMatches(text).map((match) => match.field),
+	]);
+}
+
 function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
 	return unique(
 		nodes.flatMap((node) => {
@@ -93,7 +110,7 @@ function expectedColumnsFromMetricNodes(nodes: WorkflowNode[]): string[] {
 			const parameters = node.parameters;
 			if (!isRecord(parameters)) return [];
 			const expectedRaw = parameters.expectedAnswer;
-			return typeof expectedRaw === 'string' ? extractJsonColumnRefs(expectedRaw) : [];
+			return typeof expectedRaw === 'string' ? extractEvalTriggerColumnRefs(expectedRaw) : [];
 		}),
 	);
 }
@@ -128,7 +145,7 @@ function pairsFromMetricNodes(
 		const expectedRaw = parameters.expectedAnswer;
 		const actualRaw = parameters.actualAnswer;
 		if (typeof expectedRaw !== 'string' || typeof actualRaw !== 'string') continue;
-		const expectedRefs = extractJsonColumnRefs(expectedRaw).filter((ref) =>
+		const expectedRefs = extractEvalTriggerColumnRefs(expectedRaw).filter((ref) =>
 			ref.startsWith('expected'),
 		);
 		const actualRefs = extractJsonColumnRefs(actualRaw);
@@ -146,6 +163,16 @@ function pairsFromMetricNodes(
 		expectedColumn,
 		actualField,
 	}));
+}
+
+function firstReachableAgentName(
+	workflow: WorkflowJSON,
+	evalTriggerName: string,
+): string | undefined {
+	const byName = nodeByName(workflow);
+	return collectReachableNodeNames(workflow, evalTriggerName).find((name) =>
+		isAiAgentNode(byName.get(name)),
+	);
 }
 
 function firstReachableTargetNodeName(
@@ -187,15 +214,18 @@ export function analyzeEvalDataRequirements(workflow: WorkflowJSON): EvalDataReq
 			)
 			.map((node) => node.name);
 
+		const targetAgentNodeName = firstReachableAgentName(workflow, trigger.name);
 		const targetNodeName = firstReachableTargetNodeName(workflow, trigger.name);
+		const inputTargetNodeName = targetAgentNodeName ?? targetNodeName;
 
 		return [
 			{
 				dataTableId,
 				evaluationTriggerName: trigger.name,
 				targetNodeName,
-				inputColumns: targetNodeName
-					? analyzeAgentInputColumns(workflow, targetNodeName).inputColumns
+				targetAgentNodeName,
+				inputColumns: inputTargetNodeName
+					? analyzeAgentInputColumns(workflow, inputTargetNodeName).inputColumns
 					: [],
 				expectedOutputColumns: expectedColumnsFromMetricNodes(reachableNodes),
 				actualOutputColumns: actualColumnsFromSetOutputs(reachableNodes),

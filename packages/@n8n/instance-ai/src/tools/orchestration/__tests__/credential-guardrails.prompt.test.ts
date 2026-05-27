@@ -105,4 +105,31 @@ describe('credential guardrail prompts', () => {
 		expect(prompt).not.toContain('workflows(action="publish")');
 		expect(prompt).not.toContain('Do NOT publish');
 	});
+
+	it('points sandbox builders at the task-specific workflow and chunks paths', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace', {
+			mainWorkflowPath: '/tmp/workspace/builder-work-items/wi-one/src/workflow.ts',
+			sourceDir: '/tmp/workspace/builder-work-items/wi-one/src',
+			chunksDir: '/tmp/workspace/builder-work-items/wi-one/chunks',
+			tsconfigPath: '/tmp/workspace/builder-work-items/wi-one/tsconfig.json',
+		});
+
+		expect(prompt).toContain(
+			'Your active main workflow file is `/tmp/workspace/builder-work-items/wi-one/src/workflow.ts`',
+		);
+		expect(prompt).toContain(
+			'Use `/tmp/workspace/builder-work-items/wi-one/chunks/` for supporting chunk files',
+		);
+		expect(prompt).toContain(
+			'execute_command: cd /tmp/workspace && npx tsc --noEmit --project /tmp/workspace/builder-work-items/wi-one/tsconfig.json 2>&1',
+		);
+		expect(prompt).not.toContain('Write workflow code to `/tmp/workspace/src/workflow.ts`');
+	});
+
+	it('uses the provided workspace root for fallback tsc validation', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/custom-workspace');
+
+		expect(prompt).toContain('execute_command: cd /tmp/custom-workspace && npx tsc --noEmit 2>&1');
+		expect(prompt).not.toContain('execute_command: cd ~/workspace && npx tsc --noEmit 2>&1');
+	});
 });

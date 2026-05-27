@@ -427,6 +427,7 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-workflow',
 			task: 'error',
 			source: 'error',
 			has_existing_session: true,
@@ -449,7 +450,7 @@ describe('AI Assistant store', () => {
 			node_type: 'n8n-nodes-base.stopAndError',
 			source: 'error',
 			task: 'error',
-			workflow_id: '',
+			workflow_id: 'test-workflow',
 			instance_id: '',
 			canvas_status: 'empty',
 		});
@@ -462,6 +463,7 @@ describe('AI Assistant store', () => {
 		mockWorkflowDocumentStore.allNodes = [];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: '',
 			task: 'placeholder',
 			source: 'build_with_ai',
 			has_existing_session: false,
@@ -500,6 +502,7 @@ describe('AI Assistant store', () => {
 		] as INodeUi[];
 
 		assistantStore.trackUserOpenedAssistant({
+			workflowId: 'test-wf',
 			task: 'placeholder',
 			source: 'canvas',
 			has_existing_session: false,

@@ -278,7 +278,7 @@ describe('workflows tool', () => {
 
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Update workflow version "1" — set name to "v1", description to (cleared)?',
+					message: 'Update version 1 — set name to "v1", description to (cleared)',
 					severity: 'info',
 				}),
 			);
@@ -405,6 +405,40 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('get-json action', () => {
+		it('should return full WorkflowJSON with node metadata', async () => {
+			const workflow = {
+				id: 'wf1',
+				name: 'Test WF',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: { text: '={{ $json.input }}' },
+						credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
+						disabled: false,
+					},
+				],
+				connections: {},
+			};
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(workflow);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1');
+			expect(result).toEqual(workflow);
+		});
+	});
+
 	describe('delete action', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
@@ -456,7 +490,7 @@ describe('workflows tool', () => {
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: expect.stringContaining('"wf1"'),
+				message: expect.stringContaining('wf1'),
 			});
 		});
 
@@ -529,7 +563,6 @@ describe('workflows tool', () => {
 				message: expect.stringContaining('Archived WF'),
 				severity: 'warning',
 			});
-			expect(suspend.mock.calls[0][0].message).toContain('will not publish it');
 		});
 
 		it('should return the suspension result when approval is pending', async () => {
@@ -734,7 +767,7 @@ describe('workflows tool', () => {
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish workflow "My WF" (ID: wf1)?',
+				message: 'Publish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});
@@ -765,7 +798,7 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish workflow "My WF" (ID: wf1) and 1 referenced supporting workflow(s)?',
+				message: 'Publish My WF (ID: wf1) and 1 referenced supporting workflow(s)',
 				severity: 'warning',
 			});
 		});
@@ -925,7 +958,7 @@ describe('workflows tool', () => {
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Unpublish workflow "My WF" (ID: wf1)?',
+				message: 'Unpublish My WF (ID: wf1)',
 				severity: 'warning',
 			});
 		});
