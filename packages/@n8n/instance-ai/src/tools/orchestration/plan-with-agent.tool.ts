@@ -636,7 +636,10 @@ const planToolSuspendSchema = z
 		requestId: z.string(),
 		message: z.string(),
 		severity: z.string(),
-		inputType: z.string(),
+		// Only submit-plan + ask-user carry an `inputType`; cascaded suspensions
+		// from other planner tools (credentials, data-tables, ...) don't, and a
+		// strict `inputType: string` would reject otherwise-valid payloads.
+		inputType: z.string().optional(),
 	})
 	.passthrough();
 
