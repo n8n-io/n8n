@@ -39,7 +39,12 @@
 			"dependsOn": ["^build", "build"],
 			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "MERGE_BASE"]
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"]
+		},
+		"test:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"]
 		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
