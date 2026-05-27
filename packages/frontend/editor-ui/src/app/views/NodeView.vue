@@ -312,6 +312,7 @@ const canExecuteOnCanvas = computed(() => {
 	}
 	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
+	if (externalReadOnly?.value) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
