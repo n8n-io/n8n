@@ -52,12 +52,14 @@ describe('Expression — $items() boundary behaviour (engine parity)', () => {
 					{
 						startTime: 0,
 						executionTime: 0,
+						executionIndex: 0,
 						source: [],
 						data: { main: [[{ json: { id: 'run0' } }]] },
 					},
 					{
 						startTime: 0,
 						executionTime: 0,
+						executionIndex: 1,
 						source: [],
 						data: { main: [[{ json: { id: 'run1' } }]] },
 					},
