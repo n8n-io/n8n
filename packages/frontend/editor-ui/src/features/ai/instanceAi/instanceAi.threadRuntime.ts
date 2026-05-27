@@ -243,9 +243,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = ref<
-		Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>
-	>(new Map());
+	const resolvedConfirmationIds = reactive(
+		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
+	);
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
@@ -321,7 +321,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
-			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds, items);
 		}
 		return items;
 	});
@@ -333,9 +333,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		requestId: string,
 		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
 	): void {
-		const next = new Map(resolvedConfirmationIds.value);
-		next.set(requestId, action);
-		resolvedConfirmationIds.value = next;
+		resolvedConfirmationIds.set(requestId, action);
 	}
 
 	/** Find a tool call by its confirmation requestId across all messages. */
@@ -394,7 +392,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			if (sessionAlwaysAllowKeys.value.size === 0) return;
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
-				if (resolvedConfirmationIds.value.has(conf.requestId)) continue;
+				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
@@ -643,7 +641,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Map();
+		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
