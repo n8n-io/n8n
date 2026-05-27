@@ -3,7 +3,6 @@ import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
-import type * as CompactionMod from './compaction';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
@@ -56,7 +55,6 @@ const defineLazyExport = <TValue>(name: string, load: () => TValue): void => {
 	});
 };
 
-const loadCompaction = lazyModule(() => require('./compaction') as typeof CompactionMod);
 const loadLangsmithTracing = lazyModule(
 	() => require('./tracing/langsmith-tracing') as typeof LangsmithTracingMod,
 );
@@ -103,9 +101,6 @@ export type {
 } from '@n8n/agents';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
-export type { CompactionInput } from './compaction';
-export const generateCompactionSummary: typeof CompactionMod.generateCompactionSummary =
-	lazyFunction(() => loadCompaction().generateCompactionSummary);
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
