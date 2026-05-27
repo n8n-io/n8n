@@ -298,4 +298,208 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		});
 		expect(typeof configs[0].fetch).toBe('function');
 	});
+
+	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('connectionTimeoutMs');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createAuthFetch — header merging and stateful refresh
+// ---------------------------------------------------------------------------
+
+describe('createAuthFetch — header merging', () => {
+	beforeEach(() => {
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(new Response('ok', { status: 200 }));
+	});
+
+	it('merges caller-supplied init.headers with auth headers (auth takes precedence)', async () => {
+		const fetchFn = createAuthFetch({ initialHeaders: { Authorization: 'Bearer A' } });
+		await fetchFn('https://example.test/mcp', { headers: { 'X-Custom': 'value' } });
+
+		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
+		expect(init.headers).toMatchObject({
+			'X-Custom': 'value',
+			Authorization: 'Bearer A',
+		});
+	});
+
+	it('uses the refreshed headers on the second call after a successful 401 refresh', async () => {
+		proxyFetchMock
+			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
+			.mockResolvedValueOnce(new Response('ok', { status: 200 }))
+			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+		let callCount = 0;
+		const onUnauthorized = jest.fn().mockImplementation(async () => {
+			callCount++;
+			return { Authorization: `Bearer refreshed-${callCount}` };
+		});
+
+		const fetchFn = createAuthFetch({
+			initialHeaders: { Authorization: 'Bearer stale' },
+			onUnauthorized,
+		});
+
+		// First call triggers a 401 → refresh → retry
+		await fetchFn('https://example.test/mcp');
+
+		// Second call should use the refreshed headers without triggering another refresh
+		await fetchFn('https://example.test/mcp');
+
+		expect(onUnauthorized).toHaveBeenCalledTimes(1);
+		const [, thirdInit] = proxyFetchMock.mock.calls[2] as [unknown, RequestInit];
+		expect((thirdInit.headers as Record<string, string>).Authorization).toBe('Bearer refreshed-1');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — auth header edge cases
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — auth header edge cases', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(new Response('ok', { status: 200 }));
+	});
+
+	async function captureInitialHeaders(server: AgentJsonMcpServerConfig, resolved: unknown) {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue(resolved as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(server, {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('https://example.test/mcp');
+		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
+		return (init.headers ?? {}) as Record<string, string>;
+	}
+
+	it('sends no Authorization header for bearerAuth when the resolved token is an empty string', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+			{ token: '' },
+		);
+		expect(headers.Authorization).toBeUndefined();
+	});
+
+	it('sends no header for headerAuth when the name is missing from the resolved credential', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'headerAuth', credential: 'cred-1' }),
+			{ name: '', value: 'secret' },
+		);
+		expect(Object.keys(headers)).not.toContain('');
+		expect(headers.Authorization).toBeUndefined();
+	});
+
+	it('skips entries with non-string values in multipleHeadersAuth', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'multipleHeadersAuth', credential: 'cred-1' }),
+			{
+				headers: {
+					values: [
+						{ name: 'X-Valid', value: 'yes' },
+						{ name: 42, value: 'ignored' },
+						{ name: 'X-Also-Ignored', value: null },
+					],
+				},
+			},
+		);
+		expect(headers['X-Valid']).toBe('yes');
+		expect(Object.keys(headers)).not.toContain('42');
+		expect(headers['X-Also-Ignored']).toBeUndefined();
+	});
+
+	it('sends no headers for multipleHeadersAuth when the values array is absent', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'multipleHeadersAuth', credential: 'cred-1' }),
+			{ headers: { values: undefined } },
+		);
+		expect(headers).toEqual({});
+	});
+
+	it('uses the OAuth2 path for service-specific McpOAuth2Api variants (e.g. notionMcpOAuth2Api)', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
+			{ oauthTokenData: { access_token: 'notion-oauth-token' } },
+		);
+		expect(headers.Authorization).toBe('Bearer notion-oauth-token');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — OAuth2 variant wires refresh handler
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+	});
+
+	it('wires the onUnauthorized refresh handler for non-canonical McpOAuth2Api variants', async () => {
+		proxyFetchMock
+			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
+			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			oauthTokenData: { access_token: 'stale' },
+		} as never);
+
+		const oauthService = mock<OauthService>();
+		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
+			Authorization: 'Bearer fresh',
+		});
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1' },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		const res = await configs[0].fetch('https://example.test/mcp');
+
+		expect(res.status).toBe(200);
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1');
+	});
+
+	it('does NOT wire an onUnauthorized handler when credential is absent for mcpOAuth2Api', async () => {
+		proxyFetchMock.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
+
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({} as never);
+
+		const oauthService = mock<OauthService>();
+
+		// credential field intentionally absent
+		await buildMcpClientForServer(makeServer({ authentication: 'mcpOAuth2Api' }), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('https://example.test/mcp');
+
+		// No refresh should have been attempted
+		expect(oauthService.refreshOAuth2CredentialById).not.toHaveBeenCalled();
+	});
 });

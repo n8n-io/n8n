@@ -3214,4 +3214,240 @@ describe('OauthService', () => {
 			).toBe('direct@example.com');
 		});
 	});
+
+	describe('refreshOAuth2CredentialById', () => {
+		const credentialId = 'cred-123';
+		const projectId = 'proj-456';
+
+		function makeCredential(
+			overrides: Partial<ICredentialsDb> = {},
+		): ICredentialsDb & { isGlobal: boolean } {
+			return {
+				id: credentialId,
+				isGlobal: false,
+				shared: [],
+				...overrides,
+			} as unknown as ICredentialsDb & { isGlobal: boolean };
+		}
+
+		it('returns null when the credential is not found', async () => {
+			credentialsRepository.findOne.mockResolvedValue(null);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toBeNull();
+		});
+
+		it('returns null when the credential is not accessible to the given project', async () => {
+			const credential = makeCredential({
+				isGlobal: false,
+				shared: [{ projectId: 'other-project' }] as never,
+			});
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toBeNull();
+		});
+
+		it('grants access when the credential is global regardless of project', async () => {
+			const credential = makeCredential({ isGlobal: true, shared: [] });
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			// Returns null because there's no oauthTokenData — but the access check passed
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			// Null because oauthTokenData is missing — not because of an access denial
+			expect(result).toBeNull();
+			expect(service.getOAuthCredentials).toHaveBeenCalled();
+		});
+
+		it('grants access when the project is a shared member', async () => {
+			const credential = makeCredential({
+				isGlobal: false,
+				shared: [{ projectId }] as never,
+			});
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			// Access was granted — null because there's no oauthTokenData
+			expect(result).toBeNull();
+			expect(service.getOAuthCredentials).toHaveBeenCalled();
+		});
+
+		it('returns null when the credential has no stored oauthTokenData', async () => {
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				// oauthTokenData intentionally absent
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toBeNull();
+		});
+
+		it('refreshes the token with token.refresh() for authorizationCode grant and returns a Bearer header', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshed = {
+				data: { access_token: 'new-token', token_type: 'bearer' },
+				accessToken: 'new-token',
+			};
+			const mockToken = { refresh: jest.fn().mockResolvedValue(refreshed), client: {} };
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => ({ createToken: jest.fn().mockReturnValue(mockToken) }) as never);
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+		});
+
+		it('persists the refreshed token data after a successful refresh', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshedData = { access_token: 'new-token', token_type: 'bearer' };
+			const refreshed = { data: refreshedData, accessToken: 'new-token' };
+			const mockToken = { refresh: jest.fn().mockResolvedValue(refreshed), client: {} };
+			const credential = makeCredential({ isGlobal: true });
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => ({ createToken: jest.fn().mockReturnValue(mockToken) }) as never);
+
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-tok' },
+			} as unknown as OAuth2CredentialData);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: refreshedData,
+			});
+		});
+
+		it('uses credentials.getToken() for clientCredentials grant type', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshed = { data: { access_token: 'cc-token' }, accessToken: 'cc-token' };
+			const getToken = jest.fn().mockResolvedValue(refreshed);
+			const mockToken = { refresh: jest.fn(), client: { credentials: { getToken } } };
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => ({ createToken: jest.fn().mockReturnValue(mockToken) }) as never);
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale' },
+			} as unknown as OAuth2CredentialData);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(getToken).toHaveBeenCalledTimes(1);
+			expect(mockToken.refresh).not.toHaveBeenCalled();
+		});
+
+		it('returns null and logs a warning when the refresh call throws', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockToken = {
+				refresh: jest.fn().mockRejectedValue(new Error('network timeout')),
+				client: {},
+			};
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => ({ createToken: jest.fn().mockReturnValue(mockToken) }) as never);
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-tok' },
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toBeNull();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh OAuth2 token for credential',
+				expect.objectContaining({ credentialId, error: 'network timeout' }),
+			);
+		});
+
+		it('still returns the auth header even when persisting the new token data fails', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshed = { data: { access_token: 'new-token' }, accessToken: 'new-token' };
+			const mockToken = { refresh: jest.fn().mockResolvedValue(refreshed), client: {} };
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => ({ createToken: jest.fn().mockReturnValue(mockToken) }) as never);
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-tok' },
+			} as unknown as OAuth2CredentialData);
+			jest.spyOn(service, 'encryptAndSaveData').mockRejectedValue(new Error('db write error'));
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Refreshed OAuth2 token but failed to persist new token data',
+				expect.objectContaining({ credentialId }),
+			);
+		});
+	});
 });
