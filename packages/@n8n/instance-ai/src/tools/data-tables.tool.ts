@@ -77,6 +77,16 @@ function isNameConflictError(error: unknown): boolean {
 const projectIdDescribe =
 	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
 
+const dataTableNameDescribe =
+	'Human-readable name of the data table, shown alongside the ID in the approval card. Pass this whenever you know it (e.g. from a prior `list` call) so users see a recognisable label instead of a bare UUID.';
+
+/** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
+function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {
+	return input.dataTableName
+		? `${input.dataTableName} (ID: ${input.dataTableId})`
+		: input.dataTableId;
+}
+
 const listAction = z.object({
 	action: z.literal('list').describe('List data tables in a project'),
 	projectId: z.string().optional().describe(projectIdDescribe),
@@ -89,6 +99,7 @@ const schemaAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
@@ -99,6 +110,7 @@ const queryAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe('Row filter conditions'),
 	limit: z
@@ -133,6 +145,7 @@ const deleteAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
@@ -143,6 +156,7 @@ const addColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
@@ -155,6 +169,7 @@ const deleteColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 });
@@ -166,6 +181,7 @@ const renameColumnAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 	newName: z.string().describe('New column name'),
@@ -178,6 +194,7 @@ const insertRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	rows: z
 		.array(z.record(z.unknown()))
@@ -193,6 +210,7 @@ const updateRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.describe('Row filter conditions'),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
@@ -209,11 +227,10 @@ const deleteRowsAction = z.object({
 		.describe(
 			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
 		),
+	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
-
-const readOnlyActions = [listAction, schemaAction, queryAction] as const;
 
 const allActions = [
 	listAction,
@@ -229,8 +246,34 @@ const allActions = [
 	deleteRowsAction,
 ] as const;
 
-type ReadOnlyInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof readOnlyActions>>;
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+
+type DataTableReferenceInput = {
+	dataTableId: string;
+	dataTableName?: string;
+	projectId?: string;
+};
+
+async function resolveDataTableReference(
+	context: InstanceAiContext,
+	input: DataTableReferenceInput,
+	permission: 'read' | 'readRow',
+): Promise<{ dataTableId: string; dataTableName?: string; projectId?: string }> {
+	const reference = await context.dataTableService.resolveTableReference?.(input.dataTableId, {
+		projectId: input.projectId,
+		permission,
+	});
+
+	const table: { dataTableId: string; dataTableName?: string; projectId?: string } = {
+		dataTableId: reference?.id ?? input.dataTableId,
+	};
+	const dataTableName = reference?.name ?? input.dataTableName;
+	const projectId = reference?.projectId ?? input.projectId;
+	if (dataTableName !== undefined) table.dataTableName = dataTableName;
+	if (projectId !== undefined) table.projectId = projectId;
+
+	return table;
+}
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -246,16 +289,18 @@ async function handleSchema(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'schema' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
 	});
-	return { columns };
+	return { ...table, columns };
 }
 
 async function handleQuery(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'query' }>,
 ) {
+	const table = await resolveDataTableReference(context, input, 'readRow');
 	const result = await context.dataTableService.queryRows(input.dataTableId, {
 		filter: input.filter,
 		limit: input.limit,
@@ -268,12 +313,13 @@ async function handleQuery(
 
 	if (remaining > 0) {
 		return {
+			...table,
 			...result,
-			hint: `${remaining} more rows available. Use plan with a manage-data-tables task for bulk operations.`,
+			hint: `${remaining} more rows available. Use additional paginated data-tables queries for bulk operations.`,
 		};
 	}
 
-	return result;
+	return { ...table, ...result };
 }
 
 async function handleCreate(
@@ -291,11 +337,11 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create data table "${input.name}"?`;
+		let message = `Create ${input.name}`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create data table "${input.name}" in project "${projectLabel}"?`;
+			message = `Create ${input.name} in project ${projectLabel}`;
 		}
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -321,7 +367,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data-tables(action="list") to find it and data-tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;
@@ -345,7 +391,7 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
+			message: `Delete ${buildDataTableLabel(input)}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -377,7 +423,7 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
+			message: `Add ${input.columnName} (${input.type}) to ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -413,7 +459,7 @@ async function handleDeleteColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
+			message: `Delete ${input.columnId} from ${buildDataTableLabel(input)}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -447,7 +493,7 @@ async function handleRenameColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Rename column "${input.columnId}" to "${input.newName}" in data table "${input.dataTableId}"?`,
+			message: `Rename ${input.columnId} to ${input.newName} in ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -481,7 +527,7 @@ async function handleInsertRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into data table "${input.dataTableId}"?`,
+			message: `Insert ${input.rows.length} row(s) into ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -514,7 +560,7 @@ async function handleUpdateRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update rows in data table "${input.dataTableId}"?`,
+			message: `Update rows in ${buildDataTableLabel(input)}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -556,7 +602,7 @@ async function handleDeleteRows(
 			.join(` ${input.filter.type} `);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete rows where ${filterDesc}? This cannot be undone.`,
+			message: `Delete rows from ${buildDataTableLabel(input)} where ${filterDesc}`,
 			severity: 'destructive' as const,
 		});
 	}
@@ -581,29 +627,7 @@ async function handleDeleteRows(
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createDataTablesTool(
-	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
-) {
-	if (surface === 'orchestrator') {
-		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
-
-		return new Tool(DATA_TABLES_TOOL_ID)
-			.description('Manage data tables — list, get schema, and query rows.')
-			.input(inputSchema)
-			.handler(async (input: ReadOnlyInput) => {
-				switch (input.action) {
-					case 'list':
-						return await handleList(context, input);
-					case 'schema':
-						return await handleSchema(context, input);
-					case 'query':
-						return await handleQuery(context, input);
-				}
-			})
-			.build();
-	}
-
+export function createDataTablesTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return new Tool(DATA_TABLES_TOOL_ID)

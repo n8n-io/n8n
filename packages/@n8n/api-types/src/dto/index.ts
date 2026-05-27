@@ -98,6 +98,7 @@ export { UpdateVariableRequestDto } from './variables/update-variable-request.dt
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
+export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
 
 export {
 	MAX_PINNED_DATA_SIZE,
@@ -200,6 +201,12 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
+export {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from './packages/import-package-request.dto';
+
 export * from './evaluations';
 
 export {
@@ -219,13 +226,6 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
-
-export {
-	RedactionEnforcementDto,
-	UpdateRedactionEnforcementDto,
-	redactionScopeSchema,
-	type RedactionScope,
-} from './redaction-enforcement/redaction-enforcement.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';

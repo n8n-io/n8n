@@ -17,6 +17,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
+import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -72,6 +73,19 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+});
+
+const validateAction = z.object({
+	action: z
+		.literal('validate')
+		.describe(
+			'Return the per-node configuration issues a human would see as red warning indicators on the canvas: missing credentials, parameter validation errors, etc. Static check (does not execute the workflow). Use this to confirm a workflow is configured correctly before suggesting the user run or publish it.',
+		),
+	workflowId: z.string().describe('ID of the workflow'),
+	ignoreIssues: z
+		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
+		.optional()
+		.describe('Issue categories to suppress from the result'),
 });
 
 const updateAction = z.object({
@@ -165,6 +179,7 @@ type Input =
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
+	| z.infer<typeof validateAction>
 	| z.infer<typeof updateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
@@ -186,6 +201,7 @@ export type WorkflowAction =
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
+	| 'validate'
 	| 'update'
 	| 'publish'
 	| 'unpublish'
@@ -213,6 +229,7 @@ const WORKFLOW_ACTION_ORDER = [
 	'delete',
 	'unarchive',
 	'setup',
+	'validate',
 	'update',
 	'publish',
 	'unpublish',
@@ -230,6 +247,7 @@ const WORKFLOW_ACTION_LABELS = {
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
+	validate: 'validate configuration',
 	update: 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
@@ -259,6 +277,7 @@ function getSupportedWorkflowActionSchemas(
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
+		validate: validateAction,
 		update: updateAction,
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
@@ -406,7 +425,7 @@ async function handleDelete(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
+			message: `Archive ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -437,7 +456,7 @@ async function handleUnarchive(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Restore archived workflow "${workflowName}" (ID: ${input.workflowId})? This will make it visible again but will not publish it.`,
+			message: `Restore ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -651,6 +670,26 @@ async function handleSetup(
 	}
 }
 
+async function handleValidate(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'validate' }>,
+) {
+	try {
+		return await validateWorkflowConfig(context, {
+			workflowId: input.workflowId,
+			ignoreIssues: input.ignoreIssues,
+		});
+	} catch (error) {
+		return {
+			workflowId: input.workflowId,
+			issues: {} as Record<string, never>,
+			summary: [] as string[],
+			valid: false,
+			error: error instanceof Error ? error.message : 'Failed to validate workflow',
+		};
+	}
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -733,8 +772,8 @@ async function handlePublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`
-				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})${dependencyNote}?`,
+				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
+				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -879,7 +918,7 @@ async function handleUnpublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			message: `Unpublish ${workflowName} (ID: ${input.workflowId})`,
 			severity: 'warning' as const,
 		});
 	}
@@ -942,7 +981,7 @@ async function handleRestoreVersion(
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Restore workflow to version ${versionLabel}? This will overwrite the current draft.`,
+			message: `Restore to version ${versionLabel}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -987,7 +1026,7 @@ async function handleUpdateVersion(
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update workflow version "${input.versionId}" — set ${summary}?`,
+			message: `Update version ${input.versionId} — set ${summary}`,
 			severity: 'info' as const,
 		});
 	}
@@ -1073,6 +1112,8 @@ export function createWorkflowsTool(
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
 					return await handleSetup(context, workflowInput, ctx, setupState);
+				case 'validate':
+					return await handleValidate(context, workflowInput);
 				case 'update':
 					return await handleUpdate(context, workflowInput, ctx);
 				case 'publish':

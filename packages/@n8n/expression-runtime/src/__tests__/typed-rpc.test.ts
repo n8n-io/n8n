@@ -143,3 +143,291 @@ describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
 		expect(result).toBeUndefined();
 	});
 });
+
+describe("Typed RPC: $('Foo').last() routes via getNodeLast", () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$(nodeName).last() and forwards args', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (nodeName: string) => {
+				if (nodeName !== 'SourceNode') throw new Error(`unexpected node: ${nodeName}`);
+				return {
+					last: (...args: unknown[]) => {
+						calls.push(args);
+						return { json: { id: 99, name: 'Zelda' } };
+					},
+				};
+			},
+		};
+
+		const result = evaluator.evaluate("{{ $('SourceNode').last(1, 2) }}", data, caller) as Record<
+			string,
+			unknown
+		>;
+
+		expect(result).toEqual({ json: { id: 99, name: 'Zelda' } });
+		expect(calls).toEqual([[1, 2]]);
+	});
+
+	it('only invokes .last on the host proxy — never other methods', () => {
+		const invoked: string[] = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) =>
+				new Proxy(
+					{},
+					{
+						get(_t, prop) {
+							if (typeof prop === 'symbol') return undefined;
+							invoked.push(prop);
+							if (prop === 'last') return () => ({ json: { ok: true } });
+							return () => {
+								throw new Error(`unexpected method invoked: ${prop}`);
+							};
+						},
+					},
+				),
+		};
+
+		evaluator.evaluate("{{ $('Foo').last() }}", data, caller);
+
+		expect(invoked).toEqual(['last']);
+	});
+});
+
+describe("Typed RPC: $('Foo').all() routes via getNodeAll", () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the full array from data.$(nodeName).all()', () => {
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				all: () => [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }],
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').all() }}", data, caller);
+
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]);
+	});
+
+	it('only invokes .all on the host proxy — never other methods', () => {
+		const invoked: string[] = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) =>
+				new Proxy(
+					{},
+					{
+						get(_t, prop) {
+							if (typeof prop === 'symbol') return undefined;
+							invoked.push(prop);
+							if (prop === 'all') return () => [];
+							return () => {
+								throw new Error(`unexpected method invoked: ${prop}`);
+							};
+						},
+					},
+				),
+		};
+
+		evaluator.evaluate("{{ $('Foo').all() }}", data, caller);
+
+		expect(invoked).toEqual(['all']);
+	});
+});
+
+describe("Typed RPC: $('Foo') proxy fallthrough and `in` checks", () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('non-RPC properties (`.params`) delegate to the lazy proxy', () => {
+		// `.params` on $('Foo') is not a typed RPC. The synthetic proxy's get
+		// trap should fall through to the underlying lazy proxy, which fetches
+		// the value from the host via getValueAtPath. Reading `params.value`
+		// (a primitive) exercises that path end-to-end.
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				params: { mode: 'manual' },
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').params.mode }}", data, caller);
+		expect(result).toBe('manual');
+	});
+
+	it("'first', 'last', 'all' are reported by the synthetic proxy's `has` trap", () => {
+		// Tournament's variable polyfill compiles to `("x" in obj ? obj : global).x`,
+		// so the typed-RPC method names must answer `true` for `in` checks even
+		// though the inner target is `{}`. Without the `has` trap, the lookup
+		// would fall through to global and miss the typed-RPC routing.
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				first: () => ({ json: { ok: true } }),
+				last: () => ({ json: { ok: true } }),
+				all: () => [],
+			}),
+		};
+
+		expect(evaluator.evaluate("{{ 'first' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'last' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'all' in $('Foo') }}", data, caller)).toBe(true);
+	});
+});
+
+describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('$input.first() returns the value of data.$input.first()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => ({ json: { id: 1, name: 'first-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.first() }}', data, caller);
+		expect(result).toEqual({ json: { id: 1, name: 'first-item' } });
+	});
+
+	it('$input.last() returns the value of data.$input.last()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				last: () => ({ json: { id: 9, name: 'last-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.last() }}', data, caller);
+		expect(result).toEqual({ json: { id: 9, name: 'last-item' } });
+	});
+
+	it('$input.all() returns the array from data.$input.all()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				all: () => [{ json: { id: 1 } }, { json: { id: 2 } }],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.all() }}', data, caller);
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
+	});
+
+	it('drops any arguments the isolate tries to pass to the host method', () => {
+		// The host's `WorkflowDataProxy` throws if `$input.first/last/all` is
+		// called with any arguments. The typed-RPC schemas have no fields
+		// besides `type`, so the in-isolate stub closes over a zero-arg
+		// invocation regardless of what the expression passed. Documenting:
+		// `$input.first('arg')` produces the same result as `$input.first()`
+		// because the host method is invoked with no arguments either way.
+		const args: unknown[][] = [];
+		const data: Record<string, unknown> = {
+			$input: {
+				first: (...received: unknown[]) => {
+					args.push(received);
+					return { json: { ok: true } };
+				},
+			},
+		};
+
+		evaluator.evaluate('{{ $input.first() }}', data, caller);
+		evaluator.evaluate("{{ $input.first('ignored') }}", data, caller);
+		evaluator.evaluate('{{ $input.first(1, 2, 3) }}', data, caller);
+
+		expect(args).toEqual([[], [], []]);
+	});
+
+	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
+		// `.item` on $input is a host getter, not a typed RPC. The synthetic
+		// proxy should fall through to the lazy proxy which fetches via
+		// getValueAtPath — and the host's `.item` getter must be invoked on
+		// the host side. Defining `.item` as a real getter (instead of a
+		// plain property) proves the getter ran: the bridge can only reach
+		// it via host-side property access, which is what `getValueAtPath`
+		// does. If the routing had wrongly sent a typed RPC, the dispatcher
+		// would reject the unknown `type` and return undefined.
+		let getterInvocations = 0;
+		const data: Record<string, unknown> = {
+			$input: Object.defineProperty({} as Record<string, unknown>, 'item', {
+				get() {
+					getterInvocations += 1;
+					return { id: 42 };
+				},
+				enumerable: true,
+			}),
+		};
+
+		const result = evaluator.evaluate('{{ $input.item.id }}', data, caller);
+		expect(result).toBe(42);
+		expect(getterInvocations).toBeGreaterThan(0);
+	});
+
+	it("'first', 'last', 'all' are reported by $input's `has` trap", () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => undefined,
+				last: () => undefined,
+				all: () => [],
+			},
+		};
+
+		expect(evaluator.evaluate("{{ 'first' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'last' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'all' in $input }}", data, caller)).toBe(true);
+	});
+});

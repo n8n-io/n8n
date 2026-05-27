@@ -7,13 +7,14 @@ import { Jenkins } from '../Jenkins.node';
 describe('Jenkins node', () => {
 	let node: Jenkins;
 	let loadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	const jenkinsApiRequestSpy = jest.spyOn(GenericFunctions, 'jenkinsApiRequest');
+	let jenkinsApiRequestSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		node = new Jenkins();
 		loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		loadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('demo-job');
 		jest.clearAllMocks();
+		jenkinsApiRequestSpy = jest.spyOn(GenericFunctions, 'jenkinsApiRequest');
 	});
 
 	afterEach(() => {

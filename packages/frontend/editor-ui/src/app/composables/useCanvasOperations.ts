@@ -104,6 +104,7 @@ import type {
 	NodeConnectionType,
 	INodeParameters,
 	INodeFilter,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -218,6 +219,12 @@ export function useCanvasOperations() {
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowDocumentStore.value.workflowTriggerNodes;
 	});
+
+	const lastInteractedWithNode = computed(() =>
+		uiStore.lastInteractedWithNodeId
+			? workflowDocumentStore.value.getNodeById(uiStore.lastInteractedWithNodeId)
+			: null,
+	);
 
 	/**
 	 * Node operations
@@ -939,12 +946,11 @@ export function useCanvasOperations() {
 	}
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
-		if (!lastInteractedWithNode) {
+		if (!lastInteractedWithNode.value) {
 			return;
 		}
 		const isNewHitlToolNode = isHitlToolType(node.type);
-		const lastInteractedWithNodeId = lastInteractedWithNode.id;
+		const lastInteractedWithNodeId = lastInteractedWithNode.value.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
 		if (isNewHitlToolNode && lastInteractedWithNodeConnection) {
@@ -1100,9 +1106,7 @@ export function useCanvasOperations() {
 			is_auto_add: options.isAutoAdd,
 			workflow_id: workflowsStore.workflowId,
 			drag_and_drop: options.dragAndDrop,
-			input_node_type: uiStore.lastInteractedWithNode
-				? uiStore.lastInteractedWithNode.type
-				: undefined,
+			input_node_type: lastInteractedWithNode.value?.type,
 			resource,
 			operation,
 			action: options.actionName,
@@ -1220,7 +1224,6 @@ export function useCanvasOperations() {
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
 		// - selecting a node, adding a node via the node creator
-		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
 		// Available when clicking the plus button of a node edge / connection
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		// Available when dragging an edge / connection from a node
@@ -1244,13 +1247,13 @@ export function useCanvasOperations() {
 			});
 		}
 
-		if (lastInteractedWithNode) {
+		if (lastInteractedWithNode.value) {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
-				lastInteractedWithNode.type,
-				lastInteractedWithNode.typeVersion,
+				lastInteractedWithNode.value.type,
+				lastInteractedWithNode.value.typeVersion,
 			);
 			const lastInteractedWithNodeObject = workflowDocumentStore.value.getNodeByName(
-				lastInteractedWithNode.name,
+				lastInteractedWithNode.value.name,
 			);
 
 			const newNodeInsertPosition = uiStore.lastCancelledConnectionPosition;
@@ -1287,12 +1290,12 @@ export function useCanvasOperations() {
 						// X position: same as the tool node, slightly shifted to the left because of the size difference
 						// Y position: halfway between source and target nodes
 						const sourceY = toolUserNode.position[1];
-						const targetY = lastInteractedWithNode.position[1];
+						const targetY = lastInteractedWithNode.value.position[1];
 						const yDiff = (targetY - sourceY) / 2;
 						const middleY = sourceY + yDiff;
 
 						position = [
-							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							lastInteractedWithNode.value.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
 							middleY,
 						];
 
@@ -1301,11 +1304,11 @@ export function useCanvasOperations() {
 							// slightly move the tool node vertically
 							const verticalOffset = PUSH_NODES_OFFSET / 2;
 							updateNodePosition(
-								lastInteractedWithNode.id,
+								lastInteractedWithNode.value.id,
 								{
-									x: lastInteractedWithNode.position[0],
+									x: lastInteractedWithNode.value.position[0],
 									y:
-										lastInteractedWithNode.position[1] +
+										lastInteractedWithNode.value.position[1] +
 										(yDiff > 0 ? verticalOffset : -verticalOffset),
 								},
 								{ trackHistory: true },
@@ -1385,7 +1388,7 @@ export function useCanvasOperations() {
 						: 0;
 					const shiftMargin = PUSH_NODES_OFFSET + extraWidth;
 
-					shiftDownstreamNodesPosition(lastInteractedWithNode.name, shiftMargin, {
+					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
 						trackHistory: true,
 						nodeSize: newNodeSize,
 					});
@@ -1443,12 +1446,12 @@ export function useCanvasOperations() {
 					);
 
 					position = [
-						lastInteractedWithNode.position[0] +
+						lastInteractedWithNode.value.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
 								(scopedConnectionIndex + 1) -
 							nodeSize[0] / 2 -
 							customOffset,
-						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
+						lastInteractedWithNode.value.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
@@ -1464,13 +1467,13 @@ export function useCanvasOperations() {
 
 					// If a node is active then add the new node directly after the current one
 					position = [
-						lastInteractedWithNode.position[0] + pushOffset,
-						lastInteractedWithNode.position[1] + yOffset,
+						lastInteractedWithNode.value.position[0] + pushOffset,
+						lastInteractedWithNode.value.position[1] + yOffset,
 					];
 
 					// When inserting via edge plus button, keep Y aligned to preserve vertical line
 					if (lastInteractedWithNodeConnection) {
-						position = [position[0], lastInteractedWithNode.position[1]];
+						position = [position[0], lastInteractedWithNode.value.position[1]];
 					}
 				}
 			}
@@ -2302,7 +2305,10 @@ export function useCanvasOperations() {
 
 	function resetWorkspace() {
 		// Reset node creator
-		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
+		nodeCreatorStore.setNodeCreatorState({
+			workflowId: workflowDocumentStore.value.workflowId,
+			createNodeActive: false,
+		});
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (workflowsStore.executionWaitingForWebhook) {
@@ -2769,12 +2775,18 @@ export function useCanvasOperations() {
 				),
 			);
 
-			await addImportedNodesToWorkflow(workflowData, {
+			const importResult = await addImportedNodesToWorkflow(workflowData, {
 				trackBulk,
 				trackHistory,
 				viewport,
 				setStateDirty,
 			});
+
+			applyImportedNodeGroups(
+				workflowData.nodeGroups,
+				new Set(importResult.nodes?.map((node) => node.id).filter(isPresent) ?? []),
+				{ setStateDirty },
+			);
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
@@ -2849,25 +2861,67 @@ export function useCanvasOperations() {
 		return workflowData;
 	}
 
+	function getNodeGroupsFullyContainedInSelection(
+		nodeIds: Set<string>,
+		groups: IWorkflowGroup[],
+	): IWorkflowGroup[] {
+		return groups
+			.filter(
+				(group) => group.nodeIds.length > 0 && group.nodeIds.every((nodeId) => nodeIds.has(nodeId)),
+			)
+			.map((group) => ({
+				...group,
+				nodeIds: [...group.nodeIds],
+			}));
+	}
+
+	function applyImportedNodeGroups(
+		nodeGroups: IWorkflowGroup[] | undefined,
+		importedNodeIds: Set<string>,
+		{ setStateDirty = true }: { setStateDirty?: boolean } = {},
+	) {
+		if (!nodeGroups?.length || importedNodeIds.size === 0 || !workflowDocumentStore.value) {
+			return;
+		}
+
+		const groupsToImport = getNodeGroupsFullyContainedInSelection(importedNodeIds, nodeGroups);
+		const existingGroupNames = new Set(
+			workflowDocumentStore.value.allGroups.map((group) => group.name),
+		);
+
+		for (const group of groupsToImport) {
+			const name = existingGroupNames.has(group.name)
+				? workflowDocumentStore.value.getNextDefaultName(group.name)
+				: group.name;
+
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			existingGroupNames.add(name);
+		}
+	}
+
 	function getNodesToSave(nodes: INode[]): WorkflowData {
 		if (!workflowDocumentStore.value) {
 			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
 		}
 
-		const data = {
+		const exportedPinData: IPinData = {};
+		const data: WorkflowData = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
-			pinData: {} as IPinData,
-		} satisfies WorkflowData;
+			pinData: exportedPinData,
+		};
 
+		const exportedNodeIds = new Set(nodes.map((node) => node.id));
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
-			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
+			const pinDataForNode = pinDataToExecutionData(
+				workflowDocumentStore.value.pinnedDataByNodeName,
+			)[node.name];
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode as IPinData[string];
+				exportedPinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
@@ -2885,6 +2939,14 @@ export function useCanvasOperations() {
 		}
 
 		data.connections = getConnectionsForNodes(data.nodes, exportedNodeNames);
+
+		const nodeGroups = getNodeGroupsFullyContainedInSelection(
+			exportedNodeIds,
+			workflowDocumentStore.value.allGroups,
+		);
+		if (nodeGroups.length > 0) {
+			data.nodeGroups = nodeGroups;
+		}
 
 		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
 

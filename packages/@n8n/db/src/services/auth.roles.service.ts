@@ -84,19 +84,26 @@ export class AuthRolesService {
 				`Deleting ${scopesToDelete.length} obsolete scopes: ${scopesToDelete.map((s) => s.slug).join(', ')}`,
 			);
 
-			// First, remove these scopes from any roles that reference them
+			// Step 1: find slugs of roles that reference any obsolete scope
 			const obsoleteScopeSlugs = scopesToDelete.map((s) => s.slug);
-			const rolesWithObsoleteScopes = await roleRepo.find({
-				relations: ['scopes'],
+			const affectedRoles = await roleRepo.find({
+				select: { slug: true },
 				where: { scopes: { slug: In(obsoleteScopeSlugs) } },
 			});
+			const affectedRoleSlugs = affectedRoles.map((role) => role.slug);
 
-			const rolesToUpdate = rolesWithObsoleteScopes.map((role) => {
-				role.scopes = role.scopes.filter((scope) => !obsoleteScopeSlugs.includes(scope.slug));
-				return role;
-			});
+			// Step 2: reload those roles with ALL their scopes
+			if (affectedRoleSlugs.length > 0) {
+				const rolesWithAllScopes = await roleRepo.find({
+					relations: ['scopes'],
+					where: { slug: In(affectedRoleSlugs) },
+				});
 
-			if (rolesToUpdate.length > 0) {
+				const rolesToUpdate = rolesWithAllScopes.map((role) => {
+					role.scopes = role.scopes.filter((scope) => !obsoleteScopeSlugs.includes(scope.slug));
+					return role;
+				});
+
 				this.logger.debug(`Removing obsolete scopes from ${rolesToUpdate.length} roles...`);
 				await roleRepo.save(rolesToUpdate);
 			}

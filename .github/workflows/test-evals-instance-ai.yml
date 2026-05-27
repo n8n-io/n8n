@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ''
+      sandbox-provider:
+        description: 'Sandbox provider (n8n-sandbox or daytona)'
+        required: false
+        type: string
+        default: 'n8n-sandbox'
   workflow_dispatch:
     inputs:
       branch:
@@ -23,6 +28,10 @@ on:
         description: 'Filter test cases by name (e.g. "contact-form")'
         required: false
         default: ''
+      sandbox-provider:
+        description: 'Sandbox provider (n8n-sandbox or daytona)'
+        required: false
+        default: 'n8n-sandbox'
 
 jobs:
   run-evals:
@@ -32,9 +41,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
+      # 11 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
       # bump back to 8vcpu if contention shows up.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
     permissions:
       contents: read
       pull-requests: write
@@ -63,6 +72,97 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
 
+      - name: Generate mTLS certificates for sandbox service
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
+        run: |
+          TLS_DIR="$RUNNER_TEMP/sandbox-tls"
+          mkdir -p "$TLS_DIR"
+          docker run --rm \
+            --user 0:0 \
+            --entrypoint sh \
+            -v "$TLS_DIR:/tls" \
+            -e NUM_RUNNERS=1 \
+            n8nio/n8n-sandbox-service-api:latest \
+            -c 'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable && chown -R sandbox-api:sandbox-api /tls/api'
+
+      - name: Create Docker network
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
+        run: docker network create n8n-eval-net
+
+      - name: Start sandbox service
+        if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
+        run: |
+          TLS_DIR="$RUNNER_TEMP/sandbox-tls"
+
+          # Start sandbox API
+          docker run -d --name sandbox-api \
+            --network n8n-eval-net \
+            -v "$TLS_DIR/api:/tls:ro" \
+            -e SANDBOX_API_KEYS=n8n-sandbox-ci-key \
+            -e SANDBOX_API_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
+            -e SANDBOX_API_RUNNER_API_KEY=ci-runner-key \
+            -e SANDBOX_API_GRPC_TLS_CERT_FILE=/tls/grpc-server.crt \
+            -e SANDBOX_API_GRPC_TLS_KEY_FILE=/tls/grpc-server.key \
+            -e SANDBOX_API_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
+            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CA_FILE=/tls/ca.crt \
+            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-api-client.crt \
+            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-api-client.key \
+            -e SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_SERVER_NAME=sandbox-runner-1 \
+            -e SANDBOX_API_LOG_LEVEL=warn \
+            n8nio/n8n-sandbox-service-api:latest
+
+          # Wait for API health (up to 60s)
+          for i in $(seq 1 60); do
+            if docker exec sandbox-api wget -q -O /dev/null http://localhost:8080/healthz 2>/dev/null; then
+              echo "Sandbox API healthy after ${i}s"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::Sandbox API failed to start within 60s"
+              docker logs sandbox-api --tail 30 || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Start sandbox runner (DinD)
+          docker run -d --name sandbox-runner-1 \
+            --network n8n-eval-net \
+            --privileged \
+            -v "$TLS_DIR/runner:/tls:ro" \
+            -e SANDBOX_RUNNER_API_KEYS=ci-runner-key \
+            -e SANDBOX_RUNNER_REGISTRATION_TOKEN=ci-reg-token \
+            -e SANDBOX_RUNNER_API_GRPC_ADDR=sandbox-api:9090 \
+            -e SANDBOX_RUNNER_HTTP_BASE_URL=http://sandbox-runner-1:8080 \
+            -e SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR=:9091 \
+            -e SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR=sandbox-runner-1:9091 \
+            -e SANDBOX_RUNNER_ID=ci-runner-1 \
+            -e SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE=n8nio/n8n-sandbox-service-sandbox:latest \
+            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
+            -e SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE=/tls/ca.crt \
+            -e SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE=/tls/grpc-client.crt \
+            -e SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE=/tls/grpc-client.key \
+            -e SANDBOX_RUNNER_REGISTRATION_GRPC_SERVER_NAME=sandbox-api \
+            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CERT_FILE=/tls/control-grpc-server.crt \
+            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_KEY_FILE=/tls/control-grpc-server.key \
+            -e SANDBOX_RUNNER_CONTROL_GRPC_TLS_CLIENT_CA_FILE=/tls/ca.crt \
+            -e SANDBOX_RUNNER_LOG_LEVEL=warn \
+            n8nio/n8n-sandbox-service-runner-dind:latest
+
+          # Wait for runner health (up to 120s — DinD daemon needs time to start)
+          for i in $(seq 1 120); do
+            if docker exec sandbox-runner-1 wget -q -O /dev/null --header='X-Api-Key: ci-runner-key' http://localhost:8080/healthz 2>/dev/null; then
+              echo "Sandbox runner healthy after ${i}s"
+              break
+            fi
+            if [ "$i" -eq 120 ]; then
+              echo "::error::Sandbox runner failed to start within 120s"
+              docker logs sandbox-runner-1 --tail 30 || true
+              exit 1
+            fi
+            sleep 1
+          done
+
       - name: Start n8n containers
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
@@ -70,20 +170,44 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          SANDBOX_NAME_PREFIX: evals-ci-${{ inputs.branch || github.ref_name }}
+          SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
         run: |
+          # Build provider-specific env args
+          SANDBOX_ARGS=()
+          if [ "$SANDBOX_PROVIDER" = "daytona" ]; then
+            SANDBOX_ARGS+=(
+              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
+              -e N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX="$SANDBOX_NAME_PREFIX"
+              -e DAYTONA_API_URL=https://app.daytona.io/api
+              -e DAYTONA_API_KEY="$DAYTONA_API_KEY"
+            )
+          else
+            SANDBOX_ARGS+=(
+              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
+              -e N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
+              -e N8N_SANDBOX_SERVICE_API_KEY=n8n-sandbox-ci-key
+            )
+          fi
+
+          # Use the eval network when sandbox service is running
+          NETWORK_ARGS=()
+          if [ "$SANDBOX_PROVIDER" != "daytona" ]; then
+            NETWORK_ARGS+=(--network n8n-eval-net)
+          fi
+
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
             docker run -d --name "n8n-eval-$((i+1))" \
+              "${NETWORK_ARGS[@]}" \
               -e E2E_TESTS=true \
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
-              -e N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona \
-              -e DAYTONA_API_URL=https://app.daytona.io/api \
-              -e DAYTONA_API_KEY="$DAYTONA_API_KEY" \
+              "${SANDBOX_ARGS[@]}" \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -132,6 +256,8 @@ jobs:
       # or unexpected DB-side state. A single misconfigured lane would
       # silently route some builds through tool mode and pollute results.
       - name: Assert sandbox is enabled on every lane
+        env:
+          SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           bad=0
@@ -145,11 +271,11 @@ jobs:
             cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
               "http://localhost:$port/rest/instance-ai/settings" \
               | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
-            if [ "$cfg" != "true daytona" ]; then
-              echo "::error::lane $lane (port $port): expected 'true daytona', got '$cfg'"
+            if [ "$cfg" != "true $SANDBOX_PROVIDER" ]; then
+              echo "::error::lane $lane (port $port): expected 'true $SANDBOX_PROVIDER', got '$cfg'"
               bad=$((bad+1))
             else
-              echo "  lane $lane: sandboxEnabled=true sandboxProvider=daytona ok"
+              echo "  lane $lane: sandboxEnabled=true sandboxProvider=$SANDBOX_PROVIDER ok"
             fi
           done
           if [ "$bad" -gt 0 ]; then
@@ -166,7 +292,7 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
@@ -190,8 +316,8 @@ jobs:
               --iterations 3
           fi
 
-      # Captures sandbox/builder/Daytona signals that surface during the eval
-      # (after migrations finish). Two layers of secret-leak defense:
+      # Captures sandbox/builder diagnostic signals that surface during the
+      # eval (after migrations finish). Two layers of secret-leak defense:
       #
       #   1. Filter to specific diagnostic patterns — never tail raw output.
       #      The grep allowlist scopes the log surface to lines we care
@@ -230,7 +356,7 @@ jobs:
           # Layer 1 — accuracy filter: only surface diagnostic signals.
           # `tail -100` after the filter so we get the LATEST matching lines
           # (post-eval failure signal), not the earliest startup-time ones.
-          SIGNALS='sandbox|builder|daytona|instance.?ai|error|warn|reject|exception|fail'
+          SIGNALS='sandbox|builder|sandbox-service|daytona|instance.?ai|error|warn|reject|exception|fail'
           for c in $(docker ps -aq --filter "name=n8n-eval-"); do
             name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
             echo ""
@@ -244,6 +370,17 @@ jobs:
               || true
           done
 
+          # Sandbox service container logs (when using n8n-sandbox provider)
+          for c in sandbox-api sandbox-runner-1; do
+            if docker ps -aq --filter "name=$c" | grep -q .; then
+              echo ""
+              echo "============================================================"
+              echo "=== $c (last 100 lines) ==="
+              echo "============================================================"
+              docker logs "$c" 2>&1 | tail -100 || true
+            fi
+          done
+
       - name: Stop n8n containers
         if: ${{ always() }}
         run: |
@@ -252,9 +389,13 @@ jobs:
             docker stop "${ids[@]}" 2>/dev/null || true
             docker rm "${ids[@]}" 2>/dev/null || true
           fi
+          # Sandbox service cleanup (safe even if containers don't exist)
+          docker stop sandbox-runner-1 sandbox-api 2>/dev/null || true
+          docker rm sandbox-runner-1 sandbox-api 2>/dev/null || true
+          docker network rm n8n-eval-net 2>/dev/null || true
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && github.event.pull_request.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

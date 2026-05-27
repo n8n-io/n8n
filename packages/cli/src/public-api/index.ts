@@ -16,6 +16,8 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
+
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 function createLazySwaggerMiddleware(
@@ -98,6 +100,7 @@ function createLazyValidatorMiddleware(
 					return authenticated;
 				};
 
+				const globalConfig = Container.get(GlobalConfig);
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
@@ -105,6 +108,7 @@ function createLazyValidatorMiddleware(
 						operationHandlers: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,
+						fileUploader: createN8nPackageMulterOptions(globalConfig),
 						formats: {
 							email: {
 								type: 'string',
@@ -156,6 +160,7 @@ function createApiRouter(
 	publicApiEndpoint: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
+	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
@@ -182,7 +187,7 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		express.json(),
+		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);

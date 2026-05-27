@@ -27,3 +27,5 @@ jobs:
           method: 'POST'
           customHeaders: '{ "x-api-token": "${{ secrets.N8N_NOTIFY_PR_STATUS_CHANGED_TOKEN }}" }'
           data: '{ "event_name": "${{ github.event_name }}", "pr_url": "${{ env.PR_URL }}",  "event": ${{ toJSON(github.event) }} }'
+          retry: 5
+          retryWait: 5000

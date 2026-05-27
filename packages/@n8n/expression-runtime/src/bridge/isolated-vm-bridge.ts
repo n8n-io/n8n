@@ -1,7 +1,7 @@
 import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
@@ -285,7 +285,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetValueAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[]) => {
 			try {
 				// Navigate to value
@@ -357,7 +357,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: Record<string, unknown>): ivm.Reference {
+	private createGetArrayElementRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], index: number) => {
 			try {
 				// Navigate to array
@@ -422,7 +422,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createCallFunctionAtPathRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallFunctionAtPathRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			try {
 				// Navigate to function, tracking parent to preserve `this` context
@@ -477,16 +477,31 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: Record<string, unknown>): ivm.Reference {
+	private createCallHostRef(data: WorkflowData): ivm.Reference {
 		return new (getIvm().Reference)((rawMsg: unknown) => {
 			try {
 				const msg = bridgeMessageSchema.parse(rawMsg);
 				switch (msg.type) {
 					case 'getNodeFirst':
 						return this.handleGetNodeFirst(msg, data);
+					case 'getNodeLast':
+						return this.handleGetNodeLast(msg, data);
+					case 'getNodeAll':
+						return this.handleGetNodeAll(msg, data);
+					case 'getInputFirst':
+						return this.handleGetInputFirst(data);
+					case 'getInputLast':
+						return this.handleGetInputLast(data);
+					case 'getInputAll':
+						return this.handleGetInputAll(data);
 					default: {
-						const exhaustive: never = msg.type;
-						throw new Error(`Unhandled bridge message type: ${String(exhaustive)}`);
+						// Unreachable at runtime — zod rejects unknown `type` values
+						// before the switch. The `never` assignment is the compile-time
+						// guard: a new schema added to `bridgeMessageSchema` without a
+						// matching case here becomes a type error.
+						const exhaustive: never = msg;
+						void exhaustive;
+						throw new Error('Unhandled bridge message');
 					}
 				}
 			} catch (err) {
@@ -496,38 +511,63 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Handler for `getNodeFirst` — fetches the first item of a named node's
-	 * most recent execution data.
+	 * Handlers for the `$('Foo').{first,last,all}` typed RPCs.
 	 *
-	 * Note: this still invokes `data.$` host-side. Eliminating `data.$` as a
-	 * host-callable entirely would require reaching the `WorkflowDataProxy`
-	 * internals (e.g. `getNodeExecutionOrPinnedData`) rather than the public
-	 * `$()` API. That's a follow-up; the security win here is "the isolate
-	 * can only invoke `.first` via this validated RPC, not any other method,
-	 * regardless of what `data.$` returns."
+	 * Each handler reads a fixed literal property name off the host-side node
+	 * proxy — the isolate cannot influence which property is dereferenced.
+	 * Eliminating `data.$` as a host-callable entirely would require reaching
+	 * the `WorkflowDataProxy` internals (e.g. `getNodeExecutionOrPinnedData`)
+	 * rather than the public `$()` API; that's a follow-up.
+	 *
+	 * `data.$` is a host-wired function (`WorkflowDataProxy`'s `$`). If it
+	 * ever isn't, optional chaining short-circuits to `undefined` — the same
+	 * observable result the runtime's `E()` handler produces from any thrown
+	 * error here.
 	 *
 	 * @private
 	 */
 	private handleGetNodeFirst(
 		msg: Extract<BridgeMessage, { type: 'getNodeFirst' }>,
-		data: Record<string, unknown>,
+		data: WorkflowData,
 	): unknown {
-		const dollarFn = data.$;
-		if (typeof dollarFn !== 'function') {
-			throw new Error('getNodeFirst: $ is not available in expression context');
-		}
+		return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
+	}
 
-		const nodeProxy = (dollarFn as (n: string) => unknown)(msg.nodeName);
-		if (!nodeProxy || typeof nodeProxy !== 'object') {
-			return undefined;
-		}
+	private handleGetNodeLast(
+		msg: Extract<BridgeMessage, { type: 'getNodeLast' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
+	}
 
-		const firstFn = (nodeProxy as Record<string, unknown>).first;
-		if (typeof firstFn !== 'function') {
-			return undefined;
-		}
+	private handleGetNodeAll(
+		msg: Extract<BridgeMessage, { type: 'getNodeAll' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
+	}
 
-		return (firstFn as (...a: unknown[]) => unknown).call(nodeProxy, msg.branchIndex, msg.runIndex);
+	/**
+	 * Handlers for the `$input.{first,last,all}` typed RPCs.
+	 *
+	 * Each reads a fixed literal property name off `data.$input` (the host's
+	 * `WorkflowDataProxy` input proxy). The host enforces zero arguments on
+	 * these methods — the schemas have no fields besides `type`, so the
+	 * isolate cannot pass anything that would trigger the "should have no
+	 * arguments" error path on the host side.
+	 *
+	 * @private
+	 */
+	private handleGetInputFirst(data: WorkflowData): unknown {
+		return data.$input?.first?.();
+	}
+
+	private handleGetInputLast(data: WorkflowData): unknown {
+		return data.$input?.last?.();
+	}
+
+	private handleGetInputAll(data: WorkflowData): unknown {
+		return data.$input?.all?.();
 	}
 
 	/**
@@ -549,7 +589,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
-	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
+	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}

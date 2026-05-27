@@ -19,16 +19,16 @@ describe('loadClassInIsolation', () => {
 		}
 	}
 
-	jest.spyOn(vm, 'createContext').mockReturnValue({});
-
 	const runInContext = jest.fn().mockImplementation(() => new TestClass());
-	const scriptSpy = jest.spyOn(vm, 'Script').mockImplementation(function (this: vm.Script) {
-		this.runInContext = runInContext;
-		return this;
-	});
+	let scriptSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.spyOn(vm, 'createContext').mockReturnValue({});
+		scriptSpy = jest.spyOn(vm, 'Script').mockImplementation(function (this: vm.Script) {
+			this.runInContext = runInContext;
+			return this;
+		});
 	});
 
 	it('should create script with correct require statement', () => {

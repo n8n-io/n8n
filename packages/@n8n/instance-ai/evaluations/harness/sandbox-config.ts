@@ -3,7 +3,7 @@
 //
 // Reads the same env vars production reads (N8N_INSTANCE_AI_SANDBOX_*,
 // DAYTONA_*, N8N_SANDBOX_SERVICE_*) and produces a SandboxConfig the
-// in-process eval harness can hand to BuilderSandboxFactory.
+// in-process eval harness can use to create the shared builder workspace.
 //
 // The sandbox is always on for evals — there is no opt-out. Missing
 // required env vars raise clear errors so misconfiguration shows up at
@@ -45,6 +45,7 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			);
 		}
 		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
+		const namePrefix = env.N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX;
 		const createTimeoutSeconds =
 			parsePositiveInt(
 				env.N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS,
@@ -58,6 +59,7 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			timeout,
 			createTimeoutSeconds,
 			...(image ? { image } : {}),
+			...(namePrefix ? { namePrefix } : {}),
 		};
 	}
 
