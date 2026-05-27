@@ -16,6 +16,7 @@ import { computed, ref, watch } from 'vue';
 import { createSlackAgentApp } from '../composables/useAgentApi';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 
 export type ChannelView =
@@ -293,50 +294,15 @@ watch(
 			<Transition name="channel-view-fade" mode="out-in">
 				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
 					<ul :class="$style.channelList">
-						<li v-for="integration in catalog" :key="integration.type" :class="$style.channelItem">
-							<div :class="$style.iconWrapper">
-								<N8nIcon
-									:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
-									:size="28"
-									:class="$style.channelIcon"
-								/>
-							</div>
-							<div :class="$style.content">
-								<N8nText :class="$style.name" size="medium" bold color="text-dark">
-									{{ integration.label }}
-								</N8nText>
-								<N8nText :class="$style.description" size="medium" color="text-light">
-									{{
-										i18n.baseText('agents.channels.modal.connectDescription', {
-											interpolate: { channel: integration.label },
-										})
-									}}
-								</N8nText>
-							</div>
-
-							<div :class="$style.channelActions">
-								<template v-if="isConnected(integration.type)">
-									<N8nButton variant="subtle" size="small" @click="goToEdit(integration.type)">
-										{{ i18n.baseText('generic.edit') }}
-									</N8nButton>
-									<N8nButton
-										variant="ghost"
-										size="small"
-										@click="handleDisconnected(integration.type)"
-									>
-										{{ i18n.baseText('generic.disconnect') }}
-									</N8nButton>
-								</template>
-								<N8nButton
-									v-else
-									variant="subtle"
-									size="medium"
-									@click="goToSetup(integration.type)"
-								>
-									{{ i18n.baseText('generic.connect') }}
-								</N8nButton>
-							</div>
-						</li>
+						<AgentChannelListItem
+							v-for="integration in catalog"
+							:key="integration.type"
+							:integration="integration"
+							:connected="isConnected(integration.type)"
+							@setup="goToSetup"
+							@edit="goToEdit"
+							@disconnect="handleDisconnected"
+						/>
 					</ul>
 				</div>
 
@@ -436,55 +402,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	padding-block: var(--spacing--xs);
-}
-
-.channelItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding-block: var(--spacing--sm);
-}
-
-.iconWrapper {
-	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.channelIcon {
-	color: var(--icon-color--strong);
-}
-
-.content {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.name {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	line-height: var(--line-height--md);
-}
-
-.description {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	line-height: var(--line-height--md);
-}
-
-.channelActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
 }
 
 .setupView,
