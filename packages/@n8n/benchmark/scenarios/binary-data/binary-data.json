@@ -29,7 +29,7 @@
 		{
 			"parameters": {
 				"operation": "write",
-				"fileName": "=file-{{ Date.now() }}-{{ Math.random() }}.js",
+				"fileName": "={{ $('Webhook').item.json.body.filePath }}/file-{{ Date.now() }}-{{ Math.random() }}.bin",
 				"dataPropertyName": "file",
 				"options": {}
 			},
@@ -40,7 +40,10 @@
 			"name": "Write File to Disk"
 		},
 		{
-			"parameters": { "fileSelector": "={{ $json.fileName }}", "options": {} },
+			"parameters": {
+				"fileSelector": "={{ $('Webhook').item.json.body.filePath }}/{{ $json.fileName }}",
+				"options": {}
+			},
 			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [500, 0],
