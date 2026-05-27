@@ -431,3 +431,77 @@ describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
 		expect(evaluator.evaluate("{{ 'all' in $input }}", data, caller)).toBe(true);
 	});
 });
+
+describe('Typed RPC: $items() routes via getItems', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$items() with no args', () => {
+		const data: Record<string, unknown> = {
+			$items: () => [{ json: { id: 1 } }, { json: { id: 2 } }],
+		};
+
+		const result = evaluator.evaluate('{{ $items() }}', data, caller);
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
+	});
+
+	it('forwards nodeName, outputIndex, and runIndex verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$items: (...args: unknown[]) => {
+				calls.push(args);
+				return [];
+			},
+		};
+
+		evaluator.evaluate('{{ $items() }}', data, caller);
+		evaluator.evaluate("{{ $items('Foo') }}", data, caller);
+		evaluator.evaluate("{{ $items('Foo', 1) }}", data, caller);
+		evaluator.evaluate("{{ $items('Foo', 0, 2) }}", data, caller);
+
+		expect(calls).toEqual([
+			[undefined, undefined, undefined],
+			['Foo', undefined, undefined],
+			['Foo', 1, undefined],
+			['Foo', 0, 2],
+		]);
+	});
+
+	it('accepts negative runIndex (host sentinel for "latest")', () => {
+		// `WorkflowDataProxy.$items` uses runIndex === undefined ? -1 : runIndex,
+		// so callers can pass -1 explicitly to request the latest run. The
+		// schema permits negatives via z.number().int() (no .nonnegative()).
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$items: (...args: unknown[]) => {
+				calls.push(args);
+				return [];
+			},
+		};
+
+		evaluator.evaluate("{{ $items('Foo', 0, -1) }}", data, caller);
+
+		expect(calls).toEqual([['Foo', 0, -1]]);
+	});
+
+	it('handles missing data.$items gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate('{{ $items() }}', data, caller);
+		expect(result).toBeUndefined();
+	});
+});

@@ -11,6 +11,7 @@
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest",
     "chromatic": "chromatic",
     "format": "biome format --write .  && prettier --write . --ignore-path ../../../../.prettierignore",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
