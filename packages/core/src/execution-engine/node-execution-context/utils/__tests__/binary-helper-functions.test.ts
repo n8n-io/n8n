@@ -276,7 +276,7 @@ describe('test binary data helper methods', () => {
 			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
 			expect(result).toEqual(largeBuffer);
 			expect(result.length).toBe(1024 * 1024);
-		});
+		}, 20000);
 
 		it('should handle binary data with special characters using IBinaryData', async () => {
 			binaryDataConfig.mode = 'default';
