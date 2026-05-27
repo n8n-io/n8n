@@ -1,6 +1,6 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { ModelConfig, SerializableAgentState } from './agent';
+import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -238,6 +238,7 @@ export interface EpisodicMemoryExtractorInput {
 	observations: ObservationLogEntry[];
 	renderedObservations: string;
 	existingEntries: RetrievedEpisodicMemoryEntry[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface EpisodicMemoryExtraction {
@@ -264,6 +265,7 @@ export interface EpisodicMemoryReflectorInput {
 	seedEntryIds: string[];
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type EpisodicMemoryReflectFn = (

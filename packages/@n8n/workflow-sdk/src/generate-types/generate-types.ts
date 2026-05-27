@@ -2965,18 +2965,23 @@ export function planSplitVersionFiles(
 }
 
 /**
- * Check if node is a trigger (no main input)
+ * Check if node is a trigger.
+ *
+ * Triggers produce main data without consuming any: they emit on the `main`
+ * output and have no `main` input. AI sub-tool nodes (mcpClientTool,
+ * `*Tool` variants, etc.) also have no `main` input, but they emit on
+ * `ai_tool` rather than `main` — so a heuristic that only inspects inputs
+ * misclassifies them. Check outputs explicitly.
  */
 function isTriggerNode(node: NodeTypeDescription): boolean {
-	const inputs = node.inputs;
-	if (Array.isArray(inputs)) {
-		if (inputs.length === 0) return true;
-		if (typeof inputs[0] === 'string') {
-			return !(inputs as string[]).includes('main');
-		}
-		return !inputs.some((i) => typeof i === 'object' && i.type === 'main');
-	}
-	return false;
+	return hasMainConnection(node.outputs) && !hasMainConnection(node.inputs);
+}
+
+function hasMainConnection(connections: NodeTypeDescription['inputs']): boolean {
+	if (!Array.isArray(connections)) return false;
+	return connections.some((connection) =>
+		typeof connection === 'string' ? connection === 'main' : connection.type === 'main',
+	);
 }
 
 /**
