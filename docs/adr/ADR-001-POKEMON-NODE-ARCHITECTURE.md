@@ -195,6 +195,29 @@ CoinGecko's `do...while(length !== 0)` fires one wasted API call per execution b
 
 ---
 
+### D11: Performance — No Code Changes, Field Description Warning Only
+
+**Decision:** No caching, no concurrency limits, no batch enrichment. Add one warning to the Simplify field description.
+
+**Context:** Architect assessed all operations. Get, Get Many, and Return All are all fast (<1.5s). The only risk is user-constructed Return All → Loop → Get (unsimplified) which hits ~780MB memory and ~260MB stored execution data.
+
+**Rationale:**
+- The risk is a user-constructed workflow pattern, not a node defect
+- Mitigation is a field description: "Use Simplify for bulk operations — full data on large result sets may cause memory issues"
+- In-memory caching adds complexity and flushes on n8n restart — not worth 1-2 hour budget
+- Concurrency/batching is a workflow design choice (Split In Batches node exists for this)
+- PokeAPI GraphQL (launching June 2026) would eliminate the problem entirely
+
+**Future enhancements documented in PRD:**
+- In-memory LRU cache for loop deduplication
+- Batch enrichment option (Get Many with Details)
+- PokeAPI GraphQL integration (v1beta2)
+- Cache node documentation for repeated lookups
+
+**Source:** Architect performance assessment, PO directed documenting as future enhancements.
+
+---
+
 ## Rejected Alternatives Summary
 
 | Alternative | Why Rejected |

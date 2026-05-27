@@ -147,7 +147,10 @@ On the canvas, the node shows:
 │                                 │
 │ ☑ Simplify                      │
 │   "Return simplified version    │
-│    instead of raw data"         │
+│    instead of raw data. Use     │
+│    Simplify for bulk operations │
+│    — full data on large result  │
+│    sets may cause memory issues"│
 └─────────────────────────────────┘
 ```
 
@@ -216,6 +219,34 @@ Advanced users use n8n expressions to dynamically set parameters from upstream d
 [Google Sheets: Read Row] → [Pokemon: Get (name={{$json.pokemon_name}})] → [Google Sheets: Update Row]
 ```
 Read a spreadsheet of Pokémon names, look up each one, write stats back to the sheet. The `nameOrId` field accepts expressions, so the value comes from the upstream node.
+
+## Performance Profile
+
+Assessed by Architect agent. All operations are performant for typical use cases. One edge case requires a field description warning.
+
+| Operation | Latency | Memory | Data Transfer |
+|-----------|---------|--------|---------------|
+| Get (simplified) | ~100ms network + <2ms processing | ~1MB | ~36KB |
+| Get (full) | ~100ms + ~8ms | ~600KB per item | ~200KB |
+| Get Many (limit ≤ 100) | ~100ms single call | Negligible | ~3KB |
+| Return All (1350 stubs) | ~1.4s (14 calls) | ~270KB | ~42KB |
+
+### Risk: Return All → Loop → Get (enrichment pattern)
+Users can chain Return All → Loop Over Items → Get to enrich all 1350 Pokemon. This is valid but expensive:
+- **Wall clock:** ~2.2 minutes (1302 sequential HTTP calls)
+- **Memory (simplified):** ~650KB — safe
+- **Memory (full/unsimplified):** ~780MB in-process, ~260MB stored execution data — **will freeze browser UI and OOM on SQLite installations**
+
+**Mitigation (in this submission):** Simplify field description warns: "Use Simplify for bulk operations — full data on large result sets may cause memory issues."
+
+### PokeAPI Fair Use
+PokeAPI has no published rate limit but requests caching and reasonable usage. Returns `Cache-Control: public, max-age=86400`. The enrichment pattern (1302 calls in ~2 minutes) is borderline for repeated use.
+
+### Future Enhancements (with more time)
+- **In-memory LRU cache:** Cache Pokemon detail responses within a single execution to avoid redundant calls in loop patterns. n8n restarts flush it, so scope is limited — but saves repeated lookups in the same workflow run.
+- **Batch enrichment option:** A "Get Many with Details" mode that fetches stubs then auto-enriches in parallel with configurable concurrency. Hides the N+1 pattern from the user.
+- **PokeAPI GraphQL integration:** PokeAPI is launching GraphQL v1beta2 (June 2026). GraphQL would let users query exactly the fields they need, reducing the ~200KB response to only what's required. Eliminates the simplify function entirely.
+- **Cache node documentation:** Document that users should place an n8n Cache node upstream of the Pokemon Get node for repeated lookups, honoring PokeAPI's 24-hour cache header.
 
 ## Success Metrics (for take-home evaluation)
 
