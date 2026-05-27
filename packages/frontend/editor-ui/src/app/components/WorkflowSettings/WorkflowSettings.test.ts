@@ -10,7 +10,7 @@ import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
+import WorkflowSettingsVue from '@/app/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';

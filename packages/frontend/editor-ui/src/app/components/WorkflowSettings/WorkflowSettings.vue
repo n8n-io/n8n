@@ -5,7 +5,6 @@ import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type {
 	ITimeoutHMS,
-	IUpdateInformation,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
@@ -22,10 +21,6 @@ import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nBadge,
 	N8nButton,
-	N8nDialog,
-	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nIcon,
 	N8nInput,
 	N8nInputNumber,
@@ -36,13 +31,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	ICustomTelemetryTag,
-	INodeParameters,
-	INodeProperties,
-	WorkflowSettings,
-	WorkflowSettingsBinaryMode,
-} from 'n8n-workflow';
+import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -71,12 +60,7 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import {
-	customTelemetryTagsFromFixedCollection,
-	customTelemetryTagsToFixedCollection,
-	setValue,
-} from '@/features/ndv/shared/ndv.utils';
+import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -114,6 +98,7 @@ const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
 const isLoading = ref(true);
+const hasCustomTelemetryTagErrors = ref(false);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
 	{
@@ -151,8 +136,6 @@ const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
 const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
-const showCustomTelemetryTagsModal = ref(false);
-const customTelemetryTagsDraft = ref<ICustomTelemetryTag[]>([]);
 
 const {
 	resolvers: credentialResolvers,
@@ -301,140 +284,6 @@ const workflowHasDynamicCredentials = computed(
 const isWorkflowSettingsReadOnly = computed(
 	() => readOnlyEnv.value || !workflowPermissions.value.update,
 );
-
-const customTelemetryTagsParameters = computed<INodeProperties[]>(() => [
-	{
-		displayName: i18n.baseText('workflowSettings.customTelemetryTags.displayName'),
-		name: 'customTelemetryTags',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			fixedCollection: {
-				layout: 'inline',
-			},
-		},
-		placeholder: i18n.baseText('workflowSettings.customTelemetryTags.placeholder'),
-		default: {},
-		description: i18n.baseText('workflowSettings.customTelemetryTags.description'),
-		isNodeSetting: true,
-		options: [
-			{
-				name: 'tag',
-				displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.displayName'),
-				values: [
-					{
-						displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName'),
-						name: 'key',
-						type: 'string',
-						default: '',
-						noDataExpression: true,
-						isNodeSetting: true,
-					},
-					{
-						displayName: i18n.baseText(
-							'workflowSettings.customTelemetryTags.tag.value.displayName',
-						),
-						name: 'value',
-						type: 'string',
-						default: '',
-						noDataExpression: true,
-						isNodeSetting: true,
-					},
-				],
-			},
-		],
-	},
-]);
-
-const customTelemetryTagsDraftNodeValues = computed<INodeParameters>(() => ({
-	customTelemetryTags: customTelemetryTagsToFixedCollection(customTelemetryTagsDraft.value),
-}));
-
-const updateCustomTelemetryTags = (parameterData: IUpdateInformation) => {
-	const nodeValues = ref<INodeParameters>({
-		customTelemetryTags: customTelemetryTagsToFixedCollection(customTelemetryTagsDraft.value),
-	});
-	const value = parameterData.value === undefined ? null : parameterData.value;
-
-	setValue(nodeValues, parameterData.name, value);
-
-	customTelemetryTagsDraft.value = customTelemetryTagsFromFixedCollection(
-		nodeValues.value.customTelemetryTags,
-	);
-};
-
-const customTelemetryTags = computed<ICustomTelemetryTag[]>(
-	() => workflowSettings.value.customTelemetryTags ?? [],
-);
-
-const cloneCustomTelemetryTags = (tags: ICustomTelemetryTag[] = []) =>
-	tags.map((tag) => ({ ...tag }));
-
-const getCustomTelemetryTagErrors = (tags: ICustomTelemetryTag[]) => {
-	const seen = new Set<string>();
-	return tags.map((tag) => {
-		const trimmedKey = tag.key.trim();
-		if (!trimmedKey) return i18n.baseText('workflowSettings.customTelemetryTags.error.emptyKey');
-		if (seen.has(trimmedKey)) {
-			return i18n.baseText('workflowSettings.customTelemetryTags.error.duplicateKey');
-		}
-		seen.add(trimmedKey);
-		return null;
-	});
-};
-
-const customTelemetryTagErrors = computed(() =>
-	getCustomTelemetryTagErrors(customTelemetryTags.value),
-);
-
-const customTelemetryTagDraftErrors = computed(() =>
-	getCustomTelemetryTagErrors(customTelemetryTagsDraft.value),
-);
-
-const customTelemetryTagValidationError = computed(() => {
-	const error = customTelemetryTagErrors.value.find((tagError) => tagError !== null);
-	return error ?? null;
-});
-
-const customTelemetryTagDraftValidationError = computed(() => {
-	const error = customTelemetryTagDraftErrors.value.find((tagError) => tagError !== null);
-	return error ?? null;
-});
-
-const hasCustomTelemetryTagErrors = computed(
-	() => customTelemetryTagValidationError.value !== null,
-);
-
-const hasCustomTelemetryTagDraftErrors = computed(
-	() => customTelemetryTagDraftValidationError.value !== null,
-);
-
-const openCustomTelemetryTagsModal = () => {
-	customTelemetryTagsDraft.value = cloneCustomTelemetryTags(customTelemetryTags.value);
-	showCustomTelemetryTagsModal.value = true;
-};
-
-const cancelCustomTelemetryTagsModal = () => {
-	customTelemetryTagsDraft.value = cloneCustomTelemetryTags(customTelemetryTags.value);
-	showCustomTelemetryTagsModal.value = false;
-};
-
-const saveCustomTelemetryTagsModal = () => {
-	if (hasCustomTelemetryTagDraftErrors.value) return;
-	workflowSettings.value.customTelemetryTags = cloneCustomTelemetryTags(
-		customTelemetryTagsDraft.value,
-	);
-	showCustomTelemetryTagsModal.value = false;
-};
-
-const onCustomTelemetryTagsModalOpenChange = (open: boolean) => {
-	if (open) {
-		openCustomTelemetryTagsModal();
-		return;
-	}
-
-	cancelCustomTelemetryTagsModal();
-};
 
 /**
  * Maps the two independent redaction toggles to/from the single `redactionPolicy` field.
@@ -1809,46 +1658,12 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<ElRow
+				<WorkflowCustomTelemetryTags
 					v-if="settingsStore.isOtelEnabled"
-					:class="$style['custom-telemetry-tags']"
-					data-test-id="workflow-settings-custom-telemetry-tags"
-				>
-					<ElCol :span="10" :class="$style['setting-name']">
-						<label>
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.displayName') }}
-							<N8nTooltip placement="top">
-								<template #content>
-									{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
-								</template>
-								<N8nIcon icon="circle-help" />
-							</N8nTooltip>
-						</label>
-					</ElCol>
-					<ElCol :span="14" :class="$style['custom-telemetry-tags-control']">
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							native-type="button"
-							:class="$style['custom-telemetry-tags-configure']"
-							data-test-id="workflow-settings-custom-telemetry-tags-configure"
-							@click="openCustomTelemetryTagsModal"
-						>
-							{{ i18n.baseText('workflowSettings.customTelemetryTags.configure') }}
-							<N8nIcon icon="chevron-right" />
-						</N8nButton>
-						<N8nText
-							v-if="customTelemetryTagValidationError"
-							size="small"
-							color="danger"
-							tag="p"
-							:class="$style['custom-telemetry-tags-error']"
-							data-test-id="workflow-settings-custom-telemetry-tags-error"
-						>
-							{{ customTelemetryTagValidationError }}
-						</N8nText>
-					</ElCol>
-				</ElRow>
+					v-model="workflowSettings.customTelemetryTags"
+					:is-read-only="isWorkflowSettingsReadOnly"
+					@validity-change="hasCustomTelemetryTagErrors = $event"
+				/>
 			</div>
 		</template>
 		<template #footer>
@@ -1867,55 +1682,6 @@ onBeforeUnmount(() => {
 				:project-id="workflowDocumentStore?.homeProject?.id"
 				@update:open="redactionMembersModalOpen = $event"
 			/>
-			<N8nDialog
-				:open="showCustomTelemetryTagsModal"
-				size="large"
-				@update:open="onCustomTelemetryTagsModalOpenChange"
-			>
-				<N8nDialogHeader>
-					<N8nDialogTitle>
-						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.title') }}
-					</N8nDialogTitle>
-				</N8nDialogHeader>
-				<div
-					:class="$style['custom-telemetry-tags-modal']"
-					data-test-id="workflow-settings-custom-telemetry-tags-modal"
-				>
-					<ParameterInputList
-						hide-delete
-						:parameters="customTelemetryTagsParameters"
-						:node-values="customTelemetryTagsDraftNodeValues"
-						:is-read-only="isWorkflowSettingsReadOnly"
-						@value-changed="updateCustomTelemetryTags"
-					/>
-					<N8nText
-						v-if="customTelemetryTagDraftValidationError"
-						size="small"
-						color="danger"
-						tag="p"
-						:class="$style['custom-telemetry-tags-error']"
-						data-test-id="workflow-settings-custom-telemetry-tags-modal-error"
-					>
-						{{ customTelemetryTagDraftValidationError }}
-					</N8nText>
-				</div>
-				<N8nDialogFooter>
-					<N8nButton
-						variant="subtle"
-						data-test-id="workflow-settings-custom-telemetry-tags-cancel"
-						@click="cancelCustomTelemetryTagsModal"
-					>
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-					<N8nButton
-						:disabled="isWorkflowSettingsReadOnly || hasCustomTelemetryTagDraftErrors"
-						data-test-id="workflow-settings-custom-telemetry-tags-save"
-						@click="saveCustomTelemetryTagsModal"
-					>
-						{{ i18n.baseText('generic.save') }}
-					</N8nButton>
-				</N8nDialogFooter>
-			</N8nDialog>
 		</template>
 	</Modal>
 </template>
@@ -2006,36 +1772,6 @@ onBeforeUnmount(() => {
 
 .time-saved-dropdown {
 	margin-bottom: var(--spacing--sm);
-}
-
-.custom-telemetry-tags {
-	margin-top: var(--spacing--xs);
-	align-items: flex-start;
-}
-
-.custom-telemetry-tags-control {
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-}
-
-.custom-telemetry-tags-configure {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.custom-telemetry-tags-modal {
-	margin-top: var(--spacing--sm);
-
-	:global(.multi-parameter) {
-		margin: 0;
-	}
-}
-
-.custom-telemetry-tags-error {
-	margin-top: var(--spacing--2xs);
 }
 
 .time-saved-tabs {
