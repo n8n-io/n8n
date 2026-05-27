@@ -797,6 +797,24 @@ describe('ProjectSettings', () => {
 			);
 		});
 
+		it('should hide key error after clicking Cancel', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			await userEvent.click(keyInput);
+			await userEvent.tab();
+			await nextTick();
+
+			expect(getByTestId('project-telemetry-tag-key-error')).toBeInTheDocument();
+
+			await userEvent.click(getByTestId('project-settings-cancel-button'));
+			await nextTick();
+
+			expect(queryByTestId('project-telemetry-tag-key-error')).not.toBeInTheDocument();
+		});
+
 		it('should show duplicate key error after blur', async () => {
 			const { getByTestId, getAllByTestId } = renderComponent();
 
