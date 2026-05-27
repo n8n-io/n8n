@@ -37,10 +37,7 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -58,14 +55,14 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import { computed } from 'vue';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
 }) {
 	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
@@ -79,11 +76,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	// `inject()` only resolves inside a setup context; callers from async event
+	// handlers must pass `workflowState` in.
+	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
@@ -134,7 +131,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowsStore.executionWaitingForWebhook = true;
+			workflowsStore.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -167,7 +164,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -189,7 +187,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflowDocumentStore.value.getSnapshot(),
+				workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -250,7 +248,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode.nodeName;
+						workflowsStore.setChatPartialExecutionDestinationNode(options.destinationNode.nodeName);
 						startChat();
 						return;
 					}
@@ -538,13 +536,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			} else if (execution?.finished) {
 				// execution finished before it could be stopped
 				const executedData = {
+					id: execution.id,
 					data: execution.data,
-					workflowData: workflowsStore.workflow,
+					workflowData: workflowDocumentStore.value.getSnapshot(),
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
+				// Clear the active id so setWorkflowExecutionData's else branch sets
+				// displayedExecutionId to the freshly-fetched finished id.
+				workflowState.setActiveExecutionId(undefined);
 				workflowState.setWorkflowExecutionData(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),

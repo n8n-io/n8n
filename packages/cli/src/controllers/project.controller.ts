@@ -75,6 +75,26 @@ export class ProjectController {
 		return await this.projectsService.getProjectCounts();
 	}
 
+	// Lists projects a caller can pick as share targets, including peer
+	// personal projects so the workflow / credential share dropdowns can
+	// surface other users. Gated on `user:list` (the same boundary that
+	// `GET /rest/users` enforces) — restricted roles without that scope
+	// (e.g. chat-only users) cannot enumerate peer personal projects here.
+	@Get('/sharing-candidates')
+	@GlobalScope('user:list')
+	async getSharingCandidates(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query payload: ListProjectsQueryDto,
+	) {
+		const [data, count] = await this.projectsService.getShareableProjectsAndCount(
+			req.user,
+			payload,
+		);
+		const enriched = await this.projectsService.addUserScopes(req.user, data);
+		return res.json({ count, data: enriched });
+	}
+
 	@Post('/')
 	@GlobalScope('project:create')
 	// Using admin as all plans that contain projects should allow admins at the very least

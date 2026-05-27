@@ -1,14 +1,20 @@
+import { WorkflowExecutionStatus } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Get, Options, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
-import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { getDynamicCredentialMiddlewares } from './utils';
 import { UrlService } from '@/services/url.service';
-import { GlobalConfig } from '@n8n/config';
+
+import { DynamicCredentialsConfig } from './dynamic-credentials.config';
+import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
+import { getDynamicCredentialMiddlewares } from './utils';
+
+const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 
 @RestController('/workflows')
 export class WorkflowStatusController {
@@ -42,6 +48,10 @@ export class WorkflowStatusController {
 	@Get('/:workflowId/execution-status', {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitPerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['get', 'options']);

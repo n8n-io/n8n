@@ -8,7 +8,7 @@ import {
 import { isValueExpression } from '@/app/utils/nodeTypesUtils';
 import { computed, inject } from 'vue';
 import { ChatHubToolContextKey } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);

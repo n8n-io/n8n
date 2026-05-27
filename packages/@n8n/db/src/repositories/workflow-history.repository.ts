@@ -107,7 +107,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			rules,
 			[
 				this.makeSkipActiveAndNamedVersionsRule(
-					new Set(publishedVersions.map((x) => x.versionId).filter((x) => x !== null)),
+					new Set(publishedVersions.map((v) => v.versionId).filter((v) => v !== null)),
 				),
 				SKIP_RULES.skipDifferentUsers,
 				...skipRules,

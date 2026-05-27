@@ -6,7 +6,7 @@
  */
 import { interpretSDKCode, InterpreterError, SecurityError } from '../ast-interpreter';
 import type { SDKFunctions } from '../ast-interpreter';
-import { expr as exprFn } from '../expression';
+import { expr as exprFn, nodeJson as nodeJsonFn } from '../expression';
 import { isWorkflowBuilder, isWorkflowJSON } from '../typeguards';
 import type { WorkflowJSON, WorkflowBuilder } from '../types/base';
 import { workflow as workflowFn } from '../workflow-builder';
@@ -553,6 +553,7 @@ const sdkFunctions: SDKFunctions = {
 	reranker: rerankerFn,
 	fromAi: fromAiFn,
 	expr: exprFn,
+	nodeJson: nodeJsonFn,
 };
 
 /**

@@ -24,10 +24,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -103,9 +100,7 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -290,6 +285,9 @@ export function useNodeExecution(
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				workflowDocumentStore.value.documentId,
+				ndvStore.activeNode,
+				ndvStore.pushRef,
 				5,
 			);
 
@@ -319,12 +317,12 @@ export function useNodeExecution(
 				value: prompt,
 			});
 
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt,
 				code: updateInformation.value,
 			});
 		} catch (error) {
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt: nodeRef.value?.parameters?.instructions as string,
 				code: '',
 				hasError: true,
@@ -346,7 +344,7 @@ export function useNodeExecution(
 		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value.pinData?.[startNode.name];
+		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
 		return hasRunData || hasPinData;
 	}
 

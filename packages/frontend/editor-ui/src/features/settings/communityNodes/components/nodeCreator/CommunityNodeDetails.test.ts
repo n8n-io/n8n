@@ -59,6 +59,12 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 		getNodeTypes,
 		communityNodeType: vi.fn(() => ({ isOfficialNode: true })),
 		fetchCommunityNodePreviews: vi.fn(),
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 

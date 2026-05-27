@@ -9,33 +9,19 @@ import { CollapsibleContent } from 'reka-ui';
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .content {
 	overflow: hidden;
 
 	&[data-state='open'] {
-		animation: slideDown 0.2s ease-out;
+		--animation--collapsible-slide--duration: 0.2s;
+		@include motion.collapsible-slide-down;
 	}
 
 	&[data-state='closed'] {
-		animation: slideUp 0.2s ease-out;
-	}
-}
-
-@keyframes slideDown {
-	from {
-		height: 0;
-	}
-	to {
-		height: var(--reka-collapsible-content-height);
-	}
-}
-
-@keyframes slideUp {
-	from {
-		height: var(--reka-collapsible-content-height);
-	}
-	to {
-		height: 0;
+		--animation--collapsible-slide--duration: 0.2s;
+		@include motion.collapsible-slide-up;
 	}
 }
 </style>

@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import {
 	isLlmProviderModel,
 	enrichMimeTypesWithExtensions,
+	isFileAcceptedByAccept,
 } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
@@ -117,9 +118,30 @@ function handleFileSelect(e: Event) {
 		return;
 	}
 
-	// Store File objects directly instead of converting to base64
+	const allowed = acceptedMimeTypes.value;
+	const accepted: File[] = [];
+	const rejected: File[] = [];
+
 	for (const file of Array.from(files)) {
+		if (isFileAcceptedByAccept(file.name, file.type, allowed)) {
+			accepted.push(file);
+		} else {
+			rejected.push(file);
+		}
+	}
+
+	for (const file of accepted) {
 		attachments.value.push(file);
+	}
+
+	for (const file of rejected) {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('chatHub.chat.attachments.unsupported.title'),
+			message: i18n.baseText('chatHub.chat.attachments.unsupported.toast', {
+				interpolate: { fileName: file.name },
+			}),
+		});
 	}
 
 	// Reset input

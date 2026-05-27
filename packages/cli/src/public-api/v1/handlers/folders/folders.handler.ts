@@ -4,6 +4,7 @@ import {
 	ListFolderQueryDto,
 	UpdateFolderDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -12,25 +13,30 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
 
-import type { PublicAPIHandler } from '../../shared/handler.types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 } from '../../shared/middlewares/global.middleware';
 import { assertProjectScope } from '../../shared/services/utils.service';
 
-type FoldersEndpoint<TParams extends Record<string, string>> = readonly [
-	ReturnType<typeof isLicensed>,
-	ReturnType<typeof apiKeyHasScopeWithGlobalScopeFallback>,
-	PublicAPIHandler<TParams>,
-];
+const handleError = (error: unknown) => {
+	if (error instanceof FolderNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
+	if (error instanceof UserError) {
+		throw new BadRequestError(error.message);
+	}
+
+	throw error;
+};
 
 type FolderHandlers = {
-	createFolder: FoldersEndpoint<{ projectId: string }>;
-	getFolders: FoldersEndpoint<{ projectId: string }>;
-	deleteFolder: FoldersEndpoint<{ projectId: string; folderId: string }>;
-	getFolder: FoldersEndpoint<{ projectId: string; folderId: string }>;
-	updateFolder: FoldersEndpoint<{ projectId: string; folderId: string }>;
+	createFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
+	getFolders: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
+	deleteFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
+	getFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
+	updateFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
 };
 
 const folderHandlers: FolderHandlers = {
@@ -49,9 +55,8 @@ const folderHandlers: FolderHandlers = {
 			try {
 				const folder = await Container.get(FolderService).createFolder(payload.data, projectId);
 				return res.status(201).json(folder);
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -89,10 +94,8 @@ const folderHandlers: FolderHandlers = {
 			try {
 				await Container.get(FolderService).deleteFolder(req.user, folderId, projectId, query.data);
 				return res.status(204).send();
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				if (e instanceof UserError) throw new BadRequestError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -109,9 +112,8 @@ const folderHandlers: FolderHandlers = {
 				).findFolderWithContentCounts(req.params.folderId, projectId);
 
 				return res.json({ ...folder, totalSubFolders, totalWorkflows });
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -134,10 +136,8 @@ const folderHandlers: FolderHandlers = {
 					payload.data,
 				);
 				return res.json(folder);
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				if (e instanceof UserError) throw new BadRequestError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],

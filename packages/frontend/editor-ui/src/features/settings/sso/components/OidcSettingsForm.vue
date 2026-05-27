@@ -37,6 +37,7 @@ const {
 	mappingMethod,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	trackProvisioningChange,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
 	isDroppingProjectRules,
@@ -158,7 +159,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 		});
-		await saveProvisioningConfig(isDisablingOidcLogin);
+		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 
 		// If the user's effective role assignment doesn't include project roles,
 		// discard any project-rule state in the editor (both locally-added and
@@ -170,9 +171,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
 
-		if (mappingMethod.value === 'rules_in_n8n') {
-			await roleMappingRuleEditorRef.value?.save();
-		}
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		showUserRoleProvisioningDialog.value = false;
 

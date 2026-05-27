@@ -292,11 +292,11 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/workspaces',
+					'/user/workspaces',
 				);
-				for (const workspace of workspaces) {
+				for (const { workspace } of workspaces) {
 					returnData.push({
-						name: workspace.name,
+						name: workspace.name ?? workspace.slug,
 						value: workspace.slug,
 					});
 				}

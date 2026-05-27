@@ -1,6 +1,18 @@
 import { getSystemPrompt } from '../system-prompt';
 
 describe('getSystemPrompt', () => {
+	describe('first visible turn guidance', () => {
+		it('instructs the agent to send a concise sentence before the first tool call', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('before your first tool call');
+			expect(prompt).toContain('write one short sentence');
+			expect(prompt).toContain("Keep it tied to the user's goal, not the tool name");
+			expect(prompt).toContain('Never let an empty assistant message');
+			expect(prompt).toContain('[Calling tools: ...]');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -90,12 +102,29 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new/multi-workflow/data-table work through plan', () => {
+		it('routes new and multi-workflow work through plan', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\), multi-workflow build/);
-			expect(prompt).toMatch(/data tables created or schemas changed/);
+			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
+			expect(prompt).toContain('workflow tasks include any data table names');
+		});
+
+		it('routes standalone data-table work through direct tools and the skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toMatch(/Standalone data-table work/);
+			expect(prompt).toContain('`data-table-manager` skill');
+			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
+			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+		});
+
+		it('loads the data-table skill before planning workflows that use tables', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain(
+				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+			);
 		});
 
 		it('routes existing-workflow edits through bypassPlan', () => {
@@ -122,16 +151,37 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('post-build verify for bypassPlan', () => {
-		it('instructs the orchestrator to call verify-built-workflow on mockable triggers', () => {
+		it('uses verificationReadiness as the post-build routing signal', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('Post-build flow');
 			expect(prompt).toContain('verify-built-workflow');
+			expect(prompt).toContain('outcome.verificationReadiness');
+			expect(prompt).toContain('outcome.setupRequirement');
+			expect(prompt).toContain('outcome.verificationReadiness.status === "ready"');
+			expect(prompt).toContain('outcome.verificationReadiness.status === "needs_setup"');
+			expect(prompt).toContain('outcome.verificationReadiness.status === "not_verifiable"');
+			expect(prompt).toContain('outcome.setupRequirement.status === "required"');
 			expect(prompt).toContain('outcome.triggerNodes');
-			expect(prompt).toContain('n8n-nodes-base.scheduleTrigger');
-			expect(prompt).toContain('n8n-nodes-base.webhook');
-			expect(prompt).toContain('@n8n/n8n-nodes-langchain.chatTrigger');
-			expect(prompt).toContain('n8n-nodes-base.formTrigger');
+			expect(prompt).not.toContain('outcome.usesWorkflowPinDataForVerification');
+			expect(prompt).not.toContain('outcome.verificationPinData');
+		});
+
+		it('grounds workflow setup in the inline assistant card', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
+			expect(prompt).not.toMatch(/setup wizard/i);
+		});
+
+		it('makes post-build credential setup the default path', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
+			expect(prompt).toContain('building first and routing setup after verification');
 		});
 
 		it('reads workflowId/workItemId from the outcome field, not result', () => {
@@ -139,19 +189,50 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('outcome.workflowId');
 			expect(prompt).toContain('outcome.workItemId');
+			expect(prompt).toContain('outcome.verificationReadiness');
+			expect(prompt).toContain('outcome.setupRequirement');
 			expect(prompt).toMatch(/result.*only a short text summary/);
 		});
 
-		it('runs verify even when mocked credentials are present', () => {
+		it('reuses deterministic already-verified readiness instead of re-running verify', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(
-				/Run verify even when `outcome\.mockedCredentialsByNode` is non-empty/,
+			expect(prompt).toContain('outcome.verificationReadiness.status === "already_verified"');
+			expect(prompt).toContain('do **not** call `verify-built-workflow` again');
+		});
+
+		it('leaves publish dependency ordering to the workflows tool', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain(
+				'Only call `workflows(action="publish")` when the user explicitly asks',
 			);
+			expect(prompt).not.toContain('outcome.supportingWorkflowIds');
 		});
 	});
 
 	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {
+		it('allows checkpoints to reuse successful structured verification evidence', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Always require structured verification evidence');
+			expect(prompt).toContain('never trust builder prose');
+			expect(prompt).toContain('without re-running verification');
+			expect(prompt).not.toContain('Always run your own verification');
+		});
+
+		it('routes verified checkpoint workflows with setup needs through workflow setup before completion', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('workflows(action="setup")');
+			expect(prompt).toContain('outcome.setupRequirement.status === "required"');
+			expect(prompt).toContain('before `complete-checkpoint`');
+			expect(prompt).toContain('deferred: true');
+			expect(prompt).toContain(
+				'Do not call `credentials(action="setup")` or `apply-workflow-credentials`',
+			);
+		});
+
 		it('tells the orchestrator it may patch during a checkpoint and will re-enter the same checkpoint', () => {
 			const prompt = getSystemPrompt({});
 
@@ -188,6 +269,57 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('more than one entry of the type');
 			expect(prompt).toContain('single-select');
 			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
+		});
+
+		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
+			expect(prompt).toContain('List OAuth2 first');
+		});
+	});
+
+	describe('trigger URL patterns', () => {
+		const webhookBaseUrl = 'http://localhost:5678/webhook';
+		const formBaseUrl = 'http://localhost:5678/form';
+
+		it('serves Form Trigger URLs under the /form base, not /webhook', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Form Trigger**: http://localhost:5678/form/{path}');
+			expect(prompt).toContain('http://localhost:5678/form/{webhookId}');
+			expect(prompt).not.toContain('**Form Trigger**: http://localhost:5678/webhook/');
+		});
+
+		it('keeps Webhook Trigger and Chat Trigger on the webhook base URL', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Webhook Trigger**: http://localhost:5678/webhook/{path}');
+			expect(prompt).toContain('http://localhost:5678/webhook/{webhookId}/chat');
+		});
+
+		it('directs the agent to the Open chat button when Chat Trigger is private', () => {
+			// Regression: agent was sharing the public webhook URL for private chat
+			// triggers, then offering to flip `public: true` for testing instead of
+			// pointing the user at the workflow's built-in Open chat button.
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Open chat** button on the workflow canvas');
+			expect(prompt).toMatch(/public: false[^]*Do NOT share a webhook URL/);
+			expect(prompt).toMatch(/do NOT suggest flipping `public: true` just to enable testing/);
+		});
+
+		it('explicitly warns that /form and /webhook are distinct prefixes', () => {
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toMatch(/Form Trigger lives under \/form\/, NOT \/webhook\//);
+			expect(prompt).toContain('Do NOT use the Webhook base URL for Form Triggers');
+		});
+
+		it('omits the Instance Info section when base URLs are not provided', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).not.toContain('## Instance Info');
 		});
 	});
 });

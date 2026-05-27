@@ -52,6 +52,8 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 		executionRedactionServiceProxy,
 	);
 
@@ -157,6 +159,8 @@ describe('ExecutionService', () => {
 				waitTracker,
 				workflowRunner,
 				concurrencyControl,
+				mock(),
+				mock(),
 				mock(),
 				mock(),
 				mock(),

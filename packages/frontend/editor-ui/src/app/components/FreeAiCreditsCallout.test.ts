@@ -11,6 +11,7 @@ import { useToast } from '@/app/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(),
@@ -111,6 +112,8 @@ describe('FreeAiCreditsCallout', () => {
 		(useTelemetry as any).mockReturnValue({
 			track: vi.fn(),
 		});
+
+		useFreeAiCredits().showSuccessCallout.value = false;
 	});
 
 	it('should shows the claim callout when the user can claim credits', () => {
@@ -189,6 +192,44 @@ describe('FreeAiCreditsCallout', () => {
 		renderComponent(FreeAiCreditsCallout);
 
 		assertUserCannotClaimCredits();
+	});
+
+	it('should emit "claimed" after a successful claim', async () => {
+		const { emitted } = renderComponent(FreeAiCreditsCallout);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(emitted()).toHaveProperty('claimed');
+		});
+	});
+
+	it('should not emit "claimed" when the claim fails', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.claimFreeAiCredits.mockRejectedValueOnce(new Error('boom'));
+
+		const { emitted } = renderComponent(FreeAiCreditsCallout);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalled();
+		});
+		expect(emitted()).not.toHaveProperty('claimed');
+	});
+
+	it('should use the telemetrySource prop value when tracking the claim', async () => {
+		renderComponent(FreeAiCreditsCallout, {
+			props: { telemetrySource: 'instanceAiWorkflowSetup' },
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits', {
+				source: 'instanceAiWorkflowSetup',
+			});
+		});
 	});
 
 	it('should not be able to claim credits if active node it is not a valid node', async () => {

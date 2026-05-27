@@ -3,12 +3,12 @@ import { setActivePinia, createPinia } from 'pinia';
 
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [],
+		workflowTriggerNodes: [],
 		name: '',
 		settings: {},
 		mergeSettings: vi.fn(),
@@ -28,14 +28,12 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 describe('mcp.store', () => {
 	let store: ReturnType<typeof useMCPStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		store = useMCPStore();
-		workflowsStore = useWorkflowsStore();
 		workflowsListStore = useWorkflowsListStore();
 	});
 
@@ -84,8 +82,6 @@ describe('mcp.store', () => {
 		});
 
 		it('merges settings into the active workflow document when toggling its own id', async () => {
-			workflowsStore.workflow.id = 'wf-current';
-
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-current'],

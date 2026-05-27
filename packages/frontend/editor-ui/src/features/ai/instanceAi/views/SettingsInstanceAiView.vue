@@ -41,6 +41,7 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 	{ key: 'readFilesystem', labelKey: 'settings.n8nAgent.permissions.readFilesystem' },
 	{ key: 'fetchUrl', labelKey: 'settings.n8nAgent.permissions.fetchUrl' },
+	{ key: 'webSearch', labelKey: 'settings.n8nAgent.permissions.webSearch' },
 	{
 		key: 'restoreWorkflowVersion',
 		labelKey: 'settings.n8nAgent.permissions.restoreWorkflowVersion',

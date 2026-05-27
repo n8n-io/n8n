@@ -9,7 +9,7 @@ import packageJson from '../../package.json' with { type: 'json' };
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const fullChangelogFile = resolve(baseDir, 'CHANGELOG.md');
-// Version includes experimental versions (e.g., 1.2.3-exp.0)
+// Version includes experimental versions (e.g., 1.2.3-exp.g123abcgg)
 const versionChangelogFile = resolve(baseDir, `CHANGELOG-${packageJson.version}.md`);
 
 const changelogStream = new ConventionalChangelog()

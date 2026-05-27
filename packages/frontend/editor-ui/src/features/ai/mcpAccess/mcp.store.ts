@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -14,6 +13,7 @@ import {
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
+	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
 	type ToggleWorkflowsMcpAccessResponse,
@@ -22,17 +22,22 @@ import {
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
-import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import type {
+	ApiKey,
+	InstanceMcpClientStatsResponseDto,
+	OAuthClientResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
@@ -77,10 +82,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
@@ -150,6 +153,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response.data;
 	}
 
+	async function getInstanceClientStats(): Promise<InstanceMcpClientStatsResponseDto | null> {
+		try {
+			const stats = await fetchInstanceMcpClientStats(rootStore.restApiContext);
+			instanceClientStats.value = stats;
+			return stats;
+		} catch {
+			// Endpoint is admin-only; non-admin members get 403. Swallow silently
+			// so the settings page still renders for them.
+			instanceClientStats.value = null;
+			return null;
+		}
+	}
+
 	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
 		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
 		// Remove the client from the local store
@@ -185,7 +201,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		instanceClientStats,
 		getAllOAuthClients,
+		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
 		connectPopoverOpen,

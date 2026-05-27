@@ -50,22 +50,21 @@ The Set node uses assignments to create or modify data fields. Each assignment h
 - **Use when**: Flags, toggles, yes/no values, active/inactive states
 
 ##### Array Type
-- **Format**: JSON stringified array
+- **Format**: Expression or literal that evaluates to an array
 - **Examples**:
-  - Simple array: \`"[1, 2, 3]"\`
-  - String array: \`"[\\"apple\\", \\"banana\\", \\"orange\\"]"\`
-  - Mixed array: \`"[\\"item1\\", 123, true]"\`
-  - Expression: \`"={{ JSON.stringify($('Previous Node').item.json.items) }}"\`
-- **CRITICAL**: Arrays must be JSON stringified
+  - Simple array: \`[1, 2, 3]\`
+  - String array: \`["apple", "banana", "orange"]\`
+  - Expression: \`"={{ $('Previous Node').item.json.items }}"\`
+- **CRITICAL**: Do not use \`JSON.stringify()\` unless you intentionally want a string field
 - **Use when**: Lists, collections, multiple values
 
 ##### Object Type
-- **Format**: JSON stringified object
+- **Format**: Expression or literal that evaluates to a plain object
 - **Examples**:
-  - Simple object: \`"{ \\"name\\": \\"John\\", \\"age\\": 30 }"\`
-  - Nested object: \`"{ \\"user\\": { \\"id\\": 123, \\"role\\": \\"admin\\" } }"\`
-  - Expression: \`"={{ JSON.stringify($('Set').item.json.userData) }}"\`
-- **CRITICAL**: Objects must be JSON stringified with escaped quotes
+  - Simple object: \`{ name: "John", age: 30 }\`
+  - Nested object: \`{ user: { id: 123, role: "admin" } }\`
+  - Expression: \`"={{ $('Set').item.json.userData }}"\`
+- **CRITICAL**: Do not use \`JSON.stringify()\` unless you intentionally want a string field
 - **Use when**: Complex data structures, grouped properties
 
 #### Important Type Selection Rules
@@ -74,11 +73,11 @@ The Set node uses assignments to create or modify data fields. Each assignment h
    - "Set count to 5" → number type with value: \`5\`
    - "Set message to hello" → string type with value: \`"hello"\`
    - "Set active to true" → boolean type with value: \`true\`
-   - "Set tags to apple, banana" → array type with value: \`"[\\"apple\\", \\"banana\\"]"\`
+   - "Set tags to apple, banana" → array type with value: \`["apple", "banana"]\`
 
 2. **Expression handling**:
    - All types can use expressions with \`"={{ ... }}"\`
-   - For arrays/objects from expressions, use \`JSON.stringify()\`
+   - For arrays/objects from expressions, return the array/object directly
 
 3. **Common mistakes to avoid**:
    - WRONG: Setting number as string: \`{ "value": "123", "type": "number" }\`
@@ -87,6 +86,6 @@ The Set node uses assignments to create or modify data fields. Each assignment h
    - CORRECT: \`{ "value": false, "type": "boolean" }\`
    - WRONG: Using type-specific field names: \`{ "booleanValue": true, "type": "boolean" }\`
    - CORRECT: \`{ "value": true, "type": "boolean" }\`
-   - WRONG: Setting array without stringification: \`{ "value": [1,2,3], "type": "array" }\`
-   - CORRECT: \`{ "value": "[1,2,3]", "type": "array" }\``,
+   - WRONG: Stringifying an array: \`{ "value": "={{ JSON.stringify($json.items) }}", "type": "array" }\`
+   - CORRECT: \`{ "value": "={{ $json.items }}", "type": "array" }\``,
 };

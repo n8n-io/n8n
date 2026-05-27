@@ -22,12 +22,24 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	async createTestRun(workflowId: string): Promise<TestRun> {
+	async createTestRun(
+		workflowId: string,
+		attrs?: {
+			collectionId?: string | null;
+			workflowVersionId?: string | null;
+			evaluationConfigId?: string | null;
+			evaluationConfigSnapshot?: IDataObject | null;
+		},
+	): Promise<TestRun> {
 		const testRun = this.create({
 			status: 'new',
 			workflow: {
 				id: workflowId,
 			},
+			collectionId: attrs?.collectionId ?? null,
+			workflowVersionId: attrs?.workflowVersionId ?? null,
+			evaluationConfigId: attrs?.evaluationConfigId ?? null,
+			evaluationConfigSnapshot: attrs?.evaluationConfigSnapshot ?? null,
 		});
 
 		return await this.save(testRun);

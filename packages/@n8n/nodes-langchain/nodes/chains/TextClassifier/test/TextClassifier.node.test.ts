@@ -1,28 +1,29 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { processItem } from '../processItem';
 import { TextClassifier } from '../TextClassifier.node';
 
-jest.mock('../processItem', () => ({
-	processItem: jest.fn(),
+vi.mock('../processItem', () => ({
+	processItem: vi.fn(),
 }));
 
 describe('TextClassifier Node', () => {
 	let node: TextClassifier;
-	let mockExecuteFunction: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunction: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		node = new TextClassifier();
 		mockExecuteFunction = mock<IExecuteFunctions>();
 
 		mockExecuteFunction.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 
 		mockExecuteFunction.getInputData.mockReturnValue([{ json: { testValue: 'none' } }]);
@@ -45,7 +46,7 @@ describe('TextClassifier Node', () => {
 
 	describe('execute', () => {
 		it('should process items with correct parameters', async () => {
-			(processItem as jest.Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ test: true });
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -78,7 +79,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 2 } },
 			]);
 
-			(processItem as jest.Mock)
+			(processItem as Mock)
 				.mockResolvedValueOnce({ test1: true, test2: false })
 				.mockResolvedValueOnce({ test1: false, test2: true });
 
@@ -106,7 +107,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 4 } },
 			]);
 
-			(processItem as jest.Mock)
+			(processItem as Mock)
 				.mockResolvedValueOnce({ test: true })
 				.mockResolvedValueOnce({ test: true })
 				.mockResolvedValueOnce({ test: true })
@@ -143,7 +144,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 6 } },
 			]);
 
-			(processItem as jest.Mock).mockResolvedValue({ test: true });
+			(processItem as Mock).mockResolvedValue({ test: true });
 
 			const startTime = Date.now();
 			await node.execute.call(mockExecuteFunction);
@@ -167,7 +168,7 @@ describe('TextClassifier Node', () => {
 				{ json: { item: 3 } },
 			]);
 
-			(processItem as jest.Mock)
+			(processItem as Mock)
 				.mockResolvedValueOnce({ test: true })
 				.mockRejectedValueOnce(new Error('Batch error'))
 				.mockResolvedValueOnce({ test: true });
@@ -182,14 +183,14 @@ describe('TextClassifier Node', () => {
 
 		it('should throw error when continueOnFail is false', async () => {
 			mockExecuteFunction.continueOnFail.mockReturnValue(false);
-			(processItem as jest.Mock).mockRejectedValue(new Error('Test error'));
+			(processItem as Mock).mockRejectedValue(new Error('Test error'));
 
 			await expect(node.execute.call(mockExecuteFunction)).rejects.toThrow('Test error');
 		});
 
 		it('should continue on failure when configured', async () => {
 			mockExecuteFunction.continueOnFail.mockReturnValue(true);
-			(processItem as jest.Mock).mockRejectedValue(new Error('Test error'));
+			(processItem as Mock).mockRejectedValue(new Error('Test error'));
 
 			const result = await node.execute.call(mockExecuteFunction);
 

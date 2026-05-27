@@ -181,6 +181,7 @@ defineExpose({
 		color: var(--color--text--shade-1);
 		box-shadow: 0 10px 24px 0 #00000010;
 		border-radius: 16px;
+		background: var(--color--background--surface);
 
 		&::placeholder {
 			color: var(--color--text--tint-1);
@@ -208,7 +209,7 @@ defineExpose({
 	left: 1px;
 	width: calc(100% - 2px);
 	z-index: 10;
-	background: var(--color--background--light-2);
+	background: var(--color--background--surface);
 	border-radius: 16px;
 	pointer-events: none; /* click to focus textarea */
 

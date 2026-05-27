@@ -1,6 +1,6 @@
 import type { ExecutionRepository, User } from '@n8n/db';
 import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError, jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -152,9 +152,14 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// `structuredContent` is JSON-serialized by the MCP SDK transport, so
+			// cycles in `output` (e.g. the HTTP socket loop in
+			// `executionData.contextData`) hang the call unless replaced here.
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		} catch (er) {
 			const error = ensureError(er);
@@ -185,9 +190,11 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		}
 	},

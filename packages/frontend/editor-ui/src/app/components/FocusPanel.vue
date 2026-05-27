@@ -41,7 +41,7 @@ import { useExecutionData } from '@/features/execution/executions/composables/us
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -80,7 +80,7 @@ const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const vueFlow = useVueFlow(workflowId.value);
 const { renameNode } = useCanvasOperations();
 

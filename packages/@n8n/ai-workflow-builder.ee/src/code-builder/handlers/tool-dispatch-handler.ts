@@ -8,6 +8,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { parseStrReplacements } from '@n8n/ai-utilities/text-editor';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { TextEditorHandler } from './text-editor-handler';
@@ -22,39 +23,7 @@ import type { WarningTracker } from '../state/warning-tracker';
  * Handles the case where the LLM sends a JSON string instead of an array.
  */
 export function parseReplacements(raw: unknown): StrReplacement[] {
-	let parsed: unknown = raw;
-
-	if (typeof parsed === 'string') {
-		try {
-			parsed = JSON.parse(parsed);
-		} catch {
-			throw new Error(
-				'replacements must be a JSON array of {old_str, new_str} objects, but received an invalid JSON string.',
-			);
-		}
-	}
-
-	if (!Array.isArray(parsed)) {
-		throw new Error(
-			'replacements must be an array of {old_str, new_str} objects. Example: {"replacements": [{"old_str": "foo", "new_str": "bar"}]}',
-		);
-	}
-
-	for (let i = 0; i < parsed.length; i++) {
-		const item = parsed[i] as Record<string, unknown>;
-		if (typeof item?.old_str !== 'string') {
-			throw new Error(
-				`replacements[${i}] is missing a valid "old_str" string. Each replacement must have {old_str: string, new_str: string}.`,
-			);
-		}
-		if (typeof item?.new_str !== 'string') {
-			throw new Error(
-				`replacements[${i}] is missing a valid "new_str" string. Each replacement must have {old_str: string, new_str: string}.`,
-			);
-		}
-	}
-
-	return parsed as StrReplacement[];
+	return parseStrReplacements(raw);
 }
 
 /**

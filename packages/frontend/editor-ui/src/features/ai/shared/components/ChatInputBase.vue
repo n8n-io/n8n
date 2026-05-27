@@ -200,14 +200,14 @@ defineExpose({
 	width: 100%;
 	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
-	background-color: var(--color--background--light-2);
-	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	box-shadow:
+		var(--shadow--xs),
+		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	background-color: var(--background--surface);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 	outline: 1px solid transparent;
-	outline-offset: 2px;
 
 	&:focus-within {
 		outline-color: var(--focus--border-color);
@@ -218,6 +218,7 @@ defineExpose({
 		line-height: 1.5em;
 		resize: none;
 		padding: 0 !important;
+		scrollbar-color: transparent transparent;
 	}
 
 	:global(.n8n-input) > div {

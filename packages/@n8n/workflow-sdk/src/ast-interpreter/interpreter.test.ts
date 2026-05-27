@@ -56,14 +56,7 @@ const createMockSDKFunctions = (): SDKFunctions => ({
 		content,
 		options,
 	})),
-	placeholder: jest.fn((value: string) => ({
-		__placeholder: true as const,
-		hint: value,
-		toString: () => `<__PLACEHOLDER_VALUE__${value}__>`,
-		toJSON() {
-			return this.toString();
-		},
-	})),
+	placeholder: jest.fn((value: string) => `<__PLACEHOLDER_VALUE__${value}__>`),
 	newCredential: jest.fn((name: string) => ({ __newCredential: true, name })),
 	ifElse: jest.fn(),
 	switchCase: jest.fn(),
@@ -84,6 +77,10 @@ const createMockSDKFunctions = (): SDKFunctions => ({
 	fromAi: jest.fn(
 		(key: string, desc?: string) => `={{ $fromAI('${key}'${desc ? `, '${desc}'` : ''}) }}`,
 	),
+	nodeJson: jest.fn((node: { name: string } | string, path: string) => {
+		const name = typeof node === 'string' ? node : node.name;
+		return `={{ $('${name}').item.json.${path} }}`;
+	}),
 });
 
 describe('AST Interpreter', () => {
@@ -222,6 +219,14 @@ describe('AST Interpreter', () => {
 			const result = interpretSDKCode(code, sdkFunctions);
 			expect(sdkFunctions.fromAi).toHaveBeenCalledWith('email', 'The recipient email address');
 			expect(result).toContain('$fromAI');
+		});
+
+		it('should call nodeJson function', () => {
+			const code = "export default nodeJson('Telegram Trigger', 'message.chat.id');";
+			const result = interpretSDKCode(code, sdkFunctions);
+
+			expect(sdkFunctions.nodeJson).toHaveBeenCalledWith('Telegram Trigger', 'message.chat.id');
+			expect(result).toBe("={{ $('Telegram Trigger').item.json.message.chat.id }}");
 		});
 
 		it('should chain method calls', () => {
@@ -864,6 +869,69 @@ describe('AST Interpreter', () => {
 			const code = 'export default WebAssembly;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
+
+		it('should report SecurityError with a clean (non-doubled) message', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(
+				/Security violation: 'fetch' is not allowed/,
+			);
+		});
+	});
+
+	describe('Security - dangerous globals shadowed by declared variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		const shadowable = [
+			'fetch',
+			'process',
+			'require',
+			'console',
+			'Object',
+			'Array',
+			'Math',
+			'Date',
+			'Error',
+			'Promise',
+			'Buffer',
+		];
+
+		for (const name of shadowable) {
+			it(`should allow '${name}' as a node variable name`, () => {
+				const code = `
+					const ${name} = node({ name: 'X', type: 'n8n-nodes-base.set' });
+					export default workflow('id', 'name').add(${name});
+				`;
+				const result = interpretSDKCode(code, sdkFunctions) as { nodes: unknown[] };
+				expect(result.nodes).toHaveLength(1);
+			});
+		}
+
+		it('should still reject undeclared fetch reference', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared process', () => {
+			const code = 'export default process.env.PATH;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared Math', () => {
+			const code = 'export default Math.PI;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should resolve member access against the user-declared shadow', () => {
+			const code = `
+				const Math = { custom: 42 };
+				export default Math.custom;
+			`;
+			expect(interpretSDKCode(code, sdkFunctions)).toBe(42);
+		});
 	});
 
 	describe('JSON.stringify', () => {
@@ -958,17 +1026,15 @@ describe('AST Interpreter', () => {
 		});
 	});
 
-	describe('expr(placeholder(...)) error', () => {
-		it('should throw clear error when expr receives a PlaceholderValue', () => {
+	describe('expr(placeholder(...)) round-trip', () => {
+		it('prepends = to the placeholder marker so it parses as an n8n expression', () => {
 			const funcs: SDKFunctions = {
 				...createMockSDKFunctions(),
 				expr,
 			};
 			const code = `const val = expr(placeholder('Your ID'));
 export default val;`;
-			expect(() => interpretSDKCode(code, funcs)).toThrow(
-				"expr(placeholder('Your ID')) is invalid",
-			);
+			expect(interpretSDKCode(code, funcs)).toBe('=<__PLACEHOLDER_VALUE__Your ID__>');
 		});
 	});
 });

@@ -19,6 +19,13 @@ AI Agent nodes (n8n-nodes-langchain.agent) wrap their response in an "output" ob
 - Use \`$('AI Agent').item.json.output.fieldName\` when referencing a node, instead of \`$('AI Agent').item.json.fieldName\`
 - WRONG: \`$json.summary\` → CORRECT: \`$json.output.summary\`
 
+#### AI Agent Subnode Input Context
+AI Agent subnodes (memory, language models, tools, parsers, retrievers, and vector stores) are connected through AI connections, not the normal main data path.
+- For memory custom session keys, do NOT use \`$json.chatId\` or \`$json.sessionId\`; reference the trigger/source node explicitly.
+- Use \`nodeJson(triggerNode, 'message.chat.id')\` or \`$('Trigger Node').item.json.message.chat.id\`.
+- For tool parameters controlled by the agent, use \`$fromAI(...)\` instead of upstream JSON.
+- The built-in Chat Trigger memory shortcut is \`sessionIdType: 'fromInput'\`, where no custom session key expression is needed.
+
 #### Webhook Node Output Structure
 When referencing data from a Webhook node (n8n-nodes-base.webhook), the incoming request is structured under \`$json\`:
 - \`$json.headers\` - HTTP headers, example: \`$json.headers.authorization\`

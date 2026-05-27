@@ -69,6 +69,10 @@ describe('Expression Parser', () => {
 				{ type: 'code', text: ' code.test("}}") ', hasClosingBrackets: true },
 			]);
 		});
+
+		test('Empty input (CAT-3075)', () => {
+			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
+		});
 	});
 
 	describe('Compatible joining', () => {

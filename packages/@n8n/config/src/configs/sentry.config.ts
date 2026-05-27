@@ -45,6 +45,13 @@ export class SentryConfig {
 	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
 	eventLoopBlockThreshold: number = 500;
 
+	/** Leaky-bucket cap on event loop block events reported per hour per instance. @default 5 */
+	@Env(
+		'N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR',
+		z.number({ coerce: true }).int().positive(),
+	)
+	eventLoopBlockMaxEventsPerHour: number = 5;
+
 	/**
 	 * Environment of the n8n instance.
 	 *

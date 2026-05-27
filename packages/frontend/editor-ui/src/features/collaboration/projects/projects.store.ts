@@ -126,6 +126,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		return await projectsApi.searchProjects(rootStore.restApiContext, params);
 	};
 
+	const searchShareableProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchShareableProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -308,6 +318,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
+			if (newRoute?.path?.includes('instance-ai')) {
+				projectNavActiveId.value = 'instance-ai';
+				setCurrentProject(null);
+			}
+
 			if (newRoute?.path?.includes('workflow/')) {
 				if (currentProjectId.value) {
 					projectNavActiveId.value = currentProjectId.value;
@@ -345,6 +360,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		projectNavActiveId,
 		setCurrentProject,
 		searchProjects,
+		searchShareableProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,

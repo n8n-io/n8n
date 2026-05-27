@@ -5,10 +5,8 @@ import {
 	collectStreamChunks,
 	collectTextDeltas,
 	describeIf,
-	findAllToolResults,
 	getModel,
 } from './helpers';
-import type { StreamChunk } from '../../index';
 import { Agent } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -33,10 +31,7 @@ describe('sub-agent (asTool) integration', () => {
 
 		const chunks = await collectStreamChunks(fullStream);
 		const text = collectTextDeltas(chunks);
-		const messageChunks = chunksOfType(chunks, 'message') as Array<
-			StreamChunk & { type: 'message' }
-		>;
-		const toolResults = findAllToolResults(messageChunks.map((c) => c.message));
+		const toolResults = chunksOfType(chunks, 'tool-result');
 
 		// The orchestrator should have called the sub-agent tool
 		expect(toolResults.length).toBeGreaterThan(0);
@@ -44,7 +39,7 @@ describe('sub-agent (asTool) integration', () => {
 		expect(mathCall).toBeDefined();
 
 		// The output should contain the sub-agent's response
-		expect(mathCall!.result).toBeDefined();
+		expect(mathCall!.output).toBeDefined();
 
 		// The final text should reference 60
 		expect(text).toBeTruthy();
@@ -80,10 +75,7 @@ describe('sub-agent (asTool) integration', () => {
 			'Translate "hello" to French and then make it uppercase.',
 		);
 		const chunks = await collectStreamChunks(fullStream);
-		const messageChunks = chunksOfType(chunks, 'message') as Array<
-			StreamChunk & { type: 'message' }
-		>;
-		const toolResults = findAllToolResults(messageChunks.map((c) => c.message));
+		const toolResults = chunksOfType(chunks, 'tool-result');
 
 		// Should have called both tools
 		expect(toolResults.length).toBeGreaterThanOrEqual(2);

@@ -12,7 +12,7 @@ export async function testWebhookReceived(
 	const workflowsStore = useWorkflowsStore();
 
 	if (data.workflowId === workflowsStore.workflowId) {
-		workflowsStore.executionWaitingForWebhook = false;
+		workflowsStore.setExecutionWaitingForWebhook(false);
 		options.workflowState.setActiveExecutionId(data.executionId ?? null);
 	}
 }

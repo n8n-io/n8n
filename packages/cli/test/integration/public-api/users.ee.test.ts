@@ -48,11 +48,13 @@ describe('With license unlimited quota:users', () => {
 			await authOwnerAgent.get('/users').expect(401);
 		});
 
-		test('should forbid global user list for a member API key', async () => {
+		test('should allow global user list for a member API key with user:list scope', async () => {
 			const member = await createMemberWithApiKey();
 			await createUser();
 
-			await testServer.publicApiAgentFor(member).get('/users').expect(403);
+			const response = await testServer.publicApiAgentFor(member).get('/users').expect(200);
+
+			expect(response.body.data.length).toBe(2);
 		});
 
 		test('should allow member to list users of a project they belong to', async () => {

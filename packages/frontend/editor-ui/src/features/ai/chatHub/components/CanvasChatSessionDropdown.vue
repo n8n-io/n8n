@@ -178,6 +178,8 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .trigger {
 	display: inline-flex;
 	align-items: center;
@@ -211,6 +213,13 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 }
 
 .content {
+	--animation--popover-in--duration: 200ms;
+	--animation--popover-in--easing: cubic-bezier(0.16, 1, 0.3, 1);
+	--animation--popover-in--translate-x: 0;
+	--animation--popover-in--translate-y: 0;
+	--canvas-chat-session-dropdown--transform-origin-x: center;
+	--canvas-chat-session-dropdown--transform-origin-y: center;
+
 	min-width: 240px;
 	max-width: 320px;
 	max-height: 360px;
@@ -223,13 +232,21 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 	padding: var(--spacing--3xs);
 	z-index: 9999;
+	transform-origin: var(--canvas-chat-session-dropdown--transform-origin-x)
+		var(--canvas-chat-session-dropdown--transform-origin-y);
+
+	&[data-state='open'] {
+		@include motion.popover-in;
+	}
 
 	&[data-side='bottom'] {
-		animation: slideDown 200ms cubic-bezier(0.16, 1, 0.3, 1);
+		--animation--popover-in--translate-y: 2px;
+		--canvas-chat-session-dropdown--transform-origin-y: top;
 	}
 
 	&[data-side='top'] {
-		animation: slideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+		--animation--popover-in--translate-y: -2px;
+		--canvas-chat-session-dropdown--transform-origin-y: bottom;
 	}
 }
 
@@ -278,29 +295,5 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-@keyframes slideDown {
-	from {
-		opacity: 0;
-		transform: translateY(-4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes slideUp {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 </style>

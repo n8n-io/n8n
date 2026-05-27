@@ -210,15 +210,16 @@ Each test's HTTP exchanges are stored as individual JSON files:
 
 ```
 expectations/instance-ai/should-send-message-and-receive-assistant-response/
-  1775805992870-unknown-host-POST-_v1_messages-8a23f6c2.json    ← Anthropic API call
-  1775805993100-api-staging.n8n.io-GET-_api_community_nodes-272f77d5.json  ← Node catalog
+  0000-1775805992870-unknown-host-POST-_v1_messages-8a23f6c2.json    ← Anthropic API call
+  0001-1775805993100-api-staging.n8n.io-GET-_api_community_nodes-272f77d5.json  ← Node catalog
   trace.jsonl                                                     ← Tool trace
 ```
 
 ### File Naming
 
-`<timestamp>-<host>-<method>-<path_slugified>-<8char_sha256>.json`
+`<sequence>-<timestamp>-<host>-<method>-<path_slugified>-<8char_sha256>.json`
 
+- `sequence` = zero-padded write order within the recording, used to keep replay deterministic when multiple matching requests are recorded in the same millisecond
 - `unknown-host` = Anthropic API (CONNECT tunneling hides the real host)
 - `api-staging.n8n.io` = n8n community nodes API
 

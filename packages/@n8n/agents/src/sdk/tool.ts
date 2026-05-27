@@ -1,8 +1,11 @@
+import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
 import type { AgentMessage } from '../types/sdk/message';
+import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
+import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
@@ -13,6 +16,10 @@ const APPROVAL_SUSPEND_SCHEMA = z.object({
 const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 });
+
+type ZodOrJsonSchema = z.ZodType | JSONSchema7;
+
+type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknown;
 
 export interface ApprovalConfig {
 	requireApproval?: boolean;
@@ -65,8 +72,8 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 	};
 }
 
-type HandlerContext<S, R> = S extends z.ZodTypeAny
-	? R extends z.ZodTypeAny
+type HandlerContext<S, R> = S extends z.ZodType
+	? R extends z.ZodType
 		? InterruptibleToolContext<z.infer<S>, z.infer<R>>
 		: ToolContext
 	: ToolContext;
@@ -90,10 +97,10 @@ type HandlerContext<S, R> = S extends z.ZodTypeAny
  * @template TResume - Zod schema type for the resume payload
  */
 export class Tool<
-	TInput extends z.ZodTypeAny = z.ZodTypeAny,
-	TOutput extends z.ZodTypeAny = z.ZodTypeAny,
-	TSuspend extends z.ZodTypeAny | undefined = undefined,
-	TResume extends z.ZodTypeAny | undefined = undefined,
+	TInput extends ZodOrJsonSchema = z.ZodTypeAny,
+	TOutput extends ZodOrJsonSchema = z.ZodTypeAny,
+	TSuspend extends ZodOrJsonSchema | undefined = undefined,
+	TResume extends ZodOrJsonSchema | undefined = undefined,
 > {
 	private name: string;
 
@@ -103,24 +110,26 @@ export class Tool<
 
 	private outputSchema?: TOutput;
 
-	private suspendSchemaValue?: z.ZodTypeAny;
+	private suspendSchemaValue?: TSuspend;
 
-	private resumeSchemaValue?: z.ZodTypeAny;
+	private resumeSchemaValue?: TResume;
 
 	private handlerFn?: (
-		input: z.infer<TInput>,
+		input: OutputType<TInput>,
 		ctx: HandlerContext<TSuspend, TResume>,
-	) => Promise<z.infer<TOutput>>;
+	) => Promise<OutputType<TOutput>>;
 
-	private toMessageFn?: (output: z.infer<TOutput>) => AgentMessage;
+	private toMessageFn?: (output: OutputType<TOutput>) => AgentMessage;
 
-	private toModelOutputFn?: (output: z.infer<TOutput>) => unknown;
+	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
 	private providerOptionsValue?: Record<string, JSONObject>;
 
 	private requireApprovalValue?: boolean;
 
 	private needsApprovalFnValue?: (args: unknown) => Promise<boolean> | boolean;
+
+	private systemInstructionText?: string;
 
 	constructor(name: string) {
 		this.name = name;
@@ -132,29 +141,43 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Attach a behavioural directive to this tool. When the tool is registered
+	 * with an agent, the runtime injects this text into the agent's system
+	 * prompt under a `<built_in_rules>` block, where the LLM weighs it heavily
+	 * for "should I call this tool?" decisions.
+	 *
+	 * Use sparingly — only for guidance the description alone doesn't reliably
+	 * convey (e.g. "prefer this tool over plain text when X").
+	 */
+	systemInstruction(text: string): this {
+		this.systemInstructionText = text;
+		return this;
+	}
+
 	/** Set the input Zod schema. Required before building. */
-	input<S extends z.ZodTypeAny>(schema: S): Tool<S, TOutput, TSuspend, TResume> {
+	input<S extends ZodOrJsonSchema>(schema: S): Tool<S, TOutput, TSuspend, TResume> {
 		const self = this as unknown as Tool<S, TOutput, TSuspend, TResume>;
 		self.inputSchema = schema;
 		return self;
 	}
 
 	/** Set the output Zod schema. Optional. */
-	output<S extends z.ZodTypeAny>(schema: S): Tool<TInput, S, TSuspend, TResume> {
+	output<S extends ZodOrJsonSchema>(schema: S): Tool<TInput, S, TSuspend, TResume> {
 		const self = this as unknown as Tool<TInput, S, TSuspend, TResume>;
 		self.outputSchema = schema;
 		return self;
 	}
 
 	/** Set the suspend payload schema. Must be paired with .resume(). */
-	suspend<S extends z.ZodTypeAny>(schema: S): Tool<TInput, TOutput, S, TResume> {
+	suspend<S extends ZodOrJsonSchema>(schema: S): Tool<TInput, TOutput, S, TResume> {
 		const self = this as unknown as Tool<TInput, TOutput, S, TResume>;
 		self.suspendSchemaValue = schema;
 		return self;
 	}
 
 	/** Set the resume payload schema. Must be paired with .suspend(). */
-	resume<R extends z.ZodTypeAny>(schema: R): Tool<TInput, TOutput, TSuspend, R> {
+	resume<R extends ZodOrJsonSchema>(schema: R): Tool<TInput, TOutput, TSuspend, R> {
 		const self = this as unknown as Tool<TInput, TOutput, TSuspend, R>;
 		self.resumeSchemaValue = schema;
 		return self;
@@ -166,15 +189,15 @@ export class Tool<
 	 */
 	handler(
 		fn: (
-			input: z.infer<TInput>,
+			input: OutputType<TInput>,
 			ctx: HandlerContext<TSuspend, TResume>,
-		) => Promise<z.infer<TOutput>>,
+		) => Promise<OutputType<TOutput>>,
 	): this {
 		this.handlerFn = fn;
 		return this;
 	}
 
-	toMessage(toMessage: (output: z.infer<TOutput>) => AgentMessage): this {
+	toMessage(toMessage: (output: OutputType<TOutput>) => AgentMessage): this {
 		this.toMessageFn = toMessage;
 		return this;
 	}
@@ -186,7 +209,7 @@ export class Tool<
 	 * Useful for truncating large outputs, redacting sensitive data, or reformatting
 	 * the result for better LLM comprehension.
 	 */
-	toModelOutput(fn: (output: z.infer<TOutput>) => unknown): this {
+	toModelOutput(fn: (output: OutputType<TOutput>) => unknown): this {
 		this.toModelOutputFn = fn;
 		return this;
 	}
@@ -198,7 +221,7 @@ export class Tool<
 	}
 
 	/** Conditionally require approval based on the tool's input. Mutually exclusive with .suspend()/.resume(). */
-	needsApprovalFn(fn: (args: z.infer<TInput>) => Promise<boolean> | boolean): this {
+	needsApprovalFn(fn: (args: OutputType<TInput>) => Promise<boolean> | boolean): this {
 		this.needsApprovalFnValue = fn as (args: unknown) => Promise<boolean> | boolean;
 		return this;
 	}
@@ -255,6 +278,7 @@ export class Tool<
 		const built: BuiltTool = {
 			name: this.name,
 			description: this.desc,
+			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
@@ -276,5 +300,37 @@ export class Tool<
 		}
 
 		return built;
+	}
+
+	/**
+	 * Return a lightweight JSON descriptor of this tool's metadata.
+	 * Does NOT require .build() to be called first.
+	 * Used by the JSON-config flow to store tool metadata without executing the handler.
+	 */
+	describe(): ToolDescriptor {
+		if (!this.name) throw new Error('Tool name is required');
+		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
+		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
+
+		const inputSchema = isZodSchema(this.inputSchema)
+			? zodToJsonSchema(this.inputSchema)
+			: this.inputSchema;
+		const outputSchema = this.outputSchema
+			? isZodSchema(this.outputSchema)
+				? zodToJsonSchema(this.outputSchema)
+				: this.outputSchema
+			: null;
+		return {
+			name: this.name,
+			description: this.desc,
+			systemInstruction: this.systemInstructionText ?? null,
+			inputSchema: inputSchema as JSONSchema7,
+			outputSchema: outputSchema as JSONSchema7,
+			hasSuspend: this.suspendSchemaValue !== undefined,
+			hasResume: this.resumeSchemaValue !== undefined,
+			hasToMessage: this.toMessageFn !== undefined,
+			requireApproval: this.requireApprovalValue ?? false,
+			providerOptions: this.providerOptionsValue ?? null,
+		};
 	}
 }

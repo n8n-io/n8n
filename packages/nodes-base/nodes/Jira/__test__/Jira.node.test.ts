@@ -246,6 +246,39 @@ describe('Jira Node', () => {
 		);
 	});
 
+	describe('issue getAll with cloudOAuth2', () => {
+		it('should use cloud JQL endpoint when jiraVersion is "cloudOAuth2"', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameterName: string) => {
+				switch (parameterName) {
+					case 'resource':
+						return 'issue';
+					case 'operation':
+						return 'getAll';
+					case 'jiraVersion':
+						return 'cloudOAuth2';
+					case 'returnAll':
+						return false;
+					case 'limit':
+						return 10;
+					case 'options':
+						return { fields: undefined };
+					default:
+						return null;
+				}
+			});
+
+			await jiraNode.execute.call(executeFunctionsMock);
+
+			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
+				'/api/2/search/jql',
+				'POST',
+				expect.objectContaining({
+					fields: ['*navigable'],
+				}),
+			);
+		});
+	});
+
 	describe('continueOnFail', () => {
 		it('should return error item when API request fails and continueOnFail is true', async () => {
 			const errorMessage = 'Issue does not exist';

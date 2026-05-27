@@ -23,6 +23,7 @@ import { mockExistingCredential } from './credentials.test-data';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
@@ -76,6 +77,7 @@ describe('CredentialsService', () => {
 	const credentialsHelper = mock<CredentialsHelper>();
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
+	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -95,6 +97,7 @@ describe('CredentialsService', () => {
 		credentialsHelper,
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
+		connectionStatusProxy,
 	);
 
 	beforeEach(() => {
@@ -1582,6 +1585,61 @@ describe('CredentialsService', () => {
 					includeData: true,
 					filters: { dependency: undefined },
 				});
+			});
+
+			it('should forward the credential type filter to the global credentials lookup (owner user)', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should forward the credential type filter to the global credentials lookup (member user)', async () => {
+				// ARRANGE
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [],
+					count: 0,
+				});
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(memberUser, {
+					includeGlobal: true,
+					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
+				});
+
+				// ASSERT
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					type: 'slackOAuth2Api',
+					filters: { dependency: undefined },
+				});
+			});
+
+			it('should not pass a type filter when the listQueryOptions filter has no type', async () => {
+				// ARRANGE
+				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
+
+				// ACT
+				await service.getMany(ownerUser, { includeGlobal: true });
+
+				// ASSERT
+				const lastCall =
+					credentialsRepository.findAllGlobalCredentials.mock.calls.at(-1)?.[0] ?? {};
+				expect(lastCall).not.toHaveProperty('type');
 			});
 		});
 

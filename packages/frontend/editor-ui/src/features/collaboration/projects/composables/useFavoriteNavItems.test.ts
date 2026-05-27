@@ -9,7 +9,6 @@ import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
@@ -100,7 +99,10 @@ describe('useFavoriteNavItems', () => {
 
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
-			expect(favoriteProjectItems.value[0].menuItem.icon).toBe('layers');
+			expect(favoriteProjectItems.value[0].menuItem.icon).toEqual({
+				type: 'icon',
+				value: 'layers',
+			});
 		});
 
 		it('should use raw resourceId as item id (no prefix)', () => {

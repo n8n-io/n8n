@@ -14,5 +14,5 @@
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "jest"]
 	},
-	"include": ["src/**/*.ts", "evaluations/**/*.ts"]
+	"include": ["src/**/*.ts"]
 }

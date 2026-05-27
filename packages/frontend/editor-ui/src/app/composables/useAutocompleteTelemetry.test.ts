@@ -28,12 +28,15 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 describe('useAutocompleteTelemetry', () => {
+	const editors: EditorView[] = [];
+
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		editors.splice(0).forEach((editor) => editor.destroy());
 	});
 
 	const getEditor = (defaultDoc = '') => {
@@ -43,8 +46,10 @@ describe('useAutocompleteTelemetry', () => {
 			extensions: [extensionCompartment.of([])],
 		});
 		const editorRoot = document.createElement('div');
+		const editor = new EditorView({ parent: editorRoot, state });
+		editors.push(editor);
 		return {
-			editor: new EditorView({ parent: editorRoot, state }),
+			editor,
 			editorRoot,
 			compartment: extensionCompartment,
 		};

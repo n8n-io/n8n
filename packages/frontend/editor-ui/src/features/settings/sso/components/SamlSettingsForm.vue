@@ -74,6 +74,7 @@ const {
 	mappingMethod,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	trackProvisioningChange,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
 	isDroppingProjectRules,
@@ -244,7 +245,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 			loginEnabled: samlLoginEnabled.value,
 		});
 
-		await saveProvisioningConfig(isDisablingSamlLogin);
+		const provisioningResult = await saveProvisioningConfig(isDisablingSamlLogin);
 
 		// If the user's effective role assignment doesn't include project roles,
 		// discard any project-rule state in the editor (both locally-added and
@@ -256,9 +257,12 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
 
-		if (mappingMethod.value === 'rules_in_n8n') {
-			await roleMappingRuleEditorRef.value?.save();
-		}
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;

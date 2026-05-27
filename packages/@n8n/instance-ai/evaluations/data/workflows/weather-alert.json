@@ -1,0 +1,42 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a daily rain warning every morning by email."
+		},
+		{
+			"role": "assistant",
+			"text": "What city, what time, and which email address?"
+		},
+		{
+			"role": "user",
+			"text": "Berlin, 8am, david@thedavid.co.uk. Use Gmail to send it."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll use the OpenMeteo API for the forecast. Any precipitation should trigger the email, or only above a threshold?"
+		},
+		{
+			"role": "user",
+			"text": "Any rain at all."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["build", "schedule", "http-request", "gmail", "conditional"],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Email is sent warning of rain",
+			"dataSetup": "Weather API call returns precipitation value of 0.5mm",
+			"successCriteria": "The workflow executes without errors. An email is sent to the email specified mentioning that it will rain today."
+		},
+		{
+			"name": "rain-not-expected",
+			"description": "No email is sent",
+			"dataSetup": "Weather API call returns precipitation value of 0mm",
+			"successCriteria": "The workflow executes without errors. No email is sent mentioning that it will rain today, and no email sending node is executed."
+		}
+	]
+}

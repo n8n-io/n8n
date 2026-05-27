@@ -59,10 +59,11 @@ async function createPiniaWithActiveNode() {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
+	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.addNode(node);
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
-	workflowsStore.workflowExecutionData = {
+	workflowsStore.setWorkflowExecutionData({
 		id: '1',
 		finished: true,
 		mode: 'trigger',
@@ -120,7 +121,7 @@ async function createPiniaWithActiveNode() {
 				},
 			},
 		}),
-	};
+	});
 
 	ndvStore.setActiveNodeName(node.name, 'other');
 

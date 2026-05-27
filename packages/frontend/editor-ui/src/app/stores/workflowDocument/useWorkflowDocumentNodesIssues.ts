@@ -24,6 +24,21 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 
 	const hasNodeValidationIssues = computed(() => nodesWithValidationIssuesCount.value > 0);
 
+	/** Whether any connected node has issues that should block publishing.
+	 *  Execution issues are excluded — they are runtime errors, not configuration problems. */
+	const hasPublishBlockingIssues = computed(() =>
+		deps.allNodes.value.some((node) => {
+			const { execution: _, ...configIssues } = node.issues ?? {};
+			if (Object.keys(configIssues).length === 0) return false;
+
+			const isConnected =
+				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(deps.incomingConnectionsByNodeName(node.name)).length > 0;
+
+			return !node.disabled && isConnected;
+		}),
+	);
+
 	const nodeValidationIssues = computed(() => {
 		const issues: WorkflowValidationIssue[] = [];
 
@@ -77,6 +92,7 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 		nodesWithValidationIssues,
 		nodesWithValidationIssuesCount,
 		hasNodeValidationIssues,
+		hasPublishBlockingIssues,
 		nodeValidationIssues,
 		formatNodeIssueMessage,
 	};
