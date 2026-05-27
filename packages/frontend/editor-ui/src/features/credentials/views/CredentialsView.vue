@@ -156,11 +156,7 @@ listenForModalChanges({
 		}
 		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
 			credentialsStore.pendingOAuthRefresh = false;
-			void credentialsStore.fetchAllCredentials({
-				projectId: route?.params?.projectId as string | undefined,
-				includeScopes: true,
-				externalSecretsStore: filters.value.externalSecretsStore,
-			});
+			refreshCredentials();
 		}
 	},
 });
@@ -257,11 +253,7 @@ const initialize = async () => {
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials({
-				projectId: route?.params?.projectId as string | undefined,
-				includeScopes: true,
-				externalSecretsStore: filters.value.externalSecretsStore,
-			});
+			refreshCredentials();
 		});
 	}
 });
