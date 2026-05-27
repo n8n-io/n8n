@@ -263,31 +263,30 @@ describe('ToolCode', () => {
 					}) as unknown as JsTaskRunnerSandbox,
 			);
 
-			const mockSupply = mock<ISupplyDataFunctions>({
-				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
-				getNodeParameter: vi.fn().mockImplementation((paramName) => {
-					switch (paramName) {
-						case 'description':
-							return 'description text';
-						case 'name':
-							return 'wrong_field';
-						case 'specifyInputSchema':
-							return false;
-						case 'language':
-							return 'javaScript';
-						case 'jsCode':
-							return 'throw new Error("boom");';
-						default:
-							return;
-					}
+			const supplyDataResult = await node.supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
+						switch (paramName) {
+							case 'description':
+								return 'description text';
+							case 'name':
+								return 'wrong_field';
+							case 'specifyInputSchema':
+								return false;
+							case 'language':
+								return 'javaScript';
+							case 'jsCode':
+								return 'throw new Error("boom");';
+							default:
+								return;
+						}
+					}),
+					addInputData: vi.fn(() => ({ index: 0 })),
+					addOutputData: vi.fn(),
 				}),
-				// @ts-expect-error - Mocking
-				getMode: vi.fn(() => 'manual'),
-				addInputData: vi.fn(() => ({ index: 0 })),
-				addOutputData: vi.fn(),
-			});
-
-			const supplyDataResult = await node.supplyData.call(mockSupply, 0);
+				0,
+			);
 			const tool = supplyDataResult.response as DynamicTool;
 
 			await expect(tool.func('query')).resolves.toMatch(/There was an error/);
