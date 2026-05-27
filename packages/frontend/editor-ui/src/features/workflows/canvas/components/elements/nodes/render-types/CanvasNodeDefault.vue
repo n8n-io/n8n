@@ -40,7 +40,6 @@ const {
 	isDisabled,
 	isReadOnly,
 	isSelected,
-	hasPinnedData,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
@@ -55,6 +54,7 @@ const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
 );
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,

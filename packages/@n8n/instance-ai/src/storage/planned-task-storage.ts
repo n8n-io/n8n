@@ -9,7 +9,6 @@ const plannedTaskKindSchema = z.enum([
 	'delegate',
 	'build-workflow',
 	'manage-data-tables',
-	'research',
 	'checkpoint',
 ]);
 

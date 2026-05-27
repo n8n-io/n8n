@@ -1,4 +1,4 @@
-import { Agent } from '@n8n/agents';
+import { Agent, Memory } from '@n8n/agents';
 
 import {
 	addSafeMcpTools,
@@ -158,13 +158,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		branchReadOnly: context.branchReadOnly,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is scoped to the workflow-builder subagent via `builderSandboxFactory`.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
 	});
+	// The orchestrator agent itself does not receive workspace tools. Sandbox access
+	// stays scoped to tools and sub-agents that request orchestrationContext.workspace.
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
 		.instructions(systemPrompt, {
@@ -182,20 +182,20 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	}
 
 	if (options.memory) {
-		agent.memory({
-			memory: options.memory,
-			lastMessages: memoryConfig.lastMessages ?? 20,
-			...(memoryConfig.embedderModel && memoryConfig.semanticRecallTopK
-				? {
-						semanticRecall: {
-							topK: memoryConfig.semanticRecallTopK,
-							embedder: memoryConfig.embedderModel,
-						},
-					}
-				: {}),
-		});
-	}
+		const lastMessages = memoryConfig.lastMessages ?? 20;
+		const mem = new Memory().storage(options.memory).lastMessages(lastMessages);
 
+		if (memoryConfig.observationalMemory) {
+			const { observerThresholdTokens, reflectorThresholdTokens } =
+				memoryConfig.observationalMemory;
+			mem.observationalMemory({
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+			});
+		}
+
+		agent.memory(mem);
+	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({
@@ -206,7 +206,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			memory: options.memory
 				? {
 						lastMessages: memoryConfig.lastMessages ?? 20,
-						semanticRecallTopK: memoryConfig.semanticRecallTopK,
+						...(memoryConfig.observationalMemory
+							? {
+									observationalMemory: {
+										enabled: true,
+										observerThresholdTokens:
+											memoryConfig.observationalMemory.observerThresholdTokens,
+										reflectorThresholdTokens:
+											memoryConfig.observationalMemory.reflectorThresholdTokens,
+									},
+								}
+							: {}),
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,

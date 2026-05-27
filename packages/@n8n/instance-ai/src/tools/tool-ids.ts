@@ -24,7 +24,6 @@ export const ORCHESTRATION_TOOL_IDS = {
 	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
 	EVAL_DATA: 'eval-data',
 	MANAGE_DATA_TABLES_WITH_AGENT: 'manage-data-tables-with-agent',
-	RESEARCH_WITH_AGENT: 'research-with-agent',
 	BROWSER_CREDENTIAL_SETUP: 'browser-credential-setup',
 	COMPLETE_CHECKPOINT: 'complete-checkpoint',
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
