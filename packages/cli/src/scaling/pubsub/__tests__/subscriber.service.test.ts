@@ -202,6 +202,35 @@ describe('Subscriber', () => {
 			);
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
+
+		it('should deliver each display-workflow-activation immediately without coalescing', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			const payload1 = { workflowId: 'wf-1', activeVersionId: 'v-1' };
+			const payload2 = { workflowId: 'wf-2', activeVersionId: 'v-2' };
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('display-workflow-activation', false, payload1),
+			);
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('display-workflow-activation', false, payload2),
+			);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('display-workflow-activation', payload1);
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('display-workflow-activation', payload2);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('MCP relay handling', () => {

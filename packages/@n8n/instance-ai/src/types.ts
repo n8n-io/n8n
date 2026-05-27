@@ -40,6 +40,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
+import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -611,6 +612,12 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
+	/**
+	 * Curated workflow-template provider for the sandbox setup. When absent or
+	 * when the service returns an empty bundle, the sandbox is created without
+	 * an `examples/` directory and the agent operates without template hints.
+	 */
+	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
@@ -671,12 +678,7 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'checkpoint';
 
 export interface PlannedTask {
 	id: string;
@@ -778,6 +780,9 @@ export interface PlannedTaskService {
 	/** Transition an `awaiting_approval` graph → `active` after the user
 	 *  approves the plan. No-op on any other status. */
 	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Transition an `awaiting_approval` graph → `cancelled` after the user
+	 *  denies the plan outright. No-op on any other status. */
+	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
 	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
 	 *  the service when a replan or synthesize follow-up couldn't start. */
 	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
@@ -809,11 +814,13 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	embedderModel?: string;
 	lastMessages?: number;
-	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
@@ -978,7 +985,7 @@ export interface SpawnBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * data-table, delegate) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while a child with this id is still
 	 * running, and settlement re-emits the checkpoint follow-up when the last

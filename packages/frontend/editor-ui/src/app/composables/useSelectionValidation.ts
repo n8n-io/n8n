@@ -57,7 +57,11 @@ export function useSelectionValidation() {
 		nodeIds: string[],
 		connectionsBySourceNode?: IConnections,
 	): GroupValidationResult {
-		return validateNodeSelectionForGrouping(getValidationInput(nodeIds, connectionsBySourceNode));
+		const store = workflowDocumentStore.value;
+		return validateNodeSelectionForGrouping({
+			...getValidationInput(nodeIds, connectionsBySourceNode),
+			existingNodeGroups: store?.allGroups ?? [],
+		});
 	}
 
 	function getValidationInput(nodeIds: string[], connectionsBySourceNode?: IConnections) {

@@ -39,7 +39,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
-		expect(getToolIcon('research-with-agent')).toBe('share');
+		expect(getToolIcon('manage-data-tables-with-agent')).toBe('share');
 	});
 
 	test('returns table for data-table tools', () => {
