@@ -12,7 +12,6 @@ import { z } from 'zod';
 import type { BlueprintAccumulator } from './blueprint-accumulator';
 import {
 	blueprintCheckpointItemSchema,
-	blueprintDataTableItemSchema,
 	blueprintDelegateItemSchema,
 	blueprintWorkflowItemSchema,
 } from './blueprint.schema';
@@ -49,7 +48,6 @@ const addPlanItemInputSchema = z.object({
 		.describe('Assumptions the plan relies on — set on first call'),
 	item: z.discriminatedUnion('kind', [
 		blueprintWorkflowItemSchema.extend({ kind: z.literal('workflow') }),
-		blueprintDataTableItemSchema.extend({ kind: z.literal('data-table') }),
 		blueprintDelegateItemSchema.extend({ kind: z.literal('delegate') }),
 		blueprintCheckpointItemSchema.extend({ kind: z.literal('checkpoint') }),
 	]),
@@ -61,9 +59,9 @@ export function createAddPlanItemTool(
 ) {
 	return new Tool('add-plan-item')
 		.description(
-			'Add a single plan item (data table, workflow, delegate, or checkpoint task). ' +
+			'Add a single plan item (workflow, delegate, or checkpoint task). ' +
 				'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
-				'Emit data tables FIRST. Add workflow items only if the request requires automation. ' +
+				'Add workflow items only if the request requires automation. ' +
 				'Add a checkpoint item AFTER its target workflow(s) so the orchestrator can verify the result end-to-end. ' +
 				'Set summary and assumptions on your first call.',
 		)
