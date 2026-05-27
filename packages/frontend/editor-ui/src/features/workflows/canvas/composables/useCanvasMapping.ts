@@ -587,10 +587,6 @@ export function useCanvasMapping({
 						validation: nodeValidationErrorsById.value[node.id],
 						visible: nodeHasIssuesById.value[node.id],
 					},
-					pinnedData: {
-						count: nodePinnedDataById.value[node.id]?.length ?? 0,
-						visible: !!nodePinnedDataById.value[node.id],
-					},
 					execution: {
 						status: nodeExecutionStatusById.value[node.id],
 						waiting: nodeExecutionWaitingById.value[node.id],

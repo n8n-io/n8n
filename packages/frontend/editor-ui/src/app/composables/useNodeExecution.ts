@@ -286,6 +286,8 @@ export function useNodeExecution(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
 				workflowDocumentStore.value.documentId,
+				ndvStore.activeNode,
+				ndvStore.pushRef,
 				5,
 			);
 
@@ -315,12 +317,12 @@ export function useNodeExecution(
 				value: prompt,
 			});
 
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt,
 				code: updateInformation.value,
 			});
 		} catch (error) {
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.pushRef, {
 				prompt: nodeRef.value?.parameters?.instructions as string,
 				code: '',
 				hasError: true,
@@ -342,7 +344,7 @@ export function useNodeExecution(
 		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value.pinData?.[startNode.name];
+		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
 		return hasRunData || hasPinData;
 	}
 

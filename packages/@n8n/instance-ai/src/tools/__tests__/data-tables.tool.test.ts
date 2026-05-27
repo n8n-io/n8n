@@ -50,32 +50,10 @@ function noSuspendCtx() {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('data-tables tool', () => {
-	// ── Surface filtering ──────────────────────────────────────────────────
+	// ── Tool construction ──────────────────────────────────────────────────
 
-	describe('surface filtering', () => {
-		it('should support read-only actions on orchestrator surface', async () => {
-			const context = createMockContext();
-			const tables = [{ id: 'dt-1', name: 'Users', columns: [] }];
-			context.dataTableService.list = jest.fn().mockResolvedValue(tables);
-			const tool = createDataTablesTool(context, 'orchestrator');
-
-			const result = await executeTool(
-				tool,
-				{ action: 'list', projectId: 'p1' } as never,
-				{} as never,
-			);
-
-			expect(result).toEqual({ tables });
-		});
-
-		it('should have a concise description for full surface', () => {
-			const context = createMockContext();
-			const tool = createDataTablesTool(context, 'full');
-
-			expect(tool.description).toContain('data tables');
-		});
-
-		it('should default to full surface when not specified', () => {
+	describe('tool construction', () => {
+		it('should have a concise description', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
@@ -115,17 +93,6 @@ describe('data-tables tool', () => {
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: 'proj-1' });
 		});
-
-		it('should work on orchestrator surface', async () => {
-			const tables = [{ id: 'dt-1', name: 'Users' }];
-			const context = createMockContext();
-			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
-
-			const tool = createDataTablesTool(context, 'orchestrator');
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
-
-			expect(result).toEqual({ tables });
-		});
 	});
 
 	// ── schema ──────────────────────────────────────────────────────────────
@@ -149,7 +116,40 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.getSchema).toHaveBeenCalledWith('dt-1', {
 				projectId: undefined,
 			});
-			expect(result).toEqual({ columns });
+			expect(result).toEqual({ dataTableId: 'dt-1', columns });
+		});
+
+		it('should include resolved table metadata when available', async () => {
+			const columns = [{ id: 'col-1', name: 'email', type: 'string', index: 0 }];
+			const context = createMockContext({
+				dataTableService: {
+					...createMockContext().dataTableService,
+					resolveTableReference: jest.fn().mockResolvedValue({
+						id: 'dt-resolved',
+						name: 'Signups',
+						projectId: 'proj-1',
+					}),
+				},
+			});
+			(context.dataTableService.getSchema as jest.Mock).mockResolvedValue(columns);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'schema' as const, dataTableId: 'Signups', projectId: 'proj-1' },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith('Signups', {
+				projectId: 'proj-1',
+				permission: 'read',
+			});
+			expect(result).toEqual({
+				dataTableId: 'dt-resolved',
+				dataTableName: 'Signups',
+				projectId: 'proj-1',
+				columns,
+			});
 		});
 	});
 
@@ -179,7 +179,7 @@ describe('data-tables tool', () => {
 				offset: 0,
 				projectId: undefined,
 			});
-			expect(result).toEqual(queryResult);
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 		});
 
 		it('should include hint when more rows are available', async () => {
@@ -195,8 +195,9 @@ describe('data-tables tool', () => {
 			);
 
 			expect(result).toEqual({
+				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 
@@ -213,8 +214,9 @@ describe('data-tables tool', () => {
 			);
 
 			expect(result).toEqual({
+				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 
@@ -230,8 +232,46 @@ describe('data-tables tool', () => {
 				noSuspendCtx(),
 			);
 
-			expect(result).toEqual(queryResult);
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 			expect(result).not.toHaveProperty('hint');
+		});
+
+		it('should include resolved table metadata when available', async () => {
+			const queryResult = { count: 1, data: [{ email: 'a@b.com' }] };
+			const context = createMockContext({
+				dataTableService: {
+					...createMockContext().dataTableService,
+					resolveTableReference: jest.fn().mockResolvedValue({
+						id: 'dt-resolved',
+						name: 'Signups',
+						projectId: 'proj-1',
+					}),
+				},
+			});
+			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'query' as const,
+					dataTableId: 'Signups',
+					dataTableName: 'Fallback Name',
+					projectId: 'proj-1',
+				},
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith('Signups', {
+				projectId: 'proj-1',
+				permission: 'readRow',
+			});
+			expect(result).toEqual({
+				dataTableId: 'dt-resolved',
+				dataTableName: 'Signups',
+				projectId: 'proj-1',
+				...queryResult,
+			});
 		});
 	});
 
@@ -264,7 +304,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create data table "Contacts"?',
+					message: 'Create Contacts',
 					severity: 'info',
 				}),
 			);
@@ -297,7 +337,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Create data table "Contacts" in project "My Project"?',
+					message: 'Create Contacts in project My Project',
 				}),
 			);
 		});
@@ -399,12 +439,29 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message:
-						'Delete data table "dt-1"? This will permanently remove the table and all its data.',
+					message: 'Delete dt-1',
 					severity: 'destructive',
 				}),
 			);
 			expect(context.dataTableService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should include the table name in the suspend message when provided', async () => {
+			const context = createMockContext({ permissions: {} });
+			const suspendFn = jest.fn();
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ ...deleteInput, dataTableName: 'Customer data' } as never,
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn.mock.calls[0]![0]).toEqual(
+				expect.objectContaining({
+					message: 'Delete Customer data (ID: dt-1)',
+				}),
+			);
 		});
 
 		it('should execute immediately when permission is always_allow', async () => {
@@ -472,7 +529,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Add column "age" (number) to data table "dt-1"?',
+					message: 'Add age (number) to dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -547,8 +604,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message:
-						'Delete column "col-1" from data table "dt-1"? All data in this column will be permanently lost.',
+					message: 'Delete col-1 from dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -620,7 +676,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Rename column "col-1" to "full_name" in data table "dt-1"?',
+					message: 'Rename col-1 to full_name in dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -697,7 +753,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Insert 2 row(s) into data table "dt-1"?',
+					message: 'Insert 2 row(s) into dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -798,7 +854,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Update rows in data table "dt-1"?',
+					message: 'Update rows in dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -880,7 +936,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows where status eq inactive? This cannot be undone.',
+					message: 'Delete rows from dt-1 where status eq inactive',
 					severity: 'destructive',
 				}),
 			);
@@ -909,7 +965,7 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows where status eq inactive or age lt 18? This cannot be undone.',
+					message: 'Delete rows from dt-1 where status eq inactive or age lt 18',
 				}),
 			);
 		});

@@ -25,6 +25,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
@@ -296,26 +297,34 @@ export class EphemeralNodeExecutor {
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
 
-		if (!nodeType.execute) {
-			return { status: 'error', data: [], error: 'Node type does not have an execute method' };
-		}
-
-		let output: NodeOutput;
+		let output: NodeOutput | undefined;
 		try {
-			output =
-				nodeType instanceof Node
-					? await nodeType.execute(context)
-					: await nodeType.execute.call(context);
+			const executionResult = await withExpressionIsolate(
+				parts.workflow,
+				async (): Promise<NodeExecutionResult> => {
+					if (!nodeType.execute) {
+						return {
+							status: 'error',
+							data: [],
+							error: 'Node type does not have an execute method',
+						};
+					}
+					output =
+						nodeType instanceof Node
+							? await nodeType.execute(context)
+							: await nodeType.execute.call(context);
+					if (!Array.isArray(output) || !output[0]) {
+						return { status: 'error', data: [], error: 'No output data' };
+					}
+					return { status: 'success', data: output[0] };
+				},
+			);
+			return executionResult;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
 			return { status: 'error', data: [], error: message };
 		}
-
-		if (!Array.isArray(output) || !output[0]) {
-			return { status: 'error', data: [], error: 'No output data' };
-		}
-		return { status: 'success', data: output[0] };
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {

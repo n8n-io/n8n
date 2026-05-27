@@ -147,7 +147,7 @@ describe('workspace agent integration', () => {
 			.instructions('Base instructions.')
 			.workspace(workspace);
 		const tools = workspace.getTools();
-		expect(tools.length).toBe(13);
+		expect(tools.length).toBe(15);
 
 		const instructions = workspace.getInstructions();
 		expect(instructions).toContain('Fake sandbox');
