@@ -136,9 +136,9 @@ export const sandbox: Service<SandboxResult> = {
 				})
 				.withExposedPorts(API_HTTP_PORT)
 				.withWaitStrategy(
-					Wait.forHttp('/healthz', API_HTTP_PORT)
-						.forResponsePredicate((res) => res === '')
-						.withStartupTimeout(120_000),
+					Wait.forSuccessfulCommand(
+						`wget -q -O /dev/null --header='X-Api-Key: ${RUNNER_API_KEY}' http://localhost:${API_HTTP_PORT}/healthz`,
+					).withStartupTimeout(120_000),
 				)
 				.withLogConsumer(runnerConsumer)
 				.withReuse()
