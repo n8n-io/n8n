@@ -77,11 +77,63 @@ jest.mock('@n8n/di', () => ({
 	Service: () => (target: unknown) => target,
 }));
 
+import { Container } from '@n8n/di';
+import { createEvalAgent, Tool } from '@n8n/instance-ai';
 import FileType from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
+import { fetchApiDocs } from '../api-docs';
 import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
+import { extractNodeConfig } from '../node-config';
+
+// `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
+// inside jest.mock factories before every test, so re-apply the mocks that
+// matter for tests to pass. Keep in sync with the factory bodies above.
+function reapplyMockImplementations() {
+	jest.mocked(Container.get).mockReturnValue({
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		debug: jest.fn(),
+	});
+	jest.mocked(fetchApiDocs).mockResolvedValue('');
+	jest.mocked(extractNodeConfig).mockReturnValue('{}');
+	jest.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
+	jest.mocked(Tool).mockImplementation(((name: string) => {
+		const built: { _name: string; _handler?: unknown } = { _name: name };
+		const builder = {
+			description: jest.fn().mockReturnThis(),
+			input: jest.fn().mockReturnThis(),
+			handler: jest.fn(function (this: unknown, h: unknown) {
+				built._handler = h;
+				return this;
+			}),
+			build: jest.fn(() => built),
+		};
+		return builder;
+	}) as never);
+	mockAgent.tool.mockImplementation(function (
+		this: MockAgent,
+		builtTool: { _name?: string; _handler?: unknown },
+	) {
+		if (builtTool._name === 'submit_response') {
+			submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
+		} else if (builtTool._name === 'get_endpoint_quirks') {
+			quirksCapture.handler = builtTool._handler as () => Promise<string>;
+		}
+		return this;
+	});
+	mockGenerate.mockImplementation(async (_prompt: string) => {
+		if (generateOverride.fn) return await generateOverride.fn();
+		const next = submitQueue.shift();
+		if (next && submitCapture.handler) {
+			await submitCapture.handler(next);
+		}
+		return { messages: [], finishReason: 'tool-calls' };
+	});
+	mockExtractText.mockImplementation((result: { _text?: string }) => result._text ?? '');
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -119,6 +171,7 @@ async function callHandler(
 
 beforeEach(() => {
 	jest.clearAllMocks();
+	reapplyMockImplementations();
 	submitQueue.length = 0;
 	generateOverride.fn = undefined;
 	submitCapture.handler = undefined;

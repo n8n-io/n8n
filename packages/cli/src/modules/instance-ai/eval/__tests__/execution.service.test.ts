@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IWorkflowBase,
@@ -98,8 +99,16 @@ jest.mock('n8n-workflow', () => {
 // Import SUT and mocked modules (after jest.mock calls)
 // ---------------------------------------------------------------------------
 
+import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
+import { Workflow } from 'n8n-workflow';
+import { normalizePinData } from '@n8n/workflow-sdk';
+
+import { getBase } from '@/workflow-execute-additional-data';
+
 import { EvalExecutionService } from '../execution.service';
+import { LlmWireServer } from '../llm-wire-server';
 import { createLlmMockHandler } from '../mock-handler';
+import { patchNoProxyForLoopback } from '../proxy-loopback';
 import {
 	generateMockHints,
 	identifyNodesForHints,
@@ -117,6 +126,42 @@ const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
 const partitionAiRootsMock = jest.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
+
+// `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
+// inside jest.mock factories before every test, so re-apply the class-style
+// mock implementations here. Keep in sync with the factory bodies above.
+function reapplyConstructorMockImplementations() {
+	jest.mocked(Workflow).mockImplementation(
+		() =>
+			({
+				getStartNode: mockGetStartNode,
+				nodes: {},
+			}) as unknown as Workflow,
+	);
+	jest.mocked(WorkflowExecute).mockImplementation(
+		() =>
+			({
+				processRunExecutionData: mockProcessRunExecutionData,
+			}) as unknown as WorkflowExecute,
+	);
+	jest
+		.mocked(ExecutionLifecycleHooks)
+		.mockImplementation(() => ({}) as unknown as ExecutionLifecycleHooks);
+	jest.mocked(LlmWireServer).mockImplementation((options: unknown) => {
+		capturedWireServerOptions.last = options;
+		return {
+			start: mockWireServerStart,
+			stop: mockWireServerStop,
+			url: 'http://127.0.0.1:54321',
+		} as unknown as LlmWireServer;
+	});
+	jest.mocked(patchNoProxyForLoopback).mockImplementation(() => mockRestoreNoProxy);
+	jest.mocked(normalizePinData).mockImplementation((pd: unknown) => pd as IPinData);
+	jest.mocked(getBase).mockResolvedValue({
+		hooks: undefined,
+		evalLlmMockHandler: undefined,
+	} as unknown as Awaited<ReturnType<typeof getBase>>);
+}
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
 	return {
@@ -201,6 +246,7 @@ describe('EvalExecutionService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		reapplyConstructorMockImplementations();
 
 		service = new EvalExecutionService(
 			workflowFinderService,
