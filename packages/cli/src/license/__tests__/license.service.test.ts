@@ -98,9 +98,10 @@ describe('LicenseService', () => {
 		Object.entries(LicenseErrors).forEach(([errorId, message]) =>
 			it(`should handle ${errorId} error`, async () => {
 				license.activate.mockRejectedValueOnce(new LicenseError(errorId));
-				await expect(licenseService.activateLicense('')).rejects.toThrowError(
-					new BadRequestError(message),
-				);
+				const execution = licenseService.activateLicense('');
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(message);
 			}),
 		);
 	});
@@ -126,9 +127,10 @@ describe('LicenseService', () => {
 
 		test('on failure', async () => {
 			license.renew.mockRejectedValueOnce(new LicenseError('RESERVATION_EXPIRED'));
-			await expect(licenseService.renewLicense()).rejects.toThrowError(
-				new BadRequestError('Activation key has expired'),
-			);
+
+			const execution = licenseService.renewLicense();
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Activation key has expired');
 
 			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
 				success: false,
