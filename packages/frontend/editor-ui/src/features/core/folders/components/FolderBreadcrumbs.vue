@@ -98,6 +98,7 @@ const hasMoreItems = computed(() => {
 function toMenuItem(action: FolderBreadcrumbAction): DropdownMenuItemProps<string, MenuItemData> {
 	return {
 		id: action.value,
+		testId: `action-${action.value}`,
 		label: action.label,
 		disabled: action.disabled,
 		children: action.children?.map(toMenuItem),
@@ -270,6 +271,7 @@ onBeforeUnmount(() => {
 		<N8nDropdownMenu
 			v-if="menuItems.length"
 			:items="menuItems"
+			content-test-id="action-toggle-dropdown"
 			placement="bottom-end"
 			:extra-popper-class="$style['actions-menu-dropdown']"
 			@select="onAction"
