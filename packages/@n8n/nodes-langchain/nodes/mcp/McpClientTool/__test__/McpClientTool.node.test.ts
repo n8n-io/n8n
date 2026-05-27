@@ -54,6 +54,37 @@ describe('McpClientTool', () => {
 				getTools.call(mock<ILoadOptionsFunctions>({ getNode: jest.fn(() => node) })),
 			).rejects.toEqual(new NodeOperationError(node, 'Could not connect to your MCP server'));
 		});
+
+		it('should block the request when the credential restricts the endpoint URL', async () => {
+			const node = mock<INode>({ typeVersion: 1.1 });
+
+			await expect(
+				getTools.call(
+					mock<ILoadOptionsFunctions>({
+						getNode: jest.fn(() => node),
+						getNodeParameter: jest.fn((key, _index) => {
+							const params: Record<string, any> = {
+								authentication: 'headerAuth',
+								serverTransport: 'httpStreamable',
+								endpointUrl: 'https://evil.example.com/mcp',
+							};
+							return params[key];
+						}),
+						getCredentials: jest.fn().mockResolvedValue({
+							name: 'X-Test',
+							value: 'trace',
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains: 'allowed.example.com',
+						}),
+					}),
+				),
+			).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Domain not allowed: This credential is restricted from accessing https://evil.example.com/mcp. Only the following domains are allowed: allowed.example.com',
+				),
+			);
+		});
 	});
 
 	describe('supplyData', () => {
@@ -224,7 +255,9 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const fetchSpy = jest
+				.spyOn(global, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 200 }));
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
@@ -237,6 +270,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
+				redirect: 'manual',
 			});
 		});
 
@@ -274,7 +308,9 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(McpToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
+			const fetchSpy = jest
+				.spyOn(global, 'fetch')
+				.mockResolvedValue(new Response(null, { status: 200 }));
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
@@ -287,6 +323,7 @@ describe('McpClientTool', () => {
 			await customFetch?.(url, {} as any);
 			expect(fetchSpy).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
+				redirect: 'manual',
 			});
 		});
 

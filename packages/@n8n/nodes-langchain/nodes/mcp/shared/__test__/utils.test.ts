@@ -2,10 +2,16 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
+import {
+	assertCredentialAllowsUrl,
+	connectMcpClient,
+	getAuthHeaders,
+	tryRefreshOAuth2Token,
+} from '../utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
@@ -87,7 +93,7 @@ describe('utils', () => {
 
 			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toMatchObject({ headers: { Authorization: 'Bearer access-token' } });
 		});
 
 		it('should return the headers for headerAuth', async () => {
@@ -99,7 +105,7 @@ describe('utils', () => {
 
 			const result = await getAuthHeaders(ctx, 'headerAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar' } });
+			expect(result).toMatchObject({ headers: { Foo: 'bar' } });
 		});
 
 		it('should return the headers for bearerAuth', async () => {
@@ -110,7 +116,7 @@ describe('utils', () => {
 
 			const result = await getAuthHeaders(ctx, 'bearerAuth');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toMatchObject({ headers: { Authorization: 'Bearer access-token' } });
 		});
 
 		it('should return the headers for multipleHeadersAuth', async () => {
@@ -126,7 +132,7 @@ describe('utils', () => {
 
 			const result = await getAuthHeaders(ctx, 'multipleHeadersAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar', Test: '123' } });
+			expect(result).toMatchObject({ headers: { Foo: 'bar', Test: '123' } });
 		});
 
 		it('should return an empty object for none', async () => {
@@ -313,6 +319,68 @@ describe('utils', () => {
 				expect(onUnauthorized).toHaveBeenCalledTimes(1);
 				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
 			});
+		});
+	});
+
+	describe('assertCredentialAllowsUrl', () => {
+		const node = { name: 'MCP Client', type: 'mcpClient' } as INode;
+
+		it('returns undefined when no credentials are provided', () => {
+			expect(assertCredentialAllowsUrl(node, undefined, 'https://example.com')).toBeUndefined();
+		});
+
+		it('returns undefined when restriction mode is "all"', () => {
+			expect(
+				assertCredentialAllowsUrl(
+					node,
+					{ allowedHttpRequestDomains: 'all' },
+					'https://example.com',
+				),
+			).toBeUndefined();
+		});
+
+		it('returns undefined when restriction mode is absent', () => {
+			expect(assertCredentialAllowsUrl(node, {}, 'https://example.com')).toBeUndefined();
+		});
+
+		it('throws when restriction mode is "none"', () => {
+			expect(() =>
+				assertCredentialAllowsUrl(
+					node,
+					{ allowedHttpRequestDomains: 'none' },
+					'https://example.com',
+				),
+			).toThrow(NodeOperationError);
+		});
+
+		it('throws when restriction mode is "domains" but allowedDomains is empty', () => {
+			expect(() =>
+				assertCredentialAllowsUrl(
+					node,
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+					'https://example.com',
+				),
+			).toThrow(/No allowed domains specified/);
+		});
+
+		it('throws when restriction mode is "domains" and URL is not in allowlist', () => {
+			expect(() =>
+				assertCredentialAllowsUrl(
+					node,
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: 'allowed.com' },
+					'https://blocked.com/mcp',
+				),
+			).toThrow(/Domain not allowed/);
+		});
+
+		it('returns the allowlist when restriction mode is "domains" and URL matches', () => {
+			expect(
+				assertCredentialAllowsUrl(
+					node,
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: 'allowed.com, *.foo.com' },
+					'https://sub.foo.com/mcp',
+				),
+			).toBe('allowed.com, *.foo.com');
 		});
 	});
 });

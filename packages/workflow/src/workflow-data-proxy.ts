@@ -30,7 +30,7 @@ import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
-import { deepCopy, isObjectEmpty } from './utils';
+import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
@@ -736,6 +736,19 @@ export class WorkflowDataProxy {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
+			}
+
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
 			}
 
 			if (!Array.isArray(data) && typeof data === 'object') {

@@ -2,6 +2,7 @@ import { type ILoadOptionsFunctions, type INodePropertyOptions } from 'n8n-workf
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
+	assertCredentialAllowsUrl,
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
@@ -21,13 +22,15 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
 		endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	}
-	const { headers } = await getAuthHeaders(this, authentication);
+	const { headers, credentials } = await getAuthHeaders(this, authentication);
+	const allowedDomains = assertCredentialAllowsUrl(node, credentials, endpointUrl);
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		allowedDomains,
 		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 	});
 

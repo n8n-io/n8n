@@ -348,6 +348,11 @@ const unsafeObjectProperties = new Set([
 	'prototype',
 	'constructor',
 	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
 	'mainModule',
 	'binding',
 	'_linkedBinding',
@@ -373,6 +378,16 @@ const unsafeObjectProperties = new Set([
  */
 export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
+}
+
+const unsafeObjectPropertyTokenPattern = new RegExp(
+	`\\b(?:${[...unsafeObjectProperties]
+		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|')})\\b`,
+);
+
+export function containsUnsafeObjectPropertyToken(input: string) {
+	return unsafeObjectPropertyTokenPattern.test(input);
 }
 
 /**

@@ -1,9 +1,9 @@
 import ast
 import hashlib
-import re
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
+from src.format_validation import find_blocked_format_tokens
 from src.import_validation import validate_module_import
 from src.config.security_config import SecurityConfig
 from src.constants import (
@@ -19,15 +19,17 @@ from src.constants import (
     ERROR_GLOBAL_BLOCKED_NAME,
     ERROR_FUNCDEF_BLOCKED_NAME,
     ERROR_CLASSDEF_BLOCKED_NAME,
+    ERROR_PARAM_BLOCKED_NAME,
+    ERROR_BARE_FORMAT_ATTRIBUTE,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
 
+FORMAT_METHOD_NAMES = frozenset({"format", "format_map"})
+
 CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
-
-FORMAT_FIELD_PATTERN = re.compile(r"\{([^}]*)\}")
 
 
 class SecurityValidator(ast.NodeVisitor):
@@ -37,6 +39,7 @@ class SecurityValidator(ast.NodeVisitor):
         self.checked_modules: set[str] = set()
         self.violations: list[str] = []
         self.security_config = security_config
+        self._call_func_attr_ids: set[int] = set()
 
     # ========== Detection ==========
 
@@ -46,6 +49,10 @@ class SecurityValidator(ast.NodeVisitor):
         for alias in node.names:
             module_name = alias.name
             self._validate_import(module_name, node.lineno)
+            if alias.asname and alias.asname in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
+                )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -55,6 +62,16 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
         elif node.module:
             self._validate_import(node.module, node.lineno)
+
+        for alias in node.names:
+            if alias.asname and alias.asname in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
+                )
+            elif alias.name in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.name)
+                )
 
         self.generic_visit(node)
 
@@ -72,6 +89,14 @@ class SecurityValidator(ast.NodeVisitor):
                 node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
             )
 
+        if (
+            node.attr in FORMAT_METHOD_NAMES
+            and id(node) not in self._call_func_attr_ids
+        ):
+            self._add_violation(
+                node.lineno, ERROR_BARE_FORMAT_ATTRIBUTE.format(attr=node.attr)
+            )
+
         if node.attr.startswith("_") and "__" in node.attr:
             parts = node.attr.split("__", 1)
             if len(parts) == 2 and parts[0].startswith("_"):
@@ -81,6 +106,12 @@ class SecurityValidator(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         """Detect calls to __import__() that could bypass security restrictions."""
+
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in FORMAT_METHOD_NAMES
+        ):
+            self._call_func_attr_ids.add(id(node.func))
 
         is_import_call = (
             # __import__()
@@ -182,6 +213,20 @@ class SecurityValidator(ast.NodeVisitor):
             )
         self.generic_visit(node)
 
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if node.name and node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_DANGEROUS_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_arg(self, node: ast.arg) -> None:
+        if node.arg in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_PARAM_BLOCKED_NAME.format(name=node.arg)
+            )
+        self.generic_visit(node)
+
     def visit_MatchClass(self, node: ast.MatchClass) -> None:
         """Detect match patterns that extract blocked attributes, e.g. `case AttributeError(obj=x)`"""
 
@@ -199,27 +244,10 @@ class SecurityValidator(ast.NodeVisitor):
     def _check_format_string(self, s: str, lineno: int) -> None:
         """Check if a string contains format patterns that access blocked attributes."""
 
-        # escaped braces produce literal braces, not format fields
-        s = s.replace("{{", "").replace("}}", "")
-
-        for match in FORMAT_FIELD_PATTERN.finditer(s):
-            field = match.group(1)
-
-            # attribute access
-            for attr_match in re.finditer(r"\.(\w+)", field):
-                attr = attr_match.group(1)
-                if attr in BLOCKED_ATTRIBUTES or attr in BLOCKED_NAMES:
-                    self._add_violation(
-                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=attr)
-                    )
-
-            # subscript access
-            for subscript_match in re.finditer(r"\[(['\"]?)(\w+)\1\]", field):
-                key = subscript_match.group(2)
-                if key in BLOCKED_ATTRIBUTES or key in BLOCKED_NAMES:
-                    self._add_violation(
-                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=key)
-                    )
+        for token in find_blocked_format_tokens(s):
+            self._add_violation(
+                lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=token)
+            )
 
     # ========== Validation ==========
 
