@@ -34,16 +34,22 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 		// Reshape `instance_ai_checkpoints` first, then create the table that
 		// FKs into it. SQLite's `dropNotNull` recreates the table; doing that
 		// while a FK already points at it would force a more fragile rebuild.
-		await schemaBuilder.addColumns(checkpointsTable, [
-			schemaBuilder
-				.column('expiredAt')
-				.timestampTimezone()
-				.comment('Soft-delete timestamp: null means live; non-null marks the row as a tombstone.'),
-		]);
+		await schemaBuilder.addColumns(
+			checkpointsTable,
+			[
+				schemaBuilder
+					.column('expiredAt')
+					.timestampTimezone()
+					.comment('Soft-delete timestamp: null means live; non-null marks the row as a tombstone.'),
+			],
+			{ ackThisRecreatesOnSqlite: true },
+		);
 
 		// Soft-delete sets `state = null` on consumed/pruned snapshots, so the
 		// column must be nullable. Created NOT NULL in `1784000000007`.
-		await schemaBuilder.dropNotNull(checkpointsTable, 'state');
+		await schemaBuilder.dropNotNull(checkpointsTable, 'state', {
+			ackThisRecreatesOnSqlite: true,
+		});
 
 		// Enforce the soft-delete invariant at the DB level: a tombstoned row
 		// (`expiredAt` set) must have released its `state` blob.
@@ -80,8 +86,8 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 		const stateCol = escape.columnName('state');
 		await runQuery(`DELETE FROM ${table} WHERE ${stateCol} IS NULL`);
 
-		await addNotNull(checkpointsTable, 'state');
-		await dropColumns(checkpointsTable, ['expiredAt']);
+		await addNotNull(checkpointsTable, 'state', { ackThisRecreatesOnSqlite: true });
+		await dropColumns(checkpointsTable, ['expiredAt'], { ackThisRecreatesOnSqlite: true });
 	}
 
 	private async createPendingConfirmationsTable({
