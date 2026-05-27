@@ -1,8 +1,4 @@
-import { braveSearch } from '@n8n/ai-utilities';
-
-// ---------------------------------------------------------------------------
-// Mock fetch
-// ---------------------------------------------------------------------------
+import { braveSearch } from '../brave-search';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -28,10 +24,6 @@ const MOCK_BRAVE_RESPONSE = {
 		],
 	},
 };
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe('braveSearch', () => {
 	it('sends correct request to Brave API', async () => {

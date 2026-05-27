@@ -1,42 +1,23 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
-
-const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
-	'anthropic.web_search',
-	'anthropic.web_search_20250305',
-	'anthropic.web_search_20260209',
-	'openai.web_search',
-] as const;
-
-const NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER: Record<string, string> = {
-	anthropic: 'anthropic.web_search',
-	openai: 'openai.web_search',
-};
-
-const NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL: Record<string, string> = {
-	'anthropic.web_search': 'anthropic',
-	'anthropic.web_search_20250305': 'anthropic',
-	'anthropic.web_search_20260209': 'anthropic',
-	'openai.web_search': 'openai',
-};
-
-const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER: Record<
-	string,
-	{ toolName: string; args: Record<string, unknown> }
-> = {
-	anthropic: { toolName: 'anthropic.web_search', args: { maxUses: 5 } },
-	openai: {
-		toolName: 'openai.web_search',
-		args: { externalWebAccess: true, searchContextSize: 'medium' },
-	},
-};
+import {
+	NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER,
+	NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL,
+	NATIVE_WEB_SEARCH_PROVIDER_TOOLS,
+	NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER,
+	type AgentJsonConfig,
+	type NativeWebSearchProvider,
+} from '@n8n/api-types';
 
 export function getProviderPrefix(modelId: string): string {
 	const slashIdx = modelId.indexOf('/');
 	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }
 
+function isNativeWebSearchProvider(provider: string): provider is NativeWebSearchProvider {
+	return provider in NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER;
+}
+
 export function hasNativeWebSearchProvider(modelId: string): boolean {
-	return getProviderPrefix(modelId) in NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER;
+	return isNativeWebSearchProvider(getProviderPrefix(modelId));
 }
 
 export function isNativeWebSearchRequested(config: AgentJsonConfig): boolean {
@@ -59,7 +40,9 @@ export function getNativeWebSearchProviderTools(
 ): Record<string, Record<string, unknown>> {
 	const providerTools = { ...(config.providerTools ?? {}) };
 	const providerPrefix = getProviderPrefix(config.model);
-	const nativeWebSearch = NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER[providerPrefix];
+	const nativeWebSearch = isNativeWebSearchProvider(providerPrefix)
+		? NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER[providerPrefix]
+		: undefined;
 	const explicitDisabled = config.config?.webSearch?.enabled === false;
 	const isEnabled =
 		!!nativeWebSearch &&

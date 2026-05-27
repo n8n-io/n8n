@@ -1,30 +1,18 @@
 import type { AgentJsonConfig } from '../types';
 import type { ProviderCapabilities } from '../provider-capabilities';
+import {
+	ANTHROPIC_NATIVE_WEB_SEARCH_PROVIDER_TOOLS,
+	NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER,
+	NATIVE_WEB_SEARCH_PROVIDER_TOOLS,
+	type NativeWebSearchCanonicalTool,
+} from '@n8n/api-types';
 
-export const NATIVE_WEB_SEARCH_PROVIDER_TOOLS = [
-	'anthropic.web_search',
-	'anthropic.web_search_20250305',
-	'anthropic.web_search_20260209',
-	'openai.web_search',
-] as const;
-
-export type NativeWebSearchProviderTool = Exclude<ProviderCapabilities['webSearch'], false>;
+export type NativeWebSearchProviderTool = NativeWebSearchCanonicalTool;
 export type NativeWebSearchArgs = Record<string, unknown>;
 type WebSearchConfig = NonNullable<NonNullable<AgentJsonConfig['config']>['webSearch']>;
 type WebSearchProvider = WebSearchConfig['provider'];
 export type FallbackWebSearchProvider = 'brave' | 'searxng';
 export type WebSearchMethod = 'native' | FallbackWebSearchProvider;
-
-const ANTHROPIC_WEB_SEARCH_PROVIDER_TOOLS = [
-	'anthropic.web_search',
-	'anthropic.web_search_20250305',
-	'anthropic.web_search_20260209',
-] as const;
-
-const DEFAULT_NATIVE_WEB_SEARCH_ARGS: Record<NativeWebSearchProviderTool, NativeWebSearchArgs> = {
-	'anthropic.web_search': { maxUses: 5 },
-	'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
-};
 
 export function isFallbackWebSearchProvider(
 	provider: WebSearchProvider,
@@ -58,13 +46,20 @@ export function getNativeWebSearchArgs(
 ): NativeWebSearchArgs {
 	if (!providerTool) return {};
 	if (providerTool === 'anthropic.web_search') {
-		const matchingTool = ANTHROPIC_WEB_SEARCH_PROVIDER_TOOLS.find(
+		const matchingTool = ANTHROPIC_NATIVE_WEB_SEARCH_PROVIDER_TOOLS.find(
 			(tool) => config?.providerTools?.[tool],
 		);
 		return { ...(matchingTool ? config?.providerTools?.[matchingTool] : {}) };
 	}
 
 	return { ...(config?.providerTools?.[providerTool] ?? {}) };
+}
+
+function getDefaultNativeWebSearchArgs(providerTool: NativeWebSearchCanonicalTool) {
+	const defaults = Object.values(NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER).find(
+		(defaultsByProvider) => defaultsByProvider.toolName === providerTool,
+	);
+	return defaults ? { ...defaults.args } : {};
 }
 
 export function withNativeWebSearchConfig(
@@ -84,7 +79,7 @@ export function withNativeWebSearchConfig(
 
 	if (enabled && providerTool) {
 		providerTools[providerTool] = {
-			...DEFAULT_NATIVE_WEB_SEARCH_ARGS[providerTool],
+			...getDefaultNativeWebSearchArgs(providerTool),
 			...args,
 		};
 	}
