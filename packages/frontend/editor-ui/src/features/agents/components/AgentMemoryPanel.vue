@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nButton, N8nText, N8nSwitch } from '@n8n/design-system';
+import { computed, ref, watch } from 'vue';
+import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -8,6 +8,8 @@ import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
+import AgentModelSelector from './AgentModelSelector.vue';
+import { modelToString } from '../utils/model-string';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
@@ -21,43 +23,37 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
-const episodicMemoryEnabled = computed(
-	() => memory.value !== null && episodicMemory.value?.enabled === true,
-);
+const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
 );
+const configuredMemoryModel = computed(() => {
+	if (episodicMemory.value?.enabled !== true) return null;
 
-function onEnableMemory() {
+	return (
+		episodicMemory.value.reflectorModel?.model ??
+		episodicMemory.value.extractorModel?.model ??
+		props.config?.memory?.observationalMemory?.reflectorModel?.model ??
+		props.config?.memory?.observationalMemory?.observerModel?.model ??
+		null
+	);
+});
+const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
+
+watch(configuredMemoryModel, (model) => {
+	selectedMemoryModel.value = model;
+});
+
+function buildEnabledMemoryConfig() {
 	const existingMemory = props.config?.memory;
-	emit('update:config', {
-		memory: {
-			...existingMemory,
-			enabled: true,
-			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
-		},
-	});
-}
 
-function onDisableMemory() {
-	emit('update:config', {
-		memory: {
-			...(props.config?.memory ?? { storage: 'n8n' as const }),
-			enabled: false,
-			episodicMemory: { enabled: false },
-		},
-	});
-}
-
-function onMemoryToggle(enabled: boolean) {
-	if (enabled) {
-		onEnableMemory();
-	} else {
-		onDisableMemory();
-	}
+	return {
+		...existingMemory,
+		enabled: true,
+		storage: 'n8n' as const,
+		lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+	};
 }
 
 function enableEpisodicMemory(credentialId: string) {
@@ -65,10 +61,7 @@ function enableEpisodicMemory(credentialId: string) {
 	const existingEpisodicMemory = existingMemory?.episodicMemory;
 	emit('update:config', {
 		memory: {
-			...existingMemory,
-			enabled: true,
-			storage: 'n8n',
-			lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+			...buildEnabledMemoryConfig(),
 			episodicMemory: {
 				...(existingEpisodicMemory?.enabled === true ? existingEpisodicMemory : {}),
 				enabled: true,
@@ -81,9 +74,36 @@ function enableEpisodicMemory(credentialId: string) {
 function disableEpisodicMemory() {
 	emit('update:config', {
 		memory: {
-			...(props.config?.memory ?? { storage: 'n8n' as const }),
-			enabled: props.config?.memory?.enabled ?? false,
+			...buildEnabledMemoryConfig(),
 			episodicMemory: { enabled: false },
+		},
+	});
+}
+
+function onMemoryRecallModelChange(selection: { model: string; credentialId: string | null }) {
+	if (!selection.credentialId) return;
+
+	selectedMemoryModel.value = selection.model;
+	const workerModel = { model: selection.model, credential: selection.credentialId };
+
+	const existingMemory = props.config?.memory;
+	const existingEpisodicMemory = existingMemory?.episodicMemory;
+
+	if (existingEpisodicMemory?.enabled !== true) return;
+
+	emit('update:config', {
+		memory: {
+			...buildEnabledMemoryConfig(),
+			observationalMemory: {
+				...existingMemory?.observationalMemory,
+				observerModel: workerModel,
+				reflectorModel: workerModel,
+			},
+			episodicMemory: {
+				...existingEpisodicMemory,
+				extractorModel: workerModel,
+				reflectorModel: workerModel,
+			},
 		},
 	});
 }
@@ -98,9 +118,9 @@ function openEpisodicMemoryCredentialModal() {
 			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
 			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
 			cancelLabel: i18n.baseText('generic.cancel'),
-			confirmLabel: i18n.baseText('agents.builder.episodicMemoryCredentialModal.confirm'),
+			confirmLabel: i18n.baseText('generic.connect'),
 			showDelete: false,
-			hideCreateNew: false,
+			hideCreateNew: true,
 			source: 'agent_episodic_memory',
 			pickerDataTestId: 'agent-episodic-memory-credential-picker',
 			onSelect: (credentialId: string | null) => {
@@ -122,20 +142,25 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 <template>
 	<div :class="[$style.container, props.disabled && $style.disabled]">
-		<div :class="$style.titleGroup">
-			<div :class="$style.header">
-				<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.memory.title') }}</N8nText>
-				<N8nSwitch
-					:model-value="memory !== null"
-					:disabled="props.disabled"
-					data-testid="agent-memory-toggle"
-					@update:model-value="onMemoryToggle"
+		<div v-if="episodicMemoryEnabled" :class="$style.row">
+			<div :class="$style.titleGroup">
+				<N8nText :bold="true">
+					{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
+				</N8nText>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
+				</N8nText>
+			</div>
+			<div :class="$style.modelSelector">
+				<AgentModelSelector
+					:model="selectedMemoryModel"
+					:default-model="modelToString(props.config?.model)"
+					data-testid="agent-memory-recall-model-selector"
+					@change="onMemoryRecallModelChange"
 				/>
 			</div>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.memory.description') }}
-			</N8nText>
 		</div>
+
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
 				<N8nText :bold="true">
@@ -146,16 +171,21 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				</N8nText>
 			</div>
 			<div :class="$style.actions">
-				<N8nButton
-					v-if="episodicMemoryEnabled"
-					variant="ghost"
-					size="small"
-					:disabled="props.disabled"
-					data-testid="agent-episodic-memory-change-credential"
-					@click="openEpisodicMemoryCredentialModal"
-				>
-					{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
-				</N8nButton>
+				<N8nTooltip>
+					<template #content>
+						{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
+					</template>
+					<N8nIconButton
+						v-if="episodicMemoryEnabled"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						icon="cog"
+						:disabled="props.disabled"
+						data-testid="agent-episodic-memory-change-credential"
+						@click="openEpisodicMemoryCredentialModal"
+					/>
+				</N8nTooltip>
 				<N8nSwitch
 					:model-value="episodicMemoryEnabled"
 					:disabled="props.disabled"
@@ -203,6 +233,17 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	button {
+		color: var(--icon-color);
+	}
+}
+
+.modelSelector {
+	display: flex;
+	justify-content: flex-end;
+	margin-left: auto;
+	min-width: 280px;
 }
 
 .container.disabled {

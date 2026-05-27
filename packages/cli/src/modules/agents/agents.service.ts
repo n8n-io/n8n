@@ -72,6 +72,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -160,6 +161,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	userId?: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -289,14 +291,33 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
+	private createAgentExecutionCounter({
+		agentId,
+		userId,
+	}: {
+		agentId: string;
+		userId?: string;
+	}): AgentExecutionCounter {
+		const attribution = userId ? { user_id: userId } : {};
 		return {
 			incrementMessageCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					message_count: 1,
+				}),
 			incrementTokenCount: (tokenCount) =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					token_count: tokenCount,
+				}),
 			incrementToolCallCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					tool_call_count: 1,
+				}),
 		};
 	}
 
@@ -865,7 +886,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -913,6 +934,8 @@ export class AgentsService {
 	 *                     a real credential in the project
 	 *   - "episodicMemory.credential": configured Episodic Memory credential
 	 *                     does not resolve to a real credential in the project
+	 *   - "memory.*.*Model.credential": configured memory worker model
+	 *                     credential does not resolve or does not match the model provider
 	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
@@ -941,9 +964,12 @@ export class AgentsService {
 		}
 
 		let credentialList: Awaited<ReturnType<CredentialProvider['list']>> | undefined;
-		const credentialExists = async (credentialId: string) => {
+		const findCredential = async (credentialId: string) => {
 			credentialList ??= await credentialProvider.list();
-			return credentialList.some((credential) => credential.id === credentialId);
+			return credentialList.find((credential) => credential.id === credentialId);
+		};
+		const credentialExists = async (credentialId: string) => {
+			return (await findCredential(credentialId)) !== undefined;
 		};
 
 		if (!config.credential?.trim()) {
@@ -959,10 +985,36 @@ export class AgentsService {
 		}
 
 		const episodicMemory = config.memory?.episodicMemory;
-		if (config.memory?.enabled && episodicMemory?.enabled === true) {
+		if (config.memory?.enabled) {
 			try {
-				if (!(await credentialExists(episodicMemory.credential.trim()))) {
-					missing.push('episodicMemory.credential');
+				await this.validateMemoryWorkerModel(
+					config.memory.observationalMemory?.observerModel,
+					'memory.observationalMemory.observerModel',
+					findCredential,
+					missing,
+				);
+				await this.validateMemoryWorkerModel(
+					config.memory.observationalMemory?.reflectorModel,
+					'memory.observationalMemory.reflectorModel',
+					findCredential,
+					missing,
+				);
+				if (episodicMemory?.enabled === true) {
+					if (!(await credentialExists(episodicMemory.credential.trim()))) {
+						missing.push('episodicMemory.credential');
+					}
+					await this.validateMemoryWorkerModel(
+						episodicMemory.extractorModel,
+						'memory.episodicMemory.extractorModel',
+						findCredential,
+						missing,
+					);
+					await this.validateMemoryWorkerModel(
+						episodicMemory.reflectorModel,
+						'memory.episodicMemory.reflectorModel',
+						findCredential,
+						missing,
+					);
 				}
 			} catch {
 				// Same behavior as the main model credential: runtime reconstruction
@@ -988,6 +1040,44 @@ export class AgentsService {
 		return { missing };
 	}
 
+	private async validateMemoryWorkerModel(
+		modelConfig: { model?: string | null; credential?: string | null } | string | null | undefined,
+		path: string,
+		findCredential: (
+			credentialId: string,
+		) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>,
+		missing: string[],
+	) {
+		if (modelConfig === undefined || modelConfig === null) return;
+
+		if (typeof modelConfig === 'string') {
+			missing.push(`${path}.credential`);
+			return;
+		}
+
+		if (!modelConfig.model?.trim() || !AgentModelSchema.safeParse(modelConfig.model).success) {
+			missing.push(`${path}.model`);
+		}
+
+		const credentialId = modelConfig.credential?.trim();
+		if (!credentialId) {
+			missing.push(`${path}.credential`);
+			return;
+		}
+
+		const credential = await findCredential(credentialId);
+		if (
+			!credential ||
+			!this.workerCredentialSupportsModel(credential.type, modelConfig.model ?? '')
+		) {
+			missing.push(`${path}.credential`);
+		}
+	}
+
+	private workerCredentialSupportsModel(credentialType: string, model: string) {
+		return LLM_PROVIDER_DEFAULTS[credentialType]?.provider === getProviderPrefix(model);
+	}
+
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 *
@@ -1005,6 +1095,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			userId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1107,14 +1198,15 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const { agentInstance, toolRegistry, agentId, userId, message, memory, projectId, source } =
+			config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1212,6 +1304,7 @@ export class AgentsService {
 		threadId: string,
 		userId: string,
 		projectId: string,
+		telemetryUserId?: string,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1246,7 +1339,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1852,4 +1945,9 @@ export class AgentsService {
 		const toolRegistry = buildToolRegistry(resolvedTools);
 		return { agent: reconstructed, toolRegistry };
 	}
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }

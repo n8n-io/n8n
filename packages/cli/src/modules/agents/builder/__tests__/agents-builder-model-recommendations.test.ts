@@ -157,7 +157,22 @@ describe('builder model recommendations', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
 		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
+		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
 		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
+		expect(buildPrompt(null)).toContain('do not recommend or name');
+	});
+
+	it('keeps always-on interaction, expression, and workflow guidance in the main prompt', () => {
+		const prompt = buildPrompt('### Recommended LLM Models\n\n- OpenAI: `openai/gpt-5` GPT-5');
+
+		expect(prompt).toContain('### Recommended LLM Models');
+		expect(prompt).toContain('Never call two interactive tools in parallel');
+		expect(prompt).toContain('$fromAI');
+		expect(prompt).toContain('$now.toISO()');
+		expect(prompt).toContain('$today');
+		expect(prompt).toContain('## Workflow');
+		expect(prompt).toContain('Before every `write_config` or `patch_config`, call `read_config`');
+		expect(prompt).toContain('## Example flows');
 	});
 
 	it('registers only optional builder runtime skills', () => {
@@ -165,5 +180,14 @@ describe('builder model recommendations', () => {
 			'agent-builder-integrations',
 			'agent-builder-target-skills',
 		]);
+	});
+
+	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+
+		expect(integrationsSkill?.instructions).not.toContain('slackOAuth2Api');
+		expect(integrationsSkill?.instructions).not.toContain('prefer the OAuth variant');
 	});
 });

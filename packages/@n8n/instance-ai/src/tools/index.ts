@@ -115,8 +115,9 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 }
 
 /**
- * Creates orchestrator-scoped domain tools — restricted action surfaces
- * for tools where the orchestrator should not have write/builder access.
+ * Creates orchestrator-scoped domain tools. Workflow and node tools keep
+ * orchestrator-specific surfaces; data tables stay writable so the
+ * data-table-manager skill can act directly without delegating.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -124,10 +125,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
-		[
-			DOMAIN_TOOL_IDS.DATA_TABLES,
-			loadDataTablesTool().createDataTablesTool(context, 'orchestrator'),
-		],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context, 'orchestrator')],

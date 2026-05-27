@@ -103,9 +103,9 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 
-		const method = wrapper.findComponent('[data-testid="agent-web-search-method"]');
+		const method = wrapper.find('[data-testid="agent-web-search-method"]');
 		expect(method.exists()).toBe(true);
-		expect(method.props('modelValue')).toBe('off');
+		expect((method.element as HTMLSelectElement).value).toBe('off');
 
 		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
 		await nextTick();
@@ -289,8 +289,8 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
-		const webSearchMethod = wrapper.findComponent('[data-testid="agent-web-search-method"]');
-		expect(webSearchMethod.props('disabled')).toBe(true);
+		const webSearchMethod = wrapper.find('[data-testid="agent-web-search-method"]');
+		expect(webSearchMethod.attributes('disabled')).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
 		).toBeDefined();

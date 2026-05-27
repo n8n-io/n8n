@@ -83,6 +83,7 @@ describe('AgentsService', () => {
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
+	let telemetry: jest.Mocked<Telemetry>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -103,6 +104,7 @@ describe('AgentsService', () => {
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
+		telemetry = mock<Telemetry>();
 		const logger = mockLogger();
 
 		service = new AgentsService(
@@ -127,7 +129,7 @@ describe('AgentsService', () => {
 			publisher,
 			agentsConfig,
 			globalConfig,
-			mock<Telemetry>(),
+			telemetry,
 			chatIntegrationService,
 		);
 	});
@@ -864,6 +866,109 @@ describe('AgentsService', () => {
 			expect(streamConfig.memory.resourceId).toBe(chatUserId);
 			expect(streamConfig.memory.resourceId).not.toBe(n8nPublisherId);
 		});
+
+		it('does not pass an n8n telemetry userId to streamChatResponse', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBeUndefined();
+		});
+	});
+
+	describe('executeForChat', () => {
+		it('passes the authenticated n8n userId to streamChatResponse for telemetry attribution', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({ schema });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					userId,
+					memory: { threadId: 'thread-1', resourceId: userId },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBe(userId);
+		});
+	});
+
+	describe('executeForSchedulePublished', () => {
+		it('does not pass an n8n telemetry userId to streamChatResponse', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForSchedulePublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'schedule-run-1' },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBeUndefined();
+		});
 	});
 
 	describe('streamChatResponse', () => {
@@ -996,6 +1101,56 @@ describe('AgentsService', () => {
 				}),
 			);
 			expect(releaseLock).toHaveBeenCalled();
+		});
+
+		it('passes the explicit workflow userId to the execution counter', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'publisher-user' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const stream = jest.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock: jest.fn(),
+					}),
+				},
+			});
+			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+				ok: true,
+				agent: { name: 'Test Agent', stream },
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				userId,
+			);
+
+			const streamOptions = stream.mock.calls[0][1] as {
+				executionCounter: { incrementMessageCount: () => void };
+			};
+
+			streamOptions.executionCounter.incrementMessageCount();
+
+			expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+				agent_id: agentId,
+				user_id: userId,
+				message_count: 1,
+			});
 		});
 	});
 
@@ -1476,6 +1631,125 @@ describe('AgentsService', () => {
 			expect(result.missing).toContain('webSearch.credential');
 		});
 
+		it('flags missing memory worker model credentials', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred', type: 'openAiApi' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'missing-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.observerModel.credential');
+		});
+
+		it('flags memory worker credentials that do not match the worker model provider', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'wrong-worker-cred', type: 'openAiApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'wrong-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.reflectorModel.credential');
+		});
+
+		it('accepts cross-provider memory worker models with matching credentials', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'embedding-cred', type: 'openAiApi' },
+				{ id: 'worker-cred', type: 'anthropicApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+							extractorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('memory.observationalMemory.observerModel.credential');
+			expect(result.missing).not.toContain('memory.observationalMemory.reflectorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.extractorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.reflectorModel.credential');
+		});
+
 		it('flags config skill refs that have no stored body', async () => {
 			const agent = makeAgent({
 				schema: {
@@ -1594,6 +1868,59 @@ describe('AgentsService', () => {
 			const resumeOptions = resumeArgs[2] as Record<string, unknown>;
 			expect(resumeOptions).not.toHaveProperty('resourceId');
 			expect(JSON.stringify(resumeArgs)).not.toContain(n8nPublisherId);
+		});
+
+		it('keeps the execution counter unattributed for integration resume traffic', async () => {
+			const n8nPublisherId = 'n8n-user-publisher';
+			const runId = 'run-abc';
+			const toolCallId = 'tool-xyz';
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: n8nPublisherId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			n8nCheckpointStorage.getStatus.mockResolvedValue({
+				status: 'ok',
+				checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			} as never);
+
+			const mockAgentInstance = {
+				name: 'Test Agent',
+				resume: jest.fn().mockResolvedValue({
+					stream: {
+						getReader: () => ({
+							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: jest.fn(),
+						}),
+					},
+				}),
+			};
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: {} } as never);
+
+			await service
+				.resumeForChat({ agentId, projectId, runId, toolCallId, resumeData: { value: 'yes' } })
+				.next();
+
+			const resumeOptions = mockAgentInstance.resume.mock.calls[0][2] as {
+				executionCounter: { incrementMessageCount: () => void };
+			};
+
+			resumeOptions.executionCounter.incrementMessageCount();
+
+			expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+				agent_id: agentId,
+				message_count: 1,
+			});
 		});
 	});
 

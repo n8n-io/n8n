@@ -57,6 +57,10 @@ export {
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
 export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
 export {
+	fetchFollowingRedirects,
+	type FollowRedirectsOptions,
+} from './utils/follow-redirects';
+export {
 	getConnectionHintNoticeField,
 	metadataFilterField,
 	getBatchingOptionFields,

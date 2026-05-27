@@ -4,36 +4,23 @@
  * canonical ChatHub ModelSelector), and instructions. Credential selection is
  * handled inside the model picker — no separate credential field.
  */
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type {
-	ChatHubConversationModel,
-	ChatHubProvider,
-	ChatModelDto,
-	ChatModelsResponse,
-} from '@n8n/api-types';
+import type { ChatHubProvider } from '@n8n/api-types';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
 import type { AgentJsonConfig } from '../types';
-import {
-	CHATHUB_TO_CATALOG,
-	CATALOG_TO_CHATHUB,
-	AGENT_UNSUPPORTED_PROVIDERS,
-} from '../provider-mapping';
+import { CATALOG_TO_CHATHUB } from '../provider-mapping';
 import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
-import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import { parseModelString, modelToString } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import AgentMiniEditor from './AgentMiniEditor.vue';
+import AgentModelSelector from './AgentModelSelector.vue';
 import { useToast } from '@/app/composables/useToast';
 
 const props = withDefaults(
@@ -46,79 +33,27 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
-const chatStore = useChatStore();
 const { showError } = useToast();
 
-const { credentialsByProvider, selectCredential } = useChatCredentials(
-	usersStore.currentUserId ?? 'anonymous',
-);
-
-watch(
-	credentialsByProvider,
-	(credentials) => {
-		if (credentials) void chatStore.fetchAgents(credentials);
-	},
-	{ immediate: true },
-);
-
-const filteredAgents = computed<ChatModelsResponse>(
-	() =>
-		Object.fromEntries(
-			Object.entries(chatStore.agents).filter(
-				([provider]) => !AGENT_UNSUPPORTED_PROVIDERS.has(provider),
-			),
-		) as ChatModelsResponse,
-);
-
-const selectedAgent = computed<ChatModelDto | null>(() => {
-	const modelStr = modelToString(props.config?.model);
-	if (!modelStr) return null;
-	const parsed = parseModelString(modelStr);
-	if (!parsed) return null;
-	const chatHubProvider = CATALOG_TO_CHATHUB[parsed.provider];
-	if (!chatHubProvider) return null;
-
-	const registryEntry = filteredAgents.value[chatHubProvider]?.models.find(
-		(m) => isLlmProviderModel(m.model) && m.model.model === parsed.name,
-	);
-	if (registryEntry) return registryEntry;
-
-	return {
-		model: { provider: chatHubProvider, model: parsed.name } as ChatHubConversationModel,
-		name: parsed.name,
-		description: null,
-		icon: null,
-		updatedAt: null,
-		createdAt: null,
-		metadata: {} as ChatModelDto['metadata'],
-		groupName: null,
-		groupIcon: null,
-	};
-});
-
-function onModelChange(selection: ChatHubConversationModel) {
-	if (!isLlmProviderModel(selection)) return;
-	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
-	const credentialId = credentialsByProvider.value?.[selection.provider];
-	if (!credentialId) {
+function onModelChange(selection: { model: string; credentialId: string | null }) {
+	if (!selection.credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
-	const model = `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`;
-	const nextProviderTool = PROVIDER_CAPABILITIES[catalogProvider]?.webSearch ?? false;
+	const parsed = parseModelString(selection.model);
+	const nextProviderTool = parsed
+		? (PROVIDER_CAPABILITIES[parsed.provider]?.webSearch ?? false)
+		: false;
 	emit('update:config', {
-		model,
-		credential: credentialId,
+		model: selection.model,
+		credential: selection.credentialId,
 		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 
 function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
-	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
-	const currentChatHubProvider = parsed ? CATALOG_TO_CHATHUB[parsed.provider] : undefined;
-	if (currentChatHubProvider === provider && credentialId) {
+	if (parsed && CATALOG_TO_CHATHUB[parsed.provider] === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
 	}
 }
@@ -157,14 +92,8 @@ function onInstructionsInput(value: string) {
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
-			<ModelSelector
-				:selected-agent="selectedAgent"
-				:include-custom-agents="false"
-				:credentials="credentialsByProvider"
-				:agents="filteredAgents"
-				:is-loading="false"
-				:warn-missing-credentials="true"
-				horizontal
+			<AgentModelSelector
+				:model="modelToString(props.config?.model)"
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"

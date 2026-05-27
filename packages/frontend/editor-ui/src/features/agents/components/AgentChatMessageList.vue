@@ -6,10 +6,11 @@ import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChun
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import {
 	buildDisplayGroups,
-	type DisplayGroup,
 	type ChatMessage,
+	type DisplayGroup,
 	type InteractivePayload,
 } from '../composables/agentChatMessages';
+import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
@@ -46,8 +47,7 @@ function getAssistantGroupContent(group: DisplayGroup): string {
 }
 
 function isAssistantGroup(group: DisplayGroup): boolean {
-	if (group.kind === 'toolRun') return true;
-	return group.message.role === 'assistant';
+	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -66,16 +66,112 @@ function getAssistantRunContent(groupId: string): string {
 	return lines.join('\n\n');
 }
 
-function shouldShowAssistantActions(groupId: string): boolean {
+interface RecallMemoryOutputEntry {
+	id: string;
+	content: string;
+}
+
+function getRecallMemoryEntries(output: unknown): RecallMemoryOutputEntry[] {
+	if (!output || typeof output !== 'object') return [];
+	if (!('entries' in output) || !Array.isArray(output.entries)) return [];
+
+	const entries: RecallMemoryOutputEntry[] = [];
+
+	for (const [index, entry] of output.entries.entries()) {
+		if (!entry || typeof entry !== 'object') continue;
+		if (!('content' in entry) || typeof entry.content !== 'string') continue;
+
+		const id =
+			'id' in entry && typeof entry.id === 'string'
+				? entry.id
+				: 'createdAt' in entry && typeof entry.createdAt === 'string'
+					? entry.createdAt
+					: `${entry.content}:${index}`;
+		entries.push({ id, content: entry.content });
+	}
+
+	return entries;
+}
+
+interface MemoryUsed {
+	id: string;
+	keyMemory: string;
+	evidence: string[];
+}
+
+function parseMemoryOutput(output: unknown): MemoryUsed[] {
+	return getRecallMemoryEntries(output)
+		.map((entry) => ({
+			id: entry.id,
+			keyMemory: entry.content.trim(),
+			evidence: [],
+		}))
+		.filter((memory) => memory.keyMemory.length > 0);
+}
+
+function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'toolRun') {
+		return (
+			group.finalMessage !== undefined &&
+			group.finalMessage.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+			group.finalMessage.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
+		);
+	}
+
+	return (
+		group.message.role === 'assistant' &&
+		group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+		group.message.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
+	);
+}
+
+function shouldShowAssistantFooter(groupId: string): boolean {
 	const index = displayGroups.value.findIndex((group) => group.id === groupId);
 	if (index === -1) return false;
 
 	const group = displayGroups.value[index];
-	if (!isAssistantGroup(group)) return false;
-	if (!getAssistantRunContent(groupId)) return false;
+	if (!isAssistantGroup(group) || !isCompletedAssistantGroup(group)) return false;
 
 	const nextGroup = displayGroups.value[index + 1];
 	return !nextGroup || !isAssistantGroup(nextGroup);
+}
+
+function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
+	const index = displayGroups.value.findIndex((group) => group.id === groupId);
+	if (index === -1) return [];
+
+	const memories: MemoryUsed[] = [];
+	const memoryIds = new Set<string>();
+
+	for (let i = index; i >= 0; i--) {
+		const group = displayGroups.value[i];
+		if (!isAssistantGroup(group)) break;
+
+		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
+		for (let j = toolCalls.length - 1; j >= 0; j--) {
+			const toolCall = toolCalls[j];
+			if (toolCall.tool !== 'recall_memory') continue;
+
+			const uniqueMemories = parseMemoryOutput(toolCall.output).filter((memory) => {
+				if (memoryIds.has(memory.id)) return false;
+				memoryIds.add(memory.id);
+				return true;
+			});
+			memories.unshift(...uniqueMemories);
+		}
+	}
+
+	return memories;
+}
+
+const openMemoryFooterGroupId = ref<string | null>(null);
+
+function setMemoryFooterOpen(groupId: string, open: boolean): void {
+	openMemoryFooterGroupId.value = open
+		? groupId
+		: openMemoryFooterGroupId.value === groupId
+			? null
+			: openMemoryFooterGroupId.value;
 }
 
 const spokenMessageId = ref<string | null>(null);
@@ -252,8 +348,19 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+					<div
+						v-if="shouldShowAssistantFooter(group.id)"
+						:class="[
+							$style.messageFooter,
+							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
+						]"
+					>
+						<AgentChatMemoryUsed
+							:memories="getMemoriesUsedInAssistantRun(group.id)"
+							@update:open="setMemoryFooterOpen(group.id, $event)"
+						/>
 						<AgentChatMessageActions
+							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
@@ -307,12 +414,23 @@ onBeforeUnmount(() => {
 							/>
 						</div>
 					</div>
-					<div v-if="shouldShowAssistantActions(group.id)" :class="$style.messageActions">
+					<div
+						v-if="shouldShowAssistantFooter(group.id)"
+						:class="[
+							$style.messageFooter,
+							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
+						]"
+					>
 						<AgentChatMessageActions
+							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
 							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
 							:is-speaking="isSpeakingMessage(group.id)"
 							@read-aloud="toggleReadAloud(group.id)"
+						/>
+						<AgentChatMemoryUsed
+							:memories="getMemoriesUsedInAssistantRun(group.id)"
+							@update:open="setMemoryFooterOpen(group.id, $event)"
 						/>
 					</div>
 
@@ -377,16 +495,21 @@ onBeforeUnmount(() => {
 	align-items: stretch;
 }
 
-.messageActions {
+.messageFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--4xs);
 	opacity: 0;
-	pointer-events: none;
-	transition: opacity 0.15s ease;
 }
 
-.message.assistant:hover .messageActions,
-.message.assistant:focus-within .messageActions {
+.message.assistant:hover .messageFooter,
+.message.assistant:focus-within .messageFooter,
+.messageFooter:hover,
+.messageFooter:focus-within,
+.messageFooterVisible {
 	opacity: 1;
-	pointer-events: auto;
 }
 
 .message.user .content {

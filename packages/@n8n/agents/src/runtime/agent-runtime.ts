@@ -47,6 +47,7 @@ import {
 	runEpisodicMemoryIndexer,
 } from './episodic-memory';
 import { AgentEventBus } from './event-bus';
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { fixToolCall } from './fix-tool-call';
 import { toJsonValue } from './json-value';
 import { loadAi } from './lazy-ai';
@@ -488,12 +489,14 @@ export class AgentRuntime {
 		const list = AgentMessageList.deserialize(state.messageList);
 		this.hydrateDeferredToolsFromList(list);
 
-		const tool = this.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName);
-		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
+		const toolForValidation = this.getCurrentTools(state.persistence).find(
+			(t) => t.name === toolCall.toolName,
+		);
+		if (!toolForValidation) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
-		if (tool.resumeSchema) {
-			const parseResult = await parseWithSchema(tool.resumeSchema, data);
+		if (toolForValidation.resumeSchema) {
+			const parseResult = await parseWithSchema(toolForValidation.resumeSchema, data);
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
@@ -522,6 +525,11 @@ export class AgentRuntime {
 				...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
 				...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 			};
+
+			const tool = this.getCurrentTools(state.persistence, mergedExecOptions.executionCounter).find(
+				(t) => t.name === toolCall.toolName,
+			);
+			if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 			const resumeOptions: RuntimeExecutionOptions = {
 				persistence: state.persistence,
@@ -600,15 +608,13 @@ export class AgentRuntime {
 	 */
 	private async buildMessageList(
 		input: AgentMessage[],
-		options?: RunOptions,
+		options?: RunOptions & ExecutionOptions,
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 
 		if (this.config.memory && options?.persistence?.threadId) {
-			const memMessages = await this.config.memory.getMessages(options.persistence.threadId, {
-				limit: this.config.lastMessages ?? 10,
-				resourceId: options.persistence.resourceId,
-			});
+			const memMessages = await this.loadHistoryMessages(options.persistence);
+
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
 			}
@@ -616,18 +622,42 @@ export class AgentRuntime {
 
 		// Semantic recall — retrieve relevant past messages beyond the history window
 		if (this.config.semanticRecall && options?.persistence?.threadId) {
-			await this.performSemanticRecall(
-				list,
-				input,
-				options.persistence.threadId,
-				options.persistence.resourceId,
-			);
+			await this.performSemanticRecall(list, input, options.persistence, options.executionCounter);
 		}
 
 		await this.setListObservationLogMemory(list, options?.persistence);
 
 		list.addInput(input);
+
 		return list;
+	}
+
+	private async loadHistoryMessages(
+		persistence: AgentPersistenceOptions,
+	): Promise<AgentDbMessage[]> {
+		const memory = this.config.memory;
+
+		if (!memory) return [];
+
+		const { threadId, resourceId } = persistence;
+
+		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
+			const cursor = await memory.getCursor(threadId);
+
+			if (cursor) {
+				return await memory.getMessagesForObservationScope(threadId, {
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+			}
+		}
+
+		return await memory.getMessages(threadId, {
+			limit: this.config.lastMessages ?? 10,
+			resourceId,
+		});
 	}
 
 	/**
@@ -637,8 +667,8 @@ export class AgentRuntime {
 	private async performSemanticRecall(
 		list: AgentMessageList,
 		input: AgentMessage[],
-		threadId: string,
-		resourceId?: string,
+		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
 	): Promise<void> {
 		if (!this.config.semanticRecall || !this.config.memory) return;
 
@@ -661,12 +691,13 @@ export class AgentRuntime {
 				this.config.semanticRecall.apiKey,
 			);
 
-			const { embedding } = await embed({ model: embeddingModel, value: userText });
+			const { embedding, usage } = await embed({ model: embeddingModel, value: userText });
+			incrementTokenCountFromUsage(executionCounter, usage);
 
 			const hits = await this.config.memory.queryEmbeddings({
 				scope: this.config.semanticRecall.scope ?? 'resource',
-				threadId,
-				resourceId,
+				threadId: persistence.threadId,
+				resourceId: persistence.resourceId,
 				vector: embedding,
 				topK: this.config.semanticRecall.topK,
 			});
@@ -674,7 +705,7 @@ export class AgentRuntime {
 			if (hits.length > 0) {
 				const hitIds = new Set(hits.map((h) => h.id));
 				// TODO: add getMessagesByIds() to BuiltMemory to avoid loading all messages.
-				const allMsgs = await this.config.memory.getMessages(threadId);
+				const allMsgs = await this.config.memory.getMessages(persistence.threadId);
 
 				if (this.config.semanticRecall.messageRange) {
 					recalled = this.expandMessageRange(
@@ -692,8 +723,8 @@ export class AgentRuntime {
 		} else if (this.config.memory.search) {
 			// Fallback: high-level search (backend handles everything)
 			recalled = await this.config.memory.search(userText, {
-				threadId,
-				resourceId,
+				threadId: persistence.threadId,
+				resourceId: persistence.resourceId,
 				topK: this.config.semanticRecall.topK,
 				messageRange: this.config.semanticRecall.messageRange,
 			});
@@ -896,10 +927,7 @@ export class AgentRuntime {
 		counter: AgentExecutionCounter | undefined,
 		usage: RawTokenUsage | undefined,
 	): void {
-		if (!counter || !usage) return;
-		const tokenCount = usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
-		if (tokenCount <= 0) return;
-		this.recordExecutionCounter(() => counter.incrementTokenCount(tokenCount));
+		incrementTokenCountFromUsage(counter, usage);
 	}
 
 	private async withTelemetryRootSpan<T>(
@@ -995,6 +1023,7 @@ export class AgentRuntime {
 		const pendingLoopContext = this.buildToolLoopContext(
 			staticLoopContext.aiProviderTools,
 			options?.persistence,
+			options?.executionCounter,
 		);
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
@@ -1057,6 +1086,7 @@ export class AgentRuntime {
 			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
+				options?.executionCounter,
 			);
 
 			const result = await generateText({
@@ -1149,6 +1179,7 @@ export class AgentRuntime {
 				titleConfig: this.config.titleGeneration,
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
+				executionCounter: options.executionCounter,
 			});
 			this.backgroundTasks.track(titlePromise);
 			if (this.config.titleGeneration.sync) {
@@ -1262,6 +1293,7 @@ export class AgentRuntime {
 		const pendingLoopContext = this.buildToolLoopContext(
 			staticLoopContext.aiProviderTools,
 			options?.persistence,
+			options?.executionCounter,
 		);
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
@@ -1339,6 +1371,7 @@ export class AgentRuntime {
 			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
+				options?.executionCounter,
 			);
 			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
@@ -1502,6 +1535,7 @@ export class AgentRuntime {
 					titleConfig: this.config.titleGeneration,
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
+					executionCounter: options.executionCounter,
 				});
 				this.backgroundTasks.track(titlePromise);
 				if (this.config.titleGeneration.sync) {
@@ -1522,7 +1556,7 @@ export class AgentRuntime {
 	/** Persist the current-turn delta to memory. */
 	private async saveToMemory(
 		list: AgentMessageList,
-		options: RunOptions | undefined,
+		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
 		if (!this.config.memory || !options?.persistence) return;
 		const delta = list.turnDelta();
@@ -1534,21 +1568,29 @@ export class AgentRuntime {
 			delta,
 		);
 
+		// Memory jobs receive the execution counter so their LLM and embedding
+		// usage contributes to token_count.
+
 		// Generate and save embeddings if semantic recall is configured
 		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
 			await this.saveEmbeddingsForMessages(
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				delta,
+				options.executionCounter,
 			);
 		}
 
-		const observationTasks = this.scheduleObservationLogJobs(options.persistence);
-		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks);
+		const observationTasks = this.scheduleObservationLogJobs(
+			options.persistence,
+			options.executionCounter,
+		);
+		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
 	}
 
 	private scheduleObservationLogJobs(
 		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
 	): Array<Promise<unknown>> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
@@ -1576,6 +1618,7 @@ export class AgentRuntime {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							executionCounter,
 						}),
 				),
 			);
@@ -1595,6 +1638,7 @@ export class AgentRuntime {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							executionCounter,
 						}),
 				),
 			);
@@ -1606,6 +1650,7 @@ export class AgentRuntime {
 	private scheduleEpisodicMemoryJob(
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
+		executionCounter?: AgentExecutionCounter,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -1630,6 +1675,7 @@ export class AgentRuntime {
 				scope,
 				observationScope,
 				threadId: persistence.threadId,
+				executionCounter,
 			});
 		});
 	}
@@ -1731,6 +1777,7 @@ export class AgentRuntime {
 		threadId: string,
 		resourceId: string | undefined,
 		messages: AgentDbMessage[],
+		executionCounter?: AgentExecutionCounter,
 	): Promise<void> {
 		// Extract text from user and assistant messages
 		const embeddable: Array<{ id: string; text: string }> = [];
@@ -1752,10 +1799,11 @@ export class AgentRuntime {
 		const { embedMany } = getAiSdk();
 		const embeddingModel = createEmbeddingModel(embedder, this.config.semanticRecall?.apiKey);
 
-		const { embeddings } = await embedMany({
+		const { embeddings, usage } = await embedMany({
 			model: embeddingModel,
 			values: embeddable.map((e) => e.text),
 		});
+		incrementTokenCountFromUsage(executionCounter, usage);
 
 		await this.config.memory!.saveEmbeddings!({
 			scope: this.config.semanticRecall?.scope ?? 'resource',
@@ -2293,8 +2341,9 @@ export class AgentRuntime {
 	private buildToolLoopContext(
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
 	) {
-		const allUserTools = this.getCurrentTools(persistence);
+		const allUserTools = this.getCurrentTools(persistence, executionCounter);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -2309,7 +2358,10 @@ export class AgentRuntime {
 		};
 	}
 
-	private getCurrentTools(persistence?: AgentPersistenceOptions): BuiltTool[] {
+	private getCurrentTools(
+		persistence?: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
 			...baseTools,
@@ -2321,13 +2373,14 @@ export class AgentRuntime {
 				: []),
 		];
 
-		const recallTool = this.createRecallMemoryToolForRun(persistence, tools);
+		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
 		return recallTool ? [...tools, recallTool] : tools;
 	}
 
 	private createRecallMemoryToolForRun(
 		persistence: AgentPersistenceOptions | undefined,
 		existingTools: BuiltTool[],
+		executionCounter?: AgentExecutionCounter,
 	): BuiltTool | undefined {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -2345,7 +2398,7 @@ export class AgentRuntime {
 				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createRecallMemoryTool({ memory, config: episodicMemory, scope });
+		return createRecallMemoryTool({ memory, config: episodicMemory, scope, executionCounter });
 	}
 
 	private hydrateDeferredToolsFromList(list: AgentMessageList): void {
