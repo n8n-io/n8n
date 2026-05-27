@@ -198,8 +198,9 @@ function serializeLeaf(
 	const requiredSuffix = optional ? '' : ' (required)';
 	const defaultSuffix =
 		schema.default !== undefined ? ` (default: ${JSON.stringify(schema.default)})` : '';
+	const descriptionSuffix = schema.description ? ` — ${schema.description}` : '';
 	return [
-		`${pad(level)}${fieldPrefix(fieldName, optional)}${typeLabel(schema)}${requiredSuffix}${defaultSuffix}`,
+		`${pad(level)}${fieldPrefix(fieldName, optional)}${typeLabel(schema)}${requiredSuffix}${defaultSuffix}${descriptionSuffix}`,
 	];
 }
 

@@ -186,6 +186,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function dropOrphanMintedBubbles(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+				messages.value = messages.value.filter((m) => m !== msg);
+				session.minted.delete(msg);
+			}
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -335,29 +344,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
+				dropOrphanMintedBubbles(session);
 				if (event.errorCode === 'agent_misconfigured') {
-					// Misconfiguration is a distinct class of error: the agent
-					// can't run until its config is fixed. Surface it via the
-					// banner (`fatalError`) rather than an inline error bubble
-					// so the user sees what's missing and can act on it.
-					// Drop any orphan empty assistant bubble we minted before
-					// the error arrived so the banner is the only surface.
-					fatalError.value = {
-						message: event.message,
-						missing: event.missing ?? [],
-					};
-					for (const msg of session.minted) {
-						if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
-							messages.value = messages.value.filter((m) => m !== msg);
-							session.minted.delete(msg);
-						}
-					}
-					break;
-				}
-				const lastMsg = messages.value[messages.value.length - 1];
-				if (lastMsg) {
-					lastMsg.content += `\n\nError: ${event.message}`;
-					lastMsg.status = 'error';
+					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else {
+					messages.value.push(
+						reactive<ChatMessage>({
+							id: crypto.randomUUID(),
+							role: 'assistant',
+							content: event.message,
+							thinking: '',
+							toolCalls: [],
+							status: CHAT_MESSAGE_STATUS.ERROR,
+						}),
+					);
 				}
 				break;
 			}

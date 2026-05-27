@@ -10,12 +10,8 @@ describe('Execute TOTP node', () => {
 	const TEST_SECRET = 'BVDRSBXQB2ZEL5HE';
 	const TEST_LABEL = 'GitHub:john-doe';
 
-	beforeAll(() => {
+	beforeEach(() => {
 		jest.spyOn(Date, 'now').mockReturnValue(FIXED_TIMESTAMP);
-	});
-
-	afterAll(() => {
-		jest.restoreAllMocks();
 	});
 
 	// Pre-calculate expected token using the real OTPAuth library

@@ -160,6 +160,7 @@ interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	agentId: string;
+	userId?: string;
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -173,6 +174,19 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+function getMaxIterationsChunks(): StreamChunk[] {
+	const id = crypto.randomUUID();
+	return [
+		{ type: 'text-start', id },
+		{
+			type: 'text-delta',
+			id,
+			delta: 'The agent has reached the maximum number of iterations and has stopped.',
+		},
+		{ type: 'text-end', id },
+	];
 }
 
 @Service()
@@ -276,14 +290,33 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private createAgentExecutionCounter(agentId: string): AgentExecutionCounter {
+	private createAgentExecutionCounter({
+		agentId,
+		userId,
+	}: {
+		agentId: string;
+		userId?: string;
+	}): AgentExecutionCounter {
+		const attribution = userId ? { user_id: userId } : {};
 		return {
 			incrementMessageCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, message_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					message_count: 1,
+				}),
 			incrementTokenCount: (tokenCount) =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, token_count: tokenCount }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					token_count: tokenCount,
+				}),
 			incrementToolCallCount: () =>
-				this.telemetry.trackAgentExecution({ agent_id: agentId, tool_call_count: 1 }),
+				this.telemetry.trackAgentExecution({
+					agent_id: agentId,
+					...attribution,
+					tool_call_count: 1,
+				}),
 		};
 	}
 
@@ -852,7 +885,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -983,6 +1016,7 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			userId,
 			message,
 			memory,
 			projectId: runtime.projectId,
@@ -1085,14 +1119,15 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const { agentInstance, toolRegistry, agentId, userId, message, memory, projectId, source } =
+			config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -1107,6 +1142,11 @@ export class AgentsService {
 						toolCallId: value.toolCallId,
 						toolName: value.toolName,
 					});
+				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
 				}
 				yield value;
 			}
@@ -1185,6 +1225,7 @@ export class AgentsService {
 		threadId: string,
 		userId: string,
 		projectId: string,
+		telemetryUserId?: string,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1219,7 +1260,7 @@ export class AgentsService {
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter(agentId),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
 		const reader = resultStream.stream.getReader();
