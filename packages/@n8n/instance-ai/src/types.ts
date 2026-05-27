@@ -1,10 +1,10 @@
-import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ModelConfig as NativeModelConfig,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -32,7 +32,6 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
-import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -41,7 +40,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
+import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -613,6 +612,12 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
+	/**
+	 * Curated workflow-template provider for the sandbox setup. When absent or
+	 * when the service returns an empty bundle, the sandbox is created without
+	 * an `examples/` directory and the agent operates without template hints.
+	 */
+	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
@@ -673,12 +678,7 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'checkpoint';
 
 export interface PlannedTask {
 	id: string;
@@ -780,6 +780,9 @@ export interface PlannedTaskService {
 	/** Transition an `awaiting_approval` graph → `active` after the user
 	 *  approves the plan. No-op on any other status. */
 	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Transition an `awaiting_approval` graph → `cancelled` after the user
+	 *  denies the plan outright. No-op on any other status. */
+	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
 	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
 	 *  the service when a replan or synthesize follow-up couldn't start. */
 	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
@@ -811,26 +814,30 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	embedderModel?: string;
 	lastMessages?: number;
-	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
+type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
  *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
  *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
  *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
-	| LanguageModelV2;
+	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
@@ -978,7 +985,7 @@ export interface SpawnBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * data-table, delegate) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while a child with this id is still
 	 * running, and settlement re-emits the checkpoint follow-up when the last
@@ -1072,12 +1079,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** Sandbox workspace — when present, enables sandbox-based workflow building */
+	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
-	builderSandboxFactory?: BuilderSandboxFactory;
-	/** Process-local registry for retaining recently finished builder sandboxes. */
-	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1139,13 +1142,6 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/**
-	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
-	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
-	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
-	 */
-	workspace?: Workspace;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

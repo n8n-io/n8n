@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/azure": "catalog:",
     "@ai-sdk/cohere": "catalog:",
     "@ai-sdk/deepseek": "catalog:",

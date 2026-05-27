@@ -755,15 +755,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 	}
 
-	function trackUserMessageSent(optimistic: InstanceAiMessage): void {
-		// The first user message in the array is the first the thread has ever
-		// seen. `find` short-circuits at the first match, so this is O(1) once
-		// the user has sent more than one message.
-		const firstUser = messages.value.find((m) => m.role === 'user');
+	function trackUserMessageSent(isFirstMessage: boolean): void {
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
-			is_first_message: firstUser === optimistic,
+			is_first_message: isFirstMessage,
 		});
 	}
 
@@ -815,8 +811,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
+			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(message, attachments);
-			trackUserMessageSent(optimistic);
+			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
 				removeOptimisticMessage(optimistic);

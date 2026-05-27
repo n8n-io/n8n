@@ -214,7 +214,7 @@ description: Has no instructions.
 	it('loads filesystem-backed skills and linked files from a directory', async () => {
 		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
 		try {
-			const skillDir = join(root, 'workflows', 'builder');
+			const skillDir = join(root, 'workflows', 'builder').replace(/\\/g, '/');
 			mkdirSync(join(skillDir, 'references'), { recursive: true });
 			mkdirSync(join(skillDir, 'examples'), { recursive: true });
 			writeFileSync(
@@ -277,6 +277,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('Skill loading protocol:');
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
+		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('Extract private decisions.');
 	});
 

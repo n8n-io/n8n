@@ -12,6 +12,7 @@ import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-wo
 
 import {
 	assertUnpinCompatibility,
+	buildVendorLlmRouting,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -252,12 +253,22 @@ describe('assertUnpinCompatibility', () => {
 		).not.toThrow();
 	});
 
-	it('ignores roots that do not exist in the workflow', () => {
+	it('refuses unknown root names rather than silently skipping (typo guard)', () => {
 		const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
-		expect(() => assertUnpinCompatibility(workflow, ['Ghost'])).not.toThrow();
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(workflow, ['Ghost']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('not found in workflow');
+		expect((thrown as UserError).message).toContain('"Ghost"');
 	});
 
-	it('ignores disabled roots even when their sub-nodes would otherwise be refused', () => {
+	it('refuses disabled roots rather than silently skipping (typo guard)', () => {
 		const nodes = [
 			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
 			makeNode({
@@ -269,9 +280,44 @@ describe('assertUnpinCompatibility', () => {
 		const connections: IConnections = {
 			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
 		};
-		expect(() =>
-			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
-		).not.toThrow();
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('disabled');
+		expect((thrown as UserError).message).toContain('"Agent"');
+	});
+
+	it('refuses non-AI-root nodes (e.g. a regular Set node in unpinNodes is a caller mistake)', () => {
+		const nodes = [
+			makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+
+		let thrown: unknown;
+		try {
+			assertUnpinCompatibility(makeWorkflow(nodes), ['Set']);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(UserError);
+		expect((thrown as UserError).message).toContain('not AI root nodes');
+		expect((thrown as UserError).message).toContain('"Set"');
+	});
+
+	it.each([
+		'@n8n/n8n-nodes-langchain.chainLlm',
+		'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+		'@n8n/n8n-nodes-langchain.chainSummarization',
+	])('recognises %s by type even when it has no inbound ai_* connections', (chainType) => {
+		const nodes = [makeNode({ name: 'Chain', type: chainType })];
+		expect(() => assertUnpinCompatibility(makeWorkflow(nodes), ['Chain'])).not.toThrow();
 	});
 
 	it.each([
@@ -528,6 +574,256 @@ describe('assertUnpinCompatibility', () => {
 				).not.toThrow();
 			});
 		});
+
+		describe('shared vendor LLM sub-node across multiple unpinned roots', () => {
+			it('refuses unpinning both roots when one OpenAI sub-node feeds both', () => {
+				const nodes = [
+					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				let thrown: unknown;
+				try {
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']);
+				} catch (e) {
+					thrown = e;
+				}
+
+				expect(thrown).toBeInstanceOf(UserError);
+				const message = (thrown as UserError).message;
+				expect(message).toContain('shared by multiple unpinned roots');
+				expect(message).toContain('"OpenAI"');
+				// Both root attributions listed in the error so the user can see
+				// exactly which conflict to resolve.
+				expect(message).toContain('AgentA');
+				expect(message).toContain('AgentB');
+			});
+
+			it('allows unpinning when only one root references the shared OpenAI sub-node', () => {
+				const nodes = [
+					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				// Only AgentA is being unpinned — AgentB stays pinned so there's
+				// no attribution conflict at the wire-server layer.
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA']),
+				).not.toThrow();
+			});
+
+			it('ignores a disabled sub-node when counting shared references', () => {
+				const nodes = [
+					makeNode({
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						disabled: true,
+					}),
+					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+				];
+				const connections: IConnections = {
+					OpenAI: {
+						ai_languageModel: [
+							[
+								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
+								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				};
+
+				expect(() =>
+					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']),
+				).not.toThrow();
+			});
+		});
+	});
+});
+
+describe('buildVendorLlmRouting', () => {
+	it('returns empty maps when unpinNodes is empty', () => {
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), []);
+
+		expect(routing.subNodeToRoot.size).toBe(0);
+		expect(routing.rootToSubNode.size).toBe(0);
+	});
+
+	it('maps a chat-model sub-node to its unpinned root and vice versa', () => {
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(routing.subNodeToRoot.get('OpenAI')).toBe('Agent');
+		expect(routing.rootToSubNode.get('Agent')?.name).toBe('OpenAI');
+	});
+
+	it('does not include sub-nodes feeding roots that are still pinned', () => {
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'PinnedAgent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: {
+				ai_languageModel: [[{ node: 'PinnedAgent', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		// `unpinNodes` does not include PinnedAgent — its sub-nodes never reach the
+		// wire server, so the routing map stays empty.
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['SomeOther']);
+
+		expect(routing.subNodeToRoot.size).toBe(0);
+		expect(routing.rootToSubNode.size).toBe(0);
+	});
+
+	it('ignores disabled sub-nodes', () => {
+		const nodes = [
+			makeNode({
+				name: 'OpenAI',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				disabled: true,
+			}),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(routing.subNodeToRoot.size).toBe(0);
+		expect(routing.rootToSubNode.size).toBe(0);
+	});
+
+	it('skips non-LLM ai_* connections (memory, tools, vector stores)', () => {
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Memory', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' }),
+			makeNode({ name: 'Calculator', type: '@n8n/n8n-nodes-langchain.toolCalculator' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			Calculator: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(Array.from(routing.subNodeToRoot.keys())).toEqual(['OpenAI']);
+		expect(Array.from(routing.rootToSubNode.keys())).toEqual(['Agent']);
+	});
+
+	it('skips unsupported vendor LLM sub-nodes (Anthropic, Gemini, etc.)', () => {
+		// `assertUnpinCompatibility` would have already refused this; the filter
+		// here is defence in depth so the helper never embeds a root whose
+		// sub-node lacks an interception path.
+		const nodes = [
+			makeNode({ name: 'Anthropic', type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			Anthropic: {
+				ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(routing.subNodeToRoot.size).toBe(0);
+		expect(routing.rootToSubNode.size).toBe(0);
+	});
+
+	it('defensive: maps a shared sub-node to the first root (topology refused by guard upstream)', () => {
+		// `assertUnpinCompatibility` refuses this topology before
+		// `buildVendorLlmRouting` is reached. This test exercises the
+		// defensive `!has(...)` check directly in case a caller ever bypasses
+		// the guard — the routing must remain deterministic (first root wins,
+		// no overwrite mid-build) so the wire server doesn't see a
+		// half-mutated state.
+		const nodes = [
+			makeNode({ name: 'Shared OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent A', type: '@n8n/n8n-nodes-langchain.agent' }),
+			makeNode({ name: 'Agent B', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			'Shared OpenAI': {
+				ai_languageModel: [
+					[
+						{ node: 'Agent A', type: 'ai_languageModel', index: 0 },
+						{ node: 'Agent B', type: 'ai_languageModel', index: 0 },
+					],
+				],
+			},
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent A', 'Agent B']);
+
+		// First root in unpinNodes wins; second is dropped (defensive).
+		expect(routing.subNodeToRoot.get('Shared OpenAI')).toBe('Agent A');
+		expect(routing.rootToSubNode.get('Agent A')?.name).toBe('Shared OpenAI');
+		expect(routing.rootToSubNode.get('Agent B')?.name).toBe('Shared OpenAI');
+	});
+
+	it('handles multiple unpinned roots independently', () => {
+		const nodes = [
+			makeNode({ name: 'OpenAI A', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'OpenAI B', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent A', type: '@n8n/n8n-nodes-langchain.agent' }),
+			makeNode({ name: 'Agent B', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			'OpenAI A': {
+				ai_languageModel: [[{ node: 'Agent A', type: 'ai_languageModel', index: 0 }]],
+			},
+			'OpenAI B': {
+				ai_languageModel: [[{ node: 'Agent B', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent A', 'Agent B']);
+
+		expect(routing.subNodeToRoot.get('OpenAI A')).toBe('Agent A');
+		expect(routing.subNodeToRoot.get('OpenAI B')).toBe('Agent B');
+		expect(routing.rootToSubNode.get('Agent A')?.name).toBe('OpenAI A');
+		expect(routing.rootToSubNode.get('Agent B')?.name).toBe('OpenAI B');
 	});
 });
 

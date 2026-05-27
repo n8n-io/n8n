@@ -17,9 +17,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 
@@ -47,9 +45,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 

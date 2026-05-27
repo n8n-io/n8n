@@ -317,10 +317,9 @@ describe('createTypedToolObserver', () => {
 			}),
 		);
 		observe(
-			toolResult(
-				'tc-1',
-				'/workspace/examples/slack-daily-summary.ts (200 bytes)\nfile content here\n',
-			),
+			toolResult('tc-1', {
+				content: '/workspace/examples/slack-daily-summary.ts (200 bytes)\nfile content here\n',
+			}),
 		);
 
 		const read = calls.find((c) => c.name === 'Builder template read');
@@ -329,13 +328,31 @@ describe('createTypedToolObserver', () => {
 		expect(read!.props.bytes_read).toBeGreaterThan(0);
 	});
 
+	it('emits typed read for legacy bare string results', () => {
+		const { opts, calls } = makeOpts();
+		const session = createTemplateTelemetrySession(opts);
+		const observe = createTypedToolObserver(session);
+
+		observe(toolCall('tc-legacy-read', 'workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolResult('tc-legacy-read', 'file content here'));
+
+		const read = calls.find((c) => c.name === 'Builder template read');
+		expect(read).toBeDefined();
+		expect(read!.props.template_filename).toBe('foo.ts');
+		expect(read!.props.bytes_read).toBe('file content here'.length);
+	});
+
 	it('emits typed search for workspace_grep targeting examples/', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
 		observe(toolCall('tc-2', 'workspace_grep', { pattern: 'slack', path: 'examples/' }));
-		observe(toolResult('tc-2', 'examples/a.ts:1:1: slack\nexamples/b.ts:5:1: slack\n'));
+		observe(
+			toolResult('tc-2', {
+				content: 'examples/a.ts:1:1: slack\nexamples/b.ts:5:1: slack\n',
+			}),
+		);
 
 		const search = calls.find((c) => c.name === 'Builder template search');
 		expect(search).toBeDefined();

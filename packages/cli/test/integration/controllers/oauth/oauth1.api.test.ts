@@ -55,6 +55,68 @@ describe('OAuth1 API', () => {
 		nock.cleanAll();
 	});
 
+	describe('callback route accessibility', () => {
+		// The callback route must be reachable without
+		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
+		// still enforces session-bound validation for static credentials.
+		it('should reach the handler when called without authentication', async () => {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await testServer.authlessAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state: 'invalid_state',
+				})
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: expect.any(String) }),
+				}),
+			);
+		});
+
+		it('should reject an unauthenticated callback for a static credential', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			nock('https://test.domain')
+				.post('/oauth1/request_token')
+				.reply(200, 'oauth_token=request_token&oauth_token_secret=request_secret');
+
+			await testServer
+				.authAgentFor(owner)
+				.get('/oauth1-credential/auth')
+				.query({ id: credential.id })
+				.expect(200);
+
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			await testServer.authlessAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state,
+				})
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Unauthorized' },
+			});
+		});
+	});
+
 	describe('OAuth reconnect authorization', () => {
 		const expectNoCsrfStateOnCredential = async (credentialId: string) => {
 			const stored = await getCredentialById(credentialId);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { createModel } from './model-factory';
 import type {
 	EpisodicMemoryExtraction,
@@ -524,7 +525,6 @@ export function buildEpisodicMemoryExtractorPrompt(input: EpisodicMemoryExtracto
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
 		`Scope: resource:${input.scope.resourceId}`,
-		`Observation scope: ${input.observationScope.scopeKind}:${input.observationScope.scopeId}`,
 		`Active observation batch:\n${renderObservationsWithIds(input.observations)}`,
 		`Existing episodic entries for duplicate-awareness context:\n${renderExistingEntries(input.existingEntries)}`,
 	].join('\n\n');
@@ -536,12 +536,13 @@ export function createEpisodicMemoryExtractFn(
 ): EpisodicMemoryExtractFn {
 	return async (input): Promise<EpisodicMemoryExtraction> => {
 		const { generateObject } = await import('ai');
-		const { object } = await generateObject({
+		const { object, usage } = await generateObject({
 			model: createModel(model),
 			system: options.extractionPrompt ?? DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 			prompt: buildEpisodicMemoryExtractorPrompt(input),
 			schema: EpisodicMemoryExtractionSchema,
 		});
+		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		return object;
 	};
@@ -562,12 +563,13 @@ export function createEpisodicMemoryReflectFn(
 ): EpisodicMemoryReflectFn {
 	return async (input): Promise<EpisodicMemoryReflection> => {
 		const { generateObject } = await import('ai');
-		const { object } = await generateObject({
+		const { object, usage } = await generateObject({
 			model: createModel(model),
 			system: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			schema: EpisodicMemoryReflectionSchema,
 		});
+		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		return object;
 	};
