@@ -17,7 +17,7 @@ defineOptions({
 	inheritAttrs: false,
 });
 
-const props = withDefaults(defineProps<StepperProps>(), {
+withDefaults(defineProps<StepperProps>(), {
 	showIndex: true,
 });
 

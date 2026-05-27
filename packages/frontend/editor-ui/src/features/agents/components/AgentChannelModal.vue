@@ -3,6 +3,7 @@ import {
 	N8nButton,
 	N8nIconButton,
 	N8nDialog,
+	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
@@ -46,10 +47,13 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { fetchStatus, isConnected: isIntegrationConnected } = useAgentIntegrationStatus(
-	props.projectId,
-	props.agentId,
-);
+const {
+	fetchStatus,
+	connectedCredentials,
+	isConnected: isIntegrationConnected,
+	connect,
+	disconnect,
+} = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
@@ -78,6 +82,18 @@ const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 const currentIntegration = computed(() => {
 	if (!selectedChannelType.value) return null;
 	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
+});
+
+const showFooterActions = computed(() => isEditMode.value);
+
+const currentChannelCredentialId = computed(() => {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return '';
+	return connectedCredentials.value[channelType] ?? '';
+});
+
+const canSaveChannelConfig = computed(() => {
+	return selectedChannelType.value !== null && currentChannelCredentialId.value.length > 0;
 });
 
 // Backend integration descriptors ship icon names that may include legacy
@@ -120,6 +136,16 @@ function goBackToList() {
 
 function closeModal() {
 	emit('update:open', false);
+}
+
+async function saveChannelConfig() {
+	const channelType = selectedChannelType.value;
+	const credentialId = currentChannelCredentialId.value;
+	if (!channelType || !credentialId) return;
+
+	await connect(channelType, credentialId);
+	emit('channel-connected', channelType);
+	closeModal();
 }
 
 function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
@@ -196,18 +222,28 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 
 	await fetchStatus(['slack']);
 	emit('channel-connected', 'slack');
+	closeModal();
 	return true;
 }
 
-function handleDisconnected(channelType: string) {
+async function handleDisconnected(channelType: string) {
+	const credentialId = connectedCredentials.value[channelType];
+	if (!credentialId) return;
+
+	await disconnect(channelType, credentialId);
 	emit('channel-disconnected', channelType);
+}
+
+async function loadChannelState() {
+	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
+	await fetchStatus((integrations ?? []).map((integration) => integration.type));
 }
 
 watch(
 	() => props.open,
 	(isOpen) => {
 		if (isOpen) {
-			void ensureLoaded(props.projectId);
+			void loadChannelState();
 			currentView.value = props.view;
 		}
 	},
@@ -222,111 +258,140 @@ watch(
 		@update:open="$emit('update:open', $event)"
 	>
 		<N8nDialogHeader :class="$style.customHeader">
-			<N8nIconButton
-				v-if="currentView !== 'list'"
-				variant="ghost"
-				size="small"
-				icon-size="medium"
-				icon="arrow-left"
-				:class="$style.backButton"
-				@click="goBackToList"
-			>
-				<template #icon>
-					<N8nIcon icon="arrow-left" size="small" />
-				</template>
-			</N8nIconButton>
-			<div :class="$style.headerTitle">
-				<N8nIcon
-					v-if="currentIntegration?.icon"
-					:icon="toIconName(currentIntegration.icon)"
-					size="large"
-				/>
-				<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
-			</div>
+			<Transition name="channel-header-fade" mode="out-in">
+				<div v-if="currentView === 'list'" key="list" :class="$style.headerContent">
+					<div :class="$style.headerTitle">
+						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
+					</div>
+				</div>
+				<div v-else :key="currentView" :class="$style.headerContent">
+					<N8nIconButton
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						icon="arrow-left"
+						:class="$style.backButton"
+						@click="goBackToList"
+					>
+						<template #icon>
+							<N8nIcon icon="arrow-left" size="small" />
+						</template>
+					</N8nIconButton>
+					<div :class="$style.headerTitle">
+						<N8nIcon
+							v-if="currentIntegration?.icon"
+							:icon="toIconName(currentIntegration.icon)"
+							size="large"
+						/>
+						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
+					</div>
+				</div>
+			</Transition>
 		</N8nDialogHeader>
 
 		<div :class="$style.container">
-			<div v-if="currentView === 'list'" :class="$style.listView">
-				<ul :class="$style.channelList">
-					<li v-for="integration in catalog" :key="integration.type" :class="$style.channelItem">
-						<div :class="$style.iconWrapper">
-							<N8nIcon
-								:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
-								:size="28"
-								:class="$style.channelIcon"
-							/>
-						</div>
-						<div :class="$style.content">
-							<N8nText :class="$style.name" size="medium" bold color="text-dark">
-								{{ integration.label }}
-							</N8nText>
-							<N8nText :class="$style.description" size="medium" color="text-light">
-								{{
-									i18n.baseText('agents.channels.modal.connectDescription', {
-										interpolate: { channel: integration.label },
-									})
-								}}
-							</N8nText>
-						</div>
+			<Transition name="channel-view-fade" mode="out-in">
+				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
+					<ul :class="$style.channelList">
+						<li v-for="integration in catalog" :key="integration.type" :class="$style.channelItem">
+							<div :class="$style.iconWrapper">
+								<N8nIcon
+									:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
+									:size="28"
+									:class="$style.channelIcon"
+								/>
+							</div>
+							<div :class="$style.content">
+								<N8nText :class="$style.name" size="medium" bold color="text-dark">
+									{{ integration.label }}
+								</N8nText>
+								<N8nText :class="$style.description" size="medium" color="text-light">
+									{{
+										i18n.baseText('agents.channels.modal.connectDescription', {
+											interpolate: { channel: integration.label },
+										})
+									}}
+								</N8nText>
+							</div>
 
-						<div :class="$style.channelActions">
-							<template v-if="isConnected(integration.type)">
-								<N8nButton variant="subtle" size="small" @click="goToEdit(integration.type)">
-									{{ i18n.baseText('generic.edit') }}
-								</N8nButton>
+							<div :class="$style.channelActions">
+								<template v-if="isConnected(integration.type)">
+									<N8nButton variant="subtle" size="small" @click="goToEdit(integration.type)">
+										{{ i18n.baseText('generic.edit') }}
+									</N8nButton>
+									<N8nButton
+										variant="ghost"
+										size="small"
+										@click="handleDisconnected(integration.type)"
+									>
+										{{ i18n.baseText('generic.disconnect') }}
+									</N8nButton>
+								</template>
 								<N8nButton
-									variant="ghost"
-									size="small"
-									@click="handleDisconnected(integration.type)"
+									v-else
+									variant="subtle"
+									size="medium"
+									@click="goToSetup(integration.type)"
 								>
-									{{ i18n.baseText('generic.disconnect') }}
+									{{ i18n.baseText('generic.connect') }}
 								</N8nButton>
-							</template>
-							<N8nButton v-else variant="subtle" size="medium" @click="goToSetup(integration.type)">
-								{{ i18n.baseText('generic.connect') }}
-							</N8nButton>
-						</div>
-					</li>
-				</ul>
-			</div>
+							</div>
+						</li>
+					</ul>
+				</div>
 
-			<div v-else-if="isSetupMode" :class="$style.setupView">
-				<AgentChannelSlackSetup
-					v-if="selectedChannelType === 'slack'"
-					:connected="isConnected('slack')"
-					:setup-slack-app="setupSlackApp"
-				/>
-				<N8nText v-else size="small" color="text-light">
-					{{
-						i18n.baseText('agents.channels.modal.setupPlaceholder', {
-							interpolate: { channel: selectedChannelType ?? '' },
-						})
-					}}
-				</N8nText>
-			</div>
+				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
+					<AgentChannelSlackSetup
+						v-if="selectedChannelType === 'slack'"
+						:connected="isConnected('slack')"
+						:setup-slack-app="setupSlackApp"
+					/>
+					<N8nText v-else size="small" color="text-light">
+						{{
+							i18n.baseText('agents.channels.modal.setupPlaceholder', {
+								interpolate: { channel: selectedChannelType ?? '' },
+							})
+						}}
+					</N8nText>
+				</div>
 
-			<div v-else-if="isEditMode" :class="$style.editView">
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('agents.channels.modal.editPlaceholder', {
-							interpolate: { channel: selectedChannelType ?? '' },
-						})
-					}}
-				</N8nText>
-			</div>
+				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
+					<N8nText size="small" color="text-light">
+						{{
+							i18n.baseText('agents.channels.modal.editPlaceholder', {
+								interpolate: { channel: selectedChannelType ?? '' },
+							})
+						}}
+					</N8nText>
+				</div>
+			</Transition>
 		</div>
 
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton variant="ghost" size="medium" @click="closeModal">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-			</div>
-		</template>
+		<N8nDialogFooter>
+			<Transition name="channel-footer-fade" mode="out-in">
+				<div v-if="showFooterActions" key="actions" :class="$style.footer">
+					<N8nButton variant="ghost" size="medium" @click="closeModal">
+						{{ i18n.baseText('generic.cancel') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						size="medium"
+						:disabled="!canSaveChannelConfig"
+						data-testid="agent-channel-save-channel-config"
+						@click="saveChannelConfig"
+					>
+						{{ i18n.baseText('generic.save') }}
+					</N8nButton>
+				</div>
+				<div v-else key="empty" :class="$style.footer"></div>
+			</Transition>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .container {
 	display: flex;
 	flex-direction: column;
@@ -347,6 +412,12 @@ watch(
 	height: var(--height--2xl);
 	border-bottom: var(--border);
 	margin-inline: calc(var(--spacing--lg) * -1);
+}
+
+.headerContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--md);
 }
 
 .headerTitle {
@@ -428,5 +499,33 @@ watch(
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+	height: var(--height--md);
+}
+
+:global(.channel-view-fade-enter-active) {
+	--animation--fade-in--duration: var(--duration--snappy);
+	--animation--fade-in--translate: 0;
+	@include motion.fade-in;
+}
+
+:global(.channel-view-fade-leave-active) {
+	--animation--fade-in--duration: var(--duration--snappy);
+
+	@include motion.fade-out;
+}
+
+:global(.channel-header-fade-enter-active),
+:global(.channel-footer-fade-enter-active) {
+	--animation--fade-in--duration: var(--duration--snappy);
+	--animation--fade-in--translate: 0;
+
+	@include motion.fade-in;
+}
+
+:global(.channel-header-fade-leave-active),
+:global(.channel-footer-fade-leave-active) {
+	--animation--fade-out--duration: var(--duration--snappy);
+
+	@include motion.fade-out;
 }
 </style>

@@ -84,7 +84,7 @@ async function installSlackApp() {
 </script>
 
 <template>
-	<div v-if="!connected" :class="$style.slackSetup">
+	<div :class="$style.slackSetup">
 		<N8nStepper :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
