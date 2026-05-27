@@ -136,6 +136,7 @@
       "dist/credentials/GhostAdminApi.credentials.js",
       "dist/credentials/GhostContentApi.credentials.js",
       "dist/credentials/GithubApi.credentials.js",
+      "dist/credentials/GithubAppApi.credentials.js",
       "dist/credentials/GithubOAuth2Api.credentials.js",
       "dist/credentials/GitlabApi.credentials.js",
       "dist/credentials/GitlabOAuth2Api.credentials.js",
