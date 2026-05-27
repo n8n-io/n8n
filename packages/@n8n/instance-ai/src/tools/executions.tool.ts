@@ -65,9 +65,7 @@ const debugAction = z.object({
 		.describe(
 			'Analyze a failed execution with structured diagnostics. When a node failed, ' +
 				"`failedNode.resolvedParameters` includes that node's raw parameters, the same " +
-				'tree with expressions substituted, and lists of expressions that threw or ' +
-				'resolved to empty values — so the offending expression is usually visible without ' +
-				'a follow-up call.',
+				'tree with expressions substituted, and lists of expressions that threw or resolved to empty values',
 		),
 	executionId: z.string().describe('Execution ID'),
 });

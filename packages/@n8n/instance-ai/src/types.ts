@@ -124,12 +124,16 @@ export interface ResolvedNodeParametersResult {
 	parameters: Record<string, unknown> | null;
 	/**
 	 * Mirror of `parameters` with each expression leaf replaced by its resolved
-	 * value (or `null` if it threw). Oversized values are replaced with a
+	 * value (or `null` if it threw). Oversized leaves are replaced with a
 	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * Returned as a JSON-stringified blob inside `<untrusted_data>` markers —
+	 * resolved values can echo content from upstream nodes (webhook bodies,
+	 * HTTP responses, etc.) and must be treated as untrusted by the agent.
 	 *
 	 * `null` when resolution was refused — see `suppressed`.
 	 */
-	resolved: Record<string, unknown> | null;
+	resolved: string | null;
 	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
 	failedExpressions: ResolvedExpressionFailure[];
 	/**

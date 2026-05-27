@@ -1176,6 +1176,23 @@ function connect(from: string, to: string): IConnections {
 	};
 }
 
+/**
+ * Helper to assert and extract the JSON content from `resolved`, which is
+ * wrapped in `<untrusted_data>` markers because resolved values can echo
+ * upstream untrusted content.
+ */
+function parseResolved(resolved: string | null): Record<string, unknown> {
+	if (resolved === null) {
+		throw new Error('Expected resolved to be a wrapped string, got null');
+	}
+	expect(resolved).toContain('<untrusted_data');
+	expect(resolved).toContain('source="execution-output"');
+	expect(resolved).toContain('resolved-parameters:');
+	const match = resolved.match(/<untrusted_data[^>]*>\n([\s\S]*)\n<\/untrusted_data>/);
+	if (!match) throw new Error(`Could not extract content from wrapped resolved: ${resolved}`);
+	return JSON.parse(match[1]) as Record<string, unknown>;
+}
+
 describe('extractResolvedNodeParameters', () => {
 	const nodeTypes = mock<NodeTypes>();
 
@@ -1217,7 +1234,7 @@ describe('extractResolvedNodeParameters', () => {
 		// Raw parameters returned verbatim so the agent can correlate each resolved
 		// value back to its source expression.
 		expect(result.parameters).toEqual(params);
-		expect(result.resolved).toEqual({
+		expect(parseResolved(result.resolved)).toEqual({
 			values: {
 				url: 'https://api.example.com/users/99',
 				literal: 'static',
@@ -1296,7 +1313,7 @@ describe('extractResolvedNodeParameters', () => {
 			'Set',
 		);
 
-		const resolved = result.resolved as Record<string, unknown>;
+		const resolved = parseResolved(result.resolved);
 		const nested = resolved.nested as Record<string, unknown>;
 		expect(resolved.good).toBe('OK');
 		expect(resolved.bad).toBeNull();
@@ -1363,7 +1380,7 @@ describe('extractResolvedNodeParameters', () => {
 			'Set',
 		);
 		expect(last.runIndex).toBe(2);
-		expect(last.resolved).toEqual({ value: 'third' });
+		expect(parseResolved(last.resolved)).toEqual({ value: 'third' });
 
 		const first = await extractResolvedNodeParameters(
 			repo as unknown as ExecutionRepository,
@@ -1373,7 +1390,7 @@ describe('extractResolvedNodeParameters', () => {
 			{ runIndex: 0 },
 		);
 		expect(first.runIndex).toBe(0);
-		expect(first.resolved).toEqual({ value: 'first' });
+		expect(parseResolved(first.resolved)).toEqual({ value: 'first' });
 	});
 
 	it('captures item-index-out-of-range expressions as failed without throwing', async () => {
@@ -1398,7 +1415,7 @@ describe('extractResolvedNodeParameters', () => {
 		);
 
 		expect(result.itemIndex).toBe(99);
-		expect(result.resolved).toEqual({ value: null });
+		expect(parseResolved(result.resolved)).toEqual({ value: null });
 		expect(result.failedExpressions).toHaveLength(1);
 		expect(result.failedExpressions[0].path).toBe('value');
 	});
@@ -1464,7 +1481,7 @@ describe('extractResolvedNodeParameters', () => {
 			'Set',
 		);
 
-		const body = (result.resolved as Record<string, unknown>).body as Record<string, unknown>;
+		const body = parseResolved(result.resolved).body as Record<string, unknown>;
 		expect(body._truncated).toBe(true);
 		expect(body.originalLength).toBe(huge.length);
 		expect((body.preview as string).length).toBeLessThanOrEqual(8_000);
@@ -1493,7 +1510,7 @@ describe('extractResolvedNodeParameters', () => {
 			'Set',
 		);
 
-		expect(result.resolved).toEqual({ value: 'from-pinData' });
+		expect(parseResolved(result.resolved)).toEqual({ value: 'from-pinData' });
 	});
 });
 

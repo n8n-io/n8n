@@ -3186,7 +3186,18 @@ export async function extractResolvedNodeParameters(
 	};
 
 	const parameters = (nodeJson.parameters ?? {}) as Record<string, unknown>;
-	const resolved = walk(parameters, '') as Record<string, unknown>;
+	const resolvedTree = walk(parameters, '') as Record<string, unknown>;
+
+	// Resolved values can echo data from upstream nodes (webhook bodies, HTTP
+	// responses, etc.) so they're wrapped as untrusted data — same pattern used
+	// for node output items in `extractNodeOutput`. `parameters`, `failedExpressions`,
+	// and `emptyResolutions` are NOT wrapped: they only contain user-authored
+	// expressions and engine-generated text, never substituted upstream content.
+	const resolved = wrapUntrustedData(
+		JSON.stringify(resolvedTree, null, 2),
+		'execution-output',
+		`resolved-parameters:${nodeName}`,
+	);
 
 	return {
 		nodeName,
