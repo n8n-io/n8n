@@ -14,6 +14,8 @@ import {
 	BULBASAUR_DETAIL,
 	LIST_PAGE_1,
 	LIST_PAGE_2,
+	LIST_LIMIT_20,
+	LIST_LIMIT_5,
 } from './apiResponses';
 
 describe('Pokemon Node — Cycle 1: description', () => {
@@ -170,7 +172,7 @@ describe('Pokemon Node — Cycle 2: typed interfaces', () => {
 // ─── Cycle 3: pokemonApiRequest calls correct URL ─────────────────────────────
 
 describe('Pokemon Node — Cycle 3: pokemonApiRequest URL and options', () => {
-	it('should call httpRequest with the exact URL and maxRedirects: 0', async () => {
+	it('should call httpRequest with the exact URL and disableFollowRedirect: true', async () => {
 		const mockHttpRequest = jest.fn().mockResolvedValue(PIKACHU_DETAIL);
 		const mockContext = {
 			helpers: { httpRequest: mockHttpRequest },
@@ -183,7 +185,7 @@ describe('Pokemon Node — Cycle 3: pokemonApiRequest URL and options', () => {
 			expect.objectContaining({
 				method: 'GET',
 				url: 'https://pokeapi.co/api/v2/pokemon/pikachu',
-				maxRedirects: 0,
+				disableFollowRedirect: true,
 			}),
 		);
 	});
@@ -444,12 +446,12 @@ describe('Pokemon Node — Cycle 10: pagination circuit breaker', () => {
 	});
 });
 
-// ─── Review fix: execute() throws ─────────────────────────────────────────────
+// ─── Cycle 11: execute() getAll with default limit ───────────────────────────
 
-describe('Pokemon Node — execute stub throws', () => {
-	it('should throw NodeOperationError with "Not yet implemented"', async () => {
-		const node = new Pokemon();
-		const mockContext = {
+describe('Pokemon Node — Cycle 11: execute getAll default limit', () => {
+	const makeGetAllContext = (mockHttpRequest: jest.Mock, limit = 20, returnAll = false) =>
+		({
+			helpers: { httpRequest: mockHttpRequest },
 			getNode: () => ({
 				name: 'Pokemon',
 				type: 'n8n-nodes-base.pokemon',
@@ -457,10 +459,175 @@ describe('Pokemon Node — execute stub throws', () => {
 				id: '1',
 				position: [0, 0] as [number, number],
 			}),
-		} as unknown as Parameters<typeof node.execute>[0];
+			getInputData: () => [{ json: {}, pairedItem: { item: 0 } }],
+			getNodeParameter: (name: string) => {
+				if (name === 'operation') return 'getAll';
+				if (name === 'returnAll') return returnAll;
+				if (name === 'limit') return limit;
+				return undefined;
+			},
+			continueOnFail: () => false,
+			helpers: {
+				httpRequest: mockHttpRequest,
+				constructExecutionMetaData: (data: unknown[], meta: unknown) => data,
+				returnJsonArray: (data: unknown[]) =>
+					data.map((d) => ({ json: d, pairedItem: { item: 0 } })),
+			},
+		}) as unknown as Parameters<typeof Pokemon.prototype.execute>[0];
 
-		await expect(node.execute.call(mockContext)).rejects.toThrow(NodeOperationError);
-		await expect(node.execute.call(mockContext)).rejects.toThrow('Not yet implemented');
+	it('should return 20 items when limit is 20', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_20);
+		const ctx = makeGetAllContext(mockHttpRequest, 20);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+
+		expect(result[0]).toHaveLength(20);
+	});
+
+	it('should call httpRequest with limit=20 in query', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_20);
+		const ctx = makeGetAllContext(mockHttpRequest, 20);
+		const node = new Pokemon();
+
+		await node.execute.call(ctx);
+
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: expect.stringContaining('limit=20'),
+			}),
+		);
+	});
+
+	it('should return items with name and url properties', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_20);
+		const ctx = makeGetAllContext(mockHttpRequest, 20);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const items = result[0] as Array<{ json: Record<string, unknown> }>;
+
+		expect(items[0].json).toHaveProperty('name');
+		expect(items[0].json).toHaveProperty('url');
+	});
+
+	it('should NOT include count, next, or previous fields in output', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_20);
+		const ctx = makeGetAllContext(mockHttpRequest, 20);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const items = result[0] as Array<{ json: Record<string, unknown> }>;
+
+		expect(items[0].json).not.toHaveProperty('count');
+		expect(items[0].json).not.toHaveProperty('next');
+		expect(items[0].json).not.toHaveProperty('previous');
+	});
+});
+
+// ─── Cycle 12: execute getAll with custom limit ───────────────────────────────
+
+describe('Pokemon Node — Cycle 12: execute getAll custom limit', () => {
+	const makeGetAllContext = (mockHttpRequest: jest.Mock, limit = 5) =>
+		({
+			getNode: () => ({
+				name: 'Pokemon',
+				type: 'n8n-nodes-base.pokemon',
+				typeVersion: 1,
+				id: '1',
+				position: [0, 0] as [number, number],
+			}),
+			getInputData: () => [{ json: {}, pairedItem: { item: 0 } }],
+			getNodeParameter: (name: string) => {
+				if (name === 'operation') return 'getAll';
+				if (name === 'returnAll') return false;
+				if (name === 'limit') return limit;
+				return undefined;
+			},
+			continueOnFail: () => false,
+			helpers: {
+				httpRequest: mockHttpRequest,
+				constructExecutionMetaData: (data: unknown[], _meta: unknown) => data,
+				returnJsonArray: (data: unknown[]) =>
+					data.map((d) => ({ json: d, pairedItem: { item: 0 } })),
+			},
+		}) as unknown as Parameters<typeof Pokemon.prototype.execute>[0];
+
+	it('should return 5 items when limit is 5', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_5);
+		const ctx = makeGetAllContext(mockHttpRequest, 5);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+
+		expect(result[0]).toHaveLength(5);
+	});
+
+	it('should call httpRequest with limit=5 in query', async () => {
+		const mockHttpRequest = jest.fn().mockResolvedValue(LIST_LIMIT_5);
+		const ctx = makeGetAllContext(mockHttpRequest, 5);
+		const node = new Pokemon();
+
+		await node.execute.call(ctx);
+
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: expect.stringContaining('limit=5'),
+			}),
+		);
+	});
+});
+
+// ─── Cycle 13: execute getAll extracts results from envelope ─────────────────
+
+describe('Pokemon Node — Cycle 13: execute getAll envelope unwrapping', () => {
+	const makeGetAllContext = (mockHttpRequest: jest.Mock) =>
+		({
+			getNode: () => ({
+				name: 'Pokemon',
+				type: 'n8n-nodes-base.pokemon',
+				typeVersion: 1,
+				id: '1',
+				position: [0, 0] as [number, number],
+			}),
+			getInputData: () => [{ json: {}, pairedItem: { item: 0 } }],
+			getNodeParameter: (name: string) => {
+				if (name === 'operation') return 'getAll';
+				if (name === 'returnAll') return false;
+				if (name === 'limit') return 20;
+				return undefined;
+			},
+			continueOnFail: () => false,
+			helpers: {
+				httpRequest: mockHttpRequest,
+				constructExecutionMetaData: (data: unknown[], _meta: unknown) => data,
+				returnJsonArray: (data: unknown[]) =>
+					data.map((d) => ({ json: d, pairedItem: { item: 0 } })),
+			},
+		}) as unknown as Parameters<typeof Pokemon.prototype.execute>[0];
+
+	it('should extract only results array, not count/next/previous', async () => {
+		const envelopeResponse = {
+			count: 1302,
+			next: 'https://pokeapi.co/api/v2/pokemon?offset=20&limit=20',
+			previous: null,
+			results: [
+				{ name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
+				{ name: 'ivysaur', url: 'https://pokeapi.co/api/v2/pokemon/2/' },
+			],
+		};
+		const mockHttpRequest = jest.fn().mockResolvedValue(envelopeResponse);
+		const ctx = makeGetAllContext(mockHttpRequest);
+		const node = new Pokemon();
+
+		const result = await node.execute.call(ctx);
+		const items = result[0] as Array<{ json: Record<string, unknown> }>;
+
+		expect(items).toHaveLength(2);
+		expect(items[0].json.name).toBe('bulbasaur');
+		expect(items[0].json).not.toHaveProperty('count');
+		expect(items[0].json).not.toHaveProperty('next');
+		expect(items[0].json).not.toHaveProperty('previous');
 	});
 });
 

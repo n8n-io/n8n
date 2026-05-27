@@ -1,0 +1,45 @@
+{
+	"name": "Get Many Pokemon Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 3
+			},
+			"type": "n8n-nodes-base.pokemon",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"name": "Get Many Pokemon"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Many Pokemon",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Many Pokemon": [
+			{ "json": { "name": "bulbasaur", "url": "https://pokeapi.co/api/v2/pokemon/1/" } },
+			{ "json": { "name": "ivysaur", "url": "https://pokeapi.co/api/v2/pokemon/2/" } },
+			{ "json": { "name": "venusaur", "url": "https://pokeapi.co/api/v2/pokemon/3/" } }
+		]
+	}
+}

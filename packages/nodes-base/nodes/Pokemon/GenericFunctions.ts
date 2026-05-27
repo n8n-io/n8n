@@ -118,7 +118,7 @@ export async function pokemonApiRequest(
 			headers: {
 				Accept: 'application/json',
 			},
-			maxRedirects: 0,
+			disableFollowRedirect: true,
 		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

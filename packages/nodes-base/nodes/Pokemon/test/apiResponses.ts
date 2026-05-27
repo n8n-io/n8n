@@ -95,3 +95,13 @@ export const LIST_LIMIT_20: IPokemonListResponse = {
 		url: `https://pokeapi.co/api/v2/pokemon/${i + 1}/`,
 	})),
 };
+
+export const LIST_LIMIT_5: IPokemonListResponse = {
+	count: 1302,
+	next: 'https://pokeapi.co/api/v2/pokemon?offset=5&limit=5',
+	previous: null,
+	results: Array.from({ length: 5 }, (_, i) => ({
+		name: `pokemon-${i + 1}`,
+		url: `https://pokeapi.co/api/v2/pokemon/${i + 1}/`,
+	})),
+};
