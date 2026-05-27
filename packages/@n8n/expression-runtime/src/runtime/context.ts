@@ -11,6 +11,8 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { isKeyOf } from './utils';
+import type { BridgeMessage } from '../bridge/bridge-messages';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -19,6 +21,31 @@ const SafeEvalError = createSafeErrorSubclass(EvalError);
 const SafeRangeError = createSafeErrorSubclass(RangeError);
 const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
+
+/**
+ * Maps proxy property names on `$('NodeName')` to the typed-RPC discriminator
+ * the bridge dispatches on. Single source of truth for the synthetic proxy's
+ * `get`/`has` traps and the `sendNodeMethod` envelope builder. Adding a new
+ * `getNode*` schema to `BridgeMessage` lets you wire a new method here in
+ * one place; `satisfies` catches typos in the discriminator string.
+ */
+const NODE_RPC_TYPES = {
+	first: 'getNodeFirst',
+	last: 'getNodeLast',
+	all: 'getNodeAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type NodeRpcType = (typeof NODE_RPC_TYPES)[keyof typeof NODE_RPC_TYPES];
+
+/**
+ * Same shape as `NODE_RPC_TYPES`, for the current node's `$input` proxy.
+ * Discriminators are `getInput*` and the host enforces zero-arg invocation.
+ */
+const INPUT_RPC_TYPES = {
+	first: 'getInputFirst',
+	last: 'getInputLast',
+	all: 'getInputAll',
+} as const satisfies Record<string, BridgeMessage['type']>;
+type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
 // ============================================================================
 // Build Context Function
@@ -174,7 +201,7 @@ export function buildContext(
 	// the inner target is empty.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
-		const sendNodeMethod = (type: 'getNodeFirst' | 'getNodeLast' | 'getNodeAll') => {
+		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
 				const result = callbacks.callHost.applySync(
 					null,
@@ -187,19 +214,44 @@ export function buildContext(
 		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
-				if (prop === 'first') return sendNodeMethod('getNodeFirst');
-				if (prop === 'last') return sendNodeMethod('getNodeLast');
-				if (prop === 'all') return sendNodeMethod('getNodeAll');
+				if (isKeyOf(NODE_RPC_TYPES, prop)) {
+					return sendNodeMethod(NODE_RPC_TYPES[prop]);
+				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
-				return (lazyProxy as Record<string | symbol, unknown>)[prop];
+				return lazyProxy[prop];
 			},
 			has(_emptyTarget, prop) {
-				if (prop === 'first' || prop === 'last' || prop === 'all') return true;
-				return prop in (lazyProxy as Record<string | symbol, unknown>);
+				return isKeyOf(NODE_RPC_TYPES, prop) || prop in lazyProxy;
 			},
 		});
 	};
+
+	// $input — current-node input proxy. Same synthetic-Proxy pattern as
+	// `target.$()`: intercept the typed-RPC method names (`first`, `last`,
+	// `all`, all zero-arg per the host's `WorkflowDataProxy`), delegate
+	// everything else (notably the `.item` getter and `.params` / `.context`
+	// properties) to a lazy proxy on `$input`.
+	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
+	const sendInputMethod = (type: InputRpcType) => {
+		return () => {
+			const result = callbacks.callHost.applySync(null, [{ type }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+	};
+	target.$input = new Proxy({} as Record<string, unknown>, {
+		get(_emptyTarget, prop) {
+			if (isKeyOf(INPUT_RPC_TYPES, prop)) return sendInputMethod(INPUT_RPC_TYPES[prop]);
+			return lazyInputProxy[prop];
+		},
+		has(_emptyTarget, prop) {
+			return isKeyOf(INPUT_RPC_TYPES, prop) || prop in lazyInputProxy;
+		},
+	});
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps

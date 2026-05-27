@@ -10,7 +10,7 @@
 		},
 		{
 			"role": "user",
-			"text": "JSON with `level` (high, medium, or low), `title`, and `message`. Each notification should be forwarded with title + message intact."
+			"text": "JSON with `level` (\"High\", \"Medium\" or \"Low\"), `title`, and `message`. Each notification should be forwarded with title + message intact."
 		},
 		{
 			"role": "assistant",
@@ -29,19 +29,19 @@
 		{
 			"name": "high-priority",
 			"description": "A high-priority notification is routed to Microsoft Teams",
-			"dataSetup": "The webhook receives { \"level\": \"high\", \"title\": \"Server Down\", \"message\": \"Production database is unreachable\" }. The Microsoft Teams node returns a success response.",
+			"dataSetup": "The webhook receives { \"level\": \"High\", \"title\": \"Server Down\", \"message\": \"Production database is unreachable\" }. The Microsoft Teams node returns a success response.",
 			"successCriteria": "The workflow routes the high-priority notification to Microsoft Teams. The Teams message contains 'Server Down' and the database message. No other channels receive the message."
 		},
 		{
 			"name": "medium-priority",
 			"description": "A medium-priority notification is routed to Slack",
-			"dataSetup": "The webhook receives { \"level\": \"medium\", \"title\": \"Deployment Complete\", \"message\": \"Version 2.5.0 deployed to staging\" }. The Slack node returns a success response.",
+			"dataSetup": "The webhook receives { \"level\": \"Medium\", \"title\": \"Deployment Complete\", \"message\": \"Version 2.5.0 deployed to staging\" }. The Slack node returns a success response.",
 			"successCriteria": "The workflow routes the medium-priority notification to Slack #notifications. The Slack message contains the deployment details."
 		},
 		{
 			"name": "low-priority",
 			"description": "A low-priority notification is routed to email",
-			"dataSetup": "The webhook receives { \"level\": \"low\", \"title\": \"Weekly Report Ready\", \"message\": \"The weekly analytics report has been generated\" }. The Gmail node returns a success response.",
+			"dataSetup": "The webhook receives { \"level\": \"Low\", \"title\": \"Weekly Report Ready\", \"message\": \"The weekly analytics report has been generated\" }. The Gmail node returns a success response.",
 			"successCriteria": "The workflow routes the low-priority notification to Gmail. The email is sent to alerts@ourcompany.com with the report notification."
 		}
 	]

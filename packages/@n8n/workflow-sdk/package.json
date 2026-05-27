@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -37,10 +37,6 @@
     "./prompts/node-selection": {
       "types": "./dist/prompts/node-selection/index.d.ts",
       "default": "./dist/prompts/node-selection/index.js"
-    },
-    "./examples-loader": {
-      "types": "./dist/examples-loader.d.ts",
-      "default": "./dist/examples-loader.js"
     }
   },
   "scripts": {
@@ -60,13 +56,8 @@
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
-    "create-examples-zip": "npx tsx scripts/create-examples-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
-    "code-to-json": "npx tsx src/cli/index.ts code-to-json",
-    "fetch-templates": "npx tsx scripts/fetch-templates.ts",
-    "regenerate-examples": "npx tsx scripts/regenerate-examples.ts",
-    "criteria:calibrate": "npx tsx scripts/calibration.ts",
-    "criteria:coverage": "npx tsx scripts/coverage.ts"
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -87,16 +78,11 @@
       ],
       "prompts/node-selection": [
         "./dist/prompts/node-selection/index.d.ts"
-      ],
-      "examples-loader": [
-        "./dist/examples-loader.d.ts"
       ]
     }
   },
   "files": [
-    "dist/**/*",
-    "examples/manifest.json",
-    "examples/templates.zip"
+    "dist/**/*"
   ],
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
