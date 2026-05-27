@@ -135,11 +135,8 @@ function handleDeny() {
 						data-test-id="instance-ai-plan-review-chevron"
 					/>
 				</span>
-				<N8nText v-if="reviewStatus === 'approved'" size="small" bold color="success">
-					{{ i18n.baseText('instanceAi.planReview.approved') }}
-				</N8nText>
 				<N8nText
-					v-else-if="reviewStatus === 'denied'"
+					v-if="reviewStatus === 'denied'"
 					size="small"
 					bold
 					color="text-light"

@@ -159,7 +159,7 @@ describe('PlanReviewPanel', () => {
 	});
 
 	it('shows a chevron and removes the header divider for collapsed plans', () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByText } = renderComponent({
 			props: { readOnly: true, status: 'approved' },
 		});
 
@@ -168,5 +168,6 @@ describe('PlanReviewPanel', () => {
 
 		expect(header.className).toContain('headerCollapsed');
 		expect(chevron).toHaveAttribute('data-icon', 'chevron-right');
+		expect(queryByText('Plan approved')).not.toBeInTheDocument();
 	});
 });
