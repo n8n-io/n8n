@@ -6,11 +6,7 @@ import { ensureError, jsonStringify } from 'n8n-workflow';
 
 import { OAuthRequest } from '@/requests';
 
-import {
-	OauthService,
-	skipAuthOnOAuthCallback,
-	type OAuth1CredentialData,
-} from '@/oauth/oauth.service';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -35,7 +31,7 @@ export class OAuth1CredentialController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
+	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth1Credential.Callback, res: Response) {
 		try {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;

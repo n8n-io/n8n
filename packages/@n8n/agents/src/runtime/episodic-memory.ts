@@ -6,6 +6,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
+import { incrementTokenCountFromUsage } from './execution-counter';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
 import { renderObservationLog } from './observation-log-renderer';
 import { Tool } from '../sdk/tool';
@@ -21,7 +22,7 @@ import type {
 	EpisodicMemorySearchOptions,
 	RetrievedEpisodicMemoryEntry,
 } from '../types';
-import type { AgentPersistenceOptions } from '../types/sdk/agent';
+import type { AgentExecutionCounter, AgentPersistenceOptions } from '../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../types/sdk/observation-log';
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
@@ -67,6 +68,7 @@ export interface RunEpisodicMemoryIndexerOpts {
 	observationScope: ObservationLogScope;
 	threadId: string;
 	now?: Date;
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type RunEpisodicMemoryIndexerResult =
@@ -138,6 +140,7 @@ export async function runEpisodicMemoryIndexer(
 		observations,
 		renderedObservations,
 		existingEntries,
+		executionCounter: opts.executionCounter,
 	});
 
 	const candidates = validateCandidates(extraction.entries, observations).slice(
@@ -148,10 +151,11 @@ export async function runEpisodicMemoryIndexer(
 	const savedEntries: EpisodicMemoryEntry[] = [];
 	if (candidates.length > 0) {
 		const { embedMany } = await import('ai');
-		const { embeddings } = await embedMany({
+		const { embeddings, usage } = await embedMany({
 			model: normalized.embedder,
 			values: candidates.map((entry) => entry.content),
 		});
+		incrementTokenCountFromUsage(opts.executionCounter, usage);
 		for (const [index, candidate] of candidates.entries()) {
 			const saved = await saveCandidate(opts, normalized, candidate, embeddings[index]);
 			if (saved) savedEntries.push(saved);
@@ -173,6 +177,7 @@ export function createRecallMemoryTool(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryStore;
 	config: EpisodicMemoryConfig;
 	scope: EpisodicMemoryScope;
+	executionCounter?: AgentExecutionCounter;
 }) {
 	const normalized = withEpisodicMemoryDefaults(opts.config);
 
@@ -185,10 +190,11 @@ export function createRecallMemoryTool(opts: {
 		.output(RecallMemoryOutputSchema)
 		.handler(async ({ query }): Promise<RecallMemoryOutput> => {
 			const { embed } = await import('ai');
-			const { embedding: queryEmbedding } = await embed({
+			const { embedding: queryEmbedding, usage } = await embed({
 				model: normalized.embedder,
 				value: query,
 			});
+			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
 				topK: normalized.topK,
 				queryEmbedding,
@@ -374,6 +380,7 @@ async function runEpisodicMemoryReflection(
 			seedEntryIds: savedEntries.map((entry) => entry.id),
 			entries: cluster,
 			sources,
+			executionCounter: opts.executionCounter,
 		}),
 	);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return;
@@ -382,12 +389,12 @@ async function runEpisodicMemoryReflection(
 	let mergeEmbeddings: number[][] = [];
 	if (mergeContents.length > 0) {
 		const { embedMany } = await import('ai');
-		mergeEmbeddings = (
-			await embedMany({
-				model: config.embedder,
-				values: mergeContents,
-			})
-		).embeddings;
+		const { embeddings, usage } = await embedMany({
+			model: config.embedder,
+			values: mergeContents,
+		});
+		mergeEmbeddings = embeddings;
+		incrementTokenCountFromUsage(opts.executionCounter, usage);
 	}
 	await opts.memory.episodic.applyReflection(opts.scope, {
 		drop: reflection.drop,

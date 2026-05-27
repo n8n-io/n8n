@@ -343,7 +343,8 @@ export class BuilderSandboxFactory {
 
 			// Curated examples — also too large to bake into the image, written
 			// post-creation. Without this the builder sees an empty examples/ dir.
-			await writeCuratedExamples(workspace, this.logger);
+			const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+			await writeCuratedExamples(workspace, templatesBundle, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 
@@ -399,7 +400,8 @@ export class BuilderSandboxFactory {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
 
-			await writeCuratedExamples(workspace, this.logger);
+			const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+			await writeCuratedExamples(workspace, templatesBundle, this.logger);
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
 

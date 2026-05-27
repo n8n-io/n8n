@@ -22,7 +22,17 @@ import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requ
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
+// `restoreMocks: true` in the root jest config restores spies between tests,
+// but the Python runtime check is invoked from inner describes' `beforeAll`
+// hooks (which run after the previous test's restore). Patching the static
+// method directly keeps the stub active for the whole test file.
+const originalCheckRequirements = PyTaskRunnerProcess.checkRequirements;
+beforeAll(() => {
+	PyTaskRunnerProcess.checkRequirements = async () => 'python';
+});
+afterAll(() => {
+	PyTaskRunnerProcess.checkRequirements = originalCheckRequirements;
+});
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
