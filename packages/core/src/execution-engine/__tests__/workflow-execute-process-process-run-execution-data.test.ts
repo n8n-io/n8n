@@ -9,7 +9,12 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeConnectionTypes,
+	UnexpectedError,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
 
@@ -64,7 +69,7 @@ describe('processRunExecutionData', () => {
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		const execution = () => workflowExecute.processRunExecutionData(workflow);
 
-		expect(execution).toThrow(ApplicationError);
+		expect(execution).toThrow(UnexpectedError);
 		expect(execution).toThrow('Failed to run workflow due to missing execution data');
 	});
 
