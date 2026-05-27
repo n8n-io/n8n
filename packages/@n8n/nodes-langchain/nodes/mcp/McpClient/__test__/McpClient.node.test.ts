@@ -1,9 +1,12 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'jest-mock-extended';
+import type { ILoadOptionsFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import * as sharedUtils from '../../shared/utils';
+import { getTools } from '../listSearch';
 import { McpClient } from '../McpClient.node';
+import { getToolParameters } from '../resourceMapping';
+import * as sharedUtils from '../../shared/utils';
 
 describe('McpClient', () => {
 	const getAuthHeaders = jest.spyOn(sharedUtils, 'getAuthHeaders');
@@ -217,5 +220,80 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[{ json: { error: { message: 'Tool call failed' } }, pairedItem: { item: 0 } }],
 		]);
+	});
+
+	describe('listSearch: getTools', () => {
+		it('should block the request when the credential restricts the endpoint URL', async () => {
+			getAuthHeaders.mockResolvedValue({
+				headers: { 'X-Test': 'trace' },
+				credentials: {
+					name: 'X-Test',
+					value: 'trace',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example.com',
+				},
+			});
+			const node = mock<INode>({ typeVersion: 1 });
+
+			await expect(
+				getTools.call(
+					mock<ILoadOptionsFunctions>({
+						getNode: jest.fn(() => node),
+						getNodeParameter: jest.fn((key, _index) => {
+							const params: Record<string, any> = {
+								authentication: 'headerAuth',
+								serverTransport: 'httpStreamable',
+								endpointUrl: 'https://evil.example.com/mcp',
+							};
+							return params[key];
+						}),
+					}),
+				),
+			).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Domain not allowed: This credential is restricted from accessing https://evil.example.com/mcp. Only the following domains are allowed: allowed.example.com',
+				),
+			);
+			expect(connectMcpClient).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resourceMapping: getToolParameters', () => {
+		it('should block the request when the credential restricts the endpoint URL', async () => {
+			getAuthHeaders.mockResolvedValue({
+				headers: { 'X-Test': 'trace' },
+				credentials: {
+					name: 'X-Test',
+					value: 'trace',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example.com',
+				},
+			});
+			const node = mock<INode>({ typeVersion: 1 });
+
+			await expect(
+				getToolParameters.call(
+					mock<ILoadOptionsFunctions>({
+						getNode: jest.fn(() => node),
+						getNodeParameter: jest.fn((key, _index) => {
+							const params: Record<string, any> = {
+								tool: 'my-tool',
+								authentication: 'headerAuth',
+								serverTransport: 'httpStreamable',
+								endpointUrl: 'https://evil.example.com/mcp',
+							};
+							return params[key];
+						}),
+					}),
+				),
+			).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'Domain not allowed: This credential is restricted from accessing https://evil.example.com/mcp. Only the following domains are allowed: allowed.example.com',
+				),
+			);
+			expect(connectMcpClient).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -12,6 +12,7 @@ import {
 	randomString,
 	hasKey,
 	isSafeObjectProperty,
+	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
@@ -511,6 +512,11 @@ describe('isSafeObjectProperty', () => {
 		['prototype', false],
 		['constructor', false],
 		['getPrototypeOf', false],
+		['setPrototypeOf', false],
+		['getOwnPropertyDescriptor', false],
+		['getOwnPropertyDescriptors', false],
+		['defineProperty', false],
+		['defineProperties', false],
 		['mainModule', false],
 		['binding', false],
 		['_load', false],
@@ -519,6 +525,31 @@ describe('isSafeObjectProperty', () => {
 		['toString', true],
 	])('should return %s for key "%s"', (key, expected) => {
 		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('containsUnsafeObjectPropertyToken', () => {
+	it.each([
+		['constructor', true],
+		['__proto__', true],
+		['prototype', true],
+		['getPrototypeOf', true],
+		['setPrototypeOf', true],
+		['getOwnPropertyDescriptor', true],
+		['getOwnPropertyDescriptors', true],
+		['defineProperty', true],
+		['defineProperties', true],
+		['mainModule', true],
+		['user.constructor', true],
+		['"constructor"', true],
+		['a.b."__proto__".c', true],
+		['user.name', false],
+		['items[0].title', false],
+		['constructorName', false],
+		['myPrototypeId', false],
+		['', false],
+	])('should return %s for "%s"', (input, expected) => {
+		expect(containsUnsafeObjectPropertyToken(input)).toBe(expected);
 	});
 });
 

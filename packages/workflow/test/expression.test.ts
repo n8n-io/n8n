@@ -176,15 +176,15 @@ describe('Expression', () => {
 
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
-				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.defineProperty}}')).toThrow();
 			});
 
 			it('should block Object.defineProperties', () => {
-				expect(evaluate('={{Object.defineProperties}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.defineProperties}}')).toThrow();
 			});
 
 			it('should block Object.setPrototypeOf', () => {
-				expect(evaluate('={{Object.setPrototypeOf}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.setPrototypeOf}}')).toThrow();
 			});
 
 			it('should block Object.getPrototypeOf', () => {
@@ -192,11 +192,11 @@ describe('Expression', () => {
 			});
 
 			it('should block Object.getOwnPropertyDescriptor', () => {
-				expect(evaluate('={{Object.getOwnPropertyDescriptor}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.getOwnPropertyDescriptor}}')).toThrow();
 			});
 
 			it('should block Object.getOwnPropertyDescriptors', () => {
-				expect(evaluate('={{Object.getOwnPropertyDescriptors}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.getOwnPropertyDescriptors}}')).toThrow();
 			});
 
 			it('should block __defineGetter__ on Object', () => {
@@ -239,12 +239,11 @@ describe('Expression', () => {
 			});
 
 			it('should prevent Object.defineProperty attack on Error.prepareStackTrace', () => {
-				// Object.defineProperty is undefined, so calling it returns undefined (no-op)
-				// The attack fails silently - prepareStackTrace is never set
-				const result = evaluate(
-					"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
-				);
-				expect(result).toBeUndefined();
+				expect(() =>
+					evaluate(
+						"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
+					),
+				).toThrow();
 			});
 		});
 
@@ -363,26 +362,22 @@ describe('Expression', () => {
 			});
 
 			it('should block getOwnPropertyDescriptor bypass attempt', () => {
-				// Attempt to read blocked properties via getOwnPropertyDescriptor
-				// getOwnPropertyDescriptor is undefined, calling it throws TypeError
 				const payload = `={{(() => {
 					const desc = Object.getOwnPropertyDescriptor(Error, 'prepareStackTrace');
 					return desc ? 'HAS_DESC' : 'NO_DESC';
 				})()}}`;
 
-				// getOwnPropertyDescriptor is undefined, calling undefined() throws
-				const result = evaluate(payload);
-				expect(result).toBeUndefined();
+				expect(() => evaluate(payload)).toThrow();
 			});
 
 			it('should block indirect access to defineProperty via bracket notation', () => {
-				expect(evaluate("={{Object['defineProperty']}}")).toBeUndefined();
+				expect(() => evaluate("={{Object['defineProperty']}}")).toThrow();
 			});
 
 			it('should block storing defineProperty in a variable', () => {
-				// Even if you try to store it, you get undefined
-				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
-				expect(result).toBeUndefined();
+				expect(() =>
+					evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}'),
+				).toThrow();
 			});
 
 			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
@@ -453,6 +448,35 @@ describe('Expression', () => {
 				expect(() => evaluate(payload)).toThrow(
 					'Cannot access "__lookupGetter__" due to security concerns',
 				);
+			});
+
+			it('should reject jmespath queries that reference restricted identifiers', () => {
+				expect(() => evaluate('={{ $jmespath({a:1}, "constructor") }}')).toThrow(
+					/due to security concerns/,
+				);
+				expect(() => evaluate('={{ $jmespath({a:1}, "__proto__") }}')).toThrow(
+					/due to security concerns/,
+				);
+				expect(() => evaluate('={{ $jmespath({a:1}, "prototype") }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should reject jmespath queries that reference restricted identifiers (alias)', () => {
+				expect(() => evaluate('={{ $jmesPath({a:1}, "getPrototypeOf") }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should reject computed-string jmespath queries built from restricted identifiers', () => {
+				const payload =
+					'={{ $jmespath({a:1}, String.fromCharCode(99,111,110,115,116,114,117,99,116,111,114)) }}';
+				expect(() => evaluate(payload)).toThrow(/due to security concerns/);
+			});
+
+			it('should still allow jmespath queries that contain restricted names as substrings', () => {
+				const payload = '={{ $jmespath({constructorName:"Widget"}, "constructorName") }}';
+				expect(evaluate(payload)).toBe('Widget');
 			});
 
 			it('should block TOCTOU bypass via custom toString()', () => {
