@@ -551,6 +551,52 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			nodeOptions,
 		);
 	});
+
+	it('should JSON.stringify object elements in array expression bind values', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
+			options: {
+				queryReplacement: '={{ [{id: 1}, {id: 2}] }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		// Override evaluateExpression to return an array of objects
+		const mockExecute = {
+			getNodeParameter(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+			getNode() {
+				return node;
+			},
+			evaluateExpression(str: string, _: number) {
+				if (str.includes('[{id: 1}, {id: 2}]')) {
+					return [{ id: 1 }, { id: 2 }];
+				}
+				return str.replace('{{', '').replace('}}', '');
+			},
+		} as unknown as IExecuteFunctions;
+
+		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
+					values: ['{"id":1}', '{"id":2}'],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {
