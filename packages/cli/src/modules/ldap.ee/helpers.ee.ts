@@ -52,12 +52,15 @@ export const createFilter = (filter: string, userFilter: string) => {
 };
 
 export const escapeFilter = (filter: string): string => {
-	return filter
-		.replace(/\\/g, '\\5c')
-		.replace(/\*/g, '\\2a')
-		.replace(/\(/g, '\\28')
-		.replace(/\)/g, '\\29')
-		.replace(/\x00/g, '\\00');
+	return (
+		filter
+			.replace(/\\/g, '\\5c')
+			.replace(/\*/g, '\\2a')
+			.replace(/\(/g, '\\28')
+			.replace(/\)/g, '\\29')
+			// eslint-disable-next-line no-control-regex
+			.replace(/\x00/g, '\\00')
+	);
 };
 
 /**
