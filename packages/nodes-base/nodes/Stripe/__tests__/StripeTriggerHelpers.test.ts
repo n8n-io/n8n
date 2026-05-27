@@ -45,6 +45,24 @@ describe('StripeTriggerHelpers', () => {
 			expect(result).toBe(true);
 		});
 
+		it('should skip verification when no signature secret is provided and a stale timestamp is present', async () => {
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				secretKey: 'sk_test_123',
+			});
+			const oldTimestamp = (Math.floor(Date.now() / 1000) - 360).toString();
+			const staleSignature = generateValidSignature(oldTimestamp, rawBody, webhookSecret);
+			const mockHeader = jest.fn().mockReturnValue(staleSignature);
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				header: mockHeader,
+				rawBody: Buffer.from(rawBody),
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
 		it('should use the stored webhook secret when available', async () => {
 			(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(
 				new Error('Credential secret should not be read when webhook secret exists'),

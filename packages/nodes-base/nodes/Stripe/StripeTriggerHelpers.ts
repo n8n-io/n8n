@@ -49,6 +49,10 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 
 	const req = this.getRequestObject();
 
+	if (!signingSecret) {
+		return true;
+	}
+
 	const getSignatureHeader = () => {
 		const signature = req.header('stripe-signature');
 		return typeof signature === 'string' ? signature : null;
@@ -76,9 +80,7 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 			hmac.update(signedPayload);
 			return hmac.digest('hex');
 		},
-		skipIfNoExpectedSignature: !signingSecret,
 		getActualSignature: () => getSignatureHeaderValue(getSignatureHeader(), 'v1'),
 		getTimestamp,
-		skipIfNoTimestamp: !signingSecret,
 	});
 }
