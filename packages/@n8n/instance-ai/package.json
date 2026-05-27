@@ -24,7 +24,8 @@
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "skills/**/*"
   ],
   "exports": {
     ".": {

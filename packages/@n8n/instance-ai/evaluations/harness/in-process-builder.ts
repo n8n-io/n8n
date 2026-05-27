@@ -20,12 +20,12 @@
 // first suspension and the builder never completes.
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/require-await */
 // The `waitForConfirmation` callback must be async to satisfy the
 // resumable-stream control contract even though the auto-approve path has
 // nothing to await.
 
-import { Agent } from '@n8n/agents';
+import { Agent, type RuntimeSkillSource, type Workspace } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { createWriteStream, type WriteStream } from 'node:fs';
@@ -40,6 +40,7 @@ import {
 	type InMemoryWorkflowTaskService,
 } from './stub-workflow-task-service';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/src/types/workflow';
+import { attachRuntimeWorkspaceCapabilities } from '../../src/agent/runtime-workspace';
 import { MAX_STEPS } from '../../src/constants/max-steps';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -47,6 +48,8 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
+import { materializeRuntimeSkillsIntoWorkspace } from '../../src/skills/materialize-runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
 import { createAllTools } from '../../src/tools';
 import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
@@ -59,11 +62,13 @@ import type { InstanceAiToolRegistry, ModelConfig, OrchestrationContext } from '
 import { asResumable } from '../../src/utils/stream-helpers';
 import { createRemediation } from '../../src/workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../src/workflow-loop/workflow-loop-state';
-import type {
-	BuilderSandboxFactory,
-	BuilderWorkspace,
-} from '../../src/workspace/builder-sandbox-factory';
-import { getWorkspaceRoot } from '../../src/workspace/sandbox-setup';
+import {
+	createSandbox,
+	createWorkspace,
+	type SandboxConfig,
+} from '../../src/workspace/create-workspace';
+import { getWorkspaceRoot, setupSandboxWorkspace } from '../../src/workspace/sandbox-setup';
+import { createScopedWorkspace } from '../../src/workspace/scoped-workspace';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -132,12 +137,12 @@ export interface BuildInProcessOptions {
 	 */
 	logPath?: string;
 	/**
-	 * Provisions the per-call sandbox workspace. The agent runs the
-	 * production sandbox builder prompt + `submit-workflow` path: writes
-	 * TypeScript to the workspace, runs `tsc`, and saves the parsed
-	 * `WorkflowJSON`. The workspace is destroyed on completion.
+	 * Provisions the per-call sandbox workspace. The agent runs the production
+	 * shared-sandbox builder prompt + `submit-workflow` path: writes TypeScript
+	 * to the workspace, runs `tsc`, and saves the parsed `WorkflowJSON`. The
+	 * sandbox is destroyed on completion.
 	 */
-	sandboxFactory: BuilderSandboxFactory;
+	sandboxConfig: SandboxConfig;
 	/**
 	 * Optional pre-generated work item ID. Pass this when the caller has
 	 * already embedded `[WORK ITEM ID: ${workItemId}]` into the prompt's
@@ -173,6 +178,7 @@ export async function buildInProcess(
 	};
 
 	const traceCollector = createToolTraceCollector();
+	const logger = silentLogger();
 
 	const chunkLog = options.logPath ? await openChunkLog(options.logPath) : null;
 	chunkLog?.writeHeader(options.prompt, { modelId, maxSteps, timeoutMs });
@@ -198,9 +204,19 @@ export async function buildInProcess(
 	const allTools = createAllTools(services.context);
 	const builderTools: InstanceAiToolRegistry = createToolRegistry();
 
-	let builderWs: BuilderWorkspace;
+	let workspace: Workspace;
+	let cleanupSandbox = async () => {};
 	try {
-		builderWs = await options.sandboxFactory.create(`eval-builder-${nanoid(6)}`, services.context);
+		const sandbox = await createSandbox(options.sandboxConfig);
+		const createdWorkspace = createWorkspace(sandbox);
+		if (!sandbox || !createdWorkspace) {
+			throw new Error('Sandbox config is disabled');
+		}
+		workspace = createdWorkspace;
+		cleanupSandbox = async () => {
+			await createdWorkspace.destroy();
+		};
+		await workspace.init();
 	} catch (error) {
 		chunkLog?.write({
 			kind: 'error',
@@ -218,8 +234,23 @@ export async function buildInProcess(
 		);
 	}
 	let root: string;
+	let runtimeSkills: RuntimeSkillSource | undefined;
 	try {
-		root = await getWorkspaceRoot(builderWs.workspace);
+		root = path.posix.join(
+			await getWorkspaceRoot(workspace),
+			'builders',
+			`eval-builder-${nanoid(6)}`,
+		);
+		await setupSandboxWorkspace(workspace, services.context, { root });
+		const runtimeSkillSource = loadInstanceAiRuntimeSkillSource();
+		const materializedRuntimeSkills = await materializeRuntimeSkillsIntoWorkspace({
+			source: runtimeSkillSource,
+			workspace,
+			root,
+			logger,
+		});
+		runtimeSkills = materializedRuntimeSkills?.source ?? runtimeSkillSource;
+		workspace = createScopedWorkspace(workspace, root, materializedRuntimeSkills?.env);
 	} catch (error) {
 		chunkLog?.write({
 			kind: 'error',
@@ -227,7 +258,7 @@ export async function buildInProcess(
 			message: error instanceof Error ? error.message : String(error),
 		});
 		try {
-			await builderWs.cleanup();
+			await cleanupSandbox();
 		} catch (cleanupError) {
 			chunkLog?.write({
 				kind: 'error',
@@ -256,7 +287,6 @@ export async function buildInProcess(
 	const threadId = 'eval-thread-' + nanoid(6);
 	const runId = 'eval-run-' + nanoid(6);
 	const agentId = 'eval-builder-' + nanoid(6);
-	const logger = silentLogger();
 
 	// In-memory build-outcome / verification store. Lives for the duration
 	// of this single build; never shared. The workflowTaskService interface
@@ -296,13 +326,14 @@ export async function buildInProcess(
 		'submit-workflow',
 		createSubmitWorkflowTool(
 			services.context,
-			builderWs.workspace,
+			workspace,
 			undefined,
 			async (attempt: SubmitWorkflowAttempt) => {
 				await workflowTaskService.reportBuildOutcome(
 					toWorkflowBuildOutcome(workItemId, runId, taskId, attempt),
 				);
 			},
+			{ root },
 		),
 	);
 	builderTools.set('verify-built-workflow', createVerifyBuiltWorkflowTool(verifyContext));
@@ -314,8 +345,8 @@ export async function buildInProcess(
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
 		})
-		.tool(toolRegistryValues(builderTools))
-		.workspace(builderWs.workspace);
+		.tool(toolRegistryValues(builderTools));
+	attachRuntimeWorkspaceCapabilities(agent, { workspace, runtimeSkills });
 
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
@@ -445,7 +476,7 @@ export async function buildInProcess(
 	} finally {
 		clearTimeout(timeoutHandle);
 		try {
-			await builderWs.cleanup();
+			await cleanupSandbox();
 		} catch (cleanupError) {
 			chunkLog?.write({
 				kind: 'error',
