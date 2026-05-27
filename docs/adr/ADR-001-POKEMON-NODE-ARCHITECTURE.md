@@ -37,8 +37,11 @@ Three review agents (QA, PM, Architect) independently analyzed the initial plan 
 **Alternatives Considered:**
 - Declarative with `postReceive`: Rejected — can't express conditional array mapping readably
 - Declarative with custom `execute()` override: Defeats the purpose of declarative
+- **Hybrid (declarative Get Many + programmatic Get)**: Get Many is a strong declarative candidate — simple `GET /pokemon?limit=N` with `postReceive` extracting `.results`. Get requires programmatic for simplify logic. However, no existing n8n node mixes both patterns, making this risky for a take-home where reviewers check convention awareness. Consistency wins over optimization.
 
-**Source:** Architect proposed, PM and QA concurred.
+**Fast follow:** Convert Get Many to declarative routing in a follow-up. The `postReceive` extraction of `.results` from the API envelope is straightforward and would reduce boilerplate while keeping Get programmatic for simplify logic.
+
+**Source:** Architect proposed, PM and QA concurred. PO challenged "why not both?" — hybrid added as fast follow.
 
 ---
 
@@ -60,22 +63,33 @@ Three review agents (QA, PM, Architect) independently analyzed the initial plan 
 
 ---
 
-### D3: Cut Return All
+### D3: Keep Return All (reversed from initial review)
 
-**Decision:** No "Return All" toggle on Get Many. Simple single-call with limit.
+**Decision:** Include "Return All" toggle on Get Many, with clear field descriptions about stub data.
 
-**Context:** The standard n8n pattern for list operations includes a "Return All" toggle that paginates through all pages. PokeAPI's list endpoint returns `{name, url}` stubs — not full Pokemon data.
+**Context:** The adversarial review initially cut Return All because the list endpoint returns `{name, url}` stubs, not full Pokemon data. PO challenged this: "I'm not convinced on the cut. Convince me." The case didn't hold.
 
-**Rationale:**
-- "Return All" would fetch 1350+ stub records with no stats, types, sprites, or abilities
-- Users who enable it expecting full data get incomplete results with no warning
-- The composable pattern (Get Many → Get) is the honest design
-- Removing it also removes the pagination helper function, eliminating an untested code path
-- The CoinGecko pagination pattern (`do...while(length !== 0)`) doesn't even work with PokeAPI's envelope structure (`{results, next, count}`) — would require a different termination condition (`next === null`)
+**Why the cut was wrong:**
+- **Return All is a standard n8n convention.** CoinGecko, GitHub, and most list operations include it. An n8n reviewer will notice its absence and wonder if the candidate didn't know how to implement pagination.
+- **The UX concern is solved by a field description.** "Returns name and URL only — use Get for full details." One sentence. The user is warned.
+- **Stub data IS useful.** A user wanting all Pokemon names for a dropdown, a reference list, or to feed into a loop needs Return All. Getting 20 at a time is worse UX.
+- **It demonstrates API proficiency.** Implementing cursor-based pagination with PokeAPI's `next` field shows real-world API integration skill — exactly what the take-home evaluates.
 
-**What we'd do with more time:** Add Return All with clear field descriptions warning about stub data, using `while (url !== null)` pagination driven by the `next` field.
+**Pagination implementation (correct pattern, NOT CoinGecko's):**
+```typescript
+let url: string | null = `${baseUrl}/pokemon?limit=100&offset=0`;
+const allResults: IPokemonListItem[] = [];
+while (url !== null) {
+  const response = await pokemonApiRequest(url);
+  allResults.push(...response.results);
+  url = response.next;
+}
+```
+CoinGecko's `do...while(length !== 0)` fires one wasted API call per execution because PokeAPI's last page has non-empty results with `next: null`. The `while (url !== null)` pattern is correct for PokeAPI's envelope structure.
 
-**Source:** PM proposed cut, QA and Architect agreed. Architect provided correct pagination pattern for documentation.
+**Test requirement (from QA review):** Mock must have 2+ pages. A single-page mock passes even if pagination is completely broken.
+
+**Source:** PO overruled the adversarial review cut. Architect provided correct pagination pattern.
 
 ---
 
@@ -185,9 +199,10 @@ Three review agents (QA, PM, Architect) independently analyzed the initial plan 
 
 | Alternative | Why Rejected |
 |-------------|-------------|
-| Declarative node | Can't express simplify logic in postReceive |
+| Pure declarative node | Can't express simplify logic in postReceive |
+| Hybrid declarative/programmatic | No existing n8n reference for mixing; fast follow candidate |
 | Resource selector | Single resource = clutter |
-| Return All | Stub data = misleading results |
+| Cut Return All | PO overruled — standard convention, demonstrates pagination skill, stub data is useful with clear descriptions |
 | `helpers.request()` | Deprecated, wrong interface shape |
 | `any` types | Hard-blocked by n8n conventions |
 | Simplify on Get Many | No-op toggle = UX lie |
