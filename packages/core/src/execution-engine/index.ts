@@ -102,3 +102,7 @@ export {
 	type FixtureSizeHint,
 	type SynthesizeBinaryFixtureOptions,
 } from './eval-mock-fixtures';
+// Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
+// can reuse the same schema-driven cred synthesizer the wire-server URL
+// rewrite expects. See its `getDecrypted` catch path for the consumer.
+export { buildEvalMockCredentials } from './eval-mock-helpers';

@@ -42,6 +42,8 @@ import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
 
 const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}$/;
+const SKILLS_HASH_A = 'aaaaaaaaaaaa';
+const SKILLS_HASH_B = 'bbbbbbbbbbbb';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -125,7 +127,7 @@ describe('SnapshotManager.ensureImage', () => {
 		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/.manifest.json');
 	});
 
-	it('changes the snapshot setup hash when the runtime skills hash changes', async () => {
+	it('changes the snapshot suffix when the runtime skills hash changes', async () => {
 		const daytonaA = makeFakeDaytona();
 		const daytonaB = makeFakeDaytona();
 		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
@@ -135,14 +137,14 @@ describe('SnapshotManager.ensureImage', () => {
 			NOOP_LOGGER,
 			'1.123.0',
 			undefined,
-			createRuntimeSkillSource('hash-a'),
+			createRuntimeSkillSource(SKILLS_HASH_A),
 		);
 		const managerB = new SnapshotManager(
 			undefined,
 			NOOP_LOGGER,
 			'1.123.0',
 			undefined,
-			createRuntimeSkillSource('hash-b'),
+			createRuntimeSkillSource(SKILLS_HASH_B),
 		);
 
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
@@ -150,7 +152,40 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(snapshotA).toMatch(SNAPSHOT_NAME_PATTERN);
 		expect(snapshotB).toMatch(SNAPSHOT_NAME_PATTERN);
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
+		expect(snapshotB).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_B}`);
 		expect(snapshotA).not.toBe(snapshotB);
+	});
+
+	it('keeps the snapshot suffix stable when the base image changes', async () => {
+		const daytonaA = makeFakeDaytona();
+		const daytonaB = makeFakeDaytona();
+		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
+		daytonaB.snapshot.create.mockResolvedValue({ name: 'ignored-b' });
+		const managerA = new SnapshotManager(
+			'daytonaio/sandbox:0.5.0',
+			NOOP_LOGGER,
+			'1.123.0',
+			undefined,
+			createRuntimeSkillSource(SKILLS_HASH_A),
+		);
+		const managerB = new SnapshotManager(
+			'node:24',
+			NOOP_LOGGER,
+			'1.123.0',
+			undefined,
+			createRuntimeSkillSource(SKILLS_HASH_A),
+		);
+
+		const snapshotA = await managerA.createSnapshot(daytonaA as never);
+		const snapshotB = await managerB.createSnapshot(daytonaB as never);
+
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
+		expect(snapshotB).toBe(snapshotA);
+		expect(daytonaA.snapshot.create.mock.calls[0][0].image.dockerfile).toContain(
+			'FROM daytonaio/sandbox:0.5.0',
+		);
+		expect(daytonaB.snapshot.create.mock.calls[0][0].image.dockerfile).toContain('FROM node:24');
 	});
 });
 
