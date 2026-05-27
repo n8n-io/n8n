@@ -345,6 +345,7 @@ export class ProjectService {
 			throw new ProjectNotFoundError(projectId);
 		}
 
+		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
 		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 

@@ -20,16 +20,12 @@ function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
 
-type TrackedWorkflowSpan = {
-	span: Span;
-};
-
-type TrackedNodeSpan = { span: Span };
+type TrackedSpan = { span: Span };
 
 @Service()
 export class ExecutionLevelTracer {
-	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
-	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedNodeSpan>>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
+	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	constructor(
@@ -51,7 +47,7 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
 						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
-						...prefixedRecord(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
+						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
 				},
@@ -246,7 +242,7 @@ export class ExecutionLevelTracer {
 	}
 }
 
-function prefixedRecord(
+function buildCustomAttributes(
 	prefix: string,
 	attrs: Record<string, string> | undefined,
 ): Record<string, string> {

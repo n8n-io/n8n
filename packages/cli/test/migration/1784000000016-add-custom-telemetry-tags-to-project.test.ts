@@ -11,15 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-<<<<<<<< HEAD:packages/cli/test/migration/1784000000014-add-custom-telemetry-tags-to-project.test.ts
-<<<<<<<< HEAD:packages/cli/test/migration/1784000000011-add-custom-telemetry-tags-to-project.test.ts
-const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000011';
-========
-const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000014';
->>>>>>>> 773514c6f4 (fixup! test(core): Add coverage for migration):packages/cli/test/migration/1784000000014-add-custom-telemetry-tags-to-project.test.ts
-========
-const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000013';
->>>>>>>> 2acf1aa2cb (test(editor): Add coverage for project settings):packages/cli/test/migration/1784000000013-add-custom-telemetry-tags-to-project.test.ts
+const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000016';
 
 interface SqliteColumnInfo {
 	name: string;
@@ -31,6 +23,15 @@ interface PgColumnInfo {
 	column_name: string;
 	is_nullable: string;
 	column_default: string | null;
+}
+
+interface SqliteIndexInfo {
+	name: string;
+	tbl_name: string;
+}
+
+interface PgIndexInfo {
+	indexname: string;
 }
 
 describe('AddCustomTelemetryTagsToProject Migration', () => {
@@ -86,6 +87,21 @@ describe('AddCustomTelemetryTagsToProject Migration', () => {
 		return rows[0];
 	}
 
+	async function hasIndexOnSharedWorkflow(context: TestMigrationContext): Promise<boolean> {
+		if (context.isSqlite) {
+			const rows = (await context.queryRunner.query(
+				`SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND tbl_name = ${context.escape.tableName('shared_workflow')} AND name LIKE '%projectId%'`,
+			)) as SqliteIndexInfo[];
+			return rows.length > 0;
+		}
+		const tableName = `${context.tablePrefix}shared_workflow`;
+		const rows = (await context.queryRunner.query(
+			"SELECT indexname FROM pg_indexes WHERE tablename = $1 AND indexname LIKE '%projectId%'",
+			[tableName],
+		)) as PgIndexInfo[];
+		return rows.length > 0;
+	}
+
 	describe('up', () => {
 		it('should add customTelemetryTags as NOT NULL with default []', async () => {
 			await runSingleMigration(MIGRATION_NAME);
@@ -126,15 +142,23 @@ describe('AddCustomTelemetryTagsToProject Migration', () => {
 
 			await postContext.queryRunner.release();
 		});
+
+		it('should add an index on shared_workflow.projectId', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+			expect(await hasIndexOnSharedWorkflow(context)).toBe(true);
+			await context.queryRunner.release();
+		});
 	});
 
 	describe('down', () => {
-		it('should remove customTelemetryTags column', async () => {
+		it('should remove customTelemetryTags column and index', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			await undoLastSingleMigration();
 
 			const context = createTestMigrationContext(dataSource);
 			expect(await getColumnMeta(context, 'customTelemetryTags')).toBeUndefined();
+			expect(await hasIndexOnSharedWorkflow(context)).toBe(false);
 			await context.queryRunner.release();
 		});
 	});
