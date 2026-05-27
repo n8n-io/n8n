@@ -1175,11 +1175,11 @@ describe('Expression', () => {
 		// treated as a literal string). Inside a parameter expression that
 		// would create nested `{{...}}` and trip the outer parser, so the
 		// inner braces are built via string concatenation.
-		const wrapAsExpression = (inner: string) => `'{' + '{ ${inner} }' + '}'`;
+		const buildInnerTemplate = (inner: string) => `'{' + '{ ${inner} }' + '}'`;
 
 		it('resolves a nested $json reference (parity)', () => {
 			expect(
-				evaluate(`={{ $evaluateExpression(${wrapAsExpression('$json.value')}) }}`, [
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}) }}`, [
 					{ json: { value: 42 } },
 				]),
 			).toBe(42);
@@ -1187,7 +1187,7 @@ describe('Expression', () => {
 
 		it('forwards an itemIndex argument (parity)', () => {
 			expect(
-				evaluate(`={{ $evaluateExpression(${wrapAsExpression('$json.value')}, 1) }}`, [
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 1) }}`, [
 					{ json: { value: 'first' } },
 					{ json: { value: 'second' } },
 				]),
