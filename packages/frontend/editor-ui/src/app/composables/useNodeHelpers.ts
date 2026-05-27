@@ -49,6 +49,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -68,6 +69,7 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+	const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -413,6 +415,29 @@ export function useNodeHelpers() {
 		return null;
 	}
 
+	function collectPrivateCredentialIssues(
+		node: INodeUi,
+		foundIssues: INodeIssueObjectProperty,
+	): void {
+		if (!isDynamicCredentialsEnabled.value) return;
+
+		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
+			if (foundIssues[credTypeName]?.length) continue;
+			if (!details?.id || details.__aiGatewayManaged) continue;
+
+			const credential = credentialsStore.getCredentialById(details.id);
+			if (!credential?.isResolvable) continue;
+
+			if (!credential.connectedByMe) {
+				foundIssues[credTypeName] = [
+					i18n.baseText('nodeIssues.credentials.privateNotConnected', {
+						interpolate: { name: credential.name },
+					}),
+				];
+			}
+		}
+	}
+
 	function getNodeCredentialIssues(
 		node: INodeUi,
 		nodeType?: INodeTypeDescription,
@@ -560,6 +585,8 @@ export function useNodeHelpers() {
 				}
 			}
 		}
+
+		collectPrivateCredentialIssues(node, foundIssues);
 
 		// TODO: Could later check also if the node has access to the credentials
 		if (Object.keys(foundIssues).length === 0) {

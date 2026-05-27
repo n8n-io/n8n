@@ -1303,6 +1303,10 @@ async function oAuthCredentialAuthorize() {
 				oauthTokenData: {} as CredentialInformation,
 			};
 
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
+
 			// Close the window
 			if (oauthPopup) {
 				oauthPopup.close();

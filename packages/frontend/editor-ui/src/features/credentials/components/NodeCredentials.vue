@@ -173,6 +173,18 @@ function isCredentialResolvable(credentialType: string): boolean {
 	return credential?.isResolvable === true;
 }
 
+function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
+	if (!isDynamicCredentialsEnabled.value) return null;
+	const id = selected.value[credentialType]?.id;
+	if (!id) return null;
+	const credential = credentialsStore.getCredentialById(id);
+	return credential?.isResolvable === true ? credential : null;
+}
+
+function isPrivateConnected(credentialType: string): boolean {
+	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
+}
+
 function showResolvableWarning(credentialType: string): boolean {
 	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
 }
@@ -822,12 +834,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											<template #content>{{
 												i18n.baseText('credentials.dynamic.tooltip')
 											}}</template>
-											<N8nIcon
-												icon="key-round"
-												size="medium"
-												:class="$style.dynamicIcon"
-												data-test-id="credential-option-dynamic-icon"
-											/>
+											<N8nBadge
+												theme="tertiary"
+												class="pl-3xs pr-3xs"
+												data-test-id="credential-option-private-badge"
+											>
+												<span :class="$style.dynamicBadgeText">
+													<N8nIcon icon="key-round" size="medium" />
+													{{ i18n.baseText('credentials.private.badge') }}
+												</span>
+											</N8nBadge>
 										</N8nTooltip>
 									</div>
 									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
@@ -853,11 +869,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								<N8nBadge
 									theme="tertiary"
 									class="pl-3xs pr-3xs"
-									data-test-id="node-credential-dynamic-icon"
+									data-test-id="node-credential-private-icon"
 								>
 									<span :class="$style.dynamicBadgeText">
 										<N8nIcon icon="key-round" size="medium" />
-										{{ i18n.baseText('credentials.dynamic.badge') }}
+										{{ i18n.baseText('credentials.private.badge') }}
 									</span>
 								</N8nBadge>
 							</N8nTooltip>
@@ -889,25 +905,60 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<N8nNotice
-					v-if="showResolvableWarning(type.name)"
-					theme="warning"
-					:class="$style.resolverWarning"
-					data-test-id="node-credential-resolver-warning"
+				<div
+					v-if="getSelectedPrivateCredential(type.name) || showResolvableWarning(type.name)"
+					:class="$style.noticesContainer"
 				>
-					<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
-						<template #workflowSettings>
-							<N8nLink @click="openWorkflowSettings">
-								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
-							</N8nLink>
-						</template>
-						<template v-if="dynamicCredentialsDocsUrl" #documentation>
-							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
-								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
-							</N8nLink>
-						</template>
-					</I18nT>
-				</N8nNotice>
+					<N8nNotice
+						v-if="getSelectedPrivateCredential(type.name)"
+						:theme="isPrivateConnected(type.name) ? 'info' : 'warning'"
+						data-test-id="node-credential-private-callout"
+					>
+						<div :class="$style.privateNoticeContent">
+							<N8nIcon icon="user" size="small" :class="$style.privateNoticeIcon" />
+							<div>
+								<span>{{ i18n.baseText('credentials.private.callout.title') }}</span>
+								<div :class="$style.privateStatusRow">
+									<template v-if="isPrivateConnected(type.name)">
+										<N8nIcon icon="circle-check" color="success" size="small" />
+										<N8nText size="small">{{
+											i18n.baseText('credentials.private.callout.connected')
+										}}</N8nText>
+									</template>
+									<template v-else>
+										<N8nText size="small" :class="$style.privateNotConnectedText">{{
+											i18n.baseText('credentials.private.callout.notConnected')
+										}}</N8nText>
+										<N8nLink
+											data-test-id="node-credential-private-connect"
+											@click="editCredential(type.name)"
+										>
+											{{ i18n.baseText('credentials.private.callout.connect') }}
+										</N8nLink>
+									</template>
+								</div>
+							</div>
+						</div>
+					</N8nNotice>
+					<N8nNotice
+						v-if="showResolvableWarning(type.name)"
+						theme="warning"
+						data-test-id="node-credential-resolver-warning"
+					>
+						<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
+							<template #workflowSettings>
+								<N8nLink @click="openWorkflowSettings">
+									{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
+								</N8nLink>
+							</template>
+							<template v-if="dynamicCredentialsDocsUrl" #documentation>
+								<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
+									{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
+								</N8nLink>
+							</template>
+						</I18nT>
+					</N8nNotice>
+				</div>
 			</N8nInputLabel>
 		</div>
 	</div>
@@ -1010,8 +1061,37 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	height: 18px;
 }
 
-.resolverWarning {
+.noticesContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+
+	:global(.notice) {
+		margin: 0;
+	}
+}
+
+.privateStatusRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--3xs);
+}
+
+.privateNotConnectedText {
+	color: var(--color--text--tint-1);
+}
+
+.privateNoticeContent {
+	display: flex;
+	gap: var(--spacing--xs);
+}
+
+.privateNoticeIcon {
+	flex-shrink: 0;
+	margin-top: 1px;
 }
 
 .newCredential {
