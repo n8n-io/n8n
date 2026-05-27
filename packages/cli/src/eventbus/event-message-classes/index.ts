@@ -129,6 +129,7 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.split-brain.resolved',
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
