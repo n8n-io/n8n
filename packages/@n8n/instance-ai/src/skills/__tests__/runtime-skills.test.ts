@@ -14,6 +14,7 @@ describe('Instance AI runtime skills', () => {
 
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			description: expect.stringContaining('Data Tables'),
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
