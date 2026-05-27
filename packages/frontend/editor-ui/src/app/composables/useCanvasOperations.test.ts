@@ -7503,7 +7503,7 @@ describe('useCanvasOperations', () => {
 			});
 			const addNodesToGroupSpy = vi.spyOn(workflowDocumentStore, 'addNodesToGroup');
 
-			uiStore.lastInteractedWithNode = sourceNode;
+			uiStore.lastInteractedWithNodeId = sourceNode.id;
 			uiStore.lastInteractedWithNodeConnection = canvasConnection(sourceNode, targetNode);
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
 
