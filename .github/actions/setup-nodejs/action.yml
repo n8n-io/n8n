@@ -90,6 +90,19 @@ runs:
         mkdir -p "$HOME/.safe-chain"
         cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
 
+    # Cache the SafeChain binary keyed on version + platform. The binary path
+    # is deterministic, so subsequent jobs across the CI fanout (E2E shards,
+    # docker-cluster, unit, lint, typecheck, ...) hit the cache instead of
+    # the GH release CDN. Layered with retry below — cache reduces blast
+    # radius across jobs, retry covers the first-job-per-key case where the
+    # CDN must be hit. Keep the version in sync with the install step below.
+    - name: Restore Aikido SafeChain Binary
+      id: cache-safe-chain
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.safe-chain/bin
+        key: safe-chain-1.5.3-${{ runner.os }}-${{ runner.arch }}
+
     - name: Install Aikido SafeChain
       run: |
         VERSION="1.5.3"
@@ -97,7 +110,12 @@ runs:
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
-        sh install-safe-chain.sh --ci
+        # Wrap the install in retry too — it internally fetches the
+        # safe-chain binary from the GH release CDN, which has hit
+        # transient 404s. The install script no-ops the binary download
+        # when the cached binary is already present.
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
+          sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
       shell: bash
 

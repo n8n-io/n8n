@@ -488,6 +488,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetNodeLast(msg, data);
 					case 'getNodeAll':
 						return this.handleGetNodeAll(msg, data);
+					case 'getInputFirst':
+						return this.handleGetInputFirst(data);
+					case 'getInputLast':
+						return this.handleGetInputLast(data);
+					case 'getInputAll':
+						return this.handleGetInputAll(data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -539,6 +545,29 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		data: WorkflowData,
 	): unknown {
 		return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handlers for the `$input.{first,last,all}` typed RPCs.
+	 *
+	 * Each reads a fixed literal property name off `data.$input` (the host's
+	 * `WorkflowDataProxy` input proxy). The host enforces zero arguments on
+	 * these methods — the schemas have no fields besides `type`, so the
+	 * isolate cannot pass anything that would trigger the "should have no
+	 * arguments" error path on the host side.
+	 *
+	 * @private
+	 */
+	private handleGetInputFirst(data: WorkflowData): unknown {
+		return data.$input?.first?.();
+	}
+
+	private handleGetInputLast(data: WorkflowData): unknown {
+		return data.$input?.last?.();
+	}
+
+	private handleGetInputAll(data: WorkflowData): unknown {
+		return data.$input?.all?.();
 	}
 
 	/**
