@@ -116,12 +116,6 @@ export class McpService {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
-	/**
-	 * Resolves whether the current user is in the MCP Apps variant of the
-	 * `087_mcp_apps` PostHog experiment. Treats PostHog errors as flag-off
-	 * (fail-closed) so a transient outage doesn't accidentally enable a
-	 * feature for the control cohort.
-	 */
 	private async isMcpAppsEnabled(user: User): Promise<boolean> {
 		try {
 			const flags = await this.postHogClient.getFeatureFlags(user);
@@ -388,9 +382,6 @@ export class McpService {
 			dataTableOps,
 		);
 
-		// Gate the MCP App iframe behind the `087_mcp_apps` PostHog A/B
-		// experiment. Control cohort (and PostHog outage) sees the plain
-		// create-workflow tool with no UI resource attached.
 		const mcpAppsEnabled = await this.isMcpAppsEnabled(user);
 		if (mcpAppsEnabled) {
 			registerWorkflowPreviewApp(server);
