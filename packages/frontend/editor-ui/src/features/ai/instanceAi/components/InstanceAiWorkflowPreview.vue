@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
-import type { InstanceAiAgentNode, PushMessage } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -28,8 +28,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'iframe-ready': [];
-	'workflow-loaded': [workflowId: string];
 	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
@@ -39,14 +37,7 @@ function requestFitView() {
 	hostRef.value?.requestFitView();
 }
 
-// Kept as a no-op for backwards compatibility with the existing useEventRelay
-// wiring in InstanceAiThreadView. The direct-mount host receives push events
-// through the shared connection — no postMessage relay is needed.
-function relayPushEvent(_event: PushMessage) {
-	// no-op
-}
-
-defineExpose({ relayPushEvent, requestFitView });
+defineExpose({ requestFitView });
 
 // === Artifact-context push listeners ===
 // Registered here (in the AI-aware wrapper) rather than inside the generic
@@ -177,13 +168,7 @@ provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
 
 <template>
 	<div :class="$style.content">
-		<WorkflowCanvasHost
-			ref="host"
-			:workflow-id="workflowId"
-			:refresh-key="refreshKey"
-			@ready="emit('iframe-ready')"
-			@workflow-loaded="(id) => emit('workflow-loaded', id)"
-		/>
+		<WorkflowCanvasHost ref="host" :workflow-id="workflowId" :refresh-key="refreshKey" />
 	</div>
 </template>
 
