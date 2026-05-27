@@ -156,7 +156,7 @@ function buildFallbackWebSearchTool(
 		name: WEB_SEARCH_TOOL_NAME,
 		description: 'Search the web for current information.',
 		systemInstruction:
-			'Before using web_search, choose the smallest search plan that can answer the user. Start with one broad, high-signal query. After seeing results, decide whether a narrower follow-up is necessary. Do not launch multiple searches in parallel unless the user asked for deep research or comparison across independent topics.',
+			'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
