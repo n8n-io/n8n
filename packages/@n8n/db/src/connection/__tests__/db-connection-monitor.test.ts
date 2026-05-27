@@ -576,6 +576,31 @@ describe('DbConnectionMonitor', () => {
 		});
 	});
 
+	describe('constructor', () => {
+		it('should default `initialConnected` to true so the first observed failure transitions', async () => {
+			// DbConnection only creates the monitor after a successful init(), so the assumed
+			// initial state is "connected". If the default flipped to false, the first failed
+			// ping would be a no-op transition (false → false) and the owner's state machine
+			// would stay stuck at the manually-set `true` while reality is `false`.
+			const freshOnConnectedChange = jest.fn();
+			const freshMonitor = new DbConnectionMonitor(
+				dataSource,
+				freshOnConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+			);
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.query.mockRejectedValue(new Error('pool dead'));
+
+			// @ts-expect-error private property
+			await freshMonitor.ping();
+
+			expect(freshOnConnectedChange).toHaveBeenCalledWith(false);
+		});
+	});
+
 	describe('setConnected', () => {
 		it('should only fire onConnectedChange on a transition', () => {
 			// @ts-expect-error private property
