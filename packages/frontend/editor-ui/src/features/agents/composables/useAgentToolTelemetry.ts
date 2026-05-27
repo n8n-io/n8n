@@ -1,7 +1,7 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { GenericValue } from 'n8n-workflow';
 
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 /**
  * Small, opinionated wrapper around `useTelemetry()` that centralizes the
@@ -54,6 +54,19 @@ export function useAgentToolTelemetry(agentId?: string) {
 		);
 	}
 
+	/** Fired when a new MCP server is saved for the first time. */
+	function trackAddedMcpServer(server: AgentJsonMcpServerConfig) {
+		telemetry.track(
+			'User added agent tool',
+			withAgent({
+				tool_type: 'mcpServer',
+				has_approval: false,
+				server_name: server.name,
+				authentication: server.authentication,
+			}),
+		);
+	}
+
 	/** Fired when an existing tool's config is saved. */
 	function trackEdited(ref: AgentJsonToolRef) {
 		telemetry.track(
@@ -70,5 +83,5 @@ export function useAgentToolTelemetry(agentId?: string) {
 		);
 	}
 
-	return { trackAddStarted, trackAdded, trackEdited, trackRemoved };
+	return { trackAddStarted, trackAdded, trackAddedMcpServer, trackEdited, trackRemoved };
 }

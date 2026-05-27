@@ -441,6 +441,7 @@ function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
 		...workingMcpServerEntries.value,
 		{ localId: uuidv4(), server: savedServer },
 	];
+	toolTelemetry.trackAddedMcpServer(savedServer);
 	commit();
 	uiStore.closeModal(props.modalName);
 	toast.showMessage({

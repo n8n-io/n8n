@@ -24,7 +24,6 @@ import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigModalHeader from './AgentToolConfigModalHeader.vue';
-import AgentToolConfigMcpContent from './AgentToolConfigMcpContent.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
 
@@ -71,7 +70,7 @@ const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'wor
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
 
 const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
-const mcpContentRef = ref<InstanceType<typeof AgentToolConfigMcpContent> | null>(null);
+const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
 const activeView = ref<'config' | 'raw'>('config');
@@ -103,7 +102,6 @@ const customToolCode = computed(() =>
 	!isMcpTool.value ? (toolModalData.value?.customTool?.code ?? '') : '',
 );
 const customToolTitle = computed(() => {
-	if (isMcpTool.value) return nodeName.value;
 	const toolRef = toolModalData.value?.toolRef;
 	const fallbackName =
 		toolRef?.type === 'custom'
@@ -276,12 +274,13 @@ function handleNodeNameUpdate(name: string) {
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 						/>
-						<AgentToolConfigMcpContent
+						<AgentToolConfigNodeContent
 							v-else-if="isMcpTool && initialNode"
 							ref="mcpContentRef"
 							:initial-node="initialNode"
 							:existing-tool-names="data.existingToolNames"
 							:project-id="data.projectId"
+							content-test-id="agent-tool-config-mcp-content"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 						/>

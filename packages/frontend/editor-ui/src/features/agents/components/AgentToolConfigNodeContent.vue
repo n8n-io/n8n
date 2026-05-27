@@ -8,6 +8,7 @@ const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
 	projectId?: string;
+	contentTestId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +44,7 @@ defineExpose({
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
 		:hide-ask-assistant="true"
+		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
 	/>

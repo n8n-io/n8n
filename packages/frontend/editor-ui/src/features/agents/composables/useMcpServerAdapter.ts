@@ -3,7 +3,7 @@ import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { AgentJsonMcpServerConfig } from '../types';
-import { McpAuthenticationSchemaType } from '@n8n/api-types';
+import type { McpAuthenticationSchemaType } from '@n8n/api-types';
 
 const MCP_REGISTRY_NODE_PREFIX = '@n8n/mcp-registry.';
 const HTTP_STREAMABLE_TRANSPORT = 'httpStreamable';
@@ -52,7 +52,7 @@ function resolveDefaultParameter(nodeType: INodeTypeDescription, name: string): 
 	if (!property || !('default' in property)) {
 		return undefined;
 	}
-	return (property as { default?: unknown }).default;
+	return property.default;
 }
 
 function resolveDefaultTimeout(nodeType: INodeTypeDescription): number | undefined {
@@ -89,7 +89,7 @@ function authenticationToCredentialType(authentication: string): string | undefi
 
 function resolveCredentialType(credentials: INodeCredentials | undefined): string | undefined {
 	if (!credentials) return undefined;
-	return Object.entries(credentials).find(([, value]) => value.id !== null)?.[0];
+	return Object.entries(credentials).find(([, value]) => toStringValue(value.id))?.[0];
 }
 
 function resolveCredentialId(credentials: INodeCredentials | undefined): string | undefined {

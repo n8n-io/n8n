@@ -50,6 +50,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
+import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -644,10 +645,22 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 	});
 }
 
-function onOpenToolFromList(index: number) {
+function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
-	if (index < tools.length) {
-		const tool = tools[index];
+
+	const toolIndex =
+		typeof target === 'number'
+			? target
+			: tools.findIndex((tool) => {
+					if (target.kind !== 'tool') return false;
+					if (tool.type !== target.toolType) return false;
+					if (tool.type === 'node') return tool.name === target.id;
+					if (tool.type === 'workflow') return tool.workflow === target.id;
+					return tool.id === target.id;
+				});
+
+	if (toolIndex >= 0) {
+		const tool = tools[toolIndex];
 		if (!tool) return;
 		builderTelemetry.trackOpenedToolFromList(tool.type);
 		const customTool =
@@ -660,21 +673,26 @@ function onOpenToolFromList(index: number) {
 				projectId: projectId.value,
 				agentId: agentId.value,
 				existingToolNames: tools
-					.map((toolRef, i) => (i === index || toolRef.type === 'custom' ? null : toolRef.name))
+					.map((toolRef, i) => (i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name))
 					.filter((name): name is string => !!name),
 				onConfirm: (updatedTool: AgentJsonToolConfig) => {
 					const nextTools = [...(localConfig.value?.tools ?? [])];
-					nextTools[index] = updatedTool;
+					nextTools[toolIndex] = updatedTool;
 					onConfigFieldUpdate({ tools: nextTools });
 				},
-				onRemove: () => onRemoveTool(index),
+				onRemove: () => onRemoveTool(toolIndex),
 			},
 		});
 		return;
 	}
 
 	const mcpServers = localConfig.value?.mcpServers ?? [];
-	const mcpServerIndex = index - tools.length;
+	const mcpServerIndex =
+		typeof target === 'number'
+			? target - tools.length
+			: target.kind === 'mcpServer'
+				? mcpServers.findIndex((server) => server.name === target.serverName)
+				: -1;
 	const mcpServer = mcpServers[mcpServerIndex];
 	if (!mcpServer) return;
 

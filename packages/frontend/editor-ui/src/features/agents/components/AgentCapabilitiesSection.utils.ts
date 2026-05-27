@@ -1,7 +1,13 @@
 import type { IconName } from '@n8n/design-system/components/N8nIcon';
 
 import type { AgentJsonToolRef } from '../types';
-import type { ToolRow, ToolRowItem, ToolRowNodeType } from './AgentCapabilitiesSection.types';
+import type {
+	GroupedToolRow,
+	ToolOpenTarget,
+	ToolRow,
+	ToolRowItem,
+	ToolRowNodeType,
+} from './AgentCapabilitiesSection.types';
 
 export const MIN_GROUPED_TOOLS_PER_TYPE = 2;
 
@@ -12,6 +18,7 @@ type BaseToolRow = {
 	nodeType: ToolRowNodeType;
 	fallbackIcon: IconName;
 	toolType: AgentJsonToolRef['type'] | 'mcpServer';
+	openTarget: ToolOpenTarget;
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -19,6 +26,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		index: row.index,
 		label: row.label,
 		nodeType: row.nodeType,
+		openTarget: row.openTarget,
 	};
 
 	return {
@@ -28,11 +36,11 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		nodeType: row.nodeType,
 		fallbackIcon: row.fallbackIcon,
 		isGrouped: false,
-		items: [item],
+		tool: item,
 	};
 }
 
-function toGroupedToolRow(group: BaseToolRow[]): ToolRow {
+function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 	const [first] = group;
 
 	return {
@@ -42,10 +50,11 @@ function toGroupedToolRow(group: BaseToolRow[]): ToolRow {
 		nodeType: first.nodeType,
 		fallbackIcon: first.fallbackIcon,
 		isGrouped: true,
-		items: group.map((row) => ({
+		tools: group.map((row) => ({
 			index: row.index,
 			label: row.label,
 			nodeType: row.nodeType,
+			openTarget: row.openTarget,
 		})),
 	};
 }
