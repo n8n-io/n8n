@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ResolvedFilePath,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -13,9 +14,10 @@ import {
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
+import { basename, dirname, isAbsolute, join, resolve } from 'path';
 import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import simpleGit from 'simple-git';
-import { URL } from 'url';
+import { URL, fileURLToPath } from 'url';
 
 import {
 	addConfigFields,
@@ -295,6 +297,119 @@ export class Git implements INodeType {
 			}
 		};
 
+		const hasUrlScheme = (repositoryPath: string) =>
+			/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(repositoryPath);
+
+		const isSshRepositoryPath = (repositoryPath: string) =>
+			/^(?:[^@\s]+@)?[^:\s]+:.+/.test(repositoryPath);
+
+		const assertLocalRepositoryPathAllowed = async (
+			repositoryPath: string,
+			repositoryType: 'source' | 'target',
+			baseDir: string,
+		): Promise<void> => {
+			const absoluteLocalRepositoryPath = isAbsolute(repositoryPath)
+				? repositoryPath
+				: resolve(baseDir, repositoryPath);
+			const resolvedLocalRepositoryPath = await this.helpers.resolvePath(
+				absoluteLocalRepositoryPath,
+			);
+
+			if (this.helpers.isFilePathBlocked(resolvedLocalRepositoryPath)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Access to the ${repositoryType} repository path is not allowed`,
+				);
+			}
+		};
+
+		const assertRepositoryReferenceAllowed = async (
+			repository: string,
+			repositoryType: 'source' | 'target',
+			baseDir: string,
+		) => {
+			const trimmedRepository = repository.trim();
+			if (trimmedRepository.startsWith('-')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository cannot start with a hyphen`,
+				);
+			}
+
+			if (/^[a-zA-Z]:[\\/]/.test(trimmedRepository)) {
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+				return;
+			}
+
+			if (hasUrlScheme(trimmedRepository)) {
+				const repositoryUrl = new URL(trimmedRepository);
+				if (repositoryUrl.protocol === 'file:') {
+					await assertLocalRepositoryPathAllowed(
+						fileURLToPath(repositoryUrl),
+						repositoryType,
+						baseDir,
+					);
+				}
+				return;
+			}
+
+			if (!isSshRepositoryPath(trimmedRepository)) {
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+			}
+		};
+
+		const getRemoteOriginTargetRepositories = (
+			configValues: Record<string, Record<string, string | string[] | undefined>>,
+		) => {
+			const remoteOriginUrls: string[] = [];
+			const remoteOriginPushUrls: string[] = [];
+
+			for (const values of Object.values(configValues)) {
+				for (const key of ['remote.origin.url', 'remote.origin.pushurl'] as const) {
+					const value = values[key];
+					if (value === undefined) {
+						continue;
+					}
+
+					if (typeof value !== 'string') {
+						throw new NodeOperationError(this.getNode(), 'Target repository is required');
+					}
+
+					if (key === 'remote.origin.pushurl') {
+						remoteOriginPushUrls.push(value);
+					} else {
+						remoteOriginUrls.push(value);
+					}
+				}
+			}
+
+			return {
+				validationTargets: [...remoteOriginUrls, ...remoteOriginPushUrls],
+				pushTarget: remoteOriginPushUrls[0] ?? remoteOriginUrls[0],
+			};
+		};
+
+		const isFileNotFoundError = (error: unknown) =>
+			error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+		const resolvePathAllowingMissingParents = async (path: string): Promise<ResolvedFilePath> => {
+			try {
+				return await this.helpers.resolvePath(path);
+			} catch (error) {
+				if (!isFileNotFoundError(error)) {
+					throw error;
+				}
+
+				const parentPath = dirname(path);
+				if (parentPath === path) {
+					throw error;
+				}
+
+				const resolvedParentPath = await resolvePathAllowingMissingParents(parentPath);
+				return join(resolvedParentPath, basename(path)) as ResolvedFilePath;
+			}
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -310,6 +425,27 @@ export class Git implements INodeType {
 				}
 
 				const options = this.getNodeParameter('options', itemIndex, {});
+
+				let sourceRepository = '';
+				if (operation === 'clone') {
+					sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
+					await assertRepositoryReferenceAllowed(
+						sourceRepository,
+						'source',
+						dirname(resolvedRepositoryPath),
+					);
+					sourceRepository = await prepareRepository(sourceRepository);
+				}
+
+				let customTargetRepository = '';
+				if (operation === 'push' && options.repository) {
+					customTargetRepository = options.targetRepository as string;
+					await assertRepositoryReferenceAllowed(
+						customTargetRepository,
+						'target',
+						resolvedRepositoryPath,
+					);
+				}
 
 				if (operation === 'clone') {
 					// Create repository folder if it does not exist
@@ -407,10 +543,7 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
-					sourceRepository = await prepareRepository(sourceRepository);
-
-					await git.clone(sourceRepository, '.');
+					await git.clone(sourceRepository, resolvedRepositoryPath, ['--']);
 
 					returnItems.push({
 						json: {
@@ -528,23 +661,32 @@ export class Git implements INodeType {
 					}
 
 					if (options.repository) {
-						const targetRepository = await prepareRepository(options.targetRepository as string);
+						if (customTargetRepository === '') {
+							throw new NodeOperationError(this.getNode(), 'Target repository is required');
+						}
+						const targetRepository = await prepareRepository(customTargetRepository);
 						await git.push(targetRepository);
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
+						const config = await git.listConfig();
+						const { validationTargets, pushTarget } = getRemoteOriginTargetRepositories(
+							config.values,
+						);
+
+						for (const targetRepository of validationTargets) {
+							await assertRepositoryReferenceAllowed(
+								targetRepository,
+								'target',
+								resolvedRepositoryPath,
+							);
+						}
+
 						if (authentication === 'gitPassword') {
-							// Try to get remote repository path from git repository itself to add
-							// authentication data
-							const config = await git.listConfig();
-							let targetRepository;
-							for (const fileName of Object.keys(config.values)) {
-								if (config.values[fileName]['remote.origin.url']) {
-									targetRepository = config.values[fileName]['remote.origin.url'];
-									break;
-								}
+							if (pushTarget === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Target repository is required');
 							}
 
-							targetRepository = await prepareRepository(targetRepository as string);
+							const targetRepository = await prepareRepository(pushTarget);
 							await git.push(targetRepository);
 						} else {
 							await git.push();

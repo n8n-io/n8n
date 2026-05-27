@@ -17,10 +17,8 @@ import * as resourceMapping from './resourceMapping';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
-	getAuthHeaders,
+	connectMcpClientForCredential,
 	isStructuredContent,
-	tryRefreshOAuth2Token,
-	connectMcpClient,
 	mapToNodeOperationError,
 } from '../shared/utils';
 
@@ -226,14 +224,11 @@ export class McpClient implements INodeType {
 		const serverTransport = this.getNodeParameter('serverTransport', 0) as McpServerTransport;
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
 		const node = this.getNode();
-		const { headers } = await getAuthHeaders(this, authentication);
-		const client = await connectMcpClient({
+		const client = await connectMcpClientForCredential(this, {
+			authentication,
 			serverTransport,
 			endpointUrl,
-			headers,
-			name: node.type,
-			version: node.typeVersion,
-			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+			surface: 'MCP Client',
 		});
 		if (!client.ok) {
 			throw mapToNodeOperationError(node, client.error);
