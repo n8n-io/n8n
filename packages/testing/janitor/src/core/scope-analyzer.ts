@@ -12,17 +12,33 @@ import { toPosix } from './path-utils.js';
 
 export type Runner = 'jest' | 'vitest';
 
+// Bailout patterns are centralised here (vs the original DEVP-194 spec's
+// per-package `n8nTestChanged.inPackageBailouts` field) because the n8n
+// workspace shares the same vitest config helpers + setup file layout via
+// @n8n/vitest-config. If a package ever needs a custom bailout that doesn't
+// fit these patterns, switch to per-package config rather than expanding
+// these any further.
 const COMMON_BAILOUT = [
 	/^package\.json$/,
 	/^tsconfig(\..+)?\.json$/,
 	/^\.swcrc$/,
 	/^babel\.config\.[cm]?[jt]s$/,
 ];
-const JEST_BAILOUT = [...COMMON_BAILOUT, /^jest\.config\.[cm]?[jt]s$/, /^jest\.setup\.[cm]?[jt]s$/];
+const JEST_BAILOUT = [
+	...COMMON_BAILOUT,
+	/^jest\.config\.[cm]?[jt]s$/,
+	/(?:^|\/)(?:jest|test)\.setup\.[cm]?[jt]s$/,
+	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
+];
+// Frontend packages use vite.config.* for the vitest config too (vitest reads
+// vite.config). Setup files live at src/__tests__/setup.ts per the shared
+// @n8n/vitest-config convention.
 const VITEST_BAILOUT = [
 	...COMMON_BAILOUT,
+	/^vite\.config\.[cm]?[jt]s$/,
 	/^vitest\.config\.[cm]?[jt]s$/,
-	/^vitest\.setup\.[cm]?[jt]s$/,
+	/(?:^|\/)vitest\.setup\.[cm]?[jt]s$/,
+	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
 ];
 
 export interface ComputeScopeOptions {

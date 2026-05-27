@@ -19,7 +19,7 @@ describe('buildRunnerArgs', () => {
 		expect(args[2]).toBe('--summarize');
 	});
 
-	it('vitest scoped: emits `related` with absolute paths', () => {
+	it('vitest scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
 		const args = buildRunnerArgs(
 			'vitest',
 			{
@@ -31,7 +31,10 @@ describe('buildRunnerArgs', () => {
 		);
 		expect(args[0]).toBe('related');
 		expect(args.slice(1, 3).every(isAbsolute)).toBe(true);
-		expect(args[3]).toBe('--shard=1/2');
+		// `--run` is required: `vitest related` defaults to watch mode without
+		// TTY-detection and would hang the CI runner forever.
+		expect(args).toContain('--run');
+		expect(args.at(-1)).toBe('--shard=1/2');
 	});
 
 	it('preserves already-absolute paths', () => {

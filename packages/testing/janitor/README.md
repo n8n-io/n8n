@@ -127,7 +127,7 @@ For existing codebases with many violations, use a baseline to enable incrementa
 
 ```bash
 # Create baseline of current violations
-playwright-janitor baseline
+janitor baseline
 
 # Commit the baseline
 git add .janitor-baseline.json
@@ -140,10 +140,10 @@ Once a baseline exists, janitor and TCR **only fail on new violations**. Pre-exi
 
 ```bash
 # This now passes (only checks for NEW violations)
-playwright-janitor tcr --execute -m="Add new feature"
+janitor tcr --execute -m="Add new feature"
 
 # As you fix violations, update the baseline (manual commit required - TCR won't commit baseline changes)
-playwright-janitor baseline
+janitor baseline
 git add .janitor-baseline.json
 git commit -m "chore: update baseline after cleanup"
 ```
@@ -156,13 +156,13 @@ View all available rules with their descriptions:
 
 ```bash
 # Human-readable list
-playwright-janitor rules
+janitor rules
 
 # JSON output (for AI agents/automation)
-playwright-janitor rules --json
+janitor rules --json
 
 # Verbose (includes target globs)
-playwright-janitor rules --verbose
+janitor rules --verbose
 ```
 
 The JSON output is useful for AI agents that need to understand the rules before writing code.
@@ -173,16 +173,16 @@ Discover test specs via AST analysis and distribute them across CI shards:
 
 ```bash
 # Discover specs and capabilities (JSON output)
-playwright-janitor discover
+janitor discover
 
 # Distribute specs across shards (JSON output)
-playwright-janitor orchestrate --shards=14
+janitor orchestrate --shards=14
 
 # Get specs for a single shard (0-indexed)
-playwright-janitor orchestrate --shards=14 --shard-index=0
+janitor orchestrate --shards=14 --shard-index=0
 
 # Only include specs affected by git changes
-playwright-janitor orchestrate --shards=14 --impact
+janitor orchestrate --shards=14 --impact
 ```
 
 Discovery detects `test.fixme()` and `test.skip()` via AST and excludes them automatically. Capability tags (`@capability:proxy`) are extracted for grouping.
@@ -224,20 +224,19 @@ ci-filter (in install-and-build)
 # Walk the workspace dep graph. Output: one package name per line.
 CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
 
-# As turbo --filter args, ready to interpolate.
-janitor affected-packages --as-filter-args
+# Compute scope for the cwd package. Output: SKIP | RUN_FULL | <files>
+janitor scope --runner=vitest
 
-# Compute scope for one package. Output: SKIP | RUN_FULL | <files>
-janitor scope --runner=vitest --package-dir=$(pwd)
-
-# Compute scope AND spawn the runner. Forwards args after `--` to runner.
-janitor test-scoped --runner=vitest -- --shard=1/2 --coverage
+# Compute scope AND spawn the runner. Unrecognised flags forward to runner.
+janitor test-scoped --runner=vitest --shard=1/2 --coverage
 ```
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
 
 **Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
-`package.json`, `tsconfig.*`. The scope analyzer detects these and emits
+`vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
+plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
+`<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input

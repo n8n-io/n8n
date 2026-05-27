@@ -30,9 +30,11 @@ export function buildRunnerArgs(
 		return runner === 'vitest' ? ['run', ...passthroughArgs] : [...passthroughArgs];
 	}
 	const absoluteFiles = scope.files.map((f) => (isAbsolute(f) ? f : resolve(rootDir, f)));
+	// `vitest related` defaults to watch mode and does NOT TTY-detect, so it
+	// would hang the CI runner forever. `--run` forces a single-pass execution.
 	return runner === 'jest'
 		? ['--findRelatedTests', ...absoluteFiles, ...passthroughArgs]
-		: ['related', ...absoluteFiles, ...passthroughArgs];
+		: ['related', ...absoluteFiles, '--run', ...passthroughArgs];
 }
 
 export function runTestScoped(options: TestScopedOptions): number {
@@ -55,5 +57,8 @@ export function runTestScoped(options: TestScopedOptions): number {
 	}
 
 	const args = buildRunnerArgs(options.runner, scope, options.rootDir, options.passthroughArgs);
-	return spawnSync(options.runner, args, { stdio: 'inherit' }).status ?? 1;
+	// Pass cwd explicitly so an override via --package-dir is honoured
+	// (otherwise spawnSync inherits the caller's cwd and jest/vitest would
+	// resolve config + tests from the wrong project).
+	return spawnSync(options.runner, args, { stdio: 'inherit', cwd: options.packageDir }).status ?? 1;
 }

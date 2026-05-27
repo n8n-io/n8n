@@ -210,6 +210,11 @@ Examples:
 `);
 }
 
+// --changed-files accepts repo-root-relative paths, newline-separated OR
+// comma-separated. Same format as ci-filter's `changed-files` output.
+// Example: --changed-files="packages/cli/src/x.ts
+// packages/workflow/src/y.ts"
+
 export function showAffectedPackagesHelp(): void {
 	console.log(`
 Affected Packages - List workspace packages affected by changed files
@@ -219,6 +224,9 @@ everything transitively downstream. Outputs one package name per line.
 
 Usage:
   janitor affected-packages [--changed-files=<list>]
+
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
 
 When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
 (safe default for local dev).
@@ -232,7 +240,11 @@ export function showScopeHelp(): void {
 Scope - Per-package jest/vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> --package-dir=<dir> [--changed-files=<list>]
+  janitor scope --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>]
+
+  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
 
 Output (single line on stdout):
   SKIP        No in-package files changed
@@ -246,11 +258,16 @@ export function showTestScopedHelp(): void {
 Test-Scoped - Compute scope and spawn jest/vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--package-dir=<dir>] [extra runner args]
+  janitor test-scoped --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+
+  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
-CI: scopes via jest --findRelatedTests / vitest related, or skips if the
-package wasn't touched. Unrecognised flags are forwarded to the runner.
+CI: scopes via jest --findRelatedTests / vitest related --run, or skips
+if the package wasn't touched. Unrecognised flags are forwarded to the
+runner.
 `);
 }
 

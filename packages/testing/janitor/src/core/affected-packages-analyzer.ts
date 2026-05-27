@@ -100,6 +100,12 @@ function loadTurboExtraInputs(rootDir: string, packages: WorkspacePackage[]): Tu
 		for (const input of task.inputs ?? []) {
 			if (!input.startsWith('../')) continue;
 			const repoRelative = toPosix(relative(rootDir, join(rootDir, ownerPkg.dir, input)));
+			// Strip glob suffixes to get a directory prefix we can prefix-match
+			// changed files against. The two branches cover:
+			//   `/?**/...`  — recursive globs (e.g. `../cli/src/**/*.yml`)
+			//   `/*foo`     — single-segment globs (e.g. `../cli/src/*.ts`)
+			// After stripping, e.g. `packages/cli/src/public-api/v1/**/*.yml`
+			// becomes `packages/cli/src/public-api/v1`.
 			const pathPrefix = repoRelative.replace(/\/?\*\*.*$|\/\*[^/]*$/g, '');
 			bindings.push({ packageName, pathPrefix });
 		}

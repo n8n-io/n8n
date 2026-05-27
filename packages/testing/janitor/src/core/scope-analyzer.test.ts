@@ -110,4 +110,37 @@ describe('computeScope', () => {
 		// (It's unusual but the bailout is runner-specific.)
 		expect(result.kind).toBe('scoped');
 	});
+
+	it('bails to full on vite.config change for vitest runner (vitest reads vite.config)', () => {
+		const rootDir = makePackageDir('packages/frontend/editor-ui');
+		const result = computeScope({
+			runner: 'vitest',
+			packageDir: 'packages/frontend/editor-ui',
+			rootDir,
+			changedFiles: ['packages/frontend/editor-ui/vite.config.mts'],
+		});
+		expect(result.kind).toBe('full');
+	});
+
+	it('bails to full on src/__tests__/setup.ts change for vitest runner', () => {
+		const rootDir = makePackageDir('packages/frontend/editor-ui');
+		const result = computeScope({
+			runner: 'vitest',
+			packageDir: 'packages/frontend/editor-ui',
+			rootDir,
+			changedFiles: ['packages/frontend/editor-ui/src/__tests__/setup.ts'],
+		});
+		expect(result.kind).toBe('full');
+	});
+
+	it('bails to full on src/__tests__/setup.ts change for jest runner', () => {
+		const rootDir = makePackageDir('packages/nodes-base');
+		const result = computeScope({
+			runner: 'jest',
+			packageDir: 'packages/nodes-base',
+			rootDir,
+			changedFiles: ['packages/nodes-base/src/__tests__/setup.ts'],
+		});
+		expect(result.kind).toBe('full');
+	});
 });

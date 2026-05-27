@@ -634,14 +634,10 @@ function runScope(options: CliOptions): void {
 		console.error('Error: --runner=jest|vitest is required');
 		process.exit(1);
 	}
-	if (!options.packageDir) {
-		console.error('Error: --package-dir=<dir> is required');
-		process.exit(1);
-	}
 
 	const result = computeScope({
 		runner: options.runner,
-		packageDir: options.packageDir,
+		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
 	});
