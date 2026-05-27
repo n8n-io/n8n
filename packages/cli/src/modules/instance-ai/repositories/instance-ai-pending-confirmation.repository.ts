@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThan, MoreThan, Or, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, MoreThanOrEqual, Or, Repository } from '@n8n/typeorm';
 
 import { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 
@@ -28,7 +28,7 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 			const liveWhere = {
 				requestId,
 				userId,
-				expiresAt: Or(IsNull(), MoreThan(now)),
+				expiresAt: Or(IsNull(), MoreThanOrEqual(now)),
 			};
 			const row = await repo.findOne({
 				where: liveWhere,
@@ -76,7 +76,7 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		const rows = await this.find({
 			where: {
 				requestId: In(requestIds),
-				expiresAt: Or(IsNull(), MoreThan(now)),
+				expiresAt: Or(IsNull(), MoreThanOrEqual(now)),
 			},
 			select: ['requestId'],
 		});
