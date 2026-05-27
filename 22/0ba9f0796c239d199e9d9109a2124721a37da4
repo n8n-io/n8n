@@ -1,0 +1,48 @@
+packages/@n8n/config/src/configs/auth.config.ts
+  s_dc50b872f0e093::t_7009b45d3eb586 24-33
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_dc50b872f0e093::t_346cb905c23652 96
+  s_dc50b872f0e093::t_40782542b26c11 23
+  s_dc50b872f0e093::t_e9964eb6e968c9 719-775,777-792,794-796
+  s_dc50b872f0e093::t_2731d277700b32 52
+packages/cli/src/oauth/types.ts
+  s_dc50b872f0e093::t_f74a93df2a7c0f 15-21
+packages/cli/src/oauth/oauth-browser-binding.service.ts
+  s_dc50b872f0e093::t_3ce22477f46f8a 1-84
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_dc50b872f0e093::t_ed8e7d24fc2952 47,49
+packages/@n8n/config/test/config.test.ts
+  s_dc50b872f0e093::t_e282f8ff71ccb2 55
+packages/cli/src/oauth/__tests__/oauth-browser-binding.service.test.ts
+  s_dc50b872f0e093::t_022f15eee58e94 1-15,18-40,43-46,49-191
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_dc50b872f0e093::t_77068e185c2fa9 13,25,30,33-36
+packages/cli/src/controllers/oauth/__tests__/oauth1-credential.controller.test.ts
+  s_dc50b872f0e093::t_6b925c1ac0e132 44-45
+packages/cli/src/oauth/oauth.service.ts
+  s_dc50b872f0e093::t_c8ca71d3d4ffa6 82
+  s_dc50b872f0e093::t_a8c50058687023 304-312
+  s_dc50b872f0e093::t_bc84c19a9feb02 57
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_dc50b872f0e093::t_cca1a48797af26 34
+  s_dc50b872f0e093::t_837e8732098016 154-165
+  s_dc50b872f0e093::t_7a356fb1f19ee4 12
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  s_dc50b872f0e093::t_1bdd2d47883a4e 9,17,22,25-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "220ba9f0796c239d199e9d9109a2124721a37da4",
+  "prompts": {},
+  "sessions": {
+    "s_dc50b872f0e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96054988-a1bb-43e7-90c8-d8ada7fc9bcd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
