@@ -819,6 +819,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
 								v-if="preview.activeWorkflowId.value"
+								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
 									$style.previewSlot,
