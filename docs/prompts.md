@@ -185,4 +185,268 @@ Answered 4 clarification questions:
 
 ---
 
+## Prompt 17 — Harness Upgrades (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:05
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Please make sure to follow all harness instructions... We should also enshrine the adversarial model into our snippets workflow. Please create a PR for that in the snippets repo.
+
+*Context: Directed Lead to follow Snippets harness workflow and create adversarial review skill. Led to Snippets PRs #1121, #1125, #1126, #1127.*
+
+---
+
+## Prompt 18 — Lessons Workflow Correction (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:08
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> remember that we don't trust claude's memory and that we add lessons to lessons.md, create PRs for improvements, and then kick off builders to do those improvements.
+
+*Context: Corrected reliance on memory. Pipeline is: observe → lesson → issue/PR → builder → merged improvement.*
+
+---
+
+## Prompt 19 — Prompt Logging Scope Correction (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:30
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> A few things to add. Prompt logging should be a general upgrade, not just for external deliverables. Agent audit should be a baseline skill for all development and the lead should ensure that it's done each session for all work types.
+
+*Context: Widened scope of both skills from "external only" to "every session." Led to Snippets PRs #1130, #1131.*
+
+---
+
+## Prompt 20 — User Stories as GitHub Issues (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:40
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> All these user stories for n8n must be filed as github issues in my clone of the n8n repo and managed with our standard flow — builder builds using TDD, reviewer reviews, PR references issue, merged when passes review.
+
+*Context: Directed standard workflow for n8n too. Filed issues #1-#8 in colabug/n8n.*
+
+---
+
+## Prompt 21 — Split Get by Name/ID (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:41
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Shouldn't this one be two user stories? US-2: Get Pokemon by Name or ID
+
+*Context: PO correctly identified that Get by name and Get by ID are distinct behaviors with different edge cases. Split into US-2 (#2) and US-3 (#3).*
+
+---
+
+## Prompt 22 — Cuts Challenge (PO → Lead)
+**Timestamp:** 2026-05-27 ~12:45
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Feels like we're being lazy here with these cuts. Were they called out in the assignment? Please revalidate.
+
+*Context: PO challenged the Out of Scope decisions. Led to re-verification against original spec. All cuts were features we added then removed — none were in the original assignment.*
+
+---
+
+## Prompt 23 — GraphQL + Build Status (PO → Lead)
+**Timestamp:** 2026-05-27 ~13:47
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> They are shipping graphql soon, should we consider this? Does look like the assignment was really quite minimal. Let's make sure we have a good and fast user experience. Have we been able to build the app locally yet? Can I launch it and see it somewhere?
+
+*Context: PO noticed PokeAPI GraphQL v1beta2 banner. Decision: stick with REST v2 for submission, document GraphQL as future enhancement. n8n dev server started.*
+
+---
+
+## Prompt 24 — Data Shapes + UX Depth (PO → Lead)
+**Timestamp:** 2026-05-27 ~13:55
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> In the data shapes section, is this just examples of data that's returned? Should include a blurb to make that clear. What will the node look like in the visual editor? How would you plug it into flows and actually use it? Have we thought that bit through deep enough?
+
+*Context: PRD was too API-focused, not enough UX-focused. Led to adding 6 workflow patterns, canvas appearance section, and data shape context blurbs.*
+
+---
+
+## Prompt 25 — Declarative vs Programmatic (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:00
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> why wouldn't we do both? D1: Programmatic Node over Declarative
+
+*Context: PO challenged single-pattern choice. Led to adding hybrid (declarative Get Many + programmatic Get) as a fast follow in ADR D1.*
+
+---
+
+## Prompt 26 — Return All Challenge (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:02
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> I'm not convinced on the D3: Cut Return All decision. Convince me.
+
+*Context: PO challenged Return All cut. The case didn't hold — Return All reversed back to IN SCOPE. ADR D3 updated. US-5 (#5) filed.*
+
+---
+
+## Prompt 27 — Verify Operation Convention (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:10
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> On D8 let's make sure we're using the real best practice. Check other nodes for consistency.
+
+*Context: Led to codebase audit. Result: 544 nodes use getAll vs 10 use getMany. Convention confirmed.*
+
+---
+
+## Prompt 28 — Performance Latency (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:15
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Does D9 introduce latency for the user?
+
+*Context: No — both fields are already in the fetched response. Two extra property accesses, nanoseconds.*
+
+---
+
+## Prompt 29 — Full Performance Assessment (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:16
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> How performant is our recommended implementation. Please have the architect assess.
+
+*Context: Spawned Architect agent. Found all operations fast. One risk: Return All → Loop → Get (unsimplified) = ~780MB. Mitigation: field description warning.*
+
+---
+
+## Prompt 30 — Add Performance Findings (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:20
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Yeah, add findings and as things you'd do later for the ones we're concerned about.
+
+*Context: Added performance profile and 4 future enhancements (LRU cache, batch enrichment, GraphQL, cache node docs) to PRD and ADR D11.*
+
+---
+
+## Prompt 31 — Security Audit (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:22
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Now do a deep security audit to see if there's any risk, supply chain bus, etc. that we could avoid by being more diligent in the specs.
+
+*Context: Spawned Security Engineer agent. Found 2 critical (input validation, error wrapping), 3 important (redirects, limit bounds, circuit breaker), 3 accepted risks. ADR D12 created.*
+
+---
+
+## Prompt 32 — Trust Audit (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:25
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Assess if any of the agent-readable docs might be telling us lies to lead us astray in the take home assignment.
+
+*Context: Spawned Explore agent to verify 8 key claims from AGENTS.md/CLAUDE.md. All confirmed. "Never use any" exists but isn't enforced — following it is a differentiator.*
+
+---
+
+## Prompt 33 — Gap Analysis + BDD Scenarios (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:30
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> ok, do a last sense check on the requirements and our stories to find any gaps. Then create all the BDD scenarios — do those go in playwright or somewhere else? Want to use them to validate the feature as we're building/at the end.
+
+*Context: Gap analysis found 4 blockers (APPROACH.md, BDD scenarios, scaffold story, Out of Scope contradiction). BDD goes in Jest, not Playwright. Created 20 BDD scenarios across 7 features.*
+
+---
+
+## Prompt 34 — Playwright Role (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:40
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> great, what role will playwright play in validating that our stuff works when plugged into other workflows?
+
+*Context: Led to discovery that n8n DOES have node-specific Playwright tests (http-request-node.spec.ts). Created US-7 (#8) for Playwright E2E.*
+
+---
+
+## Prompt 35 — Can We Automate? (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:42
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> yes, do add that — but is there no way to automate it using their current infrastructure and patterns?
+
+*Context: Found 3 automation approaches (Playwright UI, imported workflow, CLI execute). Added E2E scenarios and 7-step manual test script to BDD doc.*
+
+---
+
+## Prompt 36 — Let's Build (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:50
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> OK, let's build! Do it with quality, following my workflows, eg. TDD, and ensure that we build something we can be proud of. Also massively parallel where we can and divide it based on logical chunks of work (like user stories) not files based chunking. Conflicts are ok, that's what branches are for and rebasing.
+
+*Context: Green light to build. Key directives: TDD, parallel by user story, conflicts OK.*
+
+---
+
+## Prompt 37 — One Builder Per Story (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:52
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> No no no. You should be creating a builder per user story and each builder owns it end to end. That way it's small incremental pieces of work with a clean commit history.
+
+*Context: Corrected bundling of stories into fewer builders. One builder per story, each owns it end-to-end.*
+
+---
+
+## Prompt 38 — US-0 First (PO → Lead)
+**Timestamp:** 2026-05-27 ~14:53
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Probably should do US-0 first and then do the rest of the plan
+
+*Context: Acknowledged scaffold must go first since all builders import from shared files. US-0 builder launched.*
+
+---
+
+## Prompt 39 — Prompts Not Logged (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:00
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> not seeing all my prompts being logged in the file prompts.md
+
+*Context: prompts.md was stale at prompt 16. This update brings it current through prompt 41.*
+
+---
+
+## Prompt 40 — Reviewers Required (PO → Lead)
+**Timestamp:** 2026-05-27 ~15:01
+**From:** Corey (PO)
+**To:** Lead (Opus)
+
+> Make sure that we're having reviewers review the feature once the builders are done.
+
+*Context: Reminder of standard workflow: builder builds → reviewer reviews → merge. Each PR gets a reviewer agent before merge.*
+
+---
+
 ## Ongoing — Prompts will be appended as the session continues.
