@@ -28,16 +28,17 @@ export class N8nPackagesService {
 	async exportWorkflows(request: ExportWorkflowsRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
 
-		const { entries: workflowEntries, credentialReferences } = await this.workflowExporter.export({
-			user: request.user,
-			workflowIds: request.workflowIds,
-			writer,
-		});
+		const { entries: workflowEntries, requirements: workflowRequirements } =
+			await this.workflowExporter.export({
+				user: request.user,
+				workflowIds: request.workflowIds,
+				writer,
+			});
 
 		const { entries: credentialEntries, requirements: credentialRequirements } =
 			await this.credentialExporter.export({
 				user: request.user,
-				references: credentialReferences,
+				requirements: workflowRequirements.credentials,
 				writer,
 			});
 

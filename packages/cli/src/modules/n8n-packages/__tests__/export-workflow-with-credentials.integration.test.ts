@@ -1,6 +1,5 @@
 import {
 	createTeamProject,
-	createWorkflow,
 	shareWorkflowWithUsers,
 	testDb,
 	testModules,
@@ -13,6 +12,10 @@ import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
+import {
+	buildWorkflowReferencingCredential,
+	buildWorkflowReferencingCredentialById,
+} from './utils/test-builders';
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
@@ -52,27 +55,11 @@ describe('workflow package export — with credentials', () => {
 			},
 			{ project, role: 'credential:owner' },
 		);
-
-		const workflow = await createWorkflow(
-			{
-				name: 'Workflow with creds',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: credential.id, name: credential.name },
-						},
-					},
-				],
-				connections: {},
-			},
+		const workflow = await buildWorkflowReferencingCredential({
+			name: 'Workflow with creds',
 			project,
-		);
+			credential,
+		});
 
 		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
@@ -121,26 +108,16 @@ describe('workflow package export — with credentials', () => {
 			{ project, role: 'credential:owner' },
 		);
 
-		const nodeWithCred = {
-			id: 'n1',
-			name: 'HTTP',
-			type: 'n8n-nodes-base.httpRequest',
-			typeVersion: 1,
-			position: [0, 0] as [number, number],
-			parameters: {},
-			credentials: {
-				httpHeaderAuth: { id: credential.id, name: credential.name },
-			},
-		};
-
-		const wfA = await createWorkflow(
-			{ name: 'Workflow A', nodes: [nodeWithCred], connections: {} },
+		const wfA = await buildWorkflowReferencingCredential({
+			name: 'Workflow A',
 			project,
-		);
-		const wfB = await createWorkflow(
-			{ name: 'Workflow B', nodes: [nodeWithCred], connections: {} },
+			credential,
+		});
+		const wfB = await buildWorkflowReferencingCredential({
+			name: 'Workflow B',
 			project,
-		);
+			credential,
+		});
 
 		const stream = await service.exportWorkflows({
 			user: owner,
@@ -164,26 +141,13 @@ describe('workflow package export — with credentials', () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 
-		const workflow = await createWorkflow(
-			{
-				name: 'Workflow with orphan',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: 'does-not-exist', name: 'Stale cred name' },
-						},
-					},
-				],
-				connections: {},
-			},
+		const workflow = await buildWorkflowReferencingCredentialById({
+			name: 'Workflow with orphan',
 			project,
-		);
+			credentialId: 'does-not-exist',
+			credentialName: 'Stale cred name',
+			credentialType: 'httpHeaderAuth',
+		});
 
 		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
@@ -204,7 +168,7 @@ describe('workflow package export — with credentials', () => {
 		expect(credentialFiles).toEqual([]);
 	});
 
-	it('refuses to export when the caller can read the workflow but not its credential', async () => {
+	it('emits a requirements-only entry when the caller can read the workflow but not its credential', async () => {
 		const owner = await createOwner();
 		const ownerProject = await createTeamProject('Owner Project', owner);
 		const credential = await saveCredential(
@@ -215,34 +179,38 @@ describe('workflow package export — with credentials', () => {
 			},
 			{ project: ownerProject, role: 'credential:owner' },
 		);
-		const workflow = await createWorkflow(
-			{
-				name: 'Shared workflow with private cred',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: credential.id, name: credential.name },
-						},
-					},
-				],
-				connections: {},
-			},
-			ownerProject,
-		);
+		const workflow = await buildWorkflowReferencingCredential({
+			name: 'Shared workflow with private cred',
+			project: ownerProject,
+			credential,
+		});
 
 		const sharee = await createMember();
 		await shareWorkflowWithUsers(workflow, [sharee]);
 
 		// The sharee can reach the workflow via the direct share, but the
-		// credential was never shared with them — the export must abort.
-		await expect(
-			service.exportWorkflows({ user: sharee, workflowIds: [workflow.id] }),
-		).rejects.toThrow('1 credential(s) not accessible. Export aborted.');
+		// credential was never shared with them. The export must still succeed,
+		// recording the credential as a requirement using the name+type carried
+		// in the workflow JSON.
+		const stream = await service.exportWorkflows({
+			user: sharee,
+			workflowIds: [workflow.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.credentials).toBeUndefined();
+		expect(manifest.requirements).toEqual({
+			credentials: [
+				{
+					id: credential.id,
+					name: credential.name,
+					type: 'httpHeaderAuth',
+					usedByWorkflows: [workflow.id],
+				},
+			],
+		});
+
+		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
+		expect(credentialFiles).toEqual([]);
 	});
 });

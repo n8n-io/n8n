@@ -1,10 +1,11 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { Readable } from 'node:stream';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { PackageWriter } from '../../../io/package-writer';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
+import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
+import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -25,28 +26,14 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	} as unknown as WorkflowEntity;
 }
 
-class CapturingWriter implements PackageWriter {
-	readonly files: Array<{ path: string; content: string }> = [];
-
-	readonly directories: string[] = [];
-
-	writeFile(path: string, content: string | Buffer): void {
-		this.files.push({ path, content: content.toString() });
-	}
-
-	writeDirectory(path: string): void {
-		this.directories.push(path);
-	}
-
-	finalize(): Readable {
-		throw new Error('not used in this test');
-	}
-}
-
-function makeExporter(returned: WorkflowEntity[]) {
+function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
-	const exporter = new WorkflowExporter(finder, new WorkflowSerializer());
+	const exporter = new WorkflowExporter(
+		finder,
+		new WorkflowSerializer(),
+		extractor ?? new CredentialRequirementsExtractor(),
+	);
 	return { exporter, finder };
 }
 
@@ -117,182 +104,43 @@ describe('WorkflowExporter', () => {
 		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
 	});
 
-	describe('credential references', () => {
-		it('emits no references for workflows whose nodes have no credentials', async () => {
-			const workflow = makeWorkflow({
-				id: 'wf-no-creds',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-			});
-			const { exporter } = makeExporter([workflow]);
-			const writer = new CapturingWriter();
+	it('runs the extractor on each workflow and concatenates the results into requirements.credentials', async () => {
+		// Per-workflow extraction logic lives in CredentialRequirementsExtractor's
+		// own suite; this test only proves the exporter wires the extractor in.
+		const a = makeWorkflow({ id: 'wf-a' });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const extractor = mock<CredentialRequirementsExtractor>();
+		extractor.extract.mockImplementation((workflow) => [
+			{
+				workflowId: workflow.id,
+				credentialId: `cred-from-${workflow.id}`,
+				credentialName: workflow.id,
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
+		const { exporter } = makeExporter([a, b], extractor);
+		const writer = new CapturingWriter();
 
-			const { credentialReferences } = await exporter.export({
-				user,
-				workflowIds: [workflow.id],
-				writer,
-			});
-
-			expect(credentialReferences).toEqual([]);
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
 		});
 
-		it('emits one reference per node credential slot, keyed by credential type', async () => {
-			// node.credentials is { [credentialTypeKey]: { id, name } } — the
-			// type comes from the map key, not the value.
-			const workflow = makeWorkflow({
-				id: 'wf-creds',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: 'cred-1', name: 'Header credential' },
-							httpBasicAuth: { id: 'cred-2', name: 'Basic credential' },
-						},
-					},
-				],
-			});
-			const { exporter } = makeExporter([workflow]);
-			const writer = new CapturingWriter();
-
-			const { credentialReferences } = await exporter.export({
-				user,
-				workflowIds: [workflow.id],
-				writer,
-			});
-
-			expect(credentialReferences).toEqual(
-				expect.arrayContaining([
-					{
-						workflowId: 'wf-creds',
-						credentialId: 'cred-1',
-						credentialName: 'Header credential',
-						credentialType: 'httpHeaderAuth',
-					},
-					{
-						workflowId: 'wf-creds',
-						credentialId: 'cred-2',
-						credentialName: 'Basic credential',
-						credentialType: 'httpBasicAuth',
-					},
-				]),
-			);
-			expect(credentialReferences).toHaveLength(2);
-		});
-
-		it('dedupes references when the same credential id appears in two nodes of one workflow', async () => {
-			const workflow = makeWorkflow({
-				id: 'wf-dup',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP A',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: 'cred-shared', name: 'Shared' },
-						},
-					},
-					{
-						id: 'n2',
-						name: 'HTTP B',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: {
-							httpHeaderAuth: { id: 'cred-shared', name: 'Shared' },
-						},
-					},
-				],
-			});
-			const { exporter } = makeExporter([workflow]);
-			const writer = new CapturingWriter();
-
-			const { credentialReferences } = await exporter.export({
-				user,
-				workflowIds: [workflow.id],
-				writer,
-			});
-
-			expect(credentialReferences).toEqual([
-				{
-					workflowId: 'wf-dup',
-					credentialId: 'cred-shared',
-					credentialName: 'Shared',
-					credentialType: 'httpHeaderAuth',
-				},
-			]);
-		});
-
-		it('emits separate references for the same credential id used by two distinct workflows', async () => {
-			const a = makeWorkflow({
-				id: 'wf-a',
-				name: 'A',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: { httpHeaderAuth: { id: 'cred-x', name: 'X' } },
-					},
-				],
-			});
-			const b = makeWorkflow({
-				id: 'wf-b',
-				name: 'B',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-						credentials: { httpHeaderAuth: { id: 'cred-x', name: 'X' } },
-					},
-				],
-			});
-			const { exporter } = makeExporter([a, b]);
-			const writer = new CapturingWriter();
-
-			const { credentialReferences } = await exporter.export({
-				user,
-				workflowIds: [a.id, b.id],
-				writer,
-			});
-
-			expect(credentialReferences).toEqual([
-				{
-					workflowId: 'wf-a',
-					credentialId: 'cred-x',
-					credentialName: 'X',
-					credentialType: 'httpHeaderAuth',
-				},
-				{
-					workflowId: 'wf-b',
-					credentialId: 'cred-x',
-					credentialName: 'X',
-					credentialType: 'httpHeaderAuth',
-				},
-			]);
-		});
+		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(requirements.credentials).toEqual<WorkflowCredentialRequirement[]>([
+			{
+				workflowId: 'wf-a',
+				credentialId: 'cred-from-wf-a',
+				credentialName: 'wf-a',
+				credentialType: 'httpHeaderAuth',
+			},
+			{
+				workflowId: 'wf-b',
+				credentialId: 'cred-from-wf-b',
+				credentialName: 'wf-b',
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
 	});
 });

@@ -1,14 +1,15 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
-import type { CredentialReferenceFromWorkflow } from './workflow.types';
 import type { PackageWriter } from '../../io/package-writer';
-import { generateSlug } from '../../io/slug.utils';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
+import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -16,9 +17,13 @@ export interface WorkflowExportRequest {
 	writer: PackageWriter;
 }
 
+export interface WorkflowExportRequirements {
+	credentials: WorkflowCredentialRequirement[];
+}
+
 export interface WorkflowExportResult {
 	entries: ManifestEntry[];
-	credentialReferences: CredentialReferenceFromWorkflow[];
+	requirements: WorkflowExportRequirements;
 }
 
 @Service()
@@ -26,6 +31,7 @@ export class WorkflowExporter {
 	constructor(
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -39,11 +45,11 @@ export class WorkflowExporter {
 		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
 
 		const entries: ManifestEntry[] = [];
-		const credentialReferences: CredentialReferenceFromWorkflow[] = [];
-		const usedTargets = new Set<string>();
+		const credentials: WorkflowCredentialRequirement[] = [];
+		const fileNames = new UniqueFilenameAllocator('workflows');
 
 		for (const workflow of workflows) {
-			const target = this.allocateUniqueFileName(workflow.name, usedTargets);
+			const target = fileNames.allocate(workflow.name);
 			const serialized = this.workflowSerializer.serialize(workflow);
 
 			request.writer.writeDirectory(target);
@@ -55,53 +61,10 @@ export class WorkflowExporter {
 				target,
 			});
 
-			credentialReferences.push(...this.collectCredentialReferences(workflow));
+			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 		}
 
-		return { entries, credentialReferences };
-	}
-
-	private collectCredentialReferences(workflow: WorkflowEntity): CredentialReferenceFromWorkflow[] {
-		const seen = new Set<string>();
-		const references: CredentialReferenceFromWorkflow[] = [];
-
-		for (const node of workflow.nodes ?? []) {
-			if (!node.credentials) continue;
-
-			for (const [credentialType, details] of Object.entries(node.credentials)) {
-				// `id` is nullable when the user has dropped a credential slot onto a
-				// node without selecting one yet — nothing to export in that case.
-				if (!details?.id) continue;
-				if (seen.has(details.id)) continue;
-				seen.add(details.id);
-
-				references.push({
-					workflowId: workflow.id,
-					credentialId: details.id,
-					credentialName: details.name,
-					credentialType,
-				});
-			}
-		}
-
-		return references;
-	}
-
-	private allocateUniqueFileName(name: string, used: Set<string>): string {
-		const base = `workflows/${generateSlug(name)}`;
-
-		if (!used.has(base)) {
-			used.add(base);
-			return base;
-		}
-
-		for (let suffix = 2; ; suffix++) {
-			const candidate = `${base}-${suffix}`;
-			if (!used.has(candidate)) {
-				used.add(candidate);
-				return candidate;
-			}
-		}
+		return { entries, requirements: { credentials } };
 	}
 
 	private assertAllRequestedWorkflowsFound(
