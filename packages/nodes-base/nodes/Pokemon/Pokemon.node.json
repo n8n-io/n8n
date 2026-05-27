@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.pokemon",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Miscellaneous"],
+	"categories": ["Development"],
 	"resources": {
 		"primaryDocumentation": [
 			{

@@ -51,6 +51,7 @@ export interface IPokemonDetailResponse {
 }
 
 export interface IPokemonSimplified {
+	[key: string]: unknown;
 	id: number;
 	name: string;
 	height: number;
@@ -65,7 +66,7 @@ export interface IPokemonSimplified {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
+export const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
 const NAME_OR_ID_PATTERN = /^[a-zA-Z0-9-]+$/;
 const PAGINATION_CIRCUIT_BREAKER_LIMIT = 50;
 
@@ -108,10 +109,11 @@ export function clampLimit(limit: number): number {
 
 // ─── HTTP Helper ──────────────────────────────────────────────────────────────
 
-export async function pokemonApiRequest(
+export async function pokemonApiRequest<T = unknown>(
 	this: IExecuteFunctions,
 	url: string,
-): Promise<IPokemonDetailResponse | IPokemonListResponse> {
+	resourceName?: string,
+): Promise<T> {
 	try {
 		return await this.helpers.httpRequest({
 			method: 'GET',
@@ -126,9 +128,9 @@ export async function pokemonApiRequest(
 			(error as { statusCode?: number }).statusCode ??
 			(error as { response?: { status?: number } }).response?.status;
 		if (statusCode === 404) {
-			const pokemonName = url.split('/pokemon/')[1]?.split('?')[0] ?? 'unknown';
+			const name = resourceName ?? url.split('/pokemon/')[1]?.split('?')[0] ?? 'unknown';
 			throw new NodeApiError(this.getNode(), error as JsonObject, {
-				message: `Pokémon '${pokemonName}' not found. Check the spelling — valid names use the PokéAPI format (e.g. 'bulbasaur', 'mr-mime').`,
+				message: `Pokémon '${name}' not found. Check the spelling — valid names use the PokéAPI format (e.g. 'bulbasaur', 'mr-mime').`,
 				httpCode: '404',
 			});
 		}
@@ -152,7 +154,7 @@ export async function pokemonApiRequestAllPages(
 				`Pagination exceeded ${PAGINATION_CIRCUIT_BREAKER_LIMIT} pages. This may indicate an API issue.`,
 			);
 		}
-		const response = (await pokemonApiRequest.call(this, url)) as IPokemonListResponse;
+		const response = await (pokemonApiRequest<IPokemonListResponse>).call(this, url);
 		allResults.push(...response.results);
 		url = response.next;
 		pageCount++;

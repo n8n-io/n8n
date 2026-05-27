@@ -8,6 +8,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
+	POKEAPI_BASE_URL,
 	pokemonApiRequest,
 	pokemonApiRequestAllPages,
 	simplifyPokemonData,
@@ -17,8 +18,6 @@ import {
 	type IPokemonListResponse,
 } from './GenericFunctions';
 import { pokemonFields, pokemonOperations } from './PokemonDescription';
-
-const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
 
 export class Pokemon implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,11 +50,15 @@ export class Pokemon implements INodeType {
 					const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 					const nameOrId = validateNameOrId(this, rawNameOrId, i);
 					const url = `${POKEAPI_BASE_URL}/pokemon/${nameOrId}`;
-					const responseData = (await pokemonApiRequest.call(this, url)) as IPokemonDetailResponse;
+					const responseData = await (pokemonApiRequest<IPokemonDetailResponse>).call(
+						this,
+						url,
+						nameOrId,
+					);
 					const outputData = simplify ? simplifyPokemonData(responseData) : responseData;
 					returnData.push(
 						...this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray([outputData as unknown as IDataObject]),
+							this.helpers.returnJsonArray([outputData as IDataObject]),
 							{ itemData: { item: i } },
 						),
 					);
@@ -77,14 +80,14 @@ export class Pokemon implements INodeType {
 
 					let results: IDataObject[];
 					if (returnAll) {
-						results = (await pokemonApiRequestAllPages.call(this)) as unknown as IDataObject[];
+						results = (await pokemonApiRequestAllPages.call(this)) as IDataObject[];
 					} else {
 						const limit = clampLimit(this.getNodeParameter('limit', i) as number);
-						const response = (await pokemonApiRequest.call(
+						const response = await (pokemonApiRequest<IPokemonListResponse>).call(
 							this,
 							`${POKEAPI_BASE_URL}/pokemon?limit=${limit}&offset=0`,
-						)) as IPokemonListResponse;
-						results = response.results as unknown as IDataObject[];
+						);
+						results = response.results as IDataObject[];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(

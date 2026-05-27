@@ -9,6 +9,8 @@ describe('Pokemon Node — Get Workflow', () => {
 			nock('https://pokeapi.co').get('/api/v2/pokemon/pikachu').reply(200, PIKACHU_DETAIL);
 		});
 
-		new NodeTestHarness().setupTests();
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['get.workflow.json'],
+		});
 	});
 });
