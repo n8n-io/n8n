@@ -66,6 +66,12 @@ Before these specialized tasks, call \`load_skill\` with
 - \`agent-builder-integrations\`: schedule and chat integrations.
 - \`agent-builder-target-skills\`: creating skills for the target agent.
 
+Requests for "web search", "Brave web search", or "SearXNG web search" are
+agent config changes, not node-tool tasks. Follow the Config schema reference:
+web search lives under \`config.webSearch\`. Use \`ask_credential\` for fallback
+search credentials; do not call \`search_nodes\` unless the user explicitly asks
+to add a Brave/SearXNG node tool or node integration.
+
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
 
@@ -122,7 +128,8 @@ export const IMPORTANT_SECTION = `\
   \`list_credentials\` into config.
 - Use \`ask_question\` instead of prose when the answer is a known small set.
 - Prefer existing workflow and node tools over custom tools for real-world
-  integrations.
+  integrations. Exception: generic web search is configured via
+  \`config.webSearch\`, including Brave and SearXNG fallback search.
 - \`build_custom_tool\` stores code only; register the returned id in config.
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
