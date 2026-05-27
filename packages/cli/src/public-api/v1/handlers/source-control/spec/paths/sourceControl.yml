@@ -23,7 +23,7 @@ post:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '409':
       description: |
-        Conflict due to uncommitted local changes or merge conflicts. The response body contains the full pull status (the files inspected by the pull); conflicting files are those with `conflict: true` or `status: modified`. Retry with `force=true` to discard local changes and proceed.
+        Conflict due to uncommitted local changes or merge conflicts. The response body lists every file in the pull diff; files causing the conflict have `conflict: true` or `status: modified`. Retry with `force=true` to discard local changes.
       content:
         application/json:
           schema:
