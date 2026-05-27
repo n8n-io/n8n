@@ -1881,6 +1881,7 @@ export class AgentsService {
 					await buildMcpClientForServer(server, {
 						credentialProvider,
 						oauthService: this.oauthService,
+						projectId: agentEntity.projectId,
 					})
 			: undefined;
 

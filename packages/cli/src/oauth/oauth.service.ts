@@ -419,29 +419,22 @@ export class OauthService {
 	}
 
 	/**
-	 * Refresh the OAuth2 token stored on a credential by id (without an
-	 * `IExecuteFunctions` workflow runtime), persist the refreshed token data,
+	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
 	 * and return the new auth headers to inject into outbound requests.
-	 *
-	 * Use case: agents-module MCP clients need to recover from a 401 by
-	 * refreshing the credential's stored token before retrying the request.
-	 * They run outside the workflow runtime, so the existing
-	 * `refreshOAuth2Token` helper (which is bound to `IAllExecuteFunctions`)
-	 * is not available — this method provides an equivalent code path using
-	 * the credential repo + helper directly.
-	 *
-	 * Returns `null` when:
-	 * - the credential does not exist
-	 * - the credential is not an OAuth2 credential or has no token data
-	 * - the refresh call itself fails
-	 *
-	 * Errors are intentionally swallowed and surfaced as `null` so callers
-	 * (e.g. an `authFetch` wrapper) can decide whether to retry, surface a
-	 * 401 to the caller, or fall back to the original headers.
 	 */
-	async refreshOAuth2CredentialById(credentialId: string): Promise<Record<string, string> | null> {
-		const credential = await this.getCredentialWithoutUser(credentialId);
+	async refreshOAuth2CredentialById(
+		credentialId: string,
+		projectId: string,
+	): Promise<Record<string, string> | null> {
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: credentialId },
+			relations: { shared: true },
+		});
 		if (!credential) return null;
+
+		const isAccessible =
+			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+		if (!isAccessible) return null;
 
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;

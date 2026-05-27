@@ -10,6 +10,7 @@ import { BUILDER_TOOLS } from './builder-tool-names';
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
+	projectId: string;
 }
 
 /**

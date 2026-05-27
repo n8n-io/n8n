@@ -152,6 +152,7 @@ export interface BuildMcpClientDeps {
 	 * `server.authentication` is any `*McpOAuth2Api` credential type.
 	 */
 	oauthService: OauthService;
+	projectId: string;
 }
 
 /**
@@ -166,7 +167,7 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService } = deps;
+	const { credentialProvider, oauthService, projectId } = deps;
 	const { McpClient } = await import('@n8n/agents');
 
 	const initialHeaders = await deriveAuthHeaders(server, credentialProvider);
@@ -176,7 +177,9 @@ export async function buildMcpClientForServer(
 			? async () => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;
-					return await oauthService.refreshOAuth2CredentialById(credentialId).catch(() => null);
+					return await oauthService
+						.refreshOAuth2CredentialById(credentialId, projectId)
+						.catch(() => null);
 				}
 			: undefined;
 

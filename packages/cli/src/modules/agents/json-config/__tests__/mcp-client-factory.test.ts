@@ -142,7 +142,11 @@ describe('buildMcpClientForServer — header derivation', () => {
 		credentialProvider.resolve.mockResolvedValue(resolved as never);
 		const oauthService = mock<OauthService>();
 
-		await buildMcpClientForServer(server, { credentialProvider, oauthService });
+		await buildMcpClientForServer(server, {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		const fetchFn = configs[0].fetch;
@@ -222,7 +226,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
-			{ credentialProvider, oauthService },
+			{ credentialProvider, oauthService, projectId: 'proj-1' },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -230,7 +234,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 		const res = await fetchFn('https://example.test/mcp');
 
 		expect(res.status).toBe(200);
-		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1');
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1');
 		// First call uses the stale header, second uses the refreshed one.
 		const [, firstInit] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
 		const [, secondInit] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
@@ -248,7 +252,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService },
+			{ credentialProvider, oauthService, projectId: 'proj-1' },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -279,7 +283,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 				approval: { mode: 'selected', tools: ['create'] },
 				connectionTimeoutMs: 5_000,
 			}),
-			{ credentialProvider, oauthService },
+			{ credentialProvider, oauthService, projectId: 'proj-1' },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
