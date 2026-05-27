@@ -67,7 +67,7 @@ This is a deliberate design choice — the list endpoint only returns stubs, and
 
 | Feature | Reason |
 |---------|--------|
-| Return All toggle | List returns stubs only — 1350 incomplete records is misleading. Cut during adversarial review. |
+| ~~Return All toggle~~ | ~~Initially cut during adversarial review~~ — **reversed by PO** (ADR D3). Now in scope as US-5. |
 | Resource selector | Single resource = clutter. OpenWeatherMap (same pattern) omits it. |
 | Simplify on Get Many | List only returns name+url — nothing to simplify. Hidden via displayOptions. |
 | Offset UI field | Static offset encourages hardcoded pagination state. Users inject via expression. |
