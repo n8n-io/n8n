@@ -14,6 +14,7 @@ import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
@@ -45,6 +46,7 @@ export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
 export { ExecutionsConfig } from './configs/executions.config';
+export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
@@ -82,6 +84,9 @@ export class GlobalConfig {
 
 	@Nested
 	publicApi: PublicApiConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
 
 	@Nested
 	externalHooks: ExternalHooksConfig;
