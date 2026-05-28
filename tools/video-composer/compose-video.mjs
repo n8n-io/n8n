@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 
 export function splitScriptIntoSubtitleChunks(text, options = {}) {
 	const maxChars = options.maxChars ?? 28;
+	if (!Number.isFinite(maxChars) || maxChars <= 0) {
+		throw new Error('maxChars must be a positive number');
+	}
+
 	const normalized = String(text)
 		.replace(/\r\n/g, '\n')
 		.replace(/[ \t]+/g, ' ')
@@ -34,19 +38,21 @@ export function splitScriptIntoSubtitleChunks(text, options = {}) {
 }
 
 export function assEscape(text) {
-	return String(text)
-		.replace(/\\n/g, '\\N')
-		.replace(/\n/g, '\\N')
-		.replace(/\\/g, '\\\\')
-		.replace(/[{}]/g, '\\$&');
+	return String(text).replace(/\\n|\n|\\|[{}]/g, (match) => {
+		if (match === '\\n' || match === '\n') return '\\N';
+		if (match === '\\') return '\\\\';
+
+		return `\\${match}`;
+	});
 }
 
 export function toAssTime(seconds) {
 	const safeSeconds = Math.max(0, Number(seconds) || 0);
-	const hours = Math.floor(safeSeconds / 3600);
-	const minutes = Math.floor((safeSeconds % 3600) / 60);
-	const wholeSeconds = Math.floor(safeSeconds % 60);
-	const centiseconds = Math.round((safeSeconds - Math.floor(safeSeconds)) * 100);
+	const totalCentiseconds = Math.round(safeSeconds * 100);
+	const hours = Math.floor(totalCentiseconds / 360000);
+	const minutes = Math.floor((totalCentiseconds % 360000) / 6000);
+	const wholeSeconds = Math.floor((totalCentiseconds % 6000) / 100);
+	const centiseconds = totalCentiseconds % 100;
 
 	return `${hours}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
 }

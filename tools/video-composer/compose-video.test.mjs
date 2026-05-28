@@ -30,14 +30,23 @@ test('splitScriptIntoSubtitleChunks breaks very long text into bounded chunks', 
 	assert.equal(chunks.length > 1, true);
 });
 
+test('splitScriptIntoSubtitleChunks rejects invalid maxChars', () => {
+	assert.throws(() => splitScriptIntoSubtitleChunks('abc', { maxChars: 0 }), /maxChars/);
+	assert.throws(() => splitScriptIntoSubtitleChunks('abc', { maxChars: -1 }), /maxChars/);
+});
+
 test('assEscape escapes characters that are special in ASS dialogue text', () => {
-	assert.equal(assEscape('第一行\\n{重点}'), '第一行\\\\N\\{重点\\}');
+	assert.equal(assEscape('第一行\n{重点}'), '第一行\\N\\{重点\\}');
+	assert.equal(assEscape('第一行\\n{重点}'), '第一行\\N\\{重点\\}');
+	assert.equal(assEscape('C:\\素材\\片段'), 'C:\\\\素材\\\\片段');
 });
 
 test('toAssTime formats seconds as ASS timestamp', () => {
 	assert.equal(toAssTime(0), '0:00:00.00');
 	assert.equal(toAssTime(65.348), '0:01:05.35');
 	assert.equal(toAssTime(3661.2), '1:01:01.20');
+	assert.equal(toAssTime(59.999), '0:01:00.00');
+	assert.equal(toAssTime(3599.999), '1:00:00.00');
 });
 
 test('buildTimeline creates three stages when audio is long enough', () => {
