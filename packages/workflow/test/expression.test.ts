@@ -1101,6 +1101,43 @@ describe('Expression', () => {
 				await testWorkflow.expression.releaseIsolate();
 			}
 		});
+
+		it("should throw 'Missing item index' for $('source').itemMatching() (engine parity)", async () => {
+			// Both engines surface the host's `ExpressionError("Missing item
+			// index for .itemMatching()")`. The legacy engine throws directly
+			// from `pairedItemMethod` in `WorkflowDataProxy`. The VM engine
+			// sends the `getNodeItemMatching` typed-RPC with `itemIndex:
+			// undefined`; the host's `pairedItemMethod` closure throws because
+			// `property === PAIRED_ITEM_METHOD.ITEM_MATCHING`, and the bridge
+			// round-trips that error through the sentinel back into the
+			// isolate, where tournament's `E()` re-throws it.
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('source').itemMatching() }}",
+						runExecutionData,
+						0,
+						0,
+						'consumer',
+						[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+						'manual',
+						{},
+						{
+							node: testWorkflow.getNode('consumer')!,
+							data: {},
+							source: {
+								main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+						},
+					),
+				).toThrowError(/Missing item index for \.itemMatching\(\)/);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
 	});
 
 	describe('getParameterValue with IWorkflowDataProxyData', () => {

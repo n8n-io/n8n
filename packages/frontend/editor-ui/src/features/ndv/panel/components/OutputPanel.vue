@@ -4,7 +4,6 @@ import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { storeToRefs } from 'pinia';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
@@ -85,7 +84,7 @@ const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const { dirtinessByName } = useNodeDirtiness();
 const uiStore = useUIStore();
 
@@ -116,7 +115,7 @@ const workflowObject = computed(() =>
 );
 
 const node = computed(() => {
-	return ndvStore.activeNode ?? undefined;
+	return ndvStore.value.activeNode ?? undefined;
 });
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
@@ -210,7 +209,7 @@ const staleData = computed(() => {
 });
 
 const outputPanelEditMode = computed(() => {
-	return ndvStore.outputPanelEditMode;
+	return ndvStore.value.outputPanelEditMode;
 });
 
 const canPinData = computed(() => {
