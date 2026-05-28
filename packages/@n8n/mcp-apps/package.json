@@ -26,7 +26,7 @@
 		"build": "pnpm build:ui && pnpm build:server",
 		"build:ui": "vite build --mode workflow-preview",
 		"build:server": "tsc -p tsconfig.build.json",
-		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.build.json",
+		"typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.build.json",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"test": "vitest run",
@@ -53,7 +53,8 @@
 		"vite": "catalog:",
 		"vite-plugin-singlefile": "catalog:",
 		"vite-svg-loader": "catalog:frontend",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"vue-tsc": "catalog:frontend"
 	},
 	"peerDependencies": {
 		"@modelcontextprotocol/sdk": "1.26.0"
