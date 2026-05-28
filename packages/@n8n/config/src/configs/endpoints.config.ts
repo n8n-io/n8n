@@ -137,7 +137,7 @@ export class EndpointsConfig {
 	/**
 	 * Force-enable MCP Apps support (the iframe UI attached to MCP tools).
 	 * Acts as an operator-level override of the PostHog experiment.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog,
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
 	 */
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;

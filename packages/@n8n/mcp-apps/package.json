@@ -35,12 +35,12 @@
 		"format:check": "biome ci src"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/ext-apps": "catalog:",
 		"@n8n/design-system": "workspace:*",
 		"vue": "catalog:frontend",
 		"vue-i18n": "catalog:frontend"
 	},
 	"devDependencies": {
-		"@modelcontextprotocol/ext-apps": "catalog:",
 		"@modelcontextprotocol/sdk": "1.26.0",
 		"@n8n/eslint-config": "workspace:*",
 		"@n8n/typescript-config": "workspace:*",
