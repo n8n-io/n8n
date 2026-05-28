@@ -182,7 +182,7 @@
     "jsonschema": "1.4.1",
     "jsonwebtoken": "catalog:",
     "langsmith": "catalog:",
-    "ldapts": "4.2.6",
+    "ldapts": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "n8n-core": "workspace:*",
