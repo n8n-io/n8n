@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 
@@ -77,6 +77,7 @@ const connectDisabled = computed(
 			<AgentCredentialSelect
 				:model-value="modelValue"
 				:class="$style.select"
+				size="large"
 				:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
 				:credentials="credentials"
 				:credential-permissions="credentialPermissions"
@@ -86,15 +87,17 @@ const connectDisabled = computed(
 				@update:model-value="emit('update:modelValue', $event)"
 				@create="emit('create')"
 			/>
-			<N8nButton
-				v-if="canEdit"
-				variant="outline"
-				size="small"
-				icon="pen"
-				:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-				:data-testid="`${integrationType}-edit-credential`"
-				@click="emit('edit')"
-			/>
+			<N8nTooltip v-if="canEdit" :content="i18n.baseText('generic.edit')" placement="top">
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon-size="medium"
+					icon="pen"
+					:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
+					:data-testid="`${integrationType}-edit-credential`"
+					@click="emit('edit')"
+				/>
+			</N8nTooltip>
 			<N8nButton
 				v-if="showDisconnectButton"
 				variant="destructive"

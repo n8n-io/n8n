@@ -31,6 +31,7 @@ const i18n = useI18n();
 
 const selectRefs = ref<InstanceType<typeof N8nSelect> | null>(null);
 const filter = ref('');
+const isSelectVisible = ref(false);
 
 function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
@@ -54,6 +55,8 @@ const onCredentialSelected = (credentialId: string) => {
 };
 
 const onCreateNewCredential = async () => {
+	isSelectVisible.value = false;
+	selectRefs.value?.innerSelect?.handleClose();
 	selectRefs.value?.blur();
 	await nextTick();
 	emit('newCredential');
@@ -70,7 +73,10 @@ const onCreateNewCredential = async () => {
 		:placeholder="props.placeholder"
 		:loading="props.loading"
 		:disabled="props.disabled"
+		:visible="isSelectVisible"
+		:teleported="false"
 		:popper-class="$style.selectPopper"
+		@visible-change="isSelectVisible = $event"
 		@update:model-value="onCredentialSelected"
 	>
 		<N8nOption

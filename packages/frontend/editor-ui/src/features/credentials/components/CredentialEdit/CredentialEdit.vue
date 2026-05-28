@@ -1514,6 +1514,7 @@ const { width } = useElementSize(credNameRef);
 		:before-close="beforeClose"
 		width="70%"
 		height="80%"
+		append-to-body
 	>
 		<template #header>
 			<div :class="$style.header">

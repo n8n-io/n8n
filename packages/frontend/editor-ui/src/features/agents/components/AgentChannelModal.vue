@@ -401,6 +401,8 @@ watch(
 	<N8nDialog
 		:open="open"
 		size="2xlarge"
+		:trap-focus="!credentialModalOpen"
+		:disable-outside-pointer-events="!credentialModalOpen"
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="$emit('update:open', $event)"
 	>
