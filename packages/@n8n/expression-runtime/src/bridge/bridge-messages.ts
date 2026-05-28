@@ -127,6 +127,55 @@ export const fromAiMessage = z
 	.strict();
 
 /**
+ * `$('NodeName').pairedItem(itemIndex?)` / `.itemMatching(itemIndex)` /
+ * `.item` — resolve the paired item for a referenced node.
+ *
+ * All three host-side surface forms share one internal resolver
+ * (`pairedItemMethod` in `WorkflowDataProxy`), but the resolver closes
+ * over the literal property name the bridge accessed on the host proxy
+ * — so the error message and getter-vs-method form depend on *which*
+ * property the bridge reads. Three separate discriminators, each
+ * mapping a handler to a fixed literal property name, are the only way
+ * to preserve the host's friendly errors (e.g. "Missing item index for
+ * .itemMatching()") and the `.item` getter semantics without
+ * duplicating logic in-isolate.
+ *
+ * `itemIndex` is optional on all three at the schema level; the host
+ * throws the appropriate `ExpressionError` when it's missing for
+ * `.itemMatching()`, and applies the current-itemIndex default for
+ * `.pairedItem` and `.item`.
+ */
+export const getNodePairedItemMessage = z
+	.object({
+		type: z.literal('getNodePairedItem'),
+		nodeName: z.string(),
+		itemIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
+ * `itemIndex` is `.optional()` even though `.itemMatching()` requires it
+ * at the host. The host's `pairedItemMethod` closure throws the friendly
+ * `"Missing item index for .itemMatching()"` error when the field is
+ * absent — keeping the schema permissive lets that host error surface
+ * verbatim instead of being replaced by a generic zod parse failure.
+ */
+export const getNodeItemMatchingMessage = z
+	.object({
+		type: z.literal('getNodeItemMatching'),
+		nodeName: z.string(),
+		itemIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+export const getNodeItemMessage = z
+	.object({
+		type: z.literal('getNodeItem'),
+		nodeName: z.string(),
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -142,6 +191,9 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getInputAllMessage,
 	getItemsMessage,
 	fromAiMessage,
+	getNodePairedItemMessage,
+	getNodeItemMatchingMessage,
+	getNodeItemMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;
