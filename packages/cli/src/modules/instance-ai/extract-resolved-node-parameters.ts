@@ -105,6 +105,23 @@ function findConnectionOutputIndex(
 }
 
 /**
+ * Annotate items with `pairedItem` so expressions like `$('Trigger').item.json.x`
+ * can trace back to the source item. The runtime / editor both do this on the
+ * `connectionInputData` they feed into `getParameterValue` — without it,
+ * `WorkflowDataProxy.getPairedItem` throws `pairedItemNoInfo` and parameter
+ * resolution fails for expressions that worked fine in the live execution.
+ */
+function annotatePairedItem(
+	items: INodeExecutionData[],
+	destinationInputIndex: number,
+): INodeExecutionData[] {
+	return items.map((item, itemIndex) => ({
+		...item,
+		pairedItem: { item: itemIndex, input: destinationInputIndex },
+	}));
+}
+
+/**
  * Reconstruct the `executeData` + `connectionInputData` that the expression engine
  * needs to resolve `$json` / `$input` / `$node[...]` references for a past run.
  *
@@ -136,9 +153,16 @@ function reconstructExecuteData(
 
 	// 1. Authoritative path: use the source the runtime recorded for this run.
 	const currentNodeRun = runData[currentNodeName]?.[runIndex];
-	const firstSource = currentNodeRun?.source?.find(
-		(entry): entry is ISourceData => entry !== null && entry !== undefined,
-	);
+	let destinationInputIndex = 0;
+	let firstSource: ISourceData | undefined;
+	for (let i = 0; i < (currentNodeRun?.source?.length ?? 0); i++) {
+		const entry = currentNodeRun?.source?.[i];
+		if (entry !== null && entry !== undefined) {
+			firstSource = entry;
+			destinationInputIndex = i;
+			break;
+		}
+	}
 	if (firstSource) {
 		const previousNode = firstSource.previousNode;
 		const previousNodeOutput = firstSource.previousNodeOutput ?? 0;
@@ -149,9 +173,12 @@ function reconstructExecuteData(
 				executeData: {
 					node: currentNodeShim,
 					data: parentRun.data,
-					source: { [inputName]: currentNodeRun.source },
+					source: { [inputName]: currentNodeRun?.source ?? [] },
 				},
-				connectionInputData: parentRun.data[inputName][previousNodeOutput] ?? [],
+				connectionInputData: annotatePairedItem(
+					parentRun.data[inputName][previousNodeOutput] ?? [],
+					destinationInputIndex,
+				),
 			};
 		}
 	}
@@ -181,7 +208,7 @@ function reconstructExecuteData(
 					],
 				},
 			},
-			connectionInputData: parentRun.data[inputName]?.[outputIndex] ?? [],
+			connectionInputData: annotatePairedItem(parentRun.data[inputName]?.[outputIndex] ?? [], 0),
 		};
 	}
 

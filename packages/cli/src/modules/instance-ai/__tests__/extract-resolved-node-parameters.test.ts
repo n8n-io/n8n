@@ -463,6 +463,41 @@ describe('extractResolvedNodeParameters', () => {
 		expect((body.preview as string).length).toBeLessThanOrEqual(8_000);
 	});
 
+	it('annotates connectionInputData with pairedItem so $("Node").item expressions resolve', async () => {
+		// `$('Trigger').item.json.x` calls into WorkflowDataProxy.getPairedItem,
+		// which requires each input item to carry a `pairedItem: { item, input }`
+		// annotation. The runtime + editor both add this before evaluating; we
+		// have to mirror that here or the expression throws "pairedItemNoInfo".
+		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+		const set = makeNode('Set', 'n8n-nodes-base.set', {
+			fromUpstream: '={{ $("Trigger").item.json.greeting }}',
+		});
+		const repo = createMockExecutionRepository(
+			makeResolutionExecution({
+				nodes: [trigger, set],
+				connections: connect('Trigger', 'Set'),
+				runData: {
+					Trigger: [makeTaskData([{ greeting: 'hello' }])],
+					Set: [
+						makeTaskData([{}], {
+							source: [{ previousNode: 'Trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractResolvedNodeParameters(
+			repo as unknown as ExecutionRepository,
+			nodeTypes,
+			'exec-1',
+			'Set',
+		);
+
+		expect(result.failedExpressions).toEqual([]);
+		expect(parseResolved(result.resolved)).toEqual({ fromUpstream: 'hello' });
+	});
+
 	it('uses currentNodeRun.source to pick the correct branch output (Switch / IF)', async () => {
 		// Switch routes items to two outputs; current node is connected to output 1.
 		// Without source-driven lookup, walking workflow parents would pick output 0
