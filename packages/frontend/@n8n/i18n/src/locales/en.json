@@ -5303,7 +5303,7 @@
 	"evaluations.wizardSidepanel.step2.input.placeholder": "Type the input you want to test with",
 	"evaluations.wizardSidepanel.step2.expected": "Expected output",
 	"evaluations.wizardSidepanel.step2.expected.placeholder": "Type the output you’d expect from your workflow",
-	"evaluations.wizardSidepanel.step2.expected.tooltip": "The output you’d want your workflow to produce for this input. Scorers compare the real output against this.",
+	"evaluations.wizardSidepanel.step2.expected.tooltip": "Scorers compare the real output against this.",
 	"evaluations.wizardSidepanel.step2.expectedAnswer": "Expected answer",
 	"evaluations.wizardSidepanel.step2.expectedTools": "Expected tools",
 	"evaluations.wizardSidepanel.step2.expectedFieldPlaceholder": "Type the value scorers should compare against",

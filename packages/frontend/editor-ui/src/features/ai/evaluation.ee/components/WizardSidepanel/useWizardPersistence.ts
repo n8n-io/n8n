@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
+	addDataTableColumnApi,
 	createDataTableApi,
 	deleteDataTableApi,
 	deleteDataTableRowsApi,
@@ -199,10 +200,15 @@ export function useWizardPersistence() {
 		// the test run is recoverable (retry) and rolling back would silently
 		// erase the user's config edits.
 		try {
-			await evaluationStore.startTestRun(workflowId, {
+			// Clear the previous activeRunId early so step 3 doesn't briefly
+			// show stale data from a prior wizard session while we're
+			// awaiting the dispatch round-trip.
+			wizardStore.setActiveRunId(null);
+			const dispatched = await evaluationStore.startTestRun(workflowId, {
 				evaluationConfigId: configId,
 				compileFromConfig: true,
 			});
+			wizardStore.setActiveRunId(dispatched?.testRunId ?? null);
 			await evaluationStore.fetchTestRuns(workflowId);
 			return true;
 		} catch (error) {
@@ -259,10 +265,12 @@ export function useWizardPersistence() {
 
 	type EnsureDataTableResult = { id: string; created: boolean };
 
-	// Reuse an existing data table with the same name if its columns cover all
-	// the ones the wizard needs; otherwise create a new one. A timestamp suffix
-	// is added when an incompatible table already owns the canonical name, so
-	// the user never has to manually resolve the conflict.
+	// Reuse an existing data table with the same name and add any columns it
+	// is missing — the wizard's required column set can grow over time as the
+	// user toggles metrics on/off, and creating a fresh table on every shape
+	// change would orphan past dataset rows. Columns that exist on the table
+	// but aren't required this run are left alone (they may hold values from
+	// previous wizard sessions or manual edits).
 	async function ensureDataTable(
 		baseName: string,
 		projectId: string,
@@ -291,25 +299,19 @@ export function useWizardPersistence() {
 			skip += PAGE;
 		}
 
-		const requiredNames = new Set(required.map((c) => c.name));
-		const compatible = matches.find((table) => {
-			if (table.name !== baseName) return false;
-			const have = new Set(table.columns.map((c) => c.name));
-			for (const name of requiredNames) if (!have.has(name)) return false;
-			return true;
-		});
-		if (compatible) return { id: compatible.id, created: false };
+		const existing = matches.find((t) => t.name === baseName);
+		if (existing) {
+			const have = new Set(existing.columns.map((c) => c.name));
+			const missing = required.filter((c) => !have.has(c.name));
+			for (const column of missing) {
+				await addDataTableColumnApi(rootStore.restApiContext, existing.id, projectId, column);
+			}
+			return { id: existing.id, created: false };
+		}
 
-		// Name is taken by an incompatible table — disambiguate with a short
-		// timestamp + entropy suffix so the create call won't 409 even when
-		// two browser tabs hit `Next` inside the same wall-clock second.
-		const nameTaken = matches.some((t) => t.name === baseName);
-		const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-		const entropy = Math.random().toString(36).slice(2, 6);
-		const finalName = nameTaken ? `${baseName} (${timestamp} ${entropy})`.slice(0, 120) : baseName;
 		const created = await createDataTableApi(
 			rootStore.restApiContext,
-			finalName,
+			baseName,
 			projectId,
 			required,
 		);

@@ -137,6 +137,7 @@ watch(
 	([step, nodes]) => {
 		if (step !== 1) return;
 		void workflowsStore.fetchLastSuccessfulExecution();
+		void loadFallbackUserExecution();
 		if (wizardStore.aiNodeName) return;
 		const first = nodes[0];
 		if (first) wizardStore.setAiNodeName(first.name);
@@ -144,7 +145,41 @@ watch(
 	{ immediate: true },
 );
 
-const sliceInputs = useSliceInputs();
+// Find the most recent successful execution that isn't an evaluation, fetch
+// its full data, and stash it for `useSliceInputs`. `getLastSuccessfulExecution`
+// ignores mode — once the user has run the wizard a few times, the most-recent
+// successful execution is always an evaluation, masking older user runs we'd
+// otherwise use to seed the input form.
+async function loadFallbackUserExecution() {
+	const workflowId = workflowDocumentStore.value?.workflowId;
+	if (!workflowId) return;
+	try {
+		const list = await executionsStore.fetchExecutions({
+			status: ['success'],
+			workflowId,
+		});
+		const candidate = list.results.find((e) => e.mode !== 'evaluation' && typeof e.id === 'string');
+		if (!candidate?.id) {
+			fallbackUserExecution.value = null;
+			return;
+		}
+		const full = await executionsStore.fetchExecution(candidate.id);
+		fallbackUserExecution.value = full ?? null;
+	} catch {
+		// Soft fail — the input form already handles missing execution data
+		// via its own empty state; we don't want a stale fetch error to
+		// blow up step 2.
+		fallbackUserExecution.value = null;
+	}
+}
+
+// Back-fill for `useSliceInputs`: most recent successful non-evaluation
+// execution. Populated by the step-2 watcher below — used when the
+// workflow store's cached `lastSuccessfulExecution` is the user's own prior
+// evaluation run (which we skip because its runData represents the compiled
+// eval workflow, not the user's graph).
+const fallbackUserExecution = ref<IExecutionResponse | null>(null);
+const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
 
 // Pre-fill input fields from the most recent execution. Re-runs whenever the
@@ -181,7 +216,17 @@ const runs = computed(() => {
 	);
 });
 
-const latestRun = computed(() => runs.value[runs.value.length - 1]);
+// Step 3 always tracks the run dispatched by THIS wizard session — pinned via
+// `activeRunId` on `persistAndDispatch`. Falling back to a stored-but-stale
+// "newest in the map" would briefly flash an older run between when the
+// wizard advances to step 3 and when the new run actually shows up in the
+// runs map. Only fall back when no activeRunId is pinned (e.g. reload, or
+// pre-experiment state).
+const latestRun = computed(() => {
+	const pinnedId = wizardStore.activeRunId;
+	if (pinnedId) return evaluationStore.testRunsById?.[pinnedId];
+	return runs.value[runs.value.length - 1];
+});
 
 // Test case execution for the latest run. The wizard always dispatches a
 // single-row dataset, so there's only ever one case per run. The store's
@@ -703,9 +748,12 @@ function handleFinish() {
 					</div>
 
 					<!--
-						No execution yet → we can't determine the slice's input shape.
-						Surface an empty-state inside the card so the user understands
-						they need to run the workflow first.
+						No execution yet → we can't detect the slice's true input
+						shape, but `useSliceInputs` still surfaces a sensible
+						fallback field (e.g. `chatInput` for chat-triggered
+						workflows, `input` otherwise) so the user can fill in
+						something. Show the hint above it so they understand the
+						column came from a guess rather than a real execution.
 					-->
 					<div
 						v-if="!sliceInputs.hasExecution"
@@ -717,10 +765,9 @@ function handleFinish() {
 						</N8nText>
 					</div>
 
-					<!-- One field per detected input on the slice's first item. -->
+					<!-- One field per detected (or fallback) input. -->
 					<div
 						v-for="name in sliceInputs.fieldNames"
-						v-else
 						:key="`input-${name}`"
 						:class="$style.field"
 						:data-test-id="`evaluations-wizard-sidepanel-input-${name}`"
@@ -1168,7 +1215,7 @@ function handleFinish() {
 	display: flex;
 	flex-direction: column;
 	border: var(--border);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
 	overflow: hidden;
 }

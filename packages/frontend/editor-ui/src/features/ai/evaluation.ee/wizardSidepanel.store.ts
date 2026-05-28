@@ -80,6 +80,14 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 		const customScorers = ref<CustomScorer[]>([]);
 		const isCustomScorerModalOpen = ref(false);
 
+		// Step 3 — the test run dispatched by this wizard session, by id. We
+		// can't rely on "the most recent run in the store" because the runs
+		// map gets populated by `fetchTestRuns` which returns ALL of a
+		// workflow's runs (older user-triggered runs included). Pinning the
+		// active run id at dispatch time lets step 3 wait for the run we
+		// actually started.
+		const activeRunId = ref<string | null>(null);
+
 		// Wipe everything the user can interact with so reopening the wizard on
 		// a different workflow doesn't leak the previous workflow's metric
 		// picks, judge models, or dataset values into the new session.
@@ -95,6 +103,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			expectedValues.value = {};
 			customScorers.value = [];
 			isCustomScorerModalOpen.value = false;
+			activeRunId.value = null;
 		}
 
 		function open(step: WizardStep = 0) {
@@ -201,6 +210,10 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			customScorers.value = customScorers.value.filter((s) => s.id !== id);
 		}
 
+		function setActiveRunId(id: string | null) {
+			activeRunId.value = id;
+		}
+
 		// Seeds `inputs` from execution data while preserving anything the user
 		// has touched — including intentionally cleared fields. Drops any keys
 		// no longer present in `values` so a previous slice's stale fields
@@ -226,6 +239,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			expectedValues,
 			customScorers,
 			isCustomScorerModalOpen,
+			activeRunId,
 			open,
 			close,
 			toggle,
@@ -244,6 +258,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			closeCustomScorerModal,
 			addCustomScorer,
 			removeCustomScorer,
+			setActiveRunId,
 		};
 	},
 );

@@ -147,7 +147,7 @@ const features: Feature[] = [
 	padding: var(--spacing--md);
 	background-color: var(--background--surface);
 	border: var(--border);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--sm);
 }
 
 .feature {
