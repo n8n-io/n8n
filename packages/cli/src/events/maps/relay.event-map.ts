@@ -425,6 +425,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'credentials-user-disconnected': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	// #endregion
 
 	// #region Community package

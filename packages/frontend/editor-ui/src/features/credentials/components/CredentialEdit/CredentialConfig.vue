@@ -35,6 +35,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nInfoTip,
@@ -67,6 +68,7 @@ type Props = {
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
@@ -88,6 +90,7 @@ const emit = defineEmits<{
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
+	disconnect: [];
 	quickConnect: [];
 	claimed: [];
 	'update:isResolvable': [value: boolean];
@@ -199,6 +202,10 @@ const showOAuthNotConnectedBanner = computed(() => {
 		!props.authError
 	);
 });
+
+const showDisconnectButton = computed(
+	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+);
 
 const isMissingCredentials = computed(() => props.credentialType === null);
 
@@ -402,22 +409,33 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="oauth-connect-success-banner"
 					@click="$emit('oauth')"
 				>
-					<template v-if="isGoogleOAuthType" #button>
-						<p
-							:class="$style.googleReconnectLabel"
-							v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-						/>
-						<GoogleAuthButton @click="$emit('oauth')" />
-					</template>
-					<template v-else #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="serviceName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-							data-test-id="quick-connect-reconnect-button"
-							@click="$emit('oauth')"
-						/>
+					<template #button>
+						<div :class="$style.bannerActions">
+							<template v-if="isGoogleOAuthType">
+								<p
+									:class="$style.googleReconnectLabel"
+									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+								/>
+								<GoogleAuthButton @click="$emit('oauth')" />
+							</template>
+							<QuickConnectButton
+								v-else
+								size="small"
+								:service-name="serviceName"
+								:credential-type-name="credentialType.name"
+								:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+								data-test-id="quick-connect-reconnect-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								v-if="showDisconnectButton"
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
 					</template>
 				</Banner>
 
@@ -554,6 +572,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .googleReconnectLabel {
 	margin-right: var(--spacing--3xs);
+}
+
+.bannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .askAssistantButton {

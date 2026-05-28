@@ -93,6 +93,10 @@ export async function deleteCredential(context: IRestApiContext, id: string): Pr
 	return await makeRestApiRequest(context, 'DELETE', `/credentials/${id}`);
 }
 
+export async function disconnectMyConnection(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/credentials/${id}/my-connection`);
+}
+
 export async function updateCredential(
 	context: IRestApiContext,
 	id: string,
