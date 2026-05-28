@@ -1103,6 +1103,15 @@ describe('Salesforce -> GenericFunctions', () => {
 			it('coerces non-string inner values to strings', () => {
 				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: 12345 })).toBe('12345');
 			});
+
+			it('returns undefined for unrecognised shapes', () => {
+				// Object without a `value` key — doesn't match either branch.
+				expect(getResourceLocatorValue({})).toBeUndefined();
+				expect(getResourceLocatorValue({ foo: 'bar' })).toBeUndefined();
+				// Non-string, non-object primitives — also fall through.
+				expect(getResourceLocatorValue(42)).toBeUndefined();
+				expect(getResourceLocatorValue(true)).toBeUndefined();
+			});
 		});
 
 		describe('Security Functions: escaping', () => {
