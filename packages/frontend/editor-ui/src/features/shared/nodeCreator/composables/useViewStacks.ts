@@ -106,7 +106,7 @@ export interface ViewStack {
 const nodePopularityMap = Object.values(nodePopularity).reduce((acc, node) => {
 	return {
 		...acc,
-		[node.id]: node.popularity * 200, // Scale the popularity score
+		[node.id]: node.popularity * 100, // Scale the popularity score
 	};
 }, {});
 

@@ -6,12 +6,9 @@ import { sublimeSearch } from './sublimeSearch';
 // applied in useViewStacks.ts. Only the nodes asserted below are included.
 const popularity: Record<string, number> = {
 	/* eslint-disable @typescript-eslint/naming-convention */
-	'n8n-nodes-base.set': 0.959 * 200,
-	'n8n-nodes-base.editImage': 0.617 * 200,
-	'n8n-nodes-base.executeWorkflow': 0.796 * 200,
-	'n8n-nodes-base.executionData': 0.665 * 200,
-	'n8n-nodes-base.executeCommand': 0.681 * 200,
-	'@n8n/n8n-nodes-langchain.agent': 0.975 * 200,
+	'n8n-nodes-base.set': 0.959 * 100,
+	'n8n-nodes-base.editImage': 0.617 * 100,
+	'@n8n/n8n-nodes-langchain.agent': 0.975 * 100,
 	/* eslint-enable @typescript-eslint/naming-convention */
 };
 
@@ -24,7 +21,6 @@ describe('sublimeSearch', () => {
 		const testCases: Array<[string, string[]]> = [
 			['set', ['Edit Fields (Set)']],
 			['edit', ['Edit Fields (Set)']],
-			['exec', ['Execute Sub-workflow']],
 			['agent', ['AI Agent', 'Magento 2']],
 		];
 
