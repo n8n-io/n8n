@@ -3,6 +3,7 @@ import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
+import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-missing-mode';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -22,6 +23,31 @@ describe('http-error-serializers', () => {
 			body: {
 				code: 404,
 				message: 'x',
+			},
+		});
+	});
+
+	it('serializePublicApiError: spreads meta for credential resolution failures', () => {
+		const descriptor = classifyHttpError(
+			toCredentialResolutionFailedError([
+				{
+					kind: 'not_found',
+					sourceId: 'cred-1',
+					usedByWorkflows: ['wf-1'],
+				},
+			]),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 422,
+			body: {
+				message: '1 credential reference could not be resolved.',
+				failures: [
+					{
+						kind: 'not_found',
+						sourceId: 'cred-1',
+						usedByWorkflows: ['wf-1'],
+					},
+				],
 			},
 		});
 	});

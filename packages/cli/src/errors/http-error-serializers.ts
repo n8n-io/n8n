@@ -15,11 +15,18 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 	body: { message: string };
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.responseError:
+		case HttpErrorKind.responseError: {
+			const body: { message: string } & Record<string, unknown> = {
+				message: descriptor.message,
+			};
+			if (descriptor.meta) {
+				Object.assign(body, descriptor.meta);
+			}
 			return {
 				status: descriptor.status,
-				body: { message: descriptor.message },
+				body,
 			};
+		}
 		case HttpErrorKind.userError:
 			return {
 				status: 400,
