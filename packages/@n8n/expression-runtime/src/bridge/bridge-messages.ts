@@ -176,6 +176,24 @@ export const getNodeItemMessage = z
 	.strict();
 
 /**
+ * `$evaluateExpression(expression, itemIndex?)` — evaluate a nested
+ * expression string at runtime against the same execution context.
+ *
+ * The host recursively invokes the expression engine on the `expression`
+ * string — under the VM engine this re-enters the bridge with a fresh
+ * evaluation. `itemIndex` is optional and defaults to the current item;
+ * the schema mirrors the existing "nonnegative int" constraint used by
+ * the node-data RPCs.
+ */
+export const evaluateExpressionMessage = z
+	.object({
+		type: z.literal('evaluateExpression'),
+		expression: z.string(),
+		itemIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -194,6 +212,7 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getNodePairedItemMessage,
 	getNodeItemMatchingMessage,
 	getNodeItemMessage,
+	evaluateExpressionMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

@@ -992,4 +992,59 @@ describe('Expression', () => {
 			}
 		});
 	});
+
+	describe('$evaluateExpression through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: 'test-evaluate',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-id',
+					name: 'node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string, data: INodeExecutionData[]) =>
+			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+		// The inner expression must be wrapped in `{{ ... }}` for the host to
+		// evaluate it (without those, the host strips `=` and the rest is
+		// treated as a literal string). Inside a parameter expression that
+		// would create nested `{{...}}` and trip the outer parser, so the
+		// inner braces are built via string concatenation.
+		const buildInnerTemplate = (inner: string) => `'{' + '{ ${inner} }' + '}'`;
+
+		it('resolves a nested $json reference (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}) }}`, [
+					{ json: { value: 42 } },
+				]),
+			).toBe(42);
+		});
+
+		it('forwards an itemIndex argument (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 1) }}`, [
+					{ json: { value: 'first' } },
+					{ json: { value: 'second' } },
+				]),
+			).toBe('second');
+		});
+	});
 });
