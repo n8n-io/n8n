@@ -665,7 +665,10 @@ export async function httpRequest(
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
+	const url =
+		buildTargetUrl(requestOptions.url, requestOptions.baseURL) ??
+		requestOptions.url ??
+		requestOptions.baseURL;
 	await validateUrlSsrf(url, ssrfBridge);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
