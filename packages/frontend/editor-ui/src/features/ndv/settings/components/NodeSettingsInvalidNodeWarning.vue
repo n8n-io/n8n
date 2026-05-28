@@ -17,6 +17,7 @@ import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -27,6 +28,7 @@ const uiStore = useUIStore();
 const ndvStore = injectNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const usersStore = useUsersStore();
+const workflowId = useWorkflowId();
 
 const isCommunityNode = computed(() => isCommunityPackageName(node.type));
 const isVerifiedCommunityNode = computed(
@@ -50,7 +52,7 @@ async function onViewDetailsClick() {
 		node_type: node.type,
 	});
 	if (isVerifiedCommunityNode.value) {
-		await nodeCreatorStore.openNodeCreatorWithNode(node.name);
+		await nodeCreatorStore.openNodeCreatorWithNode(workflowId.value, node.name);
 	} else if (npmPackage.value) {
 		window.open(`https://www.npmjs.com/package/${npmPackage.value}`, '_blank');
 	}

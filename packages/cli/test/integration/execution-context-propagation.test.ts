@@ -7,15 +7,13 @@
 import { testDb, createWorkflow, createActiveWorkflow } from '@n8n/backend-test-utils';
 import { ExecutionRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { readFileSync } from 'fs';
-import { UnrecognizedNodeTypeError } from 'n8n-core';
-import type { IExecutionContext, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
-import path from 'path';
+import type { IExecutionContext } from 'n8n-workflow';
 
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { createOwner } from './shared/db/users';
 import * as utils from './shared/utils';
+import { loadNodesFromDist } from './shared/utils/node-types-data';
 import {
 	createSubWorkflowFixture,
 	createParentWorkflowFixture,
@@ -28,36 +26,6 @@ import {
 	validateContextInheritanceChain,
 	validateBasicContextStructure,
 } from './shared/execution-context-helpers';
-
-// ============================================================
-// Helper to load nodes from dist folder
-// ============================================================
-
-const BASE_DIR = path.resolve(__dirname, '../../..');
-
-function loadNodesFromDist(nodeNames: string[]): INodeTypeData {
-	const nodeTypes: INodeTypeData = {};
-
-	const knownNodes = JSON.parse(
-		readFileSync(path.join(BASE_DIR, 'nodes-base/dist/known/nodes.json'), 'utf-8'),
-	) as Record<string, NodeLoadingDetails>;
-
-	for (const nodeName of nodeNames) {
-		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
-		if (!loadInfo) {
-			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
-		}
-		// Load from dist .js files (sourcePath already includes 'dist/')
-		const nodeDistPath = path.join(BASE_DIR, 'nodes-base', loadInfo.sourcePath);
-		const node = new (require(nodeDistPath)[loadInfo.className])() as INodeType;
-		nodeTypes[nodeName] = {
-			sourcePath: '',
-			type: node,
-		};
-	}
-
-	return nodeTypes;
-}
 
 // Fixtures are now imported from './shared/workflow-fixtures'
 

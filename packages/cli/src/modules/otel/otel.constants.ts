@@ -7,6 +7,8 @@ export const ATTR = {
 	INSTANCE_ID: 'n8n.instance.id',
 	INSTANCE_ROLE: 'n8n.instance.role',
 
+	PROJECT_ID: 'n8n.project.id',
+
 	WORKFLOW_ID: 'n8n.workflow.id',
 	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',
 	WORKFLOW_NAME: 'n8n.workflow.name',

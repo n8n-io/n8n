@@ -54,6 +54,51 @@ export interface AgentIntegrationStatusResponse {
 	integrations: AgentIntegrationStatusEntry[];
 }
 
+export interface CreateSlackAgentAppResponse {
+	appId: string;
+	installUrl: string;
+}
+
+export interface SlackAgentAppManifest {
+	display_information: {
+		name: string;
+	};
+	features: {
+		app_home: {
+			home_tab_enabled: boolean;
+			messages_tab_enabled: boolean;
+			messages_tab_read_only_enabled: boolean;
+		};
+		bot_user: {
+			display_name: string;
+			always_online: boolean;
+		};
+	};
+	oauth_config: {
+		redirect_urls?: string[];
+		scopes: {
+			bot: string[];
+		};
+	};
+	settings: {
+		event_subscriptions: {
+			request_url: string;
+			bot_events: string[];
+		};
+		interactivity: {
+			is_enabled: boolean;
+			request_url: string;
+		};
+		org_deploy_enabled: boolean;
+		socket_mode_enabled: boolean;
+		token_rotation_enabled: boolean;
+	};
+}
+
+export interface SlackAgentAppManifestResponse {
+	manifest: SlackAgentAppManifest;
+}
+
 export interface AgentSkill {
 	name: string;
 	description: string;
@@ -66,14 +111,11 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
-export interface AgentPublishedVersionDto {
+export interface AgentVersionDto {
+	versionId: string;
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
-	publishedFromVersionId: string;
-	model: string | null;
-	provider: string | null;
-	credentialId: string | null;
-	publishedById: string | null;
+	author: string;
 }
 
 export interface AgentPersistedMessageContentPart {
@@ -93,7 +135,7 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
 
 export const agentBuilderModeSchema = z.enum(['default', 'custom']);
 export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;

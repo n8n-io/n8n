@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useResourceCenterStore } from '../resourceCenter.store';
+import { TELEMETRY_EVENTS } from '@/app/constants';
 
 const mocks = vi.hoisted(() => ({
 	track: vi.fn(),
@@ -96,7 +97,10 @@ describe('resourceCenter.store', () => {
 
 			useResourceCenterStore();
 
-			expect(mocks.track).not.toHaveBeenCalledWith('User is part of experiment', expect.anything());
+			expect(mocks.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT,
+				expect.anything(),
+			);
 		});
 	});
 });

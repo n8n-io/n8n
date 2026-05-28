@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import {
 	agentSkillSchema,
@@ -15,9 +15,14 @@ import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
@@ -55,6 +60,27 @@ function rejectIfEmptyInstructions(
 		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
 	}
 	return null;
+}
+
+function rejectIfUnsupportedNativeWebSearch(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	const webSearch = config.config?.webSearch;
+	const requestsNativeWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === undefined ||
+			webSearch.provider === 'auto' ||
+			webSearch.provider === 'native');
+	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
+	return {
+		errors: [
+			{
+				path: '/config/webSearch/provider',
+				message:
+					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+			},
+		],
+	};
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -95,6 +121,48 @@ function snapshotFromConfig(
 	};
 }
 
+/**
+ * The builder expresses web-search intent through `config.webSearch`; this
+ * write-path normalizer persists provider-specific native tool details so
+ * builder-saved configs are deterministic. Runtime reconstruction uses the
+ * same policy defensively for configs saved through other entry points.
+ */
+function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerTools = getNativeWebSearchProviderTools(config, {
+		includeDefaultArgs: true,
+		defaultEnabled: true,
+	});
+	const webSearch = config.config?.webSearch;
+	const fallbackWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
+	const hasNativeWebSearch =
+		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+
+	if (!hasNativeWebSearch) {
+		const { webSearch, ...restConfig } = config.config ?? {};
+		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
+		const normalizedConfig = {
+			...restConfig,
+			...(fallbackWebSearch ? { webSearch } : {}),
+		};
+		return {
+			...restAgentConfig,
+			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
+			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			webSearch: { enabled: true },
+		},
+		providerTools,
+	};
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -108,6 +176,7 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	getTools(
@@ -193,11 +262,16 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -294,12 +368,17 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -322,8 +401,8 @@ export class AgentsBuilderToolsService {
 					'Returns the schedule trigger plus every connected chat platform with the list of ' +
 					'credential types it supports (`credentialTypes: string[]`). ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
-					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
-					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
+					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
+					'`credentialType` arg.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
@@ -346,7 +425,10 @@ export class AgentsBuilderToolsService {
 			patchConfigTool,
 			listIntegrationTypesTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
-			buildAskCredentialTool({ credentialProvider }),
+			buildAskCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
 		];

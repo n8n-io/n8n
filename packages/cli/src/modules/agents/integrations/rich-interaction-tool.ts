@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 

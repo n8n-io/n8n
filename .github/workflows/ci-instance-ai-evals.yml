@@ -1,0 +1,28 @@
+name: 'CI: Instance AI Evals'
+
+# Auto-trigger disabled — run manually via workflow_dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      sandbox-provider:
+        description: 'Sandbox provider (n8n-sandbox or daytona)'
+        required: false
+        default: 'n8n-sandbox'
+
+concurrency:
+  group: instance-ai-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-evals:
+    name: Instance AI Workflow Evals
+    if: github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-evals-instance-ai.yml
+    with:
+      branch: ${{ inputs.branch }}
+      sandbox-provider: ${{ inputs.sandbox-provider }}
+    secrets: inherit

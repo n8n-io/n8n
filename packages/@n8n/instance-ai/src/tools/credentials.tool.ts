@@ -8,10 +8,11 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { CREDENTIALS_TOOL_ID } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-export const CREDENTIALS_TOOL_ID = 'credentials';
+export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
 
@@ -303,7 +304,7 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
+			message: `Delete ${input.credentialName ?? input.credentialId}`,
 			severity: 'destructive' as const,
 		});
 	}

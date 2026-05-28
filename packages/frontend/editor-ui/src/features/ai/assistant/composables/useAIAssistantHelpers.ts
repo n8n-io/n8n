@@ -312,7 +312,7 @@ export const useAIAssistantHelpers = () => {
 			if (!node) {
 				continue;
 			}
-			if (workflowDocumentStore.pinData?.[node.name]) {
+			if (workflowDocumentStore.pinnedDataByNodeName?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();

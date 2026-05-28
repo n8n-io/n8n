@@ -23,8 +23,8 @@ jobs:
       test-command: pnpm --filter=n8n-playwright test:container:coverage
       workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
-      timeout-minutes: 45
-      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""}]'
+      timeout-minutes: 55
+      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""},{"shard":5,"images":""},{"shard":6,"images":""}]'
       artifact-prefix: coverage
       build-variant: coverage
     secrets: inherit
@@ -77,6 +77,14 @@ jobs:
           flags: frontend-e2e
           name: playwright-e2e
           fail_ci_if_error: false
+
+      # Codecov needs ~60-90s to finish indexing the fresh upload before its
+      # report API will return the new flag data. Without this wait the
+      # gap-analysis step that follows runs into 503s and bails.
+      - name: Wait for Codecov to index upload
+        if: always()
+        shell: bash
+        run: sleep 60
 
       - name: Analyse Coverage Gaps
         if: always()

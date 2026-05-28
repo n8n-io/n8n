@@ -14,34 +14,6 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
-const ObservationalMemoryConfigSchema = z.object({
-	enabled: z.boolean().optional(),
-	observerThresholdTokens: z.number().int().min(1).optional(),
-	reflectorThresholdTokens: z.number().int().min(1).optional(),
-	renderTokenBudget: z.number().int().min(1).optional(),
-	observationLogTailLimit: z.number().int().min(1).optional(),
-	lockTtlMs: z.number().int().min(0).optional(),
-});
-
-const MemoryConfigSchema = z.object({
-	enabled: z.boolean(),
-	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	semanticRecall: SemanticRecallSchema.optional(),
-	observationalMemory: ObservationalMemoryConfigSchema.optional(),
-});
-
-const ThinkingConfigSchema = z.object({
-	provider: z.enum(['anthropic', 'openai']),
-	budgetTokens: z.number().int().optional(),
-	reasoningEffort: z.string().optional(),
-});
-
-const NodeToolCredentialSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-});
-
 export const AgentModelSchema = z
 	.string()
 	.min(1)
@@ -54,6 +26,62 @@ export const AgentModelSchema = z
 		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
+
+const MemoryWorkerModelSchema = z.object({
+	model: AgentModelSchema,
+	credential: z.string().trim().min(1),
+});
+
+const ObservationalMemoryConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	observerModel: MemoryWorkerModelSchema.optional(),
+	reflectorModel: MemoryWorkerModelSchema.optional(),
+	observerThresholdTokens: z.number().int().min(1).optional(),
+	reflectorThresholdTokens: z.number().int().min(1).optional(),
+	renderTokenBudget: z.number().int().min(1).optional(),
+	observationLogTailLimit: z.number().int().min(1).optional(),
+	lockTtlMs: z.number().int().min(0).optional(),
+});
+
+const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
+	z.object({
+		enabled: z.literal(false),
+	}),
+	z.object({
+		enabled: z.literal(true),
+		credential: z.string().trim().min(1),
+		extractorModel: MemoryWorkerModelSchema.optional(),
+		reflectorModel: MemoryWorkerModelSchema.optional(),
+		topK: z.number().int().min(1).max(100).optional(),
+		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+	}),
+]);
+
+const MemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.enum(['n8n']),
+	lastMessages: z.number().int().min(1).max(200).optional(),
+	semanticRecall: SemanticRecallSchema.optional(),
+	observationalMemory: ObservationalMemoryConfigSchema.optional(),
+	episodicMemory: EpisodicMemoryConfigSchema.optional(),
+});
+
+const ThinkingConfigSchema = z.object({
+	provider: z.enum(['anthropic', 'openai']),
+	budgetTokens: z.number().int().optional(),
+	reasoningEffort: z.string().optional(),
+});
+
+const WebSearchConfigSchema = z.object({
+	enabled: z.boolean(),
+	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
+	credential: z.string().optional(),
+});
+
+const NodeToolCredentialSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+});
 
 const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 
@@ -119,7 +147,17 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			maxIterations: z
+				.number()
+				.int()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe(
+					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
+				),
 			nodeTools: z
 				.object({
 					enabled: z.boolean(),

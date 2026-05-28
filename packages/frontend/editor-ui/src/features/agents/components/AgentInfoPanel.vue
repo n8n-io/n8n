@@ -4,23 +4,17 @@
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { ref, computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { useToast } from '@/app/composables/useToast';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
-import AgentModelSelector from './AgentModelSelector.vue';
-import AgentPanelHeader from './AgentPanelHeader.vue';
-
-import type { AgentJsonConfig } from '../types';
-import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
-import AgentMiniEditor from './AgentMiniEditor.vue';
-import { useToast } from '@/app/composables/useToast';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
 	type AgentModelOption,
@@ -29,6 +23,13 @@ import {
 	isAgentModelProvider,
 	type AgentModelsByProvider,
 } from '../model-providers';
+import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
+import type { AgentJsonConfig } from '../types';
+import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
+import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
+import AgentMiniEditor from './AgentMiniEditor.vue';
+import AgentModelSelector from './AgentModelSelector.vue';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -98,9 +99,12 @@ function onModelChange(selection: AgentModelSelection) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
 		return;
 	}
+	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	const nextProviderTool = PROVIDER_CAPABILITIES[selection.provider]?.webSearch ?? false;
 	emit('update:config', {
-		model: `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`,
+		model,
 		credential: credentialId,
+		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
 	});
 }
 

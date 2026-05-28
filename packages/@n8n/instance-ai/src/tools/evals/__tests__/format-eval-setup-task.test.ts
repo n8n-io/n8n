@@ -1,4 +1,5 @@
-import { formatEvalSetupTask, type FormatEvalSetupTaskInput } from '../format-eval-setup-task';
+import { currentJsonExpression, nodeItemJsonExpression } from '../column-ref-utils';
+import { formatEvalSetupTask } from '../format-eval-setup-task';
 
 const BASE = {
 	workflowId: 'w1',
@@ -18,7 +19,7 @@ const BASE = {
 			defaultEnabled: true,
 		},
 	],
-} satisfies FormatEvalSetupTaskInput;
+};
 
 describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 	it('omits the section when namedRefs is empty or undefined', () => {
@@ -104,91 +105,64 @@ describe('formatEvalSetupTask — PRODUCTION ADAPTER section', () => {
 				},
 			],
 		});
-		expect(task).toMatch(
-			/Replace `\$\('Sender ID'\)\.item\.json\.id` with `\{\{ \$\("Chef Agent"\)\.item\.json\.sender_id \}\}`/,
+		expect(task).toContain(
+			`Replace \`$('Sender ID').item.json.id\` with \`{{ ${nodeItemJsonExpression('Chef Agent', 'sender_id')} }}\``,
 		);
 		// Sub-component must not fall back to plain $json.<col>
 		expect(task).not.toMatch(/In `Postgres Memory`:[\s\S]*\{\{ \$json\.sender_id \}\}/);
 	});
 
-	it('escapes node names in generated expressions', () => {
+	it('escapes generated adapter assignments and rewrite expressions', () => {
+		const sourceNodeName = 'Voice "or" Text';
+		const sourceField = 'message-id';
+		const agentNodeName = "Chef's Agent";
+		const column = 'user-message';
 		const task = formatEvalSetupTask({
 			...BASE,
-			detectedAiNodes: ["Chef's Agent"],
+			detectedAiNodes: ['Other Agent', agentNodeName],
+			targetAgentNodeName: agentNodeName,
+			suggestedInputColumns: [column],
 			namedRefs: [
 				{
-					nodeName: "User's Input",
-					field: 'text',
-					originalExpression: '$("User\'s Input").item.json.text',
-					column: 'text',
-					targetNodeName: "Chef's Agent",
+					nodeName: sourceNodeName,
+					field: sourceField,
+					originalExpression: '$("Voice \\"or\\" Text").item.json["message-id"]',
+					column,
+					targetNodeName: agentNodeName,
 				},
 				{
-					nodeName: "Sender's ID",
-					field: 'id',
-					originalExpression: '$("Sender\'s ID").item.json.id',
-					column: 'sender_id',
+					nodeName: 'Sender',
+					field: 'sender-id',
+					originalExpression: '$("Sender").item.json["sender-id"]',
+					column: 'sender-id',
 					targetNodeName: 'Postgres Memory',
 				},
 			],
 		});
 
-		expect(task).toContain('value: "={{ $("User\'s Input").item.json.text }}"');
-		expect(task).toContain('{{ $("Chef\'s Agent").item.json.sender_id }}');
-		expect(task).not.toContain("$('User's Input')");
-		expect(task).not.toContain("$('Chef's Agent')");
+		expect(task).toContain(
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression(sourceNodeName, sourceField)} }}`)}`,
+		);
+		expect(task).toContain(`with \`{{ ${currentJsonExpression('user_message')} }}\``);
+		expect(task).toContain(`with \`{{ ${nodeItemJsonExpression(agentNodeName, 'sender_id')} }}\``);
 	});
 });
 
 describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
-	it('uses the same DataTable name as the create-empty-eval-data-table tool', () => {
-		const task = formatEvalSetupTask(BASE);
-
-		expect(task).toContain('Create an empty DataTable named "Telegram AI Q&A Bot — eval samples"');
-		expect(task).not.toContain('Telegram AI Q&A Bot eval dataset');
-	});
-
-	it('does not emit a placeholder dataTableId for newly-created tables', () => {
-		const task = formatEvalSetupTask(BASE);
-
-		expect(task).toContain('using the id returned by `create-empty-eval-data-table`');
-		expect(task).not.toContain("value: '<same as EvaluationTrigger>'");
-	});
-
-	it('uses the existing table id when linking an existing DataTable', () => {
-		const task = formatEvalSetupTask({
-			...BASE,
-			datasetChoice: 'link-existing',
-			existingDataTableId: 'dt-123',
-		});
-
-		expect(task).toContain("dataTableId: { mode: 'id', value: 'dt-123' }");
-	});
-
-	it('keeps dataTableId unconfigured when the user chose to wire data later', () => {
-		const task = formatEvalSetupTask({
-			...BASE,
-			datasetChoice: 'later',
-		});
-
-		expect(task).toContain('Leave setOutputs dataTableId empty until the user selects a DataTable');
-		expect(task).not.toContain("value: '<same as EvaluationTrigger>'");
-	});
-
-	it('normalizes DataTable columns and uses bracket access for source fields that need it', () => {
+	it('normalizes DataTable columns and rewrites expressions to the normalized names', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			suggestedInputColumns: ['User Query'],
 			suggestedOutputColumns: ['expected-response'],
 			enabledMetrics: [
 				{
-					id: 'helpfulness',
-					name: 'Helpfulness',
+					id: 'correctness',
+					name: 'Correctness',
 					kind: 'llm-judge',
-					description: 'Helpful response',
-					prompt: 'Check helpfulness.',
-					cannedMetricKey: 'helpfulness',
-					defaultEnabled: false,
+					description: 'Factual correctness of the response.',
+					prompt: 'Judge if the response is correct.',
+					cannedMetricKey: 'correctness',
+					defaultEnabled: true,
 				},
 			],
 			namedRefs: [
@@ -202,14 +176,28 @@ describe('formatEvalSetupTask — dataset and setOutputs instructions', () => {
 			],
 		});
 
+		expect(task).toContain('Create an empty DataTable named "Telegram AI Q&A Bot — eval samples"');
 		expect(task).toContain('Columns to create as strings:\n- user_query\n- expected_response');
-		expect(task).toContain('value: "={{ $("Webhook").item.json["User Query"] }}"');
+		expect(task).toContain(
+			`value: ${JSON.stringify(`={{ ${nodeItemJsonExpression('Webhook', 'User Query')} }}`)}`,
+		);
 		expect(task).toContain(
 			'Replace `$("Webhook").item.json["User Query"]` with `{{ $json.user_query }}`',
 		);
-		expect(task).toContain('userQuery: ={{ $("Eval Trigger").item.json.user_query }}');
+		expect(task).toContain("expectedAnswer: ={{ $('Eval Trigger').item.json.expected_response }}");
+		expect(task).not.toContain('Telegram AI Q&A Bot eval dataset');
 		expect(task).not.toContain('- User Query');
 		expect(task).not.toContain('- expected-response');
+	});
+
+	it('keeps dataTableId unconfigured when the user chose to wire data later', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'later',
+		});
+
+		expect(task).toContain('Leave setOutputs dataTableId empty until the user selects a DataTable');
+		expect(task).not.toContain("value: '<same as EvaluationTrigger>'");
 	});
 });
 
@@ -231,7 +219,8 @@ describe('formatEvalSetupTask — metric instructions', () => {
 		});
 
 		expect(task).toContain("metric: 'toolsUsed'");
-		expect(task).toContain("not `'tool_use'`");
+		expect(task).toContain('expectedTools');
+		expect(task).toContain('intermediateSteps');
 		expect(task).not.toContain("metric: 'tool_use'");
 	});
 

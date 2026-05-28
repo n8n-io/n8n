@@ -141,6 +141,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
+	}
+
 	isStreaming(): boolean {
 		// Check if we have sendChunk handlers
 		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
