@@ -22,7 +22,7 @@ function commandExists(command) {
 	return result.status === 0;
 }
 
-function ffmpegHasVideoSubtitleFilter() {
+function ffmpegHasSubtitlesFilter() {
 	const result = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' });
 	if (result.status !== 0) return false;
 
@@ -33,7 +33,7 @@ function ffmpegHasVideoSubtitleFilter() {
 		.some((line) => {
 			const [, name, io] = line.trim().split(/\s+/);
 
-			return (name === 'subtitles' || name === 'ass') && io === 'V->V';
+			return name === 'subtitles' && io === 'V->V';
 		});
 }
 
@@ -257,8 +257,8 @@ test('render creates final video and render artifacts', (t) => {
 		return;
 	}
 
-	if (!ffmpegHasVideoSubtitleFilter()) {
-		t.skip('ffmpeg is missing the subtitles or ass video filter; skipping video composer smoke render');
+	if (!ffmpegHasSubtitlesFilter()) {
+		t.skip('ffmpeg is missing the subtitles video filter; skipping video composer smoke render');
 		return;
 	}
 
