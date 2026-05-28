@@ -271,5 +271,6 @@
   "meta": {
     "templateCredsSetupCompleted": false
   },
-  "tags": []
+  "tags": [],
+  "id": "video-clip-tts-workflow"
 }
