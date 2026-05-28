@@ -157,12 +157,11 @@ const childrenById = computed(() => {
 	return map;
 });
 
-function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
+function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = getPlanTasks(tc).length;
-	const eventProps = {
+	telemetry.track('User finished providing input', {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
@@ -171,24 +170,18 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 			{
 				label: 'plan',
 				options: ['approve', 'ask-for-edits', 'deny'],
-				option_chosen: approved ? 'approve' : 'ask-for-edits',
+				option_chosen: 'approve',
 			},
 		],
 		skipped_inputs: [],
-		num_tasks: numTasks,
-		...(feedback ? { feedback } : {}),
-	};
-	telemetry.track('User finished providing input', eventProps);
+		num_tasks: getPlanTasks(tc).length,
+	});
 
-	thread.resolveConfirmation(requestId, approved ? 'approved' : 'changes-requested');
+	thread.resolveConfirmation(requestId, 'approved');
 	if (thread.activePlanEdit?.requestId === requestId) {
 		thread.cancelPlanEdit();
 	}
-	void thread.confirmAction(requestId, {
-		kind: 'approval',
-		approved,
-		...(feedback ? { userInput: feedback } : {}),
-	});
+	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
 }
 
 function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
@@ -306,7 +299,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
 					:updating="isPlanReviewUpdating(toolCallsById[entry.toolCallId])"
 					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
-					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
+					@approve="handlePlanApprove(toolCallsById[entry.toolCallId])"
 					@ask-for-edits="handlePlanAskForEdits(toolCallsById[entry.toolCallId])"
 					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
 				/>
@@ -364,7 +357,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:status="plannerConfirmation ? getPlanReviewStatus(plannerConfirmation) : 'pending'"
 					:updating="!!plannerConfirmation && isPlanReviewUpdating(plannerConfirmation)"
 					:read-only="!!plannerConfirmation && isPlanCardReadOnly(plannerConfirmation)"
-					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
+					@approve="plannerConfirmation && handlePlanApprove(plannerConfirmation)"
 					@ask-for-edits="plannerConfirmation && handlePlanAskForEdits(plannerConfirmation)"
 					@deny="plannerConfirmation && handlePlanDeny(plannerConfirmation)"
 				/>
