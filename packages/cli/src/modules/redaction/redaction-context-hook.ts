@@ -47,16 +47,18 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 		return false;
 	}
 
-	async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		const context = await this.instanceRedactionEnforcementService.buildContext();
 
-		if (!context?.enforcement.enforced) return {};
+		const policy: WorkflowSettings.RedactionPolicy = context?.enforcement.enforced
+			? deriveEnforcedPolicy(context.enforcement)
+			: (options.workflow.settings?.redactionPolicy ?? 'none');
 
 		return {
 			contextUpdate: {
 				redaction: {
 					version: 1,
-					policy: deriveEnforcedPolicy(context.enforcement),
+					policy,
 				},
 			},
 		};
