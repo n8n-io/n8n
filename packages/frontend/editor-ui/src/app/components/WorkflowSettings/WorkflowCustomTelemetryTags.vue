@@ -9,15 +9,14 @@ import {
 	N8nDialogTitle,
 	N8nIcon,
 	N8nIconButton,
+	N8nInput,
+	N8nInputLabel,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ICustomTelemetryTag, INodeParameters, INodeProperties } from 'n8n-workflow';
+import type { ICustomTelemetryTag } from 'n8n-workflow';
 import { ElCol, ElRow } from 'element-plus';
-import type { IUpdateInformation } from '@/Interface';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { setValue } from '@/features/ndv/shared/ndv.utils';
 
 type Props = {
 	modelValue?: ICustomTelemetryTag[];
@@ -38,93 +37,23 @@ const draft = ref<ICustomTelemetryTag[]>([]);
 
 const tags = computed(() => props.modelValue ?? []);
 
-type WorkflowCustomTelemetryTagsFixedCollection = {
-	tag?: ICustomTelemetryTag[];
-};
-
 const cloneTags = (tagsToClone: ICustomTelemetryTag[] = []) =>
 	tagsToClone.map((tag) => ({ ...tag }));
 
-const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
-	typeof value === 'object' &&
-	value !== null &&
-	!Array.isArray(value) &&
-	'key' in value &&
-	'value' in value &&
-	typeof value.key === 'string' &&
-	typeof value.value === 'string';
+const createEmptyTag = (): ICustomTelemetryTag => ({ key: '', value: '' });
 
-const workflowCustomTelemetryTagsToFixedCollection = (
-	tagsToConvert: ICustomTelemetryTag[],
-): WorkflowCustomTelemetryTagsFixedCollection => ({
-	...(tagsToConvert.length ? { tag: cloneTags(tagsToConvert) } : {}),
-});
+const isEmptyTag = (tag: ICustomTelemetryTag) => !tag.key.trim() && !tag.value.trim();
 
-const workflowCustomTelemetryTagsFromFixedCollection = (value: unknown): ICustomTelemetryTag[] => {
-	if (typeof value !== 'object' || value === null || Array.isArray(value) || !('tag' in value)) {
-		return [];
-	}
-
-	const { tag } = value;
-	return Array.isArray(tag) ? tag.filter(isCustomTelemetryTag) : [];
-};
-
-const parameters = computed<INodeProperties[]>(() => [
-	{
-		displayName: i18n.baseText('workflowSettings.customTelemetryTags.displayName'),
-		name: 'customTelemetryTags',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-			fixedCollection: {
-				layout: 'inline',
-			},
-		},
-		placeholder: i18n.baseText('workflowSettings.customTelemetryTags.placeholder'),
-		default: {},
-		description: i18n.baseText('workflowSettings.customTelemetryTags.description'),
-		isNodeSetting: true,
-		options: [
-			{
-				name: 'tag',
-				displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.displayName'),
-				values: [
-					{
-						displayName: i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName'),
-						name: 'key',
-						type: 'string',
-						default: '',
-						placeholder: i18n.baseText('workflowSettings.customTelemetryTags.tag.key.placeholder'),
-						noDataExpression: true,
-						isNodeSetting: true,
-					},
-					{
-						displayName: i18n.baseText(
-							'workflowSettings.customTelemetryTags.tag.value.displayName',
-						),
-						name: 'value',
-						type: 'string',
-						default: '',
-						placeholder: i18n.baseText(
-							'workflowSettings.customTelemetryTags.tag.value.placeholder',
-						),
-						noDataExpression: true,
-						isNodeSetting: true,
-					},
-				],
-			},
-		],
-	},
-]);
-
-const draftNodeValues = computed<INodeParameters>(() => ({
-	customTelemetryTags: workflowCustomTelemetryTagsToFixedCollection(draft.value),
-}));
+const getSavedTags = (tagsToSave: ICustomTelemetryTag[]) =>
+	tagsToSave
+		.filter((tag) => !isEmptyTag(tag))
+		.map((tag) => ({ key: tag.key.trim(), value: tag.value }));
 
 const getTagErrors = (tagsToValidate: ICustomTelemetryTag[]) => {
 	const seen = new Set<string>();
 	return tagsToValidate.map((tag) => {
 		const trimmedKey = tag.key.trim();
+		if (!trimmedKey && isEmptyTag(tag)) return null;
 		if (!trimmedKey) return i18n.baseText('workflowSettings.customTelemetryTags.error.emptyKey');
 		if (seen.has(trimmedKey)) {
 			return i18n.baseText('workflowSettings.customTelemetryTags.error.duplicateKey');
@@ -162,21 +91,23 @@ onBeforeUnmount(() => {
 	emit('validity-change', false);
 });
 
-const updateTags = (parameterData: IUpdateInformation) => {
-	const nodeValues = ref<INodeParameters>({
-		customTelemetryTags: workflowCustomTelemetryTagsToFixedCollection(draft.value),
-	});
-	const value = parameterData.value === undefined ? null : parameterData.value;
-
-	setValue(nodeValues, parameterData.name, value);
-
-	draft.value = workflowCustomTelemetryTagsFromFixedCollection(
-		nodeValues.value.customTelemetryTags,
+const updateDraftTag = (index: number, field: keyof ICustomTelemetryTag, value: string) => {
+	draft.value = draft.value.map((tag, tagIndex) =>
+		tagIndex === index ? { ...tag, [field]: value } : tag,
 	);
 };
 
+const addTag = () => {
+	draft.value = [...draft.value, createEmptyTag()];
+};
+
+const deleteTag = (index: number) => {
+	const nextTags = draft.value.filter((_, tagIndex) => tagIndex !== index);
+	draft.value = nextTags.length ? nextTags : [createEmptyTag()];
+};
+
 const openModal = () => {
-	draft.value = cloneTags(tags.value);
+	draft.value = tags.value.length ? cloneTags(tags.value) : [createEmptyTag()];
 	showModal.value = true;
 };
 
@@ -187,7 +118,7 @@ const cancelModal = () => {
 
 const saveModal = () => {
 	if (hasDraftErrors.value) return;
-	emit('update:modelValue', cloneTags(draft.value));
+	emit('update:modelValue', getSavedTags(draft.value));
 	showModal.value = false;
 };
 
@@ -264,13 +195,71 @@ const onModalOpenChange = (open: boolean) => {
 				:class="$style.customTelemetryTagsModal"
 				data-test-id="workflow-settings-custom-telemetry-tags-modal"
 			>
-				<ParameterInputList
-					hide-delete
-					:parameters="parameters"
-					:node-values="draftNodeValues"
-					:is-read-only="isReadOnly"
-					@value-changed="updateTags"
-				/>
+				<div
+					v-for="(tag, index) in draft"
+					:key="index"
+					:class="$style.customTelemetryTagsRow"
+					data-test-id="workflow-settings-custom-telemetry-tags-row"
+				>
+					<N8nInputLabel
+						:class="$style.customTelemetryTagsField"
+						:label="i18n.baseText('workflowSettings.customTelemetryTags.tag.key.displayName')"
+						size="small"
+						:input-name="`workflow-custom-telemetry-tag-key-${index}`"
+					>
+						<N8nInput
+							:id="`workflow-custom-telemetry-tag-key-${index}`"
+							:model-value="tag.key"
+							size="small"
+							:disabled="isReadOnly"
+							:placeholder="
+								i18n.baseText('workflowSettings.customTelemetryTags.tag.key.placeholder')
+							"
+							data-test-id="workflow-settings-custom-telemetry-tags-key"
+							@update:model-value="updateDraftTag(index, 'key', String($event))"
+						/>
+					</N8nInputLabel>
+					<N8nInputLabel
+						:class="$style.customTelemetryTagsField"
+						:label="i18n.baseText('workflowSettings.customTelemetryTags.tag.value.displayName')"
+						size="small"
+						:input-name="`workflow-custom-telemetry-tag-value-${index}`"
+					>
+						<N8nInput
+							:id="`workflow-custom-telemetry-tag-value-${index}`"
+							:model-value="tag.value"
+							size="small"
+							:disabled="isReadOnly"
+							:placeholder="
+								i18n.baseText('workflowSettings.customTelemetryTags.tag.value.placeholder')
+							"
+							data-test-id="workflow-settings-custom-telemetry-tags-value"
+							@update:model-value="updateDraftTag(index, 'value', String($event))"
+						/>
+					</N8nInputLabel>
+					<N8nIconButton
+						icon="trash-2"
+						variant="ghost"
+						size="small"
+						:disabled="isReadOnly"
+						:title="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
+						:aria-label="i18n.baseText('workflowSettings.customTelemetryTags.delete')"
+						data-test-id="workflow-settings-custom-telemetry-tags-delete"
+						@click="deleteTag(index)"
+					/>
+				</div>
+				<N8nButton
+					icon="plus"
+					variant="subtle"
+					size="small"
+					native-type="button"
+					:disabled="isReadOnly"
+					:class="$style.customTelemetryTagsAdd"
+					data-test-id="workflow-settings-custom-telemetry-tags-add"
+					@click="addTag"
+				>
+					{{ i18n.baseText('workflowSettings.customTelemetryTags.placeholder') }}
+				</N8nButton>
 				<N8nText
 					v-if="draftValidationError"
 					size="small"
@@ -354,10 +343,22 @@ const onModalOpenChange = (open: boolean) => {
 
 .customTelemetryTagsModal {
 	margin-top: var(--spacing--sm);
+}
 
-	:global(.multi-parameter) {
-		margin: 0;
-	}
+.customTelemetryTagsRow {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.customTelemetryTagsField {
+	flex: 1;
+	min-width: 0;
+}
+
+.customTelemetryTagsAdd {
+	margin-top: var(--spacing--5xs);
 }
 
 .customTelemetryTagsError {
