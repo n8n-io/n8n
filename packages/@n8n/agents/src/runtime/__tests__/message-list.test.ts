@@ -143,17 +143,17 @@ describe('AgentMessageList — forLlm observation memory', () => {
 	it('injects the rendered observation log into the system prompt', () => {
 		const list = new AgentMessageList();
 		list.observationLogMemory = [
-			'## Memory',
-			'',
+			'<observations>',
 			'The following is your memory of this conversation.',
 			'',
 			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
+			'</observations>',
 		].join('\n');
 
 		const prompt = systemContent(list);
 
 		expect(prompt).toContain('Base instructions');
-		expect(prompt).toContain('## Memory');
+		expect(prompt).toContain('<observations>');
 		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 	});
 
