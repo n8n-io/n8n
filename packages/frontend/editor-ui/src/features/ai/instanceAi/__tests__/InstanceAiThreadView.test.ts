@@ -523,13 +523,35 @@ describe('InstanceAiThreadView', () => {
 		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',
 			approved: false,
 			userInput: 'Make the plan simpler',
 		});
+		// resolveConfirmation only fires after the backend call succeeds, so it
+		// happens on the next tick once the confirmAction promise resolves.
+		await vi.waitFor(() => {
+			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
+		});
 		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('does not resolve the plan when the backend confirmAction fails', async () => {
+		thread.messages = [makePlanReviewMessage()];
+		vi.mocked(thread.confirmAction).mockResolvedValueOnce(false);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+		await getByTestId('instance-ai-input-submit').click();
+
+		await vi.waitFor(() => {
+			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
+		});
+		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('keeps normal composer submissions as chat messages', async () => {

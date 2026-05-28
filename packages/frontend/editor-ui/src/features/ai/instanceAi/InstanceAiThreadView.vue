@@ -566,7 +566,6 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			feedback: message,
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
-		thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
 		void thread
 			.confirmAction(planEdit.requestId, {
 				kind: 'approval',
@@ -574,7 +573,11 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 				userInput: message,
 			})
 			.then((success) => {
-				if (!success) thread.clearPlanUpdatePending(planEdit.requestId);
+				if (success) {
+					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
+				} else {
+					thread.clearPlanUpdatePending(planEdit.requestId);
+				}
 			});
 		return;
 	}
