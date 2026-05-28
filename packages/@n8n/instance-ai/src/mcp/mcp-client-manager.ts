@@ -33,7 +33,12 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
 		if (server.url) {
-			servers.push({ name: server.name, url: server.url });
+			servers.push({
+				name: server.name,
+				url: server.url,
+				transport: server.transport,
+				fetch: server.fetch,
+			});
 		} else if (server.command) {
 			servers.push({
 				name: server.name,
@@ -222,7 +227,8 @@ export class McpClientManager {
 		logger: Logger | undefined,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs));
+		// TODO: make this configurable?
+		const client = new McpClient(buildNativeMcpConfigs(configs), true);
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

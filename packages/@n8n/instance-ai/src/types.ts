@@ -909,9 +909,11 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
