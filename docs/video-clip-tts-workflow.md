@@ -41,7 +41,7 @@ Required local runtime flags:
 
 ```bash
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
-NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process,url
+NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
 ```
 
 Required LLM variables. The URL defaults to the Ark chat-completions endpoint when omitted, but keeping it in `.env.video-clip` makes the runtime explicit:
@@ -142,7 +142,7 @@ The response includes the generated script metadata, local file paths, and binar
 If a Code node fails with a built-in module or env access error, confirm `.env.video-clip` contains:
 
 ```bash
-NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process,url
+NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
