@@ -494,6 +494,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetInputLast(data);
 					case 'getInputAll':
 						return this.handleGetInputAll(data);
+					case 'getItems':
+						return this.handleGetItems(msg, data);
+					case 'fromAi':
+						return this.handleFromAi(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -568,6 +572,45 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 	private handleGetInputAll(data: WorkflowData): unknown {
 		return data.$input?.all?.();
+	}
+
+	/**
+	 * Handler for `$items(nodeName?, outputIndex?, runIndex?)` — the
+	 * global accessor for a node's execution data. Reads the literal
+	 * `$items` property off `data` (host-wired by `WorkflowDataProxy`)
+	 * and forwards the validated args verbatim. The host applies its own
+	 * defaults when fields are `undefined`.
+	 *
+	 * @private
+	 */
+	private handleGetItems(
+		msg: Extract<BridgeMessage, { type: 'getItems' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handler for `$fromAI(name, description?, type?, defaultValue?)` and its
+	 * `$fromAi` / `$fromai` aliases. Reads the literal `$fromAI` property
+	 * off `data` (host-wired) and forwards the args. The host validates
+	 * `name` (required + regex) and applies its own resolution / fallback
+	 * logic, so empty / invalid names surface as the host's structured
+	 * `ExpressionError` rather than a generic zod parse error.
+	 *
+	 * Note: `msg.valueType` maps to the host's third positional parameter
+	 * (`_type` in `WorkflowDataProxy.handleFromAi`). The bridge protocol
+	 * renames it to avoid collision with the `type` discriminator on the
+	 * envelope — the host parameter currently goes unused, but if it ever
+	 * gains a name (`type`), this mapping should stay explicit.
+	 *
+	 * @private
+	 */
+	private handleFromAi(
+		msg: Extract<BridgeMessage, { type: 'fromAi' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
 	}
 
 	/**
