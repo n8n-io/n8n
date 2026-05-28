@@ -10,6 +10,7 @@ import {
 	buildFfmpegArgs,
 	buildTimeline,
 	createAssSubtitle,
+	ffmpegHasFilter,
 	normalizeJob,
 	render,
 	splitScriptIntoSubtitleChunks,
@@ -20,21 +21,6 @@ function commandExists(command) {
 	const result = spawnSync('sh', ['-c', 'command -v "$1"', 'sh', command], { stdio: 'ignore' });
 
 	return result.status === 0;
-}
-
-function ffmpegHasSubtitlesFilter() {
-	const result = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' });
-	if (result.status !== 0) return false;
-
-	const filters = `${result.stdout}\n${result.stderr}`;
-
-	return filters
-		.split('\n')
-		.some((line) => {
-			const [, name, io] = line.trim().split(/\s+/);
-
-			return name === 'subtitles' && io === 'V->V';
-		});
 }
 
 function runFfmpeg(args) {
@@ -241,6 +227,36 @@ test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing'
 	assert.doesNotMatch(filter, /subtitles='/);
 });
 
+test('buildFfmpegArgs can mux subtitles as a soft subtitle track', () => {
+	const job = normalizeJob({
+		jobId: 'soft-subtitle-path',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, {
+		audioDuration: 12,
+		subtitlePath: '/tmp/n8n-video-composer-safe-subtitles.ass',
+		subtitleMode: 'soft',
+	});
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.doesNotMatch(filter, /subtitles=filename=/);
+	assert.equal(args.includes('/tmp/n8n-video-composer-safe-subtitles.ass'), true);
+	assert.equal(args.includes('-c:s'), true);
+	assert.equal(args.includes('mov_text'), true);
+});
+
 test('render creates final video and render artifacts', (t) => {
 	if (process.env.RUN_VIDEO_COMPOSER_SMOKE !== '1') {
 		t.skip('Set RUN_VIDEO_COMPOSER_SMOKE=1 to run the ffmpeg render smoke test');
@@ -254,11 +270,6 @@ test('render creates final video and render artifacts', (t) => {
 
 	if (!commandExists('ffprobe')) {
 		t.skip('ffprobe is not available; skipping video composer smoke render');
-		return;
-	}
-
-	if (!ffmpegHasSubtitlesFilter()) {
-		t.skip('ffmpeg is missing the subtitles video filter; skipping video composer smoke render');
 		return;
 	}
 

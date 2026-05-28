@@ -96,6 +96,11 @@ NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
+For the current Volcengine V3 endpoint this workflow uses the old-console headers
+`X-Api-App-Id` and `X-Api-Access-Key`, plus `X-Api-Resource-Id`. In the local env file,
+set `DOUBAO_TTS_RESOURCE_ID=seed-tts-2.0` unless your selected speaker requires a different
+resource ID.
+
 If TTS fails, inspect:
 
 ```text

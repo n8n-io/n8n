@@ -175,6 +175,21 @@ function escapeForFilterPath(filePath) {
 		.replace(/([\\':,;\[\] ])/g, '\\$1');
 }
 
+export function ffmpegHasFilter(name) {
+	const result = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' });
+	if (result.status !== 0) return false;
+
+	const filters = `${result.stdout}\n${result.stderr}`;
+
+	return filters
+		.split('\n')
+		.some((line) => {
+			const [, filterName] = line.trim().split(/\s+/);
+
+			return filterName === name;
+		});
+}
+
 function scaleAndPad(input, width, height, label) {
 	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
@@ -183,12 +198,16 @@ function backgroundSegment(input, start, duration, width, height, label) {
 	return `${input}trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1${label}`;
 }
 
-export function buildFfmpegArgs(job, { audioDuration, subtitlePath = job.output.subtitles }) {
+export function buildFfmpegArgs(
+	job,
+	{ audioDuration, subtitlePath = job.output.subtitles, subtitleMode = 'burn' },
+) {
 	const timeline = buildTimeline(audioDuration, job.video);
 	const { width, height, fps } = job.video;
 	const coverTopHeight = Math.round((job.layout.coverTop.width * 9) / 16);
 	const screenshotTopHeight = Math.round((job.layout.screenshotTop.width * 9) / 16);
 	const escapedSubtitlePath = escapeForFilterPath(subtitlePath);
+	const burnSubtitles = subtitleMode === 'burn';
 
 	const bodyFilters =
 		timeline.body.duration > 0
@@ -233,11 +252,11 @@ export function buildFfmpegArgs(job, { audioDuration, subtitlePath = job.output.
 		scaleAndPad('[2:v]', 1600, 780, '[screenmain]'),
 		'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2[screen]',
 		...bodyFilters,
-		`[cover][screen][body]concat=n=3:v=1:a=0,subtitles=filename=${escapedSubtitlePath}[vout]`,
+		`[cover][screen][body]concat=n=3:v=1:a=0${burnSubtitles ? `,subtitles=filename=${escapedSubtitlePath}` : ''}[vout]`,
 		`[3:a]apad,atrim=0:${timeline.totalDuration},asetpts=PTS-STARTPTS[aout]`,
 	].join(';');
 
-	return [
+	const args = [
 		'-y',
 		'-stream_loop',
 		'-1',
@@ -253,12 +272,26 @@ export function buildFfmpegArgs(job, { audioDuration, subtitlePath = job.output.
 		job.inputs.screenshotImage,
 		'-i',
 		job.inputs.ttsAudio,
+	];
+
+	if (!burnSubtitles) {
+		args.push('-i', subtitlePath);
+	}
+
+	args.push(
 		'-filter_complex',
 		filter,
 		'-map',
 		'[vout]',
 		'-map',
 		'[aout]',
+	);
+
+	if (!burnSubtitles) {
+		args.push('-map', '4:0');
+	}
+
+	args.push(
 		'-t',
 		String(timeline.totalDuration),
 		'-r',
@@ -269,8 +302,17 @@ export function buildFfmpegArgs(job, { audioDuration, subtitlePath = job.output.
 		'yuv420p',
 		'-c:a',
 		'aac',
+	);
+
+	if (!burnSubtitles) {
+		args.push('-c:s', 'mov_text');
+	}
+
+	args.push(
 		job.output.video,
-	];
+	);
+
+	return args;
 }
 
 export function getAudioDuration(audioPath) {
@@ -319,14 +361,19 @@ export function render(job) {
 		subtitleBottomMargin: job.layout.subtitleBottomMargin,
 	});
 	fs.copyFileSync(job.output.subtitles, ffmpegSubtitlePath);
+	const subtitleMode = ffmpegHasFilter('subtitles') ? 'burn' : 'soft';
 
 	fs.mkdirSync(path.dirname(job.output.video), { recursive: true });
 	fs.mkdirSync(path.dirname(job.output.ffmpegLog), { recursive: true });
 
 	try {
-		const result = spawnSync('ffmpeg', buildFfmpegArgs(job, { audioDuration, subtitlePath: ffmpegSubtitlePath }), {
-			encoding: 'utf8',
-		});
+		const result = spawnSync(
+			'ffmpeg',
+			buildFfmpegArgs(job, { audioDuration, subtitlePath: ffmpegSubtitlePath, subtitleMode }),
+			{
+				encoding: 'utf8',
+			},
+		);
 		fs.writeFileSync(job.output.ffmpegLog, `${result.stdout}\n${result.stderr}`);
 
 		if (result.status !== 0) {

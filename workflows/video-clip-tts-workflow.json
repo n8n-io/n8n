@@ -44,7 +44,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const allowBuiltin = String($env.NODE_FUNCTION_ALLOW_BUILTIN || '');\nconst allowed = allowBuiltin.split(',').map((name) => name.trim());\nconst requiredBuiltins = ['fs', 'child_process'];\nconst missing = allowBuiltin === '*' ? [] : requiredBuiltins.filter((name) => !allowed.includes(name));\nif (missing.length) {\n  throw new Error(`Set NODE_FUNCTION_ALLOW_BUILTIN=${requiredBuiltins.join(',')} before running this workflow. The MVP workflow writes uploaded files and runs the local video composer script.`);\n}\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs').replace(/\\/+$/, '');\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: $binary }];"
+        "jsCode": "const item = $input.first();\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs').replace(/\\/+$/, '');\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: item.binary }];"
       },
       "id": "be754c0e-5a12-49df-8cb9-d0e37f77c4c7",
       "name": "Prepare Job",
@@ -76,8 +76,20 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.DOUBAO_TTS_API_KEY}}"
+              "name": "X-Api-App-Id",
+              "value": "={{$env.DOUBAO_TTS_APP_ID}}"
+            },
+            {
+              "name": "X-Api-Access-Key",
+              "value": "={{$env.DOUBAO_TTS_API_KEY}}"
+            },
+            {
+              "name": "X-Api-Resource-Id",
+              "value": "={{$env.DOUBAO_TTS_RESOURCE_ID || 'seed-tts-2.0'}}"
+            },
+            {
+              "name": "X-Api-Request-Id",
+              "value": "={{$json.jobId}}"
             },
             {
               "name": "Content-Type",
@@ -87,11 +99,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { app: { appid: $env.DOUBAO_TTS_APP_ID, token: $env.DOUBAO_TTS_API_KEY, cluster: $env.DOUBAO_TTS_CLUSTER || 'volcano_tts' }, user: { uid: 'n8n-video-clip' }, audio: { voice_type: $env.DOUBAO_TTS_VOICE || 'zh_female_shuangkuaisisi_moon_bigtts', encoding: 'mp3', speed_ratio: 1.0 }, request: { reqid: $json.jobId, text: $json.scriptText, operation: 'query' } } }}",
+        "jsonBody": "={{ { user: { uid: 'n8n-video-clip' }, req_params: { text: $json.scriptText, speaker: $env.DOUBAO_TTS_VOICE || 'zh_female_shuangkuaisisi_moon_bigtts', audio_params: { format: 'mp3', sample_rate: 24000 } } } }}",
         "options": {
           "response": {
             "response": {
-              "responseFormat": "json"
+              "responseFormat": "text"
             }
           }
         }
@@ -107,7 +119,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst previous = $('Save Uploaded Files').first().json;\nconst response = $input.first().json;\nconst responsePath = `${previous.ttsDir}/tts-response.json`;\nfs.writeFileSync(responsePath, JSON.stringify(response, null, 2));\nconst audioBase64 = response.data || response.audio || response.result?.audio || response.result?.data;\nif (!audioBase64 || typeof audioBase64 !== 'string') {\n  throw new Error('Doubao TTS response did not include base64 audio in data/audio/result.audio/result.data');\n}\nconst audioPath = `${previous.ttsDir}/audio.mp3`;\nfs.writeFileSync(audioPath, Buffer.from(audioBase64, 'base64'));\nif (fs.statSync(audioPath).size === 0) throw new Error('Doubao TTS audio is empty');\nreturn [{ json: { ...previous, audioPath, ttsResponsePath: responsePath } }];"
+        "jsCode": "const fs = require('fs');\nconst previous = $('Save Uploaded Files').first().json;\nconst responseItem = $input.first().json;\nconst raw = typeof responseItem.data === 'string' ? responseItem.data : JSON.stringify(responseItem);\nconst responsePath = `${previous.ttsDir}/tts-response.jsonstream`;\nfs.writeFileSync(responsePath, raw);\nfunction parseJsonStream(text) {\n  const frames = [];\n  let index = 0;\n  while (index < text.length) {\n    while (index < text.length && /\\s/.test(text[index])) index += 1;\n    if (index >= text.length) break;\n    let depth = 0;\n    let inString = false;\n    let escaped = false;\n    let end = index;\n    for (; end < text.length; end += 1) {\n      const ch = text[end];\n      if (inString) {\n        if (escaped) escaped = false;\n        else if (ch === '\\\\') escaped = true;\n        else if (ch === '\"') inString = false;\n        continue;\n      }\n      if (ch === '\"') inString = true;\n      else if (ch === '{') depth += 1;\n      else if (ch === '}') {\n        depth -= 1;\n        if (depth === 0) { end += 1; break; }\n      }\n    }\n    if (end <= index || depth !== 0) break;\n    frames.push(JSON.parse(text.slice(index, end)));\n    index = end;\n  }\n  return frames;\n}\nconst frames = parseJsonStream(raw);\nconst audioBase64Chunks = frames.map((frame) => frame.data).filter((data) => typeof data === 'string' && data.length > 0);\nif (audioBase64Chunks.length === 0) {\n  const first = frames[0] || responseItem;\n  const code = first?.code || first?.header?.code || 'unknown';\n  const message = first?.message || first?.header?.message || 'Doubao TTS response did not include audio chunks';\n  throw new Error(`Doubao TTS failed: ${code} ${message}`);\n}\nconst audioPath = `${previous.ttsDir}/audio.mp3`;\nconst audio = Buffer.concat(audioBase64Chunks.map((chunk) => Buffer.from(chunk, 'base64')));\nfs.writeFileSync(audioPath, audio);\nif (fs.statSync(audioPath).size === 0) throw new Error('Doubao TTS audio is empty');\nreturn [{ json: { ...previous, audioPath, ttsResponsePath: responsePath, ttsFrames: frames.length, ttsAudioChunks: audioBase64Chunks.length } }];"
       },
       "id": "ca19b3fe-5e0c-4541-bb84-a6dfefc98156",
       "name": "Save TTS Audio",
@@ -133,7 +145,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { spawnSync } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = `${item.repoDir}/tools/video-composer/compose-video.mjs`;\nconst result = spawnSync(process.execPath, [scriptPath, item.jobPath], {\n  cwd: item.repoDir,\n  encoding: 'utf8',\n  maxBuffer: 1024 * 1024 * 20\n});\nif (result.error) {\n  throw result.error;\n}\nif (result.status !== 0) {\n  const detail = [result.stdout, result.stderr].filter(Boolean).join('\\n').trim();\n  throw new Error(`Video composer failed with exit code ${result.status}${detail ? `:\\n${detail}` : ''}`);\n}\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
+        "jsCode": "const { spawnSync } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = `${item.repoDir}/tools/video-composer/compose-video.mjs`;\nconst result = spawnSync('node', [scriptPath, item.jobPath], {\n  cwd: item.repoDir,\n  encoding: 'utf8',\n  maxBuffer: 1024 * 1024 * 20\n});\nif (result.error) {\n  throw result.error;\n}\nif (result.status !== 0) {\n  const detail = [result.stdout, result.stderr].filter(Boolean).join('\\n').trim();\n  throw new Error(`Video composer failed with exit code ${result.status}${detail ? `:\\n${detail}` : ''}`);\n}\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
       },
       "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
       "name": "Run Composer Script",
