@@ -45,7 +45,7 @@
 		"@vitejs/plugin-vue": "catalog:frontend",
 		"@vue/test-utils": "catalog:frontend",
 		"rimraf": "catalog:",
-		"semver": "^7.5.4",
+		"semver": "catalog:",
 		"typescript": "catalog:",
 		"unplugin-icons": "catalog:frontend",
 		"vite": "catalog:",
