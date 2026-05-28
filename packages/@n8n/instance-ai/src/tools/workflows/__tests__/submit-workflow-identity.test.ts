@@ -279,12 +279,112 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		const second = await wrapped({});
 
 		expect(first.remediation).toBe(remediation);
+		// Short-circuited blocked responses preserve the real failure from the
+		// last actual attempt (errors[]) rather than echoing remediation guidance.
+		// The remediation itself is still propagated so the `shouldEdit: false`
+		// signal remains intact.
 		expect(second).toMatchObject({
 			success: false,
-			errors: ['Stop editing.'],
+			errors: ['Workflow save failed.'],
 			remediation,
 		});
 		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('carries errorDetails and nodeIndex through to short-circuited blocked responses', async () => {
+		// Without this, the AI sees the remediation guidance ("Stop editing.") as the only error signal on follow-up calls
+		// and loses the structured Zod path / offending node JSON / nodeIndex.
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const richFirstFailure: SubmitWorkflowOutput = {
+			success: false,
+			errors: ['Workflow save failed: nodes[9].position invalid_type'],
+			errorDetails: [
+				{
+					path: 'nodes[9].position',
+					code: 'invalid_type',
+					message: 'Expected tuple, received null',
+					offendingValue: null,
+					nodeJson: {
+						name: 'Manual Trigger (temp)',
+						type: 'n8n-nodes-base.manualTrigger',
+					},
+				},
+			],
+			nodeIndex: [
+				{ index: 0, name: 'Gmail Trigger' },
+				{ index: 9, name: 'Manual Trigger (temp)' },
+			],
+			remediation,
+		};
+		const execute = jest
+			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+			.mockResolvedValueOnce(richFirstFailure)
+			.mockResolvedValueOnce({ success: true, workflowId: 'wf_should_not_save' });
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		await wrapped({});
+		const second = await wrapped({});
+
+		expect(execute).toHaveBeenCalledTimes(1);
+		expect(second).toMatchObject({
+			success: false,
+			errors: ['Workflow save failed: nodes[9].position invalid_type'],
+			errorDetails: richFirstFailure.errorDetails,
+			nodeIndex: richFirstFailure.nodeIndex,
+			remediation,
+		});
+	});
+
+	it('falls back to remediation guidance when no prior failure was captured', async () => {
+		// If a terminal remediation appears before any submit attempt has run
+		// (e.g. carried over from a different code path), there's no real error
+		// to preserve — fall back to the guidance text so the AI still gets a
+		// human-readable explanation rather than an empty errors[].
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance: 'Route to setup.',
+		});
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: remediation,
+		};
+		const execute = jest.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>();
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getWorkflowLoopState: async () => {
+				await Promise.resolve();
+				return state;
+			},
+		});
+
+		const result = await wrapped({});
+
+		expect(execute).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			success: false,
+			errors: ['Route to setup.'],
+			remediation,
+		});
+		expect(result.errorDetails).toBeUndefined();
+		expect(result.nodeIndex).toBeUndefined();
 	});
 
 	it('returns terminal remediation to concurrent submit waiters when the first submit stops editing', async () => {
@@ -320,9 +420,12 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		release();
 
 		await expect(first).resolves.toMatchObject({ success: false, remediation });
+		// Concurrent waiters get the same preserved-real-errors treatment as
+		// sequential short-circuits — see the "records terminal submit output"
+		// case above for rationale.
 		await expect(second).resolves.toMatchObject({
 			success: false,
-			errors: ['Stop editing.'],
+			errors: ['Workflow save failed.'],
 			remediation,
 		});
 		expect(execute).toHaveBeenCalledTimes(1);

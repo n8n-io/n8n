@@ -23,6 +23,7 @@ import {
 	submitWorkflowInputSchema,
 	submitWorkflowOutputSchema,
 	type SubmitWorkflowAttempt,
+	type SubmitWorkflowErrorDetail,
 	type SubmitWorkflowInput,
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
@@ -127,6 +128,21 @@ export function wrapSubmitExecuteWithIdentity(
 ): SubmitExecute {
 	const pending = new Map<string, Promise<string>>();
 
+	/**
+	 * Diagnostic data captured from the most recent failed submit, so that
+	 * short-circuited blocked responses can carry the *real* failure context
+	 * instead of just the remediation guidance text. Without this, the AI sees
+	 * a generic "stop editing" message on every follow-up attempt and loses the
+	 * actual error that triggered the block.
+	 */
+	let lastFailedDiagnostic:
+		| {
+				errors?: string[];
+				errorDetails?: SubmitWorkflowErrorDetail[];
+				nodeIndex?: Array<{ index: number; name: string }>;
+		  }
+		| undefined;
+
 	function recordTerminalRemediation(
 		workflowId: string | undefined,
 		remediation: RemediationMetadata | undefined,
@@ -148,6 +164,13 @@ export function wrapSubmitExecuteWithIdentity(
 		fallbackWorkflowId?: string,
 	): SubmitWorkflowOutput {
 		const guarded = options.budgetTracker?.applyToOutput(path, output) ?? output;
+		if (!guarded.success) {
+			lastFailedDiagnostic = {
+				errors: guarded.errors,
+				errorDetails: guarded.errorDetails,
+				nodeIndex: guarded.nodeIndex,
+			};
+		}
 		recordTerminalRemediation(guarded.workflowId ?? fallbackWorkflowId, guarded.remediation);
 		return guarded;
 	}
@@ -167,9 +190,14 @@ export function wrapSubmitExecuteWithIdentity(
 			attemptCount: terminalRemediation.attemptCount,
 			reason: terminalRemediation.reason,
 		});
+
+		const hasRealErrors =
+			lastFailedDiagnostic?.errors !== undefined && lastFailedDiagnostic.errors.length > 0;
 		return {
 			success: false,
-			errors: [terminalRemediation.guidance],
+			errors: hasRealErrors ? lastFailedDiagnostic!.errors : [terminalRemediation.guidance],
+			errorDetails: lastFailedDiagnostic?.errorDetails,
+			nodeIndex: lastFailedDiagnostic?.nodeIndex,
 			remediation: terminalRemediation,
 		};
 	}
