@@ -19,7 +19,6 @@ export type {
 	InterruptibleToolContext,
 	CheckpointStore,
 	StreamChunk,
-	SubAgentUsage,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
@@ -161,7 +160,6 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export { Network } from './sdk/network';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';

@@ -1,15 +1,14 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
+import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
-import { createAgentToolResult } from '../runtime/tool-adapter';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -36,7 +35,6 @@ import type {
 	RunOptions,
 	SerializableAgentState,
 	StreamResult,
-	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
@@ -491,67 +489,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	off(event: AgentEvent, handler: AgentEventHandler): void {
 		this.eventBus.off(event, handler);
-	}
-
-	/**
-	 * Wrap this agent as a tool for use in multi-agent composition.
-	 * The tool sends a text prompt to this agent and returns the text of the response.
-	 *
-	 * @example
-	 * ```typescript
-	 * const coordinatorAgent = new Agent('coordinator')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .instructions('Route tasks to specialist agents.')
-	 *   .tool(writerAgent.asTool('Write content given a topic'));
-	 * ```
-	 */
-	asTool(description: string): BuiltTool {
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const agent = this;
-
-		const tool = new Tool(this.name)
-			.description(description)
-			.input(
-				z.object({
-					input: z.string().describe('The input to send to the agent'),
-				}),
-			)
-			.output(
-				z.object({
-					result: z.string().describe('The result of the agent'),
-				}),
-			)
-			.handler(async (rawInput, ctx) => {
-				const { input } = rawInput as { input: string };
-				const result = await agent.generate(input, {
-					telemetry: ctx.parentTelemetry,
-				} as RunOptions & ExecutionOptions);
-
-				const text = result.messages
-					.filter((m) => 'role' in m && m.role === 'assistant')
-					.flatMap((m) => ('content' in m ? m.content : []))
-					.filter((c) => c.type === 'text')
-					.map((c) => ('text' in c ? c.text : ''))
-					.join('');
-
-				// Collect sub-agent usage: this agent's own + any nested sub-agents
-				const subAgentUsage: SubAgentUsage[] = [];
-				if (result.usage) {
-					subAgentUsage.push({ agent: agent.name, model: result.model, usage: result.usage });
-				}
-				if (result.subAgentUsage) {
-					subAgentUsage.push(...result.subAgentUsage);
-				}
-
-				// Return branded result — the runtime unwraps it to extract sub-agent usage.
-				// createAgentToolResult returns `never`, same pattern as ctx.suspend().
-				if (subAgentUsage.length > 0) {
-					return createAgentToolResult({ result: text }, subAgentUsage);
-				}
-				return { result: text };
-			});
-
-		return tool.build();
 	}
 
 	/**

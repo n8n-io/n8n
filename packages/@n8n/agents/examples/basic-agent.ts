@@ -3,7 +3,7 @@
  *
  * This example demonstrates the complete builder-pattern API for creating
  * and running AI agents. It shows: tools, agents, memory, guardrails,
- * scorers, multi-agent patterns (agent-as-tool), and tool interrupts.
+ * scorers, and tool interrupts.
  *
  * To run with real LLM calls, set ANTHROPIC_API_KEY.
  * Without keys, the runtime will throw on actual LLM calls.
@@ -90,18 +90,6 @@ const writer = new Agent('writer')
 	.checkpoint('memory');
 
 // ---------------------------------------------------------------------------
-// Multi-Agent: Agent as Tool
-// ---------------------------------------------------------------------------
-
-const orchestrator = new Agent('orchestrator')
-	.model('anthropic/claude-sonnet-4')
-	.instructions(
-		'You coordinate research and writing. Delegate research to the researcher and writing to the writer.',
-	)
-	.tool(researcher.asTool('Delegate research tasks to the research specialist'))
-	.tool(writer.asTool('Delegate writing tasks to the content writer'));
-
-// ---------------------------------------------------------------------------
 // Execution
 // ---------------------------------------------------------------------------
 
@@ -131,13 +119,11 @@ async function main() {
 		console.log('   (Set ANTHROPIC_API_KEY to run with real LLM calls)');
 	}
 
-	// --- 2. Orchestrator (agent-as-tool pattern) ---
-	console.log('\n2. Orchestrator (agent-as-tool pattern):');
+	// --- 2. Tool interrupt ---
+	console.log('\n2. Tool interrupt:');
 	try {
-		const orchResult = await orchestrator.generate(
-			'Research RAG architectures and write a summary',
-		);
-		const text = orchResult.messages
+		const writerResult = await writer.generate('Write a short summary to /tmp/rag-summary.txt');
+		const text = writerResult.messages
 			.flatMap((m) => ('content' in m ? m.content : []))
 			.filter((c) => c.type === 'text')
 			.map((c) => ('text' in c ? c.text : ''))

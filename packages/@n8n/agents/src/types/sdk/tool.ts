@@ -27,7 +27,7 @@ export interface ToolContext {
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
 }
 
@@ -46,7 +46,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
 }
 

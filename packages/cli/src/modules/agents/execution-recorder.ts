@@ -265,7 +265,7 @@ export class ExecutionRecorder {
 					};
 				}
 				this.model = chunk.model ?? null;
-				this.totalCost = chunk.totalCost ?? chunk.usage?.cost ?? null;
+				this.totalCost = chunk.usage?.cost ?? null;
 				break;
 			case 'tool-call-suspended':
 				this.flushTextBuffer();
