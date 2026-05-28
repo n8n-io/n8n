@@ -8,7 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { CredentialMatcherContext } from '../credential-matcher';
 import { applyCredentialMatching, createCredentialMatcher } from '../credential-matcher-factory';
-import { createFailureBinding, createSuccessBinding } from '../credential.types';
+import { createFailure, createSuccessBinding } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 
 describe('IdBasedCredentialMatcher', () => {
@@ -37,40 +37,32 @@ describe('IdBasedCredentialMatcher', () => {
 	});
 
 	it('treats global credentials as missing when the user lacks credential:read', async () => {
-		const result = await applyCredentialMatching(
-			'id-only',
-			[
-				{
-					id: 'cred-global',
-					name: 'Global',
-					type: 'httpBasicAuth',
-					usedByWorkflows: ['wf-1'],
-				},
-			],
-			context,
-		);
+		const requirement = {
+			id: 'cred-global',
+			name: 'Global',
+			type: 'httpBasicAuth',
+			usedByWorkflows: ['wf-1'],
+		};
+
+		const result = await applyCredentialMatching('id-only', [requirement], context);
 
 		expect(result.successes).toEqual([]);
-		expect(result.failures).toEqual([createFailureBinding('cred-global', 'not_found')]);
+		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 	});
 
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);
 
-		const result = await applyCredentialMatching(
-			'id-only',
-			[
-				{
-					id: 'cred-x',
-					name: 'Unknown',
-					type: 'unknownCredentialType',
-					usedByWorkflows: ['wf-1'],
-				},
-			],
-			context,
-		);
+		const requirement = {
+			id: 'cred-x',
+			name: 'Unknown',
+			type: 'unknownCredentialType',
+			usedByWorkflows: ['wf-1'],
+		};
 
-		expect(result.failures).toEqual([createFailureBinding('cred-x', 'unknown_type')]);
+		const result = await applyCredentialMatching('id-only', [requirement], context);
+
+		expect(result.failures).toEqual([createFailure(requirement, 'unknown_type')]);
 		expect(sharedCredentialsRepository.find.mock.calls).toHaveLength(0);
 		expect(credentialsFinderService.findAllCredentialsForUser.mock.calls).toHaveLength(0);
 	});
@@ -133,21 +125,17 @@ describe('IdBasedCredentialMatcher', () => {
 			{ id: 'cred-shared', isGlobal: false },
 		] as never);
 
-		const result = await applyCredentialMatching(
-			'id-only',
-			[
-				{
-					id: 'cred-shared',
-					name: 'Shared',
-					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
-				},
-			],
-			context,
-		);
+		const requirement = {
+			id: 'cred-shared',
+			name: 'Shared',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+
+		const result = await applyCredentialMatching('id-only', [requirement], context);
 
 		expect(result.successes).toEqual([]);
-		expect(result.failures).toEqual([createFailureBinding('cred-shared', 'not_found')]);
+		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 	});
 });
 

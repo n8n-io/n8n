@@ -15,13 +15,11 @@ export type CredentialResolutionFailure = {
 
 export type CredentialId = string;
 
-export type CredentialBindingValue = CredentialId | { failed: CredentialResolutionFailureKind };
-
-export type CredentialBinding = Map<CredentialId, CredentialBindingValue>;
+export type CredentialBinding = Map<CredentialId, CredentialId>;
 
 export interface CredentialResolution {
 	successes: CredentialBinding[];
-	failures: CredentialBinding[];
+	failures: CredentialResolutionFailure[];
 }
 
 export interface CredentialBindingRequest {
@@ -32,12 +30,6 @@ export interface CredentialBindingRequest {
 	user: User;
 }
 
-export function isFailedBindingValue(
-	value: CredentialBindingValue,
-): value is { failed: CredentialResolutionFailureKind } {
-	return typeof value === 'object' && 'failed' in value;
-}
-
 export function createSuccessBinding(
 	sourceId: CredentialId,
 	targetId: CredentialId,
@@ -45,11 +37,15 @@ export function createSuccessBinding(
 	return new Map([[sourceId, targetId]]);
 }
 
-export function createFailureBinding(
-	sourceId: CredentialId,
-	failureKind: CredentialResolutionFailureKind,
-): CredentialBinding {
-	return new Map([[sourceId, { failed: failureKind }]]);
+export function createFailure(
+	reference: WorkflowCredentialRequirement,
+	kind: CredentialResolutionFailureKind,
+): CredentialResolutionFailure {
+	return {
+		kind,
+		sourceId: reference.id,
+		usedByWorkflows: [...reference.usedByWorkflows].sort(),
+	};
 }
 
 export function getBindingSourceId(binding: CredentialBinding): CredentialId {
@@ -58,32 +54,6 @@ export function getBindingSourceId(binding: CredentialBinding): CredentialId {
 		throw new Error('Credential binding is empty');
 	}
 	return sourceId;
-}
-
-export function failureBindingsToApiFailures(
-	bindings: CredentialBinding[],
-	requirements: WorkflowCredentialRequirement[],
-): CredentialResolutionFailure[] {
-	const requirementsById = new Map(requirements.map((reference) => [reference.id, reference]));
-
-	return bindings.map((binding) => {
-		const sourceId = getBindingSourceId(binding);
-		const value = binding.get(sourceId);
-		if (value === undefined || !isFailedBindingValue(value)) {
-			throw new Error('Expected failed credential binding');
-		}
-
-		const reference = requirementsById.get(sourceId);
-		if (!reference) {
-			throw new Error(`Missing manifest requirement for credential ${sourceId}`);
-		}
-
-		return {
-			kind: value.failed,
-			sourceId: reference.id,
-			usedByWorkflows: [...reference.usedByWorkflows].sort(),
-		};
-	});
 }
 
 export function resolvedBindingsToSummaries(

@@ -12,6 +12,6 @@ export class CredentialImporter {
 			user: request.user,
 		});
 
-		return applyCredentialMissingMode(request.missingMode, matched, request.requirements);
+		return applyCredentialMissingMode(request.missingMode, matched);
 	}
 }

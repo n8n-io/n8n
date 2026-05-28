@@ -1,14 +1,14 @@
-import { SharedCredentialsRepository } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import {
-	createFailureBinding,
+	createFailure,
 	getBindingSourceId,
 	type CredentialBinding,
 	type CredentialResolution,
+	type CredentialResolutionFailure,
 	type WorkflowCredentialRequirement,
 } from './credential.types';
 
@@ -35,7 +35,7 @@ export abstract class CredentialMatcher {
 
 		const notFoundFailures = known
 			.filter((reference) => !matchedSourceIds.has(reference.id))
-			.map((reference) => createFailureBinding(reference.id, 'not_found'));
+			.map((reference) => createFailure(reference, 'not_found'));
 
 		return { successes, failures: [...unknownTypeFailures, ...notFoundFailures] };
 	}
@@ -51,16 +51,16 @@ function partitionByKnownType(
 	credentialTypes: CredentialTypes,
 ): {
 	known: WorkflowCredentialRequirement[];
-	unknownTypeFailures: CredentialBinding[];
+	unknownTypeFailures: CredentialResolutionFailure[];
 } {
 	const known: WorkflowCredentialRequirement[] = [];
-	const unknownTypeFailures: CredentialBinding[] = [];
+	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {
 		if (credentialTypes.recognizes(reference.type)) {
 			known.push(reference);
 		} else {
-			unknownTypeFailures.push(createFailureBinding(reference.id, 'unknown_type'));
+			unknownTypeFailures.push(createFailure(reference, 'unknown_type'));
 		}
 	}
 

@@ -5,32 +5,29 @@ import {
 	createCredentialMissingModeHandler,
 	MustPreexistCredentialMissingModeHandler,
 } from '../credential-missing-mode';
-import { createFailureBinding, createSuccessBinding } from '../credential.types';
+import { createFailure, createSuccessBinding } from '../credential.types';
 
 describe('MustPreexistCredentialMissingModeHandler', () => {
 	const handler = new MustPreexistCredentialMissingModeHandler();
 
 	it('returns the result when there are no failures', () => {
 		const result = { successes: [createSuccessBinding('a', 'b')], failures: [] };
-		expect(handler.handle(result, [])).toBe(result);
+		expect(handler.handle(result)).toBe(result);
 	});
 
 	it('throws when failures are present', () => {
+		const requirement = {
+			id: 'cred-1',
+			name: 'X',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+
 		expect(() =>
-			handler.handle(
-				{
-					successes: [],
-					failures: [createFailureBinding('cred-1', 'not_found')],
-				},
-				[
-					{
-						id: 'cred-1',
-						name: 'X',
-						type: 'githubApi',
-						usedByWorkflows: ['wf-1'],
-					},
-				],
-			),
+			handler.handle({
+				successes: [],
+				failures: [createFailure(requirement, 'not_found')],
+			}),
 		).toThrow();
 	});
 });
@@ -52,6 +49,6 @@ describe('createCredentialMissingModeHandler', () => {
 describe('applyCredentialMissingMode', () => {
 	it('delegates to the handler for the given mode', () => {
 		const result = { successes: [createSuccessBinding('a', 'b')], failures: [] };
-		expect(applyCredentialMissingMode('must-preexist', result, [])).toBe(result);
+		expect(applyCredentialMissingMode('must-preexist', result)).toBe(result);
 	});
 });

@@ -1,33 +1,20 @@
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
-import type {
-	CredentialResolution,
-	CredentialResolutionFailure,
-	WorkflowCredentialRequirement,
-} from './credential.types';
-import { failureBindingsToApiFailures } from './credential.types';
+import type { CredentialResolution } from './credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
 
 export abstract class CredentialMissingModeHandler {
-	abstract handle(
-		result: CredentialResolution,
-		requirements: WorkflowCredentialRequirement[] | undefined,
-	): CredentialResolution;
+	abstract handle(result: CredentialResolution): CredentialResolution;
 }
 
 export class MustPreexistCredentialMissingModeHandler extends CredentialMissingModeHandler {
-	handle(
-		result: CredentialResolution,
-		requirements: WorkflowCredentialRequirement[] | undefined,
-	): CredentialResolution {
+	handle(result: CredentialResolution): CredentialResolution {
 		if (result.failures.length === 0) {
 			return result;
 		}
 
-		throw toCredentialResolutionFailedError(
-			failureBindingsToApiFailures(result.failures, requirements ?? []),
-		);
+		throw toCredentialResolutionFailedError(result.failures);
 	}
 }
 
@@ -45,13 +32,12 @@ export function createCredentialMissingModeHandler(
 export function applyCredentialMissingMode(
 	mode: CredentialMissingMode,
 	result: CredentialResolution,
-	requirements: WorkflowCredentialRequirement[] | undefined,
 ): CredentialResolution {
-	return createCredentialMissingModeHandler(mode).handle(result, requirements);
+	return createCredentialMissingModeHandler(mode).handle(result);
 }
 
 export function toCredentialResolutionFailedError(
-	failures: CredentialResolutionFailure[],
+	failures: CredentialResolution['failures'],
 ): UnprocessableRequestError {
 	const count = failures.length;
 	const message =
