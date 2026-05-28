@@ -59,6 +59,17 @@ describe('bridgeMessageSchema', () => {
 			expect(parsed.type).toBe('getItems');
 		});
 
+		it('parses a valid fromAi envelope', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'fromAi',
+				name: 'placeholder',
+				description: 'A description',
+				valueType: 'string',
+				defaultValue: 'fallback',
+			});
+			expect(parsed.type).toBe('fromAi');
+		});
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -76,6 +87,43 @@ describe('bridgeMessageSchema', () => {
 				expect(() => bridgeMessageSchema.parse({ type, branchIndex: 0 })).toThrow();
 			},
 		);
+	});
+
+	describe('fromAi', () => {
+		it('accepts a minimal envelope (type only)', () => {
+			// `name` is optional in the schema so empty calls reach the host's
+			// friendly `ExpressionError("Add a key, e.g. $fromAI(...)")` rather
+			// than a generic zod error.
+			expect(() => bridgeMessageSchema.parse({ type: 'fromAi' })).not.toThrow();
+		});
+
+		it('accepts arbitrary defaultValue shapes', () => {
+			// defaultValue is z.unknown() — host applies no shape constraint.
+			for (const defaultValue of [42, 'str', true, null, { nested: 1 }, [1, 2]]) {
+				expect(() =>
+					bridgeMessageSchema.parse({ type: 'fromAi', name: 'a', defaultValue }),
+				).not.toThrow();
+			}
+		});
+
+		it('rejects non-string name', () => {
+			expect(() => bridgeMessageSchema.parse({ type: 'fromAi', name: 123 })).toThrow();
+		});
+
+		it('rejects non-string description / valueType', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'fromAi', name: 'a', description: 1 }),
+			).toThrow();
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'fromAi', name: 'a', valueType: 1 }),
+			).toThrow();
+		});
+
+		it('rejects extra fields (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'fromAi', name: 'a', hijack: 'extra' }),
+			).toThrow();
+		});
 	});
 
 	describe('getItems', () => {
