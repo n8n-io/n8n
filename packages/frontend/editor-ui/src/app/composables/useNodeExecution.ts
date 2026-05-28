@@ -12,6 +12,7 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -101,6 +102,9 @@ export function useNodeExecution(
 	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -140,7 +144,8 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
+		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
+			return false;
 		const triggeredNode = workflowsStore.executedNode;
 		return (
 			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
@@ -149,7 +154,7 @@ export function useNodeExecution(
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
+		const waitingOnWebhook = workflowExecutionStateStore.value.executionWaitingForWebhook;
 		const executedNode = workflowsStore.executedNode;
 
 		return (
@@ -199,7 +204,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.requiredFieldsMissing');
 		}
 
-		if (workflowsStore.isWorkflowRunning && !isNodeRunning.value) {
+		if (workflowExecutionStateStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 		}
 
