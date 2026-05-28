@@ -5,6 +5,8 @@ export interface AgentExecutionThread {
 	id: string;
 	agentId: string;
 	agentName: string;
+	origin: 'direct' | 'subagent';
+	parentRunId: string | null;
 	projectId: string;
 	sessionNumber: number;
 	title: string | null;

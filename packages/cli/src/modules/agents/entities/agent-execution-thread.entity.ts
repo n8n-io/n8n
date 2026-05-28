@@ -3,6 +3,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { Agent } from './agent.entity';
 
+export type AgentExecutionThreadOrigin = 'direct' | 'subagent';
+
 /**
  * One conversation between a user and an agent. Aggregates per-session
  * counters (token usage, cost, duration) so the sessions list can render
@@ -37,6 +39,14 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	/** Emoji representing the session topic. */
 	@Column({ type: 'varchar', length: 8, nullable: true })
 	emoji: string | null;
+
+	/** How this agent session was started. */
+	@Column({ type: 'varchar', length: 16, default: 'direct' })
+	origin: AgentExecutionThreadOrigin;
+
+	/** Parent SDK run ID for sessions started through delegate_subagent. */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	parentRunId: string | null;
 
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })

@@ -52,8 +52,34 @@ describe('AgentExecutionThreadRepository', () => {
 				agentName: 'Support agent',
 				projectId: 'project-1',
 				sessionNumber: 8,
+				origin: 'direct',
+				parentRunId: null,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
+		});
+
+		it('stores subagent origin metadata when creating a thread', async () => {
+			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
+			const scopedRepository = makeScopedRepository(saved);
+			const trx = { getRepository: jest.fn().mockReturnValue(scopedRepository) };
+			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
+				return await callback(trx as never);
+			});
+
+			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
+				origin: 'subagent',
+				parentRunId: 'parent-run-1',
+			});
+
+			expect(scopedRepository.create).toHaveBeenCalledWith({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'project-1',
+				sessionNumber: 8,
+				origin: 'subagent',
+				parentRunId: 'parent-run-1',
+			});
 		});
 
 		it('retries transient serialization failures before assigning a session number', async () => {

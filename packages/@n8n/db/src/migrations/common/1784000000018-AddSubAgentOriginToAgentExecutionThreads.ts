@@ -1,0 +1,18 @@
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
+
+export class AddSubAgentOriginToAgentExecutionThreads1784000000018 implements ReversibleMigration {
+	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
+		await addColumns('agent_execution_threads', [
+			column('origin')
+				.varchar(16)
+				.notNull.default("'direct'")
+				.withEnumCheck(['direct', 'subagent'])
+				.comment('How this agent session was started.'),
+			column('parentRunId').varchar(128).comment('Parent SDK run ID for subagent sessions.'),
+		]);
+	}
+
+	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
+		await dropColumns('agent_execution_threads', ['origin', 'parentRunId']);
+	}
+}

@@ -2,8 +2,14 @@ import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecutionThreadOrigin } from '../entities/agent-execution-thread.entity';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
+
+export interface AgentExecutionThreadMetadata {
+	origin?: AgentExecutionThreadOrigin;
+	parentRunId?: string;
+}
 
 export interface AgentExecutionThreadPage {
 	threads: AgentExecutionThread[];
@@ -25,6 +31,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		metadata?: AgentExecutionThreadMetadata,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		for (let attempt = 0; ; attempt++) {
 			try {
@@ -33,6 +40,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 					agentId,
 					agentName,
 					projectId,
+					metadata,
 				);
 			} catch (error) {
 				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
@@ -47,6 +55,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		metadata?: AgentExecutionThreadMetadata,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
@@ -69,6 +78,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				agentName,
 				projectId,
 				sessionNumber,
+				origin: metadata?.origin ?? 'direct',
+				parentRunId: metadata?.parentRunId ?? null,
 			});
 			const saved = await repository.save(thread);
 			return { thread: saved, created: true };

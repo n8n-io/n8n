@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import { N8nActionDropdown, N8nBadge, N8nButton, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -134,7 +134,20 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>{{ truncate(threadTitleOf(thread), 24) }}</td>
+						<td>
+							<div :class="$style.sessionCell">
+								<span>{{ truncate(threadTitleOf(thread), 24) }}</span>
+								<N8nBadge
+									v-if="thread.origin === 'subagent'"
+									theme="tertiary"
+									size="xsmall"
+									:show-border="false"
+									data-test-id="agent-session-subagent-badge"
+								>
+									{{ i18n.baseText('agentSessions.subagentRun') }}
+								</N8nBadge>
+							</div>
+						</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
@@ -212,6 +225,12 @@ async function loadMore() {
 	&:hover {
 		background-color: var(--background--hover);
 	}
+}
+
+.sessionCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .lastRow {

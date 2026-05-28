@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -18,6 +19,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		projectId: 'project-1',
 		title: null,
 		emoji: null,
+		origin: 'direct',
+		parentRunId: null,
 		sessionNumber: 1,
 		totalPromptTokens: 0,
 		totalCompletionTokens: 0,
@@ -51,6 +54,52 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository,
 			n8nMemory,
 		);
+	});
+
+	describe('recordMessage', () => {
+		it('passes thread metadata when creating a subagent execution session', async () => {
+			const thread = makeThread({ origin: 'subagent' });
+			const record: MessageRecord = {
+				assistantResponse: 'Done',
+				model: 'anthropic/claude-sonnet-4-5',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				totalCost: 0.01,
+				toolCalls: [],
+				timeline: [],
+				startTime: Date.parse('2026-05-07T10:00:00Z'),
+				duration: 1234,
+				error: null,
+			};
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
+			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Goal:\nResearch API behavior.',
+				record,
+				source: 'subagent',
+				threadMetadata: {
+					origin: 'subagent',
+					parentRunId: 'parent-run-1',
+				},
+			});
+
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				'thread-1',
+				'agent-1',
+				'Agent',
+				'project-1',
+				{
+					origin: 'subagent',
+					parentRunId: 'parent-run-1',
+				},
+			);
+		});
 	});
 
 	describe('getThreadDetail', () => {

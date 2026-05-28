@@ -1344,6 +1344,7 @@
 	"agentSessions.lastMessage": "Last Message",
 	"agentSessions.tokenUsage": "Token Usage",
 	"agentSessions.testChat": "Test chat",
+	"agentSessions.subagentRun": "Subagent run",
 	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
 	"agentSessions.loadMore": "Load more",

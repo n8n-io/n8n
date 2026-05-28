@@ -1,4 +1,11 @@
-import type { BuiltAgent, CredentialProvider, GenerateResult, ToolDescriptor } from '@n8n/agents';
+import type {
+	BuiltAgent,
+	CredentialProvider,
+	StreamChunk,
+	StreamResult,
+	ToolDescriptor,
+} from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
@@ -6,6 +13,7 @@ import type {
 } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentExecutionService } from '../../agent-execution.service';
 import { buildFromJson, type ToolExecutor } from '../../json-config/from-json-config';
 import {
 	createSubAgentMemoryScopeId,
@@ -84,16 +92,22 @@ const spawnRequest: SubAgentSpawnRequest = {
 	parentTaskPath: '/root',
 };
 
-const generateResult: GenerateResult = {
-	runId: 'child-run-1',
-	messages: [],
-	finishReason: 'stop',
-};
+const defaultStreamChunks: StreamChunk[] = [
+	{ type: 'text-delta', id: 'text-1', delta: 'Child answer' },
+	{
+		type: 'finish',
+		finishReason: 'stop',
+		model: 'anthropic/claude-sonnet-4-5',
+		usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+	},
+];
 
 describe('SubAgentForegroundRunner', () => {
 	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
 	let runner: SubAgentForegroundRunner;
 	let childAgent: jest.Mocked<BuiltAgent>;
+	let agentExecutionService: jest.Mocked<AgentExecutionService>;
+	let logger: jest.Mocked<Logger>;
 	let credentialProvider: jest.Mocked<CredentialProvider>;
 	let toolExecutor: jest.Mocked<ToolExecutor>;
 	let createToolExecutor: jest.Mock;
@@ -103,10 +117,12 @@ describe('SubAgentForegroundRunner', () => {
 		jest.clearAllMocks();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
-		runner = new SubAgentForegroundRunner(sourceResolver);
+		agentExecutionService = mock<AgentExecutionService>();
+		logger = mock<Logger>();
+		runner = new SubAgentForegroundRunner(sourceResolver, agentExecutionService, logger);
 
 		childAgent = mock<BuiltAgent>();
-		childAgent.generate.mockResolvedValue(generateResult);
+		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		jest.mocked(buildFromJson).mockResolvedValue(childAgent as never);
 
 		credentialProvider = mock<CredentialProvider>();
@@ -127,7 +143,11 @@ describe('SubAgentForegroundRunner', () => {
 			taskPath: '/root/research_api',
 			source,
 			status: 'completed',
-			result: generateResult,
+			result: expect.objectContaining({
+				runId: 'child-run-1',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			}),
 		});
 		expect(createToolExecutor).toHaveBeenCalledWith(runtimeSource.toolCodeByName);
 		expect(buildFromJson).toHaveBeenCalledWith(
@@ -140,7 +160,7 @@ describe('SubAgentForegroundRunner', () => {
 				memoryFactory: expect.any(Function),
 			}),
 		);
-		expect(childAgent.generate).toHaveBeenCalledWith(
+		expect(childAgent.stream).toHaveBeenCalledWith(
 			[
 				'Goal:\nFind the relevant API behavior.',
 				'Context:\nFocus on auth endpoints.',
@@ -153,6 +173,7 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
+		expect(agentExecutionService.recordMessage).not.toHaveBeenCalled();
 	});
 
 	it('uses the saved n8n agent id as memory owner while keeping a subagent thread scope', async () => {
@@ -187,7 +208,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 
 		expect(createMemoryFactory).toHaveBeenCalledWith('agent-2');
-		expect(childAgent.generate).toHaveBeenCalledWith(
+		expect(childAgent.stream).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
 				persistence: {
@@ -196,15 +217,27 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId: 'agent-2',
+				agentName: 'Helper Agent',
+				projectId,
+				source: 'subagent',
+				threadMetadata: {
+					origin: 'subagent',
+					parentRunId,
+				},
+			}),
+		);
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {
-		childAgent.generate.mockResolvedValue({
-			runId: 'child-run-1',
-			messages: [],
-			finishReason: 'error',
-			error: new Error('failed'),
-		});
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'error', error: new Error('failed') },
+				{ type: 'finish', finishReason: 'error' },
+			]),
+		);
 
 		await expect(
 			runner.runForeground(spawnRequest, {
@@ -287,7 +320,7 @@ describe('SubAgentForegroundRunner', () => {
 			},
 		);
 
-		expect(childAgent.generate).toHaveBeenCalledWith(
+		expect(childAgent.stream).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
 				abortSignal: expect.any(AbortSignal),
@@ -297,16 +330,16 @@ describe('SubAgentForegroundRunner', () => {
 
 	it('returns failed status when timeout aborts the child run', async () => {
 		jest.useFakeTimers();
-		childAgent.generate.mockImplementation(
+		childAgent.stream.mockImplementation(
 			async (_input, options) =>
-				await new Promise<GenerateResult>((resolve) => {
+				await new Promise<StreamResult>((resolve) => {
 					options?.abortSignal?.addEventListener('abort', () => {
-						resolve({
-							runId: 'child-run-1',
-							messages: [],
-							finishReason: 'error',
-							error: new Error('aborted'),
-						});
+						resolve(
+							makeStreamResult([
+								{ type: 'error', error: new Error('aborted') },
+								{ type: 'finish', finishReason: 'error' },
+							]),
+						);
 					});
 				}),
 		);
@@ -355,3 +388,17 @@ describe('createSubAgentMemoryScopeId', () => {
 		);
 	});
 });
+
+function makeStreamResult(chunks: StreamChunk[]): StreamResult {
+	return {
+		runId: 'child-run-1',
+		stream: new ReadableStream<StreamChunk>({
+			start(controller) {
+				for (const chunk of chunks) {
+					controller.enqueue(chunk);
+				}
+				controller.close();
+			},
+		}),
+	};
+}

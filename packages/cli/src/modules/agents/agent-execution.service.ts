@@ -7,6 +7,7 @@ import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -19,6 +20,8 @@ export interface RecordMessageParams {
 	hitlStatus?: 'suspended' | 'resumed';
 	/** Where the message originated from, e.g. 'chat', 'slack'. */
 	source?: string;
+	/** Optional metadata persisted on the thread when it is first created. */
+	threadMetadata?: AgentExecutionThreadMetadata;
 }
 
 export interface ThreadDetail {
@@ -44,7 +47,8 @@ export class AgentExecutionService {
 	 * Creates or updates the thread, then inserts one row into agent_execution.
 	 */
 	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, agentName, projectId, record, source, hitlStatus } = params;
+		const { threadId, agentId, agentName, projectId, record, source, hitlStatus, threadMetadata } =
+			params;
 
 		// Ensure the thread exists and bump its updatedAt
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
@@ -52,6 +56,7 @@ export class AgentExecutionService {
 			agentId,
 			agentName,
 			projectId,
+			threadMetadata,
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
