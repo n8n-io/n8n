@@ -53,7 +53,7 @@ DOUBAO_LLM_MODEL=
 DOUBAO_LLM_TEMPERATURE=0.7
 ```
 
-Existing Ark-style names are also accepted: `ARK_API_KEY`, `ARK_API_BASE_URL`, and `ARK_MODEL_NAME`. When `ARK_API_BASE_URL` is a base URL such as `https://ark.cn-beijing.volces.com/api/v3`, the workflow appends `/chat/completions` automatically.
+Existing Ark-style names are also accepted: `ARK_API_KEY`, `ARK_API_BASE_URL`, and `ARK_MODEL_NAME`. When `ARK_API_BASE_URL` is a base URL such as `https://ark.cn-beijing.volces.com/api/v3`, the workflow appends `/chat/completions` automatically. When it ends with `/responses`, the workflow uses the Ark Responses API request shape instead.
 
 Required TTS variables:
 
