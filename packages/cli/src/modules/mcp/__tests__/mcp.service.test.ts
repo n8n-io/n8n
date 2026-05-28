@@ -549,6 +549,38 @@ describe('McpService', () => {
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
+
+			it('reuses a pre-resolved flag value instead of calling PostHog again', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+				});
+
+				const service = buildService({ postHogClient });
+
+				await service.getServer(user, true);
+
+				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
+				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('honors a pre-resolved `false` flag value without consulting PostHog', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+				});
+
+				const service = buildService({ postHogClient });
+
+				await service.getServer(user, false);
+
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registerMcpAppTool).not.toHaveBeenCalled();
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

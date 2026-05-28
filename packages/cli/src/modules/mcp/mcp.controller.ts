@@ -119,6 +119,10 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
+		const mcpAppsEnabled = isInitializationRequest
+			? await this.mcpService.isMcpAppsEnabled(req.user)
+			: undefined;
+
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
@@ -126,7 +130,7 @@ export class McpController {
 			auth_type: (
 				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
 			).mcpAuthType,
-			mcp_apps_enabled: await this.mcpService.isMcpAppsEnabled(req.user),
+			mcp_apps_enabled: mcpAppsEnabled,
 		};
 
 		// Deny if MCP access is disabled
@@ -148,7 +152,7 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, req.body);
+			await this.handleTransportRequest(req, res, req.body, mcpAppsEnabled);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -184,11 +188,12 @@ export class McpController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		body?: unknown,
+		mcpAppsEnabled?: boolean,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
 		);
-		const server = await this.mcpService.getServer(req.user);
+		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled);
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});

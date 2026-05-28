@@ -49,7 +49,10 @@ describe('McpController', () => {
 	let controller: McpController;
 	const logger = mock<Logger>();
 	const telemetry = { track: jest.fn() } as unknown as Telemetry;
-	const mcpService = { getServer: jest.fn() } as unknown as McpService;
+	const mcpService = {
+		getServer: jest.fn(),
+		isMcpAppsEnabled: jest.fn(),
+	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: jest.fn() } as unknown as McpSettingsService;
 
 	beforeEach(() => {
@@ -89,6 +92,7 @@ describe('McpController', () => {
 			connect: jest.fn().mockResolvedValue(undefined),
 			close: jest.fn().mockResolvedValue(undefined),
 		});
+		(mcpService.isMcpAppsEnabled as jest.Mock).mockResolvedValue(true);
 		const res = createRes();
 
 		await controller.build(
@@ -109,7 +113,60 @@ describe('McpController', () => {
 			client_version: '1.0.0',
 			auth_type: 'oauth',
 			mcp_connection_status: 'success',
+			mcp_apps_enabled: true,
 		});
+	});
+
+	test('resolves the MCP Apps flag once and forwards it to getServer on initialize', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+			connect: jest.fn().mockResolvedValue(undefined),
+			close: jest.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.isMcpAppsEnabled as jest.Mock).mockResolvedValue(true);
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.isMcpAppsEnabled as jest.Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			true,
+		);
+	});
+
+	test('skips resolving the MCP Apps flag for non-initialize requests', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+			connect: jest.fn().mockResolvedValue(undefined),
+			close: jest.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'toolCall',
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.isMcpAppsEnabled as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			undefined,
+		);
 	});
 
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {

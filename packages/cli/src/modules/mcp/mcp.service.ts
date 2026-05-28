@@ -130,7 +130,7 @@ export class McpService {
 		}
 	}
 
-	async getServer(user: User) {
+	async getServer(user: User, mcpAppsEnabled?: boolean) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
@@ -331,7 +331,7 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user, dataTableOps);
+			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled);
 		}
 
 		return server;
@@ -341,6 +341,7 @@ export class McpService {
 		server: InstanceType<typeof McpServer>,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
+		mcpAppsEnabled?: boolean,
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -384,8 +385,8 @@ export class McpService {
 			dataTableOps,
 		);
 
-		const mcpAppsEnabled = await this.isMcpAppsEnabled(user);
-		if (mcpAppsEnabled) {
+		const resolvedMcpAppsEnabled = mcpAppsEnabled ?? (await this.isMcpAppsEnabled(user));
+		if (resolvedMcpAppsEnabled) {
 			registerWorkflowPreviewApp(server);
 			registerMcpAppTool(
 				server,
