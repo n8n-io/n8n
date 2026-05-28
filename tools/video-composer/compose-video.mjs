@@ -169,7 +169,9 @@ ${events.join('\n')}
 }
 
 function escapeForFilterPath(filePath) {
-	return String(filePath).replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'");
+	return String(filePath)
+		.replace(/\\/g, '/')
+		.replace(/([\\':,;\[\] ])/g, '\\$1');
 }
 
 function scaleAndPad(input, width, height, label) {
@@ -230,7 +232,8 @@ export function buildFfmpegArgs(job, { audioDuration }) {
 		scaleAndPad('[2:v]', 1600, 780, '[screenmain]'),
 		'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2[screen]',
 		...bodyFilters,
-		`[cover][screen][body]concat=n=3:v=1:a=0,subtitles='${subtitlePath}'[vout]`,
+		`[cover][screen][body]concat=n=3:v=1:a=0,subtitles=filename=${subtitlePath}[vout]`,
+		`[3:a]apad,atrim=0:${timeline.totalDuration},asetpts=PTS-STARTPTS[aout]`,
 	].join(';');
 
 	return [
@@ -254,7 +257,7 @@ export function buildFfmpegArgs(job, { audioDuration }) {
 		'-map',
 		'[vout]',
 		'-map',
-		'3:a',
+		'[aout]',
 		'-t',
 		String(timeline.totalDuration),
 		'-r',
@@ -265,7 +268,6 @@ export function buildFfmpegArgs(job, { audioDuration }) {
 		'yuv420p',
 		'-c:a',
 		'aac',
-		'-shortest',
 		job.output.video,
 	];
 }

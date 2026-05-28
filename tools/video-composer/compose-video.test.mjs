@@ -155,3 +155,54 @@ test('buildFfmpegArgs includes expected media inputs and output settings', () =>
 	assert.equal(args.includes('-c:v'), true);
 	assert.equal(args.includes('libx264'), true);
 });
+
+test('buildFfmpegArgs pads short audio instead of stopping at audio length', () => {
+	const job = normalizeJob({
+		jobId: 'short-audio',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 5 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.equal(args.includes('-shortest'), false);
+	assert.equal(args[args.indexOf('-map') + 3], '[aout]');
+	assert.match(filter, /\[3:a\]apad,atrim=0:7,asetpts=PTS-STARTPTS\[aout\]/);
+	assert.match(filter, /concat=n=3:v=1:a=0/);
+	assert.match(filter, /color=c=black:s=1920x1080:d=0\.01\[body\]/);
+});
+
+test('buildFfmpegArgs escapes subtitle filter paths without single-quote wrapping', () => {
+	const job = normalizeJob({
+		jobId: 'quoted-path',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: "/tmp/job/quote'dir/sub:title file.ass",
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 12 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.match(filter, /subtitles=filename=\/tmp\/job\/quote\\'dir\/sub\\:title\\ file\.ass/);
+	assert.doesNotMatch(filter, /subtitles='/);
+});
