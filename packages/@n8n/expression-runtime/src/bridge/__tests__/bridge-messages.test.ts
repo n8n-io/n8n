@@ -91,6 +91,23 @@ describe('bridgeMessageSchema', () => {
 			expect(parsed.type).toBe('getNodeItem');
 		});
 
+		it('parses a valid evaluateExpression envelope (with itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+				itemIndex: 2,
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
+		it('parses a valid evaluateExpression envelope (without itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -148,6 +165,38 @@ describe('bridgeMessageSchema', () => {
 			// permit itemIndex since the host's getter takes none.
 			expect(() =>
 				bridgeMessageSchema.parse({ type: 'getNodeItem', nodeName: 'Foo', itemIndex: 0 }),
+			).toThrow();
+		});
+	});
+
+	describe('evaluateExpression', () => {
+		it('rejects missing expression', () => {
+			expect(() => bridgeMessageSchema.parse({ type: 'evaluateExpression' })).toThrow();
+		});
+
+		it('rejects non-string expression', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'evaluateExpression', expression: 42 }),
+			).toThrow();
+		});
+
+		it('rejects negative itemIndex', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					itemIndex: -1,
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					branchIndex: 0,
+				}),
 			).toThrow();
 		});
 	});

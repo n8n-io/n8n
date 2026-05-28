@@ -504,6 +504,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetNodeItemMatching(msg, data);
 					case 'getNodeItem':
 						return this.handleGetNodeItem(msg, data);
+					case 'evaluateExpression':
+						return this.handleEvaluateExpression(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -656,6 +658,22 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// returns the value immediately. Optional chaining only short-
 		// circuits on null/undefined; the getter still fires on access.
 		return data.$?.(msg.nodeName)?.item;
+	}
+
+	/**
+	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
+	 * the string to the host's nested-evaluation helper, which re-enters
+	 * the expression engine on the inner expression. Under the VM engine
+	 * this round-trips through the bridge again on a fresh evaluation
+	 * cycle, which is the same shape the legacy engine supports.
+	 *
+	 * @private
+	 */
+	private handleEvaluateExpression(
+		msg: Extract<BridgeMessage, { type: 'evaluateExpression' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
 	}
 
 	/**

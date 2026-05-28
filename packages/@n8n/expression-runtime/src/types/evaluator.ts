@@ -174,6 +174,7 @@ export interface WorkflowData {
 	$fromAI?: FromAi;
 	$fromAi?: FromAi;
 	$fromai?: FromAi;
+	$evaluateExpression?: (expression: string, itemIndex?: number) => unknown;
 	[key: string]: unknown;
 }
 
