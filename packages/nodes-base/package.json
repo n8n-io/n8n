@@ -938,7 +938,7 @@
     "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
     "kafkajs": "catalog:",
-    "ldapts": "4.2.6",
+    "ldapts": "catalog:",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
     "luxon": "catalog:",

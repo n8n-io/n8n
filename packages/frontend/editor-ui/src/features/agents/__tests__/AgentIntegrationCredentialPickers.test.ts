@@ -13,8 +13,10 @@ const {
 	connectIntegration,
 	disconnectIntegration,
 	createSlackAgentApp,
+	publishAgent,
 	getSlackAgentAppManifest,
 	ensureLoaded,
+	openAgentConfirmationModal,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflow: vi.fn(),
 	openNewCredential: vi.fn(),
@@ -23,8 +25,10 @@ const {
 	connectIntegration: vi.fn(),
 	disconnectIntegration: vi.fn(),
 	createSlackAgentApp: vi.fn(),
+	publishAgent: vi.fn(),
 	getSlackAgentAppManifest: vi.fn(),
 	ensureLoaded: vi.fn(),
+	openAgentConfirmationModal: vi.fn(),
 }));
 
 const projectState = vi.hoisted(() => ({
@@ -53,6 +57,16 @@ const telegramIntegration = {
 	noCredentialsMessage: 'No Telegram credentials found.',
 };
 
+const linearIntegration = {
+	type: 'linear',
+	label: 'Linear',
+	icon: 'linear',
+	description: 'Connect Linear',
+	connectedDescription: 'Connected to Linear',
+	credentialTypes: ['linearOAuth2Api'],
+	noCredentialsMessage: 'No Linear credentials found.',
+};
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 	i18n: { baseText: (key: string) => key },
@@ -62,6 +76,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
 		urlBaseWebhook: 'https://hooks.example',
+		OAuthCallbackUrls: {
+			oauth2: 'https://hooks.example/rest/oauth2-credential/callback',
+		},
 	}),
 }));
 
@@ -91,26 +108,20 @@ vi.mock('../composables/useAgentApi', () => ({
 	connectIntegration,
 	disconnectIntegration,
 	createSlackAgentApp,
+	publishAgent,
 	getSlackAgentAppManifest,
 }));
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [slackIntegration, telegramIntegration] },
+		catalog: { value: [slackIntegration, telegramIntegration, linearIntegration] },
 		ensureLoaded,
-	}),
-}));
-
-vi.mock('../composables/useAgentPublish', () => ({
-	useAgentPublish: () => ({
-		publish: vi.fn(),
-		publishing: false,
 	}),
 }));
 
 vi.mock('../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({
-		openAgentConfirmationModal: vi.fn(),
+		openAgentConfirmationModal,
 	}),
 }));
 
@@ -166,7 +177,10 @@ const N8nCollapsiblePanelStub = {
 
 const globalStubs = {
 	AgentCredentialSelect: AgentCredentialSelectStub,
-	AgentScheduleTriggerCard: { template: '<div data-testid="schedule-trigger-card" />' },
+	AgentScheduleTriggerCard: {
+		name: 'AgentScheduleTriggerCard',
+		template: '<div data-testid="schedule-trigger-card" />',
+	},
 	Modal: {
 		template:
 			'<section><slot name="header" /><slot name="content" /><slot name="footer" /></section>',
@@ -213,6 +227,7 @@ describe('agent integration credential picker usage', () => {
 		connectIntegration.mockReset();
 		disconnectIntegration.mockReset();
 		createSlackAgentApp.mockReset();
+		publishAgent.mockReset();
 		getSlackAgentAppManifest.mockReset();
 		ensureLoaded.mockReset();
 		broadcastHandler = undefined;
@@ -247,7 +262,7 @@ describe('agent integration credential picker usage', () => {
 				features: {
 					app_home: {
 						home_tab_enabled: true,
-						messages_tab_enabled: false,
+						messages_tab_enabled: true,
 						messages_tab_read_only_enabled: false,
 					},
 					bot_user: {
@@ -276,6 +291,8 @@ describe('agent integration credential picker usage', () => {
 			},
 		});
 		ensureLoaded.mockResolvedValue([slackIntegration, telegramIntegration]);
+		openAgentConfirmationModal.mockResolvedValue('confirm');
+		connectIntegration.mockResolvedValue({ status: 'connected' });
 		fetchAllCredentialsForWorkflow.mockResolvedValue([
 			{ id: 'cred-1', name: 'Workspace Slack', type: 'slackApi' },
 			{ id: 'cred-telegram', name: 'Telegram Bot', type: 'telegramApi' },
@@ -472,6 +489,7 @@ describe('agent integration credential picker usage', () => {
 		});
 		const onConnectedTriggersChange = vi.fn();
 		const onTriggerAdded = vi.fn();
+		const onAgentChanged = vi.fn();
 
 		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
@@ -485,6 +503,7 @@ describe('agent integration credential picker usage', () => {
 					connectedTriggers: [],
 					onConnectedTriggersChange,
 					onTriggerAdded,
+					onAgentChanged,
 				},
 			},
 			global: { stubs: globalStubs },
@@ -516,6 +535,7 @@ describe('agent integration credential picker usage', () => {
 			triggerType: 'slack',
 			triggers: ['slack'],
 		});
+		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 
 	it('waits for the Slack OAuth callback when noopener prevents a popup handle', async () => {
@@ -770,7 +790,51 @@ describe('agent integration credential picker usage', () => {
 		).toBe('false');
 	});
 
+	it('uses the published agent returned by the connect endpoint for unpublished agents', async () => {
+		const onAgentPublished = vi.fn();
+		const publishedAgent = { id: 'agent-1', publishedVersion: {} };
+		connectIntegration.mockResolvedValueOnce({ status: 'connected', agent: publishedAgent });
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: false,
+					initialTriggerType: 'slack',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+					onAgentPublished,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="slack-manual-configuration-toggle"]').trigger('click');
+		await flushPromises();
+
+		await wrapper.find('[data-testid="stub-select-first-credential"]').trigger('click');
+		await wrapper.find('[data-testid="slack-connect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(openAgentConfirmationModal).toHaveBeenCalledOnce();
+		expect(connectIntegration).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'slack',
+			'cred-1',
+			undefined,
+		);
+		expect(onAgentPublished).toHaveBeenCalledWith(publishedAgent);
+	});
+
 	it('defaults Telegram setup to private mode and requires a user ID before connecting', async () => {
+		const onAgentChanged = vi.fn();
 		const wrapper = mount(AgentAddTriggerModal, {
 			props: {
 				modalName: 'agentAddTriggerModal',
@@ -783,6 +847,7 @@ describe('agent integration credential picker usage', () => {
 					connectedTriggers: [],
 					onConnectedTriggersChange: vi.fn(),
 					onTriggerAdded: vi.fn(),
+					onAgentChanged,
 				},
 			},
 			global: { stubs: globalStubs },
@@ -810,6 +875,7 @@ describe('agent integration credential picker usage', () => {
 			'cred-telegram',
 			{ accessMode: 'private', allowedUsers: ['123', '456'] },
 		);
+		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 
 	it('renders the Telegram public warning for legacy connected integrations without settings', async () => {
@@ -842,6 +908,7 @@ describe('agent integration credential picker usage', () => {
 	});
 
 	it('disables the Telegram form when connected so users must disconnect to edit', async () => {
+		const onAgentChanged = vi.fn();
 		getIntegrationStatus.mockResolvedValue({
 			integrations: [
 				{
@@ -864,6 +931,7 @@ describe('agent integration credential picker usage', () => {
 					connectedTriggers: [],
 					onConnectedTriggersChange: vi.fn(),
 					onTriggerAdded: vi.fn(),
+					onAgentChanged,
 				},
 			},
 			global: { stubs: globalStubs },
@@ -874,5 +942,78 @@ describe('agent integration credential picker usage', () => {
 		expect(userIds.exists()).toBe(true);
 		expect(userIds.find('input').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-testid="telegram-disconnect-button"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="telegram-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(disconnectIntegration).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'telegram',
+			'cred-telegram',
+		);
+		expect(onAgentChanged).toHaveBeenCalledOnce();
+	});
+
+	it('shows Linear app setup URLs in the trigger modal', async () => {
+		ensureLoaded.mockResolvedValue([slackIntegration, telegramIntegration, linearIntegration]);
+
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'linear',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="linear-app-setup-link"]').attributes('href')).toBe(
+			'https://linear.app/settings/api/applications/new',
+		);
+		expect(wrapper.find('[data-testid="linear-oauth-callback-url"]').element).toMatchObject({
+			value: 'https://hooks.example/rest/oauth2-credential/callback',
+		});
+		expect(wrapper.find('[data-testid="linear-webhook-url"]').element).toMatchObject({
+			value: 'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/linear',
+		});
+		expect(wrapper.text()).toContain('agents.builder.addTrigger.linear.oauthCallbackUrl.label');
+		expect(wrapper.text()).toContain('agents.builder.addTrigger.linear.webhookUrl.label');
+	});
+
+	it('notifies the builder when the schedule trigger is saved', async () => {
+		const onAgentChanged = vi.fn();
+		const wrapper = mount(AgentAddTriggerModal, {
+			props: {
+				modalName: 'agentAddTriggerModal',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					isPublished: true,
+					initialTriggerType: 'schedule',
+					connectedTriggers: [],
+					onConnectedTriggersChange: vi.fn(),
+					onTriggerAdded: vi.fn(),
+					onAgentChanged,
+				},
+			},
+			global: { stubs: globalStubs },
+		});
+		await flushPromises();
+
+		wrapper.findComponent({ name: 'AgentScheduleTriggerCard' }).vm.$emit('saved');
+		await flushPromises();
+
+		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 });
