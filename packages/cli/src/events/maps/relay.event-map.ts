@@ -90,6 +90,7 @@ export type RelayEventMap = {
 		workflowIds: string[];
 		packageSourceId: string;
 		packageVersion: string;
+		matchedCredentialIds: string[];
 	};
 
 	'workflow-deleted': {
