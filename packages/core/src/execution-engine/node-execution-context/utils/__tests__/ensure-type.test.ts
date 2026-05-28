@@ -77,7 +77,6 @@ describe('ensureType', () => {
 
 	it('throws error for non-array value if toType is array', () => {
 		const value = { name: 'Alice' };
-
 		const execution = () => ensureType('array', value, 'myParam');
 
 		expect(execution).toThrow(ExpressionError);

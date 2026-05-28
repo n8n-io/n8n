@@ -596,5 +596,39 @@ describe('useResourceRegistry', () => {
 				projectId: 'proj-3',
 			});
 		});
+
+		test.each(['schema', 'query'] as const)(
+			'registers data table from data-tables %s result with resolved metadata',
+			async (action) => {
+				const { messages, producedArtifacts } = setup();
+
+				messages.value = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolName: 'data-tables',
+									args: { action, dataTableId: 'Signups' },
+									result: {
+										dataTableId: 'dt-signups',
+										dataTableName: 'Signups',
+										projectId: 'proj-4',
+										...(action === 'schema' ? { columns: [] } : { count: 0, data: [] }),
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(producedArtifacts.value.get('dt-signups')).toEqual({
+					type: 'data-table',
+					id: 'dt-signups',
+					name: 'Signups',
+					projectId: 'proj-4',
+				});
+			},
+		);
 	});
 });

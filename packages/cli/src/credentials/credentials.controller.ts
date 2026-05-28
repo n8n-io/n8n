@@ -176,6 +176,7 @@ export class CredentialsController {
 			uiContext: payload.uiContext,
 			isDynamic: newCredential.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
+			jweEnabled: payload.data.jweEnabled === true,
 		});
 
 		return newCredential;
@@ -265,6 +266,9 @@ export class CredentialsController {
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
+			jweEnabled:
+				(preparedCredentialData.data as unknown as ICredentialDataDecryptedObject).jweEnabled ===
+				true,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

@@ -124,6 +124,24 @@ describe('builder model recommendations', () => {
 		expect(prompt).not.toContain('agent-builder-tools');
 	});
 
+	it('tells the builder to preserve fallback web search on model switches', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain(
+			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
+		);
+		expect(prompt).toContain(
+			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
+		);
+		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
+		expect(prompt).toContain(
+			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
+		);
+		expect(prompt).toContain(
+			'Preserve existing Brave/SearXNG `config.webSearch` on model switches unless',
+		);
+	});
+
 	it('injects custom tool builder guidance into the base builder prompt', () => {
 		const prompt = buildPrompt(null);
 
@@ -139,7 +157,22 @@ describe('builder model recommendations', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
 		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
+		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
 		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
+		expect(buildPrompt(null)).toContain('do not recommend or name');
+	});
+
+	it('keeps always-on interaction, expression, and workflow guidance in the main prompt', () => {
+		const prompt = buildPrompt('### Recommended LLM Models\n\n- OpenAI: `openai/gpt-5` GPT-5');
+
+		expect(prompt).toContain('### Recommended LLM Models');
+		expect(prompt).toContain('Never call two interactive tools in parallel');
+		expect(prompt).toContain('$fromAI');
+		expect(prompt).toContain('$now.toISO()');
+		expect(prompt).toContain('$today');
+		expect(prompt).toContain('## Workflow');
+		expect(prompt).toContain('Before every `write_config` or `patch_config`, call `read_config`');
+		expect(prompt).toContain('## Example flows');
 	});
 
 	it('registers only optional builder runtime skills', () => {
@@ -147,5 +180,14 @@ describe('builder model recommendations', () => {
 			'agent-builder-integrations',
 			'agent-builder-target-skills',
 		]);
+	});
+
+	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+
+		expect(integrationsSkill?.instructions).not.toContain('slackOAuth2Api');
+		expect(integrationsSkill?.instructions).not.toContain('prefer the OAuth variant');
 	});
 });
