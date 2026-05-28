@@ -34,14 +34,10 @@
 		"format": "biome format --write src",
 		"format:check": "biome ci src"
 	},
-	"dependencies": {
-		"@modelcontextprotocol/ext-apps": "catalog:",
-		"@n8n/design-system": "workspace:*",
-		"vue": "catalog:frontend",
-		"vue-i18n": "catalog:frontend"
-	},
 	"devDependencies": {
+		"@modelcontextprotocol/ext-apps": "catalog:",
 		"@modelcontextprotocol/sdk": "catalog:",
+		"@n8n/design-system": "workspace:*",
 		"@n8n/eslint-config": "workspace:*",
 		"@n8n/typescript-config": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
@@ -56,6 +52,8 @@
 		"vite-plugin-singlefile": "catalog:",
 		"vite-svg-loader": "catalog:frontend",
 		"vitest": "catalog:",
+		"vue": "catalog:frontend",
+		"vue-i18n": "catalog:frontend",
 		"vue-tsc": "catalog:frontend"
 	},
 	"peerDependencies": {
