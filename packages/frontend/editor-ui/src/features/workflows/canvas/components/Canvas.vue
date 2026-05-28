@@ -21,6 +21,7 @@ import type {
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeGroupData,
+	CanvasNodeGroupNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
 } from '../canvas.types';
@@ -1064,7 +1065,12 @@ const minimapVisibilityDelay = 1000;
 const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
 const isMinimapVisible = ref(false);
 
-function minimapNodeClassnameFn(node: CanvasNode) {
+function isCanvasNodeGroup(node: AnyCanvasNode): node is CanvasNodeGroupNode {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
+
+function minimapNodeClassnameFn(node: AnyCanvasNode) {
+	if (isCanvasNodeGroup(node)) return 'minimap-node-group';
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
 }
 
