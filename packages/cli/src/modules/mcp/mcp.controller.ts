@@ -87,7 +87,8 @@ export class McpController {
 		}
 
 		try {
-			await this.handleTransportRequest(req, res);
+			const { enabled: mcpAppsEnabled } = await this.mcpService.resolveMcpAppsVariant(req.user);
+			await this.handleTransportRequest(req, res, mcpAppsEnabled);
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (!res.headersSent) {
@@ -119,9 +120,13 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
-		const mcpAppsResolution = isInitializationRequest
-			? await this.mcpService.resolveMcpAppsVariant(req.user)
-			: undefined;
+		// Resolve the MCP Apps variant once per request so every downstream code
+		// path observes the same value. Resolving only on `initialize` (and
+		// letting `getServer` fall back on later requests) would cause repeated
+		// PostHog lookups, extra log noise on transient errors, and — because
+		// the server is rebuilt per request in stateless mode — could surface
+		// different tools on later calls than were advertised at handshake time.
+		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
@@ -130,8 +135,8 @@ export class McpController {
 			auth_type: (
 				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
 			).mcpAuthType,
-			mcp_apps_enabled: mcpAppsResolution?.enabled,
-			mcp_apps_variant: mcpAppsResolution?.variant,
+			mcp_apps_enabled: mcpAppsResolution.enabled,
+			mcp_apps_variant: mcpAppsResolution.variant,
 		};
 
 		// Deny if MCP access is disabled
@@ -153,7 +158,7 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, req.body, mcpAppsResolution?.enabled);
+			await this.handleTransportRequest(req, res, mcpAppsResolution.enabled, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -188,8 +193,8 @@ export class McpController {
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
+		mcpAppsEnabled: boolean,
 		body?: unknown,
-		mcpAppsEnabled?: boolean,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'

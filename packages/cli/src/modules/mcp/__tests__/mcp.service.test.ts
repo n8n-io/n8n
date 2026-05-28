@@ -390,23 +390,13 @@ describe('McpService', () => {
 				variant: 'error',
 			});
 		});
-
-		it('exposes the same boolean through `isMcpAppsEnabled`', async () => {
-			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({
-				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-			});
-			const service = buildResolutionService({ postHogClient });
-
-			await expect(service.isMcpAppsEnabled(user)).resolves.toBe(true);
-		});
 	});
 
 	describe('getServer', () => {
 		it('should create MCP server with registered tools', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 
-			const server = await mcpService.getServer(user);
+			const server = await mcpService.getServer(user, false);
 
 			expect(server).toBeDefined();
 			// Verify server has expected MCP server methods
@@ -452,7 +442,7 @@ describe('McpService', () => {
 				mockInstance(PostHogClient),
 			);
 
-			const server = await service.getServer(user);
+			const server = await service.getServer(user, false);
 			expect(server).toBeDefined();
 			// Builder tools service should NOT have been initialized
 			expect(nodeCatalogService.initialize).not.toHaveBeenCalled();
@@ -495,22 +485,24 @@ describe('McpService', () => {
 				mockInstance(PostHogClient),
 			);
 
-			const server = await service.getServer(user);
+			const server = await service.getServer(user, false);
 			expect(server).toBeDefined();
 			// Builder tools service should have been initialized
 			expect(nodeCatalogService.initialize).toHaveBeenCalled();
 		});
 
 		describe('MCP Apps integration', () => {
+			// Resolution of the MCP Apps flag (PostHog cohort, env override,
+			// error fallback) is covered in the `resolveMcpAppsVariant` block.
+			// These tests assume the caller (controller) has already resolved
+			// the boolean and focus on `getServer`'s tool-registration behavior.
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
-				mcpAppsEnabled?: boolean;
 				postHogClient?: jest.Mocked<PostHogClient>;
 			};
 
 			const buildService = ({
 				builderEnabled = true,
-				mcpAppsEnabled = false,
 				postHogClient = mockInstance(PostHogClient),
 			}: BuildServiceOpts = {}) =>
 				new McpService(
@@ -527,7 +519,6 @@ describe('McpService', () => {
 							webhook: '/webhook',
 							webhookTest: '/webhook-test',
 							mcpBuilderEnabled: builderEnabled,
-							mcpAppsEnabled,
 						},
 					}),
 					mockInstance(Telemetry),
@@ -552,121 +543,9 @@ describe('McpService', () => {
 				(registerMcpAppTool as jest.Mock).mockClear();
 			});
 
-			it('registers the workflow preview app and wires it to the create-workflow tool when the user is in the variant cohort', async () => {
+			it('registers the workflow preview app and wires it to the create-workflow tool when `mcpAppsEnabled` is true', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				});
-
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user);
-
-				expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
-				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
-
-				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
-				expect(typeof toolName).toBe('string');
-				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
-				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
-			});
-
-			it('does not register MCP apps when the user is in the control cohort', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: 'control',
-				});
-
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-			});
-
-			it('does not register MCP apps when the flag is missing from PostHog response', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-			});
-
-			it('fails closed when PostHog throws (no MCP apps registered)', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
-
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-			});
-
-			it('does not register MCP apps when builder is disabled, even if user is in variant', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				});
-
-				const service = buildService({ builderEnabled: false, postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('registers MCP apps when N8N_MCP_APPS_ENABLED is true, even if user is in control cohort', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: 'control',
-				});
-
-				const service = buildService({ mcpAppsEnabled: true, postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
-				// Override short-circuits before PostHog is consulted.
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('registers MCP apps when N8N_MCP_APPS_ENABLED is true and PostHog throws', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
-
-				const service = buildService({ mcpAppsEnabled: true, postHogClient });
-
-				await service.getServer(user);
-
-				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('reuses a pre-resolved flag value instead of calling PostHog again', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				});
 
 				const service = buildService({ postHogClient });
 
@@ -674,19 +553,36 @@ describe('McpService', () => {
 
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
+
+				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
+				expect(typeof toolName).toBe('string');
+				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
+				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
+
+				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 
-			it('honors a pre-resolved `false` flag value without consulting PostHog', async () => {
+			it('does not register MCP apps when `mcpAppsEnabled` is false', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				});
 
 				const service = buildService({ postHogClient });
 
 				await service.getServer(user, false);
+
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+				expect(registerMcpAppTool).not.toHaveBeenCalled();
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('does not register MCP apps when builder is disabled, even if `mcpAppsEnabled` is true', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const postHogClient = mockInstance(PostHogClient);
+
+				const service = buildService({ builderEnabled: false, postHogClient });
+
+				await service.getServer(user, true);
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
 				expect(registerMcpAppTool).not.toHaveBeenCalled();

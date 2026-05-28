@@ -143,11 +143,7 @@ export class McpService {
 		return { enabled: false, variant: 'unassigned' };
 	}
 
-	async isMcpAppsEnabled(user: User): Promise<boolean> {
-		return (await this.resolveMcpAppsVariant(user)).enabled;
-	}
-
-	async getServer(user: User, mcpAppsEnabled?: boolean) {
+	async getServer(user: User, mcpAppsEnabled: boolean) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
@@ -358,7 +354,7 @@ export class McpService {
 		server: InstanceType<typeof McpServer>,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
-		mcpAppsEnabled?: boolean,
+		mcpAppsEnabled: boolean,
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -402,8 +398,7 @@ export class McpService {
 			dataTableOps,
 		);
 
-		const resolvedMcpAppsEnabled = mcpAppsEnabled ?? (await this.isMcpAppsEnabled(user));
-		if (resolvedMcpAppsEnabled) {
+		if (mcpAppsEnabled) {
 			registerWorkflowPreviewApp(server);
 			registerMcpAppTool(
 				server,
