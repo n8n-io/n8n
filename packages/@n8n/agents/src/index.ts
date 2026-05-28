@@ -196,6 +196,17 @@ export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
+export {
+	ROOT_SUB_AGENT_TASK_PATH,
+	assertSubAgentPolicyAllowsChild,
+	assertSubAgentPolicyAllowsChildCount,
+	assertSubAgentTaskPath,
+	createChildSubAgentTaskPath,
+	getSubAgentTaskPathDepth,
+	isSubAgentTaskPath,
+	sanitizeSubAgentTaskName,
+} from './runtime/sub-agent-task-path';
+export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {
