@@ -666,6 +666,14 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				}
 			}
 
+			context.trackTelemetry?.('instance_ai_workflow_build_routing', {
+				thread_id: context.threadId,
+				run_id: context.runId,
+				route: 'planned',
+				reason: input.guidance ? 'guided_or_ambiguous_work' : 'complex_or_multi_artifact_work',
+				has_guidance: Boolean(input.guidance),
+			});
+
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools = createToolRegistry();
 

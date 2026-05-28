@@ -101,13 +101,15 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new and multi-workflow work through plan', () => {
+	describe('When to Plan — complexity axis', () => {
+		it('routes clear single-workflow builds directly and keeps plan for coordinated work', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
-			expect(prompt).toContain('workflow tasks include any data table names');
+			expect(prompt).toMatch(/Clear single-workflow build, including a new or one-off workflow/);
+			expect(prompt).toMatch(/Plan-worthy workflow work/);
+			expect(prompt).toContain('multiple workflows');
+			expect(prompt).toContain('shared data-table schema');
 		});
 
 		it('routes standalone data-table work through direct tools and the skill', () => {
@@ -123,7 +125,7 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain(
-				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+				'If workflow work needs shared data tables, load the `data-table-manager` skill before `plan`',
 			);
 		});
 
@@ -150,7 +152,7 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('post-build verify for bypassPlan', () => {
+	describe('post-build verify for direct workflow builds', () => {
 		it('uses verificationReadiness as the post-build routing signal', () => {
 			const prompt = getSystemPrompt({});
 
@@ -208,6 +210,19 @@ describe('getSystemPrompt', () => {
 				'Only call `workflows(action="publish")` when the user explicitly asks',
 			);
 			expect(prompt).not.toContain('outcome.supportingWorkflowIds');
+		});
+	});
+
+	describe('planned synthesis verification handling', () => {
+		it('keeps setup handoff and warning states visible during final synthesis', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('<planned-task-follow-up type="synthesize">');
+			expect(prompt).toContain('verificationReadiness.status === "needs_setup"');
+			expect(prompt).toContain('workflows(action="setup")');
+			expect(prompt).toContain('verificationReadiness.status === "not_verifiable"');
+			expect(prompt).toContain('clear warning/manual-test note');
+			expect(prompt).toContain('do not call it verified');
 		});
 	});
 

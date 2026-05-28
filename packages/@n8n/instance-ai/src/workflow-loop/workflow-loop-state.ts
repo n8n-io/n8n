@@ -205,6 +205,54 @@ export const workflowBuildOutcomeSchema = z.object({
 export type TriggerType = z.infer<typeof triggerTypeSchema>;
 export type WorkflowBuildOutcome = z.infer<typeof workflowBuildOutcomeSchema>;
 
+// ── WorkflowVerificationObligation ─────────────────────────────────────────
+
+export const workflowVerificationObligationStatusSchema = z.enum([
+	'pending_build',
+	'ready_to_verify',
+	'verifying',
+	'verified',
+	'needs_setup',
+	'not_verifiable',
+	'blocked',
+]);
+
+export const workflowVerificationObligationPolicySchema = z.enum([
+	'required',
+	'best_effort',
+	'manual',
+]);
+
+export const workflowVerificationObligationSourceSchema = z.enum(['direct', 'planned']);
+
+export const workflowVerificationObligationSchema = z.object({
+	workItemId: z.string(),
+	threadId: z.string(),
+	runId: z.string().optional(),
+	taskId: z.string().optional(),
+	plannedTaskId: z.string().optional(),
+	workflowId: z.string().optional(),
+	source: workflowVerificationObligationSourceSchema,
+	policy: workflowVerificationObligationPolicySchema,
+	status: workflowVerificationObligationStatusSchema,
+	readiness: workflowVerificationReadinessSchema.optional(),
+	setupRequirement: workflowSetupRequirementSchema.optional(),
+	evidence: workflowVerificationEvidenceSchema.optional(),
+	blockingReason: z.string().optional(),
+	updatedAt: z.string(),
+});
+
+export type WorkflowVerificationObligationStatus = z.infer<
+	typeof workflowVerificationObligationStatusSchema
+>;
+export type WorkflowVerificationObligationPolicy = z.infer<
+	typeof workflowVerificationObligationPolicySchema
+>;
+export type WorkflowVerificationObligationSource = z.infer<
+	typeof workflowVerificationObligationSourceSchema
+>;
+export type WorkflowVerificationObligation = z.infer<typeof workflowVerificationObligationSchema>;
+
 // ── VerificationResult ──────────────────────────────────────────────────────
 
 export const verificationVerdictSchema = z.enum([

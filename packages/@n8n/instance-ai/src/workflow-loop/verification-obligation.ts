@@ -1,0 +1,129 @@
+import type {
+	AttemptRecord,
+	WorkflowBuildOutcome,
+	WorkflowLoopState,
+	WorkflowVerificationObligation,
+	WorkflowVerificationObligationPolicy,
+	WorkflowVerificationObligationSource,
+	WorkflowVerificationObligationStatus,
+} from './workflow-loop-state';
+
+export interface WorkflowVerificationObligationRecord {
+	state: WorkflowLoopState;
+	attempts: AttemptRecord[];
+	lastBuildOutcome?: WorkflowBuildOutcome;
+}
+
+export interface DeriveWorkflowVerificationObligationOptions {
+	source?: WorkflowVerificationObligationSource;
+	plannedTaskId?: string;
+	updatedAt?: string;
+}
+
+const UNSETTLED_OBLIGATION_STATUSES = new Set<WorkflowVerificationObligationStatus>([
+	'pending_build',
+	'ready_to_verify',
+	'verifying',
+]);
+
+function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return (
+		outcome.verification?.attempted === true &&
+		outcome.verification.success &&
+		!!outcome.verification.executionId
+	);
+}
+
+function deriveStatus(
+	state: WorkflowLoopState,
+	outcome: WorkflowBuildOutcome | undefined,
+): WorkflowVerificationObligationStatus {
+	if (!outcome) return 'pending_build';
+
+	if (!outcome.submitted) return 'blocked';
+	if (hasSuccessfulEvidence(outcome)) return 'verified';
+
+	switch (outcome.verificationReadiness?.status) {
+		case 'already_verified':
+			return 'verified';
+		case 'needs_setup':
+			return 'needs_setup';
+		case 'not_verifiable':
+			return 'not_verifiable';
+		case 'ready':
+			if (state.status === 'blocked') return 'blocked';
+			return 'ready_to_verify';
+		default:
+			if (state.status === 'blocked') return 'blocked';
+			return outcome.workflowId ? 'ready_to_verify' : 'blocked';
+	}
+}
+
+function derivePolicy(
+	status: WorkflowVerificationObligationStatus,
+	outcome: WorkflowBuildOutcome | undefined,
+): WorkflowVerificationObligationPolicy {
+	if (status === 'not_verifiable') return 'manual';
+	if (outcome?.verificationReadiness?.status === 'not_verifiable') return 'manual';
+	return 'required';
+}
+
+function deriveBlockingReason(
+	state: WorkflowLoopState,
+	outcome: WorkflowBuildOutcome | undefined,
+): string | undefined {
+	if (!outcome) return undefined;
+	if (!outcome.submitted) {
+		return (
+			outcome.blockingReason ?? outcome.failureSignature ?? 'Builder did not submit a workflow.'
+		);
+	}
+	if (outcome.verificationReadiness?.status === 'not_verifiable') {
+		return outcome.verificationReadiness.guidance;
+	}
+	if (outcome.verificationReadiness?.status === 'needs_setup') {
+		return outcome.verificationReadiness.guidance;
+	}
+	if (state.status === 'blocked') {
+		return state.lastRemediation?.guidance ?? outcome.blockingReason ?? outcome.failureSignature;
+	}
+	return undefined;
+}
+
+function lastAttemptTimestamp(attempts: AttemptRecord[]): string | undefined {
+	return attempts.at(-1)?.createdAt;
+}
+
+export function deriveWorkflowVerificationObligation(
+	threadId: string,
+	record: WorkflowVerificationObligationRecord,
+	options: DeriveWorkflowVerificationObligationOptions = {},
+): WorkflowVerificationObligation {
+	const outcome = record.lastBuildOutcome;
+	const status = deriveStatus(record.state, outcome);
+	const updatedAt =
+		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
+
+	return {
+		workItemId: record.state.workItemId,
+		threadId,
+		runId: outcome?.runId ?? record.state.runId,
+		taskId: outcome?.taskId ?? record.state.lastTaskId,
+		plannedTaskId: options.plannedTaskId,
+		workflowId: outcome?.workflowId ?? record.state.workflowId,
+		source: options.source ?? 'direct',
+		policy: derivePolicy(status, outcome),
+		status,
+		readiness: outcome?.verificationReadiness,
+		setupRequirement: outcome?.setupRequirement,
+		evidence: outcome?.verification,
+		blockingReason: deriveBlockingReason(record.state, outcome),
+		updatedAt,
+	};
+}
+
+export function isWorkflowVerificationObligationUnsettled(
+	obligation: WorkflowVerificationObligation,
+): boolean {
+	return UNSETTLED_OBLIGATION_STATUSES.has(obligation.status);
+}

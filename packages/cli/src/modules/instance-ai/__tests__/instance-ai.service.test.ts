@@ -227,7 +227,13 @@ type BackgroundTaskFollowUpServiceInternals = {
 			threadId: string,
 			message: string,
 			messageGroupId?: string,
+			isReplanFollowUp?: boolean,
+			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+			resumeReasonOverride?: string,
 		) => Promise<string | undefined>
+	>;
+	maybeStartWorkflowVerificationFollowUp: jest.MockedFunction<
+		(user: User, task: ManagedBackgroundTask) => Promise<boolean>
 	>;
 	queuePendingCheckpointReentry: jest.MockedFunction<
 		(threadId: string, checkpointTaskId: string) => void
@@ -304,8 +310,18 @@ function createBackgroundTaskFollowUpService({
 		) => {},
 	);
 	service.startInternalFollowUpRun = jest.fn(
-		async (_user: User, _threadId: string, _message: string, _messageGroupId?: string) =>
-			'run-follow-up',
+		async (
+			_user: User,
+			_threadId: string,
+			_message: string,
+			_messageGroupId?: string,
+			_isReplanFollowUp?: boolean,
+			_checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+			_resumeReasonOverride?: string,
+		) => 'run-follow-up',
+	);
+	service.maybeStartWorkflowVerificationFollowUp = jest.fn(
+		async (_user: User, _task: ManagedBackgroundTask) => false,
 	);
 	service.queuePendingCheckpointReentry = jest.fn();
 	service.maybeReenterParentCheckpoint = jest.fn(
@@ -1212,6 +1228,29 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		);
 	});
 
+	it('lets workflow verification follow-up replace the generic background completion follow-up', async () => {
+		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService();
+		service.maybeStartWorkflowVerificationFollowUp.mockResolvedValue(true);
+
+		service.spawnBackgroundTask(
+			'run-1',
+			{
+				taskId: 'task-1',
+				threadId: 'thread-a',
+				agentId: 'agent-builder',
+				role: 'workflow-builder',
+				workItemId: 'wi-1',
+				run: async () => 'done',
+			},
+			{},
+			'group-1',
+		);
+		await getSpawnOptions().onSettled?.(task);
+
+		expect(service.maybeStartWorkflowVerificationFollowUp).toHaveBeenCalledWith(fakeUser, task);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+	});
+
 	it('skips internal follow-up when the active run already timed out', async () => {
 		const { service, task, getSpawnOptions } = createBackgroundTaskFollowUpService({
 			timedOutThread: true,
@@ -1508,9 +1547,11 @@ type PlannedTaskSchedulerServiceInternals = {
 	cancelRun: jest.Mock;
 	createPlannedTaskState: jest.Mock;
 	syncPlannedTasksToUi: jest.Mock;
+	findUnsettledPlannedWorkflowVerification: jest.Mock;
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	startInternalFollowUpRun: jest.Mock;
 	buildPlannedTaskFollowUpMessage: jest.Mock;
+	buildWorkflowVerificationFollowUpMessage: jest.Mock;
 	runState: {
 		getThreadResearchMode: jest.Mock;
 		hasLiveRun: jest.Mock;
@@ -1545,9 +1586,11 @@ function createPlannedTaskSchedulerService(): {
 	service.cancelRun = jest.fn();
 	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
 	service.syncPlannedTasksToUi = jest.fn(async () => {});
+	service.findUnsettledPlannedWorkflowVerification = jest.fn(async () => undefined);
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
 	service.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
+	service.buildWorkflowVerificationFollowUpMessage = jest.fn(() => 'workflow verification message');
 	service.runState = {
 		getThreadResearchMode: jest.fn(() => false),
 		hasLiveRun: jest.fn(() => false),
@@ -1704,6 +1747,56 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'follow-up message',
 			'group-1',
 			true,
+		);
+	});
+
+	it('routes planned synthesis through workflow verification while an obligation is unsettled', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const workflowTask = {
+			id: 'build-wf',
+			title: 'Build workflow',
+			kind: 'build-workflow',
+			status: 'succeeded',
+			outcome: { workItemId: 'wi-1', workflowId: 'wf-1' },
+		};
+		const graphWithTask = { ...graph, tasks: [workflowTask] };
+		plannedTaskService.getGraph.mockResolvedValue(graphWithTask);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'synthesize',
+			graph: graphWithTask,
+		});
+		service.findUnsettledPlannedWorkflowVerification.mockResolvedValue({
+			obligation: {
+				workItemId: 'wi-1',
+				threadId: 'thread-a',
+				workflowId: 'wf-1',
+				source: 'planned',
+				policy: 'required',
+				status: 'ready_to_verify',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			outcome: undefined,
+			task: workflowTask,
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(plannedTaskService.revertToActive).toHaveBeenCalledWith('thread-a');
+		expect(service.buildWorkflowVerificationFollowUpMessage).toHaveBeenCalled();
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'workflow verification message',
+			'group-1',
+			false,
+			undefined,
+			'workflow_verification',
+		);
+		expect(service.buildPlannedTaskFollowUpMessage).not.toHaveBeenCalledWith(
+			'synthesize',
+			expect.anything(),
 		);
 	});
 });

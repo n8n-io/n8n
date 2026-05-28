@@ -78,9 +78,10 @@ ${NATIVE_NODE_PREFERENCE}
 - **No duplicate items.** Each piece of workflow or delegate work appears exactly once. Use \`workflow\` kind for workflows. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
 - **Data-table-only plans are invalid.** Pure data-table requests have no plan item; the orchestrator uses the \`data-table-manager\` skill and direct tools instead. If the user asked for a workflow plus tables, table requirements belong in the workflow \`purpose\`.
 - **Each item's \`purpose\` describes only that item.** Do not reference work handled by other plan items — each agent only sees its own spec, and cross-task context causes scope creep.
-- **Workflow verification is mandatory.** For **every** \`workflow\` item you add, also add a \`checkpoint\` item whose \`dependsOn\` includes that workflow's ID. Checkpoints are orchestrator-executed — the orchestrator runs them itself using its own tools, they are not delegated.
-  - \`title\`: a user-readable verification goal, e.g. \`"Verify 'Daily API Email' workflow runs successfully"\`.
-  - \`instructions\`: detailed steps the orchestrator must execute. Prefer \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). For workflows with real credentials and a testable trigger (manual, schedule), \`executions(action="run")\` is acceptable. State the pass condition in plain terms (e.g. "run completes without errors and produces at least one output row").
+- **Workflow verification is automatic.** Do NOT add routine "verify this workflow" checkpoints for every workflow item. The build system records a structured build outcome, and the orchestrator verifies or routes setup from that outcome after the builder finishes.
+- **Checkpoint items are exceptional semantic checks.** Add a \`checkpoint\` only when standard runtime verification cannot cover the validation, such as cross-workflow contract checks, confirming a report combines data from multiple upstream workflows, or checking a business invariant that spans multiple deliverables.
+  - \`title\`: a user-readable semantic validation goal, e.g. \`"Verify downstream report combines CRM and billing data"\`.
+  - \`instructions\`: detailed steps the orchestrator must execute and the pass condition in plain terms.
   - Do NOT list \`tools\` on a checkpoint — it is not a delegate task.
-  - Do NOT emit a checkpoint for a \`delegate\` item. Checkpoints are for workflows only.
+  - Do NOT emit a checkpoint for a \`delegate\` item.
 - **Always call \`submit-plan\` after the last \`add-plan-item\`.** On rejection, be surgical — change only what the user asked for. Never fabricate node names; search first if unsure.`;

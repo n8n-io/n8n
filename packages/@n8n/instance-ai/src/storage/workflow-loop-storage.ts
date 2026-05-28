@@ -66,6 +66,11 @@ export class WorkflowLoopStorage {
 		return null;
 	}
 
+	async listWorkItems(threadId: string): Promise<WorkflowLoopWorkItemRecord[]> {
+		const all = await this.loadAll(threadId);
+		return Object.values(all);
+	}
+
 	private async loadAll(threadId: string): Promise<Record<string, WorkflowLoopWorkItemRecord>> {
 		const thread = await getThread(this.memory, threadId);
 		if (!thread?.metadata?.[METADATA_KEY]) return {};

@@ -190,4 +190,25 @@ describe('WorkflowLoopStorage', () => {
 			expect(await storage.getActiveWorkItem('thread-1')).toBeNull();
 		});
 	});
+
+	describe('listWorkItems', () => {
+		it('returns all stored work items', async () => {
+			const firstState = makeState({ workItemId: 'wi-1' });
+			const secondState = makeState({ workItemId: 'wi-2' });
+
+			jest.mocked(memory.getThread).mockResolvedValue({
+				...baseThread,
+				metadata: {
+					instanceAiWorkflowLoop: {
+						'wi-1': { state: firstState, attempts: [] },
+						'wi-2': { state: secondState, attempts: [] },
+					},
+				},
+			});
+
+			const result = await storage.listWorkItems('thread-1');
+
+			expect(result.map((record) => record.state.workItemId)).toEqual(['wi-1', 'wi-2']);
+		});
+	});
 });

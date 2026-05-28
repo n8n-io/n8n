@@ -13,8 +13,11 @@ them. Some are conditional on context availability.
 ### `plan`
 
 Persist a dependency-aware task plan for detached multi-step execution. Use only
-when the work requires 2+ tasks with dependencies. The plan is shown to the user
-for approval before execution starts.
+when the work requires architecture or dependency coordination, such as multiple
+workflows, cross-workflow dependencies, shared data-table schema work, or
+user-requested plan review. Clear single-workflow builds, including new and
+one-off workflows, use `build-workflow-with-agent` directly instead. The plan is
+shown to the user for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -45,10 +48,13 @@ for approval before execution starts.
 **Task kinds** map to executors:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
-- `checkpoint` → orchestrator-executed verification step
+- `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data-tables` / `parse-file` tools.
+`data-table-manager` skill and the `data-tables` / `parse-file` tools. Single
+workflow-local table requirements belong in the builder task spec; plan only
+when the table schema is shared, independently durable, or creates real
+dependency coordination.
 
 ### `delegate`
 
@@ -82,7 +88,7 @@ tracking during synchronous work.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `tasks` | array | yes | List of `{id, description, status}` items |
+| `tasks` | array | yes | List of `{id, description, status, detail?}` items |
 
 **Returns**: `{ result: string }`
 
@@ -98,6 +104,8 @@ the builder runs detached from the orchestrator.
 | `task` | string | yes | What to build and any context |
 | `workflowId` | string | no | Existing workflow ID to modify |
 | `conversationContext` | string | no | What user already knows |
+| `bypassPlan` | boolean | no | Required for direct edits to an existing workflow |
+| `reason` | string | no | Required when `bypassPlan` is true |
 
 **Returns**: `{ result: string }` — contains task ID for background tracking.
 
@@ -109,7 +117,13 @@ the builder runs detached from the orchestrator.
 - **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
   `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
 
-Both modes: max 30 steps, publishes events to the event bus, non-blocking.
+Both modes: max 30 steps, publishes events to the event bus, non-blocking. The
+builder submits a structured `WorkflowBuildOutcome`; the service derives a
+workflow verification obligation from it and routes verification, setup handoff,
+not-verifiable warning, or blocker handling before presenting the workflow as
+complete. Direct workflow creation does not grant automatic scoped permission to
+run the created workflow; verification uses the normal run-workflow permission
+flow.
 
 **Sandbox-only tools** (not in `createAllTools`, only available to the builder):
 - `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
@@ -166,7 +180,10 @@ Run a built workflow with sidecar pin data for verification (never persisted).
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
-**Writes on success/failure**: the tool persists a structured `verification` record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto the build outcome so subsequent checkpoint turns can reuse it without re-running verify.
+**Writes on success/failure**: the tool persists a structured `verification`
+record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+the build outcome so workflow-verification follow-ups and exceptional checkpoint
+turns can reuse it without re-running verify.
 
 **Returns**: `{ executionId?, success, status?, data?, error? }`
 

@@ -47,6 +47,7 @@ const {
 	builderWorkflowWorkspaceLayout,
 	materializeBuilderRuntimeSkills,
 	mergeLatestVerificationIntoOutcome,
+	workflowVerificationEvidenceFromExecutionRunEvents,
 	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
 } =
@@ -366,6 +367,78 @@ describe('mergeLatestVerificationIntoOutcome', () => {
 	});
 });
 
+describe('workflowVerificationEvidenceFromExecutionRunEvents', () => {
+	function toolCall(
+		toolCallId: string,
+		toolName: string,
+		args: Record<string, unknown>,
+	): InstanceAiEvent {
+		return {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'agent-builder',
+			payload: { toolCallId, toolName, args },
+		};
+	}
+
+	function toolResult(toolCallId: string, result: unknown): InstanceAiEvent {
+		return {
+			type: 'tool-result',
+			runId: 'run-1',
+			agentId: 'agent-builder',
+			payload: { toolCallId, result },
+		};
+	}
+
+	it('extracts successful execution-run evidence for the submitted workflow', () => {
+		const evidence = workflowVerificationEvidenceFromExecutionRunEvents(
+			[
+				toolCall('submit-1', 'submit-workflow', {}),
+				toolResult('submit-1', { success: true, workflowId: 'workflow-1' }),
+				toolCall('exec-1', 'executions', { action: 'run', workflowId: 'workflow-1' }),
+				toolResult('exec-1', {
+					executionId: 'execution-1',
+					status: 'success',
+					data: {
+						'Manual Trigger': '<untrusted_data source="execution-output">\n[{}]\n</untrusted_data>',
+						'Set Fields': [{ json: { name: 'Ada' } }, { json: { name: 'Grace' } }],
+					},
+				}),
+			],
+			{ workflowId: 'workflow-1', agentId: 'agent-builder' },
+		);
+
+		expect(evidence).toMatchObject({
+			attempted: true,
+			success: true,
+			executionId: 'execution-1',
+			status: 'success',
+			evidence: {
+				nodesExecuted: ['Manual Trigger', 'Set Fields'],
+				producedOutputRows: 3,
+			},
+		});
+	});
+
+	it('does not reuse execution evidence from before the latest submit', () => {
+		const evidence = workflowVerificationEvidenceFromExecutionRunEvents(
+			[
+				toolCall('exec-1', 'executions', { action: 'run', workflowId: 'workflow-1' }),
+				toolResult('exec-1', {
+					executionId: 'execution-1',
+					status: 'success',
+					data: { 'Set Fields': [{}] },
+				}),
+				toolCall('submit-1', 'submit-workflow', {}),
+				toolResult('submit-1', { success: true, workflowId: 'workflow-1' }),
+			],
+			{ workflowId: 'workflow-1', agentId: 'agent-builder' },
+		);
+
+		expect(evidence).toBeUndefined();
+	});
+});
+
 describe('determineVerificationReadiness', () => {
 	it('marks a mockable trigger as ready without exposing pin-data details to the prompt', () => {
 		expect(
@@ -389,6 +462,18 @@ describe('determineVerificationReadiness', () => {
 				mockedCredentialTypes: ['slackApi'],
 				mockedCredentialsByNode: { Slack: ['slackApi'] },
 				usesWorkflowPinDataForVerification: true,
+			}),
+		).toEqual({ status: 'ready' });
+	});
+
+	it('prefers verification with pin data before setup for placeholders', () => {
+		expect(
+			determineVerificationReadiness({
+				submitted: true,
+				workflowId: 'workflow-1',
+				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+				hasUnresolvedPlaceholders: true,
+				verificationPinData: { Webhook: [{ body: { sample: true } }] },
 			}),
 		).toEqual({ status: 'ready' });
 	});
@@ -1588,48 +1673,33 @@ describe('settleMissingMainWorkflowSubmit', () => {
 	});
 });
 
-describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
-	const ORIGINAL_ENV = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-
-	afterEach(() => {
-		if (ORIGINAL_ENV === undefined) {
-			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-		} else {
-			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = ORIGINAL_ENV;
-		}
-	});
-
-	it('rejects direct calls outside a replan/checkpoint follow-up with an imperative STOP message', async () => {
+describe('createBuildWorkflowAgentTool — direct-build guard', () => {
+	it('allows direct new workflow builds without workflowId or bypassPlan', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, { task: 'Build a Slack notifier' });
 
-		expect(out.taskId).toBe('');
-		expect(out.result).toMatch(/^STOP\./);
-		expect(out.result).toContain('`plan`');
-		expect(out.result).toContain('bypassPlan');
-		expect(context.logger.warn).toHaveBeenCalledWith(
-			'build-workflow-with-agent called outside plan/replan context — rejecting',
-			expect.objectContaining({ threadId: 'test-thread' }),
-		);
+		expect(out.result).not.toMatch(/^STOP\./);
 	});
 
-	it('rejects bypassPlan=true without a workflowId with an imperative STOP message', async () => {
+	it('rejects existing workflow edits without bypassPlan with an imperative STOP message', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, {
-			task: 'build something shiny',
-			bypassPlan: true,
-			reason: 'I feel like skipping the plan today',
+			task: 'Patch this Slack notifier',
+			workflowId: 'WF_EXISTING',
 		});
 
 		expect(out.taskId).toBe('');
 		expect(out.result).toMatch(/^STOP\./);
-		expect(out.result).toMatch(/EXISTING workflow/);
-		expect(out.result).toContain('`workflowId`');
-		expect(out.result).toContain('`plan`');
+		expect(out.result).toContain('bypassPlan');
+		expect(out.result).toContain('existing workflow');
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'build-workflow-with-agent called for existing workflow without bypassPlan — rejecting',
+			expect.objectContaining({ threadId: 'test-thread' }),
+		);
 	});
 
 	it('rejects bypassPlan=true without a reason with an imperative STOP message', async () => {
@@ -1645,6 +1715,42 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(out.taskId).toBe('');
 		expect(out.result).toMatch(/^STOP\./);
 		expect(out.result).toContain('`reason`');
+	});
+
+	it('rejects bypassPlan=true without an existing workflowId', async () => {
+		const context = createMockContext();
+		const tool = createBuildWorkflowAgentTool(context);
+
+		const out = await executeTool(tool, {
+			task: 'build a new workflow',
+			bypassPlan: true,
+			reason: 'Build a one-off workflow.',
+		});
+
+		expect(out.taskId).toBe('');
+		expect(out.result).toMatch(/^STOP\./);
+		expect(out.result).toContain('workflowId');
+		expect(out.result).toContain('without `bypassPlan`');
+	});
+
+	it('tracks direct workflow build routing decisions', async () => {
+		const trackTelemetry = jest.fn();
+		const context = createMockContext({ trackTelemetry });
+		const tool = createBuildWorkflowAgentTool(context);
+
+		await executeTool(tool, { task: 'Build a Slack notifier' });
+
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_build_routing',
+			expect.objectContaining({
+				thread_id: 'test-thread',
+				run_id: 'test-run',
+				route: 'direct',
+				reason: 'single_workflow_build',
+				mode: 'create',
+				bypass_plan: false,
+			}),
+		);
 	});
 
 	it('allows the call when bypassPlan=true with a reason is provided', async () => {
@@ -1676,7 +1782,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		expect(out.result).not.toMatch(/^STOP\./);
 		expect(context.logger.warn).not.toHaveBeenCalledWith(
-			'build-workflow-with-agent called outside plan/replan context — rejecting',
+			'build-workflow-with-agent called for existing workflow without bypassPlan — rejecting',
 			expect.anything(),
 		);
 	});
@@ -1731,34 +1837,24 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(out.result).not.toMatch(/^STOP\./);
 	});
 
-	it('skips the guard when the env flag is disabled', async () => {
-		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
-		const context = createMockContext();
-		const tool = createBuildWorkflowAgentTool(context);
-
-		const out = await executeTool(tool, { task: 'build directly' });
-
-		expect(out.result).not.toContain('STOP');
-	});
-
 	// If the LLM keeps retrying the same rejected call, the tool throws after
-	// PLAN_GUARD_REJECTION_LIMIT (3) consecutive rejections so the loop surfaces
+	// DIRECT_BUILD_GUARD_REJECTION_LIMIT (3) consecutive rejections so the loop surfaces
 	// as a clean failure instead of a stall.
-	it('throws after three consecutive plan-guard rejections in the same tool instance', async () => {
+	it('throws after three consecutive direct-edit guard rejections in the same tool instance', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context);
 
-		const first = await executeTool(tool, { task: 'one' });
+		const first = await executeTool(tool, { task: 'one', workflowId: 'WF_EXISTING' });
 		expect(first.result).toMatch(/^STOP\./);
 
-		const second = await executeTool(tool, { task: 'two' });
+		const second = await executeTool(tool, { task: 'two', workflowId: 'WF_EXISTING' });
 		expect(second.result).toMatch(/^STOP\./);
 
-		const third = executeTool(tool, { task: 'three' });
+		const third = executeTool(tool, { task: 'three', workflowId: 'WF_EXISTING' });
 		await expect(third).rejects.toThrow(UserError);
 		await expect(third).rejects.toThrow(/looped on .* rejections/);
 		expect(context.logger.warn).toHaveBeenCalledWith(
-			'build-workflow-with-agent plan-guard rejection limit reached — aborting run',
+			'build-workflow-with-agent direct-build guard rejection limit reached — aborting run',
 			expect.objectContaining({
 				threadId: 'test-thread',
 				rejectionCount: 3,
@@ -1766,17 +1862,17 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		);
 	});
 
-	it('counts mixed-cause rejections (missing bypassPlan / workflowId / reason) toward the same limit', async () => {
+	it('counts mixed-cause rejections (missing bypassPlan / reason) toward the same limit', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context);
 
 		// 1: missing bypassPlan
-		await executeTool(tool, { task: 'one' });
-		// 2: bypassPlan=true but missing workflowId
+		await executeTool(tool, { task: 'one', workflowId: 'WF_EXISTING' });
+		// 2: bypassPlan=true but missing reason
 		await executeTool(tool, {
 			task: 'two',
+			workflowId: 'WF_EXISTING',
 			bypassPlan: true,
-			reason: 'patch a thing',
 		});
 		// 3: bypassPlan=true + workflowId but missing reason — throws
 		const third = executeTool(tool, {
@@ -1795,8 +1891,8 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const tool = createBuildWorkflowAgentTool(context);
 
 		// Two rejections — counter at 2.
-		await executeTool(tool, { task: 'one' });
-		await executeTool(tool, { task: 'two' });
+		await executeTool(tool, { task: 'one', workflowId: 'WF_EXISTING' });
+		await executeTool(tool, { task: 'two', workflowId: 'WF_EXISTING' });
 
 		// A valid bypassPlan call gets past the guard (startBuildWorkflowAgentTask
 		// short-circuits on missing spawnBackgroundTask, but the counter resets
@@ -1810,9 +1906,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		expect(past.result).not.toMatch(/^STOP\./);
 
 		// Two more rejections — the counter restarts from 0, so this must NOT throw.
-		const fourth = await executeTool(tool, { task: 'three' });
+		const fourth = await executeTool(tool, { task: 'three', workflowId: 'WF_EXISTING' });
 		expect(fourth.result).toMatch(/^STOP\./);
-		const fifth = await executeTool(tool, { task: 'four' });
+		const fifth = await executeTool(tool, { task: 'four', workflowId: 'WF_EXISTING' });
 		expect(fifth.result).toMatch(/^STOP\./);
 	});
 
@@ -1820,32 +1916,20 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const contextA = createMockContext();
 		const toolA = createBuildWorkflowAgentTool(contextA);
 
-		await executeTool(toolA, { task: 'a-one' });
-		await executeTool(toolA, { task: 'a-two' });
+		await executeTool(toolA, { task: 'a-one', workflowId: 'WF_EXISTING' });
+		await executeTool(toolA, { task: 'a-two', workflowId: 'WF_EXISTING' });
 
 		// A different tool instance must start with a fresh counter.
 		const contextB = createMockContext();
 		const toolB = createBuildWorkflowAgentTool(contextB);
 
-		const out = await executeTool(toolB, { task: 'b-one' });
+		const out = await executeTool(toolB, { task: 'b-one', workflowId: 'WF_EXISTING' });
 		expect(out.result).toMatch(/^STOP\./);
 
 		// And toolA, which is at 2, throws on its next call as expected.
-		await expect(executeTool(toolA, { task: 'a-three' })).rejects.toThrow(
-			/looped on .* rejections/,
-		);
-	});
-
-	it('does not increment the counter or throw when the guard is disabled by env flag', async () => {
-		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
-		const context = createMockContext();
-		const tool = createBuildWorkflowAgentTool(context);
-
-		// Many calls with input shapes that would otherwise trip the guard — none throw.
-		for (let i = 0; i < 5; i++) {
-			const out = await executeTool(tool, { task: `call-${i}` });
-			expect(out.result).not.toMatch(/^STOP\./);
-		}
+		await expect(
+			executeTool(toolA, { task: 'a-three', workflowId: 'WF_EXISTING' }),
+		).rejects.toThrow(/looped on .* rejections/);
 	});
 
 	it('does not increment the counter when the run is a replan follow-up', async () => {
@@ -1864,16 +1948,6 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 });
 
 describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
-	const ORIGINAL_ENV = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-
-	afterEach(() => {
-		if (ORIGINAL_ENV === undefined) {
-			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-		} else {
-			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = ORIGINAL_ENV;
-		}
-	});
-
 	const editInput = {
 		task: 'patch one expression',
 		workflowId: 'WF_EXISTING',
@@ -1934,7 +2008,6 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 	});
 
 	it('does not apply the edit approval gate without a workflowId', async () => {
-		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
 		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
 		const suspend = jest.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);

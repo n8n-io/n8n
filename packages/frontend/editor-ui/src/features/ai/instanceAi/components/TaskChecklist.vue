@@ -8,6 +8,8 @@ const props = defineProps<{
 	tasks?: TaskList;
 }>();
 
+type TaskItemWithDetail = TaskList['tasks'][number] & { detail?: string };
+
 type StatusConfig = {
 	icon: IconName;
 	spin?: boolean;
@@ -38,10 +40,11 @@ function getConfig(status: string) {
 
 const taskList = computed(() =>
 	(props.tasks?.tasks ?? []).map((task) => {
+		const taskWithDetail: TaskItemWithDetail = task;
 		const config = getConfig(task.status);
 
 		return {
-			...task,
+			...taskWithDetail,
 			...config,
 		};
 	}),
@@ -52,14 +55,30 @@ const taskList = computed(() =>
 	<N8nCard v-if="taskList.length">
 		<ButtonLike v-for="task in taskList" :key="task.id">
 			<N8nIcon :icon="task.icon" :spin="task.spin" size="small" :color="task.color" />
-			<N8nText :color="task.textColor" :class="{ [$style.lineThrough]: task.lineThrough }">
-				{{ task.description }}
-			</N8nText>
+			<span :class="$style.content">
+				<N8nText :color="task.textColor" :class="{ [$style.lineThrough]: task.lineThrough }">
+					{{ task.description }}
+				</N8nText>
+				<N8nText v-if="task.detail" size="small" color="text-light" :class="$style.detail">
+					{{ task.detail }}
+				</N8nText>
+			</span>
 		</ButtonLike>
 	</N8nCard>
 </template>
 
 <style lang="scss" module>
+.content {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.detail {
+	line-height: var(--font-line-height-regular);
+}
+
 .lineThrough {
 	text-decoration: line-through;
 }

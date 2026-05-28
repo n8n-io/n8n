@@ -351,7 +351,10 @@ export {
 	handleVerificationVerdict,
 	formatAttemptHistory,
 	WorkflowTaskCoordinator,
+	deriveWorkflowVerificationObligation,
+	isWorkflowVerificationObligationUnsettled,
 	workflowBuildOutcomeSchema,
+	workflowVerificationEvidenceSchema,
 	attemptRecordSchema,
 	workflowLoopStateSchema,
 	verificationResultSchema,
@@ -362,6 +365,8 @@ export type {
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,
+	WorkflowVerificationObligation,
+	WorkflowVerificationObligationSource,
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';

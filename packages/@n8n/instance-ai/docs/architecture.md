@@ -95,10 +95,11 @@ The system implements the four pillars of the deep agent pattern:
 
 ### 1. Explicit Planning
 
-The orchestrator uses a `plan` tool to externalize its execution strategy.
-Between phases of the autonomous loop, the orchestrator reviews and updates the
-plan. This serves as a context engineering mechanism — writing the plan forces
-structured reasoning, and reading it back prevents goal drift over long loops.
+The orchestrator uses a `plan` tool to externalize its execution strategy for
+work that needs dependency coordination: multiple workflows, shared artifacts,
+cross-workflow data contracts, or ambiguous business process design. Clear
+single-workflow builds, including new and one-off workflows, go directly to the
+builder and do not create a plan merely to obtain verification.
 
 Plans are stored in thread-scoped storage (see ADR-017).
 
@@ -169,8 +170,11 @@ graph TD
 
 **Multi-task plans** (`plan` tool):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured executor (builder, checkpoint, or delegate)
+- Each task dispatched to a preconfigured executor (builder, delegate, or
+  exceptional semantic checkpoint)
 - User approves the plan before execution starts
+- Workflow runtime verification is tracked separately as a workflow-loop
+  obligation, so routine "verify workflow" checkpoints are not required
 
 The orchestrator decides what to delegate based on complexity — simple reads
 stay direct, complex operations go to focused sub-agents.
@@ -340,16 +344,17 @@ task has a `kind` that determines its executor:
 |------|----------|-------|
 | `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
-| `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
+| `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the
-`data-table-manager` skill and uses `data-tables` / `parse-file` directly.
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly. A
+single workflow with a workflow-local table can use the direct builder path;
+planning is reserved for shared schema work or real dependency coordination.
 
-Build and delegate tasks run detached as background agents. Checkpoint
-tasks run as orchestrator follow-ups so they can inspect the latest workflow
-state before verifying. Dependencies are respected — a task only starts when all
-its `deps` have succeeded. The plan is shown to the user for approval before
-execution begins.
+Build and delegate tasks run detached as background agents. Checkpoint tasks run
+as orchestrator follow-ups when the plan includes an exceptional semantic check.
+Dependencies are respected — a task only starts when all its `deps` have
+succeeded. The plan is shown to the user for approval before execution begins.
 
 ### Workflow Loop State Machine
 
@@ -364,7 +369,17 @@ build → submit → verify → (success | needs_patch | needs_rebuild | failed_
                                         verify          verify
 ```
 
-The `report-verification-verdict` tool feeds results into this state machine,
+Workflow-loop storage also derives a `WorkflowVerificationObligation` from each
+builder outcome. The service uses this obligation as the completion gate for both
+direct and planned workflow builds:
+
+- `ready_to_verify` schedules an internal workflow-verification follow-up.
+- `verified` reuses structured `verify-built-workflow` evidence.
+- `needs_setup` routes to `workflows(action="setup")`.
+- `not_verifiable` is a warning/manual-test completion state, not "verified".
+- `blocked` carries the build or verification blocker.
+
+The `report-verification-verdict` tool feeds results into the state machine,
 which returns guidance for the next action. Same failure signature twice triggers
 a terminal state to prevent infinite loops.
 

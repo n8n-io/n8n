@@ -271,6 +271,7 @@ export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema
 export const taskItemSchema = z.object({
 	id: z.string().describe('Unique task identifier'),
 	description: z.string().describe('What this task accomplishes'),
+	detail: z.string().optional().describe('Secondary lifecycle state or evidence for this task'),
 	status: z.enum(['todo', 'in_progress', 'done', 'failed', 'cancelled']).describe('Current status'),
 });
 
