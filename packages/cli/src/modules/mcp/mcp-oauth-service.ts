@@ -291,7 +291,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	 *
 	 * @param client The authenticated OAuth client.
 	 * @param refreshToken The refresh token to rotate.
-	 * @param _scopes Not used per OAuth 2.1 refresh-token behavior.)
+	 * @param _scopes Not used per OAuth 2.1 refresh-token behavior.
 	 * @param resource Optional RFC 8707 resource indicator.
 	 *
 	 * @see exchangeAuthorizationCode For initial authorization code exchange.
