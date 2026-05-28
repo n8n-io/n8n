@@ -719,7 +719,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-tool', 0);
+		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-tool', {
+			kind: 'tool',
+			toolType: 'custom',
+			id: 'custom_tool',
+		});
 		await nextTick();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
