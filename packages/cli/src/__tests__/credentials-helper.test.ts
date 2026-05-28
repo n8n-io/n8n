@@ -1253,13 +1253,24 @@ describe('CredentialsHelper', () => {
 				mock<AiGatewayService>(),
 			);
 
+		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
+		// the FQ list (matching `nodeType`) comes from `credentialTypes.getSupportedNodes`.
+		// Mocks split the two so the FQ-vs-short bug stays caught.
 		const mockType = (overrides: Partial<ICredentialType>): ICredentialType =>
 			({ name: 'restrictedApi', ...overrides }) as ICredentialType;
 
-		it('returns true when the credential type does not opt into restriction', () => {
+		const buildCredentialTypes = (typeDef: ICredentialType, supportedNodes: string[] = []) => {
 			const credentialTypes = mock<CredentialTypes>();
-			credentialTypes.getByName.mockReturnValue(
-				mockType({ supportedNodes: ['n8n-nodes-base.restrictedConsumer'] }), // no restrictToSupportedNodes
+			credentialTypes.getByName.mockReturnValue(typeDef);
+			credentialTypes.getSupportedNodes.mockReturnValue(supportedNodes);
+			return credentialTypes;
+		};
+
+		it('returns true when the credential type does not opt into restriction', () => {
+			// no restrictToSupportedNodes — FQ list shouldn't even be consulted
+			const credentialTypes = buildCredentialTypes(
+				mockType({ supportedNodes: ['restrictedConsumer'] }),
+				['n8n-nodes-base.restrictedConsumer'],
 			);
 
 			expect(
@@ -1271,12 +1282,12 @@ describe('CredentialsHelper', () => {
 		});
 
 		it('returns true when restricted and the node is in supportedNodes', () => {
-			const credentialTypes = mock<CredentialTypes>();
-			credentialTypes.getByName.mockReturnValue(
+			const credentialTypes = buildCredentialTypes(
 				mockType({
 					restrictToSupportedNodes: true,
-					supportedNodes: ['n8n-nodes-base.restrictedConsumer'],
+					supportedNodes: ['restrictedConsumer'],
 				}),
+				['n8n-nodes-base.restrictedConsumer'],
 			);
 
 			expect(
@@ -1288,12 +1299,12 @@ describe('CredentialsHelper', () => {
 		});
 
 		it('returns false when restricted and the node is NOT in supportedNodes', () => {
-			const credentialTypes = mock<CredentialTypes>();
-			credentialTypes.getByName.mockReturnValue(
+			const credentialTypes = buildCredentialTypes(
 				mockType({
 					restrictToSupportedNodes: true,
-					supportedNodes: ['n8n-nodes-base.restrictedConsumer'],
+					supportedNodes: ['restrictedConsumer'],
 				}),
+				['n8n-nodes-base.restrictedConsumer'],
 			);
 
 			expect(
@@ -1304,10 +1315,10 @@ describe('CredentialsHelper', () => {
 			).toBe(false);
 		});
 
-		it('returns false when restricted and supportedNodes is empty/undefined (fail-safe)', () => {
-			const credentialTypes = mock<CredentialTypes>();
-			credentialTypes.getByName.mockReturnValue(
+		it('returns false when restricted and the FQ supportedNodes list is empty (fail-safe)', () => {
+			const credentialTypes = buildCredentialTypes(
 				mockType({ restrictToSupportedNodes: true }), // no supportedNodes
+				[],
 			);
 
 			expect(

@@ -192,11 +192,17 @@ export class WorkflowValidationService {
 				}
 
 				if (!typeDef.restrictToSupportedNodes) continue;
-				if (typeDef.supportedNodes?.includes(node.type)) continue;
+
+				// `typeDef.supportedNodes` from the loader holds short node names
+				// (e.g. "mattermost"), but `node.type` is fully qualified
+				// (e.g. "n8n-nodes-base.mattermost"). `getSupportedNodes` returns
+				// the post-processed FQ list so the comparison can match.
+				const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+				if (supportedNodes.includes(node.type)) continue;
 
 				violations.push(
 					`Node "${node.name}" (${node.type}) cannot use credential type "${credentialType}" — it is restricted to: ${
-						typeDef.supportedNodes?.join(', ') ?? '(no nodes)'
+						supportedNodes.length > 0 ? supportedNodes.join(', ') : '(no nodes)'
 					}.`,
 				);
 			}
