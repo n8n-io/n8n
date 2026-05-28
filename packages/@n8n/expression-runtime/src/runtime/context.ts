@@ -10,6 +10,7 @@ import {
 	isObjectMetadata,
 	throwIfErrorSentinel,
 } from './lazy-proxy';
+import { jmesPath } from './jmespath';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -96,6 +97,13 @@ export function buildContext(
 	// pattern resolves them correctly when the VM checks ctx first
 	target.extend = extend;
 	target.extendOptional = extendOptional;
+
+	// Expose jmespath helpers in-isolate so they shadow the host-side
+	// `data.$jmesPath` / `data.$jmespath` from WorkflowDataProxy. Same rationale
+	// as extend / extendOptional above: keeping these in-isolate removes them
+	// from the bridge's reachable host-callable surface.
+	target.$jmesPath = jmesPath;
+	target.$jmespath = jmesPath;
 
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
 	initializeBuiltins(target);
