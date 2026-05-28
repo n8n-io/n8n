@@ -421,6 +421,27 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
+			.description(
+				'List published agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
+					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				const agents = await this.agentsService.findByProjectId(projectId);
+				return {
+					agents: agents
+						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.map((agent) => ({
+							agentId: agent.id,
+							name: agent.name,
+							...(agent.description ? { description: agent.description } : {}),
+						})),
+				};
+			})
+			.build();
+
 		const modelLookup: ModelLookup = {
 			list: async (credentialId, credentialType, lookup) =>
 				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
@@ -431,6 +452,7 @@ export class AgentsBuilderToolsService {
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
+			listSubAgentsTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
 			buildAskCredentialTool({
 				credentialProvider,

@@ -84,7 +84,7 @@ export const askQuestionInputSchema = z.object({
 		.array(askQuestionOptionSchema)
 		.min(1)
 		.describe(
-			'Choices to present. With a single option the tool auto-resolves to that option without rendering a card.',
+			'Choices to present. With a single non-multiple option the tool auto-resolves to that option without rendering a card.',
 		),
 	allowMultiple: z
 		.boolean()

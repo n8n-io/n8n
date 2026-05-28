@@ -68,6 +68,21 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
+#### Add Saved Agents As Subagents
+
+- Call \`list_sub_agents\` before asking or writing. Only persist agent IDs
+  returned by that tool.
+- If \`subAgents\` is missing, add it as
+  \`{ "enabled": true, "agents": [{ "agentId": "<selected-agent-id>" }] }\`.
+- If \`subAgents\` exists without \`agents\`, add \`/subAgents/agents\` with the
+  selected refs.
+- If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
+- If \`subAgents.enabled\` is false, replace \`/subAgents/enabled\` with
+  \`true\`.
+- Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
+- If an \`ask_question\` resume value is not one of the listed agent IDs, do not
+  write it into config.
+
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.

@@ -9,6 +9,7 @@ export const BUILDER_TOOLS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
+	LIST_SUB_AGENTS: 'list_sub_agents',
 	RESOLVE_LLM: 'resolve_llm',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;

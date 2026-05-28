@@ -143,9 +143,14 @@ describe('builder model recommendations', () => {
 	it('teaches the builder how to configure subagent delegation', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain('`subAgents: { "enabled": true }`');
+		expect(prompt).toContain(
+			'`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }`',
+		);
 		expect(prompt).toContain('the runtime injects `delegate_subagent`');
-		expect(prompt).toContain('Do not invent nested subagent definitions yet');
+		expect(prompt).toContain('If no agents are configured, the runtime uses a basic default');
+		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
+		expect(prompt).toContain('If no published agents are available');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {

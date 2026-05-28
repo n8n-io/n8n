@@ -25,6 +25,20 @@ describe('ask_question tool', () => {
 		expect(result).toEqual({ values: ['slack'] });
 	});
 
+	it('suspends for a multi-select question with one option', async () => {
+		const ctx = makeCtx();
+		await tool.handler!(
+			{
+				question: 'Pick subagents',
+				options: [{ label: 'Research Agent', value: 'agent-research' }],
+				allowMultiple: true,
+			},
+			ctx as never,
+		);
+
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
 	it('suspends when there are multiple options', async () => {
 		const ctx = makeCtx();
 		await tool.handler!(
