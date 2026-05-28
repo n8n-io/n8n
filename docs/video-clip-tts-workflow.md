@@ -29,22 +29,13 @@ The local smoke test skips the render case when `ffmpeg`, `ffprobe`, or the `sub
 
 ## Environment Variables
 
-Configure these variables before starting n8n:
+Copy the local env template and fill in the real Doubao/Volcengine TTS values:
 
 ```bash
-export VIDEO_CLIP_REPO_DIR=/Users/stephenqiu/Desktop/Repository/n8n
-export VIDEO_CLIP_JOBS_DIR=/tmp/n8n-video-jobs
-export NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
-export N8N_BLOCK_ENV_ACCESS_IN_NODE=false
-
-: "${DOUBAO_TTS_URL:?set the Doubao TTS endpoint URL}"
-: "${DOUBAO_TTS_API_KEY:?set the Doubao TTS API key}"
-: "${DOUBAO_TTS_APP_ID:?set the Doubao TTS app id}"
-export DOUBAO_TTS_CLUSTER=volcano_tts
-export DOUBAO_TTS_VOICE=zh_female_shuangkuaisisi_moon_bigtts
+cp .env.video-clip.example .env.video-clip
 ```
 
-Do not commit real TTS secrets. Keep endpoint URLs, API keys, app IDs, and any environment-specific credentials in local environment configuration only.
+Then edit `.env.video-clip`. Do not commit real TTS secrets. The local `.env.video-clip` file is ignored by git.
 
 `NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process` is required for this MVP because the imported workflow uses n8n Code nodes to write uploaded files, TTS responses, and `job.json` to the job directory, then runs the local video composer script.
 
@@ -52,10 +43,10 @@ Do not commit real TTS secrets. Keep endpoint URLs, API keys, app IDs, and any e
 
 ## Import
 
-1. Start n8n from the repository root:
+1. Start n8n from the repository root with the local env file:
 
 ```bash
-pnpm start
+scripts/start-video-clip-n8n.sh
 ```
 
 2. Open `http://localhost:5678`.
@@ -98,11 +89,11 @@ The workflow responds with JSON in this shape:
 
 ## Troubleshooting
 
-If a Code node fails with a built-in module error, restart n8n with:
+If a Code node fails with a built-in module or env access error, confirm `.env.video-clip` contains:
 
 ```bash
-export NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
-export N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
+N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
 If TTS fails, inspect:
