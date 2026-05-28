@@ -27,7 +27,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 } from '@n8n/mcp-apps/server';
 
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
+import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
 import { McpService } from '../mcp.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -288,6 +288,117 @@ describe('McpService', () => {
 				expect(error2).toBeInstanceOf(ManualExecutionCancelledError);
 				expect(error3).toBeInstanceOf(ManualExecutionCancelledError);
 			});
+		});
+	});
+
+	describe('resolveMcpAppsVariant', () => {
+		const buildResolutionService = (opts: {
+			postHogClient: jest.Mocked<PostHogClient>;
+			mcpAppsEnabled?: boolean;
+		}) =>
+			new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
+					},
+				}),
+				mockInstance(Telemetry),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				mockInstance(NodeCatalogService),
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
+				opts.postHogClient,
+			);
+
+		const user = Object.assign(new User(), { id: 'user-1' });
+
+		it('reports `env_override` when the operator force-enables MCP Apps', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
+
+			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
+				enabled: true,
+				variant: 'env_override',
+			});
+
+			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+		});
+
+		it('reports `variant` for users in the experiment cohort', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+			});
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
+				enabled: true,
+				variant: 'variant',
+			});
+		});
+
+		it('reports `control` for users in the control cohort', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_CONTROL,
+			});
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
+				enabled: false,
+				variant: 'control',
+			});
+		});
+
+		it('reports `unassigned` when the flag is missing from the PostHog response', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({});
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
+				enabled: false,
+				variant: 'unassigned',
+			});
+		});
+
+		it('reports `error` when the PostHog lookup throws', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
+				enabled: false,
+				variant: 'error',
+			});
+		});
+
+		it('exposes the same boolean through `isMcpAppsEnabled`', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+			});
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.isMcpAppsEnabled(user)).resolves.toBe(true);
 		});
 	});
 

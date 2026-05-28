@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
+import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -68,6 +68,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import type { McpAppsTelemetryVariant } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { ExecutionService } from '@/executions/execution.service';
@@ -80,6 +81,11 @@ interface PendingMcpResponse {
 	promise: IDeferredPromise<IRun | undefined>;
 	createdAt: Date;
 }
+
+export type McpAppsResolution = {
+	enabled: boolean;
+	variant: McpAppsTelemetryVariant;
+};
 
 @Service()
 export class McpService {
@@ -116,8 +122,10 @@ export class McpService {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
-	async isMcpAppsEnabled(user: User): Promise<boolean> {
-		if (this.globalConfig.endpoints.mcpAppsEnabled) return true;
+	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
+		if (this.globalConfig.endpoints.mcpAppsEnabled) {
+			return { enabled: true, variant: 'env_override' };
+		}
 
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>>;
 		try {
@@ -126,10 +134,17 @@ export class McpService {
 			this.logger.warn('Failed to resolve MCP Apps feature flag', {
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return false;
+			return { enabled: false, variant: 'error' };
 		}
 
-		return flags?.[MCP_APPS_FLAG] === MCP_APPS_VARIANT_ENABLED;
+		const raw = flags?.[MCP_APPS_FLAG];
+		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
+		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
+		return { enabled: false, variant: 'unassigned' };
+	}
+
+	async isMcpAppsEnabled(user: User): Promise<boolean> {
+		return (await this.resolveMcpAppsVariant(user)).enabled;
 	}
 
 	async getServer(user: User, mcpAppsEnabled?: boolean) {

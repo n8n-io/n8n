@@ -119,8 +119,8 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
-		const mcpAppsEnabled = isInitializationRequest
-			? await this.mcpService.isMcpAppsEnabled(req.user)
+		const mcpAppsResolution = isInitializationRequest
+			? await this.mcpService.resolveMcpAppsVariant(req.user)
 			: undefined;
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
@@ -130,7 +130,8 @@ export class McpController {
 			auth_type: (
 				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
 			).mcpAuthType,
-			mcp_apps_enabled: mcpAppsEnabled,
+			mcp_apps_enabled: mcpAppsResolution?.enabled,
+			mcp_apps_variant: mcpAppsResolution?.variant,
 		};
 
 		// Deny if MCP access is disabled
@@ -152,7 +153,7 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, req.body, mcpAppsEnabled);
+			await this.handleTransportRequest(req, res, req.body, mcpAppsResolution?.enabled);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,

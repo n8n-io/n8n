@@ -51,7 +51,7 @@ describe('McpController', () => {
 	const telemetry = { track: jest.fn() } as unknown as Telemetry;
 	const mcpService = {
 		getServer: jest.fn(),
-		isMcpAppsEnabled: jest.fn(),
+		resolveMcpAppsVariant: jest.fn(),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: jest.fn() } as unknown as McpSettingsService;
 
@@ -86,13 +86,16 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
 	});
 
-	test('tracks successful initialize connections with auth type', async () => {
+	test('tracks successful initialize connections with auth type and MCP Apps variant', async () => {
 		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
 			connect: jest.fn().mockResolvedValue(undefined),
 			close: jest.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.isMcpAppsEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+			enabled: true,
+			variant: 'variant',
+		});
 		const res = createRes();
 
 		await controller.build(
@@ -114,16 +117,20 @@ describe('McpController', () => {
 			auth_type: 'oauth',
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
+			mcp_apps_variant: 'variant',
 		});
 	});
 
-	test('resolves the MCP Apps flag once and forwards it to getServer on initialize', async () => {
+	test('reports the env_override variant when the flag is forced on by an operator', async () => {
 		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
 			connect: jest.fn().mockResolvedValue(undefined),
 			close: jest.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.isMcpAppsEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+			enabled: true,
+			variant: 'env_override',
+		});
 		const res = createRes();
 
 		await controller.build(
@@ -137,14 +144,46 @@ describe('McpController', () => {
 			res,
 		);
 
-		expect(mcpService.isMcpAppsEnabled as jest.Mock).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				mcp_apps_enabled: true,
+				mcp_apps_variant: 'env_override',
+			}),
+		);
+	});
+
+	test('resolves the MCP Apps variant once and forwards `enabled` to getServer on initialize', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+			connect: jest.fn().mockResolvedValue(undefined),
+			close: jest.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+			enabled: true,
+			variant: 'variant',
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.resolveMcpAppsVariant as jest.Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			true,
 		);
 	});
 
-	test('skips resolving the MCP Apps flag for non-initialize requests', async () => {
+	test('skips resolving the MCP Apps variant for non-initialize requests', async () => {
 		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
 			connect: jest.fn().mockResolvedValue(undefined),
@@ -162,7 +201,7 @@ describe('McpController', () => {
 			res,
 		);
 
-		expect(mcpService.isMcpAppsEnabled as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.resolveMcpAppsVariant as jest.Mock).not.toHaveBeenCalled();
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			undefined,
