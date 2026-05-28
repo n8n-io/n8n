@@ -111,6 +111,17 @@ export interface NodeProxy {
 	first?: (branchIndex?: number, runIndex?: number) => unknown;
 	last?: (branchIndex?: number, runIndex?: number) => unknown;
 	all?: (branchIndex?: number, runIndex?: number) => unknown;
+	/**
+	 * Paired-item resolvers. All three host-side surface forms exist as
+	 * separate properties on the proxy because the host's closure
+	 * captures which property name was accessed (to choose error
+	 * messages and getter-vs-method semantics). The bridge reads the
+	 * matching property per discriminator.
+	 */
+	pairedItem?: (itemIndex?: number) => unknown;
+	itemMatching?: (itemIndex?: number) => unknown;
+	/** Host getter — accessing it invokes the resolver immediately. */
+	item?: unknown;
 }
 
 /**
