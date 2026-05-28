@@ -242,7 +242,10 @@ export const createUpdateWorkflowTool = (
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
-			const validator = new ParseValidateHandler({ generatePinData: false });
+			const validator = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const validationWarnings = validator.validateJSON({
 				name: workflowUpdateData.name,
 				nodes: workflowUpdateData.nodes,
