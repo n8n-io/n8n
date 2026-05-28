@@ -77,6 +77,18 @@ describe('scrubSecretsInText', () => {
 		expect(out).toContain('[REDACTED]');
 	});
 
+	it('redacts JSON-shaped values containing escaped quotes without leaking the suffix', () => {
+		// Raw text with a JSON-escaped quote inside the value. A naive
+		// `[^"]*` value matcher would stop at the inner `"` and only redact
+		// `"apiKey": "abc\"`, leaving `def\"ghi"` exposed.
+		const input = '{"apiKey": "abc\\"def\\"ghi", "other": 1}';
+		const out = scrubSecretsInText(input);
+		expect(out).not.toContain('abc');
+		expect(out).not.toContain('def');
+		expect(out).not.toContain('ghi');
+		expect(out).toBe('{[REDACTED], "other": 1}');
+	});
+
 	it('leaves already-redacted JSON placeholder values untouched (idempotent with object walkers)', () => {
 		// Upstream object-aware redaction (e.g. langsmith trace payloads)
 		// produces `"apiKey": "[redacted]"`; running this scrubber over the
