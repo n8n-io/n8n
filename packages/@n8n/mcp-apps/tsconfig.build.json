@@ -4,6 +4,7 @@
 		"composite": true,
 		"module": "CommonJS",
 		"moduleResolution": "node",
+		"noEmit": false,
 		"rootDir": "src",
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
