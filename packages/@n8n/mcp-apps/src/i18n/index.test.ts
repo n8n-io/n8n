@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_LOCALE, i18n, resolveLocale, setLocaleFromHost, SUPPORTED_LOCALES } from './index';
+import {
+	DEFAULT_LOCALE,
+	i18n,
+	resolveLocale,
+	setLocaleFromHost,
+	SUPPORTED_LOCALES,
+	type SupportedLocale,
+} from './index';
 
 describe('mcp-apps i18n', () => {
 	beforeEach(() => {
@@ -14,7 +21,7 @@ describe('mcp-apps i18n', () => {
 	});
 
 	describe('resolveLocale', () => {
-		it.each([
+		it.each<[string, string | undefined | null, SupportedLocale]>([
 			['returns default when input is undefined', undefined, DEFAULT_LOCALE],
 			['returns default when input is null', null, DEFAULT_LOCALE],
 			['returns default when input is empty', '', DEFAULT_LOCALE],
