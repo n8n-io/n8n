@@ -66,14 +66,17 @@ const activeView = ref<'config' | 'raw'>('config');
 const initialNode = computed<INode | null>(() =>
 	isWorkflowTool.value || isCustomTool.value ? null : toolRefToNode(props.data.toolRef),
 );
-const initialName = computed(() => props.data.toolRef.name ?? initialNode.value?.name ?? '');
+const initialName = computed(() => {
+	const toolName = props.data.toolRef.type === 'node' ? props.data.toolRef.name : undefined;
+	return toolName ?? initialNode.value?.name ?? '';
+});
 const nodeName = ref(initialName.value);
 const customToolCode = computed(() => props.data.customTool?.code ?? '');
 const customToolTitle = computed(
 	() =>
 		props.data.customTool?.descriptor.name ??
-		props.data.toolRef.name ??
-		props.data.toolRef.id ??
+		('name' in props.data.toolRef ? props.data.toolRef.name : undefined) ??
+		('id' in props.data.toolRef ? props.data.toolRef.id : undefined) ??
 		i18n.baseText('agents.builder.tree.customBadge'),
 );
 
@@ -211,7 +214,7 @@ function handleNodeNameUpdate(name: string) {
 					/>
 					<div v-show="activeView === 'config'" :class="$style.configureTab">
 						<WorkflowToolConfigContent
-							v-if="isWorkflowTool"
+							v-if="data.toolRef.type === 'workflow'"
 							ref="workflowContentRef"
 							:initial-ref="data.toolRef"
 							@update:valid="handleValidUpdate"

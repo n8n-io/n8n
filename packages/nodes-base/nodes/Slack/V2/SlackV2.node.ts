@@ -58,7 +58,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 			defaults: {
 				name: 'Slack',
 			},
@@ -380,12 +380,19 @@ export class SlackV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			await slackApiRequest.call(
-				this,
-				'POST',
-				'/chat.postMessage',
-				createSendAndWaitMessageBody(this),
-			);
+			try {
+				await slackApiRequest.call(
+					this,
+					'POST',
+					'/chat.postMessage',
+					createSendAndWaitMessageBody(this),
+				);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 

@@ -104,6 +104,7 @@ function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): Wo
 		credentialSelections: ref({}),
 		terminalState: ref(null),
 		isReady: ref(true),
+		workflowId: computed(() => undefined),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
 		isActionPending: options.isActionPending ?? ref(false),

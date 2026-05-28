@@ -55,13 +55,14 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
+	workflowState?: WorkflowState;
 }) {
 	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
@@ -75,7 +76,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	// `inject()` only resolves inside a setup context; callers from async event
+	// handlers must pass `workflowState` in.
+	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -161,7 +164,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 

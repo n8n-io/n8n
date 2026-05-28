@@ -1,118 +1,142 @@
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool, type BuiltTool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { createSubAgentPersistence } from './agent-persistence';
 import { buildNudgeStreamInput } from './browser-credential-setup.nudge';
 import { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 import {
-	failTraceRun,
-	finishTraceRun,
-	startSubAgentTrace,
+	createDetachedSubAgentTraceFactory,
 	traceSubAgentTools,
-	withTraceRun,
+	withTraceContextActor,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { MAX_STEPS } from '../../constants/max-steps';
 import {
-	createLlmStepTraceHooks,
 	executeResumableStream,
+	normalizeStreamSource,
 } from '../../runtime/resumable-stream-executor';
-import {
-	buildAgentTraceInputs,
-	getTraceParentRun,
-	mergeTraceRunInputs,
-	withTraceParentContext,
-} from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
+import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 import { createResearchTool } from '../research.tool';
 import { createAskUserTool } from '../shared/ask-user.tool';
 
 export { buildBrowserAgentPrompt, type BrowserToolSource } from './browser-credential-setup.prompt';
 
+const BROWSER_CREDENTIAL_AGENT_ROLE = 'credential-setup-browser-agent';
 const PERMANENT_DENIAL_MARKER = 'User permanently denied access to';
 const BROWSER_DENIED_RESULT =
 	'Browser access was denied by the user. Provide manual setup guidance in chat — do not try the browser flow again in this turn.';
 
 const browserToolErrorResultSchema = z.object({
 	isError: z.literal(true),
-	structuredContent: z.object({ error: z.string().optional() }).optional(),
+	structuredContent: z.object({ error: z.string().optional() }).passthrough().optional(),
 	content: z.array(z.object({ text: z.string() }).passthrough()).optional(),
 });
 
 function isPermanentDenialResult(result: unknown): boolean {
 	const parsed = browserToolErrorResultSchema.safeParse(result);
 	if (!parsed.success) return false;
+
 	const messages = [
 		parsed.data.structuredContent?.error ?? '',
 		...(parsed.data.content?.map((c) => c.text) ?? []),
 	];
-	return messages.some((m) => m.includes(PERMANENT_DENIAL_MARKER));
+
+	return messages.some((message) => message.includes(PERMANENT_DENIAL_MARKER));
 }
 
-type ToolExecuteFn = (input: unknown, ctx: unknown) => Promise<unknown>;
+function isPermanentDenialError(error: unknown): boolean {
+	return error instanceof Error && error.message.includes(PERMANENT_DENIAL_MARKER);
+}
 
-function wrapToolForDenialDetection<T extends ToolsInput[string]>(
-	tool: T,
-	onDenied: () => void,
-): T {
-	const originalExecute = tool.execute as ToolExecuteFn | undefined;
-	if (!originalExecute) return tool;
-	const observingExecute: ToolExecuteFn = async (input, ctx) => {
-		const result = await originalExecute(input, ctx);
-		if (isPermanentDenialResult(result)) onDenied();
-		return result;
+function hasPermanentBrowserDenial(workSummary: WorkSummary): boolean {
+	return workSummary.toolCalls.some(
+		(toolCall) =>
+			toolCall.toolName.startsWith('browser_') &&
+			toolCall.errorSummary?.includes(PERMANENT_DENIAL_MARKER) === true,
+	);
+}
+
+function wrapToolForDenialDetection(tool: BuiltTool, onDenied: () => void): BuiltTool {
+	const originalHandler = tool.handler;
+	if (!originalHandler) return tool;
+
+	return {
+		...tool,
+		handler: async (input, ctx) => {
+			try {
+				const result = await originalHandler(input, ctx);
+				if (isPermanentDenialResult(result)) onDenied();
+				return result;
+			} catch (error) {
+				if (isPermanentDenialError(error)) onDenied();
+				throw error;
+			}
+		},
 	};
-	return { ...tool, execute: observingExecute as T['execute'] };
 }
 
-function wrapBrowserToolsForDenialDetection(tools: ToolsInput, onDenied: () => void): ToolsInput {
-	const wrapped: ToolsInput = {};
-	for (const [name, tool] of Object.entries(tools)) {
-		wrapped[name] = name.startsWith('browser_') ? wrapToolForDenialDetection(tool, onDenied) : tool;
+function wrapBrowserToolsForDenialDetection(
+	tools: InstanceAiToolRegistry,
+	onDenied: () => void,
+): InstanceAiToolRegistry {
+	const wrapped = createToolRegistry();
+
+	for (const [name, tool] of tools) {
+		wrapped.set(
+			name,
+			name.startsWith('browser_') ? wrapToolForDenialDetection(tool, onDenied) : tool,
+		);
 	}
+
 	return wrapped;
 }
 
+export const __testIsPermanentDenialResult = isPermanentDenialResult;
+export const __testHasPermanentBrowserDenial = hasPermanentBrowserDenial;
+export const __testWrapBrowserToolsForDenialDetection = wrapBrowserToolsForDenialDetection;
+
 function createPauseForUserTool() {
-	return createTool({
-		id: 'pause-for-user',
-		description:
+	return new Tool('pause-for-user')
+		.description(
 			'Pause and wait for the user to complete an action in the browser (e.g., sign in, ' +
-			'complete 2FA, click a button, enter values privately into n8n, download files). The user sees a message and confirms when done.',
-		inputSchema: browserCredentialSetupInputSchema,
-		outputSchema: z.object({
-			continued: z.boolean(),
-		}),
-		suspendSchema: z.object({
-			requestId: z.string(),
-			message: z.string(),
-			severity: instanceAiConfirmationSeveritySchema,
-			inputType: z.literal('continue'),
-		}),
-		resumeSchema: browserCredentialSetupResumeSchema,
-		execute: async (input: z.infer<typeof browserCredentialSetupInputSchema>, ctx) => {
-			const resumeData = ctx?.agent?.resumeData as
-				| z.infer<typeof browserCredentialSetupResumeSchema>
-				| undefined;
-			const suspend = ctx?.agent?.suspend;
+				'complete 2FA, click a button, enter values privately into n8n, download files). The user sees a message and confirms when done.',
+		)
+		.input(browserCredentialSetupInputSchema)
+		.output(
+			z.object({
+				continued: z.boolean(),
+			}),
+		)
+		.suspend(
+			z.object({
+				requestId: z.string(),
+				message: z.string(),
+				severity: instanceAiConfirmationSeveritySchema,
+				inputType: z.literal('continue'),
+			}),
+		)
+		.resume(browserCredentialSetupResumeSchema)
+		.handler(async (input: z.infer<typeof browserCredentialSetupInputSchema>, ctx) => {
+			const resumeData = ctx.resumeData;
 
 			if (resumeData === undefined || resumeData === null) {
-				await suspend?.({
+				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.message,
 					severity: 'info' as const,
 					inputType: 'continue' as const,
 				});
-				return { continued: false };
 			}
 
 			return { continued: resumeData.approved };
-		},
-	});
+		})
+		.build();
 }
 
 export const browserCredentialSetupInputSchema = z.object({
@@ -140,42 +164,86 @@ const browserCredentialSetupToolInputSchema = z.object({
 		.describe('Credential fields the user needs to obtain from the service'),
 });
 
+type BrowserCredentialSetupToolInput = z.infer<typeof browserCredentialSetupToolInputSchema>;
+
+function buildCredentialSetupBriefing(
+	input: BrowserCredentialSetupToolInput,
+	context: OrchestrationContext,
+): string {
+	const docsLine = input.docsUrl
+		? `**Documentation:** ${input.docsUrl}`
+		: '**Documentation:** No URL available — use `research` (action: web-search) to find setup instructions.';
+
+	let fieldsSection = '';
+	if (input.requiredFields && input.requiredFields.length > 0) {
+		const fieldLines = input.requiredFields.map(
+			(field) =>
+				`- ${field.displayName} (${field.name})${field.required ? ' [REQUIRED]' : ''}${field.description ? ': ' + field.description : ''}`,
+		);
+		fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;
+	}
+
+	const isOAuth = input.credentialType.toLowerCase().includes('oauth');
+	const oauthSection =
+		isOAuth && context.oauth2CallbackUrl
+			? `\n### OAuth Redirect URL\n${context.oauth2CallbackUrl}\n` +
+				'Paste this into the "Authorized redirect URIs" field. ' +
+				'Do NOT navigate to the n8n instance to find it — use this URL directly.'
+			: '';
+
+	return [
+		`## Credential Setup: ${input.credentialType}`,
+		'',
+		docsLine,
+		fieldsSection,
+		oauthSection,
+		'',
+		'### Completion Criteria',
+		'Done ONLY when all required values are visible on screen or downloaded, and you have called `pause-for-user` telling the user where to find them and to enter them privately in n8n.',
+	]
+		.filter(Boolean)
+		.join('\n');
+}
+
 export function createBrowserCredentialSetupTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'browser-credential-setup',
-		description:
+	return new Tool('browser-credential-setup')
+		.description(
 			'Run a browser agent that navigates to credential documentation and helps the user ' +
-			'set up a credential on the external service. The browser is visible to the user. ' +
-			'The agent can pause for user interaction (sign-in, 2FA, etc.).',
-		inputSchema: browserCredentialSetupToolInputSchema,
-		outputSchema: z.object({
-			result: z.string(),
-		}),
-		execute: async (input: z.infer<typeof browserCredentialSetupToolInputSchema>) => {
+				'set up a credential on the external service. The browser is visible to the user. ' +
+				'The agent can pause for user interaction (sign-in, 2FA, etc.).',
+		)
+		.input(browserCredentialSetupToolInputSchema)
+		.output(
+			z.object({
+				result: z.string(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof browserCredentialSetupToolInputSchema>) => {
+			await Promise.resolve();
 			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
-			const browserTools: ToolsInput = {};
+			const browserTools = createToolRegistry();
 			let toolSource: BrowserToolSource;
 
 			const gatewayBrowserTools = context.localMcpServer?.getToolsByCategory('browser') ?? [];
 
 			if (gatewayBrowserTools.length > 0 && context.localMcpServer) {
-				// Gateway path: create Mastra tools from gateway, keep only browser category tools
+				// Gateway path: create native tools from gateway, keep only browser category tools
 				const gatewayBrowserNames = new Set(gatewayBrowserTools.map((t) => t.name));
 				const allGatewayTools = createToolsFromLocalMcpServer(
 					context.localMcpServer,
 					context.logger,
 				);
-				for (const [name, tool] of Object.entries(allGatewayTools)) {
+				for (const [name, tool] of allGatewayTools) {
 					if (gatewayBrowserNames.has(name)) {
-						browserTools[name] = tool;
+						browserTools.set(name, tool);
 					}
 				}
 				toolSource = 'gateway';
 			} else if (context.browserMcpConfig) {
 				// Chrome DevTools MCP path: use tools from context.mcpTools
-				const mcpTools = context.mcpTools ?? {};
-				for (const [name, tool] of Object.entries(mcpTools)) {
-					browserTools[name] = tool;
+				const mcpTools = context.mcpTools ?? createToolRegistry();
+				for (const [name, tool] of mcpTools) {
+					browserTools.set(name, tool);
 				}
 				toolSource = 'chrome-devtools-mcp';
 			} else {
@@ -185,7 +253,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				};
 			}
 
-			if (Object.keys(browserTools).length === 0) {
+			if (browserTools.size === 0) {
 				return {
 					result:
 						toolSource === 'gateway'
@@ -203,140 +271,99 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			);
 
 			// Add interaction tools
-			browserToolsWithDenialDetection['pause-for-user'] = createPauseForUserTool();
-			browserToolsWithDenialDetection['ask-user'] = createAskUserTool();
+			browserToolsWithDenialDetection.set('pause-for-user', createPauseForUserTool());
+			browserToolsWithDenialDetection.set('ask-user', createAskUserTool());
 
 			// Add consolidated research tool (web-search + fetch-url) from the domain context
 			if (context.domainContext) {
-				browserToolsWithDenialDetection.research = createResearchTool(context.domainContext);
+				browserToolsWithDenialDetection.set('research', createResearchTool(context.domainContext));
+			}
+
+			if (!context.spawnBackgroundTask) {
+				return { result: 'Browser credential setup requires background task support.' };
 			}
 
 			const subAgentId = `agent-browser-${nanoid(6)}`;
-
-			// Publish agent-spawned so the UI shows the browser agent
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
+			const taskId = `browser-credential-${nanoid(8)}`;
+			const browserPrompt = buildBrowserAgentPrompt(toolSource);
+			const tracedBrowserTools = traceSubAgentTools(
+				context,
+				browserToolsWithDenialDetection,
+				BROWSER_CREDENTIAL_AGENT_ROLE,
+			);
+			const createTraceContext = createDetachedSubAgentTraceFactory(context, {
 				agentId: subAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: 'credential-setup-browser-agent',
-					tools: Object.keys(browserToolsWithDenialDetection),
+				role: BROWSER_CREDENTIAL_AGENT_ROLE,
+				kind: 'browser-credential-setup',
+				taskId,
+				inputs: {
+					credentialType: input.credentialType,
+					docsUrl: input.docsUrl,
+					requiredFields: input.requiredFields?.map((field) => ({
+						name: field.name,
+						type: field.type,
+						required: field.required,
+					})),
 				},
 			});
-			let traceRun: Awaited<ReturnType<typeof startSubAgentTrace>>;
-			try {
-				traceRun = await startSubAgentTrace(context, {
-					agentId: subAgentId,
-					role: 'credential-setup-browser-agent',
-					kind: 'browser-credential-setup',
-					inputs: {
-						credentialType: input.credentialType,
-						docsUrl: input.docsUrl,
-						requiredFields: input.requiredFields?.map(
-							(field: {
-								name: string;
-								displayName: string;
-								type: string;
-								required: boolean;
-								description?: string;
-							}) => ({
-								name: field.name,
-								type: field.type,
-								required: field.required,
+
+			const spawnOutcome = context.spawnBackgroundTask({
+				taskId,
+				threadId: context.threadId,
+				agentId: subAgentId,
+				role: BROWSER_CREDENTIAL_AGENT_ROLE,
+				createTraceContext,
+				dedupeKey: { role: BROWSER_CREDENTIAL_AGENT_ROLE },
+				parentCheckpointId:
+					context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
+				run: async (signal, _drainCorrections, _waitForCorrection, { traceContext }) =>
+					await withTraceContextActor(traceContext, async () => {
+						const subAgent = new Agent('Browser Credential Setup Agent')
+							.model(context.modelId)
+							.instructions(browserPrompt, {
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+							})
+							.tool(toolRegistryValues(tracedBrowserTools))
+							.checkpoint(context.checkpointStore ?? 'memory');
+						attachRuntimeWorkspaceCapabilities(subAgent, {
+							runtimeSkills: context.runtimeSkills,
+						});
+						const telemetry = traceContext?.getTelemetry?.({
+							agentRole: BROWSER_CREDENTIAL_AGENT_ROLE,
+							functionId: `instance-ai.subagent.${BROWSER_CREDENTIAL_AGENT_ROLE}`,
+							executionMode: 'background_subagent',
+							metadata: { agent_id: subAgentId, task_id: taskId },
+						});
+						if (telemetry) {
+							subAgent.telemetry(telemetry);
+						}
+						mergeTraceRunInputs(
+							traceContext?.actorRun,
+							buildAgentTraceInputs({
+								systemPrompt: browserPrompt,
+								tools: tracedBrowserTools,
+								modelId: context.modelId,
 							}),
-						),
-					},
-				});
-				const tracedBrowserTools = traceSubAgentTools(
-					context,
-					browserToolsWithDenialDetection,
-					'credential-setup-browser-agent',
-				);
-				const browserPrompt = buildBrowserAgentPrompt(toolSource);
-				const resultText = await withTraceRun(context, traceRun, async () => {
-					const subAgent = new Agent({
-						id: subAgentId,
-						name: 'Browser Credential Setup Agent',
-						instructions: {
-							role: 'system' as const,
-							content: browserPrompt,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-						},
-						model: context.modelId,
-						tools: tracedBrowserTools,
-					});
-					mergeTraceRunInputs(
-						traceRun,
-						buildAgentTraceInputs({
-							systemPrompt: browserPrompt,
-							tools: tracedBrowserTools,
-							modelId: context.modelId,
-						}),
-					);
-
-					registerWithMastra(subAgentId, subAgent, context.storage);
-
-					// Build the briefing
-					const docsLine = input.docsUrl
-						? `**Documentation:** ${input.docsUrl}`
-						: '**Documentation:** No URL available — use `research` (action: web-search) to find setup instructions.';
-
-					let fieldsSection = '';
-					if (input.requiredFields && input.requiredFields.length > 0) {
-						const fieldLines = input.requiredFields.map(
-							(f: {
-								name: string;
-								displayName: string;
-								type: string;
-								required: boolean;
-								description?: string;
-							}) =>
-								`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
 						);
-						fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;
-					}
 
-					// For OAuth2 credentials, include the redirect URL so the agent can
-					// paste it directly into the "Authorized redirect URIs" field
-					const isOAuth = input.credentialType.toLowerCase().includes('oauth');
-					const oauthSection =
-						isOAuth && context.oauth2CallbackUrl
-							? `\n### OAuth Redirect URL\n${context.oauth2CallbackUrl}\n` +
-								'Paste this into the "Authorized redirect URIs" field. ' +
-								'Do NOT navigate to the n8n instance to find it — use this URL directly.'
-							: '';
-
-					const briefing = [
-						`## Credential Setup: ${input.credentialType}`,
-						'',
-						docsLine,
-						fieldsSection,
-						oauthSection,
-						'',
-						'### Completion Criteria',
-						'Done ONLY when all required values are visible on screen or downloaded, and you have called `pause-for-user` telling the user where to find them and to enter them privately in n8n.',
-					]
-						.filter(Boolean)
-						.join('\n');
-
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						// Stream the sub-agent
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await subAgent.stream(briefing, {
-							maxSteps: MAX_STEPS.BROWSER,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
+						const briefing = buildCredentialSetupBriefing(input, context);
+						const persistence = await createSubAgentPersistence(context, {
+							agentKind: 'credential-setup-browser',
 						});
 
-						let activeStream = stream;
-						let activeMastraRunId = typeof stream.runId === 'string' ? stream.runId : '';
+						const stream = await subAgent.stream(briefing, {
+							maxIterations: MAX_STEPS.BROWSER,
+							abortSignal: signal,
+							persistence,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						});
+
+						let activeStream = normalizeStreamSource(stream);
+						let activeAgentRunId = typeof activeStream.runId === 'string' ? activeStream.runId : '';
 						let lastSuspendedToolName = '';
 						const MAX_NUDGES = 3;
 						let nudgeCount = 0;
@@ -345,17 +372,23 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 							const result = await executeResumableStream({
 								agent: subAgent,
 								stream: activeStream,
-								initialMastraRunId: activeMastraRunId,
+								initialAgentRunId: activeAgentRunId,
 								context: {
 									threadId: context.threadId,
 									runId: context.runId,
 									agentId: subAgentId,
 									eventBus: context.eventBus,
-									signal: context.abortSignal,
+									signal,
 									logger: context.logger,
 								},
 								control: {
 									mode: 'auto',
+									buildResumeOptions: ({ agentRunId, suspension }) => ({
+										runId: agentRunId,
+										toolCallId: suspension.toolCallId,
+										maxIterations: MAX_STEPS.BROWSER,
+										persistence,
+									}),
 									waitForConfirmation: async (requestId) => {
 										if (!context.waitForConfirmation) {
 											throw new Error(
@@ -368,87 +401,81 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 										lastSuspendedToolName = suspension.toolName ?? '';
 									},
 								},
-								llmStepTraceHooks,
 							});
 
-							if (result.status === 'cancelled') {
-								throw new Error('Run cancelled while waiting for confirmation');
+							if (result.status !== 'completed') {
+								throw new Error(
+									result.status === 'cancelled'
+										? 'Browser credential setup sub-agent was cancelled'
+										: 'Browser credential setup sub-agent failed while streaming',
+								);
 							}
 
-							// If the user has permanently denied browser access, stop here.
-							// Don't nudge into pause-for-user — return a structured result so
-							// the orchestrator can offer manual guidance via plain chat text.
-							if (browserPermanentlyDenied) {
+							if (browserPermanentlyDenied || hasPermanentBrowserDenial(result.workSummary)) {
 								return BROWSER_DENIED_RESULT;
 							}
 
 							if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
 								// Agent ended without a final pause-for-user confirmation.
 								// Replay the prior conversation + a nudge so the sub-agent
-								// has full context to finish — Mastra `stream()` is otherwise
+								// has full context to finish — native `stream()` is otherwise
 								// stateless across calls.
 								nudgeCount++;
-								const priorMessages = activeStream.messageList.get.all.aiV5.model();
+								const priorMessages = subAgent.getState().messageList.messages;
 								const nudgeInput = buildNudgeStreamInput(priorMessages);
 								const nudge = await subAgent.stream(nudgeInput, {
-									maxSteps: MAX_STEPS.BROWSER,
-									abortSignal: context.abortSignal,
+									maxIterations: MAX_STEPS.BROWSER,
+									abortSignal: signal,
+									persistence,
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
 								});
-								activeStream = nudge;
-								activeMastraRunId =
-									(typeof nudge.runId === 'string' && nudge.runId) ||
-									result.mastraRunId ||
-									activeMastraRunId;
+								activeStream = normalizeStreamSource(nudge);
+								activeAgentRunId =
+									(typeof activeStream.runId === 'string' && activeStream.runId) ||
+									result.agentRunId ||
+									activeAgentRunId;
 								continue;
 							}
 
 							return await (result.text ?? activeStream.text ?? Promise.resolve(''));
 						}
-					});
-				});
-				await finishTraceRun(context, traceRun, {
-					outputs: {
-						result: resultText,
-						agentId: subAgentId,
-						role: 'credential-setup-browser-agent',
-					},
-				});
+					}),
+			});
 
-				context.eventBus.publish(context.threadId, {
-					type: 'agent-completed',
-					runId: context.runId,
-					agentId: subAgentId,
-					payload: {
-						role: 'credential-setup-browser-agent',
-						result: resultText,
-					},
-				});
-
-				return { result: resultText };
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				await failTraceRun(context, traceRun, error, {
-					agent_id: subAgentId,
-					agent_role: 'credential-setup-browser-agent',
-				});
-
-				context.eventBus.publish(context.threadId, {
-					type: 'agent-completed',
-					runId: context.runId,
-					agentId: subAgentId,
-					payload: {
-						role: 'credential-setup-browser-agent',
-						result: '',
-						error: errorMessage,
-					},
-				});
-
-				return { result: `Browser agent error: ${errorMessage}` };
+			if (spawnOutcome.status === 'duplicate') {
+				return {
+					result: `Browser credential setup is already running (task: ${spawnOutcome.existing.taskId}). Wait for the background-task follow-up before dispatching another one.`,
+				};
 			}
-		},
-	});
+			if (spawnOutcome.status === 'limit-reached') {
+				return {
+					result:
+						'Could not start browser credential setup: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+				};
+			}
+
+			context.eventBus.publish(context.threadId, {
+				type: 'agent-spawned',
+				runId: context.runId,
+				agentId: subAgentId,
+				payload: {
+					parentId: context.orchestratorAgentId,
+					role: BROWSER_CREDENTIAL_AGENT_ROLE,
+					tools: toolRegistryKeys(browserToolsWithDenialDetection),
+					taskId,
+					kind: 'browser-setup',
+					title: 'Setting up credential',
+					subtitle: input.credentialType,
+					goal: `Set up ${input.credentialType}`,
+					targetResource: { type: 'credential' as const },
+				},
+			});
+
+			return {
+				result: `Browser credential setup started (task: ${taskId}). Wait for the background-task follow-up before summarizing the result.`,
+			};
+		})
+		.build();
 }

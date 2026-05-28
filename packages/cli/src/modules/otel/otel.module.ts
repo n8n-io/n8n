@@ -19,6 +19,13 @@ export class OtelModule implements ModuleInterface {
 		await import('./otel-lifecycle-handler');
 	}
 
+	async settings() {
+		const { OtelConfig } = await import('./otel.config');
+		const config = Container.get(OtelConfig);
+
+		return { enabled: config.enabled };
+	}
+
 	async context(): Promise<ModuleContext> {
 		const { OtelConfig } = await import('./otel.config');
 		const config = Container.get(OtelConfig);

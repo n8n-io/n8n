@@ -63,7 +63,6 @@ describe('itemFilterKey', () => {
 	it('returns the literal kind for every event', () => {
 		expect(itemFilterKey(item({ kind: 'user' }))).toBe('user');
 		expect(itemFilterKey(item({ kind: 'agent' }))).toBe('agent');
-		expect(itemFilterKey(item({ kind: 'working-memory' }))).toBe('working-memory');
 		expect(itemFilterKey(item({ kind: 'suspension' }))).toBe('suspension');
 	});
 
@@ -103,7 +102,6 @@ describe('kindColorToken', () => {
 		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
-		expect(kindColorToken('working-memory')).toBe('var(--color--foreground--shade-1)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
 	});
 });
@@ -158,7 +156,6 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		timeline: null,
 		error: null,
 		hitlStatus: null,
-		workingMemory: null,
 		source: null,
 		...overrides,
 	};
@@ -263,13 +260,6 @@ describe('flattenExecutionsToTimelineItems', () => {
 			]),
 		]);
 		expect(items[0]?.kind).toBe('tool');
-	});
-
-	it('maps a working-memory timeline event', () => {
-		const items = flattenExecutionsToTimelineItems([
-			withTimeline([{ type: 'working-memory', content: 'note', timestamp: 2000 }]),
-		]);
-		expect(items[0]).toMatchObject({ kind: 'working-memory', content: 'note', timestamp: 2000 });
 	});
 
 	it('maps a suspension timeline event', () => {

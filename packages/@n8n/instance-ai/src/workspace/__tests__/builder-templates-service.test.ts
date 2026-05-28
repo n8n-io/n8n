@@ -1,0 +1,647 @@
+import { createHash } from 'node:crypto';
+import * as fsp from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+import {
+	BuilderTemplatesService,
+	type BuilderTemplatesServiceOptions,
+	builderTemplatesOptionsFromEnv,
+} from '../builder-templates-service';
+
+const ORIGINAL_FETCH = globalThis.fetch;
+
+function sha256Hex(buf: Buffer): string {
+	return createHash('sha256').update(buf).digest('hex');
+}
+
+function archiveResponse(buffer: Buffer, etag: string | null, status = 200): Response {
+	const headers: Record<string, string> = { 'content-type': 'application/gzip' };
+	if (etag) headers.etag = etag;
+	return new Response(new Uint8Array(buffer), { status, headers });
+}
+
+interface MockState {
+	/** Opaque archive bytes — the service treats these as a black box, no extraction. */
+	archive: Buffer;
+	etag: string | null;
+	/** Default status for an archive fetch (used by both channels when not overridden). */
+	archiveStatus?: number;
+	/** Per-channel status override for the `/v<minor>/` URL. */
+	exactStatus?: number;
+	/** Per-channel status override for the `/latest/` URL. */
+	latestStatus?: number;
+	respondNotModified?: boolean;
+	/** When `null`, sidecar returns 404; when a string, that body is served; default = correct sha. */
+	sha256Override?: string | null;
+	/** Force the first N archive requests to return 503; subsequent requests behave normally. */
+	transientFailuresBeforeSuccess?: number;
+	/** When true, the archive 200 response omits its ETag header. */
+	omitEtagHeader?: boolean;
+	calls: {
+		fetch: number;
+		archiveFetches: number;
+		exactFetches: number;
+		latestFetches: number;
+		lastIfNoneMatch: string | null;
+	};
+}
+
+function isExactArchiveUrl(url: string): boolean {
+	return /\/v\d+\.\d+\/templates\.tar\.gz$/.test(url);
+}
+
+function isLatestArchiveUrl(url: string): boolean {
+	return url.endsWith('/latest/templates.tar.gz');
+}
+
+function installMockFetch(state: MockState): jest.Mock {
+	const mock = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+		state.calls.fetch++;
+		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+		const headers = new Headers((init?.headers ?? {}) as Record<string, string>);
+
+		if (url.endsWith('/templates.tar.gz.sha256')) {
+			if (state.sha256Override === null) return new Response('', { status: 404 });
+			const body = state.sha256Override ?? sha256Hex(state.archive);
+			return new Response(body, {
+				status: 200,
+				headers: { 'content-type': 'text/plain' },
+			});
+		}
+
+		const exact = isExactArchiveUrl(url);
+		const latest = isLatestArchiveUrl(url);
+		if (!exact && !latest) {
+			return new Response('unhandled', { status: 500 });
+		}
+
+		state.calls.archiveFetches++;
+		if (exact) state.calls.exactFetches++;
+		else state.calls.latestFetches++;
+		state.calls.lastIfNoneMatch = headers.get('if-none-match');
+
+		if (state.respondNotModified) {
+			return new Response(null, { status: 304 });
+		}
+
+		if (state.transientFailuresBeforeSuccess && state.transientFailuresBeforeSuccess > 0) {
+			state.transientFailuresBeforeSuccess--;
+			return new Response('temporarily unavailable', { status: 503 });
+		}
+
+		const channelStatus = exact ? state.exactStatus : state.latestStatus;
+		const status = channelStatus ?? state.archiveStatus ?? 200;
+		if (status >= 400) return new Response('error', { status });
+		const etag = state.omitEtagHeader ? null : state.etag;
+		return archiveResponse(state.archive, etag, status);
+	});
+	globalThis.fetch = mock as unknown as typeof globalThis.fetch;
+	return mock;
+}
+
+async function makeTempDir(): Promise<string> {
+	return await fsp.mkdtemp(path.join(os.tmpdir(), 'builder-templates-svc-'));
+}
+
+function makeOptions(
+	cacheDir: string,
+	overrides: Partial<BuilderTemplatesServiceOptions> = {},
+): BuilderTemplatesServiceOptions {
+	return {
+		cdnBaseUrl: 'https://cdn.example/n8n-sdk-templates',
+		sdkVersion: '0.15.0',
+		cacheDir,
+		refreshIntervalMs: 60_000,
+		fetchTimeoutMs: 1_000,
+		// Keep retry tests fast; production default is much higher.
+		retryBackoffBaseMs: 1,
+		...overrides,
+	};
+}
+
+function makeState(): MockState {
+	return {
+		archive: Buffer.from('opaque-archive-bytes-v1'),
+		etag: '"sha-1"',
+		calls: {
+			fetch: 0,
+			archiveFetches: 0,
+			exactFetches: 0,
+			latestFetches: 0,
+			lastIfNoneMatch: null,
+		},
+	};
+}
+
+describe('BuilderTemplatesService', () => {
+	afterEach(() => {
+		globalThis.fetch = ORIGINAL_FETCH;
+	});
+
+	it('fetches templates.tar.gz on first call and populates disk cache', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		expect(bundle.version).toBe('"sha-1"');
+
+		const cachedArchive = await fsp.readFile(path.join(cacheDir, 'templates.tar.gz'));
+		expect(cachedArchive.equals(state.archive)).toBe(true);
+		const cachedEtag = await fsp.readFile(path.join(cacheDir, 'etag.txt'), 'utf-8');
+		expect(cachedEtag).toBe('"sha-1"');
+		const cachedSha = await fsp.readFile(path.join(cacheDir, 'templates.tar.gz.sha256'), 'utf-8');
+		expect(cachedSha).toBe(sha256Hex(state.archive));
+	});
+
+	it('returns an empty bundle when the fetch fails and there is no disk cache', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 500;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive).toBeNull();
+		expect(bundle.version).toBeNull();
+	});
+
+	it('does not retry a failed cold-start hydrate inside the failure cooldown', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 500;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(
+			makeOptions(cacheDir, { failureRetryIntervalMs: 60_000, maxAttempts: 1 }),
+		);
+		const failedBundle = await svc.getBundle();
+		state.archiveStatus = 200;
+		const skippedBundle = await svc.getBundle();
+
+		expect(failedBundle.archive).toBeNull();
+		expect(skippedBundle.archive).toBeNull();
+		expect(state.calls.archiveFetches).toBe(1);
+	});
+
+	it('retries a failed cold-start hydrate after the failure cooldown', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 500;
+		installMockFetch(state);
+		const dateNow = jest.spyOn(Date, 'now');
+		dateNow.mockReturnValue(1_000);
+
+		try {
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { failureRetryIntervalMs: 100, maxAttempts: 1 }),
+			);
+			await svc.getBundle();
+			state.archiveStatus = 200;
+
+			dateNow.mockReturnValue(1_050);
+			const skippedBundle = await svc.getBundle();
+			dateNow.mockReturnValue(1_101);
+			const retriedBundle = await svc.getBundle();
+
+			expect(skippedBundle.archive).toBeNull();
+			expect(retriedBundle.archive?.equals(state.archive)).toBe(true);
+			expect(state.calls.archiveFetches).toBe(2);
+		} finally {
+			dateNow.mockRestore();
+		}
+	});
+
+	it('memoises subsequent calls and does not refetch when cache is fresh', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 60_000 }));
+		await svc.getBundle();
+		const callsAfterFirst = state.calls.fetch;
+		await svc.getBundle();
+		expect(state.calls.fetch).toBe(callsAfterFirst);
+	});
+
+	it('sends If-None-Match on refresh and short-circuits on 304', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		installMockFetch(state);
+
+		const seedSvc = new BuilderTemplatesService(makeOptions(cacheDir));
+		await seedSvc.getBundle();
+
+		// Backdate the cache so the TTL window expires immediately.
+		await fsp.utimes(path.join(cacheDir, 'templates.tar.gz'), 0, 0);
+		state.respondNotModified = true;
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 1 }));
+		const bundle = await svc.getBundle();
+		// Background refresh is fire-and-forget; let it run.
+		await new Promise((r) => setTimeout(r, 20));
+
+		expect(bundle.version).toBe('"sha-1"');
+		expect(state.calls.lastIfNoneMatch).toBe('"sha-1"');
+	});
+
+	it('short-circuits to an empty bundle when disabled', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		const fetchMock = installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { disabled: true }));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive).toBeNull();
+		expect(bundle.version).toBeNull();
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('hydrates from disk and reports the cached version', async () => {
+		const cacheDir = await makeTempDir();
+		await fsp.mkdir(cacheDir, { recursive: true });
+		const archive = Buffer.from('opaque-archive-bytes-pre-existing');
+		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), archive);
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"pre-existing"');
+		await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'exact');
+
+		// Block any network call so we know hydration came from disk.
+		globalThis.fetch = jest.fn(
+			() => new Response('', { status: 500 }),
+		) as unknown as typeof globalThis.fetch;
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 60_000 }));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.version).toBe('"pre-existing"');
+		expect(bundle.archive?.equals(archive)).toBe(true);
+		// getVersion() prefixes with the channel + strips quotes for telemetry use; raw etag stays on bundle.version.
+		expect(svc.getVersion()).toBe('v0.15:pre-existing');
+	});
+
+	it('keeps the existing bundle when the refresh fetch errors', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		installMockFetch(state);
+
+		const seedSvc = new BuilderTemplatesService(makeOptions(cacheDir));
+		await seedSvc.getBundle();
+
+		state.archiveStatus = 503;
+		await fsp.utimes(path.join(cacheDir, 'templates.tar.gz'), 0, 0);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { refreshIntervalMs: 1 }));
+		const bundle = await svc.getBundle();
+		await new Promise((r) => setTimeout(r, 20));
+
+		expect(bundle.version).toBe('"sha-1"');
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+	});
+
+	it('does not send If-None-Match on initial fetch when only an orphan etag exists on disk', async () => {
+		// Simulate a previously-cached etag without a matching archive — e.g. the
+		// archive was deleted or never finished writing. A 304 here would leave the
+		// service permanently empty for the process, so the initial request must
+		// be unconditional.
+		const cacheDir = await makeTempDir();
+		await fsp.mkdir(cacheDir, { recursive: true });
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"orphan"');
+
+		const state = makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(state.calls.lastIfNoneMatch).toBeNull();
+		expect(bundle.version).toBe('"sha-1"');
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+	});
+
+	it('unlinks etag.txt when refresh returns 200 without an ETag header', async () => {
+		const cacheDir = await makeTempDir();
+		await fsp.mkdir(cacheDir, { recursive: true });
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"stale"');
+
+		const state = makeState();
+		state.omitEtagHeader = true;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.version).toBeNull();
+		await expect(fsp.stat(path.join(cacheDir, 'etag.txt'))).rejects.toMatchObject({
+			code: 'ENOENT',
+		});
+	});
+
+	it('persists etag.txt before templates.tar.gz (crash-safety)', async () => {
+		// Pre-create templates.tar.gz as a non-empty directory so the atomic
+		// rename for the archive step fails. With etag-first ordering, etag.txt
+		// should already be on disk when the archive write blows up.
+		const cacheDir = await makeTempDir();
+		const blockedArchivePath = path.join(cacheDir, 'templates.tar.gz');
+		await fsp.mkdir(blockedArchivePath);
+		await fsp.writeFile(path.join(blockedArchivePath, 'block'), '');
+
+		const state = makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		await svc.getBundle();
+
+		const etagOnDisk = await fsp.readFile(path.join(cacheDir, 'etag.txt'), 'utf-8');
+		expect(etagOnDisk).toBe('"sha-1"');
+		// The pre-existing directory is untouched — rename never succeeded.
+		expect((await fsp.stat(blockedArchivePath)).isDirectory()).toBe(true);
+	});
+
+	it('retries on transient 5xx during cold-start hydrate', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.transientFailuresBeforeSuccess = 2;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { maxAttempts: 3 }));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		expect(state.calls.archiveFetches).toBe(3);
+	});
+
+	it('does not retry on 4xx', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.archiveStatus = 403;
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { maxAttempts: 3 }));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive).toBeNull();
+		expect(state.calls.archiveFetches).toBe(1);
+	});
+
+	it('rejects the downloaded bundle when sha256 sidecar mismatches', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.sha256Override = 'deadbeef'.repeat(8); // 64 hex chars, but wrong
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive).toBeNull();
+		expect(bundle.version).toBeNull();
+		// Cache must not be written on integrity failure
+		await expect(fsp.stat(path.join(cacheDir, 'templates.tar.gz'))).rejects.toMatchObject({
+			code: 'ENOENT',
+		});
+	});
+
+	it('accepts the bundle when sha256 sidecar matches', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		// sha256Override undefined → mock serves the correct digest
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		expect(bundle.version).toBe('"sha-1"');
+	});
+
+	it('accepts the bundle when the sha256 sidecar 404s (defence-in-depth, not required)', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.sha256Override = null; // sidecar 404
+		const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { logger }));
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		expect(bundle.version).toBe('"sha-1"');
+	});
+
+	it('drops the disk cache when a persisted sha256 does not match the on-disk archive', async () => {
+		const cacheDir = await makeTempDir();
+		await fsp.mkdir(cacheDir, { recursive: true });
+		const corruptArchive = Buffer.from('this-is-the-corrupt-archive-on-disk');
+		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), corruptArchive);
+		await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"stale"');
+		await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'exact');
+		// Sha that does NOT match the archive on disk
+		await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), 'deadbeef'.repeat(8));
+
+		// Live CDN serves a different bundle → service should refetch on mismatch
+		const state = makeState();
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		const bundle = await svc.getBundle();
+
+		// Came from the network, not the corrupt disk cache
+		expect(bundle.version).toBe('"sha-1"');
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		// Initial network fetch must not echo the disk's stale etag
+		expect(state.calls.lastIfNoneMatch).toBeNull();
+	});
+
+	describe('versioned URLs', () => {
+		it('fetches /v<major>.<minor>/templates.tar.gz when SDK version is set', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			const fetchMock = installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(fetchMock).toHaveBeenCalledWith(
+				'https://cdn.example/n8n-sdk-templates/v0.15/templates.tar.gz',
+				expect.any(Object),
+			);
+		});
+
+		it('prefixes getVersion with the exact channel (v<major>.<minor>:<etag>)', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			await svc.getBundle();
+			expect(svc.getVersion()).toBe('v0.15:sha-1');
+		});
+
+		it('returns an empty bundle when both /v<minor>/ and /latest/ return 404', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 404;
+			state.latestStatus = 404;
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.17.0' }));
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive).toBeNull();
+			expect(bundle.version).toBeNull();
+			expect(state.calls.exactFetches).toBe(1);
+			expect(state.calls.latestFetches).toBe(1);
+		});
+
+		it('does not fall back to /latest/ when the exact channel returns 500 (transport error)', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 500;
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.15.0', maxAttempts: 1 }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive).toBeNull();
+			expect(state.calls.latestFetches).toBe(0);
+		});
+
+		it('drops legacy disk cache when channel.txt is missing and refetches fresh', async () => {
+			const cacheDir = await makeTempDir();
+			await fsp.mkdir(cacheDir, { recursive: true });
+			const legacyArchive = Buffer.from('opaque-archive-legacy');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), legacyArchive);
+			await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"legacy-etag"');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), sha256Hex(legacyArchive));
+			// Note: no channel.txt — represents a pre-versioned cache layout.
+
+			const state = makeState();
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(makeOptions(cacheDir, { sdkVersion: '0.15.0' }));
+			const bundle = await svc.getBundle();
+
+			// Came from the network, not the legacy disk archive.
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(svc.getVersion()).toBe('v0.15:sha-1');
+			expect(state.calls.lastIfNoneMatch).toBeNull();
+
+			const channelOnDisk = await fsp.readFile(path.join(cacheDir, 'channel.txt'), 'utf-8');
+			expect(channelOnDisk).toBe('exact');
+		});
+
+		it('honours channel.txt on warm restart so getVersion keeps the latest: prefix', async () => {
+			const cacheDir = await makeTempDir();
+			await fsp.mkdir(cacheDir, { recursive: true });
+			const archive = Buffer.from('opaque-archive-bytes-from-latest');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz'), archive);
+			await fsp.writeFile(path.join(cacheDir, 'etag.txt'), '"latest-etag"');
+			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), sha256Hex(archive));
+			await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'latest');
+
+			globalThis.fetch = jest.fn(
+				() => new Response('', { status: 500 }),
+			) as unknown as typeof globalThis.fetch;
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.17.0', refreshIntervalMs: 60_000 }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(archive)).toBe(true);
+			expect(svc.getVersion()).toBe('latest:latest-etag');
+		});
+
+		it('falls back to /latest/ when /v<minor>/ returns 404', async () => {
+			const cacheDir = await makeTempDir();
+			const state = makeState();
+			state.exactStatus = 404;
+			const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+			installMockFetch(state);
+
+			const svc = new BuilderTemplatesService(
+				makeOptions(cacheDir, { sdkVersion: '0.17.0', logger }),
+			);
+			const bundle = await svc.getBundle();
+
+			expect(bundle.archive?.equals(state.archive)).toBe(true);
+			expect(svc.getVersion()).toBe('latest:sha-1');
+			expect(state.calls.exactFetches).toBeGreaterThan(0);
+			expect(state.calls.latestFetches).toBeGreaterThan(0);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('falling back to /latest/'),
+				expect.any(Object),
+			);
+		});
+	});
+
+	it('getVersion strips the W/ prefix and surrounding quotes for telemetry', async () => {
+		const cacheDir = await makeTempDir();
+		const state = makeState();
+		state.etag = 'W/"abc-123"';
+		installMockFetch(state);
+
+		const svc = new BuilderTemplatesService(makeOptions(cacheDir));
+		await svc.getBundle();
+		expect(svc.getVersion()).toBe('v0.15:abc-123');
+	});
+});
+
+describe('builderTemplatesOptionsFromEnv', () => {
+	const ORIGINAL_ENV = { ...process.env };
+
+	afterEach(() => {
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	function clearEnv() {
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
+		delete process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;
+	}
+
+	it('parses a valid refresh hours value', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '6';
+		const opts = builderTemplatesOptionsFromEnv();
+		expect(opts.refreshIntervalMs).toBe(6 * 60 * 60 * 1000);
+	});
+
+	it('omits refreshIntervalMs and warns when refresh hours is not a number', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = 'banana';
+		const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const opts = builderTemplatesOptionsFromEnv({ logger });
+		expect(opts.refreshIntervalMs).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS'),
+			expect.objectContaining({ value: 'banana' }),
+		);
+	});
+
+	it('omits refreshIntervalMs when refresh hours is zero or negative', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '0';
+		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+
+		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = '-4';
+		expect(builderTemplatesOptionsFromEnv().refreshIntervalMs).toBeUndefined();
+	});
+
+	it('honours the disabled flag and base URL', () => {
+		clearEnv();
+		process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED = 'true';
+		process.env.N8N_INSTANCE_AI_TEMPLATES_URL = 'https://example.com/v2';
+		const opts = builderTemplatesOptionsFromEnv();
+		expect(opts.disabled).toBe(true);
+		expect(opts.cdnBaseUrl).toBe('https://example.com/v2');
+	});
+});

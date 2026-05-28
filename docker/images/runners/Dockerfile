@@ -1,4 +1,4 @@
-ARG NODE_VERSION=24.14.1
+ARG NODE_VERSION=24.15.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -88,7 +88,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.5
+ARG LAUNCHER_VERSION=1.4.6
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

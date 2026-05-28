@@ -9,7 +9,12 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	Workflow,
+	createRunExecutionData,
+	mergeRunsPerBranch,
+} from 'n8n-workflow';
 import type {
 	AiEvent,
 	IDataObject,
@@ -32,6 +37,7 @@ import type {
 	ExecuteWorkflowData,
 	ExecuteAgentData,
 	RelatedExecution,
+	IRun,
 	IRunExecutionData,
 } from 'n8n-workflow';
 
@@ -55,6 +61,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -262,6 +269,7 @@ export async function executeAgent(
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
+	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
 	// Trigger-fired and webhook executions build `additionalData` without a
@@ -299,6 +307,7 @@ export async function executeAgent(
 		threadId,
 		userId,
 		projectId,
+		telemetryUserId,
 	);
 }
 
@@ -311,6 +320,48 @@ async function listAgents(userId: string): Promise<Array<{ id: string; name: str
 	// fail at execution time.
 	const agents = await agentsService.findPublishedByUser(userId);
 	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
+}
+
+/**
+ * Whether the sub-workflow's `Execute Workflow Trigger` wants the legacy single-run output.
+ * v1.2+ triggers always opt into the new merged-runs default;
+ * pre-1.2 triggers can opt in via the `returnOutput` parameter
+ * and otherwise stay on `lastRunOnly` for backward compatibility.
+ * Sub-workflows without an `Execute Workflow Trigger` keep the legacy output too.
+ * See n8n-io/n8n#9989
+ */
+export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
+	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
+	const triggerVersion = trigger?.typeVersion ?? 1;
+	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
+}
+
+/**
+ * Returns the items the parent workflow gets back from the sub-workflow's last node.
+ * By default, items from every run of the terminal node are concatenated per output branch.
+ * The trigger declares its preference.
+ * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
+ * (used by LangChain tool/retriever callers that need a single-answer output).
+ * Pinned data on the last node always wins in manual mode.
+ * See n8n-io/n8n#9989.
+ */
+export function buildSubWorkflowOutput(
+	data: IRun,
+	workflowNodes: INode[],
+	callerReturnsLastRunOnly: boolean,
+): Array<INodeExecutionData[] | null> {
+	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflowNodes);
+	const runs = WorkflowHelpers.getLastExecutedNodeRuns(data);
+	const { lastNodeExecuted, pinData = {} } = data.data.resultData;
+	const manualPinDataOverride =
+		data.mode === 'manual' &&
+		lastNodeExecuted !== undefined &&
+		pinData[lastNodeExecuted] !== undefined;
+
+	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
+		return mergeRunsPerBranch(runs);
+	}
+	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
 async function startExecution(
@@ -459,10 +510,10 @@ async function startExecution(
 		// Workflow did finish successfully
 
 		activeExecutions.finalizeExecution(executionId, data);
-		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+
 		return {
 			executionId,
-			data: returnData!.data!.main,
+			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 		};
 	}
@@ -566,6 +617,12 @@ export async function getBase({
 		setExecutionStatus,
 		variables,
 		workflowSettings,
+		async getRuntimeCredential(runExecutionData, alias) {
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredential(
+				runExecutionData,
+				alias,
+			);
+		},
 		async getRunExecutionData(executionId) {
 			const executionRepository = Container.get(ExecutionRepository);
 			const executionData = await executionRepository.findSingleExecution(executionId, {

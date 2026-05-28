@@ -1,12 +1,14 @@
-import { tool, jsonSchema, type Tool as AiSdkTool } from 'ai';
+import type { Tool as AiSdkTool } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
+import { loadAi } from './lazy-ai';
 import {
 	type BuiltProviderTool,
 	type BuiltTool,
 	type BuiltTelemetry,
 	type InterruptibleToolContext,
+	type ToolExecutionContext,
 	type ToolContext,
 } from '../types';
 import type { SubAgentUsage } from '../types/sdk/agent';
@@ -114,16 +116,17 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	const result: Record<string, AiSdkTool> = {};
 	for (const t of tools) {
 		if (t.inputSchema) {
+			const ai = loadAi();
 			if (isZodSchema(t.inputSchema)) {
-				result[t.name] = tool({
+				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
 					providerOptions: t.providerOptions,
 				});
 			} else {
-				result[t.name] = tool({
+				result[t.name] = ai.tool({
 					description: t.description,
-					inputSchema: jsonSchema(fixSchema(t.inputSchema)),
+					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
 					providerOptions: t.providerOptions,
 				});
 			}
@@ -143,6 +146,7 @@ export async function executeTool(
 	resumeData?: unknown,
 	parentTelemetry?: BuiltTelemetry,
 	toolCallId?: string,
+	executionContext: ToolExecutionContext = {},
 ): Promise<unknown> {
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
@@ -156,11 +160,18 @@ export async function executeTool(
 			resumeData,
 			parentTelemetry,
 			toolCallId,
+			runId: executionContext.runId,
+			persistence: executionContext.persistence,
 		};
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx: ToolContext = { parentTelemetry, toolCallId };
+	const ctx: ToolContext = {
+		parentTelemetry,
+		toolCallId,
+		runId: executionContext.runId,
+		persistence: executionContext.persistence,
+	};
 	return await builtTool.handler(args, ctx);
 }
 

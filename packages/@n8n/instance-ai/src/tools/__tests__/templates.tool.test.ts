@@ -1,3 +1,4 @@
+import { executeTool } from '../../__tests__/tool-test-utils';
 import { createTemplatesTool } from '../templates.tool';
 
 describe('templates tool', () => {
@@ -8,7 +9,8 @@ describe('templates tool', () => {
 	describe('best-practices action', () => {
 		it('should return list of available techniques when technique is "list"', async () => {
 			const tool = createTemplatesTool();
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'best-practices', technique: 'list' },
 				{} as never,
 			);
@@ -37,7 +39,8 @@ describe('templates tool', () => {
 
 		it('should return documentation for a known technique with docs', async () => {
 			const tool = createTemplatesTool();
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'best-practices', technique: 'scheduling' },
 				{} as never,
 			);
@@ -53,7 +56,8 @@ describe('templates tool', () => {
 
 		it('should return a message for a known technique without docs', async () => {
 			const tool = createTemplatesTool();
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'best-practices', technique: 'data_analysis' },
 				{} as never,
 			);
@@ -66,7 +70,8 @@ describe('templates tool', () => {
 
 		it('should return unknown technique message for invalid technique', async () => {
 			const tool = createTemplatesTool();
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'best-practices', technique: 'nonexistent_technique' },
 				{} as never,
 			);

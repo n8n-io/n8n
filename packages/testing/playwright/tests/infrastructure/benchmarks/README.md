@@ -44,6 +44,7 @@ What does turning on configuration X cost vs the baseline?
 | Trigger | Spec | Question |
 |---------|------|----------|
 | webhook | `webhook-otel-overhead.spec.ts` | What is the runtime cost of enabling OTEL? |
+| webhook | `webhook-save-data-overhead.spec.ts` | What is the runtime cost of saving execution data on success? |
 
 Cost specs run the same workload as a baseline spec with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against its baseline from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
 

@@ -19,6 +19,7 @@ import {
 	type ConnectionLostReason,
 } from '../errors';
 import { createLogger } from '../logger';
+import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	ClickOptions,
 	ConnectConfig,
@@ -31,6 +32,7 @@ import type {
 	NetworkEntry,
 	PageInfo,
 	ResolvedConfig,
+	HtmlProbeResult,
 	ScreenshotOptions,
 	ScrollOptions,
 	SnapshotResult,
@@ -530,6 +532,16 @@ export class PlaywrightAdapter {
 		return { tree: yaml, refCount };
 	}
 
+	async probePageHtml(pageId: string): Promise<HtmlProbeResult> {
+		try {
+			const { page } = await this.ensurePage(pageId);
+			const raw = await page.evaluate(HTML_PROBE_SCRIPT);
+			return parseHtmlProbeResult(raw);
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
 	async getText(pageId: string, target?: ElementTarget): Promise<string> {
 		const { page } = await this.ensurePage(pageId);
 
@@ -1004,6 +1016,10 @@ export class PlaywrightAdapter {
 		} catch {
 			return undefined;
 		}
+	}
+
+	getElementValue(_pageId: string, _target: ElementTarget): never {
+		throw new Error('Not implemented');
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {

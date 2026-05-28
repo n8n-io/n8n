@@ -459,6 +459,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -487,6 +488,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -511,6 +513,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: undefined,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -539,6 +542,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: true,
 			});
 		});
@@ -567,6 +571,7 @@ describe('SamlService', () => {
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
+				rawAttributes: {},
 				onboardingRequired: false,
 			});
 		});
@@ -1784,11 +1789,10 @@ describe('SamlService', () => {
 
 			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
 			expect(getStoredIdp).not.toHaveBeenCalled();
-			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(
-				overrideIdp,
-				'post',
-				req,
-			);
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(overrideIdp, 'post', {
+				body: req.body,
+				query: req.query,
+			});
 		});
 	});
 });

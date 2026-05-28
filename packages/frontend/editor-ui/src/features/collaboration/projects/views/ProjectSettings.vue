@@ -7,6 +7,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@/app/composables/useToast';
 import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
@@ -84,10 +85,7 @@ const suppressNextSync = ref(false);
 
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const projectIcon = ref<IconOrEmoji>({
-	type: 'icon',
-	value: 'layers',
-});
+const projectIcon = ref<IconOrEmoji>({ ...DEFAULT_PROJECT_ICON });
 
 const search = ref('');
 const membersTableState = ref<TableOptions>({

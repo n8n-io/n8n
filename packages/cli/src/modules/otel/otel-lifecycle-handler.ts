@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -7,6 +8,9 @@ import type {
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import type { IWorkflowBase } from 'n8n-workflow';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import { OtelConfig } from './otel.config';
@@ -18,10 +22,18 @@ export class OtelLifecycleHandler {
 		private readonly tracer: ExecutionLevelTracer,
 		private readonly traceContextService: TraceContextService,
 		private readonly config: OtelConfig,
+		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
+
+	private isPublishedWorkflow(workflow: IWorkflowBase): boolean {
+		return !!(workflow.activeVersionId ?? workflow.active);
+	}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
+		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
 			? // This will only be set when we are a "sub-workflow"
@@ -29,9 +41,21 @@ export class OtelLifecycleHandler {
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
 
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
+
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -47,11 +71,25 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
+		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
+
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(ctx.workflow.id)
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to fetch project for OTEL span', {
+					workflowId: ctx.workflow.id,
+					executionId: ctx.executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return undefined;
+			});
 
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
+			project: project ? { id: project.id } : undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -63,6 +101,8 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext): void {
+		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+
 		this.tracer.endWorkflow({
 			executionId: ctx.executionId,
 			status: ctx.runData.status,
@@ -75,6 +115,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteBefore')
 	onNodeStart(ctx: NodeExecuteBeforeContext): void {
+		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
@@ -88,6 +129,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeEnd(ctx: NodeExecuteAfterContext): void {
+		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);

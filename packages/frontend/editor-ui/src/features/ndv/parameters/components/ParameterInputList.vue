@@ -516,7 +516,10 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(
+			currentNodeParameters,
+			workflowDocumentStore.value.documentId,
+		);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {

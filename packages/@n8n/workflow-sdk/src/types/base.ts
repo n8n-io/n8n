@@ -309,8 +309,11 @@ export interface NodeJSON {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 }
 
 /**
@@ -432,8 +435,11 @@ export interface NodeConfig<TParams = IDataObject> {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.

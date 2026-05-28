@@ -1,5 +1,10 @@
 // services/api-helper.ts
-import type { ClusterInfoResponse, InstanceAiPermissions } from '@n8n/api-types';
+import type {
+	ClusterInfoResponse,
+	InstanceAiEnsureThreadResponse,
+	InstanceAiPermissions,
+	InstanceAiThreadInfo,
+} from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -306,6 +311,32 @@ export class ApiHelpers {
 		return body.data?.events ?? [];
 	}
 
+	async createInstanceAiThread(): Promise<InstanceAiThreadInfo> {
+		const response = await this.request.post('/rest/instance-ai/threads', { data: {} });
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/threads failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiEnsureThreadResponse };
+		return body.data.thread;
+	}
+
+	async renameInstanceAiThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
+		const response = await this.request.patch(`/rest/instance-ai/threads/${threadId}`, {
+			data: { title },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PATCH /rest/instance-ai/threads/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: { thread: InstanceAiThreadInfo } };
+		return body.data.thread;
+	}
+
 	async startInstanceAiBackgroundTimeoutSimulation(
 		userId: string,
 		threadId?: string,
@@ -453,6 +484,22 @@ export class ApiHelpers {
 		const destinations = await this.getLogStreamingDestinations();
 		for (const destination of destinations) {
 			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
 		}
 	}
 

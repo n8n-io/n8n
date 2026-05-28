@@ -453,6 +453,7 @@ async function onAskAssistantClick() {
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
+		workflowId: workflowId.value,
 	});
 }
 </script>

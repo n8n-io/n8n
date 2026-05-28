@@ -160,7 +160,6 @@ type RuntimeRegistry = {
 function createRuntimeRegistry(): RuntimeRegistry {
 	const runtimes = new Map<string, ThreadRuntime>();
 	const hooks = {
-		getResearchMode: () => false,
 		onTitleUpdated: vi.fn(),
 		onRunFinish: vi.fn(),
 	} satisfies Parameters<typeof createThreadRuntime>[1];
@@ -791,6 +790,24 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockPostMessage).toHaveBeenCalledTimes(1);
 	});
 
+	test('sendMessage tracks whether this is the first user message in the thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await activeRuntime(registry).sendMessage('first');
+		await activeRuntime(registry).sendMessage('second');
+
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(1, 'User sent builder message', {
+			thread_id: activeThreadId,
+			instance_id: 'instance-1',
+			is_first_message: true,
+		});
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
+			thread_id: activeThreadId,
+			instance_id: 'instance-1',
+			is_first_message: false,
+		});
+	});
+
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
@@ -800,7 +817,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
-			undefined,
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
@@ -816,7 +832,6 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
-			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
@@ -858,6 +873,17 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(activeRuntime(registry).messages).toHaveLength(0);
 		expect(activeRuntime(registry).isSendingMessage).toBe(false);
+	});
+
+	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
+
+		const sendPromise = activeRuntime(registry).sendMessage('hello');
+		await vi.waitFor(() => {
+			expect(activeRuntime(registry).activeRunId).toBe('run-from-post');
+		});
+
+		await sendPromise;
 	});
 });
 
@@ -957,5 +983,154 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 
 		// postConfirmation was called once (inside confirmAction) but threw
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
+	});
+});
+
+describe('createThreadRuntime - session always-allow', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-always-allow';
+		mockPostConfirmation.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function pushPendingApproval(
+		runtime: ThreadRuntime,
+		opts: {
+			messageId: string;
+			requestId: string;
+			toolName: string;
+			args?: Record<string, unknown>;
+			severity?: 'info' | 'warning' | 'destructive';
+		},
+	): void {
+		runtime.messages.push({
+			id: opts.messageId,
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'agent-1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: `tc-${opts.requestId}`,
+						toolName: opts.toolName,
+						args: opts.args ?? {},
+						isLoading: true,
+						confirmationStatus: 'pending',
+						confirmation: {
+							requestId: opts.requestId,
+							severity: opts.severity ?? 'info',
+							message: 'Approve?',
+						},
+					},
+				],
+			},
+		});
+	}
+
+	it('auto-approves matching generic-eligible confirmations after key is added', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-auto',
+			requestId: 'req-auto',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-auto')).toBe('approved');
+		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-auto', {
+			kind: 'approval',
+			approved: true,
+		});
+	});
+
+	it('does not auto-approve destructive confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'delete' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destructive',
+			requestId: 'req-destructive',
+			toolName: 'workflows',
+			args: { action: 'delete' },
+			severity: 'destructive',
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destructive')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('distinguishes submit-workflow create vs update grants by workflowId presence', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('submit-workflow', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-create',
+			requestId: 'req-create',
+			toolName: 'submit-workflow',
+			args: {},
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-create')).toBe('approved');
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-update',
+			requestId: 'req-update',
+			toolName: 'submit-workflow',
+			args: { workflowId: 'wf-1' },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
+	});
+
+	it('clears keys on resetState', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
+
+		runtime.resetState();
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
+	it('keeps the confirmation pending when auto-approve POST fails', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-fail',
+			requestId: 'req-fail',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-fail', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
 	});
 });
