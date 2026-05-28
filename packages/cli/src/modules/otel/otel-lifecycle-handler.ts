@@ -28,7 +28,7 @@ const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
 
 const getCustomTelemetryTags = (value: unknown): ICustomTelemetryTag[] | undefined => {
 	if (Array.isArray(value)) return value.filter(isCustomTelemetryTag);
-	if (typeof value !== 'object' || value === null || Array.isArray(value) || !('tag' in value)) {
+	if (typeof value !== 'object' || value === null || !('tag' in value)) {
 		return undefined;
 	}
 
