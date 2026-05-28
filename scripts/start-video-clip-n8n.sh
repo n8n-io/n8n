@@ -15,5 +15,9 @@ set -a
 source "$ENV_FILE"
 set +a
 
+export VIDEO_CLIP_REPO_DIR="${VIDEO_CLIP_REPO_DIR:-$ROOT_DIR}"
+export VIDEO_CLIP_JOBS_DIR="${VIDEO_CLIP_JOBS_DIR:-$ROOT_DIR/tmp/n8n-video-jobs}"
+mkdir -p "$VIDEO_CLIP_JOBS_DIR"
+
 cd "$ROOT_DIR"
 pnpm start

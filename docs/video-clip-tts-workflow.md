@@ -1,12 +1,12 @@
 # TTS Video Clip Composer Workflow
 
-This workflow is an automated video editing workflow for n8n. It is not an AI video generation workflow. The final image content comes from uploaded files: cover image, proof screenshot, and background video. The workflow generates TTS audio and subtitles, then uses FFmpeg to edit the final MP4.
+This workflow is an automated video editing workflow for n8n. It is not an AI video generation workflow. The final image content comes from uploaded files: cover image, proof screenshot, and background video. The workflow generates TTS audio and timestamp-aligned subtitles, then uses FFmpeg to edit the final MP4.
 
 ## Files
 
 - Workflow import file: `workflows/video-clip-tts-workflow.json`
 - Composer script: `tools/video-composer/compose-video.mjs`
-- Default job output: `/tmp/n8n-video-jobs/{jobId}/`
+- Default job output: `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/`
 
 ## Prerequisites
 
@@ -19,13 +19,13 @@ ffprobe -version
 pnpm --version
 ```
 
-The composer uses the FFmpeg `subtitles` video filter. Confirm the local FFmpeg build includes it:
+The composer prefers the FFmpeg `subtitles` video filter for hard subtitles. Confirm whether the local FFmpeg build includes it:
 
 ```bash
 ffmpeg -hide_banner -filters | rg "subtitles"
 ```
 
-The local smoke test skips the render case when `ffmpeg`, `ffprobe`, or the `subtitles` filter is unavailable.
+If the filter is unavailable, the composer falls back to generated transparent subtitle frames and overlays those frames with FFmpeg. This keeps the final MP4 self-contained with visible subtitles even when the system FFmpeg was built without `libass`.
 
 ## Environment Variables
 
@@ -62,7 +62,7 @@ Upload all four files:
 - `tts_script`: `txt` or `md`
 - `background_video`: `mp4`, `mov`, or `webm`
 
-The workflow saves uploaded files under `/tmp/n8n-video-jobs/{jobId}/inputs/`, normalizes the TTS script to trimmed text, sends the text to Doubao TTS, writes the returned audio under `/tmp/n8n-video-jobs/{jobId}/tts/`, then runs the composer against `/tmp/n8n-video-jobs/{jobId}/job.json`.
+The workflow saves uploaded files under `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/inputs/`, normalizes the TTS script to trimmed text, sends the text to Doubao TTS with `enable_timestamp: true`, writes the returned audio and timing metadata under `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/tts/`, then runs the composer against `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/job.json`.
 
 ## Output Layout
 
@@ -70,7 +70,7 @@ The workflow saves uploaded files under `/tmp/n8n-video-jobs/{jobId}/inputs/`, n
 - `3s - 7s`: proof screenshot large display
 - `7s - end`: cover image top-left, proof screenshot top-right, background video underneath, TTS subtitles at bottom
 
-The generated subtitle file is written to `/tmp/n8n-video-jobs/{jobId}/render/subtitles.ass`. The final MP4 and FFmpeg log are written under `/tmp/n8n-video-jobs/{jobId}/render/`.
+The generated subtitle file is written to `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/render/subtitles.ass`. When Doubao returns usable word timestamps, the ASS dialogue timing is built from those timestamps. If no usable timestamps are present, the composer falls back to duration-based script splitting. The final MP4 and FFmpeg log are written under `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/render/`.
 
 ## Result JSON
 
@@ -80,9 +80,9 @@ The workflow responds with JSON in this shape:
 {
   "ok": true,
   "jobId": "20260528-101530-a8f42c",
-  "videoPath": "/tmp/n8n-video-jobs/20260528-101530-a8f42c/render/final.mp4",
-  "jobDir": "/tmp/n8n-video-jobs/20260528-101530-a8f42c",
-  "ffmpegLog": "/tmp/n8n-video-jobs/20260528-101530-a8f42c/render/ffmpeg.log",
+  "videoPath": "/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/20260528-101530-a8f42c/render/final.mp4",
+  "jobDir": "/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/20260528-101530-a8f42c",
+  "ffmpegLog": "/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/20260528-101530-a8f42c/render/ffmpeg.log",
   "size": 1234567
 }
 ```
@@ -104,17 +104,18 @@ resource ID.
 If TTS fails, inspect:
 
 ```text
-/tmp/n8n-video-jobs/{jobId}/tts/tts-response.json
+/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/tts/tts-response.json
+/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/tts/timing.json
 ```
 
 If video rendering fails, inspect:
 
 ```text
-/tmp/n8n-video-jobs/{jobId}/job.json
-/tmp/n8n-video-jobs/{jobId}/render/ffmpeg.log
+/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/job.json
+/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/render/ffmpeg.log
 ```
 
-If FFmpeg reports an unknown filter or subtitle rendering error, verify the local FFmpeg build includes the `subtitles` filter:
+If FFmpeg reports an unknown filter or subtitle rendering error, verify whether the local FFmpeg build includes the `subtitles` filter:
 
 ```bash
 ffmpeg -hide_banner -filters | rg "subtitles"
@@ -123,7 +124,7 @@ ffmpeg -hide_banner -filters | rg "subtitles"
 Re-run the composer directly:
 
 ```bash
-node tools/video-composer/compose-video.mjs /tmp/n8n-video-jobs/{jobId}/job.json
+node tools/video-composer/compose-video.mjs /Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/job.json
 ```
 
 ## Local Composer Tests
@@ -140,4 +141,4 @@ Run the FFmpeg smoke render:
 RUN_VIDEO_COMPOSER_SMOKE=1 node --test tools/video-composer/compose-video.test.mjs
 ```
 
-The smoke render creates synthetic media and validates that the composer writes `final.mp4`, `subtitles.ass`, and `ffmpeg.log`. It skips the render case when the local FFmpeg installation cannot support the required render path.
+The smoke render creates synthetic media and validates that the composer writes `final.mp4`, `subtitles.ass`, and `ffmpeg.log`.
