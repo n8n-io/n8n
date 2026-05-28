@@ -28,7 +28,8 @@ const time = computed((): string => {
 
 const workflowHref = computed((): string => {
 	if (props.item.kind !== 'workflow' || !props.item.workflowId) return '';
-	return router.resolve({ name: VIEWS.WORKFLOW, params: { name: props.item.workflowId } }).href;
+	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: props.item.workflowId } })
+		.href;
 });
 
 const infoText = computed((): string => {
