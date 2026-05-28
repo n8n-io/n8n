@@ -2986,12 +2986,16 @@ export function useCanvasOperations() {
 			toast.showMessage({ title, message, type: 'error', duration: 0 });
 		}
 
-		await initializeWorkspace(data.workflowData);
+		const { workflowDocumentStore: openedDocumentStore } = await initializeWorkspace(
+			data.workflowData,
+		);
 
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowDocumentStore.value.setPinData({});
+			// Clear on the store initializeWorkspace just populated — injection
+			// may resolve to a different store than the one initState wrote to.
+			openedDocumentStore.setPinData({});
 		}
 
 		if (nodeId) {
