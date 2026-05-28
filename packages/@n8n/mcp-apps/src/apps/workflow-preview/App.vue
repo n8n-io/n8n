@@ -15,8 +15,11 @@ import { setLocaleFromHost, type MessageSchema } from '../../i18n';
 
 type WorkflowResult = {
 	url?: unknown;
-	name?: unknown;
 };
+
+function isWorkflowResult(value: unknown): value is WorkflowResult {
+	return typeof value === 'object' && value !== null;
+}
 
 const { t } = useI18n<{ message: MessageSchema }>({ useScope: 'global' });
 
@@ -48,11 +51,6 @@ watchEffect(() => {
 	setLocaleFromHost(context?.locale);
 });
 
-function readWorkflowResult(structured: unknown): WorkflowResult | undefined {
-	if (typeof structured !== 'object' || structured === null) return undefined;
-	return structured as WorkflowResult;
-}
-
 async function handleOpenWorkflow() {
 	const app = appRef.value;
 	const url = workflowUrl.value;
@@ -82,8 +80,8 @@ onMounted(async () => {
 	};
 
 	app.ontoolresult = (params) => {
-		const result = readWorkflowResult(params.structuredContent);
-		const candidate = result?.url;
+		const { structuredContent } = params;
+		const candidate = isWorkflowResult(structuredContent) ? structuredContent.url : undefined;
 		if (isAllowedWorkflowUrl(candidate)) {
 			workflowUrl.value = candidate;
 		} else if (candidate !== undefined) {
