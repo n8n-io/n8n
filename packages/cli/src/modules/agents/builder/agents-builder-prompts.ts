@@ -128,6 +128,24 @@ Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
 Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
 through \`$json\`; use \`$fromAI\` for those fields instead.`;
 
+export const SUB_AGENTS_SECTION = `\
+## Sub Agents
+
+The target agent supports optional subagent delegation through
+\`subAgents: { "enabled": true }\`.
+
+When enabled, the runtime injects \`delegate_subagent\` and extra target-agent
+system guidance. The delegated child starts with fresh context and uses the
+same model and credential as the target agent.
+
+- Enable \`subAgents.enabled\` only when the user asks for subagents,
+  delegation, helper agents, independent review, or research-style task
+  decomposition.
+- Do not add custom tools, custom instructions, or custom schema fields to
+  simulate subagents. Use only \`subAgents.enabled\` for now.
+- Preserve existing \`subAgents\` settings unless the user explicitly asks to
+  change them.`;
+
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
 
@@ -255,6 +273,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getBuilderSkillRoutingSection(enabledModules),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
+		SUB_AGENTS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		WORKFLOW_SECTION,
 		FEW_SHOT_FLOWS_SECTION,

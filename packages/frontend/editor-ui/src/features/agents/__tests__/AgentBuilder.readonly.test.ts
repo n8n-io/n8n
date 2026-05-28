@@ -40,6 +40,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 					N8nCard: { template: '<div><slot /></div>' },
 					N8nHeading: { template: '<div><slot /></div>' },
 					N8nRadioButtons: { template: '<div />' },
+					N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 					N8nText: { template: '<span><slot /></span>' },
 					AgentIdentityHeader: {
 						name: 'AgentIdentityHeader',

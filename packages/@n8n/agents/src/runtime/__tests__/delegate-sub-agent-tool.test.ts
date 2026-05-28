@@ -26,7 +26,7 @@ describe('createDelegateSubAgentTool', () => {
 		});
 
 		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
-		expect(tool.description).toContain('Delegate');
+		expect(tool.description).toContain('focused child agent');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
 	});

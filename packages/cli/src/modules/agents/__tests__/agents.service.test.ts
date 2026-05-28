@@ -474,6 +474,27 @@ describe('AgentsService', () => {
 			expect(savedEntity.description).toBe(agent.description);
 		});
 
+		it('stores subAgents when the inbound config provides it', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const configWithSubAgents = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: { enabled: true },
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithSubAgents,
+			});
+
+			await service.updateConfig(agentId, projectId, configWithSubAgents);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.schema?.subAgents).toEqual({ enabled: true });
+		});
+
 		it('rejects an active schedule integration when the agent is unpublished', async () => {
 			const configWithActiveSchedule = {
 				name: 'Test Agent',

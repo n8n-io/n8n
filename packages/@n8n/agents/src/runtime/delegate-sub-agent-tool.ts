@@ -114,11 +114,19 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 
 	return new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
-			'Delegate a self-contained task to a specialized sub-agent and return its result. ' +
-				'Use this when the task benefits from isolated focus or a specialist perspective.',
+			'Run a focused child agent on a bounded, self-contained subtask and return its result. ' +
+				'Use for independent research, review, analysis, or exploration that would clutter the parent context or benefit from a fresh perspective. ' +
+				'Do not use for trivial work or to pass through the entire user request unchanged.',
 		)
 		.systemInstruction(
-			'Use delegate_subagent for bounded, self-contained subtasks. Provide the sub-agent with enough context to work independently. Do not delegate trivial transformations.',
+			[
+				'You have access to delegate_subagent, which runs a focused child agent in a fresh context and returns a concise result.',
+				'Use delegate_subagent when the user request contains a bounded subtask that can be handled independently, the subtask needs substantial exploration/review/search/reasoning that would clutter your context, or a fresh perspective would help.',
+				'Do not use delegate_subagent when the task is trivial, can be completed with one or two direct tool calls, depends on unstated conversation context you cannot summarize clearly, or would simply pass the entire user request to another agent without decomposition.',
+				'Before delegating, make a brief plan for yourself: identify the concrete subtask, decide whether delegation is useful, and provide a self-contained handoff if you delegate.',
+				'When calling delegate_subagent, use taskName for a short descriptive name, goal for the concrete outcome, context for all relevant details including constraints/paths/data/prior decisions/acceptance criteria, and expectedOutput for what you need back.',
+				'After the subagent returns, inspect the result before using it, synthesize it into your response instead of blindly copying it, and retry with better context or handle the task yourself if the result is incomplete or failed.',
+			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)
 		.output(delegateSubAgentOutputSchema)

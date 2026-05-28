@@ -78,6 +78,10 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
+const SubAgentsConfigSchema = z.object({
+	enabled: z.boolean(),
+});
+
 const NodeToolCredentialSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -240,6 +244,7 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
+	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
@@ -324,4 +329,8 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 	return config?.nodeTools?.enabled === true;
+}
+
+export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
+	return subAgents?.enabled === true;
 }

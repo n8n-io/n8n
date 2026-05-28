@@ -1,4 +1,9 @@
-import { AgentJsonConfigSchema, isNodeToolsEnabled, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	isNodeToolsEnabled,
+	isSubAgentsEnabled,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
@@ -87,6 +92,31 @@ describe('isNodeToolsEnabled', () => {
 
 	it('returns true only when nodeTools.enabled is explicitly true', () => {
 		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
+	});
+});
+
+describe('AgentJsonConfigSchema — subAgents', () => {
+	it('accepts subAgents: { enabled: true }', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { enabled: true },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects subAgents without enabled', () => {
+		expect(AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: {} }).success).toBe(false);
+	});
+});
+
+describe('isSubAgentsEnabled', () => {
+	it('returns false when subAgents is undefined', () => {
+		expect(isSubAgentsEnabled(undefined)).toBe(false);
+	});
+
+	it('returns true only when subAgents.enabled is explicitly true', () => {
+		expect(isSubAgentsEnabled({ enabled: false })).toBe(false);
+		expect(isSubAgentsEnabled({ enabled: true })).toBe(true);
 	});
 });
 

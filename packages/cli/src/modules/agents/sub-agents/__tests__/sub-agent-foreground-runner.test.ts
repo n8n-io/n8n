@@ -22,7 +22,6 @@ jest.mock('../../json-config/from-json-config', () => ({
 }));
 
 const projectId = 'project-1';
-const userId = 'user-1';
 const parentRunId = 'parent-run-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
@@ -119,7 +118,6 @@ describe('SubAgentForegroundRunner', () => {
 	it('builds an isolated child agent and runs it with a fresh prompt', async () => {
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
-			userId,
 			credentialProvider,
 			createToolExecutor,
 			createMemoryFactory,
@@ -168,7 +166,6 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
-				userId,
 				credentialProvider,
 				createToolExecutor,
 				createMemoryFactory,
@@ -188,7 +185,6 @@ describe('SubAgentForegroundRunner', () => {
 				},
 				{
 					projectId,
-					userId,
 					credentialProvider,
 					createToolExecutor,
 					createMemoryFactory,
@@ -207,7 +203,6 @@ describe('SubAgentForegroundRunner', () => {
 				},
 				{
 					projectId,
-					userId,
 					childCount: 1,
 					credentialProvider,
 					createToolExecutor,
@@ -227,7 +222,6 @@ describe('SubAgentForegroundRunner', () => {
 				},
 				{
 					projectId,
-					userId,
 					credentialProvider,
 					createToolExecutor,
 					createMemoryFactory,
@@ -244,7 +238,6 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
-				userId,
 				credentialProvider,
 				createToolExecutor,
 				createMemoryFactory,
@@ -283,7 +276,6 @@ describe('SubAgentForegroundRunner', () => {
 				},
 				{
 					projectId,
-					userId,
 					credentialProvider,
 					createToolExecutor,
 					createMemoryFactory,

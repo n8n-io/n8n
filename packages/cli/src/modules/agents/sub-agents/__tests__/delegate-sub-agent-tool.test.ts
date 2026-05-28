@@ -13,7 +13,6 @@ import type {
 } from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
 	name: 'Helper Agent',
@@ -80,7 +79,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			source,
 			projectId,
-			userId,
 			credentialProvider,
 			createToolExecutor,
 			createMemoryFactory,
@@ -124,7 +122,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			expect.objectContaining({
 				projectId,
-				userId,
 				childCount: 0,
 				credentialProvider,
 				createToolExecutor,
@@ -138,7 +135,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			source,
 			projectId,
-			userId,
 			credentialProvider,
 			createToolExecutor,
 			createMemoryFactory,
@@ -166,7 +162,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			source,
 			projectId,
-			userId,
 			credentialProvider,
 			createToolExecutor,
 			createMemoryFactory,

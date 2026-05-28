@@ -15,6 +15,7 @@ import {
 	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
 	isNodeToolsEnabled,
+	isSubAgentsEnabled,
 	AgentModelSchema,
 	type AgentCredentialIntegrationConfig,
 	type AgentIntegrationConfig,
@@ -26,6 +27,7 @@ import {
 	type AgentSkillMutationResponse,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
+	type SubAgentSource,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
@@ -105,6 +107,11 @@ import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
+import {
+	PREDEFINED_SUB_AGENT_INSTRUCTIONS,
+	SubAgentForegroundRunner,
+} from './sub-agents/sub-agent-foreground-runner';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -114,6 +121,7 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	subAgentSource?: SubAgentSource;
 	credentialIntegrations: AgentCredentialIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
@@ -379,6 +387,10 @@ export class AgentsService {
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
 		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
+
+	private shouldAttachSubAgents(config: AgentJsonConfig): boolean {
+		return isSubAgentsEnabled(config.subAgents);
 	}
 
 	/**
@@ -865,6 +877,7 @@ export class AgentsService {
 			projectId,
 			credentialProvider,
 			nodeToolsEnabled,
+			subAgentSource,
 			credentialIntegrations,
 			integrationType,
 		} = params;
@@ -945,6 +958,16 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
+		if (subAgentSource !== undefined) {
+			this.attachSubAgentDelegationTool({
+				agent,
+				agentId,
+				projectId,
+				credentialProvider,
+				source: subAgentSource,
+			});
+		}
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
@@ -963,6 +986,28 @@ export class AgentsService {
 		projectId: string,
 	): void {
 		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
+	}
+
+	private attachSubAgentDelegationTool(params: {
+		agent: RuntimeAgent;
+		agentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		source: SubAgentSource;
+	}): void {
+		const { agent, agentId, projectId, credentialProvider, source } = params;
+		agent.tool(
+			createN8nDelegateSubAgentTool({
+				runner: Container.get(SubAgentForegroundRunner),
+				source,
+				projectId,
+				credentialProvider,
+				createToolExecutor: (toolCodeByName) =>
+					this.secureRuntime.createToolExecutor(toolCodeByName),
+				createMemoryFactory: (memoryScopeId) => this.getMemoryFactory(memoryScopeId),
+			}),
+		);
+		this.logger.debug('Injected delegate_subagent tool', { agentId });
 	}
 
 	/**
@@ -1660,6 +1705,7 @@ export class AgentsService {
 		const descriptionProvided = result.config.description !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
+		const subAgentsProvided = result.config.subAgents !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 		const mcpServersProvided = result.config.mcpServers !== undefined;
@@ -1680,6 +1726,7 @@ export class AgentsService {
 			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
+			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
@@ -2091,12 +2138,17 @@ export class AgentsService {
 			buildMcpClient,
 		});
 
+		const subAgentSource = this.shouldAttachSubAgents(config)
+			? createPredefinedSubAgentSource(config)
+			: undefined;
+
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
 			agentId: agentEntity.id,
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
+			...(subAgentSource !== undefined ? { subAgentSource } : {}),
 			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
 			integrationType,
 		});
@@ -2109,4 +2161,18 @@ export class AgentsService {
 function getProviderPrefix(modelId: string): string {
 	const slashIdx = modelId.indexOf('/');
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+}
+
+function createPredefinedSubAgentSource(config: AgentJsonConfig): SubAgentSource | undefined {
+	if (!config.model || !config.credential?.trim()) return undefined;
+
+	return {
+		type: 'inline',
+		config: {
+			name: `${config.name} Sub Agent`,
+			model: config.model,
+			credential: config.credential,
+			instructions: PREDEFINED_SUB_AGENT_INSTRUCTIONS,
+		},
+	};
 }
