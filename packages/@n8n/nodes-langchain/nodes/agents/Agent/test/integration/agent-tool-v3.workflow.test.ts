@@ -124,10 +124,10 @@ describe('AgentTool V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Agent as Tool with inner tool calls (AI-2494)', () => {
+	describe('Agent as Tool with inner tool calls', () => {
 		// Regression test for the case where the sub-agent's LLM emits a tool
-		// call. Before the AI-2494 fix the sub-agent returned an EngineRequest
-		// that the parent's tool boundary rejected with
+		// call. Previously the sub-agent returned an EngineRequest that the
+		// parent's tool boundary rejected with
 		// "The Tool attempted to return an engine request, …" — this fixture
 		// proves the parent sees the sub-agent's real final answer instead.
 		const testData: WorkflowTestData = {

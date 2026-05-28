@@ -188,15 +188,15 @@ function mapResult(result?: NodeOutput) {
 		// Tools running inside `makeHandleToolInvocation` cannot relay an
 		// `EngineRequest` to the workflow engine — the request/response loop
 		// only runs at top level. Sub-agent (`AgentToolV3`) resolves its own
-		// requests inline (see AI-2494), so reaching this branch means another
-		// tool returned an EngineRequest from inside a parent agent's tool
+		// requests inline, so reaching this branch means another tool
+		// returned an EngineRequest from inside a parent agent's tool
 		// callback. Throw a clear UserError so the failure is loud and the
 		// builder gets an actionable message.
 		throw new UserError(
 			'A connected tool returned an engine request to its parent agent, which is only supported for top-level node execution.',
 			{
 				description:
-					'If you are seeing this from a nested AgentToolV3 sub-agent, ensure your n8n version includes the AI-2494 fix.',
+					'If you are seeing this from a nested AgentToolV3 sub-agent, update n8n — recent versions resolve sub-agent engine requests inline.',
 			},
 		);
 	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
