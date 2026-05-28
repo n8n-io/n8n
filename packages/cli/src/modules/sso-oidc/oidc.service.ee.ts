@@ -17,6 +17,7 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
+import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -55,6 +56,19 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
 	...DEFAULT_OIDC_CONFIG,
 	discoveryEndpoint: new URL('http://n8n.io/not-set'),
 };
+
+/**
+ * Serialises arbitrary error causes for logging. `util.inspect` is circular-ref
+ * safe, so values like `fetch` `Response` objects carried on `oauth4webapi`
+ * errors get fully rendered instead of swallowed by `JSON.stringify`.
+ */
+function safeStringify(value: unknown): string {
+	try {
+		return inspect(value, { depth: 3, breakLength: Infinity });
+	} catch {
+		return Object.prototype.toString.call(value);
+	}
+}
 
 @Service()
 export class OidcService {
@@ -240,18 +254,7 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			const e = error as {
-				error?: string;
-				error_description?: string;
-				cause?: unknown;
-				message?: string;
-			};
-			this.logger.error('Failed to exchange authorization code for tokens', {
-				oauthError: e.error,
-				oauthErrorDescription: e.error_description,
-				cause: e.cause ? JSON.stringify(e.cause) : undefined,
-				message: e.message,
-			});
+			this.logTokenExchangeError(error);
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -426,18 +429,7 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			const e = error as {
-				error?: string;
-				error_description?: string;
-				cause?: unknown;
-				message?: string;
-			};
-			this.logger.error('Failed to exchange authorization code for tokens', {
-				oauthError: e.error,
-				oauthErrorDescription: e.error_description,
-				cause: e.cause ? JSON.stringify(e.cause) : undefined,
-				message: e.message,
-			});
+			this.logTokenExchangeError(error);
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -469,6 +461,30 @@ export class OidcService {
 			claims: { ...claims },
 			userInfo: { ...userInfo },
 		};
+	}
+
+	/**
+	 * Logs a token-exchange failure with structured oauth2 fields and a safely
+	 * serialised `cause`. The previous implementation used `JSON.stringify(cause)`,
+	 * which silently produced `"[object Object]"` whenever the underlying error
+	 * carried a circular reference (e.g. a `fetch` `Response` on `oauth4webapi`
+	 * errors), masking the real reason for the failure in logs.
+	 */
+	private logTokenExchangeError(error: unknown): void {
+		const e = error as {
+			error?: string;
+			error_description?: string;
+			code?: string;
+			cause?: unknown;
+			message?: string;
+		};
+		this.logger.error('Failed to exchange authorization code for tokens', {
+			oauthError: e.error,
+			oauthErrorDescription: e.error_description,
+			code: e.code,
+			message: e.message,
+			cause: e.cause === undefined ? undefined : safeStringify(e.cause),
+		});
 	}
 
 	private async applySsoProvisioning(
