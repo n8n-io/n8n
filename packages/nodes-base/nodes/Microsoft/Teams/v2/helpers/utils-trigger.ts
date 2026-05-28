@@ -6,10 +6,14 @@ import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './type
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
 import { microsoftApiRequest } from '../transport';
 
+type SubscriptionContext = IHookFunctions | IWebhookFunctions;
+
+/** Generates the Microsoft Graph clientState secret used to verify webhook notifications. */
 export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
 }
 
+/** Fetches all Microsoft Teams visible to the authenticated account. */
 export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
 	const { value: teams } = (await microsoftApiRequest.call(
 		this,
@@ -19,6 +23,7 @@ export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[
 	return teams;
 }
 
+/** Fetches all channels for a team so per-channel Graph subscriptions can be created. */
 export async function fetchAllChannels(
 	this: IHookFunctions,
 	teamId: string,
@@ -31,8 +36,9 @@ export async function fetchAllChannels(
 	return channels;
 }
 
+/** Creates a Microsoft Graph change-notification subscription for the given resource path. */
 export async function createSubscription(
-	this: IHookFunctions,
+	this: SubscriptionContext,
 	webhookUrl: string,
 	resourcePath: string,
 	clientState?: string,
@@ -61,6 +67,7 @@ export async function createSubscription(
 	return response;
 }
 
+/** Verifies incoming Microsoft Graph notifications against the stored clientState secret. */
 export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const req = this.getRequestObject();
 	const webhookData = this.getWorkflowStaticData('node');
@@ -87,6 +94,7 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	});
 }
 
+/** Resolves the Graph resource path or paths that must be subscribed for a trigger event. */
 export async function getResourcePath(
 	this: IHookFunctions,
 	event: string,
@@ -133,7 +141,10 @@ export async function getResourcePath(
 				const teamChannels = await Promise.all(
 					teams.map(async (team) => {
 						const channels = await fetchAllChannels.call(this, team.id);
-						return channels.map((channel) => `/teams/${team.id}/channels/${channel.id}/messages`);
+						return [
+							`/teams/${team.id}/channels`,
+							...channels.map((channel) => `/teams/${team.id}/channels/${channel.id}/messages`),
+						];
 					}),
 				);
 				return teamChannels.flat();
@@ -145,7 +156,10 @@ export async function getResourcePath(
 
 				if (watchAllChannels) {
 					const channels = await fetchAllChannels.call(this, teamId);
-					return channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`);
+					return [
+						`/teams/${teamId}/channels`,
+						...channels.map((channel) => `/teams/${teamId}/channels/${channel.id}/messages`),
+					];
 				} else {
 					const channelId = this.getNodeParameter('channelId', undefined, {
 						extractValue: true,

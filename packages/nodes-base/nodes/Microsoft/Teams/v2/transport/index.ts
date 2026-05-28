@@ -6,13 +6,14 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IHookFunctions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {},
@@ -59,7 +60,7 @@ export async function microsoftApiRequest(
 }
 
 export async function microsoftApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,

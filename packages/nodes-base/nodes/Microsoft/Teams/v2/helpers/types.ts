@@ -10,6 +10,7 @@ export interface ChannelResponse {
 
 export interface WebhookNotification {
 	subscriptionId: string;
+	changeType?: string;
 	resource: string;
 	resourceData: ResourceData;
 	tenantId: string;

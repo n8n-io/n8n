@@ -408,14 +408,131 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		}
 
 		const eventNotifications = req.body.value as WebhookNotification[];
+		const triggerEvent = this.getNodeParameter('event', 0) as string;
+		const notificationsToEmit =
+			triggerEvent === 'newChannelMessage'
+				? await handleChannelNotifications.call(this, eventNotifications)
+				: eventNotifications;
+
+		if (notificationsToEmit.length === 0) {
+			return { noWebhookResponse: true };
+		}
+
 		const response: IWebhookResponseData = {
-			workflowData: eventNotifications.map((event) => [
+			workflowData: notificationsToEmit.map((notification) => [
 				{
-					json: (event.resourceData as IDataObject) ?? event,
+					json: (notification.resourceData as IDataObject) ?? notification,
 				} as INodeExecutionData,
 			]),
 		};
 
 		return response;
 	}
+}
+
+/** Uses the channel-list subscription as a maintenance signal for newly created channels. */
+async function handleChannelNotifications(
+	this: IWebhookFunctions,
+	notifications: WebhookNotification[],
+): Promise<WebhookNotification[]> {
+	const webhookData = this.getWorkflowStaticData('node');
+	const webhookUrl = this.getNodeWebhookUrl('default');
+	const webhookSecret = webhookData.webhookSecret;
+	const subscriptionIds = getStringArray(webhookData.subscriptionIds);
+	const notificationsToEmit: WebhookNotification[] = [];
+	const createdSubscriptionIds: string[] = [];
+
+	for (const notification of notifications) {
+		if (!isChannelNotification(notification)) {
+			notificationsToEmit.push(notification);
+			continue;
+		}
+
+		if (notification.changeType !== 'created') {
+			continue;
+		}
+
+		const channelMessageResource = getChannelMessageResource(notification);
+
+		if (!channelMessageResource) {
+			continue;
+		}
+
+		if (!webhookUrl || typeof webhookSecret !== 'string') {
+			this.logger.warn('Cannot create Microsoft Teams channel message subscription', {
+				hasWebhookUrl: Boolean(webhookUrl),
+				hasWebhookSecret: typeof webhookSecret === 'string',
+			});
+			continue;
+		}
+
+		try {
+			if (await hasSubscriptionForResource.call(this, webhookUrl, channelMessageResource)) {
+				continue;
+			}
+
+			const subscription = await createSubscription.call(
+				this,
+				webhookUrl,
+				channelMessageResource,
+				webhookSecret,
+			);
+			createdSubscriptionIds.push(subscription.id);
+		} catch (error) {
+			this.logger.warn('Failed to create Microsoft Teams channel message subscription', {
+				error,
+			});
+		}
+	}
+
+	if (createdSubscriptionIds.length > 0) {
+		webhookData.subscriptionIds = [...subscriptionIds, ...createdSubscriptionIds];
+	}
+
+	return notificationsToEmit;
+}
+
+/** Converts a channel-created notification into the channel-message subscription resource. */
+function getChannelMessageResource(notification: WebhookNotification): string | undefined {
+	const oDataId = notification.resourceData?.['@odata.id'];
+	const resource = typeof oDataId === 'string' ? oDataId : notification.resource;
+	const match = resource.match(/^teams\('([^']+)'\)\/channels\('([^']+)'\)$/);
+
+	if (!match) {
+		return undefined;
+	}
+
+	const [, teamId, channelId] = match;
+	return `/teams/${teamId}/channels/${channelId}/messages`;
+}
+
+/** Identifies maintenance notifications emitted by the channel-list subscription. */
+function isChannelNotification(notification: WebhookNotification): boolean {
+	return notification.resourceData?.['@odata.type'] === '#Microsoft.Graph.channel';
+}
+
+/** Checks Graph before creating a late-bound subscription so retry delivery stays idempotent. */
+async function hasSubscriptionForResource(
+	this: IWebhookFunctions,
+	webhookUrl: string,
+	resource: string,
+): Promise<boolean> {
+	const subscriptions = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		'/v1.0/subscriptions',
+	)) as SubscriptionResponse[];
+
+	return subscriptions.some(
+		(subscription) =>
+			subscription.notificationUrl === webhookUrl && subscription.resource === resource,
+	);
+}
+
+/** Reads existing subscription IDs from static data without trusting the stored shape. */
+function getStringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((item): item is string => typeof item === 'string')
+		: [];
 }

@@ -17,6 +17,9 @@ describe('Microsoft Teams Trigger Node', () => {
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock();
+		mockWebhookFunctions.logger = {
+			warn: jest.fn(),
+		};
 		jest.clearAllMocks();
 	});
 
@@ -340,6 +343,295 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			expect(mockResponse.status).not.toHaveBeenCalledWith(401);
 			expect(result.workflowData).toEqual([[{ json: { id: '1' } }]]);
+		});
+
+		it('should create a channel message subscription and not emit channel notifications', async () => {
+			const staticData: {
+				subscriptionIds: string[];
+				webhookSecret: string;
+			} = {
+				subscriptionIds: ['channel-list-subscription'],
+				webhookSecret: 'expected-secret',
+			};
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							changeType: 'created',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')",
+							resourceData: {
+								id: 'channel123',
+								'@odata.type': '#Microsoft.Graph.channel',
+								'@odata.id': "teams('team123')/channels('channel123')",
+							},
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+				end: jest.fn(),
+			};
+
+			(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValueOnce([]);
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValueOnce({
+				id: 'channel-message-subscription',
+			});
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'event') return 'newChannelMessage';
+				return undefined;
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData).toBeUndefined();
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				mockWebhookFunctions,
+				'POST',
+				'/v1.0/subscriptions',
+				expect.objectContaining({
+					notificationUrl: 'https://webhook.url',
+					resource: '/teams/team123/channels/channel123/messages',
+					clientState: 'expected-secret',
+				}),
+			);
+			expect(staticData.subscriptionIds).toEqual([
+				'channel-list-subscription',
+				'channel-message-subscription',
+			]);
+		});
+
+		it('should ignore deleted channel notifications', async () => {
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							changeType: 'deleted',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')",
+							resourceData: {
+								id: 'channel123',
+								'@odata.type': '#Microsoft.Graph.channel',
+								'@odata.id': "teams('team123')/channels('channel123')",
+							},
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+				end: jest.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'event') return 'newChannelMessage';
+				return undefined;
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData).toBeUndefined();
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+		});
+
+		it('should not create duplicate channel message subscriptions', async () => {
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							changeType: 'created',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')",
+							resourceData: {
+								id: 'channel123',
+								'@odata.type': '#Microsoft.Graph.channel',
+								'@odata.id': "teams('team123')/channels('channel123')",
+							},
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+				end: jest.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+			(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValueOnce([
+				{
+					id: 'channel-message-subscription',
+					notificationUrl: 'https://webhook.url',
+					resource: '/teams/team123/channels/channel123/messages',
+				},
+			]);
+			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'event') return 'newChannelMessage';
+				return undefined;
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData).toBeUndefined();
+			expect(microsoftApiRequest.call).not.toHaveBeenCalledWith(
+				mockWebhookFunctions,
+				'POST',
+				'/v1.0/subscriptions',
+				expect.anything(),
+			);
+		});
+
+		it('should emit message notifications from a mixed batch', async () => {
+			const staticData: {
+				subscriptionIds: string[];
+				webhookSecret: string;
+			} = {
+				subscriptionIds: ['channel-list-subscription'],
+				webhookSecret: 'expected-secret',
+			};
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							changeType: 'created',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')",
+							resourceData: {
+								id: 'channel123',
+								'@odata.type': '#Microsoft.Graph.channel',
+								'@odata.id': "teams('team123')/channels('channel123')",
+							},
+						},
+						{
+							changeType: 'created',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')/messages('message123')",
+							resourceData: {
+								id: 'message123',
+								'@odata.type': '#Microsoft.Graph.chatMessage',
+								'@odata.id': "teams('team123')/channels('channel123')/messages('message123')",
+							},
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+				end: jest.fn(),
+			};
+
+			(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValueOnce([]);
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValueOnce({
+				id: 'channel-message-subscription',
+			});
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'event') return 'newChannelMessage';
+				return undefined;
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toEqual([
+				[
+					{
+						json: {
+							id: 'message123',
+							'@odata.type': '#Microsoft.Graph.chatMessage',
+							'@odata.id': "teams('team123')/channels('channel123')/messages('message123')",
+						},
+					},
+				],
+			]);
+			expect(staticData.subscriptionIds).toEqual([
+				'channel-list-subscription',
+				'channel-message-subscription',
+			]);
+		});
+
+		it('should log and ack if creating a channel message subscription fails', async () => {
+			const staticData: {
+				subscriptionIds: string[];
+				webhookSecret: string;
+			} = {
+				subscriptionIds: ['channel-list-subscription'],
+				webhookSecret: 'expected-secret',
+			};
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							changeType: 'created',
+							clientState: 'expected-secret',
+							resource: "teams('team123')/channels('channel123')",
+							resourceData: {
+								id: 'channel123',
+								'@odata.type': '#Microsoft.Graph.channel',
+								'@odata.id': "teams('team123')/channels('channel123')",
+							},
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn(),
+				end: jest.fn(),
+			};
+			const error = new Error('Failed to create subscription');
+
+			(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValueOnce([]);
+			(microsoftApiRequest.call as jest.Mock).mockRejectedValueOnce(error);
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'event') return 'newChannelMessage';
+				return undefined;
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData).toBeUndefined();
+			expect(staticData.subscriptionIds).toEqual(['channel-list-subscription']);
+			expect(mockWebhookFunctions.logger.warn).toHaveBeenCalledWith(
+				'Failed to create Microsoft Teams channel message subscription',
+				{ error },
+			);
 		});
 	});
 });

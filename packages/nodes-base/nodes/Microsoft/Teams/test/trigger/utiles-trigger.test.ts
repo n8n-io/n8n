@@ -343,6 +343,55 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).toBe('/teams/team123/channels/channel123/messages');
 		});
 
+		it('should include a channel subscription for newChannelMessage event with watchAllChannels', async () => {
+			mockHookFunctions.getNodeParameter
+				.mockReturnValueOnce(false)
+				.mockReturnValueOnce('team123')
+				.mockReturnValueOnce(true);
+
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValueOnce({
+				value: [
+					{ id: 'channel1', displayName: 'Channel 1' },
+					{ id: 'channel2', displayName: 'Channel 2' },
+				],
+			});
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
+
+			expect(result).toEqual([
+				'/teams/team123/channels',
+				'/teams/team123/channels/channel1/messages',
+				'/teams/team123/channels/channel2/messages',
+			]);
+		});
+
+		it('should include channel subscriptions for newChannelMessage event with watchAllTeams', async () => {
+			mockHookFunctions.getNodeParameter.mockReturnValueOnce(true);
+
+			(microsoftApiRequest.call as jest.Mock)
+				.mockResolvedValueOnce({
+					value: [
+						{ id: 'team1', displayName: 'Team 1' },
+						{ id: 'team2', displayName: 'Team 2' },
+					],
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: 'channel1', displayName: 'Channel 1' }],
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: 'channel2', displayName: 'Channel 2' }],
+				});
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
+
+			expect(result).toEqual([
+				'/teams/team1/channels',
+				'/teams/team1/channels/channel1/messages',
+				'/teams/team2/channels',
+				'/teams/team2/channels/channel2/messages',
+			]);
+		});
+
 		it('should return the correct resource path for newTeamMember event', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValueOnce(false);
 			mockHookFunctions.getNodeParameter.mockReturnValueOnce('team123');
