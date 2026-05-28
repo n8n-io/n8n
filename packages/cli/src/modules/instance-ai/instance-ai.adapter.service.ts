@@ -477,14 +477,6 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async getWorkflowHead(workflowId: string) {
-				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
-					'workflow:read',
-				]);
-				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
-			},
-
 			async getLatestRunData(workflowId: string) {
 				// Caller must be able to read the workflow to see its execution history.
 				// Silent null on no-access keeps validation usable even when access was
