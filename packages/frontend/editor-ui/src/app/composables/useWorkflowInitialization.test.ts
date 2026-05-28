@@ -91,6 +91,7 @@ vi.mock('@/app/composables/useWorkflowId', () => ({
 const mockNDVStore = vi.hoisted(() => ({}));
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => mockNDVStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNDVStore })),
 	disposeNDVStore: vi.fn(),
 }));
 

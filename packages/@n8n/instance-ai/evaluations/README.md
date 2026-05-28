@@ -2,10 +2,11 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Three harnesses live here:
+Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
 Sections:
@@ -13,6 +14,7 @@ Sections:
 - [Running e2e + sub-agent evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
+- [Running discovery evals](#discovery-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -282,6 +284,24 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
+## Discovery evals
+
+Discovery evals run the orchestrator in-process and assert first-hop tool or
+sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+`agent-spawned` events. Use them when a regression is about which path the
+agent chooses, not whether a generated workflow executes.
+
+To inspect runtime skill loading, run a focused verbose pass:
+
+```bash
+pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass
+```
+
+Verbose output lists each trial's completed tool calls with argument previews.
+For data-table routing, look for `load_skill(skillId="data-table-manager")`
+and `data-tables(action="list")`, and verify there are no planner,
+workflow-builder, or delegate sub-agent entries in the spawned-agent section.
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`
@@ -318,10 +338,10 @@ pnpm eval:pairwise:langsmith \
 ### Sandbox
 
 Pairwise evals always run inside a sandbox — the same path production uses.
-The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
-sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
-parsed `WorkflowJSON`. This exercises the production builder agent
-end-to-end (sandbox prompt, file I/O, real type checking).
+The agent writes TypeScript to a builder root under the shared sandbox
+workspace, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent end-to-end
+(sandbox prompt, file I/O, real type checking).
 
 Required env vars (Daytona provider — the default):
 
