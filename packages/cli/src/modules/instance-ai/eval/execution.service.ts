@@ -469,7 +469,9 @@ export class EvalExecutionService {
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 	): void {
 		const entry = (nodeResults[turn.rootName] ??= {
-			output: null,
+			outputs: {},
+			outputCount: 0,
+			iterationCount: 0,
 			interceptedRequests: [],
 			executionMode: 'mocked',
 		});

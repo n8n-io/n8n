@@ -675,6 +675,8 @@ function renderNodeOutputs(
 ): string[] {
 	const lines: string[] = [];
 	const connTypes = Object.keys(outputs);
+	// "Output: none" only when no branches exist on any port — distinct from "branches exist but all empty".
+	// An `outputs.main = [[]]` (one connected branch, zero items) falls through and renders as `Output [main]: 0 items`.
 	if (connTypes.length === 0 || connTypes.every((k) => outputs[k].length === 0)) {
 		lines.push('**Output:** none');
 		return lines;
@@ -771,7 +773,9 @@ function buildScenarioContextBlock(
 		if (nr.executionMode === 'mocked') mockedNodes.push(nodeName);
 		else if (nr.executionMode === 'pinned') pinnedNodes.push(nodeName);
 		else realNodes.push(nodeName);
-		if (nr.iterationCount > 0) ranNodes.add(nodeName);
+		// Pinned nodes (trigger / bypass) get their data from pin data and never appear in runData,
+		// so `iterationCount` stays 0 — count them as "ran" anyway to keep them out of `didNotRun`.
+		if (nr.iterationCount > 0 || nr.executionMode !== 'real') ranNodes.add(nodeName);
 	}
 	const didNotRun: string[] =
 		wf?.nodes

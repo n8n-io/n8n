@@ -252,6 +252,36 @@ describe('buildVerificationArtifact', () => {
 		expect(artifact.scenarioContext).toContain('full count across all branches: 42');
 	});
 
+	it('keeps pinned trigger nodes out of "Did not run" (they have synthetic input, no runData)', () => {
+		const wf: WorkflowResponse = {
+			id: 'w1',
+			name: 'scheduled-pipeline',
+			active: false,
+			versionId: 'v1',
+			nodes: [
+				{
+					id: 'a',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { 'Schedule Trigger': { main: [[]] } },
+		};
+		const evalResult = makeEvalResult({
+			'Schedule Trigger': makeNodeResult({ executionMode: 'pinned' }),
+		});
+
+		const artifact = buildVerificationArtifact(scenario, evalResult, [wf]);
+
+		expect(artifact.scenarioContext).toContain(
+			'**Pinned nodes** (synthetic input): Schedule Trigger',
+		);
+		expect(artifact.scenarioContext).toContain('**Did not run** (no execution data): none');
+	});
+
 	it('tags loop iterations and first-error iteration in the trace header', () => {
 		const wf: WorkflowResponse = {
 			id: 'w1',

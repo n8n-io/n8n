@@ -1,7 +1,7 @@
 import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { createEvalAgent } from '../../src/utils/eval-agents';
+import { EPHEMERAL_CACHE, createEvalAgent } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/runner';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
@@ -45,7 +45,7 @@ export async function verifyChecklist(
 				{
 					type: 'text',
 					text: artifact.workflowContext,
-					providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+					providerOptions: EPHEMERAL_CACHE,
 				},
 				{
 					type: 'text',

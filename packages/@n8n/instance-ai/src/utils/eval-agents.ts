@@ -32,10 +32,13 @@ function getApiKey(): string {
 // Agent factory
 // ---------------------------------------------------------------------------
 
+/** Anthropic `providerOptions` payload that marks the preceding block as an ephemeral cache breakpoint. */
+export const EPHEMERAL_CACHE = {
+	anthropic: { cacheControl: { type: 'ephemeral' as const } },
+};
+
 const CACHE_PROVIDER_OPTS = {
-	providerOptions: {
-		anthropic: { cacheControl: { type: 'ephemeral' as const } },
-	},
+	providerOptions: EPHEMERAL_CACHE,
 };
 
 export function createEvalAgent(
