@@ -10,6 +10,7 @@ The existing video composition behavior remains unchanged:
 - Cover image is centered in the opening stage.
 - Uploaded screenshot is centered in the second stage.
 - Cover and screenshot move to the top-left and top-right during the body stage.
+- The final video duration is determined by the final merged TTS audio duration.
 - Final output exposes previewable TTS audio and final MP4 binary data in n8n.
 
 ## Non-Goals
@@ -210,6 +211,8 @@ The workflow stays as one importable n8n workflow.
     - Runs once after segment synthesis.
     - Uses `ffprobe` to calculate segment durations.
     - Uses `ffmpeg concat` to produce `tts/audio.mp3`.
+    - Produces the single complete TTS track consumed by the video composer, regardless of whether the script is single narration or dialogue.
+    - Adds short, consistent inter-segment spacing only when needed to avoid abrupt dialogue cuts.
     - Offsets and merges each segment's timing data into `tts/timing.json`.
     - Emits `audioPath` and `ttsTimingPath`.
 
@@ -249,8 +252,25 @@ Use this strategy instead:
 
 - Single mode: merge narrator text and synthesize once.
 - Dialogue mode: synthesize one segment at a time with the role's selected speaker.
-- Merge segment MP3s locally with FFmpeg.
+- Merge segment MP3s locally with FFmpeg into one complete `tts/audio.mp3`.
 - Merge timing metadata by adding cumulative segment offsets.
+- After merge, downstream video composition treats all modes identically: it receives one audio file and one timing file.
+
+The final output must not expose a collection of separate voice clips as the primary result. Segment audio files are intermediate artifacts only. The user-facing TTS result is always one complete, continuous audio track.
+
+Dialogue joins should feel natural. The merge step should avoid hard cuts by applying a small configurable pause between dialogue turns, for example 120-250 ms, unless tests show the provider already includes enough trailing silence. This pause must also be included in the timing offset calculation so subtitles remain aligned.
+
+## Video Duration
+
+The rendered video duration is determined by the final merged TTS audio duration.
+
+Rules:
+
+- The composer reads `tts/audio.mp3` with `ffprobe`.
+- If TTS audio is longer than the visual intro stages, the body stage fills the remaining duration.
+- If TTS audio is shorter than the visual intro stages, the current intro-preserving behavior may keep the minimum visual intro duration.
+- For normal generated scripts, the script writer should target enough spoken text so the final TTS duration is longer than the visual intro.
+- Background video loops or trims as needed to cover the final duration.
 
 ## Timing Merge
 
@@ -287,9 +307,10 @@ Focused tests should cover:
 - LLM response JSON extraction and validation.
 - Single-mode segment merging.
 - Dialogue-mode segment request building.
-- Timing offset merge across multiple segments.
+- Timing offset merge across multiple segments, including inserted dialogue pauses.
 - FFmpeg concat argument generation.
 - Composer compatibility with merged `audio.mp3` and `timing.json`.
+- Final video duration follows the merged TTS duration.
 
 Smoke validation:
 
@@ -297,4 +318,3 @@ Smoke validation:
 - Generate a two-voice dialogue video from the same viewpoint.
 - Confirm final video contains previewable `ttsAudio` and `finalVideo` binary outputs.
 - Confirm subtitles align with role-segment audio offsets.
-
