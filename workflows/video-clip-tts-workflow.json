@@ -3,6 +3,7 @@
   "nodes": [
     {
       "parameters": {
+        "path": "video-clip-tts-upload",
         "formTitle": "TTS Video Clip Composer",
         "formDescription": "Upload a cover image, proof screenshot, TTS script, and background video to create an edited 16:9 MP4.",
         "formFields": {
