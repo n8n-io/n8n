@@ -10,6 +10,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { Channel, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -40,13 +41,17 @@ type WebhookHandler = (
 	options?: { waitUntil?: (task: Promise<unknown>) => void },
 ) => Promise<Response>;
 
-interface ChatInstance {
+export interface ChatInstance {
 	initialize(): Promise<void>;
 	shutdown(): Promise<void>;
 	webhooks: Record<string, WebhookHandler>;
 	onNewMention: (handler: unknown) => void;
 	onSubscribedMessage: (handler: unknown) => void;
 	onAction: (handler: unknown) => void;
+	openDM(user: string): Promise<Thread>;
+	thread(threadId: string): Thread;
+	channel(channelId: string): Channel;
+	getUser(user: string): Promise<UserInfo | null>;
 }
 
 interface ChatAgentConnection {
@@ -420,7 +425,15 @@ export class ChatIntegrationService {
 	/**
 	 * Return the first Chat instance for an agent, or undefined if not connected.
 	 */
-	getChatInstance(agentId: string): ChatInstance | undefined {
+	getChatInstance(
+		agentId: string,
+		integration?: { type: string; credentialId: string },
+	): ChatInstance | undefined {
+		if (integration) {
+			return this.connections.get(
+				this.connectionKey(agentId, integration.type, integration.credentialId),
+			)?.chat;
+		}
 		for (const [k, conn] of this.connections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}

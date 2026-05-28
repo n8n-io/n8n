@@ -206,7 +206,7 @@ describe('DirectedGraph', () => {
 					{ from: node2, to: node4 },
 					{ from: node4, to: node5 },
 				);
-			const fn = jest.fn().mockImplementation((node: INode) => node === node4);
+			const fn = vi.fn().mockImplementation((node: INode) => node === node4);
 
 			// ACT
 			const foundNode = graph.depthFirstSearch({

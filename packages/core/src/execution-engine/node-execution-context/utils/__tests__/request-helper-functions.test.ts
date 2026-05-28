@@ -2,7 +2,6 @@ import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type {
 	IAllExecuteFunctions,
 	IHttpRequestMethods,
@@ -16,6 +15,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -245,7 +245,7 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should throw error for non-401 status codes', async () => {
@@ -1174,7 +1174,7 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockNode.name = 'test-node-name';
 			mockNode.credentials = {
 				'test-credentials-type': {
@@ -1421,7 +1421,7 @@ describe('Request Helper Functions', () => {
 		describe('JWE decryption via oauth-jwe proxy', () => {
 			beforeEach(() => {
 				nock.cleanAll();
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 				mockNode.name = 'test-node-name';
 				mockNode.credentials = {
 					'test-credentials-type': { id: 'test-credentials-id', name: 'test-credentials-name' },
@@ -1430,7 +1430,7 @@ describe('Request Helper Functions', () => {
 
 			test('decrypts the refreshed token via the proxy when present', async () => {
 				const oauthJweProxyProvider = {
-					decryptOAuth2TokenData: jest.fn().mockResolvedValue({
+					decryptOAuth2TokenData: vi.fn().mockResolvedValue({
 						access_token: 'decrypted-token',
 						refresh_token: 'new-refresh-token',
 					}),
@@ -1490,7 +1490,7 @@ describe('Request Helper Functions', () => {
 
 			test('propagates plaintext rejection thrown by the proxy', async () => {
 				const oauthJweProxyProvider = {
-					decryptOAuth2TokenData: jest
+					decryptOAuth2TokenData: vi
 						.fn()
 						.mockRejectedValue(
 							new UserError(
@@ -1548,7 +1548,7 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockNode.name = 'test-node';
 			mockNode.credentials = {
 				testOAuth2: {
@@ -1728,7 +1728,7 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockNode.name = 'test-node';
 			mockNode.credentials = {
 				testOAuth2: { id: 'cred-id', name: 'cred-name' },
@@ -1871,7 +1871,7 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockNode.name = 'test-node';
 			mockNode.credentials = {
 				testOAuth2: { id: 'cred-id', name: 'cred-name' },
@@ -2066,10 +2066,10 @@ describe('Request Helper Functions', () => {
 		const node = mock<INode>();
 
 		const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
-			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
-			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
-			validateRedirectSync: jest.fn(),
-			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			...overrides,
 		});
 		beforeEach(() => {
@@ -2079,9 +2079,9 @@ describe('Request Helper Functions', () => {
 
 		describe('convertN8nRequestToAxios with ssrfBridge', () => {
 			test('should inject secureLookup into agent options when no proxy', () => {
-				const lookupFn = jest.fn();
+				const lookupFn = vi.fn();
 				const ssrfBridge = createSsrfBridge({
-					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+					createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 				});
 
 				const axiosConfig = convertN8nRequestToAxios(
@@ -2094,9 +2094,9 @@ describe('Request Helper Functions', () => {
 			});
 
 			test('should NOT inject secureLookup when proxy is configured', () => {
-				const lookupFn = jest.fn();
+				const lookupFn = vi.fn();
 				const ssrfBridge = createSsrfBridge({
-					createSecureLookup: jest.fn().mockReturnValue(lookupFn),
+					createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 				});
 
 				const axiosConfig = convertN8nRequestToAxios(

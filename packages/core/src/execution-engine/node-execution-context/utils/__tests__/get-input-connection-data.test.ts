@@ -1,6 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	ITaskDataConnections,
@@ -19,11 +18,15 @@ import type {
 	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import * as n8nWorkflow from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
 import { SupplyDataContext } from '../../supply-data-context';
 import { StructuredToolkit } from '../ai-tool-types';
+import { getSchema } from '../create-node-as-tool';
 import {
 	createHitlToolkit,
 	createHitlToolSupplyData,
@@ -32,10 +35,20 @@ import {
 } from '../get-input-connection-data';
 
 // Mock getSchema
-jest.mock('../create-node-as-tool', () => ({
-	...jest.requireActual('../create-node-as-tool'),
-	getSchema: jest.fn(),
+vi.mock('../create-node-as-tool', async (importActual) => ({
+	...(await importActual()),
+	getSchema: vi.fn(),
 }));
+
+// n8n-workflow is externalized (see vite.config.ts), so its CJS exports are
+// getter-only and Vite SSR wraps the namespace separately from `require`.
+// Replace the namespace's `sleepWithAbort` so both source code (via Vite SSR
+// `import`) and tests see the mock.
+const sleepWithAbort = vi.fn();
+Object.defineProperty(n8nWorkflow, 'sleepWithAbort', {
+	configurable: true,
+	get: () => sleepWithAbort,
+});
 
 describe('getInputConnectionData', () => {
 	const agentNode = mock<INode>({
@@ -67,7 +80,7 @@ describe('getInputConnectionData', () => {
 	let executeContext: ExecuteContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeContext = new ExecuteContext(
 			workflow,
@@ -82,14 +95,14 @@ describe('getInputConnectionData', () => {
 			[],
 		);
 
-		jest.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		vi.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
 		nodeTypes.getByNameAndVersion
 			.calledWith(agentNode.type, expect.anything())
 			.mockReturnValue(agentNodeType);
 
 		// Mock getConnections method used by validateInputConfiguration
 		// This will be overridden in individual tests as needed
-		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+		vi.spyOn(executeContext, 'getConnections').mockReturnValue([]);
 	});
 
 	describe.each([
@@ -111,7 +124,7 @@ describe('getInputConnectionData', () => {
 			disabled: false,
 		});
 		const secondNode = mock<INode>({ name: 'Second Node', type: 'test.type', disabled: false });
-		const supplyData = jest.fn().mockResolvedValue({ response });
+		const supplyData = vi.fn().mockResolvedValue({ response });
 		const nodeType = mock<INodeType>({ supplyData });
 
 		beforeEach(() => {
@@ -143,7 +156,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			(executeContext.getConnections as jest.Mock).mockReturnValueOnce([]);
+			(executeContext.getConnections as Mock).mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toBeUndefined();
@@ -159,12 +172,10 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 1 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -180,7 +191,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -204,9 +215,9 @@ describe('getInputConnectionData', () => {
 			workflow.getParentNodes.mockReturnValueOnce([disabledNode.name]);
 			workflow.getNode.calledWith(disabledNode.name).mockReturnValue(disabledNode);
 			// Mock connections that include the disabled node, but getConnectedNodes will filter it out
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: disabledNode.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: disabledNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -221,9 +232,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
 
@@ -240,9 +251,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			const configError = new NodeOperationError(node, 'Config Error in node', {
 				functionality: 'configuration-node',
@@ -263,11 +274,11 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
-			const closeFunction = jest.fn();
+			const closeFunction = vi.fn();
 			supplyData.mockResolvedValueOnce({ response, closeFunction });
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
@@ -303,13 +314,11 @@ describe('getInputConnectionData', () => {
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
 			workflow.getNode.calledWith(thirdNode.name).mockReturnValue(thirdNode);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-					[{ node: thirdNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+				[{ node: thirdNode.name, type: connectionType, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response, response, response]);
@@ -341,13 +350,11 @@ describe('getInputConnectionData', () => {
 				.mockReturnValue(nodeType);
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-					[{ node: thirdNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+				[{ node: thirdNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 2 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -368,9 +375,9 @@ describe('getInputConnectionData', () => {
 					required: false,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response]);
@@ -391,7 +398,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([]);
@@ -406,7 +413,7 @@ describe('getInputConnectionData', () => {
 			type: 'test.tool',
 			disabled: false,
 		});
-		const supplyData = jest.fn().mockResolvedValue({ response: mockTool });
+		const supplyData = vi.fn().mockResolvedValue({ response: mockTool });
 		const toolNodeType = mock<INodeType>({ supplyData });
 
 		const secondToolNode = mock<INode>({
@@ -416,7 +423,7 @@ describe('getInputConnectionData', () => {
 		});
 		const secondMockTool = mock<Tool>();
 		const secondToolNodeType = mock<INodeType>({
-			supplyData: jest.fn().mockResolvedValue({ response: secondMockTool }),
+			supplyData: vi.fn().mockResolvedValue({ response: secondMockTool }),
 		});
 
 		beforeEach(() => {
@@ -438,7 +445,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([]);
@@ -453,7 +460,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -479,11 +486,9 @@ describe('getInputConnectionData', () => {
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([disabledToolNode.name]);
 			workflow.getNode.calledWith(disabledToolNode.name).mockReturnValue(disabledToolNode);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: disabledToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: disabledToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -506,12 +511,10 @@ describe('getInputConnectionData', () => {
 			workflow.getParentNodes
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([toolNode.name, secondToolNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-					[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool, secondMockTool]);
@@ -528,11 +531,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -547,11 +548,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool]);
@@ -565,11 +564,11 @@ describe('makeHandleToolInvocation', () => {
 		name: 'Test Tool Node',
 		type: 'test.tool',
 	});
-	const execute = jest.fn();
+	const execute = vi.fn();
 	const connectedNodeType = mock<INodeType>({
 		execute,
 	});
-	const contextFactory = jest.fn();
+	const contextFactory = vi.fn();
 	const taskData = mock<ITaskData>();
 
 	let runExecutionData = mock<IRunExecutionData>({
@@ -580,7 +579,7 @@ describe('makeHandleToolInvocation', () => {
 	const toolArgs = { key: 'value' };
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return stringified results when execution is successful', async () => {
@@ -663,7 +662,7 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	it('should continue if json and binary data exist', async () => {
-		const warnFn = jest.fn();
+		const warnFn = vi.fn();
 		const mockContext = mock<IExecuteFunctions>({
 			logger: {
 				warn: warnFn,
@@ -764,17 +763,17 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	describe('retry functionality', () => {
-		const contextFactory = jest.fn();
+		const contextFactory = vi.fn();
 		const toolArgs = { input: 'test' };
 		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
 		let mockContext: unknown;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockContext = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
 			};
 			contextFactory.mockReturnValue(mockContext);
 		});
@@ -785,7 +784,7 @@ describe('makeHandleToolInvocation', () => {
 				retryOnFail: false,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -811,7 +810,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -836,7 +835,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
@@ -864,7 +863,7 @@ describe('makeHandleToolInvocation', () => {
 			];
 
 			for (const { maxTries, expected } of testCases) {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 
 				const connectedNode = mock<INode>({
 					name: 'Test Tool',
@@ -873,7 +872,7 @@ describe('makeHandleToolInvocation', () => {
 					waitBetweenTries: 0,
 				});
 				const connectedNodeType = mock<INodeType>({
-					execute: jest.fn().mockRejectedValue(new Error('Test error')),
+					execute: vi.fn().mockRejectedValue(new Error('Test error')),
 				});
 
 				handleToolInvocation = makeHandleToolInvocation(
@@ -891,9 +890,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -902,7 +899,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 1500,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -922,20 +919,20 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	describe('abort signal functionality', () => {
-		const contextFactory = jest.fn();
+		const contextFactory = vi.fn();
 		const toolArgs = { input: 'test' };
 		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
 		let mockContext: unknown;
 		let abortController: AbortController;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			abortController = new AbortController();
 			mockContext = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
-				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
 			};
 			contextFactory.mockReturnValue(mockContext);
 		});
@@ -948,7 +945,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 100,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockResolvedValue([[{ json: { result: 'success' } }]]),
+				execute: vi.fn().mockResolvedValue([[{ json: { result: 'success' } }]]),
 			});
 
 			// Abort before starting
@@ -968,9 +965,9 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockRejectedValue(new Error('Execution was cancelled'));
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockRejectedValue(
+				new Error('Execution was cancelled'),
+			);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -979,7 +976,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 1000,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
@@ -1009,7 +1006,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockImplementation(() => {
+				execute: vi.fn().mockImplementation(() => {
 					// Simulate abort during execution
 					abortController.abort();
 					throw new Error('Execution failed');
@@ -1037,15 +1034,13 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 10,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1065,9 +1060,9 @@ describe('makeHandleToolInvocation', () => {
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
 			const contextWithoutSignal = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
 				// No getExecutionCancelSignal method
 			};
 			contextFactory.mockReturnValue(contextWithoutSignal);
@@ -1079,15 +1074,13 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 10,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1221,7 +1214,7 @@ describe('HITL Tool handling', () => {
 	let executeContext: ExecuteContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeContext = new ExecuteContext(
 			workflow,
@@ -1236,11 +1229,11 @@ describe('HITL Tool handling', () => {
 			[],
 		);
 
-		jest.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		vi.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
 		nodeTypes.getByNameAndVersion
 			.calledWith(agentNode.type, expect.anything())
 			.mockReturnValue(agentNodeType);
-		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+		vi.spyOn(executeContext, 'getConnections').mockReturnValue([]);
 	});
 
 	describe('isHitlTool detection', () => {
@@ -1254,7 +1247,7 @@ describe('HITL Tool handling', () => {
 			const mockTool = mock<Tool>();
 
 			const regularNodeType = mock<INodeType>({
-				supplyData: jest.fn().mockResolvedValue({ response: mockTool }),
+				supplyData: vi.fn().mockResolvedValue({ response: mockTool }),
 			});
 
 			agentNodeType.description.inputs = [
@@ -1271,11 +1264,9 @@ describe('HITL Tool handling', () => {
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([regularToolNode.name]);
 			workflow.getNode.calledWith(regularToolNode.name).mockReturnValue(regularToolNode);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: regularToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: regularToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 
@@ -1329,7 +1320,6 @@ describe('HITL Tool handling', () => {
 });
 
 describe('createHitlToolkit', () => {
-	const { getSchema } = require('../create-node-as-tool');
 	const hitlNode = mock<INode>({
 		name: 'HITL Node',
 		type: 'test.HitlTool',
@@ -1341,8 +1331,8 @@ describe('createHitlToolkit', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		getSchema.mockReturnValue(mockHitlSchema);
+		vi.clearAllMocks();
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
 	});
 
 	it('should return empty toolkit when input is undefined', () => {
@@ -1552,7 +1542,6 @@ describe('createHitlToolkit', () => {
 });
 
 describe('createHitlToolSupplyData', () => {
-	const { getSchema } = require('../create-node-as-tool');
 	const hitlNode = mock<INode>({
 		name: 'HITL Node',
 		type: 'test.HitlTool',
@@ -1586,9 +1575,9 @@ describe('createHitlToolSupplyData', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		getSchema.mockReturnValue(mockHitlSchema);
-		jest.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
+		vi.clearAllMocks();
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
+		vi.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
 	});
 
 	it('should create supply data with single tool wrapped in toolkit', async () => {
@@ -1600,9 +1589,7 @@ describe('createHitlToolSupplyData', () => {
 			metadata: { sourceNodeName: 'Original Tool Node' },
 		});
 
-		(SupplyDataContext.prototype.getInputConnectionData as jest.Mock).mockResolvedValue(
-			originalTool,
-		);
+		(SupplyDataContext.prototype.getInputConnectionData as Mock).mockResolvedValue(originalTool);
 		const result = await createHitlToolSupplyData(
 			hitlNode,
 			workflow,
