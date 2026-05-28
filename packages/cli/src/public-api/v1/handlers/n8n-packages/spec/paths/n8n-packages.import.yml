@@ -1,0 +1,105 @@
+post:
+  x-eov-operation-id: importPackage
+  x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
+  tags:
+    - N8nPackage
+  summary: 'Beta: Import an n8n package into a project'
+  description: |
+    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
+    instance to enable this endpoint. While disabled, requests return `404`.
+
+    Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
+    archive as the multipart field `package`. Optional routing uses form fields
+    `projectId` and `folderId` (omit or leave empty for defaults). Maximum upload size
+    is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+
+    The package must declare its manifest at `manifest.json` and include every file
+    referenced by the manifest. The caller is authorised through the `workflow:import`
+    scope. Each imported workflow is created with a fresh local id and arrives inactive.
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - package
+          properties:
+            package:
+              type: string
+              format: binary
+              description: Gzip-compressed tar package (`.n8np`).
+            projectId:
+              type: string
+              description: >
+                Target project id. Omit or send empty to import into the caller's
+                personal project.
+            folderId:
+              type: string
+              description: >
+                Optional folder within the target project. Omit or send empty for
+                project root.
+  responses:
+    '200':
+      description: Import succeeded.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - package
+              - workflows
+            properties:
+              package:
+                type: object
+                required:
+                  - sourceN8nVersion
+                  - sourceId
+                  - exportedAt
+                properties:
+                  sourceN8nVersion:
+                    type: string
+                  sourceId:
+                    type: string
+                  exportedAt:
+                    type: string
+                    format: date-time
+              workflows:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - sourceId
+                    - localId
+                    - name
+                    - projectId
+                    - parentFolderId
+                    - activeVersionId
+                  properties:
+                    sourceId:
+                      type: string
+                      description: Workflow id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Newly minted workflow id on the target instance.
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                    activeVersionId:
+                      type: string
+                      nullable: true
+                      description: >
+                        Published version on the target instance. Always null
+                        immediately after import.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

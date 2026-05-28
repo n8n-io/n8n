@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentResource } from '../types';
-import type { AgentPublishedVersion } from '../agent.types';
+import type { AgentVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: vi.fn(),
@@ -60,14 +60,11 @@ const STUBS = {
 	TimeAgo: { template: '<span />' },
 };
 
-const publishedVersion: AgentPublishedVersion = {
+const activeVersion: AgentVersion = {
+	versionId: 'v1',
 	schema: null,
 	skills: null,
-	publishedFromVersionId: 'v1',
-	model: null,
-	provider: null,
-	credentialId: null,
-	publishedById: null,
+	author: 'Test User',
 };
 
 function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
@@ -77,16 +74,14 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		name: 'My Agent',
 		description: null,
 		projectId: 'project-1',
-		credentialId: null,
-		provider: null,
-		model: null,
 		isCompiled: false,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
+		activeVersionId: null,
 		tools: {},
 		skills: {},
-		publishedVersion: null,
+		activeVersion: null,
 		...overrides,
 	};
 }
@@ -131,7 +126,7 @@ describe('AgentCard', () => {
 	});
 
 	it('shows Publish + Delete on an unpublished agent with full scopes', async () => {
-		const wrapper = await renderComponent(createAgent({ publishedVersion: null }));
+		const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
 
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
@@ -139,7 +134,7 @@ describe('AgentCard', () => {
 	});
 
 	it('shows Unpublish + Delete on a published agent with full scopes', async () => {
-		const wrapper = await renderComponent(createAgent({ publishedVersion }));
+		const wrapper = await renderComponent(createAgent({ activeVersionId: 'v1', activeVersion }));
 
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);
@@ -158,7 +153,7 @@ describe('AgentCard', () => {
 
 	it('hides Publish action when canPublish is false on an unpublished agent', async () => {
 		agentPermissionsMock.canPublish.value = false;
-		const wrapper = await renderComponent(createAgent({ publishedVersion: null }));
+		const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
 
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 		expect(wrapper.find('[data-action="delete"]').exists()).toBe(true);

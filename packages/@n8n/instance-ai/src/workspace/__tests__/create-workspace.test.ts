@@ -39,6 +39,7 @@ describe('createSandbox', () => {
 			daytonaApiKey: 'test-key',
 			image: 'node:20',
 			timeout: 60_000,
+			createTimeoutSeconds: 900,
 		};
 
 		const result = await createSandbox(config);
@@ -53,11 +54,41 @@ describe('createSandbox', () => {
 				image: 'node:20',
 				language: 'typescript',
 				timeout: 60_000,
+				createTimeoutSeconds: 900,
+				ephemeral: true,
 			}),
 		);
 	});
 
-	it('should resolve apiKey via getAuthToken in proxy mode', async () => {
+	it('should preserve Daytona labels and default create timeout', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			labels: {
+				'n8n-builder': 'instance-ai-thread-thread-1',
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+			},
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(DaytonaSandbox);
+		expect(getPrivateOptions(result)).toEqual(
+			expect.objectContaining({
+				createTimeoutSeconds: 300,
+				ephemeral: true,
+				labels: {
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					thread_id: 'thread-1',
+					run_id: 'run-1',
+				},
+			}),
+		);
+	});
+
+	it('should pass getAuthToken through to DaytonaSandbox in proxy mode (lazy resolution)', async () => {
 		const getAuthToken = jest.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {
 			enabled: true,
@@ -69,11 +100,12 @@ describe('createSandbox', () => {
 
 		const result = await createSandbox(config);
 
-		expect(getAuthToken).toHaveBeenCalledTimes(1);
+		expect(getAuthToken).not.toHaveBeenCalled();
 		expect(result).toBeInstanceOf(DaytonaSandbox);
 		expect(getPrivateOptions(result)).toEqual(
 			expect.objectContaining({
-				apiKey: 'jwt-token-123',
+				apiKey: undefined,
+				getAuthToken,
 				apiUrl: 'https://proxy.example.com',
 			}),
 		);
@@ -83,6 +115,7 @@ describe('createSandbox', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiKey: 'test-key',
 		};
 
 		const result = await createSandbox(config);
@@ -95,6 +128,7 @@ describe('createSandbox', () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
+			daytonaApiKey: 'test-key',
 		};
 
 		const result = await createSandbox(config);

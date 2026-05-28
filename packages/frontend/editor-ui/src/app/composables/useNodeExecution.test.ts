@@ -105,6 +105,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStore })),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({

@@ -55,9 +55,21 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 }
 
 /**
- * Returns the data of the last executed node
+ * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
  */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	if (lastNodeExecuted === undefined) {
+		return [];
+	}
+	const runs = runData[lastNodeExecuted];
+	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
+}
+
+/**
+ * Final-run output of the last executed node, with pinData substituted in manual mode.
+ */
+export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
 	const { runData, lastNodeExecuted } = inputData.data.resultData;
 	const pinData = inputData.data.resultData.pinData ?? {};
 
@@ -411,7 +423,7 @@ export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 ): Promise<void> {
-	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
 	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
 		includeData: true,
