@@ -35,6 +35,9 @@ export interface ChatIntegrationDescriptor {
 	label: string;
 	icon: string;
 	credentialTypes: string[];
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
 }
 
 export interface AgentScheduleConfig {
