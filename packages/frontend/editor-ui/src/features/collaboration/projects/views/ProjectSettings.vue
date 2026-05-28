@@ -72,7 +72,12 @@ const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
-const isValid = ref(false);
+const isNameValid = ref(false);
+const isDescriptionValid = ref(true);
+const isTelemetryTagsValid = ref(true);
+const isValid = computed(
+	() => isNameValid.value && isDescriptionValid.value && isTelemetryTagsValid.value,
+);
 const resourceCounts = ref<ResourceCounts>({
 	credentials: -1,
 	dataTables: -1,
@@ -624,7 +629,7 @@ onMounted(async () => {
 							:class="$style.projectNameInput"
 							@enter="onSubmit"
 							@input="onTextInput"
-							@validate="isValid = $event"
+							@validate="isNameValid = $event"
 						/>
 					</div>
 				</fieldset>
@@ -644,7 +649,7 @@ onMounted(async () => {
 						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
 						@input="onTextInput"
-						@validate="isValid = $event"
+						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
 			</template>
@@ -732,7 +737,7 @@ onMounted(async () => {
 						ref="telemetryTagsRef"
 						v-model="formData.customTelemetryTags"
 						@update:model-value="onTextInput"
-						@validate="isValid = $event"
+						@validate="isTelemetryTagsValid = $event"
 					/>
 				</fieldset>
 				<fieldset>
