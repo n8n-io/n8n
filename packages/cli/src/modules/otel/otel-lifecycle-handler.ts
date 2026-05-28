@@ -36,7 +36,7 @@ export class OtelLifecycleHandler {
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
-			? // This will only be set when we are a "sub-workflow"
+			? // Set for sub-workflows and error workflows to link their spans to the parent
 				await this.traceContextService.get(parentExecutionId)
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
