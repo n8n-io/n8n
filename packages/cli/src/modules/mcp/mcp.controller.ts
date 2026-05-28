@@ -126,6 +126,7 @@ export class McpController {
 			auth_type: (
 				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
 			).mcpAuthType,
+			mcp_apps_enabled: await this.mcpService.isMcpAppsEnabled(req.user),
 		};
 
 		// Deny if MCP access is disabled

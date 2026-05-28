@@ -73,6 +73,7 @@ export type UserConnectedToMCPEventPayload = {
 	client_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	mcp_apps_enabled?: boolean;
 	error?: string;
 };
 

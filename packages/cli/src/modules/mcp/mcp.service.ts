@@ -116,7 +116,7 @@ export class McpService {
 		private readonly postHogClient: PostHogClient,
 	) {}
 
-	private async isMcpAppsEnabled(user: User): Promise<boolean> {
+	async isMcpAppsEnabled(user: User): Promise<boolean> {
 		if (this.globalConfig.endpoints.mcpAppsEnabled) return true;
 
 		try {
