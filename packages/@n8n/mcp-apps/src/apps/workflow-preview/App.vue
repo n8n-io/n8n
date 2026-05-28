@@ -84,17 +84,26 @@ onMounted(async () => {
 		const candidate = isWorkflowResult(structuredContent) ? structuredContent.url : undefined;
 		if (isAllowedWorkflowUrl(candidate)) {
 			workflowUrl.value = candidate;
-		} else if (candidate !== undefined) {
+			return;
+		}
+		if (candidate !== undefined) {
 			console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
 				url: candidate,
 			});
 		}
+		// Drop any prior URL so the button can't navigate to a stale workflow
+		// after a tool re-run that produced an invalid result.
+		workflowUrl.value = undefined;
 	};
 
 	app.onerror = console.error;
 
-	await app.connect();
-	hostContext.value = app.getHostContext();
+	try {
+		await app.connect();
+		hostContext.value = app.getHostContext();
+	} catch (error) {
+		console.error('[n8n MCP App] Failed to connect to host', error);
+	}
 });
 </script>
 

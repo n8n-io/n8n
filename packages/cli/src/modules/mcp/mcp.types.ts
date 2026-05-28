@@ -66,12 +66,7 @@ export type JSONRPCRequest = {
 	id?: string | number | null;
 };
 
-export type McpAppsTelemetryVariant =
-	| 'env_override'
-	| 'variant'
-	| 'control'
-	| 'unassigned'
-	| 'error';
+export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {

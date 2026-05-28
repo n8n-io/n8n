@@ -379,17 +379,6 @@ describe('McpService', () => {
 				variant: 'unassigned',
 			});
 		});
-
-		it('reports `error` when the PostHog lookup throws', async () => {
-			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
-			const service = buildResolutionService({ postHogClient });
-
-			await expect(service.resolveMcpAppsVariant(user)).resolves.toEqual({
-				enabled: false,
-				variant: 'error',
-			});
-		});
 	});
 
 	describe('getServer', () => {

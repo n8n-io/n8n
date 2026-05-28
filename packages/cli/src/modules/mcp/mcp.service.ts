@@ -127,16 +127,9 @@ export class McpService {
 			return { enabled: true, variant: 'env_override' };
 		}
 
-		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>>;
-		try {
-			flags = await this.postHogClient.getFeatureFlags(user);
-		} catch (error) {
-			this.logger.warn('Failed to resolve MCP Apps feature flag', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return { enabled: false, variant: 'error' };
-		}
-
+		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
+		// returns `{}`, so a transient outage surfaces here as `unassigned`.
+		const flags = await this.postHogClient.getFeatureFlags(user);
 		const raw = flags?.[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
