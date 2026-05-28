@@ -1,5 +1,5 @@
-import type { Editor } from '@tiptap/core';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import type { Editor } from '@tiptap/core';
 
 import N8nMarkdownEditor from './MarkdownEditor.vue';
 
@@ -256,8 +256,6 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(textbox.querySelector('strong')).toHaveTextContent('Bold text');
 		expect(textbox.querySelectorAll('li')).toHaveLength(2);
 		expect(editor.getMarkdown().trimEnd()).toBe(markdownContent);
-		expect((wrapper.emitted('update:modelValue') as Array<[string]>).at(-1)?.[0].trimEnd()).toBe(
-			markdownContent,
-		);
+		expect(wrapper.emitted('update:modelValue').at(-1)?.[0].trimEnd()).toBe(markdownContent);
 	});
 });
