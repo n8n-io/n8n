@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const allowBuiltin = String($env.NODE_FUNCTION_ALLOW_BUILTIN || '');\nconst allowed = allowBuiltin.split(',').map((name) => name.trim());\nif (!allowed.includes('fs') && allowBuiltin !== '*') {\n  throw new Error('Set NODE_FUNCTION_ALLOW_BUILTIN=fs before running this workflow. The MVP workflow writes uploaded files and job.json to disk.');\n}\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs').replace(/\\/+$/, '');\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: $binary }];"
+        "jsCode": "const allowBuiltin = String($env.NODE_FUNCTION_ALLOW_BUILTIN || '');\nconst allowed = allowBuiltin.split(',').map((name) => name.trim());\nconst requiredBuiltins = ['fs', 'child_process'];\nconst missing = allowBuiltin === '*' ? [] : requiredBuiltins.filter((name) => !allowed.includes(name));\nif (missing.length) {\n  throw new Error(`Set NODE_FUNCTION_ALLOW_BUILTIN=${requiredBuiltins.join(',')} before running this workflow. The MVP workflow writes uploaded files and runs the local video composer script.`);\n}\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs').replace(/\\/+$/, '');\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: $binary }];"
       },
       "id": "be754c0e-5a12-49df-8cb9-d0e37f77c4c7",
       "name": "Prepare Job",
@@ -132,12 +132,12 @@
     },
     {
       "parameters": {
-        "command": "={{ ['node', `${$json.repoDir}/tools/video-composer/compose-video.mjs`, $json.jobPath].map((part) => \"'\" + String(part).replace(/'/g, \"'\\\\''\") + \"'\").join(' ') }}"
+        "jsCode": "const { spawnSync } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = `${item.repoDir}/tools/video-composer/compose-video.mjs`;\nconst result = spawnSync(process.execPath, [scriptPath, item.jobPath], {\n  cwd: item.repoDir,\n  encoding: 'utf8',\n  maxBuffer: 1024 * 1024 * 20\n});\nif (result.error) {\n  throw result.error;\n}\nif (result.status !== 0) {\n  const detail = [result.stdout, result.stderr].filter(Boolean).join('\\n').trim();\n  throw new Error(`Video composer failed with exit code ${result.status}${detail ? `:\\n${detail}` : ''}`);\n}\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
       },
       "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
       "name": "Run Composer Script",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1440,
         0
@@ -267,7 +267,7 @@
   "staticData": null,
   "pinData": {},
   "active": false,
-  "versionId": "video-clip-tts-workflow-v1",
+  "versionId": "video-clip-tts-workflow-v2",
   "meta": {
     "templateCredsSetupCompleted": false
   },
