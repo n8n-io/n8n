@@ -2255,7 +2255,8 @@ describe('AgentsService', () => {
 	});
 
 	describe('buildCustomTool', () => {
-		const code = `export default new Tool('my_tool').description('desc').handler(async () => 'ok');`;
+		const code =
+			"export default new Tool('my_tool').description('desc').handler(async () => 'ok');";
 		const descriptor = {
 			name: 'my_tool',
 			description: 'desc',
@@ -2282,7 +2283,7 @@ describe('AgentsService', () => {
 		});
 
 		it('overwrites an existing tool with the same name (update semantics)', async () => {
-			const existingCode = `export default new Tool('my_tool').handler(async () => 'old');`;
+			const existingCode = "export default new Tool('my_tool').handler(async () => 'old');";
 			const existingDescriptor = { ...descriptor, description: 'old' };
 			const agent = makeAgent({
 				tools: { my_tool: { code: existingCode, descriptor: existingDescriptor } },
@@ -2298,13 +2299,13 @@ describe('AgentsService', () => {
 
 		it('preserves other tools when adding a new one', async () => {
 			const other = { code: 'other_code', descriptor: { ...descriptor, name: 'other' } };
-			const agent = makeAgent({ tools: { other: other } });
+			const agent = makeAgent({ tools: { other } });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentRepository.save.mockImplementation(async (a) => a as Agent);
 
 			await service.buildCustomTool(agentId, projectId, code, descriptor);
 
-			expect(agent.tools).toEqual({ other: other, my_tool: { code, descriptor } });
+			expect(agent.tools).toEqual({ other, my_tool: { code, descriptor } });
 		});
 
 		it('throws UserError when tool name contains spaces', async () => {
