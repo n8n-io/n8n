@@ -318,15 +318,6 @@ function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
 }
 
-/**
- * Sentinel passed to `abortController.abort(reason)` when shutting down a
- * thread that is waiting on an inline HITL confirmation. The catch handler
- * in `executeRun` checks for it and skips the terminal-fallback /
- * run-finish / snapshot writes so the plan/ask card stays intact on reload.
- * See InstanceAiService.shutdown for the producer side.
- */
-const INSTANCE_AI_SHUTDOWN_PRESERVE_HITL = 'service_shutdown_preserve_hitl';
-
 function getAbortReason(signal: AbortSignal): string {
 	const reason = (signal as AbortSignal & { reason?: unknown }).reason;
 	if (
@@ -339,12 +330,6 @@ function getAbortReason(signal: AbortSignal): string {
 	}
 	if (reason instanceof Error) return reason.message;
 	return typeof reason === 'string' ? reason : 'user_cancelled';
-}
-
-function isShutdownPreserveHitlAbort(signal: AbortSignal): boolean {
-	return (
-		(signal as AbortSignal & { reason?: unknown }).reason === INSTANCE_AI_SHUTDOWN_PRESERVE_HITL
-	);
 }
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
@@ -586,6 +571,13 @@ export class InstanceAiService {
 	 * surfaces as `DriverAlreadyReleasedError` for callers.
 	 */
 	private readonly inFlightExecutions = new Set<Promise<unknown>>();
+
+	/**
+	 * Run IDs whose post-stream terminal handling should be skipped when their
+	 * abort fires. Populated by `shutdown()` for runs that were sitting on an
+	 * inline HITL confirmation, and drained by `shouldPreserveHitlOnShutdown(runId)`.
+	 */
+	private readonly preserveHitlOnShutdown = new Set<string>();
 
 	constructor(
 		logger: Logger,
@@ -1977,12 +1969,13 @@ export class InstanceAiService {
 					status: 'cancelled',
 					reason: 'service_shutdown',
 				});
-				// Abort with a sentinel reason so executeRun's catch handler
-				// recognises this as a "shut down preserving the HITL card"
-				// signal and skips its terminal-fallback / run-finish / snapshot
-				// writes. A plain abort() would otherwise overwrite the plan/ask
-				// snapshot with a cancelled tree before the process exits.
-				run.abortController.abort(INSTANCE_AI_SHUTDOWN_PRESERVE_HITL);
+				// Record the policy *before* the abort fires so the run's catch
+				// handler (which runs synchronously off the abort) sees the
+				// flag. The catch path consults `shouldPreserveHitlOnShutdown`
+				// and skips the terminal-fallback / run-finish / snapshot
+				// writes that would otherwise overwrite the plan/ask card.
+				this.preserveHitlOnShutdown.add(run.runId);
+				run.abortController.abort();
 				continue;
 			}
 
@@ -2084,6 +2077,17 @@ export class InstanceAiService {
 			this.inFlightExecutions.delete(tracked);
 		});
 		this.inFlightExecutions.add(tracked);
+	}
+
+	/**
+	 * True when `shutdown()` aborted this run with the explicit policy that its
+	 * inline-HITL snapshot should be left intact. Used by `executeRun` and
+	 * `processResumedStream` to short-circuit the cancelled-path terminal
+	 * finalisation (run-finish event + cancelled tree snapshot) that would
+	 * otherwise overwrite the plan/ask card the user expects to see on reload.
+	 */
+	private shouldPreserveHitlOnShutdown(runId: string): boolean {
+		return this.preserveHitlOnShutdown.has(runId);
 	}
 
 	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
@@ -3817,7 +3821,7 @@ export class InstanceAiService {
 			// handling would still call `evaluateTerminalResponse` and
 			// `finalizeRun`, both of which rewrite the snapshot. Bail out
 			// before either fires so the plan/ask card stays on disk.
-			if (result.status === 'cancelled' && isShutdownPreserveHitlAbort(signal)) {
+			if (result.status === 'cancelled' && this.shouldPreserveHitlOnShutdown(runId)) {
 				return;
 			}
 
@@ -3869,7 +3873,7 @@ export class InstanceAiService {
 				// signal. Emitting the terminal-fallback text + run-finish
 				// here would clobber the plan/ask snapshot the user expects
 				// to see on reload, so just bail out.
-				if (isShutdownPreserveHitlAbort(signal)) {
+				if (this.shouldPreserveHitlOnShutdown(runId)) {
 					return;
 				}
 				const runTimeout = this.liveness.consumeRunTimeout(runId);
@@ -4736,7 +4740,7 @@ export class InstanceAiService {
 				return;
 			}
 
-			if (result.status === 'cancelled' && isShutdownPreserveHitlAbort(opts.signal)) {
+			if (result.status === 'cancelled' && this.shouldPreserveHitlOnShutdown(opts.runId)) {
 				return;
 			}
 
@@ -4779,7 +4783,7 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (opts.signal.aborted) {
-				if (isShutdownPreserveHitlAbort(opts.signal)) {
+				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
 					return;
 				}
 				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
