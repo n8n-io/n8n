@@ -1140,6 +1140,158 @@ describe('Expression', () => {
 		});
 	});
 
+	describe('$getPairedItem through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		const workflow = new Workflow({
+			id: 'test-get-paired-item',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'source-id',
+					name: 'source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'consumer-id',
+					name: 'consumer',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } },
+			active: false,
+			nodeTypes,
+		});
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string) =>
+			workflow.expression.getParameterValue(
+				expr,
+				runExecutionData,
+				0,
+				0,
+				'consumer',
+				[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+				'manual',
+				{},
+				{
+					node: workflow.getNode('consumer')!,
+					data: {},
+					source: {
+						main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+					},
+				},
+			);
+
+		it('resolves the upstream item via the ancestry chain (parity)', () => {
+			// Build the `incomingSourceData` literal inside the expression so the
+			// argument is constructed in-isolate under the VM engine. Both
+			// engines walk back from `consumer` to `source` and return the
+			// matching item.
+			const expr =
+				"={{ JSON.stringify($getPairedItem('source', { previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }, { item: 0 })) }}";
+			expect(evaluate(expr)).toBe(
+				JSON.stringify({ json: { city: 'Prague' }, pairedItem: { item: 0 } }),
+			);
+		});
+
+		it('throws when `incomingSourceData` is null (parity)', () => {
+			// Both engines surface the host's "paired item not found"
+			// ExpressionError. The legacy engine throws directly from
+			// `getPairedItem`. The VM engine sends the typed-RPC envelope with
+			// `incomingSourceData: null`; the host throws and the sentinel
+			// round-trips back into the isolate, where tournament's `E()`
+			// re-throws it.
+			const expr = "={{ $getPairedItem('source', null, { item: 0 }) }}";
+			expect(() => evaluate(expr)).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$evaluateExpression through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: 'test-evaluate',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-id',
+					name: 'node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string, data: INodeExecutionData[]) =>
+			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+		// The inner expression must be wrapped in `{{ ... }}` for the host to
+		// evaluate it (without those, the host strips `=` and the rest is
+		// treated as a literal string). Inside a parameter expression that
+		// would create nested `{{...}}` and trip the outer parser, so the
+		// inner braces are built via string concatenation.
+		const buildInnerTemplate = (inner: string) => `'{' + '{ ${inner} }' + '}'`;
+
+		it('resolves a nested $json reference (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}) }}`, [
+					{ json: { value: 42 } },
+				]),
+			).toBe(42);
+		});
+
+		it('forwards an itemIndex argument (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 1) }}`, [
+					{ json: { value: 'first' } },
+					{ json: { value: 'second' } },
+				]),
+			).toBe('second');
+		});
+	});
+
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
 		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();

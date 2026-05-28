@@ -333,6 +333,46 @@ export function buildContext(
 	target.$fromAi = sendFromAi;
 	target.$fromai = sendFromAi;
 
+	// $evaluateExpression — recursive expression evaluator. Forwards the
+	// inner expression string to the host, which re-invokes the engine.
+	// Under the VM engine this re-enters the bridge on a fresh evaluation;
+	// the legacy engine handles it inline.
+	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'evaluateExpression', expression, itemIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
+	// $getPairedItem — walks the paired-item ancestry chain back to the
+	// named upstream node. The host validates the structural shape of
+	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
+	// schema; bad input surfaces as a schema-parse error sentinel rather
+	// than a host throw, keeping the protocol surface tight.
+	target.$getPairedItem = (
+		destinationNodeName: string,
+		incomingSourceData: unknown,
+		initialPairedItem: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[
+				{
+					type: 'getPairedItem',
+					destinationNodeName,
+					incomingSourceData,
+					initialPairedItem,
+				},
+			],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target

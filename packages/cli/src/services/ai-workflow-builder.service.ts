@@ -187,9 +187,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser) {
+	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
+		const sessions = await service.getSessions(workflowId, user, isCodeBuilder);
 		return sessions;
 	}
 
