@@ -208,8 +208,11 @@ const packageDeployTime = getElapsedTime('package_deploy');
 // release asset (compiled/) get the same SBOM-derived attribution file.
 // Tooling (cdxgen + renderer) is installed in .github/scripts/, alongside other CI
 // scripts, so we don't carry a second isolated install.
-// Skip with N8N_SKIP_LICENSES=true for CI test builds.
-if (process.env.N8N_SKIP_LICENSES !== 'true') {
+//
+// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
+// is only needed for the release SBOM job. The release-publish workflow opts in by
+// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+if (process.env.N8N_GENERATE_LICENSES === 'true') {
 	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 	try {
 		const toolingDir = path.join(config.rootDir, '.github', 'scripts');
@@ -229,7 +232,7 @@ if (process.env.N8N_SKIP_LICENSES !== 'true') {
 		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
 	}
 } else {
-	echo(chalk.gray('INFO: Skipping SBOM/license generation (N8N_SKIP_LICENSES=true)'));
+	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
 }
 
 // Restore package.json files

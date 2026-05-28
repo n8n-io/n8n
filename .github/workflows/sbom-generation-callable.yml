@@ -50,8 +50,11 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: 'pnpm build:deploy'
-        # build:deploy now generates sbom-source.cdx.json at repo root and
-        # packages/cli/THIRD_PARTY_LICENSES.md as a derivative of the SBOM.
+        env:
+          # Opt in to SBOM + THIRD_PARTY_LICENSES.md generation. Regular CI Docker
+          # builds skip it; only this release SBOM job and explicit local opt-ins
+          # produce sbom-source.cdx.json + packages/cli/THIRD_PARTY_LICENSES.md.
+          N8N_GENERATE_LICENSES: 'true'
 
       - name: Attest SBOM for release
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0

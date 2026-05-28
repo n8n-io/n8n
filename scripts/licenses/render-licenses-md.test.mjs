@@ -359,8 +359,9 @@ describe('renderSbom — edge cases', () => {
 		assert.match(unresolved[0], /^mystery@1\.0\.0\t/);
 	});
 
-	it('all 9 documented overrides resolve to zero unresolved (end-to-end)', async () => {
+	it('all documented overrides resolve to zero unresolved (end-to-end)', async () => {
 		const purls = [
+			'pkg:npm/%40rudderstack/rudder-sdk-node@3.0.5',
 			'pkg:npm/%40ewoudenberg/difflib@0.1.0',
 			'pkg:npm/binascii@0.0.2',
 			'pkg:npm/busboy@1.6.0',
