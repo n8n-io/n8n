@@ -45,12 +45,6 @@ export function createSilentLogConsumer() {
 	return { consumer, throwWithLogs, getLogs };
 }
 
-/**
- * Build a readiness HTTP wait strategy that also records the last response body
- * observed before success or timeout. The buffer is the substrate-status payload
- * n8n returns from /healthz/readiness, so callers can attach it for diagnosis
- * when the wait strategy times out without n8n ever returning a 200.
- */
 export function createReadinessProbe(
 	path: string,
 	port: number,
@@ -58,11 +52,9 @@ export function createReadinessProbe(
 ) {
 	let lastBody: string | null = null;
 
-	// Order matters: testcontainers' HttpWaitStrategy short-circuits the predicate
-	// loop on the first `false`. If `forStatusCode(200)` ran first, the body
-	// predicate would never fire for non-200 responses — exactly the case we want
-	// to capture (n8n returns a substrate-status payload on 5xx while booting).
-	// Register the body predicate first so it always observes the response.
+	// Body predicate must be registered before status predicate: HttpWaitStrategy
+	// short-circuits on the first `false`, so a status-first order would skip the
+	// body capture for the non-200 responses we want to record.
 	const strategy = Wait.forHttp(path, port)
 		.forResponsePredicate((body) => {
 			lastBody = body;

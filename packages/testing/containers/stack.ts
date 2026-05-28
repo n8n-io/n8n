@@ -39,13 +39,6 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
-	/**
-	 * Boot-time diagnostics for every successfully started n8n container:
-	 * stdout/stderr captured by the silent log consumer plus the last
-	 * `/healthz/readiness` payload observed before the wait strategy passed.
-	 * Available even on success so verbose / `@startup-profile` runs can
-	 * attach a cold-start baseline.
-	 */
 	startupDiagnostics: N8NStartupDiagnostics;
 }
 

@@ -157,11 +157,9 @@ export const observabilityFixtures: Fixtures<
 			const isFailure = testInfo.status !== testInfo.expectedStatus;
 			const alwaysAttach = shouldAlwaysAttachStartup(testInfo);
 
-			// Startup-failure path: createN8NStack threw before returning a stack,
-			// so observability / metrics aren't queryable. The container log
-			// consumer and last readiness payload were captured before the throw
-			// and stashed in n8n-containers' worker-local startup-failure
-			// registry — drain it here.
+			// n8nContainer is undefined when createN8NStack threw before returning,
+			// so observability/metrics aren't queryable. Drain whatever diagnostics
+			// the container service stashed before re-throwing.
 			if (!n8nContainer) {
 				if (!isFailure) return;
 				const failure = consumeStartupFailure();

@@ -12,31 +12,18 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
-// Port 5678 must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
-// /healthz/readiness implies the port is listening, so a separate forListeningPorts is redundant.
+// Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 const N8N_READINESS_PORT = 5678;
 const N8N_STARTUP_TIMEOUT_MS = 60_000;
-// withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the default of
-// 1000ms means we sit on a stale poll for up to a second after the process is actually ready.
-// 250ms is tight enough to reclaim that latency without firing too many requests.
+// withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the
+// default 1000ms leaves up to a second of stale-poll latency after the process is ready.
 const N8N_READ_TIMEOUT_MS = 250;
 
 export interface N8NStartupDiagnostics {
-	/** Captured stdout/stderr from each n8n container, keyed by container name. */
 	logs: Record<string, string>;
-	/**
-	 * Last response body observed from /healthz/readiness for each instance,
-	 * keyed by container name. n8n's readiness endpoint returns per-substrate
-	 * status, so this answers "which substrate is still booting" directly.
-	 */
 	readinessPayloads: Record<string, string | null>;
 }
 
-/**
- * Error thrown when one or more n8n containers fail to start. Carries the
- * captured logs and readiness payloads so the playwright observability fixture
- * can attach them as Currents artefacts.
- */
 export class N8NStartupError extends Error {
 	readonly diagnostics: N8NStartupDiagnostics;
 
@@ -87,7 +74,6 @@ export interface N8NInstancesOptions {
 export interface N8NInstancesResult {
 	containers: StartedTestContainer[];
 	environment: Record<string, string>;
-	/** Successful-startup diagnostics — populated for every booted instance. */
 	diagnostics: N8NStartupDiagnostics;
 }
 
@@ -213,10 +199,6 @@ async function createContainer(
 		const started = await container.start();
 		return { container: started, getLogs, getLastReadinessBody };
 	} catch (error: unknown) {
-		// Stash whatever we observed so the caller can surface it as a Currents
-		// attachment. Without this, a 60s readiness timeout produces zero
-		// artefacts — no logs, no readiness payload, just the bare timeout
-		// message in the worker stdout.
 		diagnostics.logs[name] = getLogs();
 		diagnostics.readinessPayloads[name] = getLastReadinessBody();
 
