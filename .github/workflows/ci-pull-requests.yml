@@ -208,7 +208,8 @@ jobs:
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
         || needs.install-and-build.outputs.e2e_performance == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e'))
+        || contains(github.event.pull_request.labels.*.name, 'force-e2e')
+        || contains(github.event.pull_request.labels.*.name, 'run-perf-tests'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
