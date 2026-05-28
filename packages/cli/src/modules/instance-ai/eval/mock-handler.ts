@@ -10,7 +10,7 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { createEvalAgent, EPHEMERAL_CACHE, extractText, Tool } from '@n8n/instance-ai';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { z } from 'zod';
 
@@ -120,7 +120,17 @@ async function generateMockResponse(
 
 	const dateAnchors = buildDateAnchors(new Date());
 
-	const sections: string[] = [
+	// Cacheable scenario-level prefix — stable across every mock call in a
+	// scenario, so subsequent calls hit the Anthropic prompt cache.
+	const cacheableSections: string[] = [];
+	if (context.globalContext || context.scenarioHints) {
+		cacheableSections.push('## Scenario context');
+		if (context.globalContext) cacheableSections.push(`Data: ${context.globalContext}`);
+		if (context.scenarioHints) cacheableSections.push(`Scenario: ${context.scenarioHints}`);
+	}
+	const cacheablePrompt = cacheableSections.join('\n');
+
+	const variableSections: string[] = [
 		'## Request',
 		`Service: ${serviceName}`,
 		`Node: "${node.name}" (${node.type})`,
@@ -131,11 +141,11 @@ async function generateMockResponse(
 	if (request.body) {
 		const sanitized = redactSecretKeys(request.body);
 		const serialized = truncateForLlm(JSON.stringify(sanitized));
-		sections.push(`Body: ${serialized}`);
+		variableSections.push(`Body: ${serialized}`);
 	}
 	if (request.qs && Object.keys(request.qs).length > 0) {
 		const sanitizedQs = redactSecretKeys(request.qs);
-		sections.push(`Query: ${JSON.stringify(sanitizedQs)}`);
+		variableSections.push(`Query: ${JSON.stringify(sanitizedQs)}`);
 	}
 
 	const isGraphQL =
@@ -143,8 +153,8 @@ async function generateMockResponse(
 		(typeof request.body === 'object' && request.body !== null && 'query' in request.body);
 
 	if (isGraphQL) {
-		sections.push('', '## GraphQL format requirement');
-		sections.push(
+		variableSections.push('', '## GraphQL format requirement');
+		variableSections.push(
 			'This is a GraphQL endpoint. ALL responses MUST use GraphQL response format:',
 			'- Success: { "data": { ...fields matching the query... } }',
 			'- Error: { "errors": [{ "message": "...", "extensions": { "code": "..." } }], "data": null }',
@@ -156,31 +166,32 @@ async function generateMockResponse(
 		serviceName,
 		`${request.method ?? 'GET'} ${endpoint} response format`,
 	);
-	sections.push('', '## API documentation', apiDocs);
+	variableSections.push('', '## API documentation', apiDocs);
 
 	if (context.nodeConfig) {
-		sections.push('', '## Node Configuration', context.nodeConfig);
+		variableSections.push('', '## Node Configuration', context.nodeConfig);
 	}
 
-	if (context.globalContext || context.nodeHint || context.scenarioHints) {
-		sections.push('', '## Context');
-		if (context.globalContext) sections.push(`Data: ${context.globalContext}`);
-		if (context.nodeHint) sections.push(`Hint: ${context.nodeHint}`);
-		if (context.scenarioHints) {
-			sections.push(`Scenario: ${context.scenarioHints}`);
-			sections.push(
-				isGraphQL
-					? '(For error scenarios, use GraphQL error format with "data": null. Don\'t use "type": "error" wrapper.)'
-					: '(Use "error" type with appropriate statusCode for error scenarios.)',
-			);
-		}
+	if (context.nodeHint) {
+		variableSections.push('', '## Node hint', context.nodeHint);
+	}
+
+	// Error-scenario format note depends on per-call `isGraphQL`, so it lives
+	// in the variable block even though it's anchored to the cached scenario.
+	if (context.scenarioHints) {
+		variableSections.push(
+			'',
+			isGraphQL
+				? '(For error scenarios, use GraphQL error format with "data": null. Don\'t use "type": "error" wrapper.)'
+				: '(Use "error" type with appropriate statusCode for error scenarios.)',
+		);
 	}
 
 	// Anchors go last — the API docs above carry training-era dates, so these
 	// need to be the freshest context before generation.
-	sections.push('', '## Date anchors', dateAnchors);
+	variableSections.push('', '## Date anchors', dateAnchors);
 
-	const userPrompt = sections.join('\n');
+	const variablePrompt = variableSections.join('\n');
 
 	const safeUrl = extractEndpoint(request.url);
 	let lastError = '';
@@ -190,7 +201,7 @@ async function generateMockResponse(
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
-			const spec = await callLlm(userPrompt, {
+			const spec = await callLlm(cacheablePrompt, variablePrompt, {
 				serviceName,
 				method: requestMethod,
 				pathname: requestPath,
@@ -271,7 +282,8 @@ function createQuirksLookupTool(serviceName: string, method: string, pathname: s
 }
 
 async function callLlm(
-	userPrompt: string,
+	cacheablePrompt: string,
+	variablePrompt: string,
 	requestInfo: { serviceName: string; method: string; pathname: string },
 ): Promise<MockResponseSpec> {
 	const capture: { spec?: MockResponseSpec } = {};
@@ -283,7 +295,20 @@ async function callLlm(
 		.tool(createQuirksLookupTool(requestInfo.serviceName, requestInfo.method, requestInfo.pathname))
 		.tool(createSubmitResponseTool(capture));
 
-	const result = await agent.generate(userPrompt);
+	// Multi-block user message: cacheable scenario prefix (when present) + variable
+	// per-request suffix. Anthropic caches up to the breakpoint, so the 5–20 mock
+	// calls per scenario share the scenario-context tokens.
+	const content: Array<{
+		type: 'text';
+		text: string;
+		providerOptions?: typeof EPHEMERAL_CACHE;
+	}> = [];
+	if (cacheablePrompt) {
+		content.push({ type: 'text', text: cacheablePrompt, providerOptions: EPHEMERAL_CACHE });
+	}
+	content.push({ type: 'text', text: variablePrompt });
+
+	const result = await agent.generate([{ role: 'user' as const, content }]);
 
 	if (!capture.spec) {
 		const text = extractText(result);

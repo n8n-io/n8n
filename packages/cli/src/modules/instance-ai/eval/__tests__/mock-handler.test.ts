@@ -111,6 +111,26 @@ async function callHandler(
 	return result;
 }
 
+// Concatenates the text content from a `generate` call. Supports both the
+// legacy string form and the multi-block messages-array form so prompt-shape
+// assertions stay valid after the cache restructure.
+function getPromptText(callIndex = 0): string {
+	const arg = mockGenerate.mock.calls[callIndex]?.[0];
+	if (typeof arg === 'string') return arg;
+	if (!Array.isArray(arg))
+		throw new Error('Expected generate to be called with a string or messages array');
+	const parts: string[] = [];
+	for (const msg of arg) {
+		const content = (msg as { content?: unknown }).content;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			const text = (block as { text?: unknown }).text;
+			if (typeof text === 'string') parts.push(text);
+		}
+	}
+	return parts.join('\n');
+}
+
 beforeEach(() => {
 	jest.clearAllMocks();
 	submitQueue.length = 0;
@@ -285,7 +305,7 @@ describe('prompt construction', () => {
 			baseNode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('"text":"hi"');
 	});
 
@@ -298,7 +318,7 @@ describe('prompt construction', () => {
 			baseNode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('"limit":10');
 	});
 
@@ -308,7 +328,7 @@ describe('prompt construction', () => {
 
 		await handler(baseRequest, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('return rate-limited error');
 	});
 
@@ -321,7 +341,7 @@ describe('prompt construction', () => {
 
 		await handler(baseRequest, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('project-id=abc123');
 		expect(prompt).toContain('channel=#general');
 	});
@@ -332,7 +352,7 @@ describe('prompt construction', () => {
 
 		await handler(baseRequest, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('## Date anchors');
 		expect(prompt).toMatch(/- today: \d{4}-\d{2}-\d{2}/);
 		expect(prompt).toMatch(/- yesterday: \d{4}-\d{2}-\d{2}/);
@@ -355,7 +375,7 @@ describe('prompt construction', () => {
 			{ name: 'GitHub', type: 'n8n-nodes-base.github' } as INode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('GraphQL');
 	});
 
@@ -372,7 +392,7 @@ describe('prompt construction', () => {
 			{ name: 'Linear', type: 'n8n-nodes-base.httpRequest' } as INode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('GraphQL');
 	});
 
@@ -382,7 +402,7 @@ describe('prompt construction', () => {
 
 		await handler({ url: 'https://api.slack.com/channels' }, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('GET');
 	});
 });
@@ -398,7 +418,7 @@ describe('service name extraction (via prompt)', () => {
 
 		await handler({ url: 'https://api.slack.com/chat.postMessage' }, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('Service: Slack');
 	});
 
@@ -411,7 +431,7 @@ describe('service name extraction (via prompt)', () => {
 			{ name: 'Sheets', type: 'n8n-nodes-base.googleSheets' } as INode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('Service: Googleapis');
 	});
 
@@ -421,7 +441,7 @@ describe('service name extraction (via prompt)', () => {
 
 		await handler({ url: 'not-a-url' }, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('Service: Unknown');
 	});
 });
@@ -440,7 +460,7 @@ describe('endpoint extraction (via prompt)', () => {
 			baseNode,
 		);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('/conversations.list?limit=100&cursor=abc');
 	});
 
@@ -450,7 +470,7 @@ describe('endpoint extraction (via prompt)', () => {
 
 		await handler({ url: 'https://api.slack.com/chat.postMessage' }, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('/chat.postMessage');
 		const match = prompt.match(/(?:GET|POST)\s+(\S+)/);
 		expect(match?.[1]).not.toContain('?');
@@ -462,7 +482,7 @@ describe('endpoint extraction (via prompt)', () => {
 
 		await handler({ url: 'not-a-url', method: 'GET' }, baseNode);
 
-		const prompt = mockGenerate.mock.calls[0][0];
+		const prompt = getPromptText();
 		expect(prompt).toContain('GET not-a-url');
 	});
 });

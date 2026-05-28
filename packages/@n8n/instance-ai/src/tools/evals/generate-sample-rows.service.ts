@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { isRecord } from './column-ref-utils';
 import { detectAiNodes } from './detect-ai-nodes';
 import type { Logger } from '../../logger';
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
+import {
+	createEvalAgent,
+	EPHEMERAL_CACHE,
+	extractText,
+	HAIKU_MODEL,
+} from '../../utils/eval-agents';
 
 const FACET_COUNT = 5;
 const DEFAULT_ROW_COUNT = 25;
@@ -245,23 +250,34 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 			cache: true,
 		});
 		const realExamplesBlock = buildRealExamplesBlock(input.realExamples, generatedColumns);
-		const sections = [buildAgentContextBlock(input.context)];
-		if (realExamplesBlock) sections.push(realExamplesBlock);
-		sections.push(FORMAT_INFERENCE);
-		sections.push(
+
+		// Cacheable prefix — stable across all 5 facet calls within a batch.
+		const cacheableSections = [buildAgentContextBlock(input.context)];
+		if (realExamplesBlock) cacheableSections.push(realExamplesBlock);
+		cacheableSections.push(FORMAT_INFERENCE);
+		const cacheableText = cacheableSections.join('\n\n');
+
+		// Per-facet variable suffix.
+		const variableText = [
 			[
 				`Variation focus for this batch: length = ${input.facet.length}; mode = ${input.facet.edgeMode}.`,
 				input.facet.instructions,
 			].join('\n'),
-		);
-		sections.push(
 			[
 				`Columns: ${generatedColumns.join(', ')}`,
 				`Generate exactly ${requestedRowCount} rows.`,
 			].join('\n'),
-		);
-		const userText = sections.join('\n\n');
-		const result = await agent.generate(userText);
+		].join('\n\n');
+
+		const result = await agent.generate([
+			{
+				role: 'user' as const,
+				content: [
+					{ type: 'text' as const, text: cacheableText, providerOptions: EPHEMERAL_CACHE },
+					{ type: 'text' as const, text: variableText },
+				],
+			},
+		]);
 		const text = extractText(result);
 		const parsed: unknown = JSON.parse(stripMarkdownFences(text));
 		const validated = batchRowSchema.safeParse(parsed);

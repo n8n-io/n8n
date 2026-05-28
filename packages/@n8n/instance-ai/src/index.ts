@@ -239,6 +239,7 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
+export { EPHEMERAL_CACHE } from './utils/eval-agents';
 export type Tool = EvalAgentsMod.Tool;
 export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;

@@ -1,3 +1,4 @@
+import type { Message } from '@n8n/agents';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 jest.mock('../../../utils/eval-agents', () => {
@@ -28,16 +29,30 @@ function setupAgentMock(responseText: string) {
 	mockExtractText.mockReturnValue(responseText);
 }
 
-type GenerateMock = jest.Mock<Promise<{ messages: [] }>, [string]>;
+type GenerateArg = string | Message[];
+type GenerateMock = jest.Mock<Promise<{ messages: [] }>, [GenerateArg]>;
 
 function createGenerateMock(): GenerateMock {
-	return jest.fn<Promise<{ messages: [] }>, [string]>().mockResolvedValue({ messages: [] });
+	return jest.fn<Promise<{ messages: [] }>, [GenerateArg]>().mockResolvedValue({ messages: [] });
 }
 
 function getPromptText(generate: GenerateMock): string {
 	const firstCall = generate.mock.calls[0];
 	if (!firstCall) throw new Error('Expected generate to be called');
-	return firstCall[0];
+	const arg = firstCall[0];
+	if (typeof arg === 'string') return arg;
+	if (!Array.isArray(arg))
+		throw new Error('Expected generate arg to be a string or messages array');
+	const parts: string[] = [];
+	for (const msg of arg) {
+		const content = (msg as { content?: unknown }).content;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			const text = (block as { text?: unknown }).text;
+			if (typeof text === 'string') parts.push(text);
+		}
+	}
+	return parts.join('\n\n');
 }
 
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
