@@ -1,4 +1,4 @@
-import type { WebSearchResponse } from '@n8n/instance-ai';
+import type { WebSearchOptions, WebSearchResponse } from './types';
 
 interface SearxngResult {
 	url: string;
@@ -14,19 +14,15 @@ interface SearxngApiResponse {
 /**
  * Execute a web search using a SearXNG instance.
  *
- * Domain filtering uses `site:` / `-site:` query syntax (same as Brave),
- * which SearXNG passes through to underlying search engines.
+ * Domain filtering uses `site:` / `-site:` query syntax, which SearXNG passes
+ * through to underlying search engines.
  *
- * SearXNG has no server-side `count` parameter — results are sliced client-side.
+ * SearXNG has no server-side `count` parameter, so results are sliced client-side.
  */
 export async function searxngSearch(
 	baseUrl: string,
 	query: string,
-	options: {
-		maxResults?: number;
-		includeDomains?: string[];
-		excludeDomains?: string[];
-	},
+	options: WebSearchOptions,
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
 
@@ -39,7 +35,6 @@ export async function searxngSearch(
 		searchQuery += options.excludeDomains.map((d) => ` -site:${d}`).join('');
 	}
 
-	// Normalize trailing slash
 	const normalizedUrl = baseUrl.replace(/\/+$/, '');
 
 	const params = new URLSearchParams({
