@@ -44,7 +44,7 @@ N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process,url
 ```
 
-Required LLM variables:
+Required LLM variables. The URL defaults to the Ark chat-completions endpoint when omitted, but keeping it in `.env.video-clip` makes the runtime explicit:
 
 ```bash
 DOUBAO_LLM_URL=https://ark.cn-beijing.volces.com/api/v3/chat/completions
@@ -62,6 +62,8 @@ DOUBAO_TTS_APP_ID=
 DOUBAO_TTS_CLUSTER=volcano_tts
 DOUBAO_TTS_RESOURCE_ID=seed-tts-2.0
 ```
+
+`DOUBAO_TTS_V2_RESOURCE_ID` is also accepted as a compatibility alias for existing local env files.
 
 ## Import
 
