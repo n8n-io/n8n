@@ -35,28 +35,37 @@
       "name": "Upload Assets",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "video-clip-tts-upload"
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst path = require('path');\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst jobId = `${stamp}-${crypto.randomBytes(3).toString('hex')}`;\nconst baseDir = $env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs';\nconst repoDir = $env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n';\nconst jobDir = path.join(baseDir, jobId);\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: path.join(jobDir, 'inputs'), ttsDir: path.join(jobDir, 'tts'), renderDir: path.join(jobDir, 'render') }, binary: $binary }];"
+        "jsCode": "const allowBuiltin = String($env.NODE_FUNCTION_ALLOW_BUILTIN || '');\nconst allowed = allowBuiltin.split(',').map((name) => name.trim());\nif (!allowed.includes('fs') && allowBuiltin !== '*') {\n  throw new Error('Set NODE_FUNCTION_ALLOW_BUILTIN=fs before running this workflow. The MVP workflow writes uploaded files and job.json to disk.');\n}\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || '/tmp/n8n-video-jobs').replace(/\\/+$/, '');\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: $binary }];"
       },
       "id": "be754c0e-5a12-49df-8cb9-d0e37f77c4c7",
       "name": "Prepare Job",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0]
+      "position": [
+        240,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst item = $input.first();\nconst binary = item.binary || {};\nconst required = ['cover_image', 'proof_screenshot', 'tts_script', 'background_video'];\nfor (const key of required) {\n  if (!binary[key]) throw new Error(`Missing uploaded file: ${key}`);\n}\nfs.mkdirSync(item.json.inputsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsDir, { recursive: true });\nfs.mkdirSync(item.json.renderDir, { recursive: true });\nconst files = {\n  coverImage: path.join(item.json.inputsDir, 'cover.png'),\n  screenshotImage: path.join(item.json.inputsDir, 'screenshot.png'),\n  scriptText: path.join(item.json.inputsDir, 'script.txt'),\n  backgroundVideo: path.join(item.json.inputsDir, 'background.mp4')\n};\nfor (const [binaryKey, target] of [['cover_image', files.coverImage], ['proof_screenshot', files.screenshotImage], ['tts_script', files.scriptText], ['background_video', files.backgroundVideo]]) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\n  fs.writeFileSync(target, buffer);\n}\nconst scriptText = fs.readFileSync(files.scriptText, 'utf8').replace(/\\r\\n/g, '\\n').replace(/\\n{2,}/g, '\\n').trim();\nif (!scriptText) throw new Error('TTS script is empty');\nfs.writeFileSync(files.scriptText, scriptText);\nreturn [{ json: { ...item.json, files, scriptText } }];"
+        "jsCode": "const fs = require('fs');\nconst item = $input.first();\nconst binary = item.binary || {};\nconst required = ['cover_image', 'proof_screenshot', 'tts_script', 'background_video'];\nfor (const key of required) {\n  if (!binary[key]) throw new Error(`Missing uploaded file: ${key}`);\n}\nfs.mkdirSync(item.json.inputsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsDir, { recursive: true });\nfs.mkdirSync(item.json.renderDir, { recursive: true });\nconst files = {\n  coverImage: `${item.json.inputsDir}/cover.png`,\n  screenshotImage: `${item.json.inputsDir}/screenshot.png`,\n  scriptText: `${item.json.inputsDir}/script.txt`,\n  backgroundVideo: `${item.json.inputsDir}/background.mp4`\n};\nfor (const [binaryKey, target] of [['cover_image', files.coverImage], ['proof_screenshot', files.screenshotImage], ['tts_script', files.scriptText], ['background_video', files.backgroundVideo]]) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\n  fs.writeFileSync(target, buffer);\n}\nconst scriptText = fs.readFileSync(files.scriptText, 'utf8').replace(/\\r\\n/g, '\\n').replace(/\\n{2,}/g, '\\n').trim();\nif (!scriptText) throw new Error('TTS script is empty');\nfs.writeFileSync(files.scriptText, scriptText);\nreturn [{ json: { ...item.json, files, scriptText } }];"
       },
       "id": "f2a77f74-f84b-43d9-8057-7ca810f8610f",
       "name": "Save Uploaded Files",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 0]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
@@ -90,37 +99,49 @@
       "name": "Doubao TTS Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 0]
+      "position": [
+        720,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst previous = $('Save Uploaded Files').first().json;\nconst response = $input.first().json;\nconst responsePath = path.join(previous.ttsDir, 'tts-response.json');\nfs.writeFileSync(responsePath, JSON.stringify(response, null, 2));\nconst audioBase64 = response.data || response.audio || response.result?.audio || response.result?.data;\nif (!audioBase64 || typeof audioBase64 !== 'string') {\n  throw new Error('Doubao TTS response did not include base64 audio in data/audio/result.audio/result.data');\n}\nconst audioPath = path.join(previous.ttsDir, 'audio.mp3');\nfs.writeFileSync(audioPath, Buffer.from(audioBase64, 'base64'));\nif (fs.statSync(audioPath).size === 0) throw new Error('Doubao TTS audio is empty');\nreturn [{ json: { ...previous, audioPath, ttsResponsePath: responsePath } }];"
+        "jsCode": "const fs = require('fs');\nconst previous = $('Save Uploaded Files').first().json;\nconst response = $input.first().json;\nconst responsePath = `${previous.ttsDir}/tts-response.json`;\nfs.writeFileSync(responsePath, JSON.stringify(response, null, 2));\nconst audioBase64 = response.data || response.audio || response.result?.audio || response.result?.data;\nif (!audioBase64 || typeof audioBase64 !== 'string') {\n  throw new Error('Doubao TTS response did not include base64 audio in data/audio/result.audio/result.data');\n}\nconst audioPath = `${previous.ttsDir}/audio.mp3`;\nfs.writeFileSync(audioPath, Buffer.from(audioBase64, 'base64'));\nif (fs.statSync(audioPath).size === 0) throw new Error('Doubao TTS audio is empty');\nreturn [{ json: { ...previous, audioPath, ttsResponsePath: responsePath } }];"
       },
       "id": "ca19b3fe-5e0c-4541-bb84-a6dfefc98156",
       "name": "Save TTS Audio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 0]
+      "position": [
+        960,
+        0
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.files.coverImage,\n    screenshotImage: item.files.screenshotImage,\n    backgroundVideo: item.files.backgroundVideo,\n    scriptText: item.files.scriptText,\n    ttsAudio: item.audioPath\n  },\n  output: {\n    video: path.join(item.renderDir, 'final.mp4'),\n    subtitles: path.join(item.renderDir, 'subtitles.ass'),\n    ffmpegLog: path.join(item.renderDir, 'ffmpeg.log')\n  },\n  video: { width: 1920, height: 1080, fps: 30, coverDuration: 3, screenshotDuration: 4 },\n  layout: { coverTop: { x: 80, y: 60, width: 560 }, screenshotTop: { x: 1280, y: 60, width: 560 }, subtitleBottomMargin: 90 }\n};\nconst jobPath = path.join(item.jobDir, 'job.json');\nfs.writeFileSync(jobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, jobPath, outputVideo: job.output.video, ffmpegLog: job.output.ffmpegLog } }];"
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.files.coverImage,\n    screenshotImage: item.files.screenshotImage,\n    backgroundVideo: item.files.backgroundVideo,\n    scriptText: item.files.scriptText,\n    ttsAudio: item.audioPath\n  },\n  output: {\n    video: `${item.renderDir}/final.mp4`,\n    subtitles: `${item.renderDir}/subtitles.ass`,\n    ffmpegLog: `${item.renderDir}/ffmpeg.log`\n  },\n  video: { width: 1920, height: 1080, fps: 30, coverDuration: 3, screenshotDuration: 4 },\n  layout: { coverTop: { x: 80, y: 60, width: 560 }, screenshotTop: { x: 1280, y: 60, width: 560 }, subtitleBottomMargin: 90 }\n};\nconst jobPath = `${item.jobDir}/job.json`;\nfs.writeFileSync(jobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, jobPath, outputVideo: job.output.video, ffmpegLog: job.output.ffmpegLog } }];"
       },
       "id": "f3511981-d156-4783-ad12-11a74c29a33b",
       "name": "Build Job Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
-        "command": "=node {{$json.repoDir}}/tools/video-composer/compose-video.mjs {{$json.jobPath}}"
+        "command": "={{ ['node', `${$json.repoDir}/tools/video-composer/compose-video.mjs`, $json.jobPath].map((part) => \"'\" + String(part).replace(/'/g, \"'\\\\''\") + \"'\").join(' ') }}"
       },
       "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
       "name": "Run Composer Script",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1440, 0]
+      "position": [
+        1440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -130,7 +151,10 @@
       "name": "Verify Final Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1680, 0]
+      "position": [
+        1680,
+        0
+      ]
     },
     {
       "parameters": {
@@ -141,33 +165,100 @@
       "name": "Respond With Result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1920, 0]
+      "position": [
+        1920,
+        0
+      ]
     }
   ],
   "connections": {
     "Upload Assets": {
-      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Job": {
-      "main": [[{ "node": "Save Uploaded Files", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Save Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Save Uploaded Files": {
-      "main": [[{ "node": "Doubao TTS Request", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Doubao TTS Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Doubao TTS Request": {
-      "main": [[{ "node": "Save TTS Audio", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Save TTS Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Save TTS Audio": {
-      "main": [[{ "node": "Build Job Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Job Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Job Config": {
-      "main": [[{ "node": "Run Composer Script", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Run Composer Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Run Composer Script": {
-      "main": [[{ "node": "Verify Final Video", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Verify Final Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Verify Final Video": {
-      "main": [[{ "node": "Respond With Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond With Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
