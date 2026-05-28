@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 /**
- * Playwright Janitor CLI
+ * Janitor CLI
  *
  * Usage:
- *   playwright-janitor                    # Run all rules
- *   playwright-janitor inventory          # Show codebase inventory
- *   playwright-janitor impact             # Show impact of changes
- *   playwright-janitor tcr                # TCR workflow
- *   playwright-janitor --help             # Show help
+ *   janitor                                # Run all rules
+ *   janitor inventory                      # Show codebase inventory
+ *   janitor impact                         # Show impact of changes
+ *   janitor tcr                            # TCR workflow
+ *   janitor affected-packages              # List workspace packages affected by changed files
+ *   janitor scope                          # Compute per-package jest/vitest scope list
+ *   janitor --help                         # Show help
+ *
+ * The `affected-packages` and `scope` subcommands are workspace-wide utilities
+ * for CI test scoping — they do not require a janitor.config.js and can be
+ * invoked from any package via `pnpm exec janitor ...`.
  */
 
 import * as fs from 'node:fs';
@@ -25,8 +31,12 @@ import {
 	showTcrHelp,
 	showDiscoverHelp,
 	showOrchestrateHelp,
+	showAffectedPackagesHelp,
+	showScopeHelp,
+	showTestScopedHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
+import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -64,8 +74,10 @@ import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
+import { computeScope, formatScope } from './core/scope-analyzer.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
+import { runTestScoped } from './core/test-scoped-runner.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
 import { resolveInputPaths } from './utils/paths.js';
@@ -576,6 +588,62 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 	console.log(JSON.stringify(result, null, 2));
 }
 
+/**
+ * Read CHANGED_FILES from --changed-files flag or env. Returns null when
+ * neither is set — callers treat that as "no signal, run everything" so local
+ * dev (`pnpm test:changed` with no env) doesn't silently skip tests.
+ */
+function readChangedFiles(options: CliOptions): string[] | null {
+	const flag = options.changedFiles;
+	const env = process.env.CHANGED_FILES;
+	if (flag === undefined && env === undefined) return null;
+	const raw = flag ?? env ?? '';
+	return raw
+		.split(/[\n,]+/)
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+}
+
+function runAffectedPackages(options: CliOptions): void {
+	const result = affectedPackages({
+		rootDir: findWorkspaceRoot(process.cwd()),
+		changedFiles: readChangedFiles(options),
+	});
+	console.log(result.join('\n'));
+}
+
+function runTestScopedCmd(options: CliOptions): void {
+	if (!options.runner) {
+		console.error('Error: --runner=jest|vitest is required');
+		process.exit(1);
+	}
+	const packageDir = options.packageDir ?? process.cwd();
+	const changedFiles = readChangedFiles(options);
+	const exitCode = runTestScoped({
+		runner: options.runner,
+		packageDir,
+		rootDir: findWorkspaceRoot(process.cwd()),
+		changedFiles,
+		passthroughArgs: options.passthroughArgs,
+	});
+	process.exit(exitCode);
+}
+
+function runScope(options: CliOptions): void {
+	if (!options.runner) {
+		console.error('Error: --runner=jest|vitest is required');
+		process.exit(1);
+	}
+
+	const result = computeScope({
+		runner: options.runner,
+		packageDir: options.packageDir ?? process.cwd(),
+		changedFiles: readChangedFiles(options),
+		rootDir: findWorkspaceRoot(process.cwd()),
+	});
+	console.log(formatScope(result));
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -606,9 +674,32 @@ async function main(): Promise<void> {
 			case 'orchestrate':
 				showOrchestrateHelp();
 				break;
+			case 'affected-packages':
+				showAffectedPackagesHelp();
+				break;
+			case 'scope':
+				showScopeHelp();
+				break;
+			case 'test-scoped':
+				showTestScopedHelp();
+				break;
 			default:
 				showHelp();
 		}
+		return;
+	}
+
+	// Workspace-wide CI utilities: no config file required.
+	if (options.command === 'affected-packages') {
+		runAffectedPackages(options);
+		return;
+	}
+	if (options.command === 'scope') {
+		runScope(options);
+		return;
+	}
+	if (options.command === 'test-scoped') {
+		runTestScopedCmd(options);
 		return;
 	}
 

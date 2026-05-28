@@ -17,6 +17,23 @@ on:
         required: false
         default: false
         type: boolean
+      affectedPackages:
+        description: |
+          Space-separated list of workspace packages affected by the PR, as
+          computed by `janitor affected-packages` in install-and-build. Empty
+          string means "no scoping data, run everything".
+        required: false
+        default: ''
+        type: string
+      changedFiles:
+        description: |
+          Newline-separated list of CHANGED_FILES from ci-filter. Passed to
+          per-package `janitor scope` invocations so test runners can filter
+          to actually-changed source files via jest --findRelatedTests or
+          vitest related.
+        required: false
+        default: ''
+        type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -26,6 +43,8 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -69,6 +88,8 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -112,13 +133,12 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
-      MERGE_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
-      TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
 
       - name: Build
         uses: ./.github/actions/setup-nodejs
@@ -126,12 +146,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: |
-          if [ -n "${MERGE_BASE:-}" ]; then
-            pnpm turbo test:changed --filter=n8n-nodes-base --affected --summarize
-          else
-            pnpm turbo test --filter=n8n-nodes-base --summarize
-          fi
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -167,6 +182,8 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -178,7 +195,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
 

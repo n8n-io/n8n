@@ -114,15 +114,55 @@ export interface NodeProxy {
 }
 
 /**
+ * The methods on `data.$input` that typed-RPC handlers dispatch into.
+ * Mirrors the host-side `ProxyInput` shape (`packages/workflow/src/interfaces.ts`),
+ * restricted to the no-arg method forms the host enforces (`$input.first()`,
+ * `.last()`, `.all()` throw on any arguments). Properties like `.item`,
+ * `.context`, `.params` stay on `getValueAtPath` and aren't part of this
+ * type.
+ *
+ * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
+ * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
+ * which structured-clones the value and erases nominal types. The handlers
+ * pass the clone through verbatim, so a precise return type would be
+ * misleading. Matches the `NodeProxy` return type for the same reason.
+ */
+export interface InputProxy {
+	first?: () => unknown;
+	last?: () => unknown;
+	all?: () => unknown;
+}
+
+/**
  * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
  *
- * `$` is the named typed-RPC accessor (`$('NodeName').first()` etc.) and is
- * called directly from typed-RPC handlers. Everything else flows through
- * the generic data-access primitives (`getValueAtPath`, `getArrayElement`),
- * which read paths off the index signature without needing per-key types.
+ * `$`, `$input`, and `$items` are typed-RPC accessors (`$('NodeName').first()`,
+ * `$input.first()`, `$items(...)`, etc.) and are called directly from
+ * typed-RPC handlers. Everything else flows through the generic data-access
+ * primitives (`getValueAtPath`, `getArrayElement`), which read paths off
+ * the index signature without needing per-key types.
  */
+/**
+ * Signature shared by `$fromAI`, `$fromAi`, and `$fromai` — the three
+ * host-side aliases that resolve to the same `handleFromAi` callback in
+ * `WorkflowDataProxy`. The `name` argument is optional in the type so
+ * empty / missing calls reach the host, which throws a friendly
+ * `ExpressionError` rather than a generic zod / runtime error.
+ */
+export type FromAi = (
+	name?: string,
+	description?: string,
+	valueType?: string,
+	defaultValue?: unknown,
+) => unknown;
+
 export interface WorkflowData {
 	$?: (nodeName: string) => NodeProxy | null | undefined;
+	$input?: InputProxy;
+	$items?: (nodeName?: string, outputIndex?: number, runIndex?: number) => unknown;
+	$fromAI?: FromAi;
+	$fromAi?: FromAi;
+	$fromai?: FromAi;
 	[key: string]: unknown;
 }
 
