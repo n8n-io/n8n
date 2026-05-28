@@ -21,11 +21,12 @@
  *       *.ts                          # reusable node/workflow modules
  */
 
-import { getExampleFiles, type ExampleFile } from '@n8n/workflow-sdk/examples-loader';
 import { createRequire } from 'node:module';
+import { gunzipSync } from 'node:zlib';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
+import type { BuilderTemplatesBundle } from './builder-templates-service';
 import {
 	isLinkWorkspaceSdkEnabled,
 	packWorkspaceSdk,
@@ -46,6 +47,9 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
+const TAR_BLOCK_SIZE = 512;
+const TAR_TYPE_REGULAR = '0';
+const TEMPLATE_ENTRY_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.ts$/;
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
@@ -484,43 +488,166 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 }
 
 /**
- * Write the curated workflow examples bundle into `${root}/examples/`.
+ * Validate the exact archive shape published by n8n-sdk-templates before the
+ * sandbox ever sees the bytes. This is intentionally narrow: a gzip-wrapped tar
+ * with only regular top-level files (`index.txt` and `<slug>.ts`). Rejecting
+ * everything else prevents path traversal, symlink/hardlink writes, and nested
+ * output when the sandbox later runs `tar -xzf`.
+ */
+function validateBuilderTemplatesArchive(archive: Buffer): string | null {
+	let tar: Buffer;
+	try {
+		tar = gunzipSync(archive);
+	} catch (error) {
+		return `failed to gunzip archive: ${getErrorMessage(error)}`;
+	}
+
+	let offset = 0;
+	while (offset + TAR_BLOCK_SIZE <= tar.length) {
+		const header = tar.subarray(offset, offset + TAR_BLOCK_SIZE);
+		// A zero header marks the end of a tar archive. We do not require the
+		// optional second zero block because `tar` itself accepts archives with
+		// one terminator, and this is only a preflight guard before extraction.
+		if (isZeroBlock(header)) return null;
+
+		// USTAR stores long path components as `prefix` + `name`. Combining them
+		// before validation ensures nested or absolute paths cannot hide in either
+		// field independently.
+		const name = readTarString(header, 0, 100);
+		const prefix = readTarString(header, 345, 155);
+		const entryName = prefix ? `${prefix}/${name}` : name;
+		const typeFlag = readTarString(header, 156, 1);
+		const size = parseTarOctal(header, 124, 12);
+
+		if (size === null) return `invalid size for archive entry "${entryName}"`;
+		// Empty type is the old tar spelling for a regular file; `0` is the USTAR
+		// spelling. All other types include directories, symlinks, hardlinks, and
+		// metadata extensions, none of which belong in the curated bundle.
+		if (typeFlag !== '' && typeFlag !== TAR_TYPE_REGULAR) {
+			return `unsupported archive entry type "${typeFlag}" for "${entryName}"`;
+		}
+		if (!isAllowedTemplateEntryName(entryName)) {
+			return `unsupported archive entry path "${entryName}"`;
+		}
+
+		// Tar payloads are padded to 512-byte blocks, so jump over the file content
+		// plus padding to land exactly on the next header.
+		const dataBlocks = Math.ceil(size / TAR_BLOCK_SIZE);
+		offset += TAR_BLOCK_SIZE + dataBlocks * TAR_BLOCK_SIZE;
+	}
+
+	return offset === tar.length ? null : 'trailing partial tar header';
+}
+
+function isAllowedTemplateEntryName(name: string): boolean {
+	if (name === 'index.txt') return true;
+	return TEMPLATE_ENTRY_PATTERN.test(name);
+}
+
+function isZeroBlock(block: Buffer): boolean {
+	return block.every((byte) => byte === 0);
+}
+
+function readTarString(block: Buffer, start: number, length: number): string {
+	const field = block.subarray(start, start + length);
+	const nullIndex = field.indexOf(0);
+	return field.subarray(0, nullIndex === -1 ? field.length : nullIndex).toString('utf-8');
+}
+
+function parseTarOctal(block: Buffer, start: number, length: number): number | null {
+	const raw = readTarString(block, start, length).trim();
+	if (!/^[0-7]+$/.test(raw)) return null;
+	const parsed = Number.parseInt(raw, 8);
+	return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+/**
+ * Write the curated workflow examples archive into `${root}/examples/`.
  *
- * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
- * n8n-sandbox factory paths, which skip the full setup but still need the
- * curated reference material the builder agent greps against.
+ * Used by the Daytona / n8n-sandbox factory paths. The local provider
+ * deliberately skips this — dev iteration on the SDK doesn't need the
+ * curated reference set, and the agent there operates fine without it
+ * (same fallback as a cold start with the CDN unreachable).
  *
- * No-op when the loader returns an empty bundle (e.g. running against a
- * workspace where the manifest hasn't been fetched).
+ * The CDN payload is a flat `.tar.gz` of `<slug>.ts` + `index.txt`. We
+ * write the bytes into the sandbox and run `tar -xzf` in-sandbox to
+ * expand them into `examples/` — far cheaper than 100+ individual
+ * `writeFile` round-trips for remote providers. The archive file is
+ * removed after extraction so it doesn't leak into the agent's view.
+ *
+ * No-op when the bundle is empty (e.g. `templatesService` was not
+ * configured, or the CDN fetch failed and there was no disk cache).
  */
 export async function writeCuratedExamples(
 	workspace: SandboxWorkspace,
+	bundle: BuilderTemplatesBundle | null,
 	logger?: Logger,
 ): Promise<void> {
-	const start = Date.now();
-	// Examples are nice-to-have — never block the build when loading them fails.
-	let exampleFiles: ExampleFile[];
-	let indexTxt: string;
-	try {
-		({ files: exampleFiles, indexTxt } = getExampleFiles());
-	} catch (error) {
-		logger?.warn('[sandbox-setup] curated examples unavailable, continuing without', {
-			error: error instanceof Error ? error.message : String(error),
+	if (!bundle?.archive) return;
+
+	if (workspace.filesystem?.provider === 'local') {
+		logger?.debug('[sandbox-setup] skipping curated examples for local provider');
+		return;
+	}
+
+	// Defense-in-depth for the curated CDN bundle. This validates the narrow
+	// archive shape we publish, not arbitrary user-supplied tar files.
+	const validationError = validateBuilderTemplatesArchive(bundle.archive);
+	if (validationError) {
+		logger?.warn('[sandbox-setup] rejected curated examples archive', {
+			error: validationError,
+			archiveBytes: bundle.archive.byteLength,
+			archiveVersion: bundle.version,
 		});
 		return;
 	}
-	if (exampleFiles.length === 0) return;
 
+	const start = Date.now();
 	const root = await getWorkspaceRoot(workspace);
-	const fileMap = new Map<string, string>();
-	fileMap.set('examples/index.txt', indexTxt);
-	for (const example of exampleFiles) {
-		fileMap.set(`examples/${example.filename}`, example.content);
+	const archivePath = `${root}/.templates.tar.gz`;
+	const examplesDir = `${root}/examples`;
+
+	if (workspace.filesystem) {
+		await workspace.filesystem.mkdir(examplesDir, { recursive: true });
+		await workspace.filesystem.writeFile(archivePath, bundle.archive, { recursive: true });
+	} else {
+		const mkdirResult = await runInSandbox(
+			workspace,
+			`mkdir -p '${escapeSingleQuotes(examplesDir)}'`,
+		);
+		if (mkdirResult.exitCode !== 0) {
+			logger?.warn('[sandbox-setup] failed to create examples/ dir', {
+				stderr: mkdirResult.stderr,
+			});
+			return;
+		}
+		await writeFileViaSandbox(workspace, archivePath, bundle.archive);
 	}
-	await writeWorkspaceFiles(workspace, root, fileMap);
+
+	// Extract and clean up in one command so a partial state isn't left
+	// behind if `tar` exits non-zero. `rm -f` is always run; the exec's
+	// status is `tar`'s exit code. `2>&1` folds tar's stderr into stdout so
+	// the failure cause is still visible if the sandbox runtime drops stderr.
+	// Avoid the variable name `status` — it's a read-only builtin in zsh.
+	const extract = await runInSandbox(
+		workspace,
+		`tar -xzf '${escapeSingleQuotes(archivePath)}' -C '${escapeSingleQuotes(examplesDir)}' 2>&1; rc=$?; rm -f '${escapeSingleQuotes(archivePath)}'; exit $rc`,
+	);
+	if (extract.exitCode !== 0) {
+		logger?.warn('[sandbox-setup] failed to extract curated examples', {
+			exitCode: extract.exitCode,
+			stderr: extract.stderr,
+			stdout: extract.stdout,
+			archivePath,
+			archiveBytes: bundle.archive.byteLength,
+			archiveVersion: bundle.version,
+		});
+		return;
+	}
 
 	logger?.debug('[sandbox-setup] prepared curated examples', {
-		count: exampleFiles.length,
+		bytes: bundle.archive.byteLength,
+		version: bundle.version,
 		durationMs: Date.now() - start,
 	});
 }
@@ -596,7 +723,12 @@ export async function setupSandboxWorkspace(
 	);
 	await setupStep(
 		'write-curated-examples',
-		async () => await writeCuratedExamples(workspace, context.logger),
+		async () =>
+			await writeCuratedExamples(
+				workspace,
+				(await context.templatesService?.getBundle()) ?? null,
+				context.logger,
+			),
 	);
 
 	// npm install (must run after package.json is in place)

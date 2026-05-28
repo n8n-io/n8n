@@ -43,13 +43,15 @@ describe('createDeepLazyProxy', () => {
 		mocks = createMockCallbacks();
 	});
 
-	// Helper to create proxy with current mocks
-	function proxy(basePath?: string[], knownKeys?: string[]) {
+	// Helper to create proxy with current mocks. Returns `any` so test
+	// assertions can freely index into the proxy's nested shape without
+	// `as unknown as ...` ceremony — the underlying proxy is dynamic data.
+	function proxy(basePath?: string[], knownKeys?: string[]): any {
 		const meta = knownKeys ? { kind: 'object' as const, keys: knownKeys } : undefined;
 		return createDeepLazyProxy(basePath, meta, mocks.callbacks);
 	}
 
-	function arrayProxy(basePath: string[], length: number) {
+	function arrayProxy(basePath: string[], length: number): any {
 		return createDeepLazyProxy(basePath, { kind: 'array' as const, length }, mocks.callbacks);
 	}
 

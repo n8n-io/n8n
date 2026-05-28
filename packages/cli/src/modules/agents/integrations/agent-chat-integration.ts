@@ -3,6 +3,7 @@ import type { Thread, Author } from 'chat';
 
 import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { SuspendComponent } from './component-mapper';
+import type { IntegrationAction, IntegrationContextQuery } from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {
@@ -54,6 +55,12 @@ export abstract class AgentChatIntegration {
 	 * tool won't be injected into agents targeting this platform.
 	 */
 	readonly supportedComponents?: string[];
+
+	/** Read-only context queries exposed through the generated integration context tool. */
+	readonly contextQueries: IntegrationContextQuery[] = ['get_current_message_context'];
+
+	/** Side-effecting actions exposed through the generated integration action tool. */
+	readonly actions: IntegrationAction[] = ['respond'];
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).

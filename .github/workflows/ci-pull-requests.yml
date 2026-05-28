@@ -34,6 +34,8 @@ jobs:
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
+      affected_packages: ${{ steps.affected-packages.outputs.list }}
+      changed_files: ${{ steps.ci-filter.outputs.changed-files }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -145,6 +147,16 @@ jobs:
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
+      - name: Compute affected packages
+        id: affected-packages
+        if: fromJSON(steps.ci-filter.outputs.results).unit
+        env:
+          CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+        run: |
+          PACKAGES=$(node packages/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          echo "Affected packages: $PACKAGES"
+          echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
+
   unit-test:
     name: Unit tests
     if: needs.install-and-build.outputs.unit == 'true'
@@ -153,6 +165,8 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
+      affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
+      changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
     secrets: inherit
 
   typecheck:

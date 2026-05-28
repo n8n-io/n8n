@@ -8,14 +8,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from './agentTimeline.utils';
 
 /** Render hints for tool calls that show as special UI — not as generic "tool call" steps. */
-const SPECIAL_RENDER_HINTS = new Set([
-	'tasks',
-	'delegate',
-	'builder',
-	'data-table',
-	'researcher',
-	'eval-setup',
-]);
+const SPECIAL_RENDER_HINTS = new Set(['tasks', 'delegate', 'builder', 'data-table', 'eval-setup']);
 
 /** Returns true if a tool call renders as a generic ToolCallStep (not special UI). */
 function isGenericToolCall(tc: InstanceAiToolCallState): boolean {

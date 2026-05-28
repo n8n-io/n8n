@@ -41,7 +41,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { getErrorDescription, getErrorNodeId } from './utils';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -408,13 +408,18 @@ export class WorkflowService {
 			delete workflowUpdateData.settings.redactionPolicy;
 		}
 
-		// Strip redactionPolicy if user lacks scope and value is changing
+		// Strip redactionPolicy if user lacks the required directional scope
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
 			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
 		) {
-			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
-				workflowId,
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
+
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+				projectId: ownerProject.id,
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
