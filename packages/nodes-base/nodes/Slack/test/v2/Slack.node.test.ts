@@ -151,6 +151,56 @@ describe('SlackV2', () => {
 		});
 	});
 
+	describe('Channel List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['public_channel', 'private_channel'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'public_channel,private_channel ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+	});
+
 	describe('Channel Operations - History, Invite, Leave, Members, etc.', () => {
 		it('should get channel history with pagination', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
