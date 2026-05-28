@@ -51,6 +51,42 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('Authorization: secret-value')).toBe('[REDACTED]');
 	});
 
+	it('redacts JSON-shaped credential fields with quoted keys and values', () => {
+		const input = '{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz"}';
+		expect(scrubSecretsInText(input)).toBe('{[REDACTED], [REDACTED], [REDACTED]}');
+	});
+
+	it('redacts a "credentials" field holding a serialized scalar value', () => {
+		const out = scrubSecretsInText('user pasted {"credentials": "long-credentials-blob"}');
+		expect(out).not.toContain('long-credentials-blob');
+		expect(out).toContain('[REDACTED]');
+	});
+
+	it('redacts inner secret keys when the outer field is a nested object', () => {
+		// The JSON-shaped pattern runs before the loose `key:value` pattern,
+		// so the inner "apiKey":"..." gets caught before the outer
+		// "credentials" key can greedy-eat it.
+		const out = scrubSecretsInText('{"credentials": {"apiKey": "abc123XYZ"}}');
+		expect(out).not.toContain('abc123XYZ');
+		expect(out).toContain('[REDACTED]');
+	});
+
+	it('redacts single-quoted JS object credential fields', () => {
+		const out = scrubSecretsInText("config = {'apiKey': 'abc123XYZ'}");
+		expect(out).not.toContain('abc123XYZ');
+		expect(out).toContain('[REDACTED]');
+	});
+
+	it('leaves already-redacted JSON placeholder values untouched (idempotent with object walkers)', () => {
+		// Upstream object-aware redaction (e.g. langsmith trace payloads)
+		// produces `"apiKey": "[redacted]"`; running this scrubber over the
+		// stringified result must not corrupt that structure.
+		const walkerOutput = '{"ok":true,"items":[{"name":"Slack account","apiKey":"[redacted]"}]}';
+		expect(scrubSecretsInText(walkerOutput)).toBe(walkerOutput);
+		const ownOutput = '{"apiKey":"[REDACTED]"}';
+		expect(scrubSecretsInText(ownOutput)).toBe(ownOutput);
+	});
+
 	it('leaves opaque strings alone to avoid false positives', () => {
 		expect(scrubSecretsInText('feedback about the workflow plan')).toBe(
 			'feedback about the workflow plan',
