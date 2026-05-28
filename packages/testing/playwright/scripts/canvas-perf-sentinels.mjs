@@ -130,23 +130,26 @@ function main() {
 	for (const sentinel of SENTINELS) {
 		const observed = metrics.get(sentinel.metric);
 		if (observed === undefined) {
-			checks.push({ status: 'skip', sentinel, observed: null });
+			// A missing sentinel metric means either the test didn't run, didn't
+			// emit it, or the JSON reporter dropped it. Treating that as "skip"
+			// would let metric-emission regressions produce false-green nightlies
+			// — fail instead so the gap surfaces immediately.
+			checks.push({ status: 'missing', sentinel, observed: null });
+			breaches.push({ sentinel, observed: null, reason: 'metric not emitted' });
 			continue;
 		}
 		const breached = observed > sentinel.max;
 		checks.push({ status: breached ? 'fail' : 'pass', sentinel, observed });
-		if (breached) breaches.push({ sentinel, observed });
+		if (breached) breaches.push({ sentinel, observed, reason: sentinel.note });
 	}
 
 	const lines = ['## Canvas perf sentinels', ''];
 	lines.push('| Metric | Observed | Threshold | Status |');
 	lines.push('| --- | --- | --- | --- |');
 	for (const check of checks) {
-		const observed =
-			check.observed === null
-				? 'n/a'
-				: `${check.observed.toFixed(2)} ${check.sentinel.note ? '' : ''}`;
-		const status = check.status === 'pass' ? 'ok' : check.status === 'fail' ? 'FAIL' : 'skipped';
+		const observed = check.observed === null ? 'missing' : check.observed.toFixed(2);
+		const status =
+			check.status === 'pass' ? 'ok' : check.status === 'missing' ? 'MISSING' : 'FAIL';
 		lines.push(
 			`| \`${check.sentinel.metric}\` | ${observed} | ${check.sentinel.max} | ${status} |`,
 		);
@@ -154,8 +157,9 @@ function main() {
 	if (breaches.length > 0) {
 		lines.push('');
 		lines.push('### Breaches');
-		for (const { sentinel, observed } of breaches) {
-			lines.push(`- \`${sentinel.metric}\` = ${observed} (max ${sentinel.max}) — ${sentinel.note}`);
+		for (const { sentinel, observed, reason } of breaches) {
+			const value = observed === null ? 'missing' : observed;
+			lines.push(`- \`${sentinel.metric}\` = ${value} (max ${sentinel.max}) — ${reason}`);
 		}
 	}
 	emitSummary(lines);
@@ -163,12 +167,10 @@ function main() {
 	for (const line of lines) console.log(line);
 
 	if (breaches.length > 0) {
-		console.error(`\n[sentinel] ${breaches.length} catastrophic regression(s) detected.`);
+		console.error(`\n[sentinel] ${breaches.length} sentinel failure(s) detected.`);
 		process.exit(1);
 	}
-	console.log(
-		`\n[sentinel] All ${checks.filter((c) => c.status !== 'skip').length} sentinels passed.`,
-	);
+	console.log(`\n[sentinel] All ${checks.length} sentinels passed.`);
 }
 
 main();
