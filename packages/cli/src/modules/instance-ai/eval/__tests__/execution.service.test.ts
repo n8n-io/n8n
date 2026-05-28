@@ -195,10 +195,15 @@ describe('EvalExecutionService', () => {
 		| ((ad: { credentialsHelper?: unknown; evalLlmMockHandler?: unknown }) => unknown)
 		| undefined;
 
-	function makeMockedAdditionalData() {
+	type StubAdditionalData = {
+		credentialsHelper: unknown;
+		evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
+	};
+
+	function makeMockedAdditionalData(): StubAdditionalData {
 		return {
 			credentialsHelper: { resolve: jest.fn() },
-			evalLlmMockHandler: undefined as unknown,
+			evalLlmMockHandler: undefined,
 		};
 	}
 
@@ -645,12 +650,7 @@ describe('EvalExecutionService', () => {
 
 				// Capture the configureAdditionalData closure so we can invoke
 				// the evalLlmMockHandler it installs (tool-HTTP path).
-				let capturedAd:
-					| {
-							credentialsHelper: unknown;
-							evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
-					  }
-					| undefined;
+				let capturedAd: StubAdditionalData | undefined;
 				workflowRunner.run.mockImplementation(async (data) => {
 					const ad = makeMockedAdditionalData();
 					await data.configureAdditionalData?.(ad as never);
