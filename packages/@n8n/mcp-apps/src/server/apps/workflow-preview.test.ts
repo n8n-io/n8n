@@ -10,7 +10,12 @@ vi.mock('../resource-loader', () => ({
 }));
 
 type ResourceCallback = () => Promise<{
-	contents: Array<{ uri: string; mimeType: string; text: string }>;
+	contents: Array<{
+		uri: string;
+		mimeType: string;
+		text: string;
+		_meta?: { ui?: { csp?: { frameDomains?: string[] }; prefersBorder?: boolean } };
+	}>;
 }>;
 
 type CapturedResource = {
@@ -48,6 +53,14 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(captured.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(captured.metadata.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(captured.metadata.description).toMatch(/workflow/i);
+		expect(captured.metadata._meta).toEqual({
+			ui: {
+				csp: {
+					frameDomains: ['https://*', 'http://*'],
+				},
+				prefersBorder: false,
+			},
+		});
 	});
 
 	it('returns the HTML body with the expected MIME type and URI', async () => {
@@ -58,6 +71,7 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(content.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(content.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(content.text).toContain('<html');
+		expect(content._meta?.ui?.csp?.frameDomains).toEqual(['https://*', 'http://*']);
 		expect(loadAppHtml).toHaveBeenCalledWith('workflow-preview.html');
 	});
 });
