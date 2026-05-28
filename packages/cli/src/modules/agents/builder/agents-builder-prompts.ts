@@ -64,7 +64,9 @@ enough detail to write meaningful instructions, ask the user first.`;
  */
 export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<string>): string {
 	const lines: string[] = [
-		'- `agent-builder-integrations`: schedule and chat integrations.',
+		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
+			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
+			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 	];
 

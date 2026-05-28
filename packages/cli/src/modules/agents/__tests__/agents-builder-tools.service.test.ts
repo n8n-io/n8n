@@ -96,6 +96,39 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listChatIntegrations.mockReturnValue([
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).handler!(
+				{},
+				ctx,
+			);
+
+			expect(result).toEqual([
+				{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
+		});
+
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };

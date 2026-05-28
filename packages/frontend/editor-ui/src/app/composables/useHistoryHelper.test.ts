@@ -31,12 +31,15 @@ const uiStoreMock = {
 
 const telemetryTrackMock = vi.fn();
 
+const mockNdvStoreValue = {
+	activeNodeName: null,
+	activeNode: {},
+	isNDVOpen: false,
+};
+
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		activeNodeName: null,
-		activeNode: {},
-		isNDVOpen: false,
-	}),
+	useNDVStore: () => mockNdvStoreValue,
+	injectNDVStore: () => ({ value: mockNdvStoreValue }),
 }));
 
 vi.mock('@/app/stores/history.store', () => ({
