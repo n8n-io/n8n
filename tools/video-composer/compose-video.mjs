@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -182,12 +183,12 @@ function backgroundSegment(input, start, duration, width, height, label) {
 	return `${input}trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1${label}`;
 }
 
-export function buildFfmpegArgs(job, { audioDuration }) {
+export function buildFfmpegArgs(job, { audioDuration, subtitlePath = job.output.subtitles }) {
 	const timeline = buildTimeline(audioDuration, job.video);
 	const { width, height, fps } = job.video;
 	const coverTopHeight = Math.round((job.layout.coverTop.width * 9) / 16);
 	const screenshotTopHeight = Math.round((job.layout.screenshotTop.width * 9) / 16);
-	const subtitlePath = escapeForFilterPath(job.output.subtitles);
+	const escapedSubtitlePath = escapeForFilterPath(subtitlePath);
 
 	const bodyFilters =
 		timeline.body.duration > 0
@@ -232,7 +233,7 @@ export function buildFfmpegArgs(job, { audioDuration }) {
 		scaleAndPad('[2:v]', 1600, 780, '[screenmain]'),
 		'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2[screen]',
 		...bodyFilters,
-		`[cover][screen][body]concat=n=3:v=1:a=0,subtitles=filename=${subtitlePath}[vout]`,
+		`[cover][screen][body]concat=n=3:v=1:a=0,subtitles=filename=${escapedSubtitlePath}[vout]`,
 		`[3:a]apad,atrim=0:${timeline.totalDuration},asetpts=PTS-STARTPTS[aout]`,
 	].join(';');
 
@@ -304,6 +305,10 @@ export function render(job) {
 	const scriptText = fs.readFileSync(job.inputs.scriptText, 'utf8');
 	const audioDuration = getAudioDuration(job.inputs.ttsAudio);
 	const timeline = buildTimeline(audioDuration, job.video);
+	const ffmpegSubtitlePath = path.join(
+		os.tmpdir(),
+		`n8n-video-composer-subtitles-${process.pid}-${Date.now()}.ass`,
+	);
 
 	createAssSubtitle({
 		scriptText,
@@ -313,19 +318,26 @@ export function render(job) {
 		height: job.video.height,
 		subtitleBottomMargin: job.layout.subtitleBottomMargin,
 	});
+	fs.copyFileSync(job.output.subtitles, ffmpegSubtitlePath);
 
 	fs.mkdirSync(path.dirname(job.output.video), { recursive: true });
 	fs.mkdirSync(path.dirname(job.output.ffmpegLog), { recursive: true });
 
-	const result = spawnSync('ffmpeg', buildFfmpegArgs(job, { audioDuration }), { encoding: 'utf8' });
-	fs.writeFileSync(job.output.ffmpegLog, `${result.stdout}\n${result.stderr}`);
+	try {
+		const result = spawnSync('ffmpeg', buildFfmpegArgs(job, { audioDuration, subtitlePath: ffmpegSubtitlePath }), {
+			encoding: 'utf8',
+		});
+		fs.writeFileSync(job.output.ffmpegLog, `${result.stdout}\n${result.stderr}`);
 
-	if (result.status !== 0) {
-		throw new Error(`ffmpeg failed with exit code ${result.status}; see ${job.output.ffmpegLog}`);
-	}
+		if (result.status !== 0) {
+			throw new Error(`ffmpeg failed with exit code ${result.status}; see ${job.output.ffmpegLog}`);
+		}
 
-	if (fs.statSync(job.output.video).size === 0) {
-		throw new Error(`Output video is empty: ${job.output.video}`);
+		if (fs.statSync(job.output.video).size === 0) {
+			throw new Error(`Output video is empty: ${job.output.video}`);
+		}
+	} finally {
+		fs.rmSync(ffmpegSubtitlePath, { force: true });
 	}
 }
 

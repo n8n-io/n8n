@@ -183,9 +183,9 @@ test('buildFfmpegArgs pads short audio instead of stopping at audio length', () 
 	assert.match(filter, /color=c=black:s=1920x1080:d=0\.01\[body\]/);
 });
 
-test('buildFfmpegArgs escapes subtitle filter paths without single-quote wrapping', () => {
+test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing', () => {
 	const job = normalizeJob({
-		jobId: 'quoted-path',
+		jobId: 'safe-subtitle-path',
 		inputs: {
 			coverImage: '/tmp/job/inputs/cover.png',
 			screenshotImage: '/tmp/job/inputs/screenshot.png',
@@ -200,9 +200,13 @@ test('buildFfmpegArgs escapes subtitle filter paths without single-quote wrappin
 		},
 	});
 
-	const args = buildFfmpegArgs(job, { audioDuration: 12 });
+	const args = buildFfmpegArgs(job, {
+		audioDuration: 12,
+		subtitlePath: '/tmp/n8n-video-composer-safe-subtitles.ass',
+	});
 	const filter = args[args.indexOf('-filter_complex') + 1];
 
-	assert.match(filter, /subtitles=filename=\/tmp\/job\/quote\\'dir\/sub\\:title\\ file\.ass/);
+	assert.match(filter, /subtitles=filename=\/tmp\/n8n-video-composer-safe-subtitles\.ass/);
+	assert.doesNotMatch(filter, /quote'dir/);
 	assert.doesNotMatch(filter, /subtitles='/);
 });
