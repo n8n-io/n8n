@@ -1,11 +1,12 @@
 import { i18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import type { ResolvableState } from '@/app/types/expressions';
-import { ExpressionError, ExpressionParser, isExpression, type Result } from 'n8n-workflow';
+import {
+	ExpressionError,
+	ExpressionParser,
+	isExpression,
+	type IPinData,
+	type Result,
+} from 'n8n-workflow';
 
 export { isExpression };
 
@@ -79,7 +80,11 @@ export const getResolvableState = (error: unknown, ignoreError = false): Resolva
 	return 'invalid';
 };
 
-export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false): string => {
+export const getExpressionErrorMessage = (
+	error: Error,
+	pinData: IPinData,
+	nodeHasRunData = false,
+): string => {
 	if (isNoExecDataExpressionError(error) || isPairedItemIntermediateNodesError(error)) {
 		return i18n.baseText('expressionModalInput.noExecutionData');
 	}
@@ -100,11 +105,7 @@ export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false):
 
 	if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
 		const nodeCause = error.context.nodeCause as string;
-		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const isPinned = !!workflowDocumentStore.pinData?.[nodeCause];
+		const isPinned = !!pinData[nodeCause];
 
 		if (isPinned) {
 			return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {
@@ -124,6 +125,7 @@ export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false):
 
 export const stringifyExpressionResult = (
 	result: Result<unknown, Error>,
+	pinData: IPinData,
 	nodeHasRunData = false,
 ): string => {
 	if (!result.ok) {
@@ -131,7 +133,7 @@ export const stringifyExpressionResult = (
 			return '';
 		}
 
-		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error, nodeHasRunData)}]`;
+		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error, pinData, nodeHasRunData)}]`;
 	}
 
 	if (result.result === null) {

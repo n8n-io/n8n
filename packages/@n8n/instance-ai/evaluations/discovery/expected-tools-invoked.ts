@@ -18,7 +18,12 @@
 // ---------------------------------------------------------------------------
 
 import type { EventOutcome } from '../types';
-import type { DiscoveryCheckResult, DiscoveryTestCase, ExpectedToolInvocations } from './types';
+import type {
+	DiscoveryCheckResult,
+	DiscoveryTestCase,
+	ExpectedToolInvocations,
+	ForbiddenToolCall,
+} from './types';
 
 const SPAWN_PREFIX = 'spawn_sub_agent:';
 
@@ -52,9 +57,34 @@ function matches(name: string, invokedTools: string[], spawnedAgents: string[]):
 function validateRule(rule: ExpectedToolInvocations): void {
 	const hasAnyOf = Array.isArray(rule.anyOf) && rule.anyOf.length > 0;
 	const hasNoneOf = Array.isArray(rule.noneOf) && rule.noneOf.length > 0;
-	if (!hasAnyOf && !hasNoneOf) {
-		throw new Error('expectedToolInvocations must specify a non-empty `anyOf` or `noneOf` list');
+	const hasAllOfToolCalls = Array.isArray(rule.allOfToolCalls) && rule.allOfToolCalls.length > 0;
+	const hasNoneOfToolCalls = Array.isArray(rule.noneOfToolCalls) && rule.noneOfToolCalls.length > 0;
+	if (!hasAnyOf && !hasNoneOf && !hasAllOfToolCalls && !hasNoneOfToolCalls) {
+		throw new Error(
+			'expectedToolInvocations must specify a non-empty `anyOf`, `noneOf`, `allOfToolCalls`, or `noneOfToolCalls` list',
+		);
 	}
+}
+
+function toolCallMatchesExpectation(
+	toolCall: EventOutcome['toolCalls'][number],
+	expectation: ForbiddenToolCall,
+): boolean {
+	if (toolCall.toolName !== expectation.toolName) return false;
+
+	const argsContainAny = expectation.argsContainAny ?? [];
+	if (argsContainAny.length === 0) return true;
+
+	const argsText = JSON.stringify(toolCall.args).toLowerCase();
+	return argsContainAny.some((term) => argsText.includes(term.toLowerCase()));
+}
+
+function formatToolCallExpectation(expectation: ForbiddenToolCall): string {
+	const args =
+		expectation.argsContainAny && expectation.argsContainAny.length > 0
+			? ` with args containing one of [${expectation.argsContainAny.join(', ')}]`
+			: '';
+	return `${expectation.toolName}${args}`;
 }
 
 export function runExpectedToolsInvokedCheck(
@@ -66,7 +96,7 @@ export function runExpectedToolsInvokedCheck(
 	const invokedTools = collectInvokedTools(outcome);
 	const spawnedAgents = collectSpawnedAgents(outcome);
 
-	const { anyOf, noneOf } = scenario.expectedToolInvocations;
+	const { anyOf, noneOf, allOfToolCalls, noneOfToolCalls } = scenario.expectedToolInvocations;
 
 	if (anyOf && anyOf.length > 0) {
 		const matched = anyOf.find((name) => matches(name, invokedTools, spawnedAgents));
@@ -89,6 +119,39 @@ export function runExpectedToolsInvokedCheck(
 				invokedTools,
 				spawnedAgents,
 			};
+		}
+	}
+
+	if (allOfToolCalls && allOfToolCalls.length > 0) {
+		for (const expectation of allOfToolCalls) {
+			const matched = outcome.toolCalls.find((toolCall) =>
+				toolCallMatchesExpectation(toolCall, expectation),
+			);
+			if (!matched) {
+				const actualToolCalls = outcome.toolCalls.map((tc) => tc.toolName).join(', ') || '∅';
+				return {
+					pass: false,
+					comment: `Expected actual tool call matching [${formatToolCallExpectation(expectation)}]. Actual tool calls: [${actualToolCalls}].`,
+					invokedTools,
+					spawnedAgents,
+				};
+			}
+		}
+	}
+
+	if (noneOfToolCalls && noneOfToolCalls.length > 0) {
+		for (const expectation of noneOfToolCalls) {
+			const violated = outcome.toolCalls.find((toolCall) =>
+				toolCallMatchesExpectation(toolCall, expectation),
+			);
+			if (violated) {
+				return {
+					pass: false,
+					comment: `Expected no actual tool call matching [${formatToolCallExpectation(expectation)}], but saw ${violated.toolName} with args ${JSON.stringify(violated.args)}.`,
+					invokedTools,
+					spawnedAgents,
+				};
+			}
 		}
 	}
 

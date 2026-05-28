@@ -7,7 +7,7 @@ export type AgentConfigFingerprint = {
 	tools: string[];
 	skills: string[];
 	triggers: string[];
-	memory: { enabled: boolean; storage: 'n8n' | 'sqlite' | 'postgres' } | null;
+	memory: { enabled: boolean; storage: 'n8n' } | null;
 	model: string | null;
 	config_version: string;
 };
@@ -77,6 +77,6 @@ export async function buildAgentConfigFingerprint(
 }
 
 export function deriveAgentStatus(agent: AgentResource | null): AgentTelemetryStatus {
-	if (!agent?.publishedVersion) return 'draft';
-	return agent.versionId === agent.publishedVersion.publishedFromVersionId ? 'production' : 'draft';
+	if (!agent?.activeVersionId) return 'draft';
+	return agent.versionId === agent.activeVersionId ? 'production' : 'draft';
 }

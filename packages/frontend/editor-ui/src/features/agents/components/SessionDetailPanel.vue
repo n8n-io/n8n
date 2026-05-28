@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nIconButton,
 	N8nText,
 	N8nCard,
@@ -132,7 +133,6 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'working-memory') return i18n.baseText('agentSessions.timeline.memory');
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	return i18n.baseText('agentSessions.timeline.suspended');
@@ -144,10 +144,21 @@ const headerIcon = computed((): IconName => {
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
-	if (item.kind === 'working-memory') return 'brain';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
 	return 'clock';
+});
+
+const nodeErrorMessage = computed((): string => {
+	const item = props.item;
+	if (!item || item.kind !== 'node' || item.toolSuccess !== false) return '';
+	const prefix = i18n.baseText('agentSessions.timeline.nodeError');
+	const output = item.toolOutput;
+	if (output && typeof output === 'object' && 'error' in output) {
+		const err = (output as { error: unknown }).error;
+		if (typeof err === 'string' && err.length > 0) return `${prefix}: ${err}`;
+	}
+	return prefix;
 });
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
@@ -321,42 +332,16 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
+						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
+							{{ nodeErrorMessage }}
+						</N8nCallout>
 						<ToolIoView
 							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
 							:input="item.toolInput"
 							:output="item.toolOutput"
-							:node-type="item.nodeType"
-							:node-type-version="item.nodeTypeVersion"
 							:node-parameters="item.nodeParameters"
+							:success="item.toolSuccess"
 						/>
-					</template>
-
-					<template v-else-if="item.kind === 'working-memory'">
-						<div :class="$style.codeBlock">
-							<div :class="$style.codeBlockCopy">
-								<N8nTooltip
-									:content="
-										copiedBlock === 'working-memory'
-											? i18n.baseText('agents.builder.addTrigger.copied')
-											: i18n.baseText('agents.builder.addTrigger.copy')
-									"
-								>
-									<N8nButton
-										variant="outline"
-										size="small"
-										icon-only
-										:icon="copiedBlock === 'working-memory' ? 'check' : 'copy'"
-										:aria-label="
-											copiedBlock === 'working-memory'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
-										"
-										@click="copyJsonBlock('working-memory', item.content)"
-									/>
-								</N8nTooltip>
-							</div>
-							<pre :class="$style.json">{{ item.content }}</pre>
-						</div>
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">

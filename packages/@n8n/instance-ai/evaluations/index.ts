@@ -33,9 +33,9 @@ export { type EvalLogger, createLogger } from './harness/logger';
 // -- Types --
 export type {
 	WorkflowTestCase,
-	TestScenario,
+	ExecutionScenario,
 	WorkflowTestCaseResult,
-	ScenarioResult,
+	ExecutionScenarioResult,
 	ChecklistItem,
 	ChecklistResult,
 } from './types';

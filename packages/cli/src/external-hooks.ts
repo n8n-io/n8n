@@ -17,6 +17,7 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
 	User: UserRepository;
@@ -75,7 +76,11 @@ type ExternalHooksMap = {
 	'workflow.afterArchive': [workflowId: string];
 	'workflow.afterUnarchive': [workflowId: string];
 
-	'workflow.preExecute': [workflow: Workflow, mode: WorkflowExecuteMode];
+	'workflow.preExecute': [
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+		workflowContext: WorkflowHookContextService,
+	];
 	'workflow.postExecute': [
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,

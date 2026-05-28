@@ -24,6 +24,14 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackClickedNewAgent tracks card source', () => {
+		useAgentTelemetry().trackClickedNewAgent('card');
+		expect(trackMock).toHaveBeenCalledWith('User clicked new agent', {
+			source: 'card',
+			session_id: 'session-xyz',
+		});
+	});
+
 	it('trackSubmittedMessage includes mode, status, agent_config (no raw message)', () => {
 		const fingerprint = {
 			instructions: 'hello',
@@ -134,6 +142,32 @@ describe('useAgentTelemetry', () => {
 		expect(trackMock).toHaveBeenCalledWith('User unpublished agent', {
 			agent_id: 'ag-1',
 			status: 'draft',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
+		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
+		expect(trackMock).toHaveBeenCalledWith('User opened agent tool', {
+			agent_id: 'ag-1',
+			tool_type: 'node',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedSkillFromList fires with agent_id and skill_id', () => {
+		useAgentTelemetry().trackOpenedSkillFromList({ agentId: 'ag-1', skillId: 'skill-42' });
+		expect(trackMock).toHaveBeenCalledWith('User opened agent skill', {
+			agent_id: 'ag-1',
+			skill_id: 'skill-42',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedAddSkillModal fires with agent_id', () => {
+		useAgentTelemetry().trackOpenedAddSkillModal({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledWith('User opened add skill modal', {
+			agent_id: 'ag-1',
 			session_id: 'session-xyz',
 		});
 	});

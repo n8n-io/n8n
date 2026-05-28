@@ -132,7 +132,6 @@ describe('ExecuteMessage', () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId('test-workflow'),
 		);
-		workflowDocumentStore.setNodes(workflowNodes);
 		workflowDocumentStore.setConnections({});
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
@@ -161,7 +160,14 @@ describe('ExecuteMessage', () => {
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
-		renderExecuteMessage = () => renderComponent({ pinia });
+		renderExecuteMessage = () => {
+			// Sync the document store with the latest workflowNodes state so
+			// tests that push nodes to workflowNodes after beforeEach have those
+			// reflected in the store's event-driven nodesByName / nodesById
+			// indices.
+			workflowDocumentStore.setNodes(workflowNodes);
+			return renderComponent({ pinia });
+		};
 	});
 
 	it('disables execution when validation issues exist', () => {

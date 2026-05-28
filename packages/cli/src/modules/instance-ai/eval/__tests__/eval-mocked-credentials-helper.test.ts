@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
@@ -96,6 +97,475 @@ describe('EvalMockedCredentialsHelper', () => {
 			await helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual');
 
 			expect(helper.mockedCredentials[0].nodeName).toBe('unknown');
+		});
+
+		describe('server URL rewrite', () => {
+			const serverUrl = 'http://127.0.0.1:55555';
+			const openAiCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
+			const openAiNode = { name: 'OpenAI Chat Model', id: 'node-9' } as INode;
+
+			it('rewrites the URL field on openAiApi credentials when serverUrl is set', async () => {
+				const inner = makeInner({
+					getDecrypted: jest
+						.fn()
+						.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				const result = await helper.getDecrypted(
+					fakeAdditionalData,
+					openAiCreds,
+					'openAiApi',
+					'manual',
+					{ node: openAiNode } as IExecuteData,
+				);
+
+				// /v1 must stay on the rewritten URL — the LangChain OpenAI node
+				// uses this verbatim as the SDK's `baseURL`, and the SDK appends
+				// `/chat/completions`. A bare server URL would miss the wire-server
+				// route. See LmChatOpenAi.node.ts:765.
+				expect(result).toEqual({ apiKey: 'sk-real', url: `${serverUrl}/v1` });
+				expect(helper.rewrittenCredentials).toEqual([
+					{
+						nodeName: 'OpenAI Chat Model',
+						credentialType: 'openAiApi',
+						credentialId: 'cred-1',
+						field: 'url',
+					},
+				]);
+			});
+
+			it('does not mutate the credential returned by the inner helper', async () => {
+				const original = { apiKey: 'sk-real', url: 'https://api.openai.com/v1' };
+				const inner = makeInner({ getDecrypted: jest.fn().mockResolvedValue(original) });
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				const result = await helper.getDecrypted(
+					fakeAdditionalData,
+					openAiCreds,
+					'openAiApi',
+					'manual',
+				);
+
+				expect(original).toEqual({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' });
+				expect(result).not.toBe(original);
+			});
+
+			it('does not rewrite credentials of an unmapped type', async () => {
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				const result = await helper.getDecrypted(
+					fakeAdditionalData,
+					fakeNodeCreds,
+					'telegramApi',
+					'manual',
+				);
+
+				expect(result).toEqual({ accessToken: 'real-token' });
+				expect(helper.rewrittenCredentials).toEqual([]);
+			});
+
+			it('logs a warning via the injected logger when the credential type is unmapped', async () => {
+				const warn = jest.fn();
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl, {
+					warn,
+				} as unknown as Logger);
+
+				await helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual', {
+					node: { name: 'Anthropic Chat Model', id: 'a' } as INode,
+				} as IExecuteData);
+
+				expect(warn).toHaveBeenCalledTimes(1);
+				expect(warn.mock.calls[0][0]).toContain('claudeApi');
+				expect(warn.mock.calls[0][0]).toContain('Anthropic Chat Model');
+			});
+
+			it('is silent on unmapped types when no logger was passed', async () => {
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ accessToken: 'real-token' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				await expect(
+					helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'claudeApi', 'manual'),
+				).resolves.toEqual({ accessToken: 'real-token' });
+			});
+
+			it('is a no-op when serverUrl is undefined (today’s default path)', async () => {
+				const inner = makeInner({
+					getDecrypted: jest
+						.fn()
+						.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner);
+
+				const result = await helper.getDecrypted(
+					fakeAdditionalData,
+					openAiCreds,
+					'openAiApi',
+					'manual',
+				);
+
+				expect(result).toEqual({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' });
+				expect(helper.rewrittenCredentials).toEqual([]);
+			});
+
+			it('rewrites the URL on the marker stub when the credential is missing', async () => {
+				const inner = makeInner({
+					getDecrypted: jest
+						.fn()
+						.mockRejectedValue(new CredentialNotFoundError('cred-1', 'openAiApi')),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				const result = await helper.getDecrypted(
+					fakeAdditionalData,
+					openAiCreds,
+					'openAiApi',
+					'manual',
+					{ node: openAiNode } as IExecuteData,
+				);
+
+				expect(result).toEqual({ __evalMockedCredential: true, url: `${serverUrl}/v1` });
+				expect(helper.mockedCredentials).toHaveLength(1);
+				expect(helper.rewrittenCredentials).toHaveLength(1);
+			});
+
+			it('records each rewrite in order across multiple calls', async () => {
+				const inner = makeInner({
+					getDecrypted: jest.fn().mockResolvedValue({ apiKey: 'sk-real', url: 'real' }),
+				});
+				const helper = new EvalMockedCredentialsHelper(inner, serverUrl);
+
+				await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+					node: { name: 'A', id: 'a' } as INode,
+				} as IExecuteData);
+				await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+					node: { name: 'B', id: 'b' } as INode,
+				} as IExecuteData);
+
+				expect(helper.rewrittenCredentials.map((r) => r.nodeName)).toEqual(['A', 'B']);
+			});
+
+			describe('root token embedding', () => {
+				it('embeds the resolved root in the rewritten URL path', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['OpenAI Chat Model', 'My Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					expect(result.url).toBe(`${serverUrl}/eval/My%20Agent/v1`);
+				});
+
+				it('URL-encodes special characters in the root name', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['OpenAI Chat Model', 'Agent / spike test (v2)']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					expect(result.url).toBe(
+						`${serverUrl}/eval/${encodeURIComponent('Agent / spike test (v2)')}/v1`,
+					);
+				});
+
+				it('falls back to bare /v1 when the sub-node has no routing entry', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['Some Other Sub-Node', 'Some Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const result = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: openAiNode } as IExecuteData,
+					);
+
+					// Sub-node "OpenAI Chat Model" isn't in the map — fall back to bare /v1.
+					// The wire server's unrouted-prefix handler will surface this.
+					expect(result.url).toBe(`${serverUrl}/v1`);
+				});
+
+				it('warns when a routing map is supplied but the sub-node is missing from it', async () => {
+					const warn = jest.fn();
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([['Some Other Sub-Node', 'Some Agent']]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						{ warn } as unknown as Logger,
+						subNodeToRoot,
+					);
+
+					await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+						node: openAiNode,
+					} as IExecuteData);
+
+					expect(warn).toHaveBeenCalledTimes(1);
+					expect(warn.mock.calls[0][0]).toContain('OpenAI Chat Model');
+					expect(warn.mock.calls[0][0]).toContain('buildVendorLlmRouting');
+				});
+
+				it('does NOT warn when no routing map is supplied (legacy single-root fallback path)', async () => {
+					const warn = jest.fn();
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const helper = new EvalMockedCredentialsHelper(inner, serverUrl, {
+						warn,
+					} as unknown as Logger);
+
+					await helper.getDecrypted(fakeAdditionalData, openAiCreds, 'openAiApi', 'manual', {
+						node: openAiNode,
+					} as IExecuteData);
+
+					expect(warn).not.toHaveBeenCalled();
+				});
+
+				it('routes to the right root when multiple sub-nodes feed different roots', async () => {
+					const inner = makeInner({
+						getDecrypted: jest
+							.fn()
+							.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+					});
+					const subNodeToRoot = new Map([
+						['OpenAI A', 'Agent A'],
+						['OpenAI B', 'Agent B'],
+					]);
+					const helper = new EvalMockedCredentialsHelper(
+						inner,
+						serverUrl,
+						undefined,
+						subNodeToRoot,
+					);
+
+					const resA = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: { name: 'OpenAI A', id: 'a' } as INode } as IExecuteData,
+					);
+					const resB = await helper.getDecrypted(
+						fakeAdditionalData,
+						openAiCreds,
+						'openAiApi',
+						'manual',
+						{ node: { name: 'OpenAI B', id: 'b' } as INode } as IExecuteData,
+					);
+
+					expect(resA.url).toBe(`${serverUrl}/eval/Agent%20A/v1`);
+					expect(resB.url).toBe(`${serverUrl}/eval/Agent%20B/v1`);
+				});
+			});
+		});
+	});
+
+	describe('getDecrypted — schema synthesis when id is null', () => {
+		// Core's eval-mode bypass passes `{ id: null, name: type }` when a node
+		// has no credentials configured at all. The inner helper throws
+		// CredentialNotFoundError on a null id; the catch below schema-synthesizes
+		// (and applies the URL rewrite) so vendor SDK traffic stays inside the
+		// wire server instead of escaping to the real provider with 401.
+		const propsSchema = [
+			{
+				name: 'apiKey',
+				displayName: 'API Key',
+				type: 'string' as const,
+				default: '',
+				typeOptions: { password: true },
+			},
+			{
+				name: 'url',
+				displayName: 'Base URL',
+				type: 'string' as const,
+				default: 'https://api.openai.com/v1',
+			},
+		];
+
+		const nullNodeCreds: INodeCredentialsDetails = { id: null, name: 'openAiApi' };
+
+		function makeSynthesizingInner(): ICredentialsHelper {
+			return makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				// Inner throws on a null-id lookup → catch fires → schema synthesis.
+				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+			});
+		}
+
+		it('synthesizes a credential from the schema and applies the URL rewrite', async () => {
+			const subNodeToRoot = new Map<string, string>([['OpenAI', 'Agent']]);
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:54321',
+				undefined,
+				subNodeToRoot,
+			);
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			// Schema default for `url` is rewritten to the wire-server path.
+			expect(result.url).toBe('http://127.0.0.1:54321/eval/Agent/v1');
+			// Secret field (apiKey) is filled by `buildEvalMockCredentials` —
+			// the placeholder doesn't matter, only that it's not undefined.
+			expect(typeof result.apiKey).toBe('string');
+		});
+
+		it('records the synthesized credential on `mockedCredentials`', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:1',
+				undefined,
+			);
+
+			await helper.getDecrypted(fakeAdditionalData, nullNodeCreds, 'openAiApi', 'manual', {
+				node: { name: 'OpenAI GPT-4' } as INode,
+			} as IExecuteData);
+
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI GPT-4',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
+		it('records the rewrite on `rewrittenCredentials`', async () => {
+			const subNodeToRoot = new Map<string, string>([['OpenAI', 'Agent']]);
+			const helper = new EvalMockedCredentialsHelper(
+				makeSynthesizingInner(),
+				'http://127.0.0.1:1',
+				undefined,
+				subNodeToRoot,
+			);
+
+			await helper.getDecrypted(fakeAdditionalData, nullNodeCreds, 'openAiApi', 'manual', {
+				node: { name: 'OpenAI' } as INode,
+			} as IExecuteData);
+
+			expect(helper.rewrittenCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+					field: 'url',
+				},
+			]);
+		});
+
+		it('brands the synthetic credential with __evalMockedCredential so authenticate short-circuits', async () => {
+			// Regression: without the marker, `authenticate` / `preAuthentication`
+			// / `runPreAuthentication` would delegate the synthetic credential
+			// through the inner helper's real-auth flow (OAuth refresh, PreSend
+			// hooks). Those flows would either crash on placeholder values or
+			// leak real-auth side effects from a fake credential.
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+				authenticate: jest.fn().mockResolvedValue({ url: 'http://should-not-be-called' }),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			const synthetic = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(synthetic.__evalMockedCredential).toBe(true);
+
+			// Round-trip through `authenticate` confirms the marker actually
+			// short-circuits — the inner helper must not be invoked.
+			const requestOptions: IHttpRequestOptions = { url: 'http://example.com' };
+			const result = await helper.authenticate(
+				synthetic,
+				'openAiApi',
+				requestOptions,
+				fakeWorkflow,
+				fakeNode,
+			);
+			expect(result).toBe(requestOptions);
+			expect(inner.authenticate).not.toHaveBeenCalled();
+		});
+
+		it('still returns the synthetic credential when no serverUrl is configured', async () => {
+			// The helper may be used in eval mode without the wire server
+			// (e.g. HTTP-helper-only workflows). Without `serverUrl` we just
+			// pass the synthetic through — matches the pre-hook behaviour.
+			const helper = new EvalMockedCredentialsHelper(makeSynthesizingInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				nullNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.rewrittenCredentials).toEqual([]);
 		});
 	});
 

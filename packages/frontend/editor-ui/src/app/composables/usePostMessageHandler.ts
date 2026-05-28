@@ -21,9 +21,9 @@ import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	type useWorkflowDocumentStore,
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
@@ -31,7 +31,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 
@@ -258,6 +258,8 @@ export function usePostMessageHandler({
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'fitView') {
+				canvasEventBus.emit('fitView');
 			} else if (json?.command === 'executionEvent') {
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch

@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider, InterruptibleToolContext } from '@n8n/agents';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
@@ -10,6 +10,7 @@ import {
 
 export interface AskCredentialToolDeps {
 	credentialProvider: CredentialProvider;
+	isCredentialTypeKnown?: (credentialType: string) => boolean;
 }
 
 export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
@@ -34,6 +35,11 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 					ctx: InterruptibleToolContext<AskCredentialInput, AskCredentialResume>,
 				) => {
 					if (ctx.resumeData !== undefined) return ctx.resumeData;
+					if (deps.isCredentialTypeKnown && !deps.isCredentialTypeKnown(input.credentialType)) {
+						throw new Error(
+							`Unknown credential type "${input.credentialType}". Use an exact n8n credential type name.`,
+						);
+					}
 					// If the user has exactly one credential of the requested type the
 					// picker has nothing to ask — auto-resolve so the LLM doesn't render
 					// a card the user can only confirm.

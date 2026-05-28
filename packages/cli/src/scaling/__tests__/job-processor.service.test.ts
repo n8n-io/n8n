@@ -30,6 +30,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 mockInstance(WorkflowPublishHistoryRepository);
@@ -41,6 +42,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(WorkflowHookContextService);
 mockInstance(DataTableProxyService);
 mockInstance(OwnershipService, {
 	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),

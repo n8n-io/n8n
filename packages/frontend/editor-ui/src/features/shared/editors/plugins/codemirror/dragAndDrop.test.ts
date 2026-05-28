@@ -14,6 +14,7 @@ describe('CodeMirror drag and drop', () => {
 	});
 
 	describe('mappingDropCursor', () => {
+		const editors: EditorView[] = [];
 		const createEditor = () => {
 			const parent = document.createElement('div');
 			document.body.appendChild(parent);
@@ -22,8 +23,13 @@ describe('CodeMirror drag and drop', () => {
 				extensions: [mappingDropCursor(), n8nLang()],
 			});
 			const editor = new EditorView({ parent, state });
+			editors.push(editor);
 			return editor;
 		};
+
+		afterEach(() => {
+			editors.splice(0).forEach((editor) => editor.destroy());
+		});
 
 		it('should render a drop cursor when dragging', async () => {
 			useNDVStore().draggableStartDragging({

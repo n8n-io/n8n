@@ -74,14 +74,14 @@ export class SubAgentEvalService {
 
 		try {
 			const result = await agent.generate(request.prompt, {
-				maxSteps,
+				maxIterations: maxSteps,
 				abortSignal: abortController.signal,
 			});
 
 			return {
-				text: result.text ?? '',
+				text: extractText(result.messages),
 				toolCalls: serializeToolCalls(result.toolCalls ?? []),
-				toolResults: serializeToolResults(result.toolResults ?? []),
+				toolResults: serializeToolResults(result.toolCalls ?? []),
 				capturedWorkflowIds,
 				durationMs: Date.now() - startMs,
 				...(typeof result.finishReason === 'string' ? { stopReason: result.finishReason } : {}),
@@ -125,27 +125,51 @@ export class SubAgentEvalService {
 	}
 }
 
+function extractText(messages: unknown[]): string {
+	return messages
+		.flatMap((message) => {
+			if (typeof message !== 'object' || message === null || !('content' in message)) return [];
+			const content = message.content;
+			if (!Array.isArray(content)) return [];
+			return content.flatMap((part) => (isTextPart(part) ? [part.text] : []));
+		})
+		.join('');
+}
+
+function isTextPart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
+}
+
 function serializeToolCalls(raw: unknown[]): InstanceAiEvalToolCall[] {
 	return raw.map((tc) => {
+		const native = tc as { tool?: string; input?: unknown };
 		const payload = (tc as { payload?: { toolName?: string; args?: unknown } }).payload;
 		return {
-			toolName: payload?.toolName ?? 'unknown',
-			args: payload?.args,
+			toolName: native.tool ?? payload?.toolName ?? 'unknown',
+			args: native.input ?? payload?.args,
 		};
 	});
 }
 
 function serializeToolResults(raw: unknown[]): InstanceAiEvalToolResult[] {
 	return raw.map((tr) => {
+		const native = tr as { tool?: string; output?: unknown };
 		const payload = (tr as { payload?: { toolName?: string; result?: unknown } }).payload;
-		const result = payload?.result;
+		const result = native.output ?? payload?.result;
 		const isError =
 			typeof result === 'object' &&
 			result !== null &&
 			'success' in result &&
 			(result as { success: unknown }).success === false;
 		return {
-			toolName: payload?.toolName ?? 'unknown',
+			toolName: native.tool ?? payload?.toolName ?? 'unknown',
 			result,
 			isError,
 		};

@@ -8,6 +8,7 @@ import { inject } from 'vue';
  */
 export interface SidebarState {
 	collapsed: Ref<boolean>;
+	width?: Ref<number>;
 	toggle: () => void;
 }
 

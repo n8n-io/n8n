@@ -72,7 +72,9 @@ export function toolRefToNode(ref: AgentJsonToolRef): INode | null {
 }
 
 /** Build a new `AgentJsonToolRef` for a node type the user just connected. */
-export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonToolRef {
+export function nodeTypeToNewToolRef(
+	nodeType: INodeTypeDescription,
+): Extract<AgentJsonToolRef, { type: 'node' }> {
 	const version = pickLatestVersion(nodeType.version);
 	return {
 		type: 'node',
@@ -116,7 +118,9 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
  * because the backend's `buildWorkflowTool` looks workflows up by name scoped
  * to the project — see `cli/src/modules/agents/tools/workflow-tool-factory.ts`.
  */
-export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
+export function workflowToNewToolRef(
+	workflow: IWorkflowDb,
+): Extract<AgentJsonToolRef, { type: 'workflow' }> {
 	return {
 		type: 'workflow',
 		workflow: workflow.name,
@@ -136,7 +140,9 @@ export function getExistingToolNames(
 	tools: AgentJsonToolRef[],
 	exclude?: AgentJsonToolRef,
 ): string[] {
-	return tools.filter((t) => t !== exclude && Boolean(t.name)).map((t) => t.name as string);
+	return tools
+		.filter((t) => t !== exclude && t.type !== 'custom' && Boolean(t.name))
+		.map((t) => (t as Extract<AgentJsonToolRef, { type: 'workflow' | 'node' }>).name!);
 }
 
 /** Merge edits from the workflow config form back into the ref. */

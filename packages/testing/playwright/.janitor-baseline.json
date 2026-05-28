@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-12T11:24:54.376Z",
-	"totalViolations": 410,
+	"generated": "2026-05-18T14:07:20.233Z",
+	"totalViolations": 412,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -44,13 +44,19 @@
 		"pages/InstanceAiPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 85,
+				"line": 32,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 130,
+				"line": 99,
+				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "713916b2be0f"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 144,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			}
@@ -2609,6 +2615,14 @@
 				"line": 17,
 				"message": "Duplicate test logic: \"heap returns to baseline after parallel build rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
 				"hash": "3ac5475c5814"
+			}
+		],
+		"tests/performance/memory-consumption-instance-ai.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 22,
+				"message": "Duplicate test logic: \"Idle baseline with Instance AI module loaded\" has identical structure to tests/performance/memory-consumption-agents.spec.ts:\"Idle baseline with Agents module loaded\"",
+				"hash": "ef1cde8770e1"
 			}
 		],
 		"tests/infrastructure/benchmarks-local/instance-ai/cancel-abort.spec.ts": [

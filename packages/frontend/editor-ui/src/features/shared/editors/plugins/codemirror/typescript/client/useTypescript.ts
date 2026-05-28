@@ -23,7 +23,7 @@ import { typescriptHoverTooltips } from './hoverTooltip';
 import { linter } from '@codemirror/lint';
 import { typescriptLintSource } from './linter';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
+import { TARGET_NODE_PARAMETER_FACET, WORKFLOW_DOCUMENT_FACET } from '../../completions/constants';
 
 export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
@@ -49,7 +49,10 @@ export function useTypescript(
 			{
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
-				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
+				allNodeNames: autocompletableNodeNames(
+					workflowDocumentStore.value.documentId,
+					toValue(targetNodeParameterContext),
+				),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
 				inputNodeNames: activeNodeName
 					? (workflowDocumentStore?.value?.getParentNodes(
@@ -99,6 +102,7 @@ export function useTypescript(
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
 			TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
+			WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),

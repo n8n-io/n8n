@@ -273,7 +273,9 @@ export abstract class DirectoryLoader implements NodeLoader {
 			className: tempCredential.constructor.name,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
-			supportedNodes: this.nodesByCredential[credentialType],
+			supportedNodes:
+				this.nodesByCredential[credentialType] ??
+				this.known.credentials[credentialType]?.supportedNodes,
 		};
 
 		this.credentialTypes[credentialType] = {

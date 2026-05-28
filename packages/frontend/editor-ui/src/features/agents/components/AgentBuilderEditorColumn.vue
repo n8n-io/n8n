@@ -8,7 +8,6 @@ import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
-import AgentEvalsPanel from './AgentEvalsPanel.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
@@ -70,15 +69,6 @@ const i18n = useI18n();
 						:description="executionsDescription"
 					/>
 					<AgentPanelHeader
-						v-else-if="activeMainTab === 'evaluations'"
-						:title="i18n.baseText('agents.builder.header.tab.evaluations')"
-						:description="
-							i18n.baseText('agents.builder.evaluations.configuredInCode', {
-								interpolate: { count: '0' },
-							})
-						"
-					/>
-					<AgentPanelHeader
 						v-else-if="activeMainTab === 'raw'"
 						:title="i18n.baseText('agents.builder.header.tab.raw')"
 						:description="i18n.baseText('agents.builder.raw.description')"
@@ -104,7 +94,7 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
-							:is-published="Boolean(agent?.publishedVersion)"
+							:is-published="Boolean(agent?.activeVersionId)"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -131,6 +121,7 @@ const i18n = useI18n();
 							:config="localConfig"
 							:disabled="childrenDisabled"
 							embedded
+							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
@@ -158,8 +149,6 @@ const i18n = useI18n();
 						@update:value="emit('update:config', $event)"
 					/>
 				</div>
-
-				<AgentEvalsPanel v-else data-testid="agent-evaluations-panel" />
 			</div>
 		</div>
 	</section>

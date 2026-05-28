@@ -92,6 +92,8 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
+			(req as AuthenticatedRequest & { mcpAuthType?: UserWithContext['authType'] }).mcpAuthType =
+				result.authType;
 
 			next();
 		};

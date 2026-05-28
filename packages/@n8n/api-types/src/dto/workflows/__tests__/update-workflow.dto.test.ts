@@ -50,6 +50,16 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'update nodeGroups',
+				request: {
+					nodeGroups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'set nodeGroups to empty array',
+				request: { nodeGroups: [] },
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
@@ -89,6 +99,21 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['name'],
 			},
 			{
+				name: 'name containing a script tag',
+				request: { name: '<script>alert(1)</script>' },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing an img onerror payload',
+				request: { name: '<img src=x onerror=alert(1)>' },
+				expectedErrorPath: ['name'],
+			},
+			{
+				name: 'name containing inline HTML markup',
+				request: { name: 'Report <b>bold</b>' },
+				expectedErrorPath: ['name'],
+			},
+			{
 				name: 'invalid nodes type',
 				request: { nodes: 'not-an-array' },
 				expectedErrorPath: ['nodes'],
@@ -117,6 +142,41 @@ describe('UpdateWorkflowDto', () => {
 				name: 'pinData as array',
 				request: { pinData: [] },
 				expectedErrorPath: ['pinData'],
+			},
+			{
+				name: 'nodeGroups as string',
+				request: { nodeGroups: 'not-an-array' },
+				expectedErrorPath: ['nodeGroups'],
+			},
+			{
+				name: 'nodeGroups with missing id',
+				request: { nodeGroups: [{ name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with missing name',
+				request: { nodeGroups: [{ id: 'g1', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with missing nodeIds',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group' }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds'],
+			},
+			{
+				name: 'nodeGroups with empty id',
+				request: { nodeGroups: [{ id: '', name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with empty name',
+				request: { nodeGroups: [{ id: 'g1', name: '', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with empty nodeId string',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateWorkflowDto.safeParse(request);

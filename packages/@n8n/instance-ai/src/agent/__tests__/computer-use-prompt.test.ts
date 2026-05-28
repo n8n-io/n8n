@@ -295,4 +295,87 @@ describe('getComputerUsePrompt', () => {
 			expect(line).toContain('filesystem');
 		});
 	});
+
+	describe('credential creation guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('includes the credential-creation section', () => {
+			expect(browserPrompt()).toContain('#### Creating credentials from the browser');
+		});
+
+		it('names both credential-flow tools', () => {
+			const result = browserPrompt();
+			expect(result).toContain('browser_capture_secret');
+			expect(result).toContain('browser_create_credential');
+		});
+
+		it('documents both element union shapes (redactedKey and ref)', () => {
+			const result = browserPrompt();
+			expect(result).toContain('"redactedKey"');
+			expect(result).toContain('"ref"');
+		});
+
+		it('points to non-interactive snapshots for plain-text secrets', () => {
+			expect(browserPrompt()).toContain('interactive: false');
+		});
+
+		it('distinguishes data (literal fields) from resolveData (buffer field names)', () => {
+			const result = browserPrompt();
+			expect(result).toContain('`data`');
+			expect(result).toContain('`resolveData`');
+		});
+
+		it('warns about reusing the same credentialsKey across calls', () => {
+			expect(browserPrompt()).toContain('same `credentialsKey`');
+		});
+
+		it('tells the agent to capture by ref instead of clicking a "show" reveal button', () => {
+			expect(browserPrompt()).toContain(
+				'directly capture the secret with the ref and don\'t click the "show" button',
+			);
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+			expect(result).not.toContain('Creating credentials from the browser');
+		});
+	});
+
+	describe('redaction marker guidance', () => {
+		const browserPrompt = (): string =>
+			getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+		it('mentions the [REDACTED:...] marker format', () => {
+			expect(browserPrompt()).toContain('[REDACTED:');
+		});
+
+		it('tells the agent to switch to browser_snapshot when visual tools refuse with sensitive_context', () => {
+			const result = browserPrompt();
+			expect(result).toContain('sensitive_context');
+			expect(result).toContain('browser_snapshot');
+		});
+	});
+
+	describe('handoff triggers', () => {
+		// Regression: redaction replaces visible secrets with opaque markers, so
+		// "Sensitive content on screen" is no longer a reason to hand off control.
+		it('does not list visible secrets as a handoff trigger', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('Sensitive content on screen');
+		});
+	});
 });

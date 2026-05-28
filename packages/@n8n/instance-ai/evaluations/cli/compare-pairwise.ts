@@ -675,29 +675,28 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 	const str = (v: unknown): string => (typeof v === 'string' ? scrubSecretsInText(v) : '');
 	const trunc = (s: string, n = 160): string => (s.length > n ? s.slice(0, n) + '…' : s);
 	switch (toolName) {
-		case 'mastra_workspace_execute_command':
+		case 'workspace_execute_command':
 			return trunc(str(a.command));
-		case 'mastra_workspace_edit_file':
+		case 'workspace_str_replace_file':
 			return trunc(str(a.path));
-		case 'mastra_workspace_write_file': {
+		case 'workspace_write_file': {
 			const p = str(a.path);
 			const len = typeof a.content === 'string' ? a.content.length : 0;
 			return `${p}${len ? ` (${len} chars)` : ''}`;
 		}
-		case 'mastra_workspace_read_file': {
+		case 'workspace_read_file': {
 			const p = str(a.path);
 			const off = typeof a.offset === 'number' ? a.offset : undefined;
 			const lim = typeof a.limit === 'number' ? a.limit : undefined;
 			const range = off !== undefined || lim !== undefined ? ` @${off ?? 0}+${lim ?? '∞'}` : '';
 			return trunc(`${p}${range}`);
 		}
-		case 'mastra_workspace_grep':
+		case 'workspace_grep':
 			return trunc(`${str(a.pattern)}${a.path ? ` in ${str(a.path)}` : ''}`);
-		case 'mastra_workspace_lsp_inspect': {
-			const line = typeof a.line === 'number' ? String(a.line) : '?';
-			return trunc(`${str(a.path)}:${line} ${str(a.match)}`);
+		case 'workspace_file_stat': {
+			return trunc(str(a.path));
 		}
-		case 'mastra_workspace_mkdir':
+		case 'workspace_mkdir':
 			return trunc(str(a.path));
 		case 'submit-workflow':
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);

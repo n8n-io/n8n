@@ -7,6 +7,7 @@ export const notionMockServer: McpRegistryServer = {
 	title: 'Notion',
 	description:
 		"Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+	tagline: 'Connect to the Notion MCP Server',
 	version: '1.2.0',
 	updatedAt: '2026-04-22T10:00:00.000Z',
 	icons: [{ src: 'https://mcp.notion.com/notion-logo-block-main.svg', mimeType: 'image/svg+xml' }],
@@ -45,6 +46,7 @@ export const linearMockServer: McpRegistryServer = {
 	slug: 'linear',
 	title: 'Linear',
 	description: 'MCP server for Linear project management and issue tracking',
+	tagline: 'Connect to the Linear MCP Server',
 	version: '1.0.0',
 	updatedAt: '2026-05-05T10:00:00.000Z',
 	icons: [

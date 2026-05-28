@@ -119,6 +119,7 @@ describe('OpenAI Response Operation', () => {
 		it('should execute with simplified output enabled', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'simplify') return true;
+				if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hello' }];
 				return 'default';
 			});
 
@@ -204,6 +205,7 @@ describe('OpenAI Response Operation', () => {
 				if (param === 'options.backgroundMode.values.enabled') return true;
 				if (param === 'options.backgroundMode.values.timeout') return 300;
 				if (param === 'simplify') return false;
+				if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hello' }];
 				return 'default';
 			});
 
@@ -237,6 +239,7 @@ describe('OpenAI Response Operation', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'options.backgroundMode.values.enabled') return true;
 				if (param === 'simplify') return false;
+				if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hello' }];
 				return 'default';
 			});
 
@@ -377,6 +380,7 @@ describe('OpenAI Response Operation', () => {
 		it('should respect max tool iterations limit', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'options.maxToolsIterations') return 2;
+				if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hello' }];
 				return 'default';
 			});
 
@@ -707,44 +711,39 @@ describe('OpenAI Response Operation', () => {
 	});
 
 	describe('Edge Cases', () => {
-		it('should handle empty messages array', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
-				if (param === 'responses.values') return [];
-				if (param === 'simplify') return false;
-				return 'default';
-			});
-
-			const mockResponse = {
-				id: 'resp_123',
-				status: 'completed',
-				output: [],
-			};
-
-			mockCreateRequest.mockResolvedValue({
-				model: 'gpt-4o',
-				input: [],
-			});
-			mockApiRequest.mockResolvedValue(mockResponse);
-			mockGetConnectedTools.mockResolvedValue([]);
-
-			const result = await execute.call(mockExecuteFunctions, 0);
-
-			expect(result).toEqual([
-				{
-					json: {
-						id: 'resp_123',
-						status: 'completed',
-						output: [],
-					},
-					pairedItem: { item: 0 },
+		it('should throw error for empty messages array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _itemIndex: number, defaultValue?: unknown) => {
+					if (param === 'responses.values') return [];
+					if (param === 'simplify') return false;
+					return defaultValue as any;
 				},
-			]);
+			);
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error for whitespace-only messages', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _itemIndex: number, defaultValue?: unknown) => {
+					if (param === 'responses.values') return [{ type: 'text', content: '   ' }];
+					if (param === 'simplify') return false;
+					return defaultValue as any;
+				},
+			);
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
 		});
 
 		it('should handle tools hidden for unsupported models', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 				if (param === 'hideTools') return 'hide';
 				if (param === 'simplify') return false;
+				if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hello' }];
 				return 'default';
 			});
 
@@ -959,10 +958,11 @@ describe('OpenAI Response Operation', () => {
 		});
 
 		it('should handle default values for optional parameters', async () => {
+			const messages = [{ role: 'user', type: 'text', content: 'Hello' }];
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _itemIndex: number, defaultValue?: unknown) => {
 					if (param === 'modelId') return 'gpt-4o';
-					if (param === 'responses.values') return [];
+					if (param === 'responses.values') return messages;
 					if (param === 'options') return {};
 					if (param === 'builtInTools') return {};
 					return defaultValue as any;
@@ -984,7 +984,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockCreateRequest).toHaveBeenCalledWith(0, {
 				model: 'gpt-4o',
-				messages: [],
+				messages,
 				options: {},
 				tools: undefined,
 				builtInTools: {},

@@ -37,10 +37,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
-		case 'working-memory-updated':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspended');
 		case 'suspension-waiting':
@@ -267,6 +263,7 @@ watch(
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
 	height: var(--height--xl);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	font-size: var(--font-size--2xs);

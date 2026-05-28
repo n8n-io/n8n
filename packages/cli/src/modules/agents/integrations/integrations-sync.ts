@@ -1,16 +1,16 @@
-import {
-	isAgentScheduleIntegration,
-	type AgentCredentialIntegration,
-	type AgentIntegration,
-} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
 import type { Agent } from '../entities/agent.entity';
+import {
+	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationConfig,
+	isAgentScheduleIntegration,
+} from '@n8n/api-types';
 
 function scheduleConfigsEqual(
-	a: AgentIntegration | undefined,
-	b: AgentIntegration | undefined,
+	a: AgentIntegrationConfig | undefined,
+	b: AgentIntegrationConfig | undefined,
 ): boolean {
 	if (!a && !b) return true;
 	if (!a || !b) return false;
@@ -37,8 +37,8 @@ function scheduleConfigsEqual(
  */
 export async function syncAgentIntegrations(
 	agent: Agent,
-	previous: AgentIntegration[],
-	next: AgentIntegration[],
+	previous: AgentIntegrationConfig[],
+	next: AgentIntegrationConfig[],
 	logger: Logger,
 ): Promise<void> {
 	const prevSchedule = previous.find(isAgentScheduleIntegration);
@@ -56,10 +56,10 @@ export async function syncAgentIntegrations(
 	}
 
 	const prevChat = previous.filter(
-		(i): i is AgentCredentialIntegration => !isAgentScheduleIntegration(i),
+		(i): i is AgentCredentialIntegrationConfig => !isAgentScheduleIntegration(i),
 	);
 	const nextChat = next.filter(
-		(i): i is AgentCredentialIntegration => !isAgentScheduleIntegration(i),
+		(i): i is AgentCredentialIntegrationConfig => !isAgentScheduleIntegration(i),
 	);
 	try {
 		// eslint-disable-next-line import-x/no-cycle

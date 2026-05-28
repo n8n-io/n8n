@@ -869,6 +869,69 @@ describe('AST Interpreter', () => {
 			const code = 'export default WebAssembly;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
+
+		it('should report SecurityError with a clean (non-doubled) message', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(
+				/Security violation: 'fetch' is not allowed/,
+			);
+		});
+	});
+
+	describe('Security - dangerous globals shadowed by declared variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		const shadowable = [
+			'fetch',
+			'process',
+			'require',
+			'console',
+			'Object',
+			'Array',
+			'Math',
+			'Date',
+			'Error',
+			'Promise',
+			'Buffer',
+		];
+
+		for (const name of shadowable) {
+			it(`should allow '${name}' as a node variable name`, () => {
+				const code = `
+					const ${name} = node({ name: 'X', type: 'n8n-nodes-base.set' });
+					export default workflow('id', 'name').add(${name});
+				`;
+				const result = interpretSDKCode(code, sdkFunctions) as { nodes: unknown[] };
+				expect(result.nodes).toHaveLength(1);
+			});
+		}
+
+		it('should still reject undeclared fetch reference', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared process', () => {
+			const code = 'export default process.env.PATH;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared Math', () => {
+			const code = 'export default Math.PI;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should resolve member access against the user-declared shadow', () => {
+			const code = `
+				const Math = { custom: 42 };
+				export default Math.custom;
+			`;
+			expect(interpretSDKCode(code, sdkFunctions)).toBe(42);
+		});
 	});
 
 	describe('JSON.stringify', () => {

@@ -22,7 +22,7 @@ const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// AWS access key id
 	/\bAKIA[0-9A-Z]{16}\b/g,
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments
-	/\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\s*[:=]\s*\S+/gi,
+	/\b(?:password|passwd|secret|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token)\s*[:=]\s*\S+/gi,
 ];
 
 export function scrubSecretsInText(input: string): string {

@@ -138,7 +138,7 @@ const isExecutionBlocked = computed(
 );
 
 const hasPinDataApplied = computed(
-	() => Object.keys(workflowDocumentStore.value.pinData).length > 0,
+	() => Object.keys(workflowDocumentStore.value.pinnedDataByNodeName).length > 0,
 );
 
 const showPostExecutionFollowUps = computed(

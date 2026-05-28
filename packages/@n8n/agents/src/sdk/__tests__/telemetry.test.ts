@@ -171,3 +171,37 @@ describe('Telemetry.shutdown()', () => {
 		await Telemetry.shutdown(built);
 	});
 });
+
+describe('Telemetry.forceFlush()', () => {
+	it('calls provider.forceFlush() when provider exists', async () => {
+		const forceFlushMock = jest.fn().mockResolvedValue(undefined);
+		const built = await new Telemetry().build();
+		const withProvider = {
+			...built,
+			provider: { forceFlush: forceFlushMock, shutdown: jest.fn() },
+		};
+
+		await Telemetry.forceFlush(withProvider);
+
+		expect(forceFlushMock).toHaveBeenCalled();
+	});
+
+	it('swallows provider.forceFlush() errors', async () => {
+		const built = await new Telemetry().build();
+		const withProvider = {
+			...built,
+			provider: {
+				forceFlush: jest.fn().mockRejectedValue(new Error('flush failed')),
+				shutdown: jest.fn(),
+			},
+		};
+
+		await expect(Telemetry.forceFlush(withProvider)).resolves.toBeUndefined();
+	});
+
+	it('does nothing when no provider exists', async () => {
+		const built = await new Telemetry().build();
+
+		await expect(Telemetry.forceFlush(built)).resolves.toBeUndefined();
+	});
+});

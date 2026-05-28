@@ -1,0 +1,134 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You generate a short descriptive title for a conversatio[\\s\\S]*Generate a title for the following first message of a conversation\\. Do not answer the message — only produce the title\\.\\\\n[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1255"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-f1c20e0ee8e1bd1d0eef7c4e661b0e5f-d3cbf232514af0d2-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=BDaAl8awOe0eEcPRFA.qdIK3hw51w1expevXFtRhjEQ-1778773682.8311439-1.0.1.1-MASrOaHfCrRGi9kyMqqmpN_4MDHN3XxZFquINKQEyf4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011Cb2iw2XJJ83E271bh3LFo"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-05-14T15:48:03Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-05-14T15:48:03Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-05-14T15:48:04Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-05-14T15:48:03Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "15000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Thu, 14 May 2026 15:48:04 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "9fbb0b7dbe6df134-BCN"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "BDaAl8awOe0eEcPRFA.qdIK3hw51w1expevXFtRhjEQ-1778773682.8311439-1.0.1.1-MASrOaHfCrRGi9kyMqqmpN_4MDHN3XxZFquINKQEyf4"
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-6",
+        "id": "msg_01H9V9GQivm7hBUgHSeVx8w2",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Mocked credential guard workflow build"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 571,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 10,
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFIOVY5R1Fpdm03aEJVZ0hTZVZ4OHcyIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiTW9ja2VkIGNyZWRlbnRpYWwgZ3VhcmQgd29ya2Zsb3cgYnVpbGQifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NTcxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTAsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
+    }
+  },
+  "id": "0010-1778773735303-unknown-host-POST-_v1_messages-f134c753.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

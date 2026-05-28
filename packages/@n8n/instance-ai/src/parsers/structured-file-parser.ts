@@ -1,3 +1,5 @@
+import type { parse as csvParse } from 'csv-parse/sync';
+
 /**
  * Structured file parser for CSV, TSV, and JSON attachments.
  *
@@ -11,7 +13,16 @@
  * - Dangerous keys (__proto__, constructor, prototype) are rejected
  */
 
-import { parse as csvParse } from 'csv-parse/sync';
+type CsvParseFn = typeof csvParse;
+let csvParseFnCached: CsvParseFn | undefined;
+function getCsvParse(): CsvParseFn {
+	if (!csvParseFnCached) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+		const mod = require('csv-parse/sync') as { parse: CsvParseFn };
+		csvParseFnCached = mod.parse;
+	}
+	return csvParseFnCached;
+}
 
 // ── Limits ──────────────────────────────────────────────────────────────────
 
@@ -67,7 +78,7 @@ export type CellValue = string | number | boolean | null;
 
 export interface ParseFileInput {
 	attachmentIndex?: number;
-	format?: ParseableFormat;
+	format?: SupportedFormat;
 	hasHeader?: boolean;
 	delimiter?: string;
 	startRow?: number;
@@ -78,7 +89,7 @@ export interface ParseFileOutput {
 	attachmentIndex: number;
 	fileName: string;
 	mimeType: string;
-	format: TabularFormat;
+	format: SupportedFormat;
 	columns: ColumnMeta[];
 	rows: Array<Record<string, CellValue>>;
 	totalRows: number;
@@ -86,6 +97,9 @@ export interface ParseFileOutput {
 	truncated: boolean;
 	nextStartRow?: number;
 	warnings?: string[];
+	content?: string;
+	title?: string;
+	pages?: number;
 }
 
 export interface AttachmentInfo {
@@ -262,7 +276,7 @@ function parseCsvTsv(
 		throw new Error('Delimiter must be a single character');
 	}
 
-	const records = csvParse(content, {
+	const records = getCsvParse()(content, {
 		delimiter,
 		columns: false,
 		skip_empty_lines: true,

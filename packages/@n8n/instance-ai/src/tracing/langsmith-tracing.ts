@@ -1,29 +1,70 @@
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
-import type { ToolAction, ToolExecutionContext } from '@mastra/core/tools';
-import { Client, RunTree } from 'langsmith';
-import { getCurrentRunTree, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
+import {
+	LangSmithTelemetry,
+	Telemetry,
+	type AttributeValue,
+	type BuiltTelemetry,
+	type BuiltTool,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
+import {
+	ROOT_CONTEXT,
+	SpanStatusCode,
+	context as otelContext,
+	trace as otelTrace,
+} from '@opentelemetry/api';
+import type { Context as OtelContext, Span as OtelApiSpan } from '@opentelemetry/api';
+import { Client } from 'langsmith';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { dirname, join, parse } from 'node:path';
 
+import { createToolRegistry } from '../tool-registry';
 import type {
 	InstanceAiToolTraceOptions,
+	InstanceAiTelemetryOptions,
 	InstanceAiTraceContext,
 	InstanceAiTraceRun,
 	InstanceAiTraceRunFinishOptions,
 	InstanceAiTraceRunInit,
+	InstanceAiToolRegistry,
 	ServiceProxyConfig,
 } from '../types';
+import {
+	formatAgentRoleLabel,
+	formatInternalOperationLabel,
+	formatResumeReasonLabel,
+	formatTelemetryFunctionId,
+	formatTraceLabel,
+} from './trace-labels';
+import {
+	GEN_AI_COMPLETION,
+	GEN_AI_PROMPT,
+	mergeTraceInputs,
+	redactLangSmithTelemetrySpan,
+	sanitizeTracePayload,
+	sanitizeTraceValue,
+	serializeModelIdForTrace,
+	toTelemetryAttributeValue,
+	toTelemetryMetadata,
+} from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
 import { isRecord } from '../utils/stream-helpers';
 
+export {
+	buildAgentTraceInputs,
+	redactLangSmithTelemetrySpan,
+	serializeModelIdForTrace,
+} from './trace-payloads';
+
 const DEFAULT_PROJECT_NAME = 'instance-ai';
 const DEFAULT_TAGS = ['instance-ai'];
-const MAX_TRACE_DEPTH = 4;
-const MAX_TRACE_STRING_LENGTH = 2_000;
-const MAX_TRACE_ARRAY_ITEMS = 20;
-const MAX_TRACE_OBJECT_KEYS = 30;
-const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
+const productTraceStorage = new AsyncLocalStorage<{
+	runtime: ProductOtelTraceRuntime;
+	currentRun: InstanceAiTraceRun;
+}>();
 
 // Per-request proxy auth headers, isolated via AsyncLocalStorage.
 // The proxy Client is cached per deployment URL; each concurrent request
@@ -32,10 +73,8 @@ const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | nu
 // Authorization header without any shared mutable state.
 const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
-// Module-level map associating traceIds with proxy clients so that
-// hydrateRunTree() (which reconstructs RunTree from serialized state)
-// can use the correct proxy client for its HTTP calls.
-const traceClients = new Map<string, Client>();
+const otelTraceRuntimes = new Map<string, ProductOtelTraceRuntime>();
+const hostRequire = createRequire(__filename);
 
 /**
  * Fetch wrapper for LangSmith clients:
@@ -58,6 +97,467 @@ const gzipFetch: typeof globalThis.fetch = async (input, init) => {
 
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
 let cachedDirectClient: Client | null = null;
+
+const OTEL_TRACE_VERSION = 'otel-v2';
+const LANGSMITH_TRACEABLE = 'langsmith.traceable';
+const LANGSMITH_TRACE_NAME = 'langsmith.trace.name';
+const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
+const LANGSMITH_SPAN_TAGS = 'langsmith.span.tags';
+
+interface ProductOtelTraceRuntime {
+	telemetry: BuiltTelemetry;
+	spans: Map<string, OtelApiSpan>;
+	contexts: Map<string, OtelContext>;
+	shutdown: boolean;
+}
+
+interface OTelTracer {
+	startSpan(
+		name: string,
+		options?: { attributes?: Record<string, AttributeValue> },
+		context?: OtelContext,
+	): OtelApiSpan;
+}
+
+function isOtelTracer(value: unknown): value is OTelTracer {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof Reflect.get(value, 'startSpan') === 'function'
+	);
+}
+
+function langsmithTraceIdFromOtelTraceId(traceId: string): string {
+	return `${traceId.substring(0, 8)}-${traceId.substring(8, 12)}-${traceId.substring(
+		12,
+		16,
+	)}-${traceId.substring(16, 20)}-${traceId.substring(20, 32)}`;
+}
+
+function langsmithRunIdFromOtelSpanId(spanId: string): string {
+	const paddedHex = spanId.padStart(16, '0');
+	return `00000000-0000-0000-${paddedHex.substring(0, 4)}-${paddedHex.substring(4, 16)}`;
+}
+
+function stableDottedOrder(parentRun: InstanceAiTraceRun | undefined, runId: string): string {
+	return parentRun?.dottedOrder ? `${parentRun.dottedOrder}.${runId}` : runId;
+}
+
+function inferDisplayKind(name: string): string {
+	if (name === 'turn') return 'turn';
+	if (name.startsWith('agent:')) return 'agent';
+	if (name.startsWith('llm:')) return 'llm';
+	if (name.startsWith('tool:')) return 'tool';
+	if (name.startsWith('prepare:')) return 'prepare';
+	if (name.startsWith('resume:')) return 'resume';
+	if (name.startsWith('background task:')) return 'background_task';
+	if (name.startsWith('hitl:')) return 'hitl';
+	if (name.startsWith('internal:')) return 'internal';
+	return 'operation';
+}
+
+function inferDisplayGroup(
+	metadata: Record<string, unknown> | undefined,
+	name: string,
+): string | undefined {
+	const role =
+		typeof metadata?.agent_role === 'string'
+			? metadata.agent_role
+			: typeof metadata?.subagent_role === 'string'
+				? metadata.subagent_role
+				: undefined;
+	if (role) {
+		return formatAgentRoleLabel(role);
+	}
+
+	if (name.startsWith('prepare:')) return 'preparation';
+	if (name.startsWith('hitl:')) return 'human-in-the-loop';
+	if (name === 'turn') return 'conversation';
+	return undefined;
+}
+
+function inferDisplayPhase(metadata: Record<string, unknown> | undefined): string | undefined {
+	return typeof metadata?.execution_mode === 'string'
+		? formatTraceLabel(metadata.execution_mode)
+		: undefined;
+}
+
+function buildProductSpanMetadata(options: {
+	name: string;
+	canonicalName?: string;
+	metadata?: Record<string, unknown>;
+}): Record<string, unknown> {
+	const canonicalName = options.canonicalName ?? options.name;
+	const displayGroup = inferDisplayGroup(options.metadata, options.name);
+	const displayPhase = inferDisplayPhase(options.metadata);
+	const displayDefaults = {
+		trace_version: OTEL_TRACE_VERSION,
+		'instance_ai.trace_version': OTEL_TRACE_VERSION,
+		display_kind: inferDisplayKind(options.name),
+		...(displayGroup ? { display_group: displayGroup } : {}),
+		...(displayPhase ? { display_phase: displayPhase } : {}),
+	};
+
+	return (
+		mergeMetadata(displayDefaults, options.metadata, {
+			display_name: options.name,
+			'instance_ai.display_name': options.name,
+			'instance_ai.canonical_name': canonicalName,
+			'instance_ai.run_name': canonicalName,
+		}) ?? {}
+	);
+}
+
+function buildProductSpanAttributes(options: {
+	name: string;
+	canonicalName?: string;
+	runType?: string;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+	inputs?: unknown;
+}): Record<string, AttributeValue> {
+	const attributes: Record<string, AttributeValue> = {
+		[LANGSMITH_TRACEABLE]: 'true',
+		[LANGSMITH_TRACE_NAME]: options.name,
+		[LANGSMITH_SPAN_KIND]: options.runType ?? 'chain',
+		'instance_ai.trace_version': OTEL_TRACE_VERSION,
+	};
+
+	const tags = normalizeTags(DEFAULT_TAGS, options.tags);
+	if (tags?.length) {
+		attributes[LANGSMITH_SPAN_TAGS] = tags;
+	}
+
+	const metadata = buildProductSpanMetadata(options);
+	for (const [key, value] of Object.entries(metadata ?? {})) {
+		const attributeValue = toTelemetryAttributeValue(value);
+		if (attributeValue === undefined) continue;
+		attributes[key] = attributeValue;
+		if (!key.startsWith('langsmith.metadata.')) {
+			attributes[`langsmith.metadata.${key}`] = attributeValue;
+		}
+	}
+
+	const inputs = options.inputs === undefined ? undefined : stringifyTracePayload(options.inputs);
+	if (inputs !== undefined) {
+		attributes[GEN_AI_PROMPT] = inputs;
+	}
+
+	return attributes;
+}
+
+function stringifyTracePayload(value: unknown): string | undefined {
+	try {
+		return JSON.stringify(sanitizeTracePayload(value));
+	} catch {
+		return undefined;
+	}
+}
+
+function startProductSpan(
+	runtime: ProductOtelTraceRuntime,
+	options: {
+		projectName: string;
+		name: string;
+		canonicalName?: string;
+		runType?: string;
+		tags?: string[];
+		metadata?: Record<string, unknown>;
+		inputs?: unknown;
+		parentRun?: InstanceAiTraceRun;
+		parentContext?: OtelContext;
+		root?: boolean;
+	},
+): InstanceAiTraceRun {
+	if (!isOtelTracer(runtime.telemetry.tracer)) {
+		throw new Error('Instance AI tracing requires an OpenTelemetry tracer');
+	}
+
+	const spanMetadata = buildProductSpanMetadata(options);
+	const parentContext = options.root
+		? ROOT_CONTEXT
+		: (options.parentContext ??
+			(options.parentRun ? runtime.contexts.get(options.parentRun.id) : undefined) ??
+			otelContext.active());
+	const span = runtime.telemetry.tracer.startSpan(
+		options.name,
+		{
+			attributes: buildProductSpanAttributes(options),
+		},
+		parentContext,
+	);
+	const spanContext = span.spanContext();
+	const traceId = langsmithTraceIdFromOtelTraceId(spanContext.traceId);
+	const runId = langsmithRunIdFromOtelSpanId(spanContext.spanId);
+	const spanContextWithSpan = otelTrace.setSpan(parentContext ?? otelContext.active(), span);
+	const parentRun = options.parentRun;
+	const runMetadata = mergeMetadata(parentRun?.metadata, spanMetadata);
+	const run: InstanceAiTraceRun = {
+		id: runId,
+		name: options.name,
+		runType: options.runType ?? 'chain',
+		projectName: options.projectName,
+		startTime: Date.now(),
+		traceId,
+		otelTraceId: spanContext.traceId,
+		otelSpanId: spanContext.spanId,
+		dottedOrder: stableDottedOrder(parentRun, runId),
+		executionOrder: parentRun ? parentRun.childExecutionOrder + 1 : 0,
+		childExecutionOrder: 0,
+		...(parentRun ? { parentRunId: parentRun.id } : {}),
+		...(options.tags ? { tags: normalizeTags(DEFAULT_TAGS, parentRun?.tags, options.tags) } : {}),
+		...(runMetadata ? { metadata: runMetadata } : {}),
+		...(options.inputs !== undefined ? { inputs: sanitizeTracePayload(options.inputs) } : {}),
+	};
+
+	if (parentRun) {
+		parentRun.childExecutionOrder += 1;
+	}
+
+	runtime.spans.set(run.id, span);
+	runtime.contexts.set(run.id, spanContextWithSpan);
+	return run;
+}
+
+async function finishProductSpan(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	options?: ProductSpanFinishOptions,
+): Promise<void> {
+	const span = runtime.spans.get(run.id);
+	if (!span) return;
+
+	const metadata = mergeMetadata(options?.metadata);
+	const attributes: Record<string, AttributeValue> = {};
+	for (const [key, value] of Object.entries(metadata ?? {})) {
+		const attributeValue = toTelemetryAttributeValue(value);
+		if (attributeValue === undefined) continue;
+		attributes[key] = attributeValue;
+		attributes[`langsmith.metadata.${key}`] = attributeValue;
+	}
+
+	if (options?.outputs !== undefined) {
+		const completion = stringifyTracePayload(options.outputs);
+		if (completion !== undefined) {
+			attributes[GEN_AI_COMPLETION] = completion;
+		}
+		run.outputs = sanitizeTracePayload(options.outputs);
+	}
+
+	run.endTime = Date.now();
+	run.metadata = mergeMetadata(run.metadata, metadata);
+
+	try {
+		if (Object.keys(attributes).length > 0) {
+			span.setAttributes(attributes);
+		}
+
+		if (options?.error) {
+			span.recordException(new Error(options.error));
+			span.setStatus({ code: SpanStatusCode.ERROR, message: options.error });
+			run.error = options.error;
+		} else {
+			span.setStatus({ code: SpanStatusCode.OK });
+		}
+
+		span.end();
+	} finally {
+		runtime.spans.delete(run.id);
+		runtime.contexts.delete(run.id);
+	}
+
+	if (options?.forceFlush === true) {
+		await Telemetry.forceFlush(runtime.telemetry);
+	}
+}
+
+async function finishProductSpanBestEffort(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	options?: ProductSpanFinishOptions,
+): Promise<void> {
+	try {
+		await finishProductSpan(runtime, run, options);
+	} catch {
+		// Product tracing is best-effort and must not fail or mask agent execution.
+	}
+}
+
+async function shutdownProductOtelRuntime(
+	runtime: ProductOtelTraceRuntime,
+	traceId: string,
+): Promise<void> {
+	if (runtime.shutdown) return;
+
+	runtime.shutdown = true;
+	runtime.spans.clear();
+	runtime.contexts.clear();
+	otelTraceRuntimes.delete(traceId);
+
+	try {
+		await Telemetry.shutdown(runtime.telemetry);
+	} catch {
+		// Product tracing is best-effort and must not fail or mask agent execution.
+	}
+}
+
+async function withProxyHeaders<T>(
+	proxyConfig: ServiceProxyConfig | undefined,
+	fn: () => T | Promise<T>,
+): Promise<T> {
+	if (!proxyConfig) return await fn();
+
+	const headers = await proxyConfig.getAuthHeaders();
+	return await proxyHeaderStore.run(headers, fn);
+}
+
+async function withProxyHeadersBestEffort<T>(
+	proxyConfig: ServiceProxyConfig | undefined,
+	fn: () => T | Promise<T>,
+): Promise<T> {
+	if (!proxyConfig) return await fn();
+
+	let headers: Record<string, string>;
+	try {
+		headers = await proxyConfig.getAuthHeaders();
+	} catch {
+		return await fn();
+	}
+
+	return await proxyHeaderStore.run(headers, fn);
+}
+
+async function withProductSpanContext<T>(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const spanContext = runtime.contexts.get(run.id);
+	if (!spanContext) {
+		return await fn();
+	}
+
+	return await productTraceStorage.run(
+		{ runtime, currentRun: run },
+		async () => await otelContext.with(spanContext, fn),
+	);
+}
+
+async function withProductSpanContextBestEffort<T>(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	fn: () => Promise<T>,
+): Promise<T> {
+	let callbackStarted = false;
+	try {
+		return await withProductSpanContext(runtime, run, async () => {
+			callbackStarted = true;
+			return await fn();
+		});
+	} catch (error) {
+		if (!callbackStarted) {
+			return await fn();
+		}
+		throw error;
+	}
+}
+
+function createFallbackChildRun(
+	projectName: string,
+	parentRun: InstanceAiTraceRun,
+	init: InstanceAiTraceRunInit,
+): InstanceAiTraceRun {
+	const executionOrder = parentRun.childExecutionOrder + 1;
+	const id = `${parentRun.id}:child:${executionOrder}`;
+	const metadata = mergeMetadata(parentRun.metadata, init.metadata);
+	parentRun.childExecutionOrder = executionOrder;
+
+	return {
+		id,
+		name: init.name,
+		runType: init.runType ?? 'chain',
+		projectName,
+		startTime: Date.now(),
+		traceId: parentRun.traceId,
+		dottedOrder: stableDottedOrder(parentRun, id),
+		executionOrder,
+		childExecutionOrder: 0,
+		parentRunId: parentRun.id,
+		...(init.tags ? { tags: normalizeTags(DEFAULT_TAGS, parentRun.tags, init.tags) } : {}),
+		...(metadata ? { metadata } : {}),
+		...(init.inputs !== undefined ? { inputs: sanitizeTracePayload(init.inputs) } : {}),
+	};
+}
+
+function getCurrentProductTrace():
+	| { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun }
+	| undefined {
+	return productTraceStorage.getStore();
+}
+
+function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
+	const activeContext = otelContext.active();
+	const activeSpanContext = otelTrace.getSpan(activeContext)?.spanContext();
+	if (!activeSpanContext) {
+		return undefined;
+	}
+	if (expectedTraceId && activeSpanContext.traceId !== expectedTraceId) {
+		return undefined;
+	}
+	return activeContext;
+}
+
+function spanMetadataAttributes(
+	metadata: Record<string, unknown> | undefined,
+): Record<string, AttributeValue> {
+	const attributes: Record<string, AttributeValue> = {};
+	for (const [key, value] of Object.entries(metadata ?? {})) {
+		const attributeValue = toTelemetryAttributeValue(value);
+		if (attributeValue === undefined) continue;
+		attributes[key] = attributeValue;
+		if (!key.startsWith('langsmith.metadata.')) {
+			attributes[`langsmith.metadata.${key}`] = attributeValue;
+		}
+	}
+	return attributes;
+}
+
+function updateProductRunMetadata(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	metadata: Record<string, unknown>,
+): void {
+	const mergedMetadata = mergeMetadata(run.metadata, metadata);
+	if (!mergedMetadata) return;
+
+	run.metadata = mergedMetadata;
+	const attributes = spanMetadataAttributes(metadata);
+	if (Object.keys(attributes).length > 0) {
+		try {
+			runtime.spans.get(run.id)?.setAttributes(attributes);
+		} catch {
+			// Product tracing is best-effort and must not fail agent execution.
+		}
+	}
+}
+
+function updateProductRunInputs(
+	runtime: ProductOtelTraceRuntime,
+	run: InstanceAiTraceRun,
+	inputs: Record<string, unknown>,
+): void {
+	const mergedInputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
+	run.inputs = mergedInputs;
+
+	const prompt = stringifyTracePayload(mergedInputs);
+	if (prompt !== undefined) {
+		try {
+			runtime.spans.get(run.id)?.setAttributes({ [GEN_AI_PROMPT]: prompt });
+		} catch {
+			// Product tracing is best-effort and must not fail agent execution.
+		}
+	}
+}
 
 /** Get a LangSmith Client that uses gzip encoding (no brotli). */
 function getOrCreateDirectClient(): Client {
@@ -118,12 +618,22 @@ interface CreateDetachedSubAgentTraceContextOptions extends CreateInstanceAiTrac
 	plannedTaskId?: string;
 	workItemId?: string;
 	spawnedByTraceId?: string;
+	spawnedBySpanId?: string;
 	spawnedByRunId?: string;
 	spawnedByAgentId?: string;
+	spawnedByAgentRole?: string;
+	spawnedByToolCallId?: string;
+}
+
+interface CreateInternalOperationTraceContextOptions
+	extends Omit<CreateInstanceAiTraceContextOptions, 'messageId'> {
+	operationName: string;
+	messageId?: string;
 }
 
 interface CurrentTraceSpanOptions<T = unknown> {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;
@@ -131,38 +641,28 @@ interface CurrentTraceSpanOptions<T = unknown> {
 	processOutputs?: (result: T) => unknown;
 }
 
-interface AgentTraceInputOptions {
-	systemPrompt?: string;
-	tools?: ToolsInput;
-	deferredTools?: ToolsInput;
-	modelId?: unknown;
-	memory?: unknown;
-	toolSearchEnabled?: boolean;
-	inputProcessors?: string[];
+type NativeToolContext = ToolContext | InterruptibleToolContext;
+type TraceableNativeTool = BuiltTool & { handler: NonNullable<BuiltTool['handler']> };
+type ProductSpanFinishOptions = InstanceAiTraceRunFinishOptions & { forceFlush?: boolean };
+
+function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
+	const normalized = value?.toLowerCase();
+	if (normalized === 'true') return true;
+	if (normalized === 'false') return false;
+	return undefined;
 }
 
-type TraceableMastraTool = ToolAction<
-	unknown,
-	unknown,
-	unknown,
-	unknown,
-	ToolExecutionContext<unknown, unknown, unknown>,
-	string,
-	unknown
->;
-
-interface NormalizedModelMetadata {
-	provider?: string;
-	modelName?: string;
-}
-
-function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
-	const tracingFlag =
-		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING ?? undefined;
-	if (tracingFlag?.toLowerCase() === 'false') {
+function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
 
+	const tracingFlag = readBooleanEnvFlag(
+		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING,
+	);
+	if (tracingFlag === false) {
+		return false;
+	}
 	if (proxyAvailable) {
 		return true;
 	}
@@ -172,13 +672,15 @@ function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 			process.env.LANGCHAIN_API_KEY ??
 			process.env.LANGSMITH_ENDPOINT ??
 			process.env.LANGCHAIN_ENDPOINT ??
-			tracingFlag?.toLowerCase() === 'true',
+			tracingFlag === true,
 	);
 }
 
-function ensureLangSmithTracingEnv(): void {
-	process.env.LANGCHAIN_TRACING_V2 ??= 'true';
-	process.env.LANGSMITH_TRACING ??= 'true';
+function isInternalOperationTracingEnabled(): boolean {
+	return (
+		process.env.N8N_INSTANCE_AI_TRACE_INTERNAL === 'true' ||
+		process.env.N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL === 'true'
+	);
 }
 
 function normalizeErrorMessage(error: unknown): string {
@@ -207,233 +709,18 @@ function mergeMetadata(
 	return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
-function truncateString(value: string): string {
-	if (value.length <= MAX_TRACE_STRING_LENGTH) {
-		return value;
-	}
-
-	return `${value.slice(0, MAX_TRACE_STRING_LENGTH)}…`;
-}
-
-function splitTraceText(value: string): string[] {
-	if (value.length <= MAX_TRACE_STRING_LENGTH) {
-		return [value];
-	}
-
-	const chunks: string[] = [];
-	let remaining = value;
-
-	while (remaining.length > MAX_TRACE_STRING_LENGTH) {
-		const candidate = remaining.slice(0, MAX_TRACE_STRING_LENGTH);
-		const splitIndex = candidate.lastIndexOf('\n');
-		const chunkEnd =
-			splitIndex >= MAX_TRACE_STRING_LENGTH / 2 ? splitIndex + 1 : MAX_TRACE_STRING_LENGTH;
-		chunks.push(remaining.slice(0, chunkEnd));
-		remaining = remaining.slice(chunkEnd);
-	}
-
-	if (remaining.length > 0) {
-		chunks.push(remaining);
-	}
-
-	return chunks;
-}
-
-function serializeTraceText(value: string): string | Record<string, string> {
-	const chunks = splitTraceText(value);
-	if (chunks.length === 1) {
-		return chunks[0];
-	}
-
-	return Object.fromEntries(
-		chunks.map((chunk, index) => [`part_${String(index + 1).padStart(2, '0')}`, chunk]),
-	);
-}
-
-function summarizeToolDescription(tool: unknown): string | undefined {
-	if (!isRecord(tool)) {
-		return undefined;
-	}
-
-	return typeof tool.description === 'string' ? tool.description : undefined;
-}
-
-function summarizeToolSet(
-	fieldPrefix: 'loaded' | 'deferred',
-	tools: ToolsInput | undefined,
-): Record<string, unknown> {
-	if (!tools || Object.keys(tools).length === 0) {
-		return {};
-	}
-
-	const summaries = Object.entries(tools).map(([name, tool]) => ({
-		name,
-		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
-	}));
-	const catalogText = summaries
-		.map((tool) =>
-			typeof tool.description === 'string' ? `${tool.name}: ${tool.description}` : tool.name,
-		)
-		.join('\n');
-
-	return {
-		[`${fieldPrefix}_tool_count`]: summaries.length,
-		[`${fieldPrefix}_tools`]: summaries,
-		[`${fieldPrefix}_tool_catalog`]: serializeTraceText(catalogText),
-	};
-}
-
-function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
-	if (!isRecord(memory)) {
-		return {};
-	}
-
-	return {
-		memory_enabled: true,
-		...(typeof memory.resource === 'string' ? { memory_resource_id: memory.resource } : {}),
-		...(typeof memory.thread === 'string' ? { memory_thread_id: memory.thread } : {}),
-	};
-}
-
-function sanitizeTraceValue(value: unknown, depth = 0): unknown {
-	if (value === null || value === undefined) {
-		return value;
-	}
-
-	if (typeof value === 'string') {
-		return truncateString(value);
-	}
-
-	if (typeof value === 'number' || typeof value === 'boolean') {
-		return value;
-	}
-
-	if (typeof value === 'bigint') {
-		return value.toString();
-	}
-
-	if (typeof value === 'function') {
-		return `[function ${value.name || 'anonymous'}]`;
-	}
-
-	if (value instanceof Date) {
-		return value.toISOString();
-	}
-
-	if (value instanceof Error) {
-		return {
-			name: value.name,
-			message: truncateString(value.message),
-		};
-	}
-
-	if (value instanceof Uint8Array) {
-		return `[binary ${value.byteLength} bytes]`;
-	}
-
-	if (Array.isArray(value)) {
-		if (depth >= MAX_TRACE_DEPTH) {
-			return `[array(${value.length})]`;
-		}
-
-		return value
-			.slice(0, MAX_TRACE_ARRAY_ITEMS)
-			.map((entry) => sanitizeTraceValue(entry, depth + 1));
-	}
-
-	if (isRecord(value)) {
-		if (depth >= MAX_TRACE_DEPTH) {
-			return `[object ${Object.keys(value).length} keys]`;
-		}
-
-		const entries = Object.entries(value).slice(0, MAX_TRACE_OBJECT_KEYS);
-		const sanitized: Record<string, unknown> = {};
-		for (const [key, entryValue] of entries) {
-			sanitized[key] = sanitizeTraceValue(entryValue, depth + 1);
-		}
-		if (Object.keys(value).length > entries.length) {
-			sanitized.__truncatedKeys = Object.keys(value).length - entries.length;
-		}
-		return sanitized;
-	}
-
-	if (typeof value === 'symbol') {
-		return value.toString();
-	}
-
-	return truncateString(Object.prototype.toString.call(value));
-}
-
-function sanitizeTracePayload(value: unknown): Record<string, unknown> {
-	if (isRecord(value)) {
-		const sanitized: Record<string, unknown> = {};
-		for (const [key, entryValue] of Object.entries(value)) {
-			sanitized[key] = sanitizeTraceValue(entryValue);
-		}
-		return sanitized;
-	}
-
-	if (value === undefined) {
-		return {};
-	}
-
-	return { value: sanitizeTraceValue(value) };
-}
-
-function normalizeModelMetadata(modelId: unknown): NormalizedModelMetadata {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		const [provider, ...modelParts] = modelId.split('/');
-		return modelParts.length > 0
-			? { provider, modelName: modelParts.join('/') }
-			: { modelName: modelId };
-	}
-
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return normalizeModelMetadata(modelId.id);
-	}
-
-	return {};
-}
-
-export function serializeModelIdForTrace(modelId: unknown): unknown {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		return truncateString(modelId);
-	}
-
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return truncateString(modelId.id);
-	}
-
-	return sanitizeTraceValue(modelId);
-}
-
-function mergeRunTreeMetadata(
-	baseMetadata: Record<string, unknown> | undefined,
-	metadata: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-	return mergeMetadata(baseMetadata, metadata);
-}
-
-function mergeRunTreeInputs(
-	baseInputs: unknown,
-	inputs: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-	const existingInputs =
-		isRecord(baseInputs) && !Array.isArray(baseInputs) ? { ...baseInputs } : {};
-
-	return {
-		...existingInputs,
-		...(inputs ?? {}),
-	};
-}
-
 /**
- * Unconditionally remove the cached LangSmith Client for a trace.
- * Call after run finalization (success or failure) so the Client and
- * its RunTree hierarchy can be garbage-collected.
+ * Unconditionally remove the cached OTel runtime for a trace.
+ * Call after run finalization (success or failure) so its OTel runtime can be
+ * garbage-collected.
  */
 export function releaseTraceClient(traceId: string): void {
-	traceClients.delete(traceId);
+	const runtime = otelTraceRuntimes.get(traceId);
+	if (!runtime) {
+		return;
+	}
+
+	void shutdownProductOtelRuntime(runtime, traceId);
 }
 
 export interface SubmitLangsmithUserFeedbackOptions {
@@ -476,49 +763,39 @@ export async function submitLangsmithUserFeedback(
 		});
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
-		await proxyHeaderStore.run(headers, call);
-	} else {
-		await call();
-	}
+	await withProxyHeaders(options.proxyConfig, call);
 	return true;
 }
 
-export function getTraceParentRun(): RunTree | undefined {
-	const overrideRun = traceParentOverrideStorage.getStore()?.current;
-	if (overrideRun) {
-		return overrideRun;
+export function getCurrentOtelSpanContext(): { traceId: string; spanId: string } | undefined {
+	const activeSpanContext = otelTrace.getSpan(otelContext.active())?.spanContext();
+	if (activeSpanContext) {
+		return {
+			traceId: activeSpanContext.traceId,
+			spanId: activeSpanContext.spanId,
+		};
 	}
 
-	try {
-		return getCurrentRunTree() ?? undefined;
-	} catch {
-		return undefined;
+	const currentRun = getCurrentProductTrace()?.currentRun;
+	if (currentRun?.otelTraceId && currentRun.otelSpanId) {
+		return {
+			traceId: currentRun.otelTraceId,
+			spanId: currentRun.otelSpanId,
+		};
 	}
+
+	return undefined;
 }
 
-export function setTraceParentOverride(parentRun: RunTree | null | undefined): void {
-	const store = traceParentOverrideStorage.getStore();
-	if (store) {
-		store.current = parentRun ?? null;
-	} else if (parentRun) {
-		// No ALS context yet — bootstrap one for the current async chain.
-		// Safe: each withTraceParentContext call creates its own nested context,
-		// so this only affects code that skips our context setup (e.g. tests).
-		traceParentOverrideStorage.enterWith({ current: parentRun });
-	}
+export function getCurrentTraceToolCallId(): string | undefined {
+	const metadata = getCurrentProductTrace()?.currentRun.metadata;
+	return typeof metadata?.tool_call_id === 'string' ? metadata.tool_call_id : undefined;
 }
 
 export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): void {
-	const currentRun = getTraceParentRun();
-	if (!currentRun) {
-		return;
-	}
-
-	const mergedMetadata = mergeRunTreeMetadata(currentRun.metadata, metadata);
-	if (mergedMetadata) {
-		currentRun.metadata = mergedMetadata;
+	const currentProductTrace = getCurrentProductTrace();
+	if (currentProductTrace) {
+		updateProductRunMetadata(currentProductTrace.runtime, currentProductTrace.currentRun, metadata);
 	}
 }
 
@@ -526,17 +803,15 @@ export function appendRootRunMetadata(
 	root: InstanceAiTraceRun,
 	patch: Record<string, unknown>,
 ): void {
-	const currentRun = getTraceParentRun();
-	const baseMetadata =
-		currentRun?.id === root.id
-			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
-			: root.metadata;
-	const merged = mergeRunTreeMetadata(baseMetadata, patch);
-	if (merged) {
-		root.metadata = merged;
-		if (currentRun?.id === root.id) {
-			currentRun.metadata = merged;
-		}
+	const runtime = getCurrentProductTrace()?.runtime ?? otelTraceRuntimes.get(root.traceId);
+	if (runtime) {
+		updateProductRunMetadata(runtime, root, patch);
+		return;
+	}
+
+	const mergedMetadata = mergeMetadata(root.metadata, patch);
+	if (mergedMetadata) {
+		root.metadata = mergedMetadata;
 	}
 }
 
@@ -544,12 +819,7 @@ export function appendGeneratedWorkflowIdToRootMetadata(
 	root: InstanceAiTraceRun,
 	workflowId: string,
 ): void {
-	const currentRun = getTraceParentRun();
-	const metadata =
-		currentRun?.id === root.id
-			? mergeRunTreeMetadata(root.metadata, currentRun.metadata)
-			: root.metadata;
-	const generatedWorkflowIds = metadata?.generated_workflow_ids;
+	const generatedWorkflowIds = root.metadata?.generated_workflow_ids;
 	const existing = Array.isArray(generatedWorkflowIds)
 		? generatedWorkflowIds.filter((value): value is string => typeof value === 'string')
 		: [];
@@ -567,117 +837,58 @@ export function mergeTraceRunInputs(
 		return;
 	}
 
-	const mergedInputs = sanitizeTracePayload(mergeRunTreeInputs(run.inputs, inputs));
-	run.inputs = mergedInputs;
-
-	const currentRun = getTraceParentRun();
-	if (currentRun?.id === run.id) {
-		currentRun.inputs = mergedInputs;
+	const runtime = getCurrentProductTrace()?.runtime ?? otelTraceRuntimes.get(run.traceId);
+	if (runtime) {
+		updateProductRunInputs(runtime, run, inputs);
+		return;
 	}
-}
 
-export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
-	return sanitizeTracePayload({
-		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
-		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
-		...(options.toolSearchEnabled !== undefined
-			? { tool_search_enabled: options.toolSearchEnabled }
-			: {}),
-		...(options.inputProcessors?.length ? { input_processors: options.inputProcessors } : {}),
-		...summarizeMemoryBinding(options.memory),
-		...summarizeToolSet('loaded', options.tools),
-		...summarizeToolSet('deferred', options.deferredTools),
-	});
-}
-
-export async function withTraceParentContext<T>(
-	parentRun: RunTree | undefined,
-	fn: () => Promise<T>,
-): Promise<T> {
-	// Always create a new nested ALS context. Mutating an existing store.current
-	// is not safe when concurrent background tasks inherit the same parent context.
-	return await traceParentOverrideStorage.run({ current: parentRun ?? null }, fn);
-}
-
-async function postChildRun(
-	parentRun: RunTree,
-	options: InstanceAiTraceRunInit & { tags?: string[] },
-): Promise<RunTree> {
-	const childRun = parentRun.createChild({
-		name: options.name,
-		run_type: options.runType ?? 'chain',
-		tags: normalizeTags(DEFAULT_TAGS, parentRun.tags, options.tags),
-		metadata: mergeRunTreeMetadata(parentRun.metadata, options.metadata),
-		inputs: sanitizeTracePayload(options.inputs),
-	});
-	childRun.parent_run_id ??= parentRun.id;
-	await childRun.postRun();
-	return childRun;
-}
-
-async function finishRunTree(
-	runTree: RunTree,
-	options?: InstanceAiTraceRunFinishOptions,
-): Promise<void> {
-	await runTree.end(
-		options?.outputs !== undefined ? sanitizeTracePayload(options.outputs) : undefined,
-		options?.error,
-		Date.now(),
-		mergeMetadata(options?.metadata),
-	);
-	await runTree.patchRun();
+	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
 }
 
 export async function withCurrentTraceSpan<T>(
 	options: CurrentTraceSpanOptions<T>,
 	fn: () => Promise<T>,
 ): Promise<T> {
-	const parentRun = getTraceParentRun();
-	if (!parentRun) {
+	const currentProductTrace = getCurrentProductTrace();
+	if (!currentProductTrace) {
 		return await fn();
 	}
 
-	const spanRun = await postChildRun(parentRun, {
-		name: options.name,
-		runType: options.runType ?? 'chain',
-		tags: options.tags,
-		metadata: options.metadata,
-		inputs: options.inputs,
-	});
+	const activeParentContext = getActiveOtelContextWithSpan(
+		currentProductTrace.currentRun.otelTraceId,
+	);
+	let spanRun: InstanceAiTraceRun;
+	try {
+		spanRun = startProductSpan(currentProductTrace.runtime, {
+			projectName: currentProductTrace.currentRun.projectName,
+			name: options.name,
+			canonicalName: options.canonicalName,
+			runType: options.runType ?? 'chain',
+			tags: options.tags,
+			metadata: options.metadata,
+			inputs: options.inputs,
+			parentRun: currentProductTrace.currentRun,
+			...(activeParentContext ? { parentContext: activeParentContext } : {}),
+		});
+	} catch {
+		return await fn();
+	}
 
 	try {
-		const result = await withLangSmithRunTree(spanRun, fn);
-		await finishRunTree(spanRun, {
+		const result = await withProductSpanContextBestEffort(currentProductTrace.runtime, spanRun, fn);
+		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
 			...(options.processOutputs ? { outputs: options.processOutputs(result) } : {}),
 			metadata: { final_status: 'completed' },
 		});
 		return result;
 	} catch (error) {
-		await finishRunTree(spanRun, {
+		await finishProductSpanBestEffort(currentProductTrace.runtime, spanRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
 		throw error;
 	}
-}
-
-async function startHitlChildRun(
-	parentRun: RunTree,
-	name: string,
-	inputs: unknown,
-	metadata?: Record<string, unknown>,
-): Promise<void> {
-	const hitlRun = await postChildRun(parentRun, {
-		name,
-		runType: 'chain',
-		tags: ['hitl'],
-		metadata,
-		inputs,
-	});
-	await finishRunTree(hitlRun, {
-		outputs: inputs,
-		metadata: { final_status: 'completed' },
-	});
 }
 
 function buildSuspendMetadata(
@@ -700,132 +911,124 @@ function buildSuspendMetadata(
 	};
 }
 
-async function traceSuspendableToolExecute(
-	tool: TraceableMastraTool,
-	options: InstanceAiToolTraceOptions | undefined,
-	input: unknown,
-	context: ToolExecutionContext<unknown, unknown, unknown>,
-): Promise<unknown> {
-	const parentRun = getTraceParentRun();
-	if (!parentRun || typeof tool.execute !== 'function') {
-		return await tool.execute?.(input, context);
+function isInterruptibleToolContext(
+	context: NativeToolContext,
+): context is InterruptibleToolContext {
+	return isRecord(context) && typeof context.suspend === 'function';
+}
+
+function getToolCallId(context: NativeToolContext): string | undefined {
+	return isRecord(context) && typeof context.toolCallId === 'string'
+		? context.toolCallId
+		: undefined;
+}
+
+async function startAndFinishProductChildSpan(
+	currentTrace: { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun },
+	options: {
+		name: string;
+		canonicalName?: string;
+		runType?: string;
+		tags?: string[];
+		metadata?: Record<string, unknown>;
+		inputs?: unknown;
+		outputs?: unknown;
+		error?: string;
+		forceFlush?: boolean;
+	},
+): Promise<void> {
+	const activeParentContext = getActiveOtelContextWithSpan(currentTrace.currentRun.otelTraceId);
+	let childRun: InstanceAiTraceRun;
+	try {
+		childRun = startProductSpan(currentTrace.runtime, {
+			projectName: currentTrace.currentRun.projectName,
+			name: options.name,
+			canonicalName: options.canonicalName,
+			runType: options.runType ?? 'chain',
+			tags: options.tags,
+			metadata: mergeMetadata(currentTrace.currentRun.metadata, options.metadata),
+			inputs: options.inputs,
+			parentRun: currentTrace.currentRun,
+			...(activeParentContext ? { parentContext: activeParentContext } : {}),
+		});
+	} catch {
+		return;
 	}
-
-	const resumeData = context.agent?.resumeData;
-	const toolRun = await postChildRun(parentRun, {
-		name:
-			resumeData !== undefined && resumeData !== null
-				? `tool:${tool.id}:resume`
-				: `tool:${tool.id}`,
-		runType: 'tool',
-		tags: normalizeTags(['tool'], options?.tags),
-		metadata: mergeMetadata(options?.metadata, {
-			tool_name: tool.id,
-			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
-			phase: resumeData !== undefined && resumeData !== null ? 'resume' : 'initial',
-			...(resumeData !== undefined && resumeData !== null
-				? mergeMetadata(buildSuspendMetadata(tool.id, resumeData), {
-						approved: isRecord(resumeData) ? resumeData.approved : undefined,
-					})
-				: {}),
-		}),
-		inputs: { input },
+	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
+		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.error ? { error: options.error } : {}),
+		metadata: {
+			final_status: options.error ? 'error' : 'completed',
+		},
+		forceFlush: options.forceFlush,
 	});
+}
 
-	let toolRunFinished = false;
-	const finishToolRun = async (finishOptions?: InstanceAiTraceRunFinishOptions) => {
-		if (toolRunFinished) return;
-		toolRunFinished = true;
-		await finishRunTree(toolRun, finishOptions);
-	};
+async function traceProductSuspendableToolExecute(
+	tool: TraceableNativeTool,
+	input: unknown,
+	context: NativeToolContext,
+	currentTrace: { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun },
+): Promise<unknown> {
+	const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
+	const isResume = resumeData !== undefined && resumeData !== null;
+	const toolCallId = getToolCallId(context);
 
-	const originalSuspend = context.agent?.suspend;
-	const wrappedContext =
-		context.agent && typeof originalSuspend === 'function'
+	const originalSuspend = isInterruptibleToolContext(context) ? context.suspend : undefined;
+	const wrappedContext: NativeToolContext =
+		typeof originalSuspend === 'function'
 			? {
 					...context,
-					agent: {
-						...context.agent,
-						suspend: async (suspendPayload: unknown) => {
-							await startHitlChildRun(
-								toolRun,
-								'hitl:suspend',
-								suspendPayload,
-								buildSuspendMetadata(tool.id, suspendPayload),
-							);
-							await finishToolRun({
-								outputs: {
-									status: 'suspended',
-									suspendPayload,
-								},
-								metadata: mergeMetadata(buildSuspendMetadata(tool.id, suspendPayload), {
-									final_status: 'suspended',
-								}),
-							});
-							return await originalSuspend(suspendPayload);
-						},
+					suspend: async (suspendPayload: unknown) => {
+						await startAndFinishProductChildSpan(currentTrace, {
+							name: 'hitl: suspend',
+							canonicalName: 'instance-ai.hitl.suspend',
+							runType: 'chain',
+							tags: ['hitl'],
+							metadata: mergeMetadata(buildSuspendMetadata(tool.name, suspendPayload), {
+								...(toolCallId ? { tool_call_id: toolCallId } : {}),
+							}),
+							inputs: suspendPayload,
+							outputs: suspendPayload,
+							forceFlush: true,
+						});
+						return await originalSuspend(suspendPayload);
 					},
 				}
 			: context;
 
-	try {
-		const result = await withLangSmithRunTree(toolRun, async () => {
-			return await tool.execute!(input, wrappedContext);
+	if (isResume) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: 'hitl: resume',
+			canonicalName: 'instance-ai.hitl.resume',
+			runType: 'chain',
+			tags: ['hitl', 'resume'],
+			metadata: mergeMetadata(buildSuspendMetadata(tool.name, resumeData), {
+				approved: isRecord(resumeData) ? resumeData.approved : undefined,
+				...(toolCallId ? { tool_call_id: toolCallId } : {}),
+			}),
+			inputs: resumeData,
+			outputs: {
+				status: 'resumed',
+			},
+			forceFlush: true,
 		});
-		await finishToolRun({
-			outputs: result,
-			metadata: { final_status: 'completed' },
-		});
-		return result;
-	} catch (error) {
-		await finishToolRun({
-			error: normalizeErrorMessage(error),
-			metadata: { final_status: 'error' },
-		});
-		throw error;
 	}
+
+	return await tool.handler(input, wrappedContext);
 }
 
-async function traceToolExecute(
-	tool: TraceableMastraTool,
-	options: InstanceAiToolTraceOptions | undefined,
+async function traceSuspendableToolExecute(
+	tool: TraceableNativeTool,
 	input: unknown,
-	context: ToolExecutionContext<unknown, unknown, unknown>,
+	context: NativeToolContext,
 ): Promise<unknown> {
-	const parentRun = getTraceParentRun();
-	if (!parentRun || typeof tool.execute !== 'function') {
-		return await tool.execute?.(input, context);
+	const currentProductTrace = getCurrentProductTrace();
+	if (!currentProductTrace) {
+		return await tool.handler(input, context);
 	}
 
-	const toolRun = await postChildRun(parentRun, {
-		name: `tool:${tool.id}`,
-		runType: 'tool',
-		tags: normalizeTags(['tool'], options?.tags),
-		metadata: mergeMetadata(options?.metadata, {
-			tool_name: tool.id,
-			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
-			...normalizeModelMetadata(options?.metadata?.model_id),
-		}),
-		inputs: { input },
-	});
-
-	try {
-		const result = await withLangSmithRunTree(
-			toolRun,
-			async () => await tool.execute!(input, context),
-		);
-		await finishRunTree(toolRun, {
-			outputs: result,
-			metadata: { final_status: 'completed' },
-		});
-		return result;
-	} catch (error) {
-		await finishRunTree(toolRun, {
-			error: normalizeErrorMessage(error),
-			metadata: { final_status: 'error' },
-		});
-		throw error;
-	}
+	return await traceProductSuspendableToolExecute(tool, input, context, currentProductTrace);
 }
 
 function createTraceContext(
@@ -833,31 +1036,61 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	getProxyHeaders?: () => Promise<Record<string, string>>,
+	otelRuntime: ProductOtelTraceRuntime,
+	proxyConfig?: ServiceProxyConfig,
+	telemetryFactory?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry,
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
-		if (!getProxyHeaders) return await fn();
-		const headers = await getProxyHeaders();
-		return await proxyHeaderStore.run(headers, fn);
-	};
+	otelTraceRuntimes.set(rootRun.traceId, otelRuntime);
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
 	): Promise<InstanceAiTraceRun> =>
-		await withProxy(async () => await createChildRun(parentRun, init));
+		await withProxyHeadersBestEffort(proxyConfig, () => {
+			const activeParentContext = getActiveOtelContextWithSpan(parentRun.otelTraceId);
+			try {
+				return startProductSpan(otelRuntime, {
+					projectName,
+					name: init.name,
+					canonicalName: init.canonicalName,
+					runType: init.runType,
+					tags: init.tags,
+					metadata: mergeMetadata(parentRun.metadata, init.metadata),
+					inputs: init.inputs,
+					parentRun,
+					...(activeParentContext ? { parentContext: activeParentContext } : {}),
+				});
+			} catch {
+				return createFallbackChildRun(projectName, parentRun, init);
+			}
+		});
 
-	const withRunTree = async <T>(run: InstanceAiTraceRun, fn: () => Promise<T>): Promise<T> =>
-		await withProxy(async () => await withSerializedRunTree(run, fn));
+	const withActiveSpan = async <T>(run: InstanceAiTraceRun, fn: () => Promise<T>): Promise<T> =>
+		await withProxyHeadersBestEffort(
+			proxyConfig,
+			async () => await withProductSpanContextBestEffort(otelRuntime, run, fn),
+		);
+	const withRunTree = withActiveSpan;
 
 	const finishRun = async (
 		run: InstanceAiTraceRun,
 		finishOptions?: InstanceAiTraceRunFinishOptions,
 	): Promise<void> => {
-		await withProxy(async () => await finishTraceRun(run, finishOptions));
-		// Clean up traceClients when root run finishes
-		if (!run.parentRunId) {
-			traceClients.delete(run.traceId);
+		const isRootRun = !run.parentRunId;
+		await withProxyHeadersBestEffort(
+			proxyConfig,
+			async () =>
+				await finishProductSpanBestEffort(
+					otelRuntime,
+					run,
+					isRootRun ? { ...finishOptions, forceFlush: true } : finishOptions,
+				),
+		);
+		if (isRootRun) {
+			await withProxyHeadersBestEffort(
+				proxyConfig,
+				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+			);
 		}
 	};
 
@@ -866,30 +1099,39 @@ function createTraceContext(
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	): Promise<void> => {
-		await withProxy(
+		const isRootRun = !run.parentRunId;
+		await withProxyHeadersBestEffort(
+			proxyConfig,
 			async () =>
-				await finishTraceRun(run, {
+				await finishProductSpanBestEffort(otelRuntime, run, {
 					error: normalizeErrorMessage(error),
 					metadata,
+					forceFlush: isRootRun,
 				}),
 		);
-		if (!run.parentRunId) {
-			traceClients.delete(run.traceId);
+		if (isRootRun) {
+			await withProxyHeadersBestEffort(
+				proxyConfig,
+				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+			);
 		}
 	};
 
 	const ctx: InstanceAiTraceContext = {
 		projectName,
 		traceKind,
+		...(proxyConfig ? { proxyConfig } : {}),
 		rootRun,
 		actorRun,
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
 		withRunTree,
+		withActiveSpan,
+		toHeaders: () => ({}),
 		finishRun,
 		failRun,
-		toHeaders: (run) => hydrateRunTree(run).toHeaders(),
+		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
 				return replayWrapTools(tools, ctx.traceIndex, ctx.idRemapper, traceOptions);
@@ -905,125 +1147,39 @@ function createTraceContext(
 	return ctx;
 }
 
-function createRunStateFromTree(tree: RunTree): InstanceAiTraceRun {
-	const parentRunId = tree.parent_run?.id ?? tree.parent_run_id;
-
-	return {
-		id: tree.id,
-		name: tree.name,
-		runType: tree.run_type,
-		projectName: tree.project_name,
-		startTime: tree.start_time,
-		...(tree.end_time ? { endTime: tree.end_time } : {}),
-		traceId: tree.trace_id,
-		dottedOrder: tree.dotted_order,
-		executionOrder: tree.execution_order,
-		childExecutionOrder: tree.child_execution_order,
-		...(parentRunId ? { parentRunId } : {}),
-		...(tree.tags ? { tags: [...tree.tags] } : {}),
-		...(tree.metadata ? { metadata: { ...tree.metadata } } : {}),
-		...(tree.inputs ? { inputs: sanitizeTracePayload(tree.inputs) } : {}),
-		...(tree.outputs ? { outputs: sanitizeTracePayload(tree.outputs) } : {}),
-		...(tree.error ? { error: tree.error } : {}),
-	};
-}
-
-function syncRunState(state: InstanceAiTraceRun, tree: RunTree): void {
-	Object.assign(state, createRunStateFromTree(tree));
-}
-
-function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
-	const client = traceClients.get(state.traceId);
-	return new RunTree({
-		id: state.id,
-		name: state.name,
-		run_type: state.runType,
-		project_name: state.projectName,
-		start_time: state.startTime,
-		end_time: state.endTime,
-		parent_run_id: state.parentRunId,
-		execution_order: state.executionOrder,
-		child_execution_order: state.childExecutionOrder,
-		trace_id: state.traceId,
-		dotted_order: state.dottedOrder,
-		tags: state.tags,
-		metadata: state.metadata,
-		inputs: state.inputs,
-		outputs: state.outputs,
-		error: state.error,
-		serialized: {},
-		client: client ?? getOrCreateDirectClient(),
-	});
-}
-
-function isTraceableMastraTool(value: unknown): value is TraceableMastraTool {
+function isTraceableNativeTool(value: unknown): value is TraceableNativeTool {
 	return (
 		isRecord(value) &&
-		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
 		typeof value.description === 'string' &&
-		(!('execute' in value) || typeof value.execute === 'function')
+		typeof value.handler === 'function'
 	);
 }
 
-function wrapToolExecute(
-	tool: TraceableMastraTool,
-	options: InstanceAiToolTraceOptions | undefined,
-): TraceableMastraTool {
-	if (typeof tool.execute !== 'function') {
-		return tool;
-	}
-
-	if (tool.suspendSchema !== undefined || tool.resumeSchema !== undefined) {
-		return createTool({
-			id: tool.id,
-			description: tool.description,
-			inputSchema: tool.inputSchema,
-			outputSchema: tool.outputSchema,
-			suspendSchema: tool.suspendSchema,
-			resumeSchema: tool.resumeSchema,
-			requestContextSchema: tool.requestContextSchema,
-			execute: async (input, context) =>
-				await traceSuspendableToolExecute(tool, options, input, context),
-			mastra: tool.mastra,
-			requireApproval: tool.requireApproval,
-			providerOptions: tool.providerOptions,
-			toModelOutput: tool.toModelOutput,
-			mcp: tool.mcp,
-			onInputStart: tool.onInputStart,
-			onInputDelta: tool.onInputDelta,
-			onInputAvailable: tool.onInputAvailable,
-			onOutput: tool.onOutput,
-		});
-	}
-
-	return createTool({
-		id: tool.id,
-		description: tool.description,
-		inputSchema: tool.inputSchema,
-		outputSchema: tool.outputSchema,
-		suspendSchema: tool.suspendSchema,
-		resumeSchema: tool.resumeSchema,
-		requestContextSchema: tool.requestContextSchema,
-		execute: async (input, context) => await traceToolExecute(tool, options, input, context),
-		mastra: tool.mastra,
-		requireApproval: tool.requireApproval,
-		providerOptions: tool.providerOptions,
-		toModelOutput: tool.toModelOutput,
-		mcp: tool.mcp,
-		onInputStart: tool.onInputStart,
-		onInputDelta: tool.onInputDelta,
-		onInputAvailable: tool.onInputAvailable,
-		onOutput: tool.onOutput,
-	});
+function wrapToolHandler(tool: TraceableNativeTool): TraceableNativeTool {
+	return {
+		...tool,
+		handler: async (input, context) => await traceSuspendableToolExecute(tool, input, context),
+	};
 }
 
-function wrapTools(tools: ToolsInput, options?: InstanceAiToolTraceOptions): ToolsInput {
-	const wrapped: ToolsInput = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+function shouldTraceLocalToolExecution(tool: TraceableNativeTool): boolean {
+	return tool.suspendSchema !== undefined || tool.resumeSchema !== undefined;
+}
 
-	for (const [name, tool] of entries) {
-		const originalTool = tools[name];
-		wrapped[name] = isTraceableMastraTool(tool) ? wrapToolExecute(tool, options) : originalTool;
+function wrapTools(
+	tools: InstanceAiToolRegistry,
+	_options?: InstanceAiToolTraceOptions,
+): InstanceAiToolRegistry {
+	const wrapped = createToolRegistry();
+
+	for (const [name, tool] of tools) {
+		wrapped.set(
+			name,
+			isTraceableNativeTool(tool) && shouldTraceLocalToolExecution(tool)
+				? wrapToolHandler(tool)
+				: tool,
+		);
 	}
 
 	return wrapped;
@@ -1037,38 +1193,23 @@ function wrapTools(tools: ToolsInput, options?: InstanceAiToolTraceOptions): Too
  * by comparing the recorded output against the actual output.
  */
 function replayWrapTool(
-	tool: TraceableMastraTool,
+	tool: TraceableNativeTool,
 	traceIndex: TraceIndex,
 	idRemapper: IdRemapper,
 	agentRole: string,
-): TraceableMastraTool {
-	return createTool({
-		id: tool.id,
-		description: tool.description,
-		inputSchema: tool.inputSchema,
-		outputSchema: tool.outputSchema,
-		suspendSchema: tool.suspendSchema,
-		resumeSchema: tool.resumeSchema,
-		requestContextSchema: tool.requestContextSchema,
-		execute: async (input, context) => {
-			const event = traceIndex.nextMatching(agentRole, tool.id);
+): TraceableNativeTool {
+	return {
+		...tool,
+		handler: async (input, context) => {
+			const event = traceIndex.nextMatching(agentRole, tool.name);
 			const remappedInput: unknown = idRemapper.remapInput(input);
-			const realOutput = await tool.execute!(remappedInput, context);
+			const realOutput = await tool.handler(remappedInput, context);
 			if (event) {
 				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
 			}
 			return realOutput;
 		},
-		mastra: tool.mastra,
-		requireApproval: tool.requireApproval,
-		providerOptions: tool.providerOptions,
-		toModelOutput: tool.toModelOutput,
-		mcp: tool.mcp,
-		onInputStart: tool.onInputStart,
-		onInputDelta: tool.onInputDelta,
-		onInputAvailable: tool.onInputAvailable,
-		onOutput: tool.onOutput,
-	});
+	};
 }
 
 /**
@@ -1076,60 +1217,44 @@ function replayWrapTool(
  * Returns the recorded output (with IDs remapped to current-run values).
  */
 function pureReplayWrapTool(
-	tool: TraceableMastraTool,
+	tool: TraceableNativeTool,
 	traceIndex: TraceIndex,
 	idRemapper: IdRemapper,
 	agentRole: string,
-): TraceableMastraTool {
-	return createTool({
-		id: tool.id,
-		description: tool.description,
-		inputSchema: tool.inputSchema,
-		outputSchema: tool.outputSchema,
-		suspendSchema: tool.suspendSchema,
-		resumeSchema: tool.resumeSchema,
-		requestContextSchema: tool.requestContextSchema,
-		execute: async (_input, _context) => {
-			const event = traceIndex.nextMatching(agentRole, tool.id);
+): TraceableNativeTool {
+	return {
+		...tool,
+		handler: async (_input, _context) => {
+			const event = traceIndex.nextMatching(agentRole, tool.name);
 			if (!event) {
 				throw new Error(
-					`No recorded output for pure-replay tool "${tool.id}" in role "${agentRole}"`,
+					`No recorded output for pure-replay tool "${tool.name}" in role "${agentRole}"`,
 				);
 			}
 			return await Promise.resolve(idRemapper.remapOutput(event.output));
 		},
-		mastra: tool.mastra,
-		requireApproval: tool.requireApproval,
-		providerOptions: tool.providerOptions,
-		toModelOutput: tool.toModelOutput,
-		mcp: tool.mcp,
-		onInputStart: tool.onInputStart,
-		onInputDelta: tool.onInputDelta,
-		onInputAvailable: tool.onInputAvailable,
-		onOutput: tool.onOutput,
-	});
+	};
 }
 
 function replayWrapTools(
-	tools: ToolsInput,
+	tools: InstanceAiToolRegistry,
 	traceIndex: TraceIndex,
 	idRemapper: IdRemapper,
 	options?: InstanceAiToolTraceOptions,
-): ToolsInput {
+): InstanceAiToolRegistry {
 	const agentRole = options?.agentRole ?? 'orchestrator';
-	const wrapped: ToolsInput = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+	const wrapped = createToolRegistry();
 
-	for (const [name, tool] of entries) {
-		if (!isTraceableMastraTool(tool)) {
-			wrapped[name] = tools[name];
+	for (const [name, tool] of tools) {
+		if (!isTraceableNativeTool(tool)) {
+			wrapped.set(name, tool);
 			continue;
 		}
 
-		if (PURE_REPLAY_TOOLS.has(tool.id)) {
-			wrapped[name] = pureReplayWrapTool(tool, traceIndex, idRemapper, agentRole);
+		if (PURE_REPLAY_TOOLS.has(tool.name)) {
+			wrapped.set(name, pureReplayWrapTool(tool, traceIndex, idRemapper, agentRole));
 		} else {
-			wrapped[name] = replayWrapTool(tool, traceIndex, idRemapper, agentRole);
+			wrapped.set(name, replayWrapTool(tool, traceIndex, idRemapper, agentRole));
 		}
 	}
 
@@ -1139,83 +1264,72 @@ function replayWrapTools(
 // ── Recording wrappers ──────────────────────────────────────────────────────
 
 /**
- * Wraps a tool to record its I/O to a TraceWriter while also applying
- * the normal LangSmith tracing wrapper.
+ * Wraps a tool to record its I/O to a TraceWriter. Replay records stable
+ * Instance AI events and intentionally does not depend on LangSmith run shape.
  */
 function recordWrapTool(
-	tool: TraceableMastraTool,
+	tool: TraceableNativeTool,
 	traceWriter: TraceWriter,
 	agentRole: string,
-	traceOptions: InstanceAiToolTraceOptions | undefined,
-): TraceableMastraTool {
-	// First apply LangSmith tracing (preserves existing tracing behavior)
-	const traced = wrapToolExecute(tool, traceOptions);
-
-	return createTool({
-		id: traced.id,
-		description: traced.description,
-		inputSchema: traced.inputSchema,
-		outputSchema: traced.outputSchema,
-		suspendSchema: traced.suspendSchema,
-		resumeSchema: traced.resumeSchema,
-		requestContextSchema: traced.requestContextSchema,
-		execute: async (input, context) => {
-			const resumeData = context?.agent?.resumeData;
+): TraceableNativeTool {
+	return {
+		...tool,
+		handler: async (input, context) => {
+			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
+			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
+				? {
+						...context,
+						suspend: async (suspendPayload: unknown) => {
+							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							return await context.suspend(suspendPayload);
+						},
+					}
+				: context;
 
-			const result = await traced.execute!(input, context);
+			const result = await tool.handler(input, wrappedContext);
 			const outputRecord = (result ?? {}) as Record<string, unknown>;
 
 			if (resumeData !== undefined && resumeData !== null) {
 				traceWriter.recordToolResume(
 					agentRole,
-					tool.id,
+					tool.name,
 					inputRecord,
 					outputRecord,
 					resumeData as Record<string, unknown>,
 				);
-			} else if (context?.agent?.suspend && outputRecord.denied === true) {
-				// Tool returned {denied: true} — it suspended
+			} else if (capturedSuspendPayload) {
 				traceWriter.recordToolSuspend(
 					agentRole,
-					tool.id,
+					tool.name,
 					inputRecord,
-					outputRecord,
-					{}, // suspendPayload is internal to the tool
+					{},
+					capturedSuspendPayload,
 				);
 			} else {
-				traceWriter.recordToolCall(agentRole, tool.id, inputRecord, outputRecord);
+				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}
 
 			return result;
 		},
-		mastra: traced.mastra,
-		requireApproval: traced.requireApproval,
-		providerOptions: traced.providerOptions,
-		toModelOutput: traced.toModelOutput,
-		mcp: traced.mcp,
-		onInputStart: traced.onInputStart,
-		onInputDelta: traced.onInputDelta,
-		onInputAvailable: traced.onInputAvailable,
-		onOutput: traced.onOutput,
-	});
+	};
 }
 
 function recordWrapTools(
-	tools: ToolsInput,
+	tools: InstanceAiToolRegistry,
 	traceWriter: TraceWriter,
 	options?: InstanceAiToolTraceOptions,
-): ToolsInput {
+): InstanceAiToolRegistry {
 	const agentRole = options?.agentRole ?? 'orchestrator';
-	const wrapped: ToolsInput = {};
-	const entries: Array<[string, unknown]> = Object.entries(tools);
+	const wrapped = createToolRegistry();
 
-	for (const [name, tool] of entries) {
-		if (!isTraceableMastraTool(tool)) {
-			wrapped[name] = tools[name];
+	for (const [name, tool] of tools) {
+		if (!isTraceableNativeTool(tool)) {
+			wrapped.set(name, tool);
 			continue;
 		}
-		wrapped[name] = recordWrapTool(tool, traceWriter, agentRole, options);
+		wrapped.set(name, recordWrapTool(tool, traceWriter, agentRole));
 	}
 
 	return wrapped;
@@ -1248,9 +1362,10 @@ export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
 		orchestratorRun: stubRun,
 		startChildRun: async () => await Promise.resolve(stubRun),
 		withRunTree: async (_run, fn) => await fn(),
+		withActiveSpan: async (_run, fn) => await fn(),
+		toHeaders: () => ({}),
 		finishRun: async () => {},
 		failRun: async () => {},
-		toHeaders: () => ({}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
 				return replayWrapTools(tools, ctx.traceIndex, ctx.idRemapper, traceOptions);
@@ -1266,97 +1381,242 @@ export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
 	return ctx;
 }
 
-async function createRun(options: {
-	projectName: string;
-	name: string;
-	runType?: string;
-	tags?: string[];
-	metadata?: Record<string, unknown>;
-	inputs?: unknown;
-	client?: Client;
-}): Promise<InstanceAiTraceRun> {
-	const runTree = new RunTree({
-		name: options.name,
-		run_type: options.runType ?? 'chain',
-		project_name: options.projectName,
-		tags: normalizeTags(DEFAULT_TAGS, options.tags),
-		metadata: mergeMetadata(options.metadata),
-		inputs: sanitizeTracePayload(options.inputs),
-		client: options.client ?? getOrCreateDirectClient(),
-	});
-	await runTree.postRun();
-
-	if (options.client) {
-		traceClients.set(runTree.trace_id, options.client);
-	}
-
-	return createRunStateFromTree(runTree);
+interface TraceRuntimeVersions {
+	agents_version?: string;
+	workflow_sdk_version?: string;
 }
 
-async function createChildRun(
-	parentState: InstanceAiTraceRun,
-	options: InstanceAiTraceRunInit,
-): Promise<InstanceAiTraceRun> {
-	const parentRun = hydrateRunTree(parentState);
-	const childRun = parentRun.createChild({
-		name: options.name,
-		run_type: options.runType ?? 'chain',
-		tags: normalizeTags(DEFAULT_TAGS, parentState.tags, options.tags),
-		metadata: mergeMetadata(parentRun.metadata, options.metadata),
-		inputs: sanitizeTracePayload(options.inputs),
-	});
-	syncRunState(parentState, parentRun);
-	await childRun.postRun();
-	return createRunStateFromTree(childRun);
+let traceRuntimeVersions: Promise<TraceRuntimeVersions> | undefined;
+
+function extractPackageVersion(packageJson: unknown): string | undefined {
+	if (!packageJson || typeof packageJson !== 'object') return undefined;
+
+	if (!('version' in packageJson)) return undefined;
+
+	const { version } = packageJson;
+	return typeof version === 'string' ? version : undefined;
 }
 
-async function finishTraceRun(
-	runState: InstanceAiTraceRun,
-	options?: InstanceAiTraceRunFinishOptions,
-): Promise<void> {
-	const runTree = hydrateRunTree(runState);
-	await runTree.end(
-		options?.outputs !== undefined ? sanitizeTracePayload(options.outputs) : undefined,
-		options?.error,
-		Date.now(),
-		mergeMetadata(options?.metadata),
-	);
-	await runTree.patchRun();
-	syncRunState(runState, runTree);
-}
-
-async function withSerializedRunTree<T>(
-	runState: InstanceAiTraceRun,
-	fn: () => Promise<T>,
-): Promise<T> {
-	const runTree = hydrateRunTree(runState);
+async function readPackageVersion(packageName: string): Promise<string | undefined> {
 	try {
-		return await withTraceParentContext(
-			runTree,
-			async () => await withLangSmithRunTree(runTree, fn),
-		);
-	} finally {
-		syncRunState(runState, runTree);
+		return extractPackageVersion(hostRequire(`${packageName}/package.json`));
+	} catch {
+		// Some workspace packages do not export package.json. Fall back to
+		// resolving the package entry point and walking upward to its package root.
 	}
+
+	try {
+		let current = dirname(hostRequire.resolve(packageName));
+		const { root } = parse(current);
+		while (current !== root) {
+			const packageJsonPath = join(current, 'package.json');
+			try {
+				return extractPackageVersion(JSON.parse(await readFile(packageJsonPath, 'utf8')));
+			} catch {
+				current = dirname(current);
+			}
+		}
+	} catch {
+		// Best effort only; traces still work without package version metadata.
+	}
+
+	return undefined;
 }
 
-function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record<string, unknown> {
+async function getTraceRuntimeVersions(): Promise<TraceRuntimeVersions> {
+	traceRuntimeVersions ??= (async () => {
+		const [agentsVersion, workflowSdkVersion] = await Promise.all([
+			readPackageVersion('@n8n/agents'),
+			readPackageVersion('@n8n/workflow-sdk'),
+		]);
+		return {
+			...(agentsVersion ? { agents_version: agentsVersion } : {}),
+			...(workflowSdkVersion ? { workflow_sdk_version: workflowSdkVersion } : {}),
+		};
+	})();
+
+	return await traceRuntimeVersions;
+}
+
+async function buildBaseMetadata(
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<Record<string, unknown>> {
 	return {
 		thread_id: options.threadId,
+		'langsmith.metadata.thread_id': options.threadId,
 		conversation_id: options.conversationId ?? options.threadId,
 		message_group_id: options.messageGroupId,
 		message_id: options.messageId,
 		run_id: options.runId,
+		activation_id: options.runId,
 		user_id: options.userId,
-		...(options.modelId !== undefined
-			? { model_id: serializeModelIdForTrace(options.modelId) }
-			: {}),
+		'instance_ai.trace_version': OTEL_TRACE_VERSION,
+		...(await getTraceRuntimeVersions()),
 		...(options.n8nVersion !== undefined ? { n8n_version: options.n8nVersion } : {}),
 		...(options.workflowSdkVersion !== undefined
 			? { workflow_sdk_version: options.workflowSdkVersion }
 			: {}),
+		...(options.modelId !== undefined
+			? { model_id: serializeModelIdForTrace(options.modelId) }
+			: {}),
 		...options.metadata,
 	};
+}
+
+function buildDetachedSubAgentMetadata(
+	options: CreateDetachedSubAgentTraceContextOptions,
+	includeSpawnMetadata: boolean,
+): Record<string, unknown> {
+	return {
+		agent_role: options.role,
+		agent_id: options.agentId,
+		execution_mode: 'background_subagent',
+		trace_kind: 'background_subagent',
+		task_kind: options.kind,
+		...(options.taskId ? { task_id: options.taskId } : {}),
+		...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
+		...(options.workItemId ? { work_item_id: options.workItemId } : {}),
+		...(includeSpawnMetadata && options.spawnedByTraceId
+			? { spawned_by_trace_id: options.spawnedByTraceId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedBySpanId
+			? { spawned_by_span_id: options.spawnedBySpanId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByRunId
+			? { spawned_by_run_id: options.spawnedByRunId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByAgentId
+			? { spawned_by_agent_id: options.spawnedByAgentId }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByAgentRole
+			? { spawned_by_agent_role: options.spawnedByAgentRole }
+			: {}),
+		...(includeSpawnMetadata && options.spawnedByToolCallId
+			? { spawned_by_tool_call_id: options.spawnedByToolCallId }
+			: {}),
+		subagent_role: options.role,
+	};
+}
+
+function buildInternalOperationMetadata(operationName: string): Record<string, unknown> {
+	return {
+		agent_role: operationName,
+		execution_mode: 'internal',
+		trace_kind: 'internal_operation',
+		operation_name: operationName,
+	};
+}
+
+function createTelemetryFactory(options: {
+	projectName: string;
+	traceKind: InstanceAiTraceContext['traceKind'];
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	getActorRun?: () => InstanceAiTraceRun;
+	baseMetadata: Record<string, unknown>;
+	proxyConfig?: ServiceProxyConfig;
+	baseTelemetry?: BuiltTelemetry;
+}): (telemetryOptions: InstanceAiTelemetryOptions) => BuiltTelemetry | Telemetry {
+	return (telemetryOptions) => {
+		const actorRun = options.getActorRun?.() ?? options.actorRun;
+		const agentRole = telemetryOptions.agentRole;
+		const executionMode =
+			telemetryOptions.executionMode ??
+			(options.traceKind === 'background_subagent' ? 'background_subagent' : 'foreground');
+		const metadata = toTelemetryMetadata(options.baseMetadata, telemetryOptions.metadata, {
+			agent_role: agentRole,
+			execution_mode: executionMode,
+			trace_kind: options.traceKind,
+			langsmith_trace_id: options.rootRun.traceId,
+			langsmith_root_run_id: options.rootRun.id,
+			langsmith_actor_run_id: actorRun.id,
+		});
+		const functionId = telemetryOptions.functionId ?? formatTelemetryFunctionId(agentRole);
+
+		if (options.baseTelemetry) {
+			return {
+				...options.baseTelemetry,
+				functionId,
+				metadata,
+				recordInputs: true,
+				recordOutputs: true,
+				runtimeRootSpanEnabled: false,
+			};
+		}
+
+		return createLangSmithTelemetryBuilder(options.projectName, options.proxyConfig)
+			.functionId(functionId)
+			.metadata(metadata)
+			.recordInputs(true)
+			.recordOutputs(true)
+			.runtimeRootSpan(false);
+	};
+}
+
+function createLangSmithTelemetryBuilder(
+	projectName: string,
+	proxyConfig?: ServiceProxyConfig,
+): LangSmithTelemetry {
+	return new LangSmithTelemetry({
+		project: projectName,
+		transformExportedSpan: redactLangSmithTelemetrySpan,
+		...(proxyConfig
+			? {
+					apiKey: '-',
+					endpoint: proxyConfig.apiUrl,
+					headers: proxyConfig.getAuthHeaders,
+				}
+			: {}),
+	});
+}
+
+async function createProductOtelRuntime(
+	projectName: string,
+	proxyConfig?: ServiceProxyConfig,
+): Promise<ProductOtelTraceRuntime> {
+	const telemetry = await createLangSmithTelemetryBuilder(projectName, proxyConfig)
+		.functionId('instance-ai.product')
+		.metadata({})
+		.recordInputs(true)
+		.recordOutputs(true)
+		.build();
+
+	return {
+		telemetry,
+		spans: new Map(),
+		contexts: new Map(),
+		shutdown: false,
+	};
+}
+
+function createProductTraceContext(options: {
+	projectName: string;
+	traceKind: InstanceAiTraceContext['traceKind'];
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	otelRuntime: ProductOtelTraceRuntime;
+	baseMetadata: Record<string, unknown>;
+	proxyConfig?: ServiceProxyConfig;
+	getActorRun?: () => InstanceAiTraceRun;
+}): InstanceAiTraceContext {
+	return createTraceContext(
+		options.projectName,
+		options.traceKind,
+		options.rootRun,
+		options.actorRun,
+		options.otelRuntime,
+		options.proxyConfig,
+		createTelemetryFactory({
+			projectName: options.projectName,
+			traceKind: options.traceKind,
+			rootRun: options.rootRun,
+			actorRun: options.actorRun,
+			...(options.getActorRun ? { getActorRun: options.getActorRun } : {}),
+			baseMetadata: options.baseMetadata,
+			baseTelemetry: options.otelRuntime.telemetry,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		}),
+	);
 }
 
 export async function createInstanceAiTraceContext(
@@ -1366,72 +1626,133 @@ export async function createInstanceAiTraceContext(
 		return undefined;
 	}
 
-	ensureLangSmithTracingEnv();
-
-	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
-		const messageRun = await createRun({
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const traceContextRef: { current?: InstanceAiTraceContext } = {};
+		const messageRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: 'message_turn',
+			name: 'turn',
+			canonicalName: 'instance-ai.message_turn',
+			runType: 'chain',
 			tags: ['message-turn'],
-			metadata: mergeMetadata(baseMetadata, { agent_role: 'message_turn' }),
+			metadata: mergeMetadata(baseMetadata, {
+				agent_role: 'message_turn',
+				execution_mode: 'foreground',
+				trace_kind: 'message_turn',
+			}),
 			inputs: options.input,
-			client,
+			root: true,
 		});
-		const orchestratorRun = await createChildRun(messageRun, {
-			name: 'orchestrator',
-			tags: ['orchestrator'],
-			metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
-			inputs: options.input,
-		});
-
-		return createTraceContext(
+		const tracing = createProductTraceContext({
 			projectName,
-			'message_turn',
-			messageRun,
-			orchestratorRun,
-			options.proxyConfig?.getAuthHeaders,
-		);
+			traceKind: 'message_turn',
+			rootRun: messageRun,
+			actorRun: messageRun,
+			otelRuntime,
+			baseMetadata,
+			getActorRun: () => traceContextRef.current?.actorRun ?? messageRun,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
+		traceContextRef.current = tracing;
+		return tracing;
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
-		return await proxyHeaderStore.run(headers, createTraceRuns);
+	try {
+		return await withProxyHeaders(options.proxyConfig, createTraceRuns);
+	} catch {
+		return undefined;
 	}
-	return await createTraceRuns();
 }
 
 export async function continueInstanceAiTraceContext(
 	existingContext: InstanceAiTraceContext,
 	options: CreateInstanceAiTraceContextOptions,
-): Promise<InstanceAiTraceContext> {
-	const baseMetadata = buildBaseMetadata(options);
+): Promise<InstanceAiTraceContext | undefined>;
+export async function continueInstanceAiTraceContext(
+	existingContext: InstanceAiTraceContext | undefined,
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined>;
+export async function continueInstanceAiTraceContext(
+	existingContext: InstanceAiTraceContext | undefined,
+	options: CreateInstanceAiTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	const proxyConfig = options.proxyConfig ?? existingContext?.proxyConfig;
+	if (!existingContext && !isLangSmithTracingEnabled(!!proxyConfig)) {
+		return undefined;
+	}
+	if (existingContext?.rootRun.traceId === 'stub' && !isLangSmithTracingEnabled(!!proxyConfig)) {
+		return existingContext;
+	}
+
+	const baseMetadata = await buildBaseMetadata(options);
+	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const continuedMetadata =
+		existingContext && existingContext.rootRun.traceId !== 'stub'
+			? {
+					continued_from_trace_id:
+						existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
+					continued_from_run_id: existingContext.rootRun.id,
+					resumed_from_trace_id:
+						existingContext.rootRun.otelTraceId ?? existingContext.rootRun.traceId,
+					...(existingContext.actorRun.otelSpanId
+						? { resumed_from_span_id: existingContext.actorRun.otelSpanId }
+						: {}),
+					resumed_from_activation_id: existingContext.actorRun.id,
+				}
+			: {};
 
 	const createContinuation = async () => {
-		const orchestratorRun = await createChildRun(existingContext.messageRun, {
-			name: 'orchestrator',
-			tags: ['orchestrator'],
-			metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
+		const otelRuntime = await createProductOtelRuntime(projectName, proxyConfig);
+		const rootRun = startProductSpan(otelRuntime, {
+			projectName,
+			name: `resume: ${formatResumeReasonLabel(options.metadata?.resume_reason)}`,
+			canonicalName: 'instance-ai.orchestrator_resume',
+			runType: 'chain',
+			tags: ['orchestrator-resume'],
+			metadata: mergeMetadata(baseMetadata, {
+				agent_role: 'orchestrator_resume',
+				execution_mode: 'resume',
+				trace_kind: 'orchestrator_resume',
+				...continuedMetadata,
+			}),
 			inputs: options.input,
+			root: true,
+		});
+		const orchestratorRun = startProductSpan(otelRuntime, {
+			projectName,
+			name: 'agent: orchestrator',
+			canonicalName: 'instance-ai.agent.orchestrator',
+			runType: 'chain',
+			tags: ['orchestrator', 'resume'],
+			metadata: mergeMetadata(baseMetadata, {
+				agent_role: 'orchestrator',
+				execution_mode: 'resume',
+				trace_kind: 'orchestrator_resume',
+				...continuedMetadata,
+			}),
+			inputs: options.input,
+			parentRun: rootRun,
 		});
 
-		return createTraceContext(
-			existingContext.projectName,
-			'message_turn',
-			existingContext.rootRun,
-			orchestratorRun,
-			options.proxyConfig?.getAuthHeaders,
-		);
+		return createProductTraceContext({
+			projectName,
+			traceKind: 'orchestrator_resume',
+			rootRun,
+			actorRun: orchestratorRun,
+			otelRuntime,
+			baseMetadata,
+			...(proxyConfig ? { proxyConfig } : {}),
+		});
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
-		return await proxyHeaderStore.run(headers, createContinuation);
+	try {
+		return await withProxyHeaders(proxyConfig, createContinuation);
+	} catch {
+		return undefined;
 	}
-	return await createContinuation();
 }
 
 export async function createDetachedSubAgentTraceContext(
@@ -1441,47 +1762,102 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	ensureLangSmithTracingEnv();
-
-	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
-	const baseMetadata = buildBaseMetadata(options);
+	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
-		const rootRun = await createRun({
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const rootMetadata = buildDetachedSubAgentMetadata(options, true);
+		const actorMetadata = buildDetachedSubAgentMetadata(options, false);
+		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
-			name: `subagent:${options.role}`,
+			name: `background task: ${formatAgentRoleLabel(options.role)}`,
+			canonicalName: 'instance-ai.background_subagent',
+			runType: 'chain',
 			tags: normalizeTags(
 				['sub-agent', 'background'],
 				options.plannedTaskId ? ['planned'] : undefined,
 			),
-			metadata: mergeMetadata(baseMetadata, {
-				agent_role: options.role,
-				agent_id: options.agentId,
-				task_kind: options.kind,
-				...(options.taskId ? { task_id: options.taskId } : {}),
-				...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-				...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-				...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
-				...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
-				...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
-			}),
+			metadata: mergeMetadata(baseMetadata, rootMetadata),
 			inputs: options.input,
-			client,
+			root: true,
+		});
+		const actorRun = startProductSpan(otelRuntime, {
+			projectName,
+			name: `agent: ${formatAgentRoleLabel(options.role)}`,
+			canonicalName: `instance-ai.agent.${options.role}`,
+			runType: 'chain',
+			tags: normalizeTags(
+				['sub-agent', 'background'],
+				options.plannedTaskId ? ['planned'] : undefined,
+			),
+			metadata: mergeMetadata(baseMetadata, actorMetadata),
+			inputs: options.input,
+			parentRun: rootRun,
 		});
 
-		return createTraceContext(
+		return createProductTraceContext({
 			projectName,
-			'detached_subagent',
+			traceKind: 'background_subagent',
 			rootRun,
-			rootRun,
-			options.proxyConfig?.getAuthHeaders,
-		);
+			actorRun,
+			otelRuntime,
+			baseMetadata: mergeMetadata(baseMetadata, rootMetadata) ?? baseMetadata,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
 	};
 
-	if (options.proxyConfig) {
-		const headers = await options.proxyConfig.getAuthHeaders();
-		return await proxyHeaderStore.run(headers, createDetachedRuns);
+	try {
+		return await withProxyHeaders(options.proxyConfig, createDetachedRuns);
+	} catch {
+		return undefined;
 	}
-	return await createDetachedRuns();
+}
+
+export async function createInternalOperationTraceContext(
+	options: CreateInternalOperationTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	if (!isInternalOperationTracingEnabled() || !isLangSmithTracingEnabled(!!options.proxyConfig)) {
+		return undefined;
+	}
+
+	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const baseMetadata = await buildBaseMetadata({
+		...options,
+		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,
+		metadata: mergeMetadata(options.metadata, {
+			operation_name: options.operationName,
+		}),
+	});
+
+	const createInternalRuns = async () => {
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const internalMetadata = buildInternalOperationMetadata(options.operationName);
+		const rootRun = startProductSpan(otelRuntime, {
+			projectName,
+			name: `internal: ${formatInternalOperationLabel(options.operationName)}`,
+			canonicalName: `instance-ai.internal.${options.operationName}`,
+			runType: 'chain',
+			tags: ['internal-operation'],
+			metadata: mergeMetadata(baseMetadata, internalMetadata),
+			inputs: options.input,
+			root: true,
+		});
+
+		return createProductTraceContext({
+			projectName,
+			traceKind: 'internal_operation',
+			rootRun,
+			actorRun: rootRun,
+			otelRuntime,
+			baseMetadata: mergeMetadata(baseMetadata, internalMetadata) ?? baseMetadata,
+			...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+		});
+	};
+
+	try {
+		return await withProxyHeaders(options.proxyConfig, createInternalRuns);
+	} catch {
+		return undefined;
+	}
 }
