@@ -17,7 +17,8 @@ import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { scrubSecretsInText } from '../../src/utils/scrub-secrets';
+import { scrubSecretsInText } from '@n8n/utils';
+
 import { redactSecrets } from '../harness/redact';
 
 // ---------------------------------------------------------------------------

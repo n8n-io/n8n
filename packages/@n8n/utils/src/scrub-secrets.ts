@@ -1,9 +1,10 @@
 /**
  * Replace common credential patterns in free-form text with `[REDACTED]`.
  *
- * Used before persisting user-supplied text (telemetry excerpts, eval report
- * HTML) where keys/tokens accidentally pasted into prompts or command lines
- * could otherwise leak downstream.
+ * Used before persisting or transmitting user-supplied text (telemetry
+ * excerpts, eval report HTML, free-form feedback) where keys/tokens
+ * accidentally pasted into prompts or command lines could otherwise leak
+ * downstream.
  *
  * Conservative by design: matches well-known prefixed tokens and explicit
  * `key=value` pairs only. We don't attempt to redact arbitrary long opaque

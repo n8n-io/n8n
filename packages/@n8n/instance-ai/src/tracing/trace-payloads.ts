@@ -9,7 +9,8 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
-import { scrubSecretsInText } from '../utils/scrub-secrets';
+import { scrubSecretsInText } from '@n8n/utils';
+
 import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
