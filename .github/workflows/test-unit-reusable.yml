@@ -56,7 +56,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit
-        run: pnpm test:ci:backend:unit --summarize
+        run: pnpm test:ci:backend:unit:changed --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

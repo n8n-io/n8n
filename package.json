@@ -47,6 +47,7 @@
     "test:ci:frontend:changed": "turbo run test:changed --continue --filter='./packages/frontend/**'",
     "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**'",
+    "test:ci:backend:unit:changed": "turbo run test:unit:changed --continue --filter='!./packages/frontend/**'",
     "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
