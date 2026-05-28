@@ -3108,6 +3108,8 @@ export async function extractExecutionDebugInfo(
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
 	let failedNode: ExecutionDebugInfo['failedNode'];
+	let failedItemIndex: number | undefined;
+	let failedRunIndex: number | undefined;
 
 	if (runData) {
 		const workflowNodes = execution.workflowData?.nodes ?? [];
@@ -3133,6 +3135,12 @@ export async function extractExecutionDebugInfo(
 
 			// Capture the first failed node with its error and input data
 			if (lastRun.error !== undefined && !failedNode) {
+				const errorContext = (lastRun.error as { context?: Record<string, unknown> }).context;
+				failedItemIndex =
+					typeof errorContext?.itemIndex === 'number' ? errorContext.itemIndex : undefined;
+				failedRunIndex =
+					typeof errorContext?.runIndex === 'number' ? errorContext.runIndex : nodeRuns.length - 1;
+
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
@@ -3162,9 +3170,7 @@ export async function extractExecutionDebugInfo(
 	}
 
 	// Attach resolved-parameter view for the failed node so the agent sees both the
-	// raw expression and what it resolved to (or which expression threw). Skipped
-	// when parameter values are gated off, and wrapped in try/catch so a resolution
-	// hiccup never breaks the rest of the debug payload.
+	// raw expression and what it resolved to (or which expression threw).
 	if (failedNode && includeOutputData && nodeTypes) {
 		try {
 			const {
@@ -3176,6 +3182,7 @@ export async function extractExecutionDebugInfo(
 				nodeTypes,
 				executionId,
 				failedNode.name,
+				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
 			);
 			failedNode.resolvedParameters = bundle;
 		} catch {

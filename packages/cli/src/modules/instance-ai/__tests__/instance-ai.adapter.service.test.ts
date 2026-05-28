@@ -773,6 +773,7 @@ describe('extractExecutionDebugInfo', () => {
 			connections: IConnections;
 			failedNodeName: string;
 			parentRunData: Record<string, ITaskData[]>;
+			error?: Error | Partial<ExecutionError>;
 		}) {
 			return {
 				id: 'exec-1',
@@ -793,7 +794,7 @@ describe('extractExecutionDebugInfo', () => {
 							...opts.parentRunData,
 							[opts.failedNodeName]: [
 								makeTaskData([], {
-									error: new Error("Referenced node doesn't exist"),
+									error: opts.error ?? new Error("Referenced node doesn't exist"),
 									startTime: 2000,
 									executionTime: 10,
 								}),
@@ -937,6 +938,52 @@ describe('extractExecutionDebugInfo', () => {
 
 			expect(result.failedNode?.name).toBe('Missing Node');
 			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('resolves against the item index the runtime tagged on the error (not item 0)', async () => {
+			// Failure on item 3 of the parent's output — ExpressionError records
+			// `context.itemIndex: 3` so the resolution view should target item 3,
+			// not the default of 0.
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.label }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: {
+					Trigger: [
+						makeTaskData([
+							{ label: 'item-0' },
+							{ label: 'item-1' },
+							{ label: 'item-2' },
+							{ label: 'item-3-the-culprit' },
+						]),
+					],
+				},
+				error: {
+					name: 'ExpressionError',
+					message: 'boom on item 3',
+					context: { itemIndex: 3 },
+				},
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.itemIndex).toBe(3);
+			// `value` was `={{ $json.label }}`; against item 3 it should resolve to
+			// 'item-3-the-culprit', proving we used the runtime-tagged index.
+			const resolved = bundle?.resolved;
+			expect(typeof resolved).toBe('string');
+			expect(resolved as string).toContain('item-3-the-culprit');
 		});
 	});
 });
