@@ -714,8 +714,6 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 		);
 		closeDialog();
 		throw error;
-
-		return;
 	}
 }
 
