@@ -278,6 +278,46 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
 
+		it('does not share cached clients across different scoped fetch cache keys', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:2',
+				},
+			]);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('reuses cached clients when scoped fetch cache key matches', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+		});
+
 		it('keeps regular and browser caches separate', async () => {
 			const manager = new McpClientManager();
 			await manager.getRegularTools([{ name: 'shared', url: 'https://shared.example.com/' }]);

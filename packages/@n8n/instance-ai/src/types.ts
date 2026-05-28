@@ -914,6 +914,12 @@ export interface McpServerConfig {
 	args?: string[];
 	env?: Record<string, string>;
 	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────

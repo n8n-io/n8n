@@ -226,6 +226,7 @@ export class InstanceAiMcpRegistryService {
 				name: buildServerName(resolvedServer.serverSlug, nextCount),
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
+				cacheKey: `registry-connection:${connection.id}`,
 			};
 
 			if (resolvedServer.authType === 'oauth2') {

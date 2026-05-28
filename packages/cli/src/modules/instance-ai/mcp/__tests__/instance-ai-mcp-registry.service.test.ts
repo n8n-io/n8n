@@ -149,6 +149,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
+				cacheKey: 'registry-connection:1',
 				fetch: expect.any(Function),
 			}),
 		);
@@ -157,6 +158,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear_2',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
+				cacheKey: 'registry-connection:2',
 				fetch: expect.any(Function),
 			}),
 		);
@@ -165,6 +167,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_notion',
 				url: 'https://notion.example.com/sse',
 				transport: 'sse',
+				cacheKey: 'registry-connection:3',
 				fetch: expect.any(Function),
 			}),
 		);
@@ -228,6 +231,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_public-server',
 				url: 'https://public-server.example.com/mcp',
 				transport: 'streamableHttp',
+				cacheKey: 'registry-connection:1',
 			}),
 		);
 		expect(server.fetch).toBeUndefined();
