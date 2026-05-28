@@ -35,6 +35,7 @@ import type {
 	PublicInstalledPackage,
 	IDestinationNode,
 	AgentRequestQuery,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -96,6 +97,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -263,6 +265,7 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // For workflow list we don't need the full workflow data
@@ -312,6 +315,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available

@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
 
-import { createModel } from '../model-factory';
+import { createEmbeddingModel, createModel } from '../model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -24,15 +24,27 @@ jest.mock('@ai-sdk/anthropic', () => ({
 }));
 
 jest.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'openai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		baseURL: opts?.baseURL,
-		fetch: opts?.fetch,
-		headers: opts?.headers,
-		specificationVersion: 'v3',
-	}),
+	createOpenAI: (opts?: ProviderOpts) =>
+		Object.assign(
+			(model: string) => ({
+				provider: 'openai',
+				modelId: model,
+				apiKey: opts?.apiKey,
+				baseURL: opts?.baseURL,
+				fetch: opts?.fetch,
+				headers: opts?.headers,
+				specificationVersion: 'v3',
+			}),
+			{
+				embeddingModel: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
 jest.mock('@ai-sdk/google', () => ({
@@ -351,5 +363,30 @@ describe('createModel', () => {
 		it('should throw when model has no slash', () => {
 			expect(() => createModel('anthropic-only')).toThrow(/expected "provider\/model-name"/);
 		});
+	});
+});
+
+describe('createEmbeddingModel', () => {
+	it('should accept a legacy api key string', () => {
+		const model = createEmbeddingModel(
+			'openai/text-embedding-3-small',
+			'sk-test',
+		) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+	});
+
+	it('should pass baseURL through to OpenAI-compatible embedding providers', () => {
+		const model = createEmbeddingModel('openai/text-embedding-3-small', {
+			apiKey: 'sk-test',
+			baseURL: 'https://custom.example/v1',
+		}) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+		expect(model.baseURL).toBe('https://custom.example/v1');
 	});
 });

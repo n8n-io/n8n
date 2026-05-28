@@ -11,7 +11,7 @@
 // baseline.
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
 // `SimpleWorkflow` is imported from `ai-workflow-builder.ee` via deep relative
 // paths; the `@/*` alias used inside that package collides with instance-ai's
 // own `@/*` mapping during transitive type-checking, so the type resolves to
@@ -34,11 +34,8 @@ import {
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
 import { buildSubAgentBriefing } from '../../src/agent/sub-agent-briefing';
-import type { Logger } from '../../src/logger';
 import { DETACHED_BUILDER_REQUIREMENTS } from '../../src/tools/orchestration/build-workflow-agent.tool';
-import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
 import type { SandboxConfig } from '../../src/workspace/create-workspace';
-import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 import {
 	buildInProcess,
 	type InProcessBuildResult,
@@ -131,43 +128,6 @@ function parsePositiveNumber(raw: string | undefined, name: string): number | un
 		throw new Error(`${name} must be a positive number, got "${raw}".`);
 	}
 	return n;
-}
-
-// ---------------------------------------------------------------------------
-// Sandbox factory wiring
-// ---------------------------------------------------------------------------
-
-function createSandboxFactory(
-	config: SandboxConfig,
-	evalLogger: EvalLogger,
-): BuilderSandboxFactory {
-	if (!config.enabled) {
-		throw new Error(
-			'Sandbox config is unexpectedly disabled — eval runs always require a sandbox.',
-		);
-	}
-
-	const factoryLogger: Logger = {
-		debug: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
-		info: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
-		warn: (message, meta) => evalLogger.warn(`[sandbox] ${message}${formatMeta(meta)}`),
-		error: (message, meta) => evalLogger.error(`[sandbox] ${message}${formatMeta(meta)}`),
-	};
-
-	const imageManager =
-		config.provider === 'daytona'
-			? new SnapshotManager(config.image, factoryLogger, undefined)
-			: undefined;
-	return new BuilderSandboxFactory(config, imageManager, factoryLogger);
-}
-
-function formatMeta(meta: unknown): string {
-	if (!meta || typeof meta !== 'object') return '';
-	try {
-		return ` ${JSON.stringify(meta)}`;
-	} catch {
-		return '';
-	}
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +257,7 @@ async function runExample(
 	judgeLlm: BaseChatModel,
 	args: PairwiseArgs,
 	logger: EvalLogger,
-	sandboxFactory: BuilderSandboxFactory,
+	sandboxConfig: SandboxConfig,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
 	const logPath = path.join(
@@ -326,7 +286,7 @@ async function runExample(
 		workItemId,
 		timeoutMs: args.timeoutMs,
 		logPath,
-		sandboxFactory,
+		sandboxConfig,
 	});
 
 	const record: ExampleRecord = {
@@ -521,7 +481,7 @@ async function writeOutputs(
 
 		// `toolCalls` is the ordered timeline captured by the trace collector.
 		// We count any tool call that errored OR returned a failed result —
-		// hard Mastra tool failures are rare, but `submit-workflow` rejections
+		// hard native agent tool failures are rare, but `submit-workflow` rejections
 		// and `execute_command` returning a non-zero `tsc` exit are common and
 		// dominate the "rough path" signal we care about. Suspensions are
 		// benign (auto-approved or surfaced via `errorClass` separately).
@@ -634,7 +594,6 @@ async function main(): Promise<void> {
 	}
 
 	const sandboxConfig = resolveSandboxConfig(process.env);
-	const sandboxFactory = createSandboxFactory(sandboxConfig, logger);
 	if (!sandboxConfig.enabled) {
 		throw new Error('resolveSandboxConfig returned a disabled config — this should never happen.');
 	}
@@ -703,7 +662,7 @@ async function main(): Promise<void> {
 		for (let i = 1; i <= args.iterations; i++) {
 			work.push(
 				limit(async () => {
-					const record = await runExample(example, i, judgeLlm, args, logger, sandboxFactory);
+					const record = await runExample(example, i, judgeLlm, args, logger, sandboxConfig);
 					records.push(record);
 					await flushIncremental();
 				}),
@@ -752,7 +711,7 @@ function safeFilename(s: string): string {
  * Whether a tool call should count toward the "tool error rate" metric.
  *
  * Catches three flavours:
- * 1. **Hard Mastra failure** (`trace.error` set) — tool threw / rejected.
+ * 1. **Hard native agent failure** (`trace.error` set) — tool threw / rejected.
  * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
  *    returning `{ success: false, errors: [...] }`. Looks at top-level
  *    `success === false` or non-empty `errors` array, plus a string

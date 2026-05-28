@@ -49,7 +49,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		id: 'agent-1',
 		projectId: 'project-1',
 		integrations: [],
-		publishedVersion: null,
+		activeVersionId: null,
+		activeVersion: null,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -109,7 +110,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('skips connect when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
 
@@ -117,7 +118,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('still disconnects removed integrations even when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
@@ -233,6 +234,145 @@ describe('ChatIntegrationService', () => {
 	});
 });
 
+describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
+	type ConnectionStub = {
+		chat: {
+			shutdown: jest.Mock;
+			webhooks: Record<string, unknown>;
+			onAction: jest.Mock;
+			onNewMention: jest.Mock;
+			onSubscribedMessage: jest.Mock;
+			initialize: jest.Mock;
+		};
+		bridge: { dispose: jest.Mock };
+		context: AgentChatIntegrationContext;
+	};
+
+	const seedConnection = (
+		service: ChatIntegrationService,
+		key: string,
+		ctx: AgentChatIntegrationContext,
+	): ConnectionStub => {
+		const stub: ConnectionStub = {
+			chat: {
+				shutdown: jest.fn().mockResolvedValue(undefined),
+				webhooks: {},
+				onAction: jest.fn(),
+				onNewMention: jest.fn(),
+				onSubscribedMessage: jest.fn(),
+				initialize: jest.fn(),
+			},
+			bridge: { dispose: jest.fn() },
+			context: ctx,
+		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(service as any).connections.set(key, stub);
+		return stub;
+	};
+
+	const makeCtx = (
+		overrides: Partial<AgentChatIntegrationContext> = {},
+	): AgentChatIntegrationContext => ({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		credentialId: 'cred-1',
+		credential: { accessToken: 'bot-token' },
+		webhookUrlFor: () => 'https://n8n.example.com/wh',
+		...overrides,
+	});
+
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('invokes the integration onBeforeDisconnect hook with the captured context on user-initiated disconnect', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		const ctx = makeCtx();
+		const stub = seedConnection(service, 'agent-1:telegram:cred-1', ctx);
+
+		await service.disconnect('agent-1', { type: 'telegram', credentialId: 'cred-1' });
+
+		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
+		expect(onBeforeDisconnect).toHaveBeenCalledWith(ctx);
+		// Order: external teardown → local shutdown → dispose
+		expect(onBeforeDisconnect.mock.invocationCallOrder[0]).toBeLessThan(
+			stub.chat.shutdown.mock.invocationCallOrder[0],
+		);
+		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((service as any).connections.size).toBe(0);
+	});
+
+	it('swallows errors from onBeforeDisconnect and still tears down local state', async () => {
+		const onBeforeDisconnect = jest.fn().mockRejectedValue(new Error('telegram 500'));
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		const stub = seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await expect(
+			service.disconnect('agent-1', { type: 'telegram', credentialId: 'cred-1' }),
+		).resolves.toBeUndefined();
+
+		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
+		expect(stub.chat.shutdown).toHaveBeenCalledTimes(1);
+		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((service as any).connections.size).toBe(0);
+	});
+
+	it('skips onBeforeDisconnect when caller passes skipExternalHooks: true', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await service.disconnect(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-1' },
+			{ skipExternalHooks: true },
+		);
+
+		expect(onBeforeDisconnect).not.toHaveBeenCalled();
+	});
+
+	it('disconnectAll never runs onBeforeDisconnect — graceful shutdown must not release remote state', async () => {
+		const onBeforeDisconnect = jest.fn().mockResolvedValue(undefined);
+		const telegram = new FakeIntegration('telegram', false);
+		(telegram as unknown as { onBeforeDisconnect: typeof onBeforeDisconnect }).onBeforeDisconnect =
+			onBeforeDisconnect;
+
+		const registry = new ChatIntegrationRegistry();
+		registry.register(telegram);
+
+		const { service } = buildServiceWith({ registry });
+		seedConnection(service, 'agent-1:telegram:cred-1', makeCtx());
+
+		await service.disconnectAll();
+
+		expect(onBeforeDisconnect).not.toHaveBeenCalled();
+	});
+});
+
 describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -270,9 +410,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.reconnectAll();
 
 			expect(connectSpy).toHaveBeenCalledTimes(1);
-			// Followers must not run external hooks during startup reconnect — the
-			// leader owns Telegram setWebhook etc., so a follower racing it would
-			// just trip Telegram's 1/sec rate limit.
+			// Followers must not run external hooks during startup reconnect. The
+			// leader owns external setup; followers only build local runtime state.
 			expect(connectSpy).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'linear', credentialId: 'c2' },
@@ -368,7 +507,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const disconnectOneSpy = jest
 				.spyOn(
-					service as unknown as { disconnectOne: (k: string) => Promise<void> },
+					service as unknown as {
+						disconnectOne: (k: string, options?: { skipExternalHooks?: boolean }) => Promise<void>;
+					},
 					'disconnectOne',
 				)
 				.mockImplementation(async () => undefined);
@@ -376,12 +517,16 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await service.disconnectLeaderOnlyIntegrations();
 
 			expect(disconnectOneSpy).toHaveBeenCalledTimes(1);
-			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1');
+			// Leader stepdown is a role transition, not a user-initiated disconnect.
+			// Only local runtime state should be cleared here.
+			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1', {
+				skipExternalHooks: true,
+			});
 		});
 	});
 
 	describe('handleIntegrationChanged', () => {
-		it('routes disconnect actions to disconnect()', async () => {
+		it('routes disconnect actions to disconnect() and skips external hooks on the peer', async () => {
 			const { service } = buildServiceWith();
 			const disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 
@@ -391,10 +536,13 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				action: 'disconnect',
 			});
 
-			expect(disconnectSpy).toHaveBeenCalledWith('a1', {
-				type: 'linear',
-				credentialId: 'c1',
-			});
+			// External teardown already ran on the originator. The peer must skip it
+			// so cluster-wide remote state is released exactly once.
+			expect(disconnectSpy).toHaveBeenCalledWith(
+				'a1',
+				{ type: 'linear', credentialId: 'c1' },
+				{ skipExternalHooks: true },
+			);
 		});
 
 		it('skips connect for a leader-only integration on a follower', async () => {
@@ -439,9 +587,8 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				action: 'connect',
 			});
 
-			// External hooks (Telegram setWebhook, DB validation) already ran on
-			// the originator — the peer must skip them to avoid duplicate API
-			// calls and the resulting 429 rate-limit failure.
+			// External hooks already ran on the originator. The peer must skip them
+			// to avoid duplicate external side effects.
 			expect(connectSpy).toHaveBeenCalledWith(
 				'a1',
 				{ type: 'linear', credentialId: 'c1' },

@@ -7,7 +7,6 @@ import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -23,6 +22,7 @@ import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const i18n = useI18n();
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -59,12 +59,12 @@ const emit = defineEmits<{
 
 const telemetry = useTelemetry();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const canvas = inject(CanvasKey, undefined);
 const isInExperimentalNdv = useIsInExperimentalNdv();
 
-const isDragging = computed(() => ndvStore.isDraggableDragging);
+const isDragging = computed(() => ndvStore.value.isDraggableDragging);
 const isOutputPopoverVisible = computed(
 	() => isFocused.value && (!isInExperimentalNdv.value || !canvas?.isPaneMoving.value),
 );
@@ -84,6 +84,14 @@ function focus() {
 function onFocus() {
 	isFocused.value = true;
 	emit('focus');
+}
+
+function onFocusOut(event: FocusEvent) {
+	const nextFocus = event.relatedTarget;
+	if (isEventTargetContainedBy(nextFocus, container)) return;
+	if (isEventTargetContainedBy(nextFocus, outputPopover.value?.contentRef)) return;
+
+	onBlur(event);
 }
 
 function onBlur(event?: FocusEvent | KeyboardEvent) {
@@ -108,9 +116,9 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
 			props.modelValue,
-			workflowsStore.workflowId,
-			ndvStore.pushRef,
-			ndvStore.activeNode?.type ?? '',
+			workflowDocumentStore.value.workflowId,
+			ndvStore.value.pushRef,
+			ndvStore.value.activeNode?.type ?? '',
 		);
 
 		telemetry.track('User closed Expression Editor', telemetryPayload);
@@ -145,9 +153,9 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	const droppedSelection = await dropInExpressionEditor(toRaw(editor), event, value);
 
-	if (!ndvStore.isMappingOnboarded) ndvStore.setMappingOnboarded();
+	if (!ndvStore.value.isMappingOnboarded) ndvStore.value.setMappingOnboarded();
 
-	if (!ndvStore.isAutocompleteOnboarded) {
+	if (!ndvStore.value.isAutocompleteOnboarded) {
 		setCursorPosition((droppedSelection.ranges.at(0)?.head ?? 3) - 3);
 		setTimeout(() => {
 			startCompletion(editor);
@@ -161,7 +169,7 @@ async function onDropOnFixedInput() {
 	if (!inlineInput.value) return;
 	const { editor, setCursorPosition } = inlineInput.value;
 
-	if (!editor || ndvStore.isAutocompleteOnboarded) return;
+	if (!editor || ndvStore.value.isAutocompleteOnboarded) return;
 
 	setCursorPosition('lastExpression');
 	setTimeout(() => {
@@ -191,7 +199,12 @@ defineExpose({ focus, select });
 </script>
 
 <template>
-	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
+	<div
+		ref="container"
+		:class="$style['expression-parameter-input']"
+		@keydown.tab="onBlur"
+		@focusout="onFocusOut"
+	>
 		<div
 			:class="[
 				$style['all-sections'],

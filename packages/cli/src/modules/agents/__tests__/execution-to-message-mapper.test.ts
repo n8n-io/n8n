@@ -174,28 +174,6 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
-	it('does not expose raw working-memory timeline events as chat message content', () => {
-		const result = executionToMessagesDto(
-			execution({
-				assistantResponse: 'Done.',
-				timeline: [{ type: 'working-memory', content: 'private memory', timestamp: 100 }],
-			}),
-		);
-
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Done.' }],
-			},
-		]);
-	});
-
 	it('flattens multiple executions into a single message list', () => {
 		const result = executionsToMessagesDto([
 			execution({ id: 'execution-1', userMessage: 'Hello', assistantResponse: 'Hi' }),

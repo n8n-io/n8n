@@ -6,6 +6,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
@@ -136,6 +137,7 @@ describe('NodeToolSettingsContent', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let environmentsStore: ReturnType<typeof mockedStore<typeof useEnvironmentsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -146,6 +148,7 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		projectsStore = mockedStore(useProjectsStore);
 		environmentsStore = mockedStore(useEnvironmentsStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
 		environmentsStore.variablesAsObject = {};
@@ -418,6 +421,28 @@ describe('NodeToolSettingsContent', () => {
 			});
 
 			vi.restoreAllMocks();
+		});
+	});
+
+	describe('customTelemetryTags', () => {
+		it('should show settings tab when isOtelEnabled is true', () => {
+			settingsStore.isOtelEnabled = true;
+
+			const { getByText } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+
+			expect(getByText('nodeSettings.settings')).toBeTruthy();
+		});
+
+		it('should not show settings tab from otel alone when isOtelEnabled is false', () => {
+			settingsStore.isOtelEnabled = false;
+
+			const { queryByText } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+
+			expect(queryByText('nodeSettings.settings')).toBeFalsy();
 		});
 	});
 

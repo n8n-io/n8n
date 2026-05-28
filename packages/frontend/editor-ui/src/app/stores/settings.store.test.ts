@@ -238,4 +238,45 @@ describe('settings.store', () => {
 			});
 		});
 	});
+
+	describe('isOtelEnabled', () => {
+		it('should return false when otel module is not active', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active but not enabled in moduleSettings', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: false } };
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
+		});
+
+		it('should return true when otel module is active and enabled', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+
+			expect(settingsStore.isOtelEnabled).toBe(true);
+		});
+	});
 });

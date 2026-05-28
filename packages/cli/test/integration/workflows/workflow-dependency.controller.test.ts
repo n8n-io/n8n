@@ -3,7 +3,6 @@ import {
 	randomCredentialPayload,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -13,7 +12,6 @@ import * as utils from '../shared/utils';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
-let workflowsConfig: WorkflowsConfig;
 
 testServer = utils.setupTestServer({
 	endpointGroups: ['workflowDependencies'],
@@ -22,11 +20,6 @@ testServer = utils.setupTestServer({
 
 beforeAll(() => {
 	depRepo = Container.get(WorkflowDependencyRepository);
-	workflowsConfig = Container.get(WorkflowsConfig);
-});
-
-afterEach(() => {
-	workflowsConfig.indexingEnabled = true;
 });
 
 /** Seed a workflow_dependency row (draft). */
@@ -406,37 +399,5 @@ describe('POST /workflow-dependencies/details', () => {
 		});
 
 		expect(resp.statusCode).toBe(400);
-	});
-});
-
-describe('indexing disabled', () => {
-	it('should return 503 for counts when indexing is disabled', async () => {
-		workflowsConfig.indexingEnabled = false;
-		const owner = await createOwner();
-
-		const resp = await testServer
-			.authAgentFor(owner)
-			.post('/workflow-dependencies/counts')
-			.send({
-				resourceIds: ['some-id'],
-				resourceType: 'workflow',
-			});
-
-		expect(resp.statusCode).toBe(503);
-	});
-
-	it('should return 503 for details when indexing is disabled', async () => {
-		workflowsConfig.indexingEnabled = false;
-		const owner = await createOwner();
-
-		const resp = await testServer
-			.authAgentFor(owner)
-			.post('/workflow-dependencies/details')
-			.send({
-				resourceIds: ['some-id'],
-				resourceType: 'workflow',
-			});
-
-		expect(resp.statusCode).toBe(503);
 	});
 });

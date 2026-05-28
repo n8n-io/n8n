@@ -289,6 +289,18 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		previousSkills = [];
 	}
 
+	function trackOpenedToolFromList(toolType: string) {
+		agentTelemetry.trackOpenedToolFromList({ agentId: deps.agentId.value, toolType });
+	}
+
+	function trackOpenedSkillFromList(skillId: string) {
+		agentTelemetry.trackOpenedSkillFromList({ agentId: deps.agentId.value, skillId });
+	}
+
+	function trackOpenedAddSkillModal() {
+		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
+	}
+
 	return {
 		recordConfigEdit,
 		flushConfigEdits,
@@ -300,5 +312,8 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		captureSkillsBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
+		trackOpenedToolFromList,
+		trackOpenedSkillFromList,
+		trackOpenedAddSkillModal,
 	};
 }

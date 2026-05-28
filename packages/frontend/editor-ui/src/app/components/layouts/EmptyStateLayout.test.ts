@@ -8,6 +8,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
@@ -15,6 +16,7 @@ const surfaceMcpEmptyState = vi.hoisted(() => ({
 	showTile: false,
 	showReminder: false,
 }));
+const trackClickedNewAgent = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -38,6 +40,12 @@ vi.mock('@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyS
 		})),
 	};
 });
+
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent,
+	}),
+}));
 
 const renderComponent = createComponentRenderer(EmptyStateLayout, {
 	pinia: createTestingPinia(),
@@ -82,6 +90,7 @@ describe('EmptyStateLayout', () => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john@example.com',
+			globalScopes: ['agent:create'],
 			isDefaultUser: false,
 			isPendingUser: false,
 			mfaEnabled: false,
@@ -101,6 +110,9 @@ describe('EmptyStateLayout', () => {
 
 		bannersStore.bannersHeight = 0;
 		readyToRunStore.userCanClaimOpenAiCredits = false;
+		vi.spyOn(useSettingsStore(), 'isModuleActive').mockImplementation((moduleName) => {
+			return moduleName === 'agents';
+		});
 		surfaceMcpEmptyState.showTile = false;
 		surfaceMcpEmptyState.showReminder = false;
 
@@ -228,6 +240,14 @@ describe('EmptyStateLayout', () => {
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(emitted('click:add')).toHaveLength(1);
+		});
+
+		it('should track New Agent card clicks', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('build-agent-card'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('card');
 		});
 	});
 

@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import { createExecutionsTool } from '../executions.tool';
 
@@ -23,6 +24,7 @@ function createMockContext(
 			stop: jest.fn(),
 			getDebugInfo: jest.fn(),
 			getNodeOutput: jest.fn(),
+			getResolvedNodeParameters: jest.fn(),
 		},
 		credentialService: {} as never,
 		nodeService: {} as never,
@@ -34,10 +36,8 @@ function createMockContext(
 
 function createAgentCtx(opts: { resumeData?: unknown; suspend?: jest.Mock } = {}) {
 	return {
-		agent: {
-			resumeData: opts.resumeData,
-			suspend: opts.suspend ?? jest.fn(),
-		},
+		resumeData: opts.resumeData,
+		suspend: opts.suspend ?? jest.fn(),
 	};
 }
 
@@ -62,7 +62,7 @@ describe('executions tool', () => {
 			(context.executionService.list as jest.Mock).mockResolvedValue(executions);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!({ action: 'list' as const }, {} as never);
+			const result = await executeTool(tool, { action: 'list' as const }, {} as never);
 
 			expect(context.executionService.list).toHaveBeenCalledWith({
 				workflowId: undefined,
@@ -77,7 +77,8 @@ describe('executions tool', () => {
 			(context.executionService.list as jest.Mock).mockResolvedValue([]);
 
 			const tool = createExecutionsTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'list' as const,
 					workflowId: 'wf-42',
@@ -107,7 +108,8 @@ describe('executions tool', () => {
 			(context.executionService.getStatus as jest.Mock).mockResolvedValue(executionStatus);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'get' as const, executionId: 'exec-1' },
 				{} as never,
 			);
@@ -126,7 +128,8 @@ describe('executions tool', () => {
 			});
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
 				createAgentCtx() as never,
 			);
@@ -151,7 +154,8 @@ describe('executions tool', () => {
 			});
 
 			const tool = createExecutionsTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'run' as const,
 					workflowId: 'wf-1',
@@ -164,7 +168,7 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute workflow "My Workflow" (ID: wf-1)?',
+					message: 'Execute My Workflow (ID: wf-1)',
 					severity: 'warning',
 					requestId: expect.any(String),
 				}),
@@ -177,7 +181,8 @@ describe('executions tool', () => {
 			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createExecutionsTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'run' as const, workflowId: 'wf-42' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -186,7 +191,7 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute workflow "wf-42" (ID: wf-42)?',
+					message: 'Execute wf-42 (ID: wf-42)',
 				}),
 			);
 		});
@@ -195,7 +200,8 @@ describe('executions tool', () => {
 			const context = createMockContext({ permissions: {} });
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
 				createAgentCtx({ resumeData: { approved: false } }) as never,
 			);
@@ -218,7 +224,8 @@ describe('executions tool', () => {
 			(context.executionService.run as jest.Mock).mockResolvedValue(executionResult);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'run' as const,
 					workflowId: 'wf-1',
@@ -248,7 +255,8 @@ describe('executions tool', () => {
 
 			const suspendFn = jest.fn();
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -270,7 +278,8 @@ describe('executions tool', () => {
 			});
 
 			const tool = createExecutionsTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
 				createAgentCtx() as never,
 			);
@@ -293,7 +302,8 @@ describe('executions tool', () => {
 				const suspendFn = jest.fn();
 
 				const tool = createExecutionsTool(context);
-				await tool.execute!(
+				await executeTool(
+					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
 					createAgentCtx({ suspend: suspendFn }) as never,
 				);
@@ -313,14 +323,15 @@ describe('executions tool', () => {
 				const suspendFn = jest.fn();
 
 				const tool = createExecutionsTool(context);
-				const result = await tool.execute!(
+				const result = await executeTool(
+					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
 					createAgentCtx({ suspend: suspendFn }) as never,
 				);
 
 				expect(suspendFn).toHaveBeenCalled();
 				expect(context.executionService.run).not.toHaveBeenCalled();
-				expect(result).toMatchObject({ denied: true, reason: 'Awaiting confirmation' });
+				expect(result).toBeUndefined();
 			});
 		});
 	});
@@ -349,7 +360,8 @@ describe('executions tool', () => {
 			(context.executionService.getDebugInfo as jest.Mock).mockResolvedValue(debugInfo);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'debug' as const, executionId: 'exec-fail' },
 				{} as never,
 			);
@@ -373,7 +385,8 @@ describe('executions tool', () => {
 			(context.executionService.getNodeOutput as jest.Mock).mockResolvedValue(nodeOutput);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'get-node-output' as const,
 					executionId: 'exec-1',
@@ -401,7 +414,8 @@ describe('executions tool', () => {
 			});
 
 			const tool = createExecutionsTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'get-node-output' as const,
 					executionId: 'exec-1',
@@ -417,6 +431,106 @@ describe('executions tool', () => {
 		});
 	});
 
+	// ── get-resolved-node-parameters ────────────────────────────────────────
+
+	describe('get-resolved-node-parameters action', () => {
+		it('should call executionService.getResolvedNodeParameters with all options', async () => {
+			const resolution = {
+				nodeName: 'HTTP Request',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: { url: '=https://example.com/api/{{ $json.id }}' },
+				resolved: { url: 'https://example.com/api/123' },
+				failedExpressions: [],
+				emptyResolutions: [],
+			};
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
+				resolution,
+			);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'HTTP Request',
+					itemIndex: 2,
+					runIndex: 1,
+				},
+				{} as never,
+			);
+
+			expect(context.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+				'exec-1',
+				'HTTP Request',
+				{ itemIndex: 2, runIndex: 1 },
+			);
+			expect(result).toEqual(resolution);
+		});
+
+		it('should pass undefined options when itemIndex/runIndex are omitted', async () => {
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue({
+				nodeName: 'Set',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: {},
+				resolved: {},
+				failedExpressions: [],
+				emptyResolutions: [],
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'Set',
+				},
+				{} as never,
+			);
+
+			expect(context.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+				'exec-1',
+				'Set',
+				{ itemIndex: undefined, runIndex: undefined },
+			);
+		});
+
+		it('should pass through suppressed responses verbatim', async () => {
+			const suppressed = {
+				nodeName: 'HTTP Request',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: null,
+				resolved: null,
+				failedExpressions: [],
+				emptyResolutions: [],
+				suppressed: 'parameter-values-disabled',
+			};
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
+				suppressed,
+			);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'HTTP Request',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual(suppressed);
+		});
+	});
+
 	// ── stop ────────────────────────────────────────────────────────────────
 
 	describe('stop action', () => {
@@ -426,7 +540,8 @@ describe('executions tool', () => {
 			(context.executionService.stop as jest.Mock).mockResolvedValue(stopResult);
 
 			const tool = createExecutionsTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'stop' as const, executionId: 'exec-running' },
 				{} as never,
 			);

@@ -1,8 +1,18 @@
+import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+
+type McpRegistryServerUpsertRow = Pick<
+	McpRegistryServerEntity,
+	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
+>;
+
+const serverStatuses = ['active', 'deprecated'] as const;
+
+type McpRegistryServerStatus = (typeof serverStatuses)[number];
+
 /**
  * The shape of an entry returned by the MCP server registry.
  */
 export type McpRegistryServer = {
-	id: number;
 	name: string;
 	slug: string;
 	title: string;
@@ -17,7 +27,7 @@ export type McpRegistryServer = {
 	tools: McpRegistryTool[];
 	isOfficial: boolean;
 	origin: 'registry';
-	status: 'active' | 'deprecated';
+	status: McpRegistryServerStatus;
 	tags?: string[];
 };
 
@@ -43,3 +53,31 @@ export type McpRegistryTool = {
 	title?: string;
 	annotations?: McpRegistryToolAnnotations;
 };
+
+export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
+	const { slug, status, version, updatedAt, ...rest } = server;
+	let mappedStatus = status;
+	// make sure that unknown statuses get mapped to a valid value
+	if (!serverStatuses.includes(status)) {
+		mappedStatus = 'deprecated';
+	}
+
+	return {
+		slug,
+		status: mappedStatus,
+		version,
+		registryUpdatedAt: new Date(updatedAt),
+		data: rest,
+	};
+}
+
+export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
+	const { slug, status, version, registryUpdatedAt, data } = entity;
+	return {
+		slug,
+		status,
+		version,
+		updatedAt: registryUpdatedAt.toISOString(),
+		...data,
+	} as McpRegistryServer;
+}

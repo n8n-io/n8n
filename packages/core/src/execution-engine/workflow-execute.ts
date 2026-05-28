@@ -65,7 +65,12 @@ import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
+import {
+	ExecuteContext,
+	getAdditionalKeys,
+	PollContext,
+	resolveSourceOverwrite,
+} from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1089,6 +1094,71 @@ export class WorkflowExecute {
 		return { data, hints: context.hints };
 	}
 
+	private buildCustomTelemetryTracing(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		executionData: IExecuteData,
+	): NonNullable<ITaskMetadata['tracing']> | undefined {
+		const tags = node.customTelemetryTags?.tag;
+		if (!tags?.length) return;
+
+		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+		const tracing: NonNullable<ITaskMetadata['tracing']> = {};
+
+		for (const { key, value } of tags) {
+			const trimmedKey = key?.trim();
+			if (!trimmedKey) continue;
+
+			try {
+				const evaluated = workflow.expression.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					0,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executionData,
+					false,
+					{},
+				);
+				if (evaluated === undefined || evaluated === null) continue;
+				if (
+					typeof evaluated !== 'string' &&
+					typeof evaluated !== 'number' &&
+					typeof evaluated !== 'boolean'
+				) {
+					Logger.warn(
+						'customTelemetryTags expression resolved to a non-primitive value; skipping',
+						{
+							nodeName: node.name,
+							tagKey: trimmedKey,
+						},
+					);
+					continue;
+				}
+				tracing[trimmedKey] = evaluated;
+			} catch (error) {
+				// failing to evaluate a tag expression is not a critical error and should not block the execution
+				Logger.warn('Failed to evaluate customTelemetryTags expression', {
+					nodeName: node.name,
+					tagKey: trimmedKey,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		if (Object.keys(tracing).length === 0) return;
+
+		return tracing;
+	}
+
 	/**
 	 * Executes a poll node
 	 */
@@ -1234,6 +1304,24 @@ export class WorkflowExecute {
 		this.rethrowLastNodeError(runExecutionData, node);
 
 		inputData = this.handleExecuteOnce(node, inputData);
+
+		const tracingFromTags = this.buildCustomTelemetryTracing(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			executionData,
+		);
+
+		if (tracingFromTags !== undefined) {
+			executionData.metadata = {
+				...(executionData.metadata ?? {}),
+				tracing: { ...tracingFromTags, ...(executionData.metadata?.tracing ?? {}) },
+			};
+		}
 
 		if (nodeType.execute || customOperation) {
 			return await this.executeNode(

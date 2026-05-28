@@ -28,6 +28,7 @@ export interface ManagedBackgroundTask {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
 	dedupeKey?: BackgroundTaskDedupeKey;
 	/**
@@ -59,6 +60,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/**
 	 * Identity for single-flight dedupe. When supplied, a spawn with the same `plannedTaskId`
 	 * (primary) or `role + workflowId` (fallback) as a currently-running task returns
@@ -68,7 +70,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
 	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * research, data-table, delegate) from inside a
+	 * delegate) from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while any child with this id is still
 	 * running, and the settlement path re-emits the checkpoint follow-up when
@@ -79,6 +81,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 	onLimitReached?: (errorMessage: string) => void;
 	onCompleted?: (task: ManagedBackgroundTask) => void | Promise<void>;
@@ -90,6 +93,10 @@ export type SpawnManagedBackgroundTaskResult =
 	| { status: 'started'; task: ManagedBackgroundTask }
 	| { status: 'limit-reached' }
 	| { status: 'duplicate'; existing: ManagedBackgroundTask };
+
+export interface BackgroundTaskTimeoutOptions {
+	shouldSkipTask?: (task: ManagedBackgroundTask) => boolean;
+}
 
 export interface BackgroundTaskMessageOptions<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
@@ -161,8 +168,8 @@ export class BackgroundTaskManager {
 	/**
 	 * Return all running background tasks on this thread that were spawned
 	 * under the given checkpoint task id. Used by the checkpoint safety net to
-	 * defer failing a checkpoint while a detached patch/research/data-table
-	 * sub-agent it just launched is still in-flight.
+	 * defer failing a checkpoint while a detached patch sub-agent it just
+	 * launched is still in-flight.
 	 */
 	getRunningTasksByParentCheckpoint(
 		threadId: string,
@@ -242,10 +249,12 @@ export class BackgroundTaskManager {
 	async timeoutTimedOutTasks(
 		policy: InstanceAiLivenessPolicy,
 		now = Date.now(),
+		options: BackgroundTaskTimeoutOptions = {},
 	): Promise<ManagedBackgroundTask[]> {
 		const timedOut: ManagedBackgroundTask[] = [];
 		for (const task of [...this.tasks.values()]) {
 			if (task.status !== 'running') continue;
+			if (options.shouldSkipTask?.(task)) continue;
 			const decision = policy.evaluate({
 				surface: 'background-task',
 				startedAt: task.startedAt,
@@ -349,10 +358,14 @@ export class BackgroundTaskManager {
 			});
 
 		try {
+			if (!task.traceContext && options.createTraceContext) {
+				task.traceContext = await options.createTraceContext();
+			}
 			const raw = await options.run(
 				task.abortController.signal,
 				drainCorrections,
 				waitForCorrection,
+				{ traceContext: task.traceContext },
 			);
 			if (task.status !== 'running') return;
 			task.status = 'completed';

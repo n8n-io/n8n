@@ -1,6 +1,6 @@
 ARG NODE_VERSION=24.15.0
 
-FROM node:${NODE_VERSION}-alpine3.23
+FROM node:${NODE_VERSION}-alpine3.22
 
 ENV NODE_ENV=production
 

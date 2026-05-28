@@ -319,6 +319,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the OpenTelemetry module.
+	 */
+	otel?: {
+		/** Whether OpenTelemetry tracing is enabled on this instance. */
+		enabled: boolean;
+	};
+
+	/**
 	 * Client settings for the agents module.
 	 */
 	agents?: {

@@ -186,7 +186,9 @@ describe('NodeCredentials', () => {
 		renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
 
 		credentialsStore = mockedStore(useCredentialsStore);
-		ndvStore = mockedStore(useNDVStore);
+		// Component triggers this on mount; avoid a real XHR with stubActions: false.
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
@@ -218,6 +220,15 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('should refresh credentials from the server when mounted on an existing node', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent();
+
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
 	});
 
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
@@ -596,6 +607,27 @@ describe('NodeCredentials', () => {
 					props: {
 						node: slackNode,
 						overrideCredType: 'slackOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+		});
+
+		it('should also show quick-connect-empty-state in standalone mode (NODE-5115)', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{
+					props: {
+						node: slackNode,
+						overrideCredType: 'slackOAuth2Api',
+						standalone: true,
 					},
 				},
 				{ merge: true },

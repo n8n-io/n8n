@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import type { UrlService } from '@/services/url.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
@@ -20,8 +21,12 @@ let logger: jest.Mocked<Logger>;
 let userRepository: jest.Mocked<UserRepository>;
 let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
 let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
+let urlService: jest.Mocked<UrlService>;
 let service: McpOAuthTokenService;
 let mockTransactionManager: any;
+
+const TEST_BASE_URL = 'https://n8n.example.com';
+const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
 
 describe('McpOAuthTokenService', () => {
 	beforeAll(() => {
@@ -50,12 +55,16 @@ describe('McpOAuthTokenService', () => {
 		(refreshTokenRepository as any).manager = mockManager;
 		(refreshTokenRepository as any).target = 'RefreshToken';
 
+		urlService = mock<UrlService>();
+		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
+
 		service = new McpOAuthTokenService(
 			logger,
 			jwtService,
 			userRepository,
 			accessTokenRepository,
 			refreshTokenRepository,
+			urlService,
 		);
 	});
 
@@ -74,7 +83,7 @@ describe('McpOAuthTokenService', () => {
 
 			const decoded = jwtService.decode(accessToken);
 			expect(decoded.sub).toBe(userId);
-			expect(decoded.aud).toBe('mcp-server-api');
+			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
 			expect(decoded.meta.isOAuth).toBe(true);
 			expect(decoded.jti).toBeDefined();
@@ -220,13 +229,49 @@ describe('McpOAuthTokenService', () => {
 		it('should throw error for wrong audience', async () => {
 			const wrongAudienceToken = jwtService.sign({
 				sub: 'user-123',
-				aud: 'wrong-audience', // Not 'mcp-server-api'
+				aud: 'wrong-audience', // Matches neither legacy literal nor resource URL
 				client_id: 'client-456',
 			});
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
 				'JWT Verification Failed',
 			);
+		});
+
+		it('should accept token whose aud is the legacy literal (backward compat)', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+			const legacyToken = jwtService.sign({
+				sub: userId,
+				aud: 'mcp-server-api',
+				client_id: clientId,
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: legacyToken, clientId, userId }),
+			);
+
+			const result = await service.verifyAccessToken(legacyToken);
+
+			expect(result.extra?.userId).toBe(userId);
+			expect(result.clientId).toBe(clientId);
+		});
+
+		it('should accept token whose aud is the resource URL', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+			const urlToken = jwtService.sign({
+				sub: userId,
+				aud: TEST_RESOURCE_URL,
+				client_id: clientId,
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: urlToken, clientId, userId }),
+			);
+
+			const result = await service.verifyAccessToken(urlToken);
+
+			expect(result.extra?.userId).toBe(userId);
+			expect(result.clientId).toBe(clientId);
 		});
 
 		it('should throw error when token not found in database', async () => {

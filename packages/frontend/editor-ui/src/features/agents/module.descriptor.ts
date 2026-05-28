@@ -6,10 +6,13 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -45,6 +48,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					tools: [],
+					mcpServers: [],
 					onConfirm: () => {},
 				},
 			},
@@ -55,8 +59,8 @@ export const AgentsModule: FrontendModuleDescription = {
 			initialState: {
 				open: false,
 				data: {
+					kind: 'node',
 					toolRef: null,
-					existingToolNames: [],
 					onConfirm: () => {},
 				},
 			},
@@ -84,6 +88,19 @@ export const AgentsModule: FrontendModuleDescription = {
 					connectedTriggers: [],
 					onConnectedTriggersChange: () => {},
 					onTriggerAdded: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
+			component: async () => await import('../ai/chatHub/components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
+					displayName: 'OpenAI',
+					initialValue: null,
+					onSelect: () => {},
 				},
 			},
 		},
@@ -126,6 +143,12 @@ export const AgentsModule: FrontendModuleDescription = {
 				{
 					name: AGENT_BUILDER_VIEW,
 					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
 					props: true,
 					component: AgentBuilderView,
 				},

@@ -39,6 +39,7 @@ describe('ExecutionLevelTracer', () => {
 				executionId: 'exec-1',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-1',
@@ -55,9 +56,26 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.workflow.id']).toBe('wf-1');
 			expect(span.attributes['n8n.workflow.name']).toBe('Test');
 			expect(span.attributes['n8n.execution.id']).toBe('exec-1');
+			expect(span.attributes['n8n.project.id']).toBe('project-1');
 			expect(span.attributes['n8n.execution.mode']).toBe('manual');
 			expect(span.attributes['n8n.execution.status']).toBe('success');
 			expect(span.status.code).toBe(SpanStatusCode.OK);
+		});
+
+		it('should omit project id attribute when project is not provided', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-no-project',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-no-project',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			expect(otel.getFinishedSpans()[0].attributes['n8n.project.id']).toBeUndefined();
 		});
 
 		it('should set error status on failed executions', () => {

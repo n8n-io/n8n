@@ -4,7 +4,7 @@ import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -25,6 +26,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
+	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
@@ -52,6 +54,7 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -74,6 +77,8 @@ export class OauthService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly authService: AuthService,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -114,6 +119,33 @@ export class OauthService {
 		}
 
 		return credential;
+	}
+
+	async buildCsrfStateData(
+		credential: CredentialsEntity,
+		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
+	): Promise<CreateCsrfStateData> {
+		if (credential.isResolvable) {
+			const resolverId = this.dynamicCredentialsProxy.getSystemResolverId();
+			if (resolverId !== null) {
+				const cookieToken = this.authService.getCookieToken(req as Request);
+				if (cookieToken) {
+					return {
+						cid: credential.id,
+						origin: 'dynamic-credential',
+						userId: req.user.id,
+						credentialResolverId: resolverId,
+						authorizationHeader: `Bearer ${cookieToken}`,
+						authMetadata: { source: 'manual-execution' },
+					};
+				}
+			}
+		}
+		return {
+			cid: credential.id,
+			origin: 'static-credential',
+			userId: req.user.id,
+		};
 	}
 
 	protected async getAdditionalData() {
@@ -268,8 +300,19 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
+		// Dynamic credentials: skip user-ownership check since the credential may be shared,
+		// but validate userId when both the state and the caller carry an n8n user identity
+		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
+		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
+		// the state has no userId and the check is skipped.
 		if (decryptedState.origin === 'dynamic-credential') {
+			if (
+				req.user?.id !== undefined &&
+				decryptedState.userId !== undefined &&
+				decryptedState.userId !== req.user.id
+			) {
+				throw new AuthError('Unauthorized');
+			}
 			return [
 				{ ...decoded, ...decryptedState },
 				await this.getCredentialWithoutUser(decryptedState.cid),
@@ -352,11 +395,16 @@ export class OauthService {
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
 		// inheritance) so that manually entered scopes survive reconnects.
+		// For managed credentials we always strip the scope so that the pre-registered default
+		// scope on n8n's OAuth app is used, regardless of credential type.
+		const userCanEditScope =
+			GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) ||
+			this.hasEditableScopeProperty(credential.type);
+
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
-			!this.hasEditableScopeProperty(credential.type)
+			(credential.isManaged || !userCanEditScope)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -368,6 +416,77 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
+	 * and return the new auth headers to inject into outbound requests.
+	 */
+	async refreshOAuth2CredentialById(
+		credentialId: string,
+		projectId: string,
+	): Promise<Record<string, string> | null> {
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: credentialId },
+			relations: { shared: true },
+		});
+		if (!credential) return null;
+
+		const isAccessible =
+			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+		if (!isAccessible) return null;
+
+		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		if (!oauthTokenData) return null;
+
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		const oAuthClient = new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			clientSecret: oauthCredentials.clientSecret,
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+
+		const token = oAuthClient.createToken(
+			{
+				...oauthTokenData,
+				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
+				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			},
+			oauthTokenData.token_type,
+		);
+
+		let refreshed;
+		try {
+			refreshed =
+				oauthCredentials.grantType === 'clientCredentials'
+					? await token.client.credentials.getToken()
+					: await token.refresh();
+		} catch (error) {
+			this.logger.warn('Failed to refresh OAuth2 token for credential', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
+		try {
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+		} catch (error) {
+			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { Authorization: `Bearer ${refreshed.accessToken}` };
 	}
 
 	/**
@@ -532,6 +651,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);

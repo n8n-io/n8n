@@ -9,9 +9,11 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
 import {
@@ -21,7 +23,13 @@ import {
 	createAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolConfig, AgentSkill } from '../types';
+import type {
+	AgentResource,
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
+	AgentSkill,
+} from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -29,21 +37,25 @@ import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
-import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
+import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
+import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -55,6 +67,7 @@ const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
+const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
@@ -64,6 +77,7 @@ const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
+const isPreviewMode = computed(() => route.name === AGENT_PREVIEW_VIEW);
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
@@ -72,21 +86,19 @@ const agentId = computed(() => route.params.agentId as string);
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 // UI state
-const {
-	chatMode,
-	chatModeOpened,
-	isBuildChatStreaming,
-	initialPrompt,
-	onBuildChatStreamingChange,
-	resetForAgentSwitch: resetChatModeForAgentSwitch,
-} = useAgentChatMode();
+const isBuildChatStreaming = ref(false);
+const initialPrompt = ref<string | undefined>();
+
+function onBuildChatStreamingChange(streaming: boolean) {
+	isBuildChatStreaming.value = streaming;
+}
+
 /**
  * Gate for the main body render. Stays false while `initialize()` is running so
  * we don't:
  *   - flash the home screen for users who arrive with a `?prompt=…` query that
  *     will immediately transition them to the build chat, and
- *   - render the Test tab first on unbuilt agents only to flip it to Build
- *     once the config fetch resolves.
+ *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
 const agentName = ref('');
@@ -99,7 +111,6 @@ const {
 	activeChatSessionId,
 	continueSessionId,
 	effectiveSessionId,
-	currentSessionHasMessages,
 	currentSessionTitle,
 	sessionMenu,
 	setSessionInUrl,
@@ -116,17 +127,16 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	})),
 );
 
-const executionsCount = computed(() => sessionsStore.threads.length);
-const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
-	executionsCount,
-});
-
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
+const executionsCount = computed(() => sessionsStore.threads.length);
+const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
+	executionsCount,
+});
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -140,9 +150,8 @@ const builderTelemetry = useAgentBuilderTelemetry({
 });
 
 /**
- * The backend owns runnable validation so the Test tab matches the chat endpoint.
- * In that state the home screen + send flow routes to the chat endpoint
- * instead of the builder.
+ * The backend owns runnable validation so the chat entry point either opens
+ * Preview or stays in the builder.
  */
 const isBuilt = computed(() => agent.value?.isRunnable === true);
 
@@ -205,38 +214,86 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+async function refreshAgentAfterIntegrationChange(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
+	await Promise.all([
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+	]);
+}
+
+function sessionIdForPreview(): string {
+	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
+}
+
+async function openPreview(seedMessage?: string, preferredSessionId?: string) {
+	const sessionId = preferredSessionId ?? sessionIdForPreview();
+	activeChatSessionId.value = sessionId;
+	if (seedMessage) initialPrompt.value = seedMessage;
+
+	await router.push({
+		name: AGENT_PREVIEW_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			...route.query,
+			prompt: undefined,
+			[CONTINUE_SESSION_ID_PARAM]: sessionId,
+		},
+	});
+
+	if (seedMessage) {
+		void nextTick(() => {
+			initialPrompt.value = undefined;
+		});
+	}
+}
+
+async function onOpenPreview() {
+	if (!isBuilt.value) return;
+
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	await openPreview();
+	telemetry.track('User opened agent preview', { agent_id: agentId.value });
+}
+
+function closePreview() {
+	const { [CONTINUE_SESSION_ID_PARAM]: _sessionId, prompt: _prompt, ...rest } = route.query;
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: rest,
+	});
+}
+
 function startChat(msg: string) {
 	// Starting a fresh chat must never inherit a stale continue-session from a
 	// previous URL — otherwise the new conversation would keep appending to the
 	// old thread.
 	if (continueSessionId.value) clearContinueSessionParam();
 	if (isBuilt.value) {
-		// Mint a fresh thread id and push it to the URL so the current chat is
-		// persisted across reloads. Test and Build remain visually linked via
-		// `chatModeOpened` (v-show) — Build doesn't share the thread, it uses
-		// its own per-agent builder history.
-		setSessionInUrl(crypto.randomUUID());
-		initialPrompt.value = msg;
-		chatMode.value = 'test';
+		const sessionId = crypto.randomUUID();
+		activeChatSessionId.value = sessionId;
+		void openPreview(msg, sessionId);
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 	} else {
-		// Fresh agent — route through the same build chat panel the Build tab
-		// uses so the first-build experience matches the ongoing Build UX.
+		// Fresh agent — route through the same build chat panel used for ongoing
+		// Build conversations.
 		initialPrompt.value = msg;
-		chatMode.value = 'build';
 		telemetry.track('User started agent build', { agent_id: agentId.value });
-	}
 
-	// Drop the seed prompt after the re-render that mounts the target panel.
-	// Vue runs this child's setup during the render kicked off by the state
-	// changes above, so `props.initialMessage` is captured synchronously in
-	// the panel's setup before this callback fires. Leaving the prompt in
-	// place would bleed the same message into whichever panel the user
-	// opens next (e.g. clicking Build after starting a Test chat would
-	// re-send the Test message to the builder and skip loadHistory).
-	void nextTick(() => {
-		initialPrompt.value = undefined;
-	});
+		// Drop the seed prompt after the build panel captures it during the
+		// render kicked off by the state change above.
+		void nextTick(() => {
+			initialPrompt.value = undefined;
+		});
+	}
 }
 
 function onPublished(updated: AgentResource) {
@@ -256,11 +313,11 @@ async function onReverted(updated: AgentResource) {
 }
 
 /**
- * Pick the session the Test tab should bind to when no explicit one has been
+ * Pick the session the preview chat should bind to when no explicit one has been
  * chosen yet. Prefer the most recent thread — users land back where they left
  * off — and only mint a fresh ephemeral session when there is no history.
  */
-function bindTestSession() {
+function bindPreviewSession() {
 	if (continueSessionId.value || activeChatSessionId.value) return;
 	const latest = sessionsStore.threads?.[0];
 	if (latest) {
@@ -274,57 +331,8 @@ function bindTestSession() {
 	setSessionInUrl(crypto.randomUUID());
 }
 
-function setChatMode(next: ChatMode) {
-	if (chatMode.value === next) return;
-	// Test is locked until the backend says the agent is runnable. No-op on
-	// the click so the user doesn't get bounced into a half-configured chat.
-	if (next === 'test' && !isBuilt.value) return;
-	chatMode.value = next;
-	if (next === 'test') {
-		// Restore the currently-bound Test session to the URL so refresh and
-		// shared links point at the same chat.
-		if (activeChatSessionId.value && !continueSessionId.value) {
-			void router.replace({
-				query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: activeChatSessionId.value },
-			});
-		} else {
-			bindTestSession();
-		}
-	} else {
-		// Build mode doesn't use continueSessionId — drop it from the URL so a
-		// refresh while on Build doesn't bounce back to Test.
-		if (continueSessionId.value) clearContinueSessionParam();
-	}
-
-	telemetry.track('User switched agent chat mode', {
-		agent_id: agentId.value,
-		mode: next,
-	});
-}
-
-/**
- * Test is locked until the persisted config passes backend runnable validation.
- * Locking the tab (rather than silently redirecting home→Build) keeps the UX
- * honest: users see WHY they can't chat yet instead of getting bounced to a
- * different surface after sending a message.
- *
- * This also closes the first-build cancellation hole: a mid-stream first
- * build is always `!isBuilt`, so the Test tab stays locked while the build
- * is in flight, preventing the tab-switch-unmounts-the-stream regression.
- */
-const chatModeOptions = computed(() => [
-	{ label: locale.baseText('agents.builder.chatMode.build'), value: 'build' as const },
-	{
-		label: locale.baseText('agents.builder.chatMode.test'),
-		value: 'test' as const,
-		disabled: !isBuilt.value,
-	},
-]);
-
 function onOpenBuildFromChat() {
-	// Triggered by the misconfigured-agent banner on the Test panel. Flip to
-	// the Build tab so the user can finish setup without leaving the session.
-	chatMode.value = 'build';
+	closePreview();
 }
 
 interface ConfigAutosaveSnapshot {
@@ -380,7 +388,6 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
-		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
 		// Diff the saved tool/skill lists against the last baseline. No-op when
 		// nothing new landed, so calling on every save also handles the build-chat
@@ -427,6 +434,18 @@ async function flushAutosave() {
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
 
+function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
+	return {
+		...config,
+		memory: {
+			...config.memory,
+			enabled: true,
+			storage: 'n8n',
+			lastMessages: config.memory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+		},
+	};
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
@@ -445,7 +464,11 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: deepCopy(localConfig.value),
+		// The memory toggle is gone, but older agent configs may still have
+		// session memory disabled. Normalize on save so legacy configs are
+		// corrected the next time the user makes a real edit, without mutating
+		// config during component mount.
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
 	});
 }
 
@@ -539,7 +562,6 @@ async function initialize() {
 	builderTelemetry.resetForAgentSwitch();
 
 	agent.value = null;
-	resetChatModeForAgentSwitch();
 	activeChatSessionId.value = null;
 	localConfig.value = null;
 	connectedTriggers.value = [];
@@ -576,15 +598,7 @@ async function initialize() {
 		if (connected) connectedTriggers.value = connected;
 	})();
 
-	// Default landing is Build. If the URL pins a specific chat session
-	// (e.g. refresh, shared link, deep link from elsewhere) we honor it and
-	// open Test so the user sees the chat they linked to.
-	chatMode.value = continueSessionId.value && isBuilt.value ? 'test' : 'build';
-	// Explicitly open the target mode. The `chatMode` watcher only fires on a
-	// value change, but on agent-switch we just reset `chatModeOpened` above —
-	// if both agents share the same default mode the watcher doesn't fire and
-	// the chat panel's v-if gate stays false, leaving the chat pane blank.
-	chatModeOpened.value[chatMode.value] = true;
+	if (isPreviewMode.value) bindPreviewSession();
 
 	// If the user arrived via NewAgentView with a seed prompt, jump straight
 	// into the build chat.
@@ -603,15 +617,7 @@ onBeforeUnmount(() => {
 	sessionsStore.stopAutoRefresh();
 });
 
-watch(
-	chatMode,
-	(cm) => {
-		chatModeOpened.value[cm] = true;
-	},
-	{ immediate: true },
-);
-
-// If the user is on Test before the sessions list finishes loading, latch onto
+// If the user is on Preview before the sessions list finishes loading, latch onto
 // the most recent thread as soon as it arrives. Also fires when loading
 // finishes with no threads so we can mint a fresh ephemeral session instead
 // of leaving the chat panel empty.
@@ -619,11 +625,17 @@ watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
 		if (!wasLoading || isLoading) return;
-		if (chatMode.value !== 'test') return;
+		if (!isPreviewMode.value) return;
 		if (continueSessionId.value || activeChatSessionId.value) return;
-		bindTestSession();
+		bindPreviewSession();
 	},
 );
+
+watch(isPreviewMode, (preview) => {
+	if (preview) {
+		bindPreviewSession();
+	}
+});
 
 function exitContinueMode() {
 	clearContinueSessionParam();
@@ -634,52 +646,116 @@ function onOpenAddToolModal() {
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
 			tools: localConfig.value?.tools ?? [],
+			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolConfig[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
+				onConfigFieldUpdate({ tools, mcpServers }),
 		},
 	});
 }
 
 function onOpenAddTriggerModal(initialTriggerType?: string) {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	uiStore.openModalWithData({
 		name: AGENT_ADD_TRIGGER_MODAL_KEY,
 		data: {
 			initialTriggerType,
-			projectId: projectId.value,
-			agentId: agentId.value,
+			projectId: targetProjectId,
+			agentId: targetAgentId,
 			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.publishedVersion),
+			isPublished: Boolean(agent.value?.activeVersionId),
 			connectedTriggers: connectedTriggers.value,
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
+			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }
 
-function onOpenToolFromList(index: number) {
+function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
-	const tool = tools[index];
-	if (!tool) return;
-	const customTool = tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+
+	const toolIndex =
+		typeof target === 'number'
+			? target
+			: tools.findIndex((tool) => {
+					if (target.kind !== 'tool') return false;
+					if (tool.type !== target.toolType) return false;
+					if (tool.type === 'node') return tool.name === target.id;
+					if (tool.type === 'workflow') return tool.workflow === target.id;
+					return tool.id === target.id;
+				});
+
+	if (toolIndex >= 0) {
+		const tool = tools[toolIndex];
+		if (!tool) return;
+		builderTelemetry.trackOpenedToolFromList(tool.type);
+		const customTool =
+			tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+		uiStore.openModalWithData({
+			name: AGENT_TOOL_CONFIG_MODAL_KEY,
+			data: {
+				toolRef: tool,
+				customTool,
+				projectId: projectId.value,
+				agentId: agentId.value,
+				existingToolNames: tools
+					.map((toolRef, i) => (i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name))
+					.filter((name): name is string => !!name),
+				onConfirm: (updatedTool: AgentJsonToolConfig) => {
+					const nextTools = [...(localConfig.value?.tools ?? [])];
+					nextTools[toolIndex] = updatedTool;
+					onConfigFieldUpdate({ tools: nextTools });
+				},
+				onRemove: () => onRemoveTool(toolIndex),
+			},
+		});
+		return;
+	}
+
+	const mcpServers = localConfig.value?.mcpServers ?? [];
+	const mcpServerIndex =
+		typeof target === 'number'
+			? target - tools.length
+			: target.kind === 'mcpServer'
+				? mcpServers.findIndex((server) => server.name === target.serverName)
+				: -1;
+	const mcpServer = mcpServers[mcpServerIndex];
+	if (!mcpServer) return;
+
+	builderTelemetry.trackOpenedToolFromList('mcpServer');
+	const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+	const nodeType =
+		nodeTypesStore.getNodeType(preferredNodeTypeName) ??
+		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
+	if (!nodeType) return;
+
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
-			toolRef: tool,
-			customTool,
+			kind: 'mcpServer',
+			mcpServer,
+			initialNode: mcpServerToNode(mcpServer, nodeType),
 			projectId: projectId.value,
 			agentId: agentId.value,
-			existingToolNames: tools
-				.map((toolRef, i) => (i === index || toolRef.type === 'custom' ? null : toolRef.name))
-				.filter((name): name is string => !!name),
-			onConfirm: (updatedTool: AgentJsonToolConfig) => {
-				const nextTools = [...(localConfig.value?.tools ?? [])];
-				nextTools[index] = updatedTool;
-				onConfigFieldUpdate({ tools: nextTools });
+			existingToolNames: mcpServers
+				.filter((_, i) => i !== mcpServerIndex)
+				.map((server) => server.name),
+			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+				const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+				nextMcpServers[mcpServerIndex] = updatedServer;
+				onConfigFieldUpdate({ mcpServers: nextMcpServers });
 			},
-			onRemove: () => onRemoveTool(index),
+			onRemove: () => {
+				const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
+					(_, i) => i !== mcpServerIndex,
+				);
+				onConfigFieldUpdate({ mcpServers: nextMcpServers });
+			},
 		},
 	});
 }
@@ -708,6 +784,7 @@ const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
 function onOpenSkillFromList(id: string) {
 	const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 	if (!skill) return;
+	builderTelemetry.trackOpenedSkillFromList(id);
 	uiStore.openModalWithData({
 		name: AGENT_SKILL_MODAL_KEY,
 		data: {
@@ -751,6 +828,7 @@ function onRemoveSkill(id: string) {
 }
 
 function onOpenAddSkillModal() {
+	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
 		name: AGENT_SKILL_MODAL_KEY,
 		data: {
@@ -801,6 +879,10 @@ function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
 	onConfigFieldUpdate({ tools });
 }
 
+function onQuickActionAddMcpServers(mcpServers: AgentJsonMcpServerConfig[]) {
+	onConfigFieldUpdate({ mcpServers });
+}
+
 function onConnectedTriggersUpdate(triggers: string[]) {
 	connectedTriggers.value = triggers;
 	builderTelemetry.trackTriggerListChanged(triggers);
@@ -827,7 +909,7 @@ function onContinueLoaded(count: number) {
 		// update lands, latch onto an existing thread (or mint a fresh
 		// ephemeral one) so the test pane has something to render.
 		void nextTick(() => {
-			if (chatMode.value === 'test') bindTestSession();
+			if (isPreviewMode.value) bindPreviewSession();
 		});
 	}
 }
@@ -835,8 +917,9 @@ function onContinueLoaded(count: number) {
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
-		name: AGENT_BUILDER_VIEW,
+		name: isPreviewMode.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
+		query: isPreviewMode.value ? {} : route.query,
 	});
 }
 </script>
@@ -850,8 +933,15 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
+			:mode="isPreviewMode ? 'preview' : 'edit'"
+			:current-session-title="currentSessionTitle"
+			:session-options="sessionOptions"
 			:before-revert-to-published="settleAutosave"
 			@header-action="onHeaderAction"
+			@open-preview="onOpenPreview"
+			@new-chat="onNewChat"
+			@close-preview="closePreview"
+			@session-select="onSessionPick"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
@@ -862,9 +952,25 @@ function onSwitchAgent(nextAgentId: string) {
 			:class="{
 				[$style.builder]: true,
 				[$style.isResizingChat]: chatPanelResizer.isResizing.value,
+				[$style.previewBuilder]: isPreviewMode,
 			}"
 		>
+			<AgentPreviewChatPage
+				v-if="isPreviewMode"
+				:initialized="initialized"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:agent="agent"
+				:local-config="localConfig"
+				:connected-triggers="connectedTriggers"
+				:effective-session-id="effectiveSessionId"
+				:initial-prompt="initialPrompt"
+				@config-updated="onConfigUpdated"
+				@continue-loaded="onContinueLoaded"
+				@open-build="onOpenBuildFromChat"
+			/>
 			<N8nResizeWrapper
+				v-else
 				:class="{
 					[$style.chatResizer]: true,
 					[$style.chatResizerFullWidth]: isChatFullWidth,
@@ -889,38 +995,26 @@ function onSwitchAgent(nextAgentId: string) {
 					:agent="agent"
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
-					:chat-mode="chatMode"
-					:chat-mode-opened="chatModeOpened"
-					:chat-mode-options="chatModeOptions"
-					:effective-session-id="effectiveSessionId"
-					:current-session-title="currentSessionTitle"
-					:current-session-has-messages="currentSessionHasMessages"
-					:session-options="sessionOptions"
 					:initial-prompt="initialPrompt"
-					:is-built="isBuilt"
 					:is-builder-configured="isBuilderConfigured"
-					:is-build-chat-streaming="isBuildChatStreaming"
-					:is-published="Boolean(agent?.publishedVersion)"
+					:is-published="Boolean(agent?.activeVersionId)"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
-					@session-select="onSessionPick"
-					@new-chat="onNewChat"
 					@config-updated="onConfigUpdated"
-					@continue-loaded="onContinueLoaded"
-					@open-build="onOpenBuildFromChat"
-					@chat-mode-change="setChatMode"
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
+					@update:mcp-servers="onQuickActionAddMcpServers"
 					@update:connected-triggers="onConnectedTriggersUpdate"
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
+					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 			</N8nResizeWrapper>
 
 			<AgentBuilderEditorColumn
-				v-if="!isChatFullWidth"
+				v-if="!isPreviewMode && !isChatFullWidth"
 				:class="$style.editorColumn"
 				v-model:active-main-tab="activeMainTab"
 				:local-config="localConfig"
@@ -962,6 +1056,10 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
+}
+
+.previewBuilder {
+	background-color: var(--background--surface);
 }
 
 .chatResizer {

@@ -14,7 +14,12 @@ export { createHelmStack } from './helm-stack';
 export type { HelmStack, HelmStackConfig, HelmStackMode } from './helm-stack';
 
 // Service-only stack (no n8n containers) - for integration tests
-export { createServiceStack } from './service-stack';
+export {
+	createServiceStack,
+	collectExternalEnv,
+	devEnvFilePath,
+	writeDevEnvFile,
+} from './service-stack';
 
 export type { StackTelemetryRecord } from './telemetry';
 

@@ -24,6 +24,7 @@ test.use({
 test.describe(
 	'What is the runtime cost of saving execution data on success?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-save-data-overhead' },

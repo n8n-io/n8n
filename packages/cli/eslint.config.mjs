@@ -1,6 +1,21 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
+const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
+	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
+
+const instanceAiLazyRuntimeImports = [
+	'@joplin/turndown-plugin-gfm',
+	'@mozilla/readability',
+	'linkedom',
+	'pdf-parse',
+	'turndown',
+].map((name) => ({
+	name,
+	allowTypeImports: true,
+	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
+}));
+
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
 	nodeConfig,
@@ -48,6 +63,16 @@ export default defineConfig(
 			'no-useless-escape': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
+		},
+	},
+	{
+		files: ['./src/modules/instance-ai/**/*.ts'],
+		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: instanceAiLazyRuntimeImports },
+			],
 		},
 	},
 	{

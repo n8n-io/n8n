@@ -46,6 +46,7 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
+						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
 					},
 					links,
 				},
@@ -248,7 +249,7 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 
 	if (params.customAttributes) {
 		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`n8n.node.custom.${key}`] = value;
+			attrs[`${ATTR.NODE_CUSTOM_PREFIX}${key}`] = value;
 		}
 	}
 

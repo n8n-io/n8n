@@ -44,12 +44,6 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
-		/**
-		 * Extended-thinking config:
-		 * - 'adaptive' (default): model decides per request.
-		 * - 'off': no thinking.
-		 * - { budgetTokens: N }: fixed budget mode.
-		 */
 		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
@@ -64,7 +58,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	const thinking = options.thinking ?? 'adaptive';
+	const thinking = options.thinking ?? 'off';
 	if (thinking === 'adaptive') {
 		agent.thinking('anthropic', { mode: 'adaptive' });
 	} else if (typeof thinking === 'object') {

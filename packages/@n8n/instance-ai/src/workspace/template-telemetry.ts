@@ -13,7 +13,6 @@
  * (a per-Workspace WeakMap binding). `runInSandbox` looks the session up and
  * calls `observe()` after each command — no caller-side threading required.
  */
-import type { Workspace } from '@mastra/core/workspace';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { OrchestrationContext } from '../types';
@@ -48,6 +47,13 @@ export interface TelemetrySessionOptions {
 	workItemId: string;
 	/** Optional NL request from the user; truncated to 120 chars. */
 	userRequestExcerpt?: string;
+	/**
+	 * Version identifier of the curated templates bundle in use this run
+	 * (typically a short git SHA from the n8n-sdk-templates manifest).
+	 * Emitted on every search/read/session event so we can correlate usage
+	 * to specific bundle revisions.
+	 */
+	templatesVersion?: string | null;
 }
 
 export function createTemplateTelemetrySession(
@@ -57,6 +63,7 @@ export function createTemplateTelemetrySession(
 		thread_id: opts.threadId,
 		run_id: opts.runId,
 		work_item_id: opts.workItemId,
+		templates_version: opts.templatesVersion ?? null,
 	};
 
 	let searchCount = 0;
@@ -174,35 +181,35 @@ function scrubAndTruncateQuery(query: string): string {
 // Workspace binding
 // ---------------------------------------------------------------------------
 
-const SESSIONS = new WeakMap<Workspace, TemplateTelemetrySession>();
+const SESSIONS = new WeakMap<object, TemplateTelemetrySession>();
 
 /** Bind a session to a workspace so `runInSandbox` can pick it up automatically. */
 export function attachTemplateTelemetrySession(
-	workspace: Workspace,
+	workspace: object,
 	session: TemplateTelemetrySession,
 ): void {
 	SESSIONS.set(workspace, session);
 }
 
 /** Remove the session binding. Safe to call multiple times. */
-export function detachTemplateTelemetrySession(workspace: Workspace): void {
+export function detachTemplateTelemetrySession(workspace: object): void {
 	SESSIONS.delete(workspace);
 }
 
 /** Internal: look up the session bound to a workspace, if any. */
 export function getTemplateTelemetrySession(
-	workspace: Workspace,
+	workspace: object,
 ): TemplateTelemetrySession | undefined {
 	return SESSIONS.get(workspace);
 }
 
 // ---------------------------------------------------------------------------
-// Typed-tool observation (covers `mastra_workspace_grep` / `mastra_workspace_read_file`,
+// Typed-tool observation (covers `workspace_grep` / `workspace_read_file`,
 // which never reach `runInSandbox` and so wouldn't otherwise be captured.)
 // ---------------------------------------------------------------------------
 
-const TYPED_READ_TOOL = 'mastra_workspace_read_file';
-const TYPED_GREP_TOOL = 'mastra_workspace_grep';
+const TYPED_READ_TOOL = 'workspace_read_file';
+const TYPED_GREP_TOOL = 'workspace_grep';
 
 // Path either is `examples` itself or sits under it: `examples`, `examples/`,
 // `examples/foo.ts`, `/abs/examples/`, etc. Rejects `someexamples`, `examples-x`.
@@ -211,7 +218,7 @@ const EXAMPLES_PATH_PATTERN = /(?:^|\/)examples(?:$|\/)/;
 type PendingTypedCall = { kind: 'read'; filename: string } | { kind: 'search'; query: string };
 
 /**
- * Pair `tool-call` + `tool-result` events for typed Mastra workspace tools and
+ * Pair `tool-call` + `tool-result` events for typed native agent workspace tools and
  * forward template accesses to the session. Returned function is meant to be
  * fed every event from the agent's stream (e.g. via consume-with-hitl's
  * `onStreamEvent` hook). Maintains pending state per `toolCallId`.
@@ -235,13 +242,13 @@ export function createTypedToolObserver(
 			if (!match) return;
 			pending.delete(event.payload.toolCallId);
 
-			const result = event.payload.result;
-			if (typeof result !== 'string') return;
+			const resultText = extractTypedToolResultText(event.payload.result);
+			if (resultText === null) return;
 
 			if (match.kind === 'read') {
-				session.observeTypedRead(match.filename, result.length);
+				session.observeTypedRead(match.filename, resultText.length);
 			} else {
-				session.observeTypedSearch(match.query, countResultLines(result));
+				session.observeTypedSearch(match.query, countResultLines(resultText));
 			}
 			return;
 		}
@@ -269,4 +276,16 @@ function matchTypedTemplateCall(
 		return { kind: 'search', query: pattern };
 	}
 	return undefined;
+}
+
+function extractTypedToolResultText(result: unknown): string | null {
+	if (typeof result === 'string') return result;
+	if (!isRecord(result)) return null;
+
+	const { content } = result;
+	return typeof content === 'string' ? content : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

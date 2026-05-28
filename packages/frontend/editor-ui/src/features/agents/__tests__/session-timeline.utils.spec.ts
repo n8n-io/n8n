@@ -63,7 +63,6 @@ describe('itemFilterKey', () => {
 	it('returns the literal kind for every event', () => {
 		expect(itemFilterKey(item({ kind: 'user' }))).toBe('user');
 		expect(itemFilterKey(item({ kind: 'agent' }))).toBe('agent');
-		expect(itemFilterKey(item({ kind: 'working-memory' }))).toBe('working-memory');
 		expect(itemFilterKey(item({ kind: 'suspension' }))).toBe('suspension');
 	});
 
@@ -103,7 +102,6 @@ describe('kindColorToken', () => {
 		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
-		expect(kindColorToken('working-memory')).toBe('var(--color--foreground--shade-1)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
 	});
 });
@@ -158,7 +156,6 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		timeline: null,
 		error: null,
 		hitlStatus: null,
-		workingMemory: null,
 		source: null,
 		...overrides,
 	};
@@ -247,6 +244,46 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool?.workflowId).toBeUndefined();
 	});
 
+	it('maps workflow and rich-interaction timeline calls from the same execution', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'workflow',
+					name: 'giphy-gif-search',
+					toolCallId: 'tc-workflow',
+					input: { search: 'shopping cart fun' },
+					output: { executionId: '234', status: 'success' },
+					startTime: 1000,
+					endTime: 1500,
+					success: true,
+					workflowId: 'wf-1',
+					workflowName: 'Giphy GIF Search',
+					workflowExecutionId: '234',
+				},
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'rich_interaction',
+					toolCallId: 'tc-card',
+					input: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
+					output: { displayOnly: true },
+					startTime: 1600,
+					endTime: 1700,
+					success: true,
+				},
+			]),
+		]);
+
+		expect(items.filter((i) => i.toolName === 'giphy-gif-search')).toHaveLength(1);
+		expect(items.filter((i) => i.toolName === 'rich_interaction')).toHaveLength(1);
+		expect(items.find((i) => i.toolName === 'giphy-gif-search')).toMatchObject({
+			kind: 'workflow',
+			workflowName: 'Giphy GIF Search',
+			workflowExecutionId: '234',
+		});
+	});
+
 	it('treats tool-call events without a kind field as kind:tool (defensive)', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
@@ -263,13 +300,6 @@ describe('flattenExecutionsToTimelineItems', () => {
 			]),
 		]);
 		expect(items[0]?.kind).toBe('tool');
-	});
-
-	it('maps a working-memory timeline event', () => {
-		const items = flattenExecutionsToTimelineItems([
-			withTimeline([{ type: 'working-memory', content: 'note', timestamp: 2000 }]),
-		]);
-		expect(items[0]).toMatchObject({ kind: 'working-memory', content: 'note', timestamp: 2000 });
 	});
 
 	it('maps a suspension timeline event', () => {

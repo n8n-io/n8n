@@ -19,20 +19,16 @@ export const toolsHaveParameters: BinaryCheck = {
 	name: 'tools_have_parameters',
 	description: 'Tool nodes have required parameters configured',
 	kind: 'deterministic',
+	dimension: 'ai_nodes',
 	run(workflow) {
-		const nodes = workflow.nodes ?? [];
-		if (nodes.length === 0) return { pass: true };
+		const toolNodes = (workflow.nodes ?? []).filter(
+			(n) => isToolNode(n.type) && !TOOLS_WITHOUT_PARAMETERS.has(n.type),
+		);
+		if (toolNodes.length === 0) return { pass: true, applicable: false };
 
-		const issues: string[] = [];
-
-		for (const node of nodes) {
-			if (!isToolNode(node.type)) continue;
-			if (TOOLS_WITHOUT_PARAMETERS.has(node.type)) continue;
-
-			if (!node.parameters || Object.keys(node.parameters).length === 0) {
-				issues.push(`"${node.name}" (${node.type}) has no parameters configured`);
-			}
-		}
+		const issues = toolNodes
+			.filter((n) => !n.parameters || Object.keys(n.parameters).length === 0)
+			.map((n) => `"${n.name}" (${n.type}) has no parameters configured`);
 
 		return {
 			pass: issues.length === 0,

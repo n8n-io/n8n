@@ -72,9 +72,7 @@ test.describe(
 			await setNode.hover();
 
 			// Click the execute node button on the toolbar
-			const executeNodeButton = n8n.instanceAi.getPreviewExecuteNodeButton('node execution test');
-			await expect(executeNodeButton).toBeVisible({ timeout: 5_000 });
-			await executeNodeButton.click();
+			await n8n.instanceAi.executePreviewNodeByName('node execution test');
 
 			// The node should show a success indicator after execution
 			await expect(

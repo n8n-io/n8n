@@ -20,6 +20,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
+import { scheduledRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { isValidCronExpression } from './cron-validation';
 
 @Service()
@@ -82,7 +83,7 @@ export class AgentScheduleService {
 	}
 
 	async activate(agent: Agent): Promise<AgentScheduleConfig> {
-		if (!agent.publishedVersion) {
+		if (!agent.activeVersionId) {
 			throw new ConflictError(
 				`Agent "${agent.id}" must be published before activating the schedule trigger`,
 			);
@@ -186,7 +187,7 @@ export class AgentScheduleService {
 			return;
 		}
 
-		if (!agent.publishedVersion) {
+		if (!agent.activeVersionId) {
 			this.logger.warn(
 				'[AgentScheduleService] Skipping schedule registration for unpublished agent',
 				{
@@ -275,7 +276,7 @@ export class AgentScheduleService {
 		try {
 			const agent = await this.agentRepository.findOne({
 				where: { id: agentId },
-				relations: { publishedVersion: true },
+				relations: { activeVersion: true },
 			});
 			if (!agent) {
 				this.logger.warn('[AgentScheduleService] Scheduled trigger fired for missing agent', {
@@ -288,7 +289,7 @@ export class AgentScheduleService {
 			projectId = agent.projectId;
 			const schedule = this.getScheduleIntegration(agent);
 			cronExpression = schedule?.cronExpression;
-			if (!agent.publishedVersion) {
+			if (!agent.activeVersionId) {
 				this.logger.warn('[AgentScheduleService] Scheduled trigger fired for unpublished agent', {
 					agentId,
 					projectId,
@@ -339,7 +340,10 @@ export class AgentScheduleService {
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message,
-				memory: { threadId, resourceId: executionUserId },
+				memory: {
+					threadId,
+					resourceId: scheduledRunMemoryResourceId(executionUserId),
+				},
 			})) {
 				chunkCount += 1;
 			}
@@ -369,7 +373,7 @@ export class AgentScheduleService {
 			return undefined;
 		}
 
-		const publishedById = agent.publishedVersion?.publishedById;
+		const publishedById = agent.activeVersion?.publishedById;
 		if (publishedById && userIds.includes(publishedById)) {
 			return publishedById;
 		}
