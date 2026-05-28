@@ -1,5 +1,5 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { QueryFailedError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
@@ -92,8 +92,25 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(status).json(response);
 }
 
-export const isUniqueConstraintError = (error: Error) =>
-	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+export const isUniqueConstraintError = (error: Error): boolean => {
+	if (!(error instanceof QueryFailedError)) return false;
+
+	const driverError = error.driverError as { code?: string; errno?: number } | undefined;
+	const code = driverError?.code;
+
+	// PostgreSQL: 23505 = unique_violation
+	if (code === '23505') return true;
+
+	// MySQL / MariaDB: ER_DUP_ENTRY (errno 1062)
+	if (code === 'ER_DUP_ENTRY' || driverError?.errno === 1062) return true;
+
+	// SQLite: extended code is unambiguous; the base code covers all constraint
+	// kinds (NOT NULL, FK, CHECK, UNIQUE), so disambiguate via the message.
+	if (code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
+	if (code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message)) return true;
+
+	return false;
+};
 
 export function reportError(error: Error, options?: ReportingOptions) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
