@@ -35,6 +35,7 @@ Configure these variables before starting n8n:
 export VIDEO_CLIP_REPO_DIR=/Users/stephenqiu/Desktop/Repository/n8n
 export VIDEO_CLIP_JOBS_DIR=/tmp/n8n-video-jobs
 export NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
+export N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 
 : "${DOUBAO_TTS_URL:?set the Doubao TTS endpoint URL}"
 : "${DOUBAO_TTS_API_KEY:?set the Doubao TTS API key}"
@@ -46,6 +47,8 @@ export DOUBAO_TTS_VOICE=zh_female_shuangkuaisisi_moon_bigtts
 Do not commit real TTS secrets. Keep endpoint URLs, API keys, app IDs, and any environment-specific credentials in local environment configuration only.
 
 `NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process` is required for this MVP because the imported workflow uses n8n Code nodes to write uploaded files, TTS responses, and `job.json` to the job directory, then runs the local video composer script.
+
+`N8N_BLOCK_ENV_ACCESS_IN_NODE=false` is required because this workflow reads the Doubao TTS settings from environment variables through n8n expressions.
 
 ## Import
 
@@ -99,6 +102,7 @@ If a Code node fails with a built-in module error, restart n8n with:
 
 ```bash
 export NODE_FUNCTION_ALLOW_BUILTIN=fs,child_process
+export N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
 If TTS fails, inspect:
