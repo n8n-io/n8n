@@ -10,7 +10,6 @@ import type {
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
 	FetchedPage,
-	WebSearchResponse,
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
@@ -35,6 +34,7 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
@@ -51,13 +51,7 @@ import {
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
-import {
-	fetchAndExtract,
-	maybeSummarize,
-	braveSearch,
-	searxngSearch,
-	LRUCache,
-} from './web-research';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
