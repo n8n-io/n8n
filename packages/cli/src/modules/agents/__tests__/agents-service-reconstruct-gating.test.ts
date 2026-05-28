@@ -82,6 +82,7 @@ function makeService(
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 }
 
