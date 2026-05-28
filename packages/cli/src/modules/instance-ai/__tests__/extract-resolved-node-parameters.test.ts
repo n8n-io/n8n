@@ -26,14 +26,39 @@ function createMockExecutionRepository(
 }
 
 /** Build a task data entry with the given output items. */
-function makeTaskData(outputItems: Array<Record<string, unknown>>): ITaskData {
+function makeTaskData(
+	outputItems: Array<Record<string, unknown>>,
+	opts?: {
+		source?: Array<{
+			previousNode: string;
+			previousNodeOutput?: number;
+			previousNodeRun?: number;
+		} | null>;
+	},
+): ITaskData {
+	return {
+		startTime: 1000,
+		executionTime: 500,
+		executionIndex: 0,
+		source: opts?.source ?? [],
+		data: {
+			main: [outputItems.map((json) => ({ json }))],
+		},
+	} as unknown as ITaskData;
+}
+
+/**
+ * Build a task data entry with multiple outputs (e.g., for a Switch/IF node that
+ * routes items to different branches). `outputs` is keyed by output index.
+ */
+function makeMultiOutputTaskData(outputs: Array<Array<Record<string, unknown>>>): ITaskData {
 	return {
 		startTime: 1000,
 		executionTime: 500,
 		executionIndex: 0,
 		source: [],
 		data: {
-			main: [outputItems.map((json) => ({ json }))],
+			main: outputs.map((items) => items.map((json) => ({ json }))),
 		},
 	} as unknown as ITaskData;
 }
@@ -404,7 +429,97 @@ describe('extractResolvedNodeParameters', () => {
 		expect((body.preview as string).length).toBeLessThanOrEqual(8_000);
 	});
 
-	it('uses pinData on the parent when present (wins over runData)', async () => {
+	it('uses currentNodeRun.source to pick the correct branch output (Switch / IF)', async () => {
+		// Switch routes items to two outputs; current node is connected to output 1.
+		// Without source-driven lookup, walking workflow parents would pick output 0
+		// (or whichever findConnectionOutputIndex returns first), giving the wrong items.
+		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+		const switchNode = makeNode('Switch', 'n8n-nodes-base.switch');
+		const branchB = makeNode('Branch B', 'n8n-nodes-base.set', { value: '={{ $json.label }}' });
+
+		const repo = createMockExecutionRepository(
+			makeResolutionExecution({
+				nodes: [trigger, switchNode, branchB],
+				connections: {
+					Trigger: { main: [[{ node: 'Switch', type: 'main', index: 0 }]] },
+					// Switch's output 1 → Branch B's input 0
+					Switch: { main: [[], [{ node: 'Branch B', type: 'main', index: 0 }]] },
+				},
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Switch: [makeMultiOutputTaskData([[{ label: 'went-to-A' }], [{ label: 'went-to-B' }]])],
+					'Branch B': [
+						makeTaskData([{ label: 'went-to-B' }], {
+							source: [{ previousNode: 'Switch', previousNodeOutput: 1, previousNodeRun: 0 }],
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractResolvedNodeParameters(
+			repo as unknown as ExecutionRepository,
+			nodeTypes,
+			'exec-1',
+			'Branch B',
+		);
+
+		// Resolves against the Switch's output 1, not output 0.
+		expect(parseResolved(result.resolved)).toEqual({ value: 'went-to-B' });
+		expect(result.failedExpressions).toEqual([]);
+		expect(result.emptyResolutions).toEqual([]);
+	});
+
+	it('uses currentNodeRun.source to pick the correct parent run (loops / SplitInBatches)', async () => {
+		// A loop body runs once per iteration. The third body-node run consumed items
+		// from the parent's third run. With source-driven lookup, parent run 2 is
+		// fetched correctly. Walking parents by current's runIndex would coincidentally
+		// match here, but only because indices align — this test pins the contract.
+		const loopHead = makeNode('Loop', 'n8n-nodes-base.splitInBatches');
+		const body = makeNode('Body', 'n8n-nodes-base.set', { value: '={{ $json.iter }}' });
+
+		const repo = createMockExecutionRepository(
+			makeResolutionExecution({
+				nodes: [loopHead, body],
+				connections: connect('Loop', 'Body'),
+				runData: {
+					Loop: [
+						makeTaskData([{ iter: 'A' }]),
+						makeTaskData([{ iter: 'B' }]),
+						makeTaskData([{ iter: 'C' }]),
+					],
+					Body: [
+						makeTaskData([{}], {
+							source: [{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 0 }],
+						}),
+						makeTaskData([{}], {
+							source: [{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 1 }],
+						}),
+						makeTaskData([{}], {
+							source: [{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 2 }],
+						}),
+					],
+				},
+			}),
+		);
+
+		// Inspect the second body run (runIndex=1) — its source points at Loop run 1 ("B").
+		const result = await extractResolvedNodeParameters(
+			repo as unknown as ExecutionRepository,
+			nodeTypes,
+			'exec-1',
+			'Body',
+			{ runIndex: 1 },
+		);
+
+		expect(parseResolved(result.resolved)).toEqual({ value: 'B' });
+	});
+
+	it('resolves against recorded runData even when the snapshot still has pinData (historical reality wins)', async () => {
+		// Pinned-node outputs are captured into runData at execution time, so runData
+		// is the authoritative record of what actually flowed in the past execution.
+		// We must not silently substitute in whatever pinData happens to be on the
+		// saved workflow snapshot — that would shadow the recorded reality.
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.source }}' });
 		const repo = createMockExecutionRepository(
@@ -427,6 +542,6 @@ describe('extractResolvedNodeParameters', () => {
 			'Set',
 		);
 
-		expect(parseResolved(result.resolved)).toEqual({ value: 'from-pinData' });
+		expect(parseResolved(result.resolved)).toEqual({ value: 'from-runData' });
 	});
 });

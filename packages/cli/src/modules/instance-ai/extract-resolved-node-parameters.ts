@@ -17,8 +17,8 @@ import {
 	type IExecuteData,
 	type INode,
 	type INodeExecutionData,
-	type IPinData,
 	type IRunData,
+	type ISourceData,
 	type IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	createEmptyRunExecutionData,
@@ -87,51 +87,70 @@ function findConnectionOutputIndex(
  * Reconstruct the `executeData` + `connectionInputData` that the expression engine
  * needs to resolve `$json` / `$input` / `$node[...]` references for a past run.
  *
- * Mirrors `executeDataImpl` from the editor — see
- * `packages/frontend/editor-ui/src/app/composables/useWorkflowHelpers.ts`. Walks the
- * node's parents in order, taking the first one that has data (pinned data wins
- * over runData), and pulls the items that flowed into this node's input.
+ * Prefers `runData[currentNode][runIndex].source` — the runtime persists this
+ * for every executed run, so it's the authoritative mapping of which parent,
+ * which output index, and which parent run produced the items this specific
+ * run consumed. That handles Switch/IF branch routing, loops (SplitInBatches),
+ * and any parent/current run-index mismatch correctly.
+ *
+ * Falls back to walking workflow-graph parents only when the current node has
+ * no recorded run (e.g., it never executed because of an upstream failure).
+ *
+ * This is a historical-replay lookup, so we resolve **only against the recorded
+ * runData** — we never substitute in workflow-level `pinData`. Pinned nodes
+ * still get a synthetic `runData` entry at execution time (that's how their
+ * downstream consumers see the pinned items), so trusting runData is sufficient
+ * and avoids shadowing the recorded reality with whatever `pinData` happens to
+ * be on the snapshot now.
  */
 function reconstructExecuteData(
 	workflow: Workflow,
 	currentNodeName: string,
 	runIndex: number,
-	pinData: IPinData | undefined,
 	runData: IRunData,
 ): { executeData: IExecuteData; connectionInputData: INodeExecutionData[] } {
 	const inputName = 'main';
 	const currentNode = workflow.getNode(currentNodeName);
-	const parentNodes = workflow.getParentNodes(currentNodeName, inputName, 1);
+	const currentNodeShim: INode = currentNode ?? ({ name: currentNodeName } as INode);
 
-	const fallback: IExecuteData = {
-		node: currentNode ?? ({ name: currentNodeName } as INode),
-		data: {},
-		source: null,
-	};
-
-	for (const parentNodeName of parentNodes) {
-		const parentPinData = pinData?.[parentNodeName];
-		if (parentPinData) {
+	// 1. Authoritative path: use the source the runtime recorded for this run.
+	const currentNodeRun = runData[currentNodeName]?.[runIndex];
+	const firstSource = currentNodeRun?.source?.find(
+		(entry): entry is ISourceData => entry !== null && entry !== undefined,
+	);
+	if (firstSource) {
+		const previousNode = firstSource.previousNode;
+		const previousNodeOutput = firstSource.previousNodeOutput ?? 0;
+		const previousNodeRun = firstSource.previousNodeRun ?? 0;
+		const parentRun = runData[previousNode]?.[previousNodeRun];
+		if (parentRun?.data?.[inputName]) {
 			return {
 				executeData: {
-					node: currentNode ?? ({ name: currentNodeName } as INode),
-					data: { main: [parentPinData] },
-					source: { main: [{ previousNode: parentNodeName }] },
+					node: currentNodeShim,
+					data: parentRun.data,
+					source: { [inputName]: currentNodeRun.source },
 				},
-				connectionInputData: parentPinData,
+				connectionInputData: parentRun.data[inputName][previousNodeOutput] ?? [],
 			};
 		}
+	}
 
+	// 2. Fallback: current node never ran (or its source is missing). Walk graph
+	// parents and use whichever has runData first. Best-effort — branches and
+	// loops can't be reconstructed accurately without the runtime's source trace.
+	const parentNodes = workflow.getParentNodes(currentNodeName, inputName, 1);
+	for (const parentNodeName of parentNodes) {
 		const parentRuns = runData[parentNodeName];
 		if (!parentRuns || parentRuns.length <= runIndex) continue;
 		const parentRun = parentRuns[runIndex];
 		if (!parentRun?.data?.[inputName]) continue;
 
 		const outputIndex = findConnectionOutputIndex(workflow, parentNodeName, currentNodeName);
-		const currentNodeRun = runData[currentNodeName]?.[runIndex];
-		const source: IExecuteData['source'] = currentNodeRun?.source
-			? { [inputName]: currentNodeRun.source }
-			: {
+		return {
+			executeData: {
+				node: currentNodeShim,
+				data: parentRun.data,
+				source: {
 					[inputName]: [
 						{
 							previousNode: parentNodeName,
@@ -139,19 +158,16 @@ function reconstructExecuteData(
 							previousNodeRun: runIndex,
 						},
 					],
-				};
-
-		return {
-			executeData: {
-				node: currentNode ?? ({ name: currentNodeName } as INode),
-				data: parentRun.data,
-				source,
+				},
 			},
 			connectionInputData: parentRun.data[inputName]?.[outputIndex] ?? [],
 		};
 	}
 
-	return { executeData: fallback, connectionInputData: [] };
+	return {
+		executeData: { node: currentNodeShim, data: {}, source: null },
+		connectionInputData: [],
+	};
 }
 
 /**
@@ -206,7 +222,6 @@ export async function extractResolvedNodeParameters(
 		workflow,
 		nodeName,
 		runIndex,
-		workflowData.pinData,
 		runData,
 	);
 
