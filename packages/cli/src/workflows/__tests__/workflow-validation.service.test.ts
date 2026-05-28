@@ -1,7 +1,14 @@
 import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
-import type { INode, IConnections, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INode,
+	IConnections,
+	INodeType,
+	INodeTypeDescription,
+	ICredentialType,
+} from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -25,6 +32,7 @@ describe('WorkflowValidationService', () => {
 			mockWorkflowRepository,
 			mockCredentialsRepository,
 			mockDynamicCredentialsProxy,
+			mock<CredentialTypes>(),
 		);
 	});
 
@@ -905,6 +913,120 @@ describe('WorkflowValidationService', () => {
 
 			expect(result.isValid).toBe(true);
 			expect(mockCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validateCredentialNodeRestrictions', () => {
+		const buildService = (credentialTypes: CredentialTypes) =>
+			new WorkflowValidationService(
+				mock<WorkflowRepository>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				credentialTypes,
+			);
+
+		const restrictedType = {
+			name: 'restrictedApi',
+			restrictToSupportedNodes: true,
+			supportedNodes: ['n8n-nodes-base.restrictedConsumer'],
+		} as ICredentialType;
+
+		it('rejects a workflow binding a restricted credential to a non-supported node', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith('restrictedApi').mockReturnValue(restrictedType);
+
+			const httpNode = mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+			expect(result.error).toMatch(/HTTP Request/);
+		});
+
+		it('accepts a workflow binding a restricted credential to a supported node', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith('restrictedApi').mockReturnValue(restrictedType);
+
+			const consumerNode = mock<INode>({
+				name: 'Consumer',
+				type: 'n8n-nodes-base.restrictedConsumer',
+				disabled: false,
+			});
+			consumerNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([consumerNode]).isValid,
+			).toBe(true);
+		});
+
+		it('ignores credentials that do not opt into restriction', () => {
+			const unrestricted = {
+				name: 'slackApi',
+				supportedNodes: ['n8n-nodes-base.slack'],
+			} as ICredentialType;
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith('slackApi').mockReturnValue(unrestricted);
+
+			const httpNode = mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+			httpNode.credentials = { slackApi: { id: 'cred-2', name: 'Slack creds' } };
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('skips disabled nodes', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith('restrictedApi').mockReturnValue(restrictedType);
+
+			const httpNode = mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: true,
+			});
+			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('aggregates violations across multiple nodes', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith('restrictedApi').mockReturnValue(restrictedType);
+
+			const httpNode = mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			const slackNode = mock<INode>({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				disabled: false,
+			});
+			slackNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([
+				httpNode,
+				slackNode,
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/HTTP Request/);
+			expect(result.error).toMatch(/Slack/);
 		});
 	});
 });

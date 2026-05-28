@@ -13,9 +13,17 @@ import {
 	toExecutionContextEstablishmentHookParameter,
 	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
-import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IConnections,
+	INodeType,
+	IWorkflowSettings,
+	ICredentialType,
+} from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 
@@ -44,6 +52,7 @@ export class WorkflowValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -161,6 +170,44 @@ export class WorkflowValidationService {
 		}
 
 		return issues;
+	}
+
+	/**
+	 * Rejects workflows that bind a credential whose type sets
+	 * `restrictToSupportedNodes: true` to a node not listed in its `supportedNodes`.
+	 * Runs on every save — illegal bindings should never be persisted.
+	 */
+	validateCredentialNodeRestrictions(nodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+
+		for (const node of nodes) {
+			if (node.disabled || !node.credentials) continue;
+
+			for (const credentialType of Object.keys(node.credentials)) {
+				let typeDef: ICredentialType;
+				try {
+					typeDef = this.credentialTypes.getByName(credentialType);
+				} catch {
+					continue; // unknown type — let other validators surface it
+				}
+
+				if (!typeDef.restrictToSupportedNodes) continue;
+				if (typeDef.supportedNodes?.includes(node.type)) continue;
+
+				violations.push(
+					`Node "${node.name}" (${node.type}) cannot use credential type "${credentialType}" — it is restricted to: ${
+						typeDef.supportedNodes?.join(', ') ?? '(no nodes)'
+					}.`,
+				);
+			}
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot save workflow: ${violations.join(' ')}`,
+		};
 	}
 
 	validateForActivation(
