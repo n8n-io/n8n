@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
 	assEscape,
+	buildFfmpegArgs,
 	buildTimeline,
+	createAssSubtitle,
+	normalizeJob,
 	splitScriptIntoSubtitleChunks,
 	toAssTime,
 } from './compose-video.mjs';
@@ -66,4 +72,86 @@ test('buildTimeline compresses body stage to zero when audio is short', () => {
 		screenshot: { start: 3, end: 7, duration: 4 },
 		body: { start: 7, end: 7, duration: 0 },
 	});
+});
+
+test('normalizeJob applies defaults and preserves explicit paths', () => {
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-job-'));
+	const inputs = {
+		coverImage: path.join(tmp, 'cover.png'),
+		screenshotImage: path.join(tmp, 'screenshot.png'),
+		backgroundVideo: path.join(tmp, 'background.mp4'),
+		scriptText: path.join(tmp, 'script.txt'),
+		ttsAudio: path.join(tmp, 'audio.mp3'),
+	};
+	const output = {
+		video: path.join(tmp, 'final.mp4'),
+		subtitles: path.join(tmp, 'subtitles.ass'),
+		ffmpegLog: path.join(tmp, 'ffmpeg.log'),
+	};
+
+	const job = normalizeJob({
+		jobId: 'unit-test',
+		inputs,
+		output,
+	});
+
+	assert.equal(job.video.width, 1920);
+	assert.equal(job.video.height, 1080);
+	assert.equal(job.video.fps, 30);
+	assert.equal(job.video.coverDuration, 3);
+	assert.equal(job.video.screenshotDuration, 4);
+	assert.equal(job.layout.coverTop.x, 80);
+	assert.equal(job.layout.screenshotTop.x, 1280);
+	assert.deepEqual(job.inputs, inputs);
+	assert.deepEqual(job.output, output);
+});
+
+test('createAssSubtitle writes readable subtitle events', () => {
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-subtitles-'));
+	const outputPath = path.join(tmp, 'subtitles.ass');
+
+	createAssSubtitle({
+		scriptText: '第一句。第二句。',
+		outputPath,
+		totalDuration: 8,
+		width: 1920,
+		height: 1080,
+		subtitleBottomMargin: 90,
+	});
+
+	const content = fs.readFileSync(outputPath, 'utf8');
+	assert.match(content, /\[Script Info\]/);
+	assert.match(content, /PlayResX: 1920/);
+	assert.match(content, /Dialogue: 0,0:00:00.00,0:00:04.00/);
+	assert.match(content, /第一句。/);
+	assert.match(content, /第二句。/);
+});
+
+test('buildFfmpegArgs includes expected media inputs and output settings', () => {
+	const job = normalizeJob({
+		jobId: 'unit-test',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 12 });
+	assert.deepEqual(args.slice(0, 4), ['-y', '-stream_loop', '-1', '-i']);
+	assert.equal(args.includes('/tmp/job/inputs/background.mp4'), true);
+	assert.equal(args.includes('/tmp/job/inputs/cover.png'), true);
+	assert.equal(args.includes('/tmp/job/inputs/screenshot.png'), true);
+	assert.equal(args.includes('/tmp/job/tts/audio.mp3'), true);
+	assert.equal(args.includes('/tmp/job/render/final.mp4'), true);
+	assert.equal(args.includes('-filter_complex'), true);
+	assert.equal(args.includes('-c:v'), true);
+	assert.equal(args.includes('libx264'), true);
 });
