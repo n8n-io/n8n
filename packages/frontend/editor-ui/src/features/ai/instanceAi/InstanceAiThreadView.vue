@@ -29,6 +29,7 @@ import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composable
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
+import { scrubSecretsInText } from './scrubSecrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
@@ -563,7 +564,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			],
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
-			feedback: message,
+			feedback: scrubSecretsInText(message),
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread

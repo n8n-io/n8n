@@ -17,6 +17,16 @@ const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
 }));
 
+const planEditSubmitState = vi.hoisted(() => ({
+	message: 'Make the plan simpler',
+}));
+
+const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackSpy }),
+}));
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -68,7 +78,7 @@ const InstanceAiInputStub = defineComponent({
 						onClick: () =>
 							emit(
 								'submit',
-								props.isPlanEditMode ? 'Make the plan simpler' : 'Normal message',
+								props.isPlanEditMode ? planEditSubmitState.message : 'Normal message',
 								undefined,
 							),
 					},
@@ -254,6 +264,8 @@ describe('InstanceAiThreadView', () => {
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 		inputFocusSpy.mockClear();
+		telemetryTrackSpy.mockClear();
+		planEditSubmitState.message = 'Make the plan simpler';
 	});
 
 	afterEach(() => {
@@ -509,6 +521,29 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(inputFocusSpy).toHaveBeenCalled();
 			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-edit');
+		});
+	});
+
+	it('scrubs credential patterns from plan-edit feedback before sending to telemetry, but keeps the raw text in the backend confirmation', async () => {
+		thread.messages = [makePlanReviewMessage()];
+		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(telemetryTrackSpy).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+		);
+		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'use sk-proj-abcdef1234567890XYZ to call the API',
 		});
 	});
 
