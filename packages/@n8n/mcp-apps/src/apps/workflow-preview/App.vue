@@ -10,6 +10,7 @@ import { N8nButton, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import { computed, onMounted, ref, shallowRef, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { isAllowedWorkflowUrl } from './url';
 import { setLocaleFromHost, type MessageSchema } from '../../i18n';
 
 type WorkflowResult = {
@@ -57,6 +58,11 @@ async function handleOpenWorkflow() {
 	const url = workflowUrl.value;
 	if (!app || !url) return;
 
+	if (!isAllowedWorkflowUrl(url)) {
+		console.warn('[n8n MCP App] Refusing to open unexpected workflow URL', { url });
+		return;
+	}
+
 	try {
 		const result = await app.openLink({ url });
 		if (result.isError) {
@@ -77,8 +83,13 @@ onMounted(async () => {
 
 	app.ontoolresult = (params) => {
 		const result = readWorkflowResult(params.structuredContent);
-		if (typeof result?.url === 'string') {
-			workflowUrl.value = result.url;
+		const candidate = result?.url;
+		if (isAllowedWorkflowUrl(candidate)) {
+			workflowUrl.value = candidate;
+		} else if (candidate !== undefined) {
+			console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
+				url: candidate,
+			});
 		}
 	};
 
