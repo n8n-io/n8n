@@ -7,8 +7,10 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
+
 import { NodeCatalogService } from '@/node-catalog';
+import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
 
 type NodeRequest =
 	| string
@@ -38,9 +40,18 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
  */
-export const isAgentToolNodeType = (nodeId: string): boolean =>
-	isExecutableNodeType(nodeId) &&
-	(isToolType(nodeId, { includeHitl: false }) || isAgentProviderNode(nodeId));
+export const isAgentToolNodeType = (nodeId: string): boolean => {
+	if (!isExecutableNodeType(nodeId)) {
+		return false;
+	}
+	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
+	const isAllowedProviderNode = isAgentProviderNode(nodeId);
+	return isAllowedTool || isAllowedProviderNode;
+};
+
+const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+const isMcpToolNodeType = (nodeId: string): boolean =>
+	nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_NAME);
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
