@@ -84,6 +84,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	// Used to decide whether to fetch secrets via legacy/global methods rather than project-scoped APIs.
 	const isLegacyMode = computed(
 		() =>
+			isEnterpriseExternalSecretsEnabled.value &&
 			!externalSecretsModuleSettings.value?.roleBasedAccess &&
 			!externalSecretsModuleSettings.value?.forProjects &&
 			!externalSecretsModuleSettings.value?.multipleConnections,
@@ -153,9 +154,13 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchGlobalSecrets(projectId?: string) {
+		// CE guard: moduleSettings['external-secrets'] is absent on Community Edition.
+		// All paths below this point assume EE with the module loaded.
+		if (!externalSecretsModuleSettings.value) return;
+
 		const moduleConfig = externalSecretsModuleSettings.value;
 
-		if (moduleConfig?.roleBasedAccess) {
+		if (moduleConfig.roleBasedAccess) {
 			// In principle when roleBasedAccess is enabled, projectId is always provided
 			if (!projectId) {
 				return;
@@ -165,7 +170,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 			return;
 		}
 
-		if (moduleConfig?.forProjects || moduleConfig?.multipleConnections) {
+		if (moduleConfig.forProjects || moduleConfig.multipleConnections) {
 			await fetchMultiConnectionsGlobalSecrets();
 			return;
 		}
@@ -174,7 +179,9 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchProjectSecrets(projectId: string) {
-		if (!externalSecretsModuleSettings.value?.forProjects) {
+		if (!externalSecretsModuleSettings.value) return;
+
+		if (!externalSecretsModuleSettings.value.forProjects) {
 			// project-scoped secrets are still under development. Only available behind feature flag
 			return;
 		}
@@ -206,6 +213,8 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchSecretsForProject(projectId: string) {
+		if (!externalSecretsModuleSettings.value) return;
+
 		await Promise.all([fetchGlobalSecrets(projectId), fetchProjectSecrets(projectId)]);
 	}
 

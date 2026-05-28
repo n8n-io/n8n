@@ -454,89 +454,99 @@ watch(
 );
 
 onMounted(async () => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	requiredCredentials.value =
-		isCredentialModalState(modalState) && modalState.showAuthSelector === true;
+	try {
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		requiredCredentials.value =
+			isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
-	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
+		const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
-	const projectId =
-		overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
-	if (projectId) {
-		try {
-			await externalSecretsStore.fetchSecretsForProject(projectId);
-		} catch {
-			// Secrets fetch failure should not block the credential modal
-		}
-	}
-
-	if (props.mode === 'new' && credentialTypeName.value) {
-		const modalSuggestedName = isCredentialModalState(modalState)
-			? modalState.suggestedName
-			: undefined;
-		credentialName.value = modalSuggestedName
-			? modalSuggestedName
-			: await credentialsStore.getNewCredentialName({
-					credentialTypeName: defaultCredentialTypeName.value,
-				});
-
-		credentialData.value = {
-			...credentialData.value,
-			...(homeProject.value ? { homeProject: homeProject.value } : {}),
-		};
-	} else {
-		await loadCurrentCredential();
-	}
-
-	setCredentialPropertyDefaults();
-
-	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret).
-	// Use __overwrittenProperties directly instead of managedOAuthAvailable so that skip-list
-	// types (where managedOAuthAvailable is false) still auto-detect custom credentials.
-	if (
-		credentialType.value?.__overwrittenProperties?.includes('clientId') &&
-		credentialData.value.clientId &&
-		credentialData.value.clientSecret
-	) {
-		useCustomOAuth.value = true;
-	}
-
-	// Default to quick connect mode for new credentials when available and not forced to manual
-	if (
-		props.mode === 'new' &&
-		!forceManual &&
-		credentialTypeName.value &&
-		ndvStore.value.activeNode
-	) {
-		const qcOption = getQuickConnectOption(
-			credentialTypeName.value,
-			ndvStore.value.activeNode.type,
-		);
-		if (qcOption) {
-			isQuickConnectMode.value = true;
-		}
-	}
-
-	await externalHooks.run('credentialsEdit.credentialModalOpened', {
-		credentialType: credentialTypeName.value,
-		isEditingCredential: props.mode === 'edit',
-		activeNode: ndvStore.value.activeNode,
-	});
-
-	setTimeout(async () => {
-		if (credentialId.value) {
-			if (!requiredPropertiesFilled.value && credentialPermissions.value.update) {
-				// sharees can't see properties, so this check would always fail for them
-				// if the credential contains required fields.
-				showValidationWarning.value = true;
-			} else {
-				await retestCredential();
+		const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+		const projectId =
+			overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+		if (projectId) {
+			try {
+				await externalSecretsStore.fetchSecretsForProject(projectId);
+			} catch {
+				// Secrets fetch failure should not block the credential modal
 			}
 		}
-	}, 0);
 
-	loading.value = false;
+		if (props.mode === 'new' && credentialTypeName.value) {
+			const modalSuggestedName = isCredentialModalState(modalState)
+				? modalState.suggestedName
+				: undefined;
+			credentialName.value = modalSuggestedName
+				? modalSuggestedName
+				: await credentialsStore.getNewCredentialName({
+						credentialTypeName: defaultCredentialTypeName.value,
+					});
+
+			credentialData.value = {
+				...credentialData.value,
+				...(homeProject.value ? { homeProject: homeProject.value } : {}),
+			};
+		} else {
+			// loadCurrentCredential handles its own recovery by showing an error toast and closing the modal.
+			// It should be allowed to propagate to avoid subsequent initialization steps running on empty data.
+			await loadCurrentCredential();
+		}
+
+		setCredentialPropertyDefaults();
+
+		// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret).
+		// Use __overwrittenProperties directly instead of managedOAuthAvailable so that skip-list
+		// types (where managedOAuthAvailable is false) still auto-detect custom credentials.
+		if (
+			credentialType.value?.__overwrittenProperties?.includes('clientId') &&
+			credentialData.value.clientId &&
+			credentialData.value.clientSecret
+		) {
+			useCustomOAuth.value = true;
+		}
+
+		// Default to quick connect mode for new credentials when available and not forced to manual
+		if (
+			props.mode === 'new' &&
+			!forceManual &&
+			credentialTypeName.value &&
+			ndvStore.value.activeNode
+		) {
+			const qcOption = getQuickConnectOption(
+				credentialTypeName.value,
+				ndvStore.value.activeNode.type,
+			);
+			if (qcOption) {
+				isQuickConnectMode.value = true;
+			}
+		}
+
+		try {
+			await externalHooks.run('credentialsEdit.credentialModalOpened', {
+				credentialType: credentialTypeName.value,
+				isEditingCredential: props.mode === 'edit',
+				activeNode: ndvStore.value.activeNode,
+			});
+		} catch (error) {
+			console.error('[CredentialEdit] External hooks execution failed', error);
+		}
+
+		setTimeout(async () => {
+			if (credentialId.value) {
+				if (!requiredPropertiesFilled.value && credentialPermissions.value.update) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
+					showValidationWarning.value = true;
+				} else {
+					await retestCredential();
+				}
+			}
+		}, 0);
+	} catch (error) {
+		console.error('[CredentialEdit] Initialization error', error);
+	} finally {
+		loading.value = false;
+	}
 });
 
 async function beforeClose() {
