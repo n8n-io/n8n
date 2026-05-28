@@ -220,7 +220,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 							data-testid="linear-connect-button"
 							@click="emit('connect')"
 						>
-							{{ i18n.baseText('agents.channels.linear.setup.createCredential.installButton') }}
+							{{ i18n.baseText('generic.connect') }}
 						</N8nButton>
 					</div>
 				</div>

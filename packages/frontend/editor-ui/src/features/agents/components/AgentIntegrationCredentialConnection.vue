@@ -90,7 +90,7 @@ const connectDisabled = computed(
 			<N8nTooltip v-if="canEdit" :content="i18n.baseText('generic.edit')" placement="top">
 				<N8nIconButton
 					variant="ghost"
-					size="small"
+					size="large"
 					icon-size="medium"
 					icon="pen"
 					:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"

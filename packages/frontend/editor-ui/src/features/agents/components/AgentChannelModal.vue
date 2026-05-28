@@ -439,138 +439,133 @@ watch(
 		</N8nDialogHeader>
 
 		<div :class="$style.container">
-			<div v-if="currentView === 'list'" key="list" :class="$style.listView">
-				<ul :class="$style.channelList">
-					<AgentChannelListItem
-						v-for="integration in catalog"
-						:key="integration.type"
-						:integration="integration"
-						:connected="isConnected(integration.type)"
-						@setup="goToSetup"
-						@edit="goToEdit"
-						@disconnect="handleDisconnected"
+			<Transition name="channel-view-fade" mode="out-in">
+				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
+					<ul :class="$style.channelList">
+						<AgentChannelListItem
+							v-for="integration in catalog"
+							:key="integration.type"
+							:integration="integration"
+							:connected="isConnected(integration.type)"
+							@setup="goToSetup"
+							@edit="goToEdit"
+							@disconnect="handleDisconnected"
+						/>
+					</ul>
+				</div>
+
+				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
+					<AgentChannelSlackSetup
+						v-if="selectedChannelType === 'slack'"
+						:connected="isConnected('slack')"
+						:setup-slack-app="setupSlackApp"
 					/>
-				</ul>
-			</div>
+					<AgentChannelLinearSetup
+						v-else-if="currentIntegration?.type === 'linear'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="setup"
+						:integration="currentIntegration"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
+					/>
+					<AgentChannelTelegramSetup
+						v-else-if="currentIntegration?.type === 'telegram'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="setup"
+						:integration="currentIntegration"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
+					/>
+				</div>
 
-			<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
-				<AgentChannelSlackSetup
-					v-if="selectedChannelType === 'slack'"
-					:connected="isConnected('slack')"
-					:setup-slack-app="setupSlackApp"
-				/>
-				<AgentChannelLinearSetup
-					v-else-if="currentIntegration?.type === 'linear'"
-					ref="channelSetupRef"
-					v-model="selectedCredentials[currentIntegration.type]"
-					mode="setup"
-					:integration="currentIntegration"
-					:credentials="credentialsByType[currentIntegration.type] ?? []"
-					:credential-permissions="credentialPermissions"
-					:credentials-loading="credentialsLoading"
-					:loading="isLoading(currentIntegration.type)"
-					:connected="isConnected(currentIntegration.type)"
-					:connected-description="integrationConnectedText(currentIntegration.type)"
-					:error-message="
-						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-					"
-					:error-is-conflict="errorIsConflict[currentIntegration.type]"
-					:saved-settings="integrationSettings[currentIntegration.type]"
-					:agent-name="agentId"
-					:project-id="projectId"
-					:agent-id="agentId"
-					@create="createCredential"
-					@edit="editCredential"
-					@connect="saveChannelConfig"
-				/>
-				<AgentChannelTelegramSetup
-					v-else-if="currentIntegration?.type === 'telegram'"
-					ref="channelSetupRef"
-					v-model="selectedCredentials[currentIntegration.type]"
-					mode="setup"
-					:integration="currentIntegration"
-					:credentials="credentialsByType[currentIntegration.type] ?? []"
-					:credential-permissions="credentialPermissions"
-					:credentials-loading="credentialsLoading"
-					:loading="isLoading(currentIntegration.type)"
-					:connected="isConnected(currentIntegration.type)"
-					:connected-description="integrationConnectedText(currentIntegration.type)"
-					:error-message="
-						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-					"
-					:error-is-conflict="errorIsConflict[currentIntegration.type]"
-					:saved-settings="integrationSettings[currentIntegration.type]"
-					:agent-name="agentId"
-					:project-id="projectId"
-					:agent-id="agentId"
-					@create="createCredential"
-					@edit="editCredential"
-					@connect="saveChannelConfig"
-				/>
-				<N8nText v-else size="small" color="text-light">
-					{{
-						i18n.baseText('agents.channels.modal.setupPlaceholder', {
-							interpolate: { channel: selectedChannelType ?? '' },
-						})
-					}}
-				</N8nText>
-			</div>
-
-			<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
-				<AgentChannelLinearSetup
-					v-if="currentIntegration?.type === 'linear'"
-					ref="channelSetupRef"
-					v-model="selectedCredentials[currentIntegration.type]"
-					mode="edit"
-					:integration="currentIntegration"
-					:credentials="credentialsByType[currentIntegration.type] ?? []"
-					:credential-permissions="credentialPermissions"
-					:credentials-loading="credentialsLoading"
-					:loading="isLoading(currentIntegration.type)"
-					:connected="isConnected(currentIntegration.type)"
-					:connected-description="integrationConnectedText(currentIntegration.type)"
-					:error-message="
-						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-					"
-					:error-is-conflict="errorIsConflict[currentIntegration.type]"
-					:saved-settings="integrationSettings[currentIntegration.type]"
-					:agent-name="agentId"
-					:project-id="projectId"
-					:agent-id="agentId"
-					@create="createCredential"
-					@edit="editCredential"
-				/>
-				<AgentChannelTelegramSetup
-					v-else-if="currentIntegration?.type === 'telegram'"
-					ref="channelSetupRef"
-					v-model="selectedCredentials[currentIntegration.type]"
-					mode="edit"
-					:integration="currentIntegration"
-					:credentials="credentialsByType[currentIntegration.type] ?? []"
-					:credential-permissions="credentialPermissions"
-					:credentials-loading="credentialsLoading"
-					:loading="isLoading(currentIntegration.type)"
-					:connected="isConnected(currentIntegration.type)"
-					:connected-description="integrationConnectedText(currentIntegration.type)"
-					:error-message="
-						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-					"
-					:error-is-conflict="errorIsConflict[currentIntegration.type]"
-					:saved-settings="integrationSettings[currentIntegration.type]"
-					:agent-name="agentId"
-					:project-id="projectId"
-					:agent-id="agentId"
-					@create="createCredential"
-					@edit="editCredential"
-				/>
-				<N8nText v-else size="small" color="text-light">
-					{{
-						i18n.baseText('agents.channels.modal.editPlaceholder', {
-							interpolate: { channel: selectedChannelType ?? '' },
-						})
-					}}
-				</N8nText>
-			</div>
+				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
+					<AgentChannelLinearSetup
+						v-if="currentIntegration?.type === 'linear'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="edit"
+						:integration="currentIntegration"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+					/>
+					<AgentChannelTelegramSetup
+						v-else-if="currentIntegration?.type === 'telegram'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="edit"
+						:integration="currentIntegration"
+						:credentials="credentialsByType[currentIntegration.type] ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConnected(currentIntegration.type)"
+						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:saved-settings="integrationSettings[currentIntegration.type]"
+						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+					/>
+					<N8nText v-else size="small" color="text-light">
+						{{
+							i18n.baseText('agents.channels.modal.editPlaceholder', {
+								interpolate: { channel: selectedChannelType ?? '' },
+							})
+						}}
+					</N8nText>
+				</div>
+			</Transition>
 		</div>
 
 		<Transition name="channel-footer-fade">
@@ -675,7 +670,7 @@ watch(
 }
 
 :global(.channel-view-fade-leave-active) {
-	--animation--fade-in--duration: var(--duration--snappy);
+	--animation--fade-out--duration: var(--duration--snappy);
 
 	@include motion.fade-out;
 }
