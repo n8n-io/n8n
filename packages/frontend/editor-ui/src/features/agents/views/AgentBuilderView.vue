@@ -312,7 +312,7 @@ async function onDeleteAgentFile(file: AgentFileDto) {
 		}
 	}
 }
-  
+
 async function refreshAgentAfterIntegrationChange(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
