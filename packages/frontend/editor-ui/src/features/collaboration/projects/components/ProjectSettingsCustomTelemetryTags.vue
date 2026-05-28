@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:modelValue': [Tag[]];
+	validate: [boolean];
 }>();
 
 const i18n = useI18n();
@@ -41,6 +42,8 @@ const tagErrors = computed(() => {
 
 const hasErrors = computed(() => tagErrors.value.some((e) => e !== null));
 
+watch(hasErrors, (val) => emit('validate', !val), { immediate: true });
+
 function resetTouched() {
 	tagTouched.value = props.modelValue.map(() => false);
 }
@@ -69,7 +72,7 @@ function onTagInput(index: number, field: 'key' | 'value', value: string) {
 	);
 }
 
-defineExpose({ hasErrors, resetTouched });
+defineExpose({ resetTouched });
 </script>
 
 <template>
@@ -80,7 +83,6 @@ defineExpose({ hasErrors, resetTouched });
 				:class="$style.docsLink"
 				href="https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/"
 				target="_blank"
-				rel="noopener noreferrer"
 				>{{ i18n.baseText('projects.settings.telemetryTags.docsLink')
 				}}<N8nIcon icon="arrow-up-right" size="xsmall"
 			/></a>

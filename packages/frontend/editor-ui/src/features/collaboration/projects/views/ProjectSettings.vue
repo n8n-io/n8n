@@ -593,7 +593,7 @@ onMounted(async () => {
 						>{{ i18n.baseText('projects.settings.button.cancel') }}</N8nButton
 					>
 					<N8nButton
-						:disabled="!isValid || !isDirty || telemetryTagsRef?.hasErrors"
+						:disabled="!isValid || !isDirty"
 						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
@@ -729,9 +729,10 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
 					</h3>
 					<ProjectSettingsCustomTelemetryTags
-						v-model="formData.customTelemetryTags"
 						ref="telemetryTagsRef"
+						v-model="formData.customTelemetryTags"
 						@update:model-value="onTextInput"
+						@validate="isValid = $event"
 					/>
 				</fieldset>
 				<fieldset>
