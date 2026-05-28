@@ -65,7 +65,7 @@ DOUBAO_TTS_CLUSTER=volcano_tts
 DOUBAO_TTS_RESOURCE_ID=seed-tts-2.0
 ```
 
-`DOUBAO_TTS_V2_RESOURCE_ID` is also accepted as a compatibility alias for existing local env files.
+`DOUBAO_TTS_V2_RESOURCE_ID` is also accepted as a compatibility alias for existing local env files. Official `*_V2_streaming` voice presets use `seed-tts-2.0` explicitly so older local resource-id values do not override the required resource.
 
 ## Import
 
