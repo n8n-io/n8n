@@ -916,7 +916,11 @@ describe('OauthService', () => {
 			expect(result).toBe(true);
 		});
 
-		it('should return false when CSRF state is expired', () => {
+		it('does not gate on createdAt — expiry is enforced by the cache TTL, not here', () => {
+			// Expiry now lives at the cache layer (TTL = MAX_CSRF_AGE): an expired flow is
+			// evicted and reaches verifyCsrfState as `undefined`. So given a present flowState,
+			// a stale createdAt is no longer a rejection reason at this layer. The real expiry
+			// path is covered by the cache-miss test below + the storeOauthFlowState TTL test.
 			const csrfSecret = 'csrf-secret';
 			const token = new (require('csrf'))();
 			const stateToken = token.create(csrfSecret);
@@ -932,7 +936,7 @@ describe('OauthService', () => {
 
 			const result = (service as any).verifyCsrfState(flowState, state);
 
-			expect(result).toBe(false);
+			expect(result).toBe(true);
 		});
 
 		it('should return false when flowState is undefined (cache miss / replay)', () => {
@@ -1188,6 +1192,7 @@ describe('OauthService', () => {
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
 
 			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
@@ -1260,6 +1265,7 @@ describe('OauthService', () => {
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
 
 			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 

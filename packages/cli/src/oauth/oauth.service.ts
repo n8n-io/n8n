@@ -407,14 +407,15 @@ export class OauthService {
 	}
 
 	protected verifyCsrfState(flowState: OauthFlowState | undefined, state: CsrfState): boolean {
+		// Expiry is enforced by the cache TTL (MAX_CSRF_AGE): an expired flow is evicted
+		// and surfaces here as `flowState === undefined`. So a missing entry covers both
+		// "never existed / already consumed" (replay) and "expired".
 		if (!flowState) return false;
 
 		const token = new Csrf();
 
 		return (
-			Date.now() - state.createdAt <= MAX_CSRF_AGE &&
-			typeof flowState.csrfSecret === 'string' &&
-			token.verify(flowState.csrfSecret, state.token)
+			typeof flowState.csrfSecret === 'string' && token.verify(flowState.csrfSecret, state.token)
 		);
 	}
 
@@ -449,11 +450,11 @@ export class OauthService {
 
 		const flowState = await this.consumeOauthFlowState(state.token);
 
-		if (!this.verifyCsrfState(flowState, state)) {
+		if (!flowState || !this.verifyCsrfState(flowState, state)) {
 			throw new UnexpectedError('The OAuth callback state is invalid!');
 		}
 
-		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState!];
+		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState];
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
