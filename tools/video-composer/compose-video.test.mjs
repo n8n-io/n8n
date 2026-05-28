@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,9 +11,38 @@ import {
 	buildTimeline,
 	createAssSubtitle,
 	normalizeJob,
+	render,
 	splitScriptIntoSubtitleChunks,
 	toAssTime,
 } from './compose-video.mjs';
+
+function commandExists(command) {
+	const result = spawnSync('sh', ['-c', 'command -v "$1"', 'sh', command], { stdio: 'ignore' });
+
+	return result.status === 0;
+}
+
+function ffmpegHasVideoSubtitleFilter() {
+	const result = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' });
+	if (result.status !== 0) return false;
+
+	const filters = `${result.stdout}\n${result.stderr}`;
+
+	return filters
+		.split('\n')
+		.some((line) => {
+			const [, name, io] = line.trim().split(/\s+/);
+
+			return (name === 'subtitles' || name === 'ass') && io === 'V->V';
+		});
+}
+
+function runFfmpeg(args) {
+	const result = spawnSync('ffmpeg', args, { encoding: 'utf8' });
+	if (result.status !== 0) {
+		throw new Error(`ffmpeg failed: ${result.stderr || result.stdout}`);
+	}
+}
 
 test('splitScriptIntoSubtitleChunks keeps Chinese sentences readable', () => {
 	const chunks = splitScriptIntoSubtitleChunks(
@@ -209,4 +239,126 @@ test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing'
 	assert.match(filter, /subtitles=filename=\/tmp\/n8n-video-composer-safe-subtitles\.ass/);
 	assert.doesNotMatch(filter, /quote'dir/);
 	assert.doesNotMatch(filter, /subtitles='/);
+});
+
+test('render creates final video and render artifacts', (t) => {
+	if (process.env.RUN_VIDEO_COMPOSER_SMOKE !== '1') {
+		t.skip('Set RUN_VIDEO_COMPOSER_SMOKE=1 to run the ffmpeg render smoke test');
+		return;
+	}
+
+	if (!commandExists('ffmpeg')) {
+		t.skip('ffmpeg is not available; skipping video composer smoke render');
+		return;
+	}
+
+	if (!commandExists('ffprobe')) {
+		t.skip('ffprobe is not available; skipping video composer smoke render');
+		return;
+	}
+
+	if (!ffmpegHasVideoSubtitleFilter()) {
+		t.skip('ffmpeg is missing the subtitles or ass video filter; skipping video composer smoke render');
+		return;
+	}
+
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-smoke-'));
+	const inputDir = path.join(tmp, 'inputs');
+	const outputDir = path.join(tmp, 'render');
+	fs.mkdirSync(inputDir, { recursive: true });
+	fs.mkdirSync(outputDir, { recursive: true });
+
+	const coverImage = path.join(inputDir, 'cover.png');
+	const screenshotImage = path.join(inputDir, 'screenshot.png');
+	const backgroundVideo = path.join(inputDir, 'background.mp4');
+	const scriptText = path.join(inputDir, 'script.txt');
+	const ttsAudio = path.join(inputDir, 'audio.wav');
+	const finalVideo = path.join(outputDir, 'final.mp4');
+	const subtitles = path.join(outputDir, 'subtitles.ass');
+	const ffmpegLog = path.join(outputDir, 'ffmpeg.log');
+
+	runFfmpeg([
+		'-y',
+		'-f',
+		'lavfi',
+		'-i',
+		'color=c=0x1f77b4:s=640x360:d=1',
+		'-frames:v',
+		'1',
+		coverImage,
+	]);
+	runFfmpeg([
+		'-y',
+		'-f',
+		'lavfi',
+		'-i',
+		'testsrc2=size=640x360:rate=1:duration=1',
+		'-frames:v',
+		'1',
+		screenshotImage,
+	]);
+	runFfmpeg([
+		'-y',
+		'-f',
+		'lavfi',
+		'-i',
+		'testsrc2=size=640x360:rate=12:duration=3',
+		'-pix_fmt',
+		'yuv420p',
+		backgroundVideo,
+	]);
+	runFfmpeg([
+		'-y',
+		'-f',
+		'lavfi',
+		'-i',
+		'sine=frequency=440:duration=2',
+		'-ar',
+		'44100',
+		ttsAudio,
+	]);
+	fs.writeFileSync(scriptText, '第一句烟测字幕。第二句确认渲染产物。');
+
+	render(
+		normalizeJob({
+			jobId: 'smoke-test',
+			inputs: {
+				coverImage,
+				screenshotImage,
+				backgroundVideo,
+				scriptText,
+				ttsAudio,
+			},
+			output: {
+				video: finalVideo,
+				subtitles,
+				ffmpegLog,
+			},
+			video: {
+				width: 320,
+				height: 180,
+				fps: 12,
+				coverDuration: 1,
+				screenshotDuration: 1,
+			},
+			layout: {
+				coverTop: {
+					x: 12,
+					y: 12,
+					width: 80,
+				},
+				screenshotTop: {
+					x: 228,
+					y: 12,
+					width: 80,
+				},
+				subtitleBottomMargin: 18,
+			},
+		}),
+	);
+
+	assert.equal(fs.existsSync(finalVideo), true);
+	assert.equal(fs.statSync(finalVideo).size > 0, true);
+	assert.equal(fs.existsSync(subtitles), true);
+	assert.equal(fs.existsSync(ffmpegLog), true);
 });
