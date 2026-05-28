@@ -55,7 +55,8 @@ export class CanvasComposer {
 	async switchBetweenEditorAndHistory(): Promise<void> {
 		await this.n8n.canvas.openWorkflowHistory();
 		await this.n8n.canvas.closeWorkflowHistory();
-		await this.n8n.page.waitForLoadState();
+		await expect(this.n8n.canvas.getNodeViewLoader()).toBeHidden();
+		await expect(this.n8n.canvas.getLoadingMask()).toBeHidden();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
