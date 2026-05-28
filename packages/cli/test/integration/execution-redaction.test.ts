@@ -335,6 +335,23 @@ describe('GET /executions/:id — Execution Redaction', () => {
 			assertNotRedacted(parseResponseData(response.body));
 		});
 
+		test('member can reveal data on a workflow in their own personal project', async () => {
+			const workflow = await createWorkflow({}, member);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.query({ redactExecutionData: 'false' })
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
+		});
+
 		test('project editor without execution:reveal scope gets 403 with structured error', async () => {
 			testServer.license.enable('feat:sharing');
 
@@ -592,7 +609,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 			assertNotRedacted(response.body.data as IRunExecutionData);
 		});
 
-		test('policy "non-manual" with trigger mode — redacts for member (canReveal=false)', async () => {
+		test('policy "non-manual" with trigger mode — redacts for member on own personal project workflow (canReveal=true)', async () => {
 			const workflow = await createWorkflow({}, publicApiMember);
 			const execution = await createExecutionWithRedaction({
 				workflow,
@@ -605,7 +622,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true`)
 				.expect(200);
 
-			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', true);
 		});
 
 		test('policy "non-manual" with trigger mode — redacts for owner (canReveal=true)', async () => {
@@ -640,7 +657,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 			assertNotRedacted(response.body.data as IRunExecutionData);
 		});
 
-		test('policy "all" with trigger mode — redacts for member (canReveal=false)', async () => {
+		test('policy "all" with trigger mode — redacts for member on own personal project workflow (canReveal=true)', async () => {
 			const workflow = await createWorkflow({}, publicApiMember);
 			const execution = await createExecutionWithRedaction({
 				workflow,
@@ -653,7 +670,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true`)
 				.expect(200);
 
-			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', true);
 		});
 
 		test('includeData=false — returns execution without data field', async () => {
@@ -775,7 +792,7 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		assertRedacted(
 			response.body.data[0].data as IRunExecutionData,
 			'workflow_redaction_policy',
-			false,
+			true,
 		);
 	});
 
@@ -852,10 +869,10 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		const wf2Trigger = results.find((e) => e.workflowId === workflow2.id && e.mode === 'trigger');
 		const wf2Webhook = results.find((e) => e.workflowId === workflow2.id && e.mode === 'webhook');
 
-		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', false);
+		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', true);
 		assertNotRedacted(wf1Manual!.data);
 		assertNotRedacted(wf2Trigger!.data);
-		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', false);
+		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', true);
 	});
 
 	describe('explicit redactExecutionData=true query param', () => {

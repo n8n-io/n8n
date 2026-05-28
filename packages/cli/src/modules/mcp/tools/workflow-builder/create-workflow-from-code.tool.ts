@@ -4,12 +4,14 @@ import z from 'zod';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -99,6 +101,7 @@ export const createCreateWorkflowFromCodeTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
+	dataTableOps: DataTableUserOperations,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -195,6 +198,15 @@ export const createCreateWorkflowFromCodeTool = (
 				);
 			}
 			const effectiveProjectId = landingProject.id;
+
+			const dataTableCheck = await validateDataTableReferencesForWorkflow(
+				newWorkflow.nodes,
+				effectiveProjectId,
+				dataTableOps,
+			);
+			if (!dataTableCheck.ok) {
+				throw new Error(dataTableCheck.error);
+			}
 
 			const { assignments: credentialAssignments, skippedHttpNodes } =
 				await autoPopulateNodeCredentials(
