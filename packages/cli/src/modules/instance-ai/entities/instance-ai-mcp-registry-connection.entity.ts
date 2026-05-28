@@ -2,12 +2,11 @@ import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'instance_ai_mcp_registry_connections' })
-@Index(['userId', 'serverSlug', 'credentialId'], { unique: true })
+@Index(['userId', 'credentialId'], { unique: true })
 export class InstanceAiMcpRegistryConnection extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;
 
-	@Index()
 	@Column({ type: 'uuid' })
 	userId: string;
 
