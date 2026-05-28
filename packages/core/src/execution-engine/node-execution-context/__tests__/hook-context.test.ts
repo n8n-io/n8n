@@ -1,5 +1,4 @@
 import { ApplicationError } from '@n8n/errors';
-import { mock } from 'jest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -14,6 +13,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { HookContext } from '../hook-context';
 
@@ -76,7 +76,7 @@ describe('HookContext', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);
