@@ -2,15 +2,15 @@
 import type { Editor } from '@tiptap/core';
 import { computed } from 'vue';
 
+import { t } from '@n8n/design-system/locale';
+
 import N8nButton from '../N8nButton';
-import N8nDropdown, { type N8nDropdownOption } from '../N8nDropdown';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '../N8nDropdownMenu';
 import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
-import { t } from '../../locale';
-import type { MarkdownEditorVariant } from './MarkdownEditor.types';
-import type { MarkdownEditorToolbarMode } from './MarkdownEditor.types';
+import N8nTooltip from '../N8nTooltip';
+import type { MarkdownEditorVariant, MarkdownEditorToolbarMode } from './MarkdownEditor.types';
 import type { IconName } from '../N8nIcon';
 
 const translate = (path: string) => t(path, undefined);
@@ -97,26 +97,26 @@ const historyControls = computed<ToolbarControl[]>(() => [
 	},
 ]);
 
-const textStyleOptions = computed<Array<N8nDropdownOption<string>>>(() => [
+const textStyleOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
+		id: 'paragraph',
 		label: translate('markdownEditor.text'),
-		value: 'paragraph',
-		active: activeTextStyle.value === 'paragraph',
+		checked: activeTextStyle.value === 'paragraph',
 	},
 	{
+		id: 'heading-1',
 		label: translate('markdownEditor.heading1'),
-		value: 'heading-1',
-		active: activeTextStyle.value === 'heading-1',
+		checked: activeTextStyle.value === 'heading-1',
 	},
 	{
+		id: 'heading-2',
 		label: translate('markdownEditor.heading2'),
-		value: 'heading-2',
-		active: activeTextStyle.value === 'heading-2',
+		checked: activeTextStyle.value === 'heading-2',
 	},
 	{
+		id: 'heading-3',
 		label: translate('markdownEditor.heading3'),
-		value: 'heading-3',
-		active: activeTextStyle.value === 'heading-3',
+		checked: activeTextStyle.value === 'heading-3',
 	},
 ]);
 
@@ -189,12 +189,11 @@ const setTextStyle = (value: string | number) => {
 	>
 		<div :class="[$style.toolbarInner, variant === 'contained' ? $style.containedToolbar : '']">
 			<N8nTooltip :content="activeTextStyleLabel">
-				<N8nDropdown
-					:options="textStyleOptions"
-					:placeholder="activeTextStyleLabel"
-					size="small"
+				<N8nDropdownMenu
+					:items="textStyleOptions"
 					:disabled="disabled || isRawMode"
 					:class="$style.textStyleDropdown"
+					placement="bottom-start"
 					@select="setTextStyle"
 				>
 					<template #trigger>
@@ -209,7 +208,7 @@ const setTextStyle = (value: string | number) => {
 							<N8nIcon icon="chevron-down" size="small" />
 						</N8nButton>
 					</template>
-				</N8nDropdown>
+				</N8nDropdownMenu>
 			</N8nTooltip>
 
 			<N8nToggleGroup
