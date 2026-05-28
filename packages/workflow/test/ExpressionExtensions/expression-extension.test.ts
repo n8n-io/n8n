@@ -236,6 +236,16 @@ describe('Expression Parser', () => {
 			expect(evaluate('={{ $if("a"==="b", 1) }}')).toEqual(false);
 			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
+
+			// Short-circuit: $if is AST-rewritten to a JS ternary, so the
+			// unselected branch is not evaluated. Probe with a throwing IIFE
+			// in the else position — the throw is swallowed by the
+			// evaluator's E() handler, but a non-undefined result for the
+			// true case proves the IIFE didn't run, and the undefined
+			// result for the false case proves it did.
+			const throwingExpr = "(function(){ throw new Error('side effect'); })()";
+			expect(evaluate(`={{ $if(true, 1, ${throwingExpr}) }}`)).toEqual(1);
+			expect(evaluate(`={{ $if(false, 1, ${throwingExpr}) }}`)).toBeUndefined();
 		});
 
 		test('$not', () => {
