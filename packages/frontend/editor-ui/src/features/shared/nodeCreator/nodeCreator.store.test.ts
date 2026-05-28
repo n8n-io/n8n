@@ -90,7 +90,7 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowDocumentStore = mockedStore(() =>
 			useWorkflowDocumentStore(createWorkflowDocumentId('test-wf-id')),
 		);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-wf-id'));
 		mockUseViewStacks = mockedStore(useViewStacks);
 
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {

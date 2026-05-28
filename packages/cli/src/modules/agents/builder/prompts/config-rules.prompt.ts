@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -74,10 +75,15 @@ export function getConfigRulesSection(): string {
   is written.`;
 }
 
-export function getSchemaReferenceSection(): string {
-	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
-	);
+export function getSchemaReferenceSection(enabledModules: string[]): string {
+	let zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
+	// don't let agent know about MCP servers if it's not enabled
+	if (!enabledModules.includes('mcp')) {
+		zodSchema = zodSchema.omit({
+			mcpServers: true,
+		});
+	}
+	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
 	return `\
 #### Config Schema Reference
 

@@ -498,6 +498,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetItems(msg, data);
 					case 'fromAi':
 						return this.handleFromAi(msg, data);
+					case 'getNodePairedItem':
+						return this.handleGetNodePairedItem(msg, data);
+					case 'getNodeItemMatching':
+						return this.handleGetNodeItemMatching(msg, data);
+					case 'getNodeItem':
+						return this.handleGetNodeItem(msg, data);
+					case 'evaluateExpression':
+						return this.handleEvaluateExpression(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -611,6 +619,61 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		data: WorkflowData,
 	): unknown {
 		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
+	}
+
+	/**
+	 * Handlers for the `$('Foo').pairedItem(itemIndex?)` / `.itemMatching(...)` /
+	 * `.item` cluster. Three separate typed RPCs, each reading exactly one
+	 * literal property off the host node proxy.
+	 *
+	 * The split is load-bearing: the host's `pairedItemMethod` closure
+	 * captures which property name the proxy `get` trap saw, and uses
+	 * that to pick the right error message (e.g. "Missing item index for
+	 * .itemMatching()") and to decide between method-call vs getter
+	 * semantics for `.item`. Reading the matching property here lets
+	 * those host-side branches fire exactly as they do in the legacy
+	 * engine; no in-isolate validation needed.
+	 *
+	 * @private
+	 */
+	private handleGetNodePairedItem(
+		msg: Extract<BridgeMessage, { type: 'getNodePairedItem' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
+	}
+
+	private handleGetNodeItemMatching(
+		msg: Extract<BridgeMessage, { type: 'getNodeItemMatching' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
+	}
+
+	private handleGetNodeItem(
+		msg: Extract<BridgeMessage, { type: 'getNodeItem' }>,
+		data: WorkflowData,
+	): unknown {
+		// `.item` is a host getter — accessing it invokes the resolver and
+		// returns the value immediately. Optional chaining only short-
+		// circuits on null/undefined; the getter still fires on access.
+		return data.$?.(msg.nodeName)?.item;
+	}
+
+	/**
+	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
+	 * the string to the host's nested-evaluation helper, which re-enters
+	 * the expression engine on the inner expression. Under the VM engine
+	 * this round-trips through the bridge again on a fresh evaluation
+	 * cycle, which is the same shape the legacy engine supports.
+	 *
+	 * @private
+	 */
+	private handleEvaluateExpression(
+		msg: Extract<BridgeMessage, { type: 'evaluateExpression' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
 	}
 
 	/**
