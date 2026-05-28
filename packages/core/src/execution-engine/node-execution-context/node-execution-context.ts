@@ -35,12 +35,7 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
-} from '@/constants';
+import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
@@ -351,12 +346,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
-		// all credentials
-		const fullAccess = [
-			HTTP_REQUEST_NODE_TYPE,
-			HTTP_REQUEST_TOOL_NODE_TYPE,
-			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-		].includes(node.type);
+		// all credentials. Set is shared with save-time validators (see
+		// `FULL_ACCESS_NODE_TYPES` in `@/constants`) — add new entries there.
+		const fullAccess = FULL_ACCESS_NODE_TYPES.has(node.type);
 
 		// Strict opt-in restriction: credentials that set restrictToSupportedNodes
 		// are only usable by nodes listed in their supportedNodes — overriding the

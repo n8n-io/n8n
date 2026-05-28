@@ -12,22 +12,8 @@ import {
 	isTriggerLikeNode,
 	toExecutionContextEstablishmentHookParameter,
 	CHAT_TRIGGER_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
-
-// Mirrors the `fullAccess` set in the execution engine
-// (packages/core/src/execution-engine/node-execution-context/node-execution-context.ts):
-// nodes that can use *any* credential type at runtime regardless of declared
-// `description.credentials`. For these, `node.credentials` can carry leftover
-// entries from previous selections — only the credential pointed at by the
-// active `authentication` parameter is in use.
-const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
-const FULL_ACCESS_NODE_TYPES = new Set([
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-]);
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import type {
 	INode,
 	INodes,
