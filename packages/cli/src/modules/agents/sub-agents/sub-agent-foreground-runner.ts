@@ -25,7 +25,7 @@ export interface SubAgentForegroundRunContext {
 	childCount?: number;
 	credentialProvider: CredentialProvider;
 	createToolExecutor(toolCodeByName: Record<string, string>): ToolExecutor;
-	createMemoryFactory(memoryScopeId: string): MemoryFactory;
+	createMemoryFactory(memoryOwnerAgentId: string): MemoryFactory;
 	resolveTool?: ToolResolver;
 	executionCounter?: AgentExecutionCounter;
 }
@@ -86,7 +86,7 @@ export class SubAgentForegroundRunner {
 			credentialProvider: context.credentialProvider,
 			resolveTool: context.resolveTool,
 			skills: runtimeSource.skills,
-			memoryFactory: context.createMemoryFactory(memoryScopeId),
+			memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
 		});
 
 		const abortController = request.policy?.timeoutMs ? new AbortController() : undefined;
@@ -120,6 +120,19 @@ export class SubAgentForegroundRunner {
 			if (timeout) clearTimeout(timeout);
 		}
 	}
+}
+
+function createSubAgentMemoryFactory(
+	source: ResolvedSubAgentSource,
+	context: SubAgentForegroundRunContext,
+): MemoryFactory {
+	return async (params) => {
+		if (source.type !== 'n8n-agent' || !source.sourceId) {
+			throw new UserError('Sub-agent memory is only supported for saved n8n agents');
+		}
+
+		return await context.createMemoryFactory(source.sourceId)(params);
+	};
 }
 
 export function renderSubAgentPrompt(request: SubAgentSpawnRequest): string {

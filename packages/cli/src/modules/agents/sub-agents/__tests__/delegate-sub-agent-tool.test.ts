@@ -39,7 +39,10 @@ const generateResult: GenerateResult = {
 		{
 			role: 'assistant',
 			type: 'llm',
-			content: [{ type: 'text', text: 'Child answer' }],
+			content: [
+				{ type: 'text', text: 'Preamble' },
+				{ type: 'text', text: 'Child answer' },
+			],
 		},
 	],
 };
@@ -103,7 +106,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			status: 'completed',
 			taskPath: '/root/research_api',
 			runId: 'child-run-1',
-			answer: 'Child answer',
+			answer: 'Preamble\nChild answer',
 		});
 
 		expect(runner.runForeground).toHaveBeenCalledWith(
@@ -156,6 +159,33 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('selects a configured n8n agent source by subAgentId', async () => {
+		const selectedSource: SubAgentSource = { type: 'n8n-agent', agentId: 'agent-2' };
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: {
+				'agent-2': selectedSource,
+			},
+			availableSubAgents: [{ id: 'agent-2', name: 'Research Agent' }],
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1' },
+		);
+
+		expect(runner.runForeground).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: selectedSource,
+			}),
+			expect.any(Object),
+		);
+	});
+
 	it('returns a failed tool output when the foreground runner throws', async () => {
 		runner.runForeground.mockRejectedValue(new Error('child failed'));
 		const tool = createN8nDelegateSubAgentTool({
@@ -187,7 +217,7 @@ describe('formatSubAgentToolOutput', () => {
 			status: 'completed',
 			taskPath: '/root/research_api',
 			runId: 'child-run-1',
-			answer: 'Child answer',
+			answer: 'Preamble\nChild answer',
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,

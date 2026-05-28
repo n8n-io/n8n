@@ -495,6 +495,32 @@ describe('AgentsService', () => {
 			expect(savedEntity.schema?.subAgents).toEqual({ enabled: true });
 		});
 
+		it('rejects unpublished subagent references', async () => {
+			const agent = makeAgent();
+			const unpublishedSubAgent = makeAgent({ id: 'agent-2', activeVersionId: null });
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) => {
+				if (id === agentId) return agent;
+				if (id === 'agent-2') return unpublishedSubAgent;
+				return null;
+			});
+
+			const configWithSubAgents = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: { enabled: true, agents: [{ agentId: 'agent-2' }] },
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithSubAgents,
+			});
+
+			await expect(service.updateConfig(agentId, projectId, configWithSubAgents)).rejects.toThrow(
+				'Invalid agent config: Subagent "agent-2" must be published',
+			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('rejects an active schedule integration when the agent is unpublished', async () => {
 			const configWithActiveSchedule = {
 				name: 'Test Agent',

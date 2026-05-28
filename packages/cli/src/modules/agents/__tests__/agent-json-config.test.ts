@@ -104,6 +104,14 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 		expect(parsed.success).toBe(true);
 	});
 
+	it('accepts saved agent references', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { enabled: true, agents: [{ agentId: 'agent-1' }] },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
 	it('rejects subAgents without enabled', () => {
 		expect(AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: {} }).success).toBe(false);
 	});

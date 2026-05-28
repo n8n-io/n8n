@@ -14,23 +14,40 @@ import type {
 
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
-	source: SubAgentSource;
+	source?: SubAgentSource;
+	sourcesById?: Record<string, SubAgentSource>;
+	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	parentTaskPath?: SubAgentTaskPath;
 	policy?: SubAgentRunPolicy;
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
-	const { runner, source, parentTaskPath, policy, ...runContext } = options;
+	const { runner, source, sourcesById, availableSubAgents, parentTaskPath, policy, ...runContext } =
+		options;
 
 	return createDelegateSubAgentTool({
+		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
 		...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 		...(policy !== undefined ? { policy } : {}),
 		runSubAgent: async (request) => {
+			const selectedSource = selectSubAgentSource({
+				source,
+				sourcesById,
+				subAgentId: request.subAgentId,
+			});
+			if (!selectedSource) {
+				return {
+					status: 'failed',
+					answer:
+						'No subagent matched this request. Provide subAgentId when multiple configured subagents are available.',
+				};
+			}
+
 			const result = await runner.runForeground(
 				{
 					taskName: request.taskName,
 					goal: request.goal,
-					source,
+					source: selectedSource,
 					contextMode: 'fresh',
 					executionMode: 'foreground',
 					...(request.context !== undefined ? { context: request.context } : {}),
@@ -55,6 +72,19 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			return formatSubAgentToolOutput(result);
 		},
 	});
+}
+
+function selectSubAgentSource(options: {
+	source?: SubAgentSource;
+	sourcesById?: Record<string, SubAgentSource>;
+	subAgentId?: string;
+}): SubAgentSource | undefined {
+	const { source, sourcesById, subAgentId } = options;
+	if (subAgentId) return sourcesById?.[subAgentId];
+	if (source) return source;
+
+	const sources = Object.values(sourcesById ?? {});
+	return sources.length === 1 ? sources[0] : undefined;
 }
 
 export function formatSubAgentToolOutput(
@@ -88,8 +118,12 @@ export function formatSubAgentToolOutput(
 function getLastAssistantText(result: SubAgentForegroundResult): string | undefined {
 	const messages = filterLlmMessages(result.result.messages);
 	for (let i = messages.length - 1; i >= 0; i--) {
-		const text = messages[i]?.content.find((content) => content.type === 'text');
-		if (text?.type === 'text') return text.text;
+		const text = messages[i]?.content
+			.filter((content) => content.type === 'text')
+			.map((content) => content.text)
+			.join('\n')
+			.trim();
+		if (text) return text;
 	}
 
 	return undefined;

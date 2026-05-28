@@ -130,7 +130,6 @@ describe('SubAgentForegroundRunner', () => {
 			result: generateResult,
 		});
 		expect(createToolExecutor).toHaveBeenCalledWith(runtimeSource.toolCodeByName);
-		expect(createMemoryFactory).toHaveBeenCalledWith('subagent:parent-run-1:/root/research_api');
 		expect(buildFromJson).toHaveBeenCalledWith(
 			runnableConfig,
 			runtimeSource.toolDescriptors,
@@ -138,6 +137,7 @@ describe('SubAgentForegroundRunner', () => {
 				toolExecutor,
 				credentialProvider,
 				skills: runtimeSource.skills,
+				memoryFactory: expect.any(Function),
 			}),
 		);
 		expect(childAgent.generate).toHaveBeenCalledWith(
@@ -146,6 +146,49 @@ describe('SubAgentForegroundRunner', () => {
 				'Context:\nFocus on auth endpoints.',
 				'Expected output:\nA concise summary.',
 			].join('\n\n'),
+			expect.objectContaining({
+				persistence: {
+					resourceId: parentRunId,
+					threadId: 'subagent:parent-run-1:/root/research_api',
+				},
+			}),
+		);
+	});
+
+	it('uses the saved n8n agent id as memory owner while keeping a subagent thread scope', async () => {
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: {
+				type: 'n8n-agent',
+				sourceId: 'agent-2',
+				versionId: 'version-1',
+				config: {
+					...runnableConfig,
+					memory: { enabled: true, storage: 'n8n' },
+				},
+			},
+		});
+		jest.mocked(buildFromJson).mockImplementation(async (_config, _toolDescriptors, options) => {
+			await options.memoryFactory({ enabled: true, storage: 'n8n' });
+			return childAgent as never;
+		});
+
+		await runner.runForeground(
+			{
+				...spawnRequest,
+				source: { type: 'n8n-agent', agentId: 'agent-2', versionId: 'version-1' },
+			},
+			{
+				projectId,
+				credentialProvider,
+				createToolExecutor,
+				createMemoryFactory,
+			},
+		);
+
+		expect(createMemoryFactory).toHaveBeenCalledWith('agent-2');
+		expect(childAgent.generate).toHaveBeenCalledWith(
+			expect.any(String),
 			expect.objectContaining({
 				persistence: {
 					resourceId: parentRunId,

@@ -128,6 +128,18 @@ describe('builder model recommendations', () => {
 		expect(prompt).not.toContain('agent-builder-tools');
 	});
 
+	it('tells the builder to write target agent descriptions', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain('Fresh agents must include a brief `description`');
+		expect(prompt).toContain(
+			'Requires `name`, `description`, `model`, `credential`, and `instructions`',
+		);
+		expect(prompt).toContain(
+			'"description": "Answers support questions and helps triage customer issues."',
+		);
+	});
+
 	it('teaches the builder how to configure subagent delegation', () => {
 		const prompt = buildPrompt(null);
 

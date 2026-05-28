@@ -69,7 +69,10 @@ describe('createDelegateSubAgentTool', () => {
 				{
 					role: 'assistant',
 					type: 'llm',
-					content: [{ type: 'text', text: 'child answer' }],
+					content: [
+						{ type: 'text', text: 'preamble' },
+						{ type: 'text', text: 'child answer' },
+					],
 				},
 			],
 			finishReason: 'stop',
@@ -89,7 +92,7 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'completed',
 			taskPath: '/root/research_api',
 			runId: 'child-run-1',
-			answer: 'child answer',
+			answer: 'preamble\nchild answer',
 			usage: {
 				totalTokens: 5,
 			},

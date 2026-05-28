@@ -23,6 +23,11 @@ import type { ToolContext } from '../types/sdk/tool';
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 
 const delegateSubAgentInputSchema = z.object({
+	subAgentId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Configured sub-agent ID to run. Use when multiple sub-agents are available.'),
 	taskName: z
 		.string()
 		.min(1)
@@ -80,6 +85,7 @@ export interface DelegateSubAgentToolOutput {
 type DelegateSubAgentGenerateOptions = RunOptions & ExecutionOptions;
 
 interface CreateDelegateSubAgentToolBaseOptions {
+	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	parentTaskPath?: SubAgentTaskPath;
 	policy?: DelegateSubAgentPolicy;
 	generateOptions?:
@@ -124,6 +130,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				'Use delegate_subagent when the user request contains a bounded subtask that can be handled independently, the subtask needs substantial exploration/review/search/reasoning that would clutter your context, or a fresh perspective would help.',
 				'Do not use delegate_subagent when the task is trivial, can be completed with one or two direct tool calls, depends on unstated conversation context you cannot summarize clearly, or would simply pass the entire user request to another agent without decomposition.',
 				'Before delegating, make a brief plan for yourself: identify the concrete subtask, decide whether delegation is useful, and provide a self-contained handoff if you delegate.',
+				...formatAvailableSubAgents(options.availableSubAgents),
 				'When calling delegate_subagent, use taskName for a short descriptive name, goal for the concrete outcome, context for all relevant details including constraints/paths/data/prior decisions/acceptance criteria, and expectedOutput for what you need back.',
 				'After the subagent returns, inspect the result before using it, synthesize it into your response instead of blindly copying it, and retry with better context or handle the task yourself if the result is incomplete or failed.',
 			].join('\n'),
@@ -132,6 +139,20 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		.output(delegateSubAgentOutputSchema)
 		.handler(async (input, ctx) => await handleDelegateSubAgent(input, ctx, options, childCounts))
 		.build();
+}
+
+function formatAvailableSubAgents(
+	availableSubAgents: CreateDelegateSubAgentToolBaseOptions['availableSubAgents'],
+): string[] {
+	if (!availableSubAgents?.length) return [];
+
+	return [
+		'Configured subagents are available. Pick the most relevant one and pass its id as subAgentId:',
+		...availableSubAgents.map((subAgent) => {
+			const description = subAgent.description ? ` - ${subAgent.description}` : '';
+			return `- ${subAgent.id}: ${subAgent.name}${description}`;
+		}),
+	];
 }
 
 async function handleDelegateSubAgent(
@@ -251,8 +272,12 @@ function lastText(messages: AgentMessage[]): string {
 		const message = llmMessages[i];
 		if (!message) continue;
 
-		const text = message.content.find((content) => content.type === 'text');
-		if (text?.type === 'text') return text.text;
+		const text = message.content
+			.filter((content) => content.type === 'text')
+			.map((content) => content.text)
+			.join('\n')
+			.trim();
+		if (text) return text;
 	}
 
 	return '';

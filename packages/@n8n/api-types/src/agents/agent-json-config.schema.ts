@@ -78,8 +78,13 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
+const SubAgentConfigSchema = z.object({
+	agentId: z.string().trim().min(1),
+});
+
 const SubAgentsConfigSchema = z.object({
 	enabled: z.boolean(),
+	agents: z.array(SubAgentConfigSchema).optional(),
 });
 
 const NodeToolCredentialSchema = z.object({

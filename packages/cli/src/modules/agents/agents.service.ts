@@ -121,10 +121,16 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
-	subAgentSource?: SubAgentSource;
+	subAgentDelegation?: SubAgentDelegationConfig;
 	credentialIntegrations: AgentCredentialIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
+}
+
+interface SubAgentDelegationConfig {
+	source?: SubAgentSource;
+	sourcesById?: Record<string, SubAgentSource>;
+	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 }
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
@@ -877,7 +883,7 @@ export class AgentsService {
 			projectId,
 			credentialProvider,
 			nodeToolsEnabled,
-			subAgentSource,
+			subAgentDelegation,
 			credentialIntegrations,
 			integrationType,
 		} = params;
@@ -958,13 +964,13 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
-		if (subAgentSource !== undefined) {
+		if (subAgentDelegation !== undefined) {
 			this.attachSubAgentDelegationTool({
 				agent,
 				agentId,
 				projectId,
 				credentialProvider,
-				source: subAgentSource,
+				delegation: subAgentDelegation,
 			});
 		}
 
@@ -993,18 +999,18 @@ export class AgentsService {
 		agentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
-		source: SubAgentSource;
+		delegation: SubAgentDelegationConfig;
 	}): void {
-		const { agent, agentId, projectId, credentialProvider, source } = params;
+		const { agent, agentId, projectId, credentialProvider, delegation } = params;
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
-				source,
+				...delegation,
 				projectId,
 				credentialProvider,
 				createToolExecutor: (toolCodeByName) =>
 					this.secureRuntime.createToolExecutor(toolCodeByName),
-				createMemoryFactory: (memoryScopeId) => this.getMemoryFactory(memoryScopeId),
+				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId });
@@ -1682,6 +1688,7 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		await this.validateSubAgentRefs(result.config, entity);
 		this.validateConfigRefs(result.config, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
@@ -2041,6 +2048,29 @@ export class AgentsService {
 		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
+	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
+		const refs = config.subAgents?.agents ?? [];
+		if (refs.length === 0) return;
+
+		const seen = new Set<string>();
+		for (const { agentId } of refs) {
+			if (seen.has(agentId)) continue;
+			seen.add(agentId);
+
+			if (agentId === entity.id) {
+				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
+			}
+
+			const subAgent = await this.agentRepository.findByIdAndProjectId(agentId, entity.projectId);
+			if (!subAgent) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
+			}
+			if (!subAgent.activeVersionId) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
+			}
+		}
+	}
+
 	private getMissingCustomToolIds(
 		config: AgentJsonConfig | null,
 		tools: AgentToolEntries,
@@ -2138,8 +2168,8 @@ export class AgentsService {
 			buildMcpClient,
 		});
 
-		const subAgentSource = this.shouldAttachSubAgents(config)
-			? createPredefinedSubAgentSource(config)
+		const subAgentDelegation = this.shouldAttachSubAgents(config)
+			? await this.createSubAgentDelegationConfig(config, agentEntity.projectId)
 			: undefined;
 
 		await this.injectRuntimeDependencies({
@@ -2148,13 +2178,45 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			...(subAgentSource !== undefined ? { subAgentSource } : {}),
+			...(subAgentDelegation !== undefined ? { subAgentDelegation } : {}),
 			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
 			integrationType,
 		});
 
 		const toolRegistry = buildToolRegistry(resolvedTools);
 		return { agent: reconstructed, toolRegistry };
+	}
+
+	private async createSubAgentDelegationConfig(
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<SubAgentDelegationConfig | undefined> {
+		const configuredAgents = config.subAgents?.agents ?? [];
+		if (configuredAgents.length === 0) {
+			const source = createPredefinedSubAgentSource(config);
+			return source ? { source } : undefined;
+		}
+
+		const sourcesById: Record<string, SubAgentSource> = {};
+		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
+		const seen = new Set<string>();
+
+		for (const { agentId } of configuredAgents) {
+			if (seen.has(agentId)) continue;
+			seen.add(agentId);
+
+			const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+			if (!agent?.activeVersionId) continue;
+
+			sourcesById[agentId] = { type: 'n8n-agent', agentId, versionId: agent.activeVersionId };
+			availableSubAgents.push({
+				id: agentId,
+				name: agent.name,
+				...(agent.description ? { description: agent.description } : {}),
+			});
+		}
+
+		return availableSubAgents.length > 0 ? { sourcesById, availableSubAgents } : undefined;
 	}
 }
 

@@ -16,8 +16,16 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+vi.mock('../composables/useProjectAgentsList', () => ({
+	useProjectAgentsList: () => ({
+		list: { value: [] },
+		ensureLoaded: vi.fn().mockResolvedValue([]),
+	}),
+}));
+
 vi.mock('@n8n/design-system', () => ({
 	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
+	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCard: { template: '<div><slot /></div>', props: ['variant'] },
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
@@ -26,8 +34,17 @@ vi.mock('@n8n/design-system', () => ({
 	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
+	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+}));
+
+vi.mock('@n8n/design-system/components/N8nSelect', () => ({
+	default: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
+}));
+
+vi.mock('@n8n/design-system/components/N8nOption', () => ({
+	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
 }));
 
 async function mountColumn() {
