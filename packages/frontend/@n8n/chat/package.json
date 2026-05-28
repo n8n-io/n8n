@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test:dev": "vitest",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -47,6 +48,7 @@
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",

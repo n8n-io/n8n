@@ -307,8 +307,11 @@ function materializedRegistry(
 			const skill = materializedById.get(entry.id);
 			if (!skill) return entry;
 
+			const materializedEntry = { ...entry };
+			delete materializedEntry.sourcePath;
+
 			return {
-				...entry,
+				...materializedEntry,
 				path: skill.path,
 				directory: skill.directory,
 			};

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -8,6 +8,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",

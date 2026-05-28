@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { FrontendSettings } from '@n8n/api-types';
+import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -645,7 +645,7 @@ describe('WorkflowSettingsVue', () => {
 				updatedAt: new Date(),
 			},
 			{
-				id: 'resolver-n8n',
+				id: SYSTEM_RESOLVER_ID,
 				name: 'N8n Resolver',
 				type: 'n8n-internal-type',
 				config: '{}',
@@ -711,7 +711,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
-		it('should not show "Edit" button when no resolver is selected', async () => {
+		it('should not show "Edit" button when the default n8n system resolver is selected', async () => {
 			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
 
@@ -732,7 +732,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should not show "Edit" button when a non-editable resolver is selected', async () => {
-			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-n8n' });
+			workflowDocumentStore.setSettings({ credentialResolverId: SYSTEM_RESOLVER_ID });
 
 			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
@@ -895,10 +895,23 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// The stale ID should be cleared — dropdown shows no selected value
+			// The stale ID is cleared and the n8n system resolver is selected as the default.
 			const dropdown = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdown.querySelector('input') as HTMLInputElement;
-			expect(input.value).toBe('');
+			expect(input.value).toBe('N8n Resolver');
+		});
+
+		it('should default to the n8n system resolver when no resolver is selected', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdown = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdown.querySelector('input') as HTMLInputElement;
+			expect(input.value).toBe('N8n Resolver');
 		});
 	});
 
