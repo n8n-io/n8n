@@ -24,7 +24,10 @@ const ctx = {
 
 function makeService() {
 	const nodeCatalogService = mock<NodeCatalogService>();
-	nodeCatalogService.searchNodes.mockResolvedValue('search-result');
+	nodeCatalogService.searchNodes.mockResolvedValue({
+		results: 'search-result',
+		queriesWithNoResults: [],
+	});
 	nodeCatalogService.getNodeTypes.mockResolvedValue('node-types-string');
 
 	const ephemeralNodeExecutor = mock<EphemeralNodeExecutor>();
@@ -168,6 +171,11 @@ describe('AgentsToolsService', () => {
 			// Non-provider langchain nodes stay excluded.
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.agent')).toBe(false);
+		});
+
+		it('does not allow MCP tool nodes', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.mcpClientTool')).toBe(false);
+			expect(isAgentToolNodeType('@n8n/mcp-registry.notion')).toBe(false);
 		});
 	});
 

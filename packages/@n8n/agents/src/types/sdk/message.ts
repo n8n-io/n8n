@@ -183,4 +183,9 @@ export type CustomAgentMessage = {
  */
 export type AgentMessage = Message | CustomAgentMessage;
 
+/**
+ * Persisted message shape returned by `BuiltMemory.getMessages`. The
+ * `(createdAt, id)` pair forms the keyset used by observational memory
+ * cursors; both fields are populated on read by every backend.
+ */
 export type AgentDbMessage = { id: string; createdAt: Date } & AgentMessage;

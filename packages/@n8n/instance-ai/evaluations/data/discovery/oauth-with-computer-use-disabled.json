@@ -1,0 +1,20 @@
+{
+	"id": "oauth-with-computer-use-disabled",
+	"userMessage": "I need to set up a Slack OAuth credential. Walk me through the Slack admin so I can find my Client ID and Client Secret to enter into n8n.",
+	"instanceState": {
+		"localGateway": { "status": "disabledGlobally" }
+	},
+	"expectedToolInvocations": {
+		"noneOf": [
+			"browser-credential-setup",
+			"spawn_sub_agent:browser-credential-setup",
+			"browser_navigate",
+			"browser_snapshot",
+			"browser_screenshot",
+			"navigate_page",
+			"take_snapshot",
+			"take_screenshot"
+		]
+	},
+	"rationale": "When Computer Use is disabled globally the orchestrator must not pretend any browser tool exists. It should explain the standard credential setup path instead. Pairs with the OAuth-positive scenarios to prove discovery is gated on gateway state, not blindly triggered by the user message."
+}

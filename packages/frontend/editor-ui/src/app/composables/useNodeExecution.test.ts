@@ -83,6 +83,7 @@ const {
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -104,6 +105,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNdvStore })),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({

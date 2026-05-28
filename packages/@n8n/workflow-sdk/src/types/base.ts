@@ -75,18 +75,6 @@ export interface NewCredentialValue {
 }
 
 // =============================================================================
-// Placeholder Values
-// =============================================================================
-
-/**
- * Placeholder for values the user needs to fill in.
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
-}
-
-// =============================================================================
 // Error Handling
 // =============================================================================
 
@@ -321,8 +309,11 @@ export interface NodeJSON {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 }
 
 /**
@@ -432,7 +423,10 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
+	credentials?: Record<
+		string,
+		string | CredentialReference | NewCredentialValue | { value: string }
+	>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;
@@ -441,8 +435,11 @@ export interface NodeConfig<TParams = IDataObject> {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -1169,7 +1166,7 @@ export type StickyFn = (
 	config?: StickyNoteConfig,
 ) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
 
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
+export type PlaceholderFn = (hint: string) => string;
 
 export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 

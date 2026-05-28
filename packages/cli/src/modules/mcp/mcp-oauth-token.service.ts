@@ -29,6 +29,7 @@ export class McpOAuthTokenService {
 	 * New tokens use the canonical resource URL as audience.
 	 */
 	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
+	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
@@ -41,17 +42,20 @@ export class McpOAuthTokenService {
 		private readonly urlService: UrlService,
 	) {}
 
-	getAccessTokenExpirySeconds(): number {
-		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
-	}
-
 	/**
 	 * Get the canonical MCP resource URL as per RFC 8707 and OAuth 2.1.
 	 * This is the resource identifier advertised in the well-known endpoint.
 	 */
-	private getCanonicalResourceUrl(): string {
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		return `${baseUrl}/mcp-server/http`;
+	private getResourceUrl(): string {
+		return `${this.urlService.getInstanceBaseUrl()}${this.MCP_RESOURCE_PATH}`;
+	}
+
+	private getAcceptedAudiences(): [string, ...string[]] {
+		return [this.LEGACY_MCP_AUDIENCE, this.getResourceUrl()];
+	}
+
+	getAccessTokenExpirySeconds(): number {
+		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
 	}
 
 	generateTokenPair(
@@ -60,7 +64,7 @@ export class McpOAuthTokenService {
 	): { accessToken: string; refreshToken: string } {
 		const accessToken = this.jwtService.sign({
 			sub: userId,
-			aud: this.getCanonicalResourceUrl(),
+			aud: this.getResourceUrl(),
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -165,8 +169,7 @@ export class McpOAuthTokenService {
 			// Accept both the canonical resource URL (new format) and legacy audience for backward compatibility.
 			// This allows existing tokens issued with the legacy "mcp-server-api" audience to remain valid
 			// during a transition period while new tokens use the RFC 8707-compliant resource URL.
-			const acceptedAudiences = [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
-			decoded = this.jwtService.verify(token, { audience: acceptedAudiences });
+			decoded = this.jwtService.verify(token, { audience: this.getAcceptedAudiences() });
 		} catch (error) {
 			throw new JWTVerificationError();
 		}
@@ -207,7 +210,7 @@ export class McpOAuthTokenService {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			return { user };
+			return { user, authType: 'oauth' };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =

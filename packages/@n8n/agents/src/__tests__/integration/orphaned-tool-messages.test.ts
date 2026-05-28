@@ -1,7 +1,7 @@
 import { expect, it, afterEach } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, getModel, createSqliteMemory } from './helpers';
+import { describeIf, getModel, createInMemoryAgentMemory } from './helpers';
 import { Agent, Memory, Tool } from '../../index';
 import type { AgentDbMessage } from '../../index';
 
@@ -102,7 +102,7 @@ describe('orphaned tool messages in memory', () => {
 	}
 
 	it('handles partial history window when earlier messages are truncated', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-result';
@@ -130,7 +130,7 @@ describe('orphaned tool messages in memory', () => {
 	});
 
 	it('handles pending tool-call blocks (interrupted turn) in history', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-call';

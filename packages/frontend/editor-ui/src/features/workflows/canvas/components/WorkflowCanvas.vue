@@ -10,11 +10,8 @@ import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 defineOptions({
 	inheritAttrs: false,
@@ -43,9 +40,9 @@ const props = withDefaults(
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const renderData = computed(() =>
+	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
 );
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
@@ -65,6 +62,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
@@ -159,6 +157,7 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:render-data="renderData"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"

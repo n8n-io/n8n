@@ -29,6 +29,10 @@ export class IfV2 implements INodeType {
 			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
+			builderHint: {
+				searchHint:
+					'After configuring, confirm the workflow wires both `.onTrue()` and `.onFalse()` (or only the relevant one) to the correct downstream node — IF has two named outputs and silently drops items routed to an unwired branch.',
+			},
 			properties: [
 				{
 					displayName: 'Conditions',

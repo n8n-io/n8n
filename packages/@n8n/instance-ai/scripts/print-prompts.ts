@@ -19,9 +19,7 @@ import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
 } from '../src/tools/orchestration/build-workflow-agent.prompt';
-import { DATA_TABLE_AGENT_PROMPT } from '../src/tools/orchestration/data-table-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
-import { RESEARCH_AGENT_PROMPT } from '../src/tools/orchestration/research-agent-prompt';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -72,10 +70,9 @@ function collectAgents(): AgentEntry[] {
 					label:
 						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
 					body: getSystemPrompt({
-						researchMode: true,
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected' },
+						localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
 						toolSearchEnabled: true,
 						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
 						timeZone: 'UTC',
@@ -101,10 +98,7 @@ function collectAgents(): AgentEntry[] {
 						"localGateway disconnected with filesystem + browser capabilities — renders the 'install Computer Use' pitch and 'Browser Automation (Unavailable)' note",
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
-						localGateway: {
-							status: 'disconnected',
-							capabilities: ['filesystem', 'browser'],
-						},
+						localGateway: { status: 'disconnected' },
 						browserAvailable: false,
 					}),
 				},
@@ -115,7 +109,7 @@ function collectAgents(): AgentEntry[] {
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected' },
+						localGateway: { status: 'connected', capabilities: ['filesystem'] },
 						browserAvailable: false,
 					}),
 				},
@@ -143,18 +137,6 @@ function collectAgents(): AgentEntry[] {
 					body: createSandboxBuilderAgentPrompt('/workspace'),
 				},
 			],
-		},
-		{
-			folder: 'researcher',
-			displayName: 'Sub-Agent — Web Researcher',
-			source: 'src/tools/orchestration/research-agent-prompt.ts → RESEARCH_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: RESEARCH_AGENT_PROMPT }],
-		},
-		{
-			folder: 'data-table',
-			displayName: 'Sub-Agent — Data Table Manager',
-			source: 'src/tools/orchestration/data-table-agent.prompt.ts → DATA_TABLE_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: DATA_TABLE_AGENT_PROMPT }],
 		},
 		{
 			folder: 'browser-credential-setup',

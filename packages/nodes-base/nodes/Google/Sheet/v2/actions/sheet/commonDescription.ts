@@ -1,4 +1,14 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, IParameterBuilderHint } from 'n8n-workflow';
+
+export const columnsResourceMapperBuilderHint: IParameterBuilderHint = {
+	propertyHint:
+		"Pass the full resourceMapper object: { mappingMode, value, schema }. A bare string like 'autoMapInputData' fails validation. `append` is plain insert \u2014 do NOT add `matchingColumns` here (that is for the `appendOrUpdate` and `update` operations).",
+};
+
+export const upsertColumnsResourceMapperBuilderHint: IParameterBuilderHint = {
+	propertyHint:
+		"Pass the full resourceMapper object: { mappingMode, value, schema, matchingColumns }. `matchingColumns` is REQUIRED for this operation \u2014 it must be a non-empty `string[]` of header names that uniquely identify the row to update; without it the node throws 'Could not get parameter' at runtime. Use the `append` operation instead if there is no key column to match on. A bare string like 'autoMapInputData' silently fails validation; always send the full resourceMapper object.",
+};
 
 export const dataLocationOnSheet: INodeProperties = {
 	displayName: 'Data Location on Sheet',

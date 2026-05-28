@@ -90,6 +90,21 @@ describe('mapPropertyToZodSchema for resourceLocator', () => {
 	});
 });
 
+describe('mapPropertyToZodSchema for resourceMapper', () => {
+	it('returns resourceMapperValueSchema', () => {
+		const prop: NodeProperty = {
+			name: 'columns',
+			displayName: 'Columns',
+			type: 'resourceMapper',
+			default: { mappingMode: 'defineBelow', value: null },
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('resourceMapperValueSchema');
+	});
+});
+
 describe('isPropertyOptional', () => {
 	// Regression: required: true + default: '' on a `string` field used to be
 	// treated as optional, because any defined default short-circuited the

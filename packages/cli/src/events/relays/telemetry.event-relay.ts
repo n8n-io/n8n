@@ -29,6 +29,7 @@ import semver from 'semver';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
@@ -63,6 +64,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {
 		super(eventService);
 	}
@@ -110,6 +112,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'ldap-general-sync-finished': (event) => this.ldapGeneralSyncFinished(event),
 			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
@@ -539,6 +542,7 @@ export class TelemetryEventRelay extends EventRelay {
 		uiContext,
 		isDynamic,
 		usesExternalSecrets,
+		jweEnabled,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -550,6 +554,7 @@ export class TelemetryEventRelay extends EventRelay {
 			uiContext,
 			is_dynamic: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
+			jwe_enabled: jweEnabled ?? false,
 		});
 	}
 
@@ -578,6 +583,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialType,
 		isDynamic,
 		usesExternalSecrets,
+		jweEnabled,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
@@ -586,6 +592,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_id: credentialId,
 			is_dynamic: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
+			jwe_enabled: jweEnabled ?? false,
 		});
 	}
 
@@ -595,6 +602,19 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialType,
 	}: RelayEventMap['credentials-deleted']) {
 		this.telemetry.track('User deleted credentials', {
+			user_id: user.id,
+			user_role: user.role?.slug,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
+	private credentialsUserDisconnected({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['credentials-user-disconnected']) {
+		this.telemetry.track('User disconnected own credential connection', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -837,7 +857,12 @@ export class TelemetryEventRelay extends EventRelay {
 		let credentialResolverId: JsonValue | undefined = undefined;
 
 		if (settingsChanged?.credentialResolverId) {
-			credentialResolverId = settingsChanged.credentialResolverId.to;
+			// Emit the effective resolver id: the override if set, otherwise the system
+			// resolver (so cleared overrides report the implicit fallback rather than null).
+			credentialResolverId =
+				(settingsChanged.credentialResolverId.to as JsonValue | undefined) ??
+				this.dynamicCredentialsProxy.getSystemResolverId() ??
+				undefined;
 		}
 
 		let redactionPolicy: JsonValue | undefined = undefined;

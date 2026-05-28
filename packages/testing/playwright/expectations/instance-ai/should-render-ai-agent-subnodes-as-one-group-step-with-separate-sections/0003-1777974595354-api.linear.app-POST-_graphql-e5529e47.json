@@ -1,0 +1,75 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/graphql"
+  },
+  "httpResponse": {
+    "statusCode": 401,
+    "reasonPhrase": "Unauthorized",
+    "headers": {
+      "x-request-id": [
+        "9f6ed63d20272ba5-ZRH"
+      ],
+      "alt-svc": [
+        "h3=\":443\"; ma=86400"
+      ],
+      "Via": [
+        "1.1 google"
+      ],
+      "Vary": [
+        "Accept-Encoding"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "ETag": [
+        "W/\"121-zqm5UPdEe2zPAnGCLuDQqbBUkgc\""
+      ],
+      "Date": [
+        "Tue, 05 May 2026 09:49:44 GMT"
+      ],
+      "Content-Type": [
+        "application/json; charset=utf-8"
+      ],
+      "Cache-Control": [
+        "no-store"
+      ],
+      "CF-Ray": [
+        "9f6ed63c09292ba5-SOF"
+      ],
+      "CF-Cache-Status": [
+        "DYNAMIC"
+      ]
+    },
+    "body": {
+      "type": "JSON",
+      "json": {
+        "errors": [
+          {
+            "message": "Authentication required, not authenticated",
+            "extensions": {
+              "type": "authentication error",
+              "code": "AUTHENTICATION_ERROR",
+              "statusCode": 401,
+              "userError": true,
+              "userPresentableMessage": "You need to authenticate to access this operation.",
+              "meta": {},
+              "http": {
+                "status": 401
+              }
+            }
+          }
+        ]
+      },
+      "rawBytes": "eyJlcnJvcnMiOlt7Im1lc3NhZ2UiOiJBdXRoZW50aWNhdGlvbiByZXF1aXJlZCwgbm90IGF1dGhlbnRpY2F0ZWQiLCJleHRlbnNpb25zIjp7InR5cGUiOiJhdXRoZW50aWNhdGlvbiBlcnJvciIsImNvZGUiOiJBVVRIRU5USUNBVElPTl9FUlJPUiIsInN0YXR1c0NvZGUiOjQwMSwidXNlckVycm9yIjp0cnVlLCJ1c2VyUHJlc2VudGFibGVNZXNzYWdlIjoiWW91IG5lZWQgdG8gYXV0aGVudGljYXRlIHRvIGFjY2VzcyB0aGlzIG9wZXJhdGlvbi4iLCJtZXRhIjp7fSwiaHR0cCI6eyJzdGF0dXMiOjQwMX19fV19Cg=="
+    }
+  },
+  "id": "0003-1777974595354-api.linear.app-POST-_graphql-e5529e47.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

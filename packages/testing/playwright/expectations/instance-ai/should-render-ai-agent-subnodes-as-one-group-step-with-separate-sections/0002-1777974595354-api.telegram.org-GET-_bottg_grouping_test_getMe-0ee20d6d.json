@@ -1,0 +1,48 @@
+{
+  "httpRequest": {
+    "method": "GET",
+    "path": "/bottg-grouping-test/getMe"
+  },
+  "httpResponse": {
+    "statusCode": 404,
+    "reasonPhrase": "Not Found",
+    "headers": {
+      "Strict-Transport-Security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "Server": [
+        "nginx/1.18.0"
+      ],
+      "Date": [
+        "Tue, 05 May 2026 09:49:43 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Access-Control-Expose-Headers": [
+        "Content-Length,Content-Type,Date,Server,Connection"
+      ],
+      "Access-Control-Allow-Origin": [
+        "*"
+      ]
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "ok": false,
+        "error_code": 404,
+        "description": "Not Found"
+      },
+      "rawBytes": "eyJvayI6ZmFsc2UsImVycm9yX2NvZGUiOjQwNCwiZGVzY3JpcHRpb24iOiJOb3QgRm91bmQifQ=="
+    }
+  },
+  "id": "0002-1777974595354-api.telegram.org-GET-_bottg_grouping_test_getMe-0ee20d6d.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * Templates tool — exposes best-practices guidance for n8n workflow techniques.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -68,10 +68,9 @@ async function handleBestPractices(input: Input) {
 }
 
 export function createTemplatesTool() {
-	return createTool({
-		id: 'templates',
-		description: 'Get best practices guidance for n8n workflow techniques.',
-		inputSchema,
-		execute: handleBestPractices,
-	});
+	return new Tool('templates')
+		.description('Get best practices guidance for n8n workflow techniques.')
+		.input(inputSchema)
+		.handler(handleBestPractices)
+		.build();
 }

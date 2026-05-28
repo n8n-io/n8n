@@ -1,3 +1,5 @@
+import type { AgentMessage } from '@n8n/agents';
+
 import { buildNudgeStreamInput, NUDGE_PROMPT } from '../browser-credential-setup.nudge';
 
 describe('buildNudgeStreamInput', () => {
@@ -8,23 +10,26 @@ describe('buildNudgeStreamInput', () => {
 	});
 
 	it('appends a nudge user message after the prior conversation', () => {
-		const prior = [
-			{ role: 'user' as const, content: 'briefing' },
-			{ role: 'assistant' as const, content: 'I clicked some buttons' },
+		const prior: AgentMessage[] = [
+			{ role: 'user', content: [{ type: 'text', text: 'briefing' }] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'I clicked some buttons' }] },
 		];
 
 		const result = buildNudgeStreamInput(prior);
 
 		expect(Array.isArray(result)).toBe(true);
-		const messages = result as Array<{ role: string; content: string }>;
+		const messages = result as AgentMessage[];
 		expect(messages).toHaveLength(3);
 		expect(messages[0]).toBe(prior[0]);
 		expect(messages[1]).toBe(prior[1]);
-		expect(messages[2]).toEqual({ role: 'user', content: NUDGE_PROMPT });
+		expect(messages[2]).toEqual({
+			role: 'user',
+			content: [{ type: 'text', text: NUDGE_PROMPT }],
+		});
 	});
 
 	it('does not mutate the input array', () => {
-		const prior = [{ role: 'user' as const, content: 'briefing' }];
+		const prior: AgentMessage[] = [{ role: 'user', content: [{ type: 'text', text: 'briefing' }] }];
 		const snapshot = [...prior];
 
 		buildNudgeStreamInput(prior);

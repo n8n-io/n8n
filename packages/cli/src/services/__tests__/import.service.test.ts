@@ -281,6 +281,7 @@ describe('ImportService', () => {
 					workflowentity: ['/test/input/workflowentity.jsonl'],
 				},
 				tableNames: ['user', 'workflow_entity'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -301,6 +302,7 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -314,6 +316,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -325,6 +328,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -338,6 +342,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -355,6 +360,37 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should route data-table user-row files into dataTableFiles', async () => {
+			const mockFiles = [
+				'user.jsonl',
+				'data_table_user_abc.jsonl',
+				'data_table_user_abc.2.jsonl',
+				'data_table_user_xyz.jsonl',
+			];
+
+			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			jest
+				.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/user.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_xyz.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+				dataTableFiles: {
+					abc: ['/test/input/data_table_user_abc.jsonl', '/test/input/data_table_user_abc.2.jsonl'],
+					xyz: ['/test/input/data_table_user_xyz.jsonl'],
+				},
 			});
 		});
 	});
@@ -1104,6 +1140,115 @@ describe('ImportService', () => {
 
 			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
 			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+
+		describe('row import', () => {
+			beforeEach(() => {
+				mockDataSource.driver.escapeQueryWithParameters = jest
+					.fn()
+					.mockImplementation((sql, params) => [sql, params]);
+			});
+
+			it('should insert rows into the recreated backing table when files are provided', async () => {
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: 'abc', name: 'flag', type: 'boolean', index: 0 },
+					])
+					.mockResolvedValue(undefined); // subsequent INSERTs
+
+				const row = {
+					id: 1,
+					createdAt: '2024-01-01 12:00:00',
+					updatedAt: '2024-01-01 12:00:00',
+					flag: 0,
+				};
+				jest.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					abc: ['/test/input/data_table_user_abc.jsonl'],
+				});
+
+				const insertCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO'),
+				);
+				expect(insertCalls).toHaveLength(1);
+				const [, params] = insertCalls[0];
+				// Boolean must have been normalised from 0 -> false (matters for cross-DB inserts)
+				expect((params as Record<string, unknown>).flag).toBe(false);
+				// id is preserved
+				expect((params as Record<string, unknown>).id).toBe(1);
+			});
+
+			it('should warn when archive has row files but registry is empty', async () => {
+				mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					orphan: ['/test/input/data_table_user_orphan.jsonl'],
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('but no entries in the data_table registry'),
+				);
+			});
+
+			it('should reset the id sequence after inserts on Postgres', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				// Mixed-case id matters: pg_get_serial_sequence folds unquoted
+				// identifiers to lowercase, so the param must be the quoted form.
+				const mixedCaseId = 'AbC123';
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: mixedCaseId }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: mixedCaseId, name: 'foo', type: 'string', index: 0 },
+					])
+					.mockResolvedValueOnce(undefined) // INSERT row
+					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
+					.mockResolvedValue(undefined);
+
+				jest.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						id: 5,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						foo: 'x',
+					}),
+				);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					[mixedCaseId]: [`/test/input/data_table_user_${mixedCaseId}.jsonl`],
+				});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(1);
+				const [, params] = setvalCalls[0];
+				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`, 'id']);
+			});
+
+			it('should NOT call setval on Postgres when no rows were inserted', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([])
+					.mockResolvedValue(undefined);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(0);
+			});
 		});
 	});
 

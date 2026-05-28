@@ -1,17 +1,25 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type {
+	InstanceAiLivenessPolicy,
+	InstanceAiLivenessSurface,
+	InstanceAiLivenessTimeoutReason,
+} from './liveness-policy';
 
 export interface ActiveRunState {
 	runId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
+	startedAt?: number;
+	lastActivityAt?: number;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
-	mastraRunId: string;
+	agentRunId: string;
 	agent: unknown;
 	threadId: string;
 	user: TUser;
@@ -25,7 +33,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 }
 
 /**
- * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
  * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
  * union sent by the frontend — only one subset of fields is populated per call, matching
  * the confirmation kind that was originally requested.
@@ -47,6 +55,8 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
+	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
+	denied?: boolean;
 }
 
 export interface PendingConfirmation {
@@ -54,6 +64,8 @@ export interface PendingConfirmation {
 	threadId: string;
 	userId: string;
 	createdAt: number;
+	startedAt?: number;
+	lastActivityAt?: number;
 }
 
 export interface BackgroundTaskStatusSnapshot {
@@ -67,10 +79,17 @@ export interface BackgroundTaskStatusSnapshot {
 	threadId: string;
 }
 
+export interface RunStateTimeoutDetails {
+	reason: InstanceAiLivenessTimeoutReason;
+	surface: InstanceAiLivenessSurface;
+	timeoutMs: number;
+	elapsedMs: number;
+	idleMs: number;
+}
+
 export interface StartRunOptions<TUser> {
 	threadId: string;
 	user: TUser;
-	researchMode?: boolean;
 	messageGroupId?: string;
 }
 
@@ -87,8 +106,6 @@ export class RunStateRegistry<TUser = unknown> {
 
 	private readonly threadUsers = new Map<string, TUser>();
 
-	private readonly threadResearchMode = new Map<string, boolean>();
-
 	private readonly threadMessageGroupId = new Map<string, string>();
 
 	private readonly runIdsByMessageGroup = new Map<string, string[]>();
@@ -100,12 +117,16 @@ export class RunStateRegistry<TUser = unknown> {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
+		const now = Date.now();
 
-		this.activeRuns.set(options.threadId, { runId, abortController, messageGroupId });
+		this.activeRuns.set(options.threadId, {
+			runId,
+			abortController,
+			messageGroupId,
+			startedAt: now,
+			lastActivityAt: now,
+		});
 		this.threadUsers.set(options.threadId, options.user);
-		if (options.researchMode !== undefined) {
-			this.threadResearchMode.set(options.threadId, options.researchMode);
-		}
 
 		// When creating a fresh message group (no reuse), clean up the previous
 		// one so runIdsByMessageGroup doesn't leak entries indefinitely.
@@ -208,8 +229,19 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 	}
 
-	suspendRun(threadId: string, state: SuspendedRunState<TUser>): void {
+	cancelActiveRun(threadId: string): ActiveRunState | undefined {
+		const active = this.activeRuns.get(threadId);
+		if (!active) return undefined;
+
 		this.activeRuns.delete(threadId);
+		return active;
+	}
+
+	suspendRun(threadId: string, state: SuspendedRunState<TUser>): void {
+		const activeRun = this.activeRuns.get(threadId);
+		this.activeRuns.delete(threadId);
+		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
+		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
 		this.suspendedRuns.set(threadId, state);
 	}
 
@@ -220,22 +252,71 @@ export class RunStateRegistry<TUser = unknown> {
 		return undefined;
 	}
 
+	cancelSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+		const suspended = this.suspendedRuns.get(threadId);
+		if (!suspended) return undefined;
+
+		this.suspendedRuns.delete(threadId);
+		return suspended;
+	}
+
 	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
 		this.suspendedRuns.delete(threadId);
+		const now = Date.now();
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
+			startedAt: suspended.startedAt ?? suspended.createdAt,
+			lastActivityAt: now,
 		});
 		return suspended;
 	}
 
 	registerPendingConfirmation(requestId: string, pending: PendingConfirmation): void {
-		this.pendingConfirmations.set(requestId, pending);
+		this.pendingConfirmations.set(requestId, {
+			...pending,
+			startedAt: pending.startedAt ?? pending.createdAt,
+			lastActivityAt: pending.lastActivityAt ?? pending.createdAt,
+		});
+	}
+
+	getPendingConfirmation(requestId: string): PendingConfirmation | undefined {
+		return this.pendingConfirmations.get(requestId);
+	}
+
+	hasPendingConfirmationForThread(threadId: string): boolean {
+		for (const pending of this.pendingConfirmations.values()) {
+			if (pending.threadId === threadId) return true;
+		}
+
+		return false;
+	}
+
+	touchActiveRun(threadId: string, at = Date.now()): boolean {
+		const active = this.activeRuns.get(threadId);
+		if (!active) return false;
+		active.lastActivityAt = at;
+		return true;
+	}
+
+	touchSuspendedRun(threadId: string, at = Date.now()): boolean {
+		const suspended = this.suspendedRuns.get(threadId);
+		if (!suspended) return false;
+		suspended.lastActivityAt = at;
+		return true;
+	}
+
+	touchPendingConfirmation(requestId: string, at = Date.now()): boolean {
+		const pending = this.pendingConfirmations.get(requestId);
+		if (!pending) return false;
+		pending.lastActivityAt = at;
+		return true;
 	}
 
 	resolvePendingConfirmation(
@@ -277,10 +358,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
-	getThreadResearchMode(threadId: string): boolean | undefined {
-		return this.threadResearchMode.get(threadId);
-	}
-
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
@@ -290,28 +367,118 @@ export class RunStateRegistry<TUser = unknown> {
 	}
 
 	/**
-	 * Find suspended runs and pending confirmations older than `maxAgeMs`.
+	 * Find active/suspended runs and pending confirmations that timed out under policy.
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
 	 */
 	sweepTimedOut(maxAgeMs: number): {
 		suspendedThreadIds: string[];
 		confirmationRequestIds: string[];
-	} {
-		const now = Date.now();
+	};
+	sweepTimedOut(
+		policy: InstanceAiLivenessPolicy,
+		now?: number,
+	): {
+		activeThreadIds: string[];
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+		activeTimeouts: Record<string, RunStateTimeoutDetails>;
+		suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+		confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+	};
+	sweepTimedOut(
+		policyOrMaxAgeMs: InstanceAiLivenessPolicy | number,
+		now = Date.now(),
+	):
+		| {
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  }
+		| {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+				activeTimeouts: Record<string, RunStateTimeoutDetails>;
+				suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+				confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+		  } {
+		if (typeof policyOrMaxAgeMs === 'number') {
+			const maxAgeMs = policyOrMaxAgeMs;
+			const suspendedThreadIds: string[] = [];
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= maxAgeMs) {
+					suspendedThreadIds.push(threadId);
+				}
+			}
+			const confirmationRequestIds: string[] = [];
+			for (const [reqId, pending] of this.pendingConfirmations) {
+				if (now - pending.createdAt >= maxAgeMs) {
+					confirmationRequestIds.push(reqId);
+				}
+			}
+			return { suspendedThreadIds, confirmationRequestIds };
+		}
+
+		const policy = policyOrMaxAgeMs;
+		const activeThreadIds: string[] = [];
+		const activeTimeouts: Record<string, RunStateTimeoutDetails> = {};
+		for (const [threadId, run] of this.activeRuns) {
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+
+			const startedAt = run.startedAt ?? run.lastActivityAt ?? now;
+			const lastActivityAt = run.lastActivityAt ?? startedAt;
+			const decision = policy.evaluate({
+				surface: 'active-run',
+				startedAt,
+				lastActivityAt,
+				now,
+			});
+			if (decision.action === 'timeout') {
+				activeThreadIds.push(threadId);
+				activeTimeouts[threadId] = decision;
+			}
+		}
+
 		const suspendedThreadIds: string[] = [];
+		const suspendedTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.suspendedRuns) {
-			if (now - run.createdAt >= maxAgeMs) {
+			const startedAt = run.startedAt ?? run.createdAt;
+			const lastActivityAt = run.lastActivityAt ?? run.createdAt;
+			const decision = policy.evaluate({
+				surface: 'suspended-run',
+				startedAt,
+				lastActivityAt,
+				now,
+			});
+			if (decision.action === 'timeout') {
 				suspendedThreadIds.push(threadId);
+				suspendedTimeouts[threadId] = decision;
 			}
 		}
 		const confirmationRequestIds: string[] = [];
+		const confirmationTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [reqId, pending] of this.pendingConfirmations) {
-			if (now - pending.createdAt >= maxAgeMs) {
+			const startedAt = pending.startedAt ?? pending.createdAt;
+			const lastActivityAt = pending.lastActivityAt ?? pending.createdAt;
+			const decision = policy.evaluate({
+				surface: 'pending-confirmation',
+				startedAt,
+				lastActivityAt,
+				now,
+			});
+			if (decision.action === 'timeout') {
 				confirmationRequestIds.push(reqId);
+				confirmationTimeouts[reqId] = decision;
 			}
 		}
-		return { suspendedThreadIds, confirmationRequestIds };
+		return {
+			activeThreadIds,
+			suspendedThreadIds,
+			confirmationRequestIds,
+			activeTimeouts,
+			suspendedTimeouts,
+			confirmationTimeouts,
+		};
 	}
 
 	/**
@@ -333,7 +500,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/**
 	 * Remove all per-thread state: active/suspended runs, confirmations,
-	 * user, research mode, and message-group mappings.
+	 * user, time zone, and message-group mappings.
 	 * Returns the cancelled active/suspended runs so the caller can abort them.
 	 */
 	clearThread(
@@ -348,7 +515,6 @@ export class RunStateRegistry<TUser = unknown> {
 		if (active) this.activeRuns.delete(threadId);
 
 		this.threadUsers.delete(threadId);
-		this.threadResearchMode.delete(threadId);
 		this.threadTimeZones.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -373,7 +539,6 @@ export class RunStateRegistry<TUser = unknown> {
 		this.suspendedRuns.clear();
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
-		this.threadResearchMode.clear();
 		this.threadTimeZones.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();

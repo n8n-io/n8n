@@ -54,13 +54,20 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 	// Fill in default values for parameters not explicitly set on the node.
 	// Required parameters with valid defaults (e.g. binaryPropertyName: 'data')
 	// are not stored in node.parameters when the user hasn't changed them.
-	// Without this, the issue checker flags them as missing.
-	const paramsWithDefaults: INodeParameters = { ...node.parameters };
-	for (const prop of nodeType.properties) {
-		if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-			paramsWithDefaults[prop.name] = prop.default;
-		}
-	}
+	// Without this, the issue checker flags them as missing. We delegate to
+	// `getNodeParameters` so duplicate property names gated by sibling values
+	// (e.g. OpenAI v2's per-resource `operation`) resolve to the displayed
+	// variant rather than whichever appears first.
+	const resolved =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			nodeType,
+		) ?? node.parameters;
+	const paramsWithDefaults: INodeParameters = resolved;
 
 	const nodeWithDefaults: INode = { ...node, parameters: paramsWithDefaults };
 	const issues = NodeHelpers.getNodeParametersIssues(

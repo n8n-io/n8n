@@ -55,6 +55,9 @@ export class ModuleRegistry {
 		'instance-version-history',
 		'encryption-key-manager',
 		'oauth-jwe',
+		'n8n-packages',
+		'runtime-credentials',
+		'mcp-registry',
 	];
 
 	private readonly activeModules: string[] = [];

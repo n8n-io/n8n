@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
@@ -15,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 const { getToolLabel } = useToolLabel();
 const isOpen = ref(false);
 
@@ -37,14 +37,14 @@ const showConfirmation = computed(
 		props.toolCall.isLoading &&
 		props.toolCall.confirmationStatus !== 'approved' &&
 		props.toolCall.confirmationStatus !== 'denied' &&
-		!store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
+		!thread.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
 );
 
 /** Resolved confirmation action — from backend or local optimistic state. */
 const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null => {
 	// Local optimistic state takes priority (has richer semantics like 'deferred')
 	const rid = props.toolCall.confirmation?.requestId;
-	const local = rid ? store.resolvedConfirmationIds.get(rid) : undefined;
+	const local = rid ? thread.resolvedConfirmationIds.get(rid) : undefined;
 	if (local) return local;
 	const status = props.toolCall.confirmationStatus;
 	if (status === 'approved' || status === 'denied') return status;

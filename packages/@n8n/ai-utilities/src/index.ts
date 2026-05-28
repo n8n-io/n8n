@@ -54,6 +54,12 @@ export {
 	proxyFetch,
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
+export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
+export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
+export {
+	fetchFollowingRedirects,
+	type FollowRedirectsOptions,
+} from './utils/follow-redirects';
 export {
 	getConnectionHintNoticeField,
 	metadataFilterField,

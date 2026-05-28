@@ -58,6 +58,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
@@ -109,7 +110,33 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
+
+	/**
+	 * Sets `connectedByMe` on every resolvable credential in `credentials`,
+	 * using a single bulk lookup against the per-user storage. Static
+	 * (non-resolvable) credentials are left untouched.
+	 *
+	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
+	 * object literals — any shape that carries `id` and `isResolvable`.
+	 */
+	async populateConnectedByMe<T extends { id: string; isResolvable?: boolean }>(
+		credentials: T[],
+		user: User,
+	): Promise<void> {
+		const resolvable = credentials.filter((c) => c.isResolvable === true);
+		if (resolvable.length === 0) return;
+
+		const connected = await this.connectionStatusProxy.findConnectedCredentialIds(
+			user.id,
+			resolvable.map((c) => c.id),
+		);
+
+		for (const c of resolvable) {
+			(c as T & { connectedByMe?: boolean }).connectedByMe = connected.has(c.id);
+		}
+	}
 
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
@@ -446,9 +473,12 @@ export class CredentialsService {
 		}
 
 		if (includeData) {
-			return await this.addDecryptedDataToCredentials(credentials);
+			const decrypted = await this.addDecryptedDataToCredentials(credentials);
+			await this.populateConnectedByMe(decrypted, user);
+			return decrypted;
 		}
 
+		await this.populateConnectedByMe(credentials, user);
 		return credentials;
 	}
 
@@ -506,6 +536,8 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Returns credentials that are both accessible to the user AND accessible to the project.
+	 * A credential shared with the project but not with the requesting user would be excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -535,7 +567,16 @@ export class CredentialsService {
 			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
 		);
 
-		return intersection
+		const result: Array<{
+			id: string;
+			name: string;
+			type: string;
+			scopes: Scope[];
+			isManaged: boolean;
+			isGlobal: boolean;
+			isResolvable: boolean;
+			connectedByMe?: boolean;
+		}> = intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))
 			.map((c) => ({
 				id: c.id,
@@ -546,6 +587,9 @@ export class CredentialsService {
 				isGlobal: c.isGlobal,
 				isResolvable: c.isResolvable,
 			}));
+
+		await this.populateConnectedByMe(result, user);
+		return result;
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -1108,15 +1152,27 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean } = rest;
+		await this.populateConnectedByMe([enriched], user);
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {

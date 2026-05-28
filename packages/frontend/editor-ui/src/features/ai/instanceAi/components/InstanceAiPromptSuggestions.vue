@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { onClickOutside } from '@vueuse/core';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	isMenuSuggestion,
 	isPromptSuggestion,
@@ -33,6 +33,16 @@ const quickExamplesSuggestion = computed(() => props.suggestions.find(isMenuSugg
 const activePreviewPromptKey = ref<BaseTextKey | null>(null);
 const isQuickExamplesOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHoverTimer() {
+	if (!hoverTimer) {
+		return;
+	}
+
+	clearTimeout(hoverTimer);
+	hoverTimer = null;
+}
 
 function setPreview(promptKey: BaseTextKey | null) {
 	activePreviewPromptKey.value = promptKey;
@@ -40,6 +50,7 @@ function setPreview(promptKey: BaseTextKey | null) {
 }
 
 function closeQuickExamples() {
+	clearHoverTimer();
 	isQuickExamplesOpen.value = false;
 	setPreview(null);
 }
@@ -80,6 +91,7 @@ onMounted(() => {
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', handleDocumentKeydown);
+	clearHoverTimer();
 });
 
 onClickOutside(rootRef, closeQuickExamples);
@@ -89,10 +101,16 @@ function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 		return;
 	}
 
-	setPreview(suggestion.promptKey);
+	clearHoverTimer();
+	hoverTimer = setTimeout(() => {
+		hoverTimer = null;
+		setPreview(suggestion.promptKey);
+	}, 300);
 }
 
 function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -101,6 +119,8 @@ function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -109,6 +129,8 @@ function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -117,6 +139,8 @@ function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (isPromptSuggestion(suggestion)) {
 		submitSuggestion({
 			promptKey: suggestion.promptKey,

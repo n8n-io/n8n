@@ -12,7 +12,7 @@ on:
         required: true
         type: string
     secrets:
-      SLACK_WEBHOOK_URL:
+      QBOT_SLACK_TOKEN:
         required: true
 
   workflow_dispatch:
@@ -43,47 +43,52 @@ jobs:
         with:
           ref: ${{ inputs.release_tag_ref }}
 
-      - name: Setup Node.js and install dependencies
+      - name: Build production deployment artifact
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: 'pnpm build:deploy'
 
-      - name: Generate CycloneDX SBOM for source code
-        uses: anchore/sbom-action@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0.23.1
-        with:
-          path: ./
-          format: cyclonedx-json
-          output-file: sbom-source.cdx.json
+      - name: Install isolated SBOM tooling
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
-      - name: Attest SBOM for source release
-        uses: actions/attest-sbom@07e74fc4e78d1aad915e867f9a094073a9f71527 # v4.0.0
+      - name: Generate CycloneDX SBOM from shipped artifact
+        working-directory: ./.github/scripts
+        run: pnpm generate-sbom
+
+      - name: Attest SBOM for release
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: './package.json'
           sbom-path: 'sbom-source.cdx.json'
 
-      - name: Attach SBOM and VEX files to release
+      - name: Attach SBOM, VEX, and license manifest to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
         run: |
-          # Upload SBOM and VEX files to the existing release
+          cp compiled/THIRD_PARTY_LICENSES.md THIRD_PARTY_LICENSES.md
           gh release upload "$RELEASE_TAG_REF" \
             sbom-source.cdx.json \
             security/vex.openvex.json \
+            THIRD_PARTY_LICENSES.md \
             --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
+          MISSING_LICENSES=$(jq '[.components[] | select((.licenses // []) | length == 0)] | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
           VEX_STATEMENTS=$(jq '.statements | length' security/vex.openvex.json 2>/dev/null || echo "0")
-          echo "SBOM and VEX attached to release"
-          echo "  - SBOM: $COMPONENT_COUNT components"
+          echo "SBOM, VEX, and license manifest attached to release"
+          echo "  - SBOM: $COMPONENT_COUNT components from shipped artifact (no devDeps, no optional deps)"
+          echo "  - SBOM: $MISSING_LICENSES components missing license metadata"
           echo "  - VEX: $VEX_STATEMENTS CVE statements"
+          echo "  - THIRD_PARTY_LICENSES.md: human-readable license breakdown"
 
       - name: Notify Slack on failure
         if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#alerts-build'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${RUN_URL}|SBOM generation and attachment failed for release ${RELEASE_TAG_REF}>"

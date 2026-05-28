@@ -47,6 +47,16 @@ on:
         required: false
         default: ''
         type: string
+      artifact-prefix:
+        description: 'Prefix for uploaded shard artifacts'
+        required: false
+        default: 'e2e'
+        type: string
+      build-variant:
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        required: false
+        default: 'standard'
+        type: string
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
@@ -91,10 +101,23 @@ jobs:
       - name: Load n8n image from cache
         if: ${{ inputs.test-mode == 'docker-artifact' }}
         uses: ./.github/actions/load-n8n-docker
+        with:
+          build-variant: ${{ inputs.build-variant }}
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
+
+      - name: Filter specs to previous-attempt failures
+        if: github.run_attempt > 1 && matrix.specs != ''
+        id: filter-shard
+        env:
+          CANDIDATES: ${{ matrix.specs }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          FILTERED=$(echo "$CANDIDATES" | node packages/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
+          echo "specs=$FILTERED" >> "$GITHUB_OUTPUT"
 
       - name: Run Tests
         run: |
@@ -105,7 +128,8 @@ jobs:
           TEST_COMMAND: ${{ inputs.test-command }}
           # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
           WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
-          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # On retry, prefer the filtered subset (failed specs from previous attempt)
+          SHARD_ARGS: ${{ steps.filter-shard.outputs.specs || matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
           # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
@@ -120,13 +144,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: e2e-shard-${{ matrix.shard }}
+          name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/.nyc_output/
           retention-days: 1
           if-no-files-found: ignore
+          # upload-artifact@v7 defaults this to false, which silently drops
+          # `.nyc_output/` (dotfile) — needed for the weekly coverage workflow.
+          include-hidden-files: true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

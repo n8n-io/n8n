@@ -23,7 +23,12 @@ export type AgentEventData =
 			result: unknown;
 			isError: boolean;
 	  }
-	| { type: AgentEvent.Error; message: string; error: unknown };
+	| {
+			type: AgentEvent.Error;
+			message: string;
+			error: unknown;
+			source?: 'observer' | 'reflector' | 'episodic-memory';
+	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;
 

@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createCredentials } from '@test-integration/db/credentials';
+import { createDataTable } from '@test-integration/db/data-tables';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
@@ -23,8 +24,10 @@ import { Cipher } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 
+import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -38,6 +41,7 @@ import { SourceControlScopedService } from '@/modules/source-control.ee/source-c
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import type { ExportableDataTable } from '@/modules/source-control.ee/types/exportable-data-table';
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
 import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
@@ -50,6 +54,7 @@ jest.mock('fast-glob');
 type Scope = {
 	workflows: WorkflowEntity[];
 	credentials: CredentialsEntity[];
+	dataTables: DataTable[];
 	folders: Folder[];
 };
 
@@ -125,6 +130,42 @@ function toExportableWorkflow(
 		triggerCount: wf.triggerCount,
 		parentFolderId: null,
 		versionId: versionId ?? wf.versionId,
+		nodeGroups: wf.nodeGroups ?? [],
+	};
+}
+
+function toExportableDataTable(table: DataTable, owner: Project | User): ExportableDataTable {
+	let resourceOwner: NonNullable<ExportableDataTable['ownedBy']>;
+
+	if (owner instanceof Project) {
+		resourceOwner = {
+			type: 'team',
+			teamId: owner.id,
+			teamName: owner.name,
+		};
+	} else {
+		resourceOwner = {
+			type: 'personal',
+			projectId: owner.id,
+			projectName: owner.createPersonalProjectName(),
+			personalEmail: owner.email,
+		};
+	}
+
+	return {
+		id: table.id,
+		name: table.name,
+		columns: (table.columns ?? [])
+			.sort((a, b) => a.index - b.index)
+			.map((column) => ({
+				id: column.id,
+				name: column.name,
+				type: column.type,
+				index: column.index,
+			})),
+		ownedBy: resourceOwner,
+		createdAt: table.createdAt.toISOString(),
+		updatedAt: table.updatedAt.toISOString(),
 	};
 }
 
@@ -178,6 +219,9 @@ describe('SourceControlService', () => {
 	let deletedOutOfScopeCredential: CredentialsEntity;
 	let deletedInScopeCredential: CredentialsEntity;
 
+	let remoteOutOfScopeDataTable: DataTable;
+	let remoteInScopeDataTable: DataTable;
+
 	let gitService: SourceControlGitService;
 	let service: SourceControlService;
 	let statusService: SourceControlStatusService;
@@ -192,6 +236,7 @@ describe('SourceControlService', () => {
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
 
 	beforeAll(async () => {
+		await testModules.loadModules(['data-table']);
 		await testDb.init();
 
 		cipher = Container.get(Cipher);
@@ -353,6 +398,39 @@ describe('SourceControlService', () => {
 			]),
 		);
 
+		const [projectADataTables, projectBDataTables] = await Promise.all(
+			[projectA, projectB].map(async (project) => [
+				await createDataTable(project, {
+					name: `${project.name}-DataTableA`,
+					columns: [{ name: 'name', type: 'string' }],
+				}),
+				await createDataTable(project, {
+					name: `${project.name}-DataTableB`,
+					columns: [{ name: 'value', type: 'number' }],
+				}),
+			]),
+		);
+
+		const remoteDataTableDate = new Date('2024-01-01T00:00:00.000Z');
+		remoteInScopeDataTable = Object.assign(new DataTable(), {
+			id: 'remoteInScopeDataTable',
+			name: 'Remote In Scope Data Table',
+			columns: [],
+			project: projectA,
+			projectId: projectA.id,
+			createdAt: remoteDataTableDate,
+			updatedAt: remoteDataTableDate,
+		});
+		remoteOutOfScopeDataTable = Object.assign(new DataTable(), {
+			id: 'remoteOutOfScopeDataTable',
+			name: 'Remote Out Of Scope Data Table',
+			columns: [],
+			project: projectB,
+			projectId: projectB.id,
+			createdAt: remoteDataTableDate,
+			updatedAt: remoteDataTableDate,
+		});
+
 		tags = await Promise.all([
 			createTag({
 				name: 'testTag1',
@@ -396,36 +474,42 @@ describe('SourceControlService', () => {
 
 		globalAdminScope = {
 			credentials: [],
+			dataTables: [],
 			workflows: globalAdminWorkflows,
 			folders: [],
 		};
 
 		globalOwnerScope = {
 			credentials: [],
+			dataTables: [],
 			workflows: globalOwnerWorkflows,
 			folders: [],
 		};
 
 		globalMemberScope = {
 			credentials: [],
+			dataTables: [],
 			workflows: globalMemberWorkflows,
 			folders: [],
 		};
 
 		projectAdminScope = {
 			credentials: [],
+			dataTables: [],
 			workflows: projectAdminWorkflows,
 			folders: [],
 		};
 
 		projectAScope = {
 			credentials: projectACredentials,
+			dataTables: projectADataTables,
 			folders: projectAFolders,
 			workflows: projectAWorkflows,
 		};
 
 		projectBScope = {
 			credentials: projectBCredentials,
+			dataTables: projectBDataTables,
 			folders: projectBFolders,
 			workflows: projectBWorkflows,
 		};
@@ -491,6 +575,14 @@ describe('SourceControlService', () => {
 				deletedInScopeCredential,
 				projectA,
 			),
+			'datatables/remoteInScopeDataTable.json': toExportableDataTable(
+				remoteInScopeDataTable,
+				projectA,
+			),
+			'datatables/remoteOutOfScopeDataTable.json': toExportableDataTable(
+				remoteOutOfScopeDataTable,
+				projectB,
+			),
 			'folders.json': {
 				folders: [toExportableFolder(projectAFolders[0]), toExportableFolder(projectBFolders[0])],
 			},
@@ -522,6 +614,11 @@ describe('SourceControlService', () => {
 				// asking for credentials
 				return Object.keys(gitFiles).filter((file) =>
 					file.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER),
+				);
+			} else if (opts.cwd?.endsWith(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER)) {
+				// asking for data tables
+				return Object.keys(gitFiles).filter((file) =>
+					file.startsWith(SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER),
 				);
 			} else if (path === SOURCE_CONTROL_FOLDERS_EXPORT_FILE) {
 				// asking for folders
@@ -673,6 +770,29 @@ describe('SourceControlService', () => {
 						]),
 					);
 				});
+
+				it('should see all data tables', async () => {
+					const result = await service.getStatus(globalAdmin, {
+						direction: 'push',
+						preferLocalVersion: true,
+						verbose: false,
+					});
+
+					expect(Array.isArray(result)).toBe(true);
+
+					if (!Array.isArray(result)) {
+						throw new Error('Cannot reach this, only needed as type guard');
+					}
+
+					const dataTables = result.filter((r) => r.type === 'datatable' && r.status === 'created');
+
+					expect(new Set(dataTables.map((dataTable) => dataTable.id))).toEqual(
+						new Set([
+							...projectAScope.dataTables.map((dataTable) => dataTable.id),
+							...projectBScope.dataTables.map((dataTable) => dataTable.id),
+						]),
+					);
+				});
 			});
 
 			describe('global:member user', () => {
@@ -816,6 +936,73 @@ describe('SourceControlService', () => {
 						new Set([projectAScope.folders[1].id, projectAScope.folders[2].id]),
 					);
 				});
+
+				it('should see only data tables in correct scope', async () => {
+					const result = await service.getStatus(projectAdmin, {
+						direction: 'push',
+						preferLocalVersion: true,
+						verbose: false,
+					});
+
+					expect(Array.isArray(result)).toBe(true);
+
+					if (!Array.isArray(result)) {
+						throw new Error('Cannot reach this, only needed as type guard');
+					}
+
+					const dataTables = result.filter((r) => r.type === 'datatable');
+
+					expect(new Set(dataTables.map((dataTable) => dataTable.id))).toEqual(
+						new Set(projectAScope.dataTables.map((dataTable) => dataTable.id)),
+					);
+					expect(dataTables.every((dataTable) => dataTable.status === 'created')).toBe(true);
+					expect(
+						dataTables.some((dataTable) =>
+							projectBScope.dataTables.some((outOfScope) => outOfScope.id === dataTable.id),
+						),
+					).toBe(false);
+				});
+			});
+		});
+
+		describe('remote data tables', () => {
+			describe('project:Admin user', () => {
+				it('should see only tracked remote data tables in correct scope', async () => {
+					(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValueOnce(
+						new Set([
+							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteInScopeDataTable.id}.json`,
+							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteOutOfScopeDataTable.id}.json`,
+						]),
+					);
+
+					const result = await service.getStatus(projectAdmin, {
+						direction: 'push',
+						preferLocalVersion: true,
+						verbose: false,
+					});
+
+					expect(Array.isArray(result)).toBe(true);
+
+					if (!Array.isArray(result)) {
+						throw new Error('Cannot reach this, only needed as type guard');
+					}
+
+					const dataTables = result.filter((r) => r.type === 'datatable');
+
+					expect(dataTables).toHaveLength(projectAScope.dataTables.length + 1);
+					expect(dataTables).toContainEqual(
+						expect.objectContaining({
+							id: remoteInScopeDataTable.id,
+							type: 'datatable',
+							status: 'deleted',
+						}),
+					);
+					expect(dataTables).not.toContainEqual(
+						expect.objectContaining({
+							id: remoteOutOfScopeDataTable.id,
+						}),
+					);
+				});
 			});
 		});
 	});
@@ -877,7 +1064,7 @@ describe('SourceControlService', () => {
 		});
 
 		describe('global:admin user', () => {
-			it('should update all workflows, credentials, tags and folder', async () => {
+			it('should update all workflows, credentials, data tables, tags and folder', async () => {
 				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
@@ -900,17 +1087,26 @@ describe('SourceControlService', () => {
 				const projectFiles = result.statusResult
 					.filter((change) => change.type === 'project' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const dataTableFiles = result.statusResult
+					.filter((change) => change.type === 'datatable' && change.status !== 'deleted')
+					.map((change) => change.file);
 
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
 				expect(projectFiles).toHaveLength(2);
+				expect(dataTableFiles).toHaveLength(4);
 
 				expect(gitService.push).toBeCalled();
 				expect(fsWriteFile).toBeCalledTimes(
-					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+					workflowFiles.length +
+						credentialFiles.length +
+						projectFiles.length +
+						dataTableFiles.length +
+						2,
 				); // folders + tags
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(dataTableFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
 				);
@@ -941,19 +1137,28 @@ describe('SourceControlService', () => {
 				const projectFiles = result.statusResult
 					.filter((change) => change.type === 'project' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const dataTableFiles = result.statusResult
+					.filter((change) => change.type === 'datatable' && change.status !== 'deleted')
+					.map((change) => change.file);
 
 				expect(workflowFiles).toHaveLength(8);
 				expect(credentialFiles).toHaveLength(2);
 				expect(projectFiles).toHaveLength(2);
+				expect(dataTableFiles).toHaveLength(4);
 				const numberFilesToWrite =
-					workflowFiles.length + credentialFiles.length + projectFiles.length + 2; // folders + tags + projects
+					workflowFiles.length +
+					credentialFiles.length +
+					projectFiles.length +
+					dataTableFiles.length +
+					2; // folders + tags
 
 				const filesToWrite =
 					allChanges.filter(
 						(change) =>
 							(change.type === 'workflow' ||
 								change.type === 'credential' ||
-								change.type === 'project') &&
+								change.type === 'project' ||
+								change.type === 'datatable') &&
 							change.status !== 'deleted',
 					).length + 2; // folders + tags
 
@@ -963,6 +1168,7 @@ describe('SourceControlService', () => {
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(projectFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(dataTableFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
 				);
@@ -981,7 +1187,7 @@ describe('SourceControlService', () => {
 		});
 
 		describe('project:admin', () => {
-			it('should update selected workflows, credentials, tags and folders', async () => {
+			it('should update selected workflows, credentials, data tables, tags and folders', async () => {
 				const allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
@@ -1003,17 +1209,26 @@ describe('SourceControlService', () => {
 				const projectFiles = result.statusResult
 					.filter((change) => change.type === 'project' && change.status !== 'deleted')
 					.map((change) => change.file);
+				const dataTableFiles = result.statusResult
+					.filter((change) => change.type === 'datatable' && change.status !== 'deleted')
+					.map((change) => change.file);
 
 				expect(workflowFiles).toHaveLength(2);
 				expect(credentialFiles).toHaveLength(1);
 				expect(projectFiles).toHaveLength(1);
+				expect(dataTableFiles).toHaveLength(2);
 
-				// folders + tags + projects (1)
+				// folders + tags
 				expect(fsWriteFile).toBeCalledTimes(
-					workflowFiles.length + credentialFiles.length + projectFiles.length + 2,
+					workflowFiles.length +
+						credentialFiles.length +
+						projectFiles.length +
+						dataTableFiles.length +
+						2,
 				);
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(workflowFiles));
 				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(credentialFiles));
+				expect(Object.keys(updatedFiles)).toEqual(expect.arrayContaining(dataTableFiles));
 				expect(Object.keys(updatedFiles)).toEqual(
 					expect.arrayContaining([expect.stringMatching(SOURCE_CONTROL_FOLDERS_EXPORT_FILE)]),
 				);

@@ -5,6 +5,7 @@ import {
 	ensureError,
 	NodeHelpers,
 	type ICredentialType,
+	type ICredentialTypeData,
 	type INodeType,
 	type INodeTypeData,
 	type INodeTypeDescription,
@@ -20,9 +21,10 @@ import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	serverToCredentialDescription,
 	serverToNodeDescription,
 } from './node-description-transform';
-import type { McpRegistryService } from './registry/mcp-registry.service';
+import type { McpRegistryServer } from './registry/mcp-registry.types';
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all
@@ -40,13 +42,20 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	private nodeTypes: INodeTypeData = {};
 
+	private credentialTypes: ICredentialTypeData = {};
+
 	private typesReleased = true;
 
+	private servers: McpRegistryServer[] = [];
+
 	constructor(
-		private readonly registry: McpRegistryService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
 	) {}
+
+	setServers(servers: McpRegistryServer[]): void {
+		this.servers = servers;
+	}
 
 	async loadAll(): Promise<void> {
 		this.reset();
@@ -58,20 +67,33 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
-		for (const server of this.registry.getAll({ includeDeprecated: true })) {
-			const description = serverToNodeDescription(server, baseDescription);
-			if (!description) continue;
+		for (const server of this.servers) {
+			const nodeDescription = serverToNodeDescription(server, baseDescription);
+			const credentialDescription = serverToCredentialDescription(server);
+			if (!nodeDescription || !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);
 
-			this.types.nodes.push(description);
-			const syntheticNode: INodeType = Object.create(baseNode, {
-				description: { value: description, enumerable: true },
-			});
+			this.types.nodes.push(nodeDescription);
+			const syntheticNode = Object.create(baseNode, {
+				description: { value: nodeDescription, enumerable: true },
+			}) as INodeType;
 			this.nodeTypes[bareName] = { type: syntheticNode, sourcePath };
 			this.known.nodes[bareName] = {
 				className: 'McpRegistryClientTool',
 				sourcePath,
+			};
+
+			this.types.credentials.push(credentialDescription);
+			this.credentialTypes[credentialDescription.name] = {
+				type: credentialDescription,
+				sourcePath: '',
+			};
+			this.known.credentials[credentialDescription.name] = {
+				className: 'McpRegistryApi',
+				sourcePath: '',
+				extends: credentialDescription.extends,
+				supportedNodes: [bareName],
 			};
 		}
 	}
@@ -83,13 +105,16 @@ export class McpRegistryNodeLoader implements NodeLoader {
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
-		throw new UnrecognizedCredentialTypeError(credentialType);
+		const entry = this.credentialTypes[credentialType];
+		if (!entry) throw new UnrecognizedCredentialTypeError(credentialType);
+		return entry;
 	}
 
 	reset() {
 		this.known = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
+		this.credentialTypes = {};
 		this.typesReleased = true;
 	}
 

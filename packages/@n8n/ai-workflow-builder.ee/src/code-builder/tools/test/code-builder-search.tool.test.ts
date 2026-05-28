@@ -1,6 +1,6 @@
+import { NodeTypeParser, searchCodeBuilderNodes } from '@n8n/ai-utilities/node-catalog';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import { NodeTypeParser } from '../../utils/node-type-parser';
 import { createCodeBuilderSearchTool } from '../code-builder-search.tool';
 
 // Mock node type with resource/operation pattern (like Freshservice)
@@ -828,6 +828,16 @@ describe('CodeBuilderSearchTool', () => {
 
 			expect(result).toContain('No nodes found');
 			expect(result).toContain('Try a different search term');
+		});
+
+		it('should return queries with no results in metadata', () => {
+			const nodeTypeParser = new NodeTypeParser([mockHttpRequestNode]);
+
+			const result = searchCodeBuilderNodes(nodeTypeParser, ['http request', 'missing-node']);
+
+			expect(result.results).toContain('HTTP Request');
+			expect(result.results).toContain('No nodes found');
+			expect(result.queriesWithNoResults).toEqual(['missing-node']);
 		});
 	});
 

@@ -35,7 +35,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 	name: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 	config: {
 		description:
-			'Get curated node recommendations for workflow technique categories. Returns recommended nodes with pattern hints and configuration guidance. Use after analyzing what kind of workflow to build.',
+			'Required workflow-planning step. Get curated node recommendations for workflow technique categories before searching for nodes or writing code. Returns recommended nodes with pattern hints and configuration guidance.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -163,6 +163,91 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
+	it('should preserve node-level execution options when generating and parsing code', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'debug-workflow',
+			name: 'Debug Workflow',
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'When clicking Execute workflow',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [-160, 0],
+					parameters: {},
+				},
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: {
+						category: 'randomData',
+					},
+					executeOnce: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+					retryOnFail: true,
+					maxTries: 4,
+					waitBetweenTries: 2500,
+					notesInFlow: true,
+					notes: 'Keep execution settings',
+					extendsCredential: 'notionApi',
+				},
+				{
+					id: 'success-id',
+					name: 'Edit Fields Success',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, -96],
+					parameters: {
+						options: {},
+					},
+				},
+				{
+					id: 'error-id',
+					name: 'Edit Fields Error',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, 96],
+					parameters: {
+						options: {},
+					},
+				},
+			],
+			connections: {
+				'When clicking Execute workflow': {
+					main: [[{ node: 'DebugHelper', type: 'main', index: 0 }]],
+				},
+				DebugHelper: {
+					main: [
+						[{ node: 'Edit Fields Success', type: 'main', index: 0 }],
+						[{ node: 'Edit Fields Error', type: 'main', index: 0 }],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+		const debugNode = parsedJson.nodes.find((node) => node.name === 'DebugHelper');
+
+		expect(debugNode).toEqual(
+			expect.objectContaining({
+				executeOnce: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 2500,
+				notesInFlow: true,
+				notes: 'Keep execution settings',
+				extendsCredential: 'notionApi',
+			}),
+		);
+	});
+
 	it('should round-trip non-ASCII characters (em-dash, en-dash, curly quotes, ellipsis) in workflow name, node names, and string parameters', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'unicode-test',

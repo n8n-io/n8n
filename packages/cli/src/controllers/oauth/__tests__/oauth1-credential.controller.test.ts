@@ -29,9 +29,11 @@ describe('OAuth1CredentialController', () => {
 	});
 
 	describe('getAuthUri', () => {
-		it('should return a valid auth URI', async () => {
+		it('should build CSRF state data and return a valid auth URI', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
+			const mockCsrfData = { cid: '1', origin: 'static-credential' as const, userId: '123' };
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.buildCsrfStateData.mockResolvedValueOnce(mockCsrfData);
 			oauthService.generateAOauth1AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth/authorize?oauth_token=random-token',
 			);
@@ -41,11 +43,11 @@ describe('OAuth1CredentialController', () => {
 			});
 			const authUri = await controller.getAuthUri(req);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockResolvedCredential, {
-				cid: '1',
-				origin: 'static-credential',
-				userId: '123',
-			});
+			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockResolvedCredential,
+				mockCsrfData,
+			);
 		});
 	});
 
@@ -90,7 +92,7 @@ describe('OAuth1CredentialController', () => {
 				createdAt: timestamp,
 				data: 'encrypted-data',
 			};
-			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
+			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
 			// @ts-ignore
 			oauthService.getDecryptedData.mockResolvedValue({ csrfSecret: 'invalid' });
 			oauthService.getOAuthCredentials.mockResolvedValueOnce({

@@ -2,10 +2,7 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -35,9 +32,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 

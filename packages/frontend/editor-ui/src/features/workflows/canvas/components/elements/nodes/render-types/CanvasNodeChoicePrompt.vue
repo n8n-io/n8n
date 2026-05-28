@@ -14,6 +14,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
@@ -22,6 +23,7 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
 const assistantStore = useAssistantStore();
+const workflowId = useWorkflowId();
 
 const isChatWindowOpen = computed(
 	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
@@ -36,6 +38,7 @@ const onAddFirstStepClick = () => {
 		nodeCreatorStore.isCreateNodeActive = false;
 	} else {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			workflowId.value,
 			NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 		);
 	}
@@ -46,6 +49,7 @@ async function onBuildWithAIClick() {
 		source: 'build_with_ai',
 		task: 'placeholder',
 		has_existing_session: !assistantStore.isSessionEnded,
+		workflowId: workflowId.value,
 	});
 	await chatPanelStore.toggle({ mode: 'builder' });
 }
