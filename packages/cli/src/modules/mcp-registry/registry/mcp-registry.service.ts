@@ -156,16 +156,27 @@ export class McpRegistryService {
 	private async refreshUpdatedServers(
 		existingServers: McpRegistryServer[],
 	): Promise<McpRegistryServer[] | null> {
+		const now = new Date().toISOString();
 		const metadata = await this.apiClient.fetchServersMetadata();
-		const existingById = new Map(existingServers.map((server) => [server.id, server]));
-		const idsToFetch = metadata
-			.filter((entry) => this.shouldFetchFullServer(entry, existingById.get(entry.id)))
-			.map(({ id }) => id);
-		if (idsToFetch.length === 0) {
+		const existingBySlug = new Map(existingServers.map((server) => [server.slug, server]));
+		const metadataSlugs = new Set(metadata.map(({ slug }) => slug));
+		const slugsToFetch = metadata
+			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
+			.map(({ slug }) => slug);
+		const serversToDeprecate = existingServers
+			.filter((server) => !metadataSlugs.has(server.slug) && server.status !== 'deprecated')
+			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
+
+		if (slugsToFetch.length === 0 && serversToDeprecate.length === 0) {
 			return null;
 		}
 
-		return await this.apiClient.fetchServersByIds(idsToFetch);
+		if (slugsToFetch.length === 0) {
+			return serversToDeprecate;
+		}
+
+		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch);
+		return [...updatedServers, ...serversToDeprecate];
 	}
 
 	private shouldFetchFullServer(
@@ -186,7 +197,9 @@ export class McpRegistryService {
 		// it will break workflows that use them.
 		// If we want to stop supporting a server,
 		// we will set its status to 'deprecated' instead.
-		await this.repository.upsert(entities, ['id']);
+		// If a server is removed from the remote API,
+		// it will be marked as deprecated as well.
+		await this.repository.upsert(entities, ['slug']);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {

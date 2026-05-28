@@ -9,9 +9,11 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
 import {
@@ -21,7 +23,13 @@ import {
 	createAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolConfig, AgentSkill } from '../types';
+import type {
+	AgentResource,
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
+	AgentSkill,
+} from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -31,6 +39,7 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
+import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -42,6 +51,7 @@ import {
 	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
+import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -57,6 +67,7 @@ const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
+const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
@@ -635,9 +646,11 @@ function onOpenAddToolModal() {
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
 			tools: localConfig.value?.tools ?? [],
+			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolConfig[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
+				onConfigFieldUpdate({ tools, mcpServers }),
 		},
 	});
 }
@@ -663,28 +676,86 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 	});
 }
 
-function onOpenToolFromList(index: number) {
+function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
-	const tool = tools[index];
-	if (!tool) return;
-	builderTelemetry.trackOpenedToolFromList(tool.type);
-	const customTool = tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+
+	const toolIndex =
+		typeof target === 'number'
+			? target
+			: tools.findIndex((tool) => {
+					if (target.kind !== 'tool') return false;
+					if (tool.type !== target.toolType) return false;
+					if (tool.type === 'node') return tool.name === target.id;
+					if (tool.type === 'workflow') return tool.workflow === target.id;
+					return tool.id === target.id;
+				});
+
+	if (toolIndex >= 0) {
+		const tool = tools[toolIndex];
+		if (!tool) return;
+		builderTelemetry.trackOpenedToolFromList(tool.type);
+		const customTool =
+			tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+		uiStore.openModalWithData({
+			name: AGENT_TOOL_CONFIG_MODAL_KEY,
+			data: {
+				toolRef: tool,
+				customTool,
+				projectId: projectId.value,
+				agentId: agentId.value,
+				existingToolNames: tools
+					.map((toolRef, i) => (i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name))
+					.filter((name): name is string => !!name),
+				onConfirm: (updatedTool: AgentJsonToolConfig) => {
+					const nextTools = [...(localConfig.value?.tools ?? [])];
+					nextTools[toolIndex] = updatedTool;
+					onConfigFieldUpdate({ tools: nextTools });
+				},
+				onRemove: () => onRemoveTool(toolIndex),
+			},
+		});
+		return;
+	}
+
+	const mcpServers = localConfig.value?.mcpServers ?? [];
+	const mcpServerIndex =
+		typeof target === 'number'
+			? target - tools.length
+			: target.kind === 'mcpServer'
+				? mcpServers.findIndex((server) => server.name === target.serverName)
+				: -1;
+	const mcpServer = mcpServers[mcpServerIndex];
+	if (!mcpServer) return;
+
+	builderTelemetry.trackOpenedToolFromList('mcpServer');
+	const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+	const nodeType =
+		nodeTypesStore.getNodeType(preferredNodeTypeName) ??
+		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
+	if (!nodeType) return;
+
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
-			toolRef: tool,
-			customTool,
+			kind: 'mcpServer',
+			mcpServer,
+			initialNode: mcpServerToNode(mcpServer, nodeType),
 			projectId: projectId.value,
 			agentId: agentId.value,
-			existingToolNames: tools
-				.map((toolRef, i) => (i === index || toolRef.type === 'custom' ? null : toolRef.name))
-				.filter((name): name is string => !!name),
-			onConfirm: (updatedTool: AgentJsonToolConfig) => {
-				const nextTools = [...(localConfig.value?.tools ?? [])];
-				nextTools[index] = updatedTool;
-				onConfigFieldUpdate({ tools: nextTools });
+			existingToolNames: mcpServers
+				.filter((_, i) => i !== mcpServerIndex)
+				.map((server) => server.name),
+			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+				const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+				nextMcpServers[mcpServerIndex] = updatedServer;
+				onConfigFieldUpdate({ mcpServers: nextMcpServers });
 			},
-			onRemove: () => onRemoveTool(index),
+			onRemove: () => {
+				const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
+					(_, i) => i !== mcpServerIndex,
+				);
+				onConfigFieldUpdate({ mcpServers: nextMcpServers });
+			},
 		},
 	});
 }
@@ -808,6 +879,10 @@ function onQuickActionAddTool(tools: AgentJsonToolConfig[]) {
 	onConfigFieldUpdate({ tools });
 }
 
+function onQuickActionAddMcpServers(mcpServers: AgentJsonMcpServerConfig[]) {
+	onConfigFieldUpdate({ mcpServers });
+}
+
 function onConnectedTriggersUpdate(triggers: string[]) {
 	connectedTriggers.value = triggers;
 	builderTelemetry.trackTriggerListChanged(triggers);
@@ -929,6 +1004,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@config-updated="onConfigUpdated"
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
+					@update:mcp-servers="onQuickActionAddMcpServers"
 					@update:connected-triggers="onConnectedTriggersUpdate"
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
