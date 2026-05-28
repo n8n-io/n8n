@@ -22,10 +22,17 @@ const FAKE_FILES = [
 ];
 
 const STUB_TEST_CASE = JSON.stringify({
-	prompt: 'stub',
+	conversation: [{ role: 'user', text: 'stub' }],
 	complexity: 'simple',
 	tags: [],
-	scenarios: [],
+	executionScenarios: [
+		{
+			name: 'happy-path',
+			description: 'stub',
+			dataSetup: 'stub',
+			successCriteria: 'stub',
+		},
+	],
 });
 
 beforeEach(() => {

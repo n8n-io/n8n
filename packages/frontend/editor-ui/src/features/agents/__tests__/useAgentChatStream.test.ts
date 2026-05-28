@@ -253,6 +253,110 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('awaitingUser');
 	});
 
+	// -----------------------------------------------------------------------
+	// Error event handling
+	// -----------------------------------------------------------------------
+
+	it('pushes a new error bubble for non-misconfigured errors', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'error', message: 'Tool execution failed', errorCode: 'tool_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+
+		// 1 user message + 1 error bubble
+		expect(hook.messages.value).toHaveLength(2);
+		const errMsg = hook.messages.value[1];
+		expect(errMsg.role).toBe('assistant');
+		expect(errMsg.status).toBe('error');
+		expect(errMsg.content).toBe('Tool execution failed');
+	});
+
+	it('sets fatalError (not a message bubble) for agent_misconfigured errors', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'error',
+				message: 'Model is not configured',
+				errorCode: 'agent_misconfigured',
+				missing: ['model'],
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+
+		// Only user message — no inline error bubble
+		expect(hook.messages.value).toHaveLength(1);
+		expect(hook.fatalError.value).toEqual({
+			message: 'Model is not configured',
+			missing: ['model'],
+		});
+	});
+
+	it('drops empty orphan minted bubbles when any error arrives', async () => {
+		const events: AgentSseEvent[] = [
+			// start-step mints a ChatMessage but no text/tool follows — it stays empty
+			{ type: 'start-step' },
+			{ type: 'error', message: 'Stream died', errorCode: 'stream_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hello');
+		await nextTick();
+
+		// user message + 1 error bubble (the orphan empty one must be gone)
+		const assistantMsgs = hook.messages.value.filter((m) => m.role === 'assistant');
+		expect(assistantMsgs).toHaveLength(1);
+		expect(assistantMsgs[0].status).toBe('error');
+		expect(assistantMsgs[0].content).toBe('Stream died');
+	});
+
+	it('keeps minted bubbles that have content when an error arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'partial answer' },
+			{ type: 'finish-step' },
+			{ type: 'error', message: 'Downstream failure', errorCode: 'runtime_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('tell me');
+		await nextTick();
+
+		// user + bubble with 'partial answer' (preserved) + error bubble
+		const assistantMsgs = hook.messages.value.filter((m) => m.role === 'assistant');
+		expect(assistantMsgs).toHaveLength(2);
+		expect(assistantMsgs[0].content).toBe('partial answer');
+		expect(assistantMsgs[1].status).toBe('error');
+	});
+
+	it('keeps minted bubbles that have tool calls when an error arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: {} },
+			{ type: 'finish-step' },
+			{ type: 'error', message: 'Crashed after tool call', errorCode: 'runtime_error' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('search');
+		await nextTick();
+
+		// user + bubble with tool call (preserved) + error bubble
+		const assistantMsgs = hook.messages.value.filter((m) => m.role === 'assistant');
+		expect(assistantMsgs).toHaveLength(2);
+		expect(assistantMsgs[0].toolCalls).toHaveLength(1);
+		expect(assistantMsgs[1].status).toBe('error');
+	});
+
 	it('flips a ToolCall from pending → running on tool-execution-start, then to done on tool-result', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },

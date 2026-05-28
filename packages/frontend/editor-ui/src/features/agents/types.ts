@@ -127,5 +127,6 @@ export type {
 	AgentJsonToolConfig as AgentJsonToolRef,
 	AgentJsonSkillConfig as AgentJsonSkillRef,
 	AgentJsonConfig as AgentJsonConfigRef,
+	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
 } from '@n8n/api-types';

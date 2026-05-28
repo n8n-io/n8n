@@ -11,7 +11,7 @@ import { Telegram } from '../Telegram.node';
 
 describe('Telegram node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
+	let apiRequestSpy: jest.SpyInstance;
 	const node = new Telegram();
 
 	const legacyBinaryAccessHelper = (index: number, propertyName: string | any) => {
@@ -21,6 +21,7 @@ describe('Telegram node', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			baseUrl: 'https://api.telegram.org',
 			accessToken: 'test-token',

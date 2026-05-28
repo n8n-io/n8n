@@ -19,6 +19,9 @@ import {
 } from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -35,6 +38,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { userTurnsAsText } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -64,6 +68,11 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Omit (or pass empty) to intercept every
+	 *  interceptable AI root the workflow contains. Server-side gated by the
+	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
+	pinAiRoots?: string[];
 }
 
 /**
@@ -96,6 +105,16 @@ export async function runWorkflowTestCase(
 				laneTag: config.laneTag,
 			});
 
+	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+		// No transcript in prebuilt mode — checks run with empty prompt context.
+		build.workflowChecks = await runWorkflowChecks({
+			workflow: build.workflowJsons[0],
+			prompt: '',
+			agentText: undefined,
+			logger,
+		});
+	}
+
 	if (build.conversationMetrics) {
 		result.conversationMetrics = build.conversationMetrics;
 	}
@@ -104,6 +123,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
+	}
+	if (build.workflowChecks) {
+		result.workflowChecks = build.workflowChecks;
 	}
 
 	if (!build.success || !build.workflowId) {
@@ -127,6 +149,7 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
+					config.pinAiRoots,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -232,6 +255,7 @@ export interface BuildResult {
 	proxyDecisionStats?: ProxyDecisionStats;
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
 	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
 }
 
 export interface BuildWorkflowConfig {
@@ -408,6 +432,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
 
+		const workflowChecks = await runWorkflowChecks({
+			workflow: outcome.workflowJsons[0],
+			prompt: userTurnsAsText(transcript),
+			agentText: outcome.finalText,
+			logger,
+		});
+
 		return {
 			success: true,
 			workflowId: outcome.workflowsCreated[0].id,
@@ -418,6 +449,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			proxyDecisionStats,
 			transcript,
+			workflowChecks,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -452,8 +484,17 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
+	return await runScenario(
+		client,
+		scenario,
+		workflowId,
+		workflowJsons,
+		logger,
+		timeoutMs,
+		pinAiRoots,
+	);
 }
 
 /**
@@ -500,13 +541,22 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
+	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
+
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
+	const evalResult = await client.executeWithLlmMock(
+		workflowId,
+		scenario.dataSetup,
+		timeoutMs,
+		pinNodes,
+	);
 	const execMs = Date.now() - execStart;
 
+	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
 	logger.info(
-		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${pinTag}`,
 	);
 
 	const verifyStart = Date.now();
@@ -762,6 +812,45 @@ export async function runWithConcurrency<T, R>(
 	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => await worker());
 	await Promise.all(workers);
 	return results;
+}
+
+export async function runWorkflowChecks(args: {
+	workflow: WorkflowResponse | undefined;
+	prompt: string;
+	agentText: string | undefined;
+	logger: EvalLogger;
+}): Promise<CheckOutcome[] | undefined> {
+	if (!args.workflow) return undefined;
+
+	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const ctx: BinaryCheckContext = {
+		prompt: args.prompt,
+		...(modelId ? { modelId } : {}),
+		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+	};
+
+	try {
+		const { outcomes } = await runBinaryChecks(args.workflow, ctx);
+		const failed = outcomes.filter((o) => o.status === 'fail');
+		if (failed.length > 0) {
+			args.logger.info(
+				`  Workflow checks: ${String(failed.length)} failing (${failed.map((o) => o.name).join(', ')})`,
+			);
+		}
+		return outcomes;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		args.logger.warn(`  Workflow checks errored: ${message}`);
+		return undefined;
+	}
+}
+
+function hasAnthropicKey(): boolean {
+	return Boolean(
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+			process.env.N8N_AI_ANTHROPIC_KEY ??
+			process.env.ANTHROPIC_API_KEY,
+	);
 }
 
 // ---------------------------------------------------------------------------

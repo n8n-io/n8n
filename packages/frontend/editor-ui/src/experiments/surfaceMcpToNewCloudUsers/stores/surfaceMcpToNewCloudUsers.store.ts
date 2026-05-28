@@ -10,7 +10,7 @@ import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../compo
 const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN';
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
-type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
+type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
 type SurfaceMcpOnboardingEntryPoint = 'empty_state_tile';
 type SurfaceMcpOnboardingParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type SurfaceMcpOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';

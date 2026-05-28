@@ -7,8 +7,8 @@ The memory system serves two purposes:
 - **Operational context management** — observational memory that compresses
   the agent's operational history during long autonomous loops to prevent
   context degradation (thread-scoped)
-- **Conversation history** — recent messages and semantic recall for the
-  current thread (thread-scoped)
+- **Conversation history** — recent messages for the current thread
+  (thread-scoped)
 
 Sub-agents are stateless — context is passed via the briefing only.
 
@@ -17,7 +17,7 @@ Sub-agents are stateless — context is passed via the briefing only.
 ### Tier 1: Storage Backend
 
 The persistence layer. Stores all messages, observational memory, plan state,
-event history, and vector embeddings.
+and event history.
 
 | Backend | When Used | Connection |
 |---------|-----------|------------|
@@ -69,26 +69,13 @@ Context window layout during autonomous loop:
   high prompt cache hit rates (4–10x cost reduction)
 - **Async buffering** pre-computes observations in the background — no
   user-visible pause when the threshold is hit
-- Uses a secondary LLM (default: `google/gemini-2.5-flash`) for compression —
-  cheap and has a 1M token context window for the Reflector
+- Uses the orchestrator agent's model for compression — same credentials and
+  provider as the main conversation
 
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
 
-### Tier 4: Semantic Recall (Optional)
-
-Vector-based retrieval of relevant past messages. When enabled, the system
-embeds each message and retrieves semantically similar past messages to include
-as context.
-
-- **Requires**: `N8N_INSTANCE_AI_EMBEDDER_MODEL` to be set
-- **Config**: `N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K` (default: 5)
-- **Message range**: 2 messages before and 1 after each match
-
-Disabled by default. When the embedder model is not set, only tiers 1–3 are
-active.
-
-### Tier 5: Plan Storage
+### Tier 4: Plan Storage
 
 The `plan` tool stores execution plans in thread-scoped storage. Plans are
 structured data (goal, current phase, iteration count, step statuses) that
@@ -101,7 +88,6 @@ All memory is thread-scoped (isolated per conversation):
 
 - **Recent messages** — the sliding window of N messages
 - **Observational memory** — compressed operational history
-- **Semantic recall** — vector retrieval of relevant past messages
 - **Plan** — the current execution plan
 
 ### Sub-agent memory
@@ -117,15 +103,14 @@ context without persistent memory.
 ### Cross-user isolation
 
 Each user's memory is fully independent. The agent cannot see other users'
-conversations or semantic history.
+conversations.
 
 ## Configuration
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_LAST_MESSAGES` | number | 20 | Recent message window |
-| `N8N_INSTANCE_AI_EMBEDDER_MODEL` | string | `''` | Embedder model (empty = disabled) |
-| `N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K` | number | 5 | Number of semantic matches |
-| `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |
+
+Observer and Reflector use the orchestrator agent's model.

@@ -7,9 +7,28 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
-import type { ExecutionError, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type {
+	ExecutionError,
+	IConnections,
+	INode,
+	INodeParameters,
+	IRunExecutionData,
+	ITaskData,
+} from 'n8n-workflow';
+
+import type { NodeTypes } from '@/node-types';
 
 import {
 	extractExecutionResult,
@@ -742,6 +761,231 @@ describe('extractExecutionDebugInfo', () => {
 		expect(trace.startedAt).toBe(new Date(1704067200000).toISOString());
 		expect(trace.finishedAt).toBe(new Date(1704067200000 + 5000).toISOString());
 	});
+
+	// ── resolvedParameters on failedNode ──────────────────────────────────────
+
+	describe('failedNode.resolvedParameters', () => {
+		const debugNodeTypes = mock<NodeTypes>();
+
+		/** Build an execution that has a full workflow snapshot + a failed node entry. */
+		function makeFailedExecution(opts: {
+			nodes: INode[];
+			connections: IConnections;
+			failedNodeName: string;
+			parentRunData: Record<string, ITaskData[]>;
+			error?: Error | Partial<ExecutionError>;
+		}) {
+			return {
+				id: 'exec-1',
+				mode: 'manual',
+				status: 'error',
+				startedAt: new Date('2026-01-01T00:00:00Z'),
+				stoppedAt: new Date('2026-01-01T00:00:01Z'),
+				workflowData: {
+					id: 'wf-1',
+					name: 'Test Workflow',
+					nodes: opts.nodes,
+					connections: opts.connections,
+					settings: {},
+				},
+				data: {
+					resultData: {
+						runData: {
+							...opts.parentRunData,
+							[opts.failedNodeName]: [
+								makeTaskData([], {
+									error: opts.error ?? new Error("Referenced node doesn't exist"),
+									startTime: 2000,
+									executionTime: 10,
+								}),
+							],
+						},
+					},
+				} as unknown as IRunExecutionData,
+			};
+		}
+
+		it('surfaces the offending expression in failedExpressions when resolution itself threw', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				assignments: {
+					assignments: [
+						{ name: 'foo', value: 'bar', type: 'string' },
+						{ name: 'baz', value: '={{ $node["DoesNotExist"].json.x }}', type: 'string' },
+					],
+				},
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Edit Fields');
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle).toBeDefined();
+			expect(bundle?.failedExpressions).toHaveLength(1);
+			expect(bundle?.failedExpressions[0]).toMatchObject({
+				path: 'assignments.assignments[1].value',
+				raw: '={{ $node["DoesNotExist"].json.x }}',
+				reason: 'expression-error',
+			});
+			// `nodeName` is intentionally omitted — `failedNode.name` already has it.
+			expect((bundle as Record<string, unknown>)?.nodeName).toBeUndefined();
+		});
+
+		it('surfaces silent empty-resolution expressions even when runtime threw a different error', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('HTTP', 'n8n-nodes-base.httpRequest', {
+				// Pure expression that resolves to undefined — caught by the empty-resolution
+				// heuristic. (Template concatenations like `={{ $json.missing }}/api` resolve
+				// to a non-empty string "undefined/api" and are NOT flagged today.)
+				url: '={{ $json.missing }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'HTTP'),
+				failedNodeName: 'HTTP',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.emptyResolutions).toEqual([
+				expect.objectContaining({ path: 'url', raw: '={{ $json.missing }}' }),
+			]);
+		});
+
+		it('omits resolvedParameters when allowSendingParameterValues is false', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.x }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				false,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('omits resolvedParameters when nodeTypes is not passed (caller opted out)', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', { value: '={{ $json.x }}' });
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				// nodeTypes intentionally omitted
+			);
+
+			expect(result.failedNode).toBeDefined();
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('still returns debug info when the resolution helper itself throws', async () => {
+			// Failed node is present in runData but missing from the workflow snapshot →
+			// extractResolvedNodeParameters throws "Node X not found in execution snapshot".
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const execution = makeFailedExecution({
+				nodes: [trigger], // failed node intentionally missing
+				connections: {},
+				failedNodeName: 'Missing Node',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Missing Node');
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('resolves against the item index the runtime tagged on the error (not item 0)', async () => {
+			// Failure on item 3 of the parent's output — ExpressionError records
+			// `context.itemIndex: 3` so the resolution view should target item 3,
+			// not the default of 0.
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.label }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: {
+					Trigger: [
+						makeTaskData([
+							{ label: 'item-0' },
+							{ label: 'item-1' },
+							{ label: 'item-2' },
+							{ label: 'item-3-the-culprit' },
+						]),
+					],
+				},
+				error: {
+					name: 'ExpressionError',
+					message: 'boom on item 3',
+					context: { itemIndex: 3 },
+				},
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.itemIndex).toBe(3);
+			// `value` was `={{ $json.label }}`; against item 3 it should resolve to
+			// 'item-3-the-culprit', proving we used the runtime-tagged index.
+			const resolved = bundle?.resolved;
+			expect(typeof resolved).toBe('string');
+			expect(resolved as string).toContain('item-3-the-culprit');
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -922,6 +1166,24 @@ describe('extractNodeOutput', () => {
 	});
 });
 
+function makeNode(name: string, type: string, parameters: INodeParameters = {}): INode {
+	return {
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters,
+	};
+}
+
+/** Connect `from` → `to` on the `main` connection (output index 0 → input index 0). */
+function connect(from: string, to: string): IConnections {
+	return {
+		[from]: { main: [[{ node: to, type: 'main', index: 0 }]] },
+	};
+}
+
 // ---------------------------------------------------------------------------
 // createDataTableAdapter – access control
 // ---------------------------------------------------------------------------
@@ -973,7 +1235,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{ staticCacheDir: '/tmp' } as unknown as ConstructorParameters<
+		{ staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
@@ -1110,7 +1372,7 @@ function createDataTableAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1200,6 +1462,24 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+
+		it('resolves table references with the requested permission scope', async () => {
+			const { adapter } = createDataTableAdapterForTests();
+
+			const result = await adapter.resolveTableReference?.('dt-1', { permission: 'readRow' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['dataTable:readRow'],
+				false,
+				{ dataTableId: 'dt-1' },
+			);
+			expect(result).toEqual({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId: 'team-project-id',
+			});
 		});
 	});
 
@@ -1392,7 +1672,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1948,7 +2228,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -2214,7 +2494,7 @@ function createRunAdapterForTests(
 		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
