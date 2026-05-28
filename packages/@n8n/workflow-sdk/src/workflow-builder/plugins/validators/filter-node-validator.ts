@@ -37,7 +37,7 @@ function validateFilterValue(
 	if (!filterValue.options || typeof filterValue.options !== 'object') {
 		issues.push({
 			code: 'FILTER_MISSING_OPTIONS',
-			message: `${nodeRef} is missing 'options' in ${paramPath}. Add: options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }`,
+			message: `${nodeRef} is missing 'options' in ${paramPath}. Add: options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' }`,
 			severity: 'error',
 			nodeName,
 			originalName,

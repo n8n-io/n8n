@@ -102,12 +102,29 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new/multi-workflow/data-table work through plan', () => {
+		it('routes new and multi-workflow work through plan', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\), multi-workflow build/);
-			expect(prompt).toMatch(/data tables created or schemas changed/);
+			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
+			expect(prompt).toContain('workflow tasks include any data table names');
+		});
+
+		it('routes standalone data-table work through direct tools and the skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toMatch(/Standalone data-table work/);
+			expect(prompt).toContain('`data-table-manager` skill');
+			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
+			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+		});
+
+		it('loads the data-table skill before planning workflows that use tables', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain(
+				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+			);
 		});
 
 		it('routes existing-workflow edits through bypassPlan', () => {
@@ -253,6 +270,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('single-select');
 			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
 		});
+
+		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
+			expect(prompt).toContain('List OAuth2 first');
+		});
 	});
 
 	describe('trigger URL patterns', () => {
@@ -271,7 +295,18 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
 
 			expect(prompt).toContain('**Webhook Trigger**: http://localhost:5678/webhook/{path}');
-			expect(prompt).toContain('**Chat Trigger**: http://localhost:5678/webhook/{webhookId}/chat');
+			expect(prompt).toContain('http://localhost:5678/webhook/{webhookId}/chat');
+		});
+
+		it('directs the agent to the Open chat button when Chat Trigger is private', () => {
+			// Regression: agent was sharing the public webhook URL for private chat
+			// triggers, then offering to flip `public: true` for testing instead of
+			// pointing the user at the workflow's built-in Open chat button.
+			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
+
+			expect(prompt).toContain('**Open chat** button on the workflow canvas');
+			expect(prompt).toMatch(/public: false[^]*Do NOT share a webhook URL/);
+			expect(prompt).toMatch(/do NOT suggest flipping `public: true` just to enable testing/);
 		});
 
 		it('explicitly warns that /form and /webhook are distinct prefixes', () => {

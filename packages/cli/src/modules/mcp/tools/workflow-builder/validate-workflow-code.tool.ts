@@ -5,6 +5,9 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+
+import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -50,6 +53,7 @@ const outputSchema = {
 export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: Telemetry,
+	nodeTypes: NodeTypes,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -79,6 +83,15 @@ export const createValidateWorkflowCodeTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+
+			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
+				result.workflow,
+				nodeTypes,
+				(errorMessage) => ({ valid: false, errors: [errorMessage] }),
+				telemetryPayload,
+				telemetry,
+			);
+			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
 			telemetryPayload.results = {
 				success: true,

@@ -1,4 +1,4 @@
-import type { AttributeValue } from '@n8n/agents';
+import type { AttributeValue, RuntimeSkillRegistry } from '@n8n/agents';
 import { createHash } from 'node:crypto';
 
 import {
@@ -45,6 +45,7 @@ export interface AgentTraceInputOptions {
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
+	runtimeSkills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -1101,6 +1102,29 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
+function summarizeRuntimeSkillRegistry(
+	registry: RuntimeSkillRegistry | undefined,
+): Record<string, unknown> {
+	if (!registry || registry.skills.length === 0) {
+		return {};
+	}
+
+	const categories = Array.from(
+		new Set(
+			registry.skills
+				.map((skill) => skill.category)
+				.filter((category): category is string => typeof category === 'string'),
+		),
+	).sort();
+
+	return {
+		runtime_skill_count: registry.skills.length,
+		runtime_skill_names: registry.skills.map((skill) => skill.name),
+		runtime_skill_registry_hash: registry.skillsHash,
+		...(categories.length > 0 ? { runtime_skill_categories: categories } : {}),
+	};
+}
+
 export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	if (value === null || value === undefined) {
 		return value;
@@ -1223,5 +1247,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
+		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
 	});
 }

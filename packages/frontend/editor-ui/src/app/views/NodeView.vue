@@ -2,6 +2,7 @@
 import {
 	computed,
 	defineAsyncComponent,
+	inject,
 	nextTick,
 	onMounted,
 	ref,
@@ -11,6 +12,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 } from 'vue';
+import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
@@ -287,6 +289,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 const isNDVV2 = computed(() => true);
 
+// Optional context-supplied read-only signal (e.g. AI artifact host locking the
+// canvas while a workflow-builder agent is mutating the workflow). Adapters
+// provide it; default `null` means no external lock.
+const externalReadOnly = inject(EditorExternalReadOnlyKey, null);
+
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
@@ -294,7 +301,8 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		(workflowDocumentStore?.value?.isArchived ?? false) ||
-		(builderStore.streaming && !builderStore.isHelpStreaming)
+		(builderStore.streaming && !builderStore.isHelpStreaming) ||
+		(externalReadOnly?.value ?? false)
 	);
 });
 
@@ -304,6 +312,7 @@ const canExecuteOnCanvas = computed(() => {
 	}
 	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
+	if (externalReadOnly?.value) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
@@ -314,7 +323,7 @@ const isWriterAnotherTab = computed(() => {
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
 const keyBindingsEnabled = computed(() => {
-	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
+	return !ndvStore.value.activeNode && uiStore.activeModals.length === 0;
 });
 
 const isLogsPanelOpen = computed(() => logsStore.isOpen);
@@ -624,8 +633,8 @@ async function onSaveWorkflow() {
 }
 
 function onRenameNode(name: string) {
-	if (ndvStore.activeNode?.name) {
-		void renameNode(ndvStore.activeNode.name, name);
+	if (ndvStore.value.activeNode?.name) {
+		void renameNode(ndvStore.value.activeNode.name, name);
 	}
 }
 
@@ -1151,7 +1160,7 @@ function trackRunWorkflowToNode(node: INodeUi) {
 		node_type: node.type,
 		workflow_id: workflowId.value,
 		source: 'canvas',
-		push_ref: ndvStore.pushRef,
+		push_ref: ndvStore.value.pushRef,
 	};
 
 	telemetry.track('User clicked execute node button', telemetryPayload);
@@ -1544,7 +1553,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_SHORTCUT);
@@ -1646,7 +1655,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
+		if (typeof newId !== 'string' || newId === '') ndvStore.value.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -1655,7 +1664,7 @@ watch(
 
 // This keeps URL in sync if the activeNode is changed
 watch(
-	() => ndvStore.activeNode,
+	() => ndvStore.value.activeNode,
 	async (val) => {
 		// This is just out of caution
 		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;

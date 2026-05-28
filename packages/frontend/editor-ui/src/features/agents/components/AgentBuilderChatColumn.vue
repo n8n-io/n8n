@@ -33,6 +33,7 @@ const emit = defineEmits<{
 	'update:full-width': [fullWidth: boolean];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -99,6 +100,7 @@ const sharedInputDraft = ref('');
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
 							@agent-published="emit('agent-published', $event)"
+							@agent-changed="emit('agent-changed')"
 						/>
 					</div>
 				</template>

@@ -10,7 +10,6 @@ import type {
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
 	FetchedPage,
-	WebSearchResponse,
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
@@ -35,7 +34,12 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
-import { wrapUntrustedData } from '@n8n/instance-ai';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+	wrapUntrustedData,
+} from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -47,13 +51,7 @@ import {
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
-import {
-	fetchAndExtract,
-	maybeSummarize,
-	braveSearch,
-	searxngSearch,
-	LRUCache,
-} from './web-research';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
@@ -110,6 +108,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -121,10 +121,13 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
+
+type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -178,6 +181,8 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -250,11 +255,23 @@ export class InstanceAiAdapterService {
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			templatesService: this.getTemplatesService(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
+	}
+
+	private getTemplatesService(): BuilderTemplatesServiceInstance {
+		if (!this.templatesService) {
+			this.templatesService = new BuilderTemplatesService({
+				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
+				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
+				logger: this.logger,
+			});
+		}
+		return this.templatesService;
 	}
 
 	private buildLicenseHints(): string[] {
@@ -485,10 +502,10 @@ export class InstanceAiAdapterService {
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -590,18 +607,30 @@ export class InstanceAiAdapterService {
 				_options?: { projectId?: string },
 			) {
 				assertNotReadOnly();
-				// Strip redactionPolicy if the user lacks the required scope —
-				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				// Strip redactionPolicy if the user lacks the required directional scope —
+				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
-					if (!canUpdateRedaction) {
-						delete settings.redactionPolicy;
+					const [existingWorkflow, ownerProject] = await Promise.all([
+						workflowRepository.findOne({ where: { id: workflowId } }),
+						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+					]);
+
+					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
+
+					if (settings.redactionPolicy !== currentPolicy) {
+						const requiredScopes = getRequiredRedactionScopes(
+							currentPolicy,
+							settings.redactionPolicy,
+						);
+
+						const canUpdateRedaction =
+							ownerProject &&
+							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+
+						if (!canUpdateRedaction) {
+							delete settings.redactionPolicy;
+						}
 					}
 				}
 
@@ -1398,6 +1427,14 @@ export class InstanceAiAdapterService {
 			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
+		const referenceScopes = {
+			read: ['dataTable:read'],
+			readRow: ['dataTable:readRow'],
+			writeRow: ['dataTable:writeRow'],
+			update: ['dataTable:update'],
+			delete: ['dataTable:delete'],
+		} satisfies Record<DataTableReferencePermission, Scope[]>;
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1440,6 +1477,15 @@ export class InstanceAiAdapterService {
 					options,
 				);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
+			},
+
+			async resolveTableReference(dataTableId: string, options?: DataTableReferenceOptions) {
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					referenceScopes[options?.permission ?? 'read'],
+					dataTableId,
+					options,
+				);
+				return { id: resolvedId, name: tableName, projectId };
 			},
 
 			async getSchema(dataTableId, options) {
@@ -1926,13 +1972,31 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
+				const nodes = await getNodes();
+
+				// Synthetic MCP registry nodes have no on-disk type-def, so the
+				// standard resolver would 404 on them. Match either the bare slug
+				// (e.g. `notion`) or the package-prefixed form, then synthesise
+				// the TypeScript content from the in-memory description.
+				const registryNode =
+					nodes.find((n) => n.name === `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`) ??
+					(nodeType.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)
+						? nodes.find((n) => n.name === nodeType)
+						: undefined);
+				if (registryNode) {
+					const builderHint = registryNode.builderHint?.searchHint;
+					return {
+						content: synthesizeMcpRegistryTypeDef(registryNode),
+						...(builderHint ? { builderHint } : {}),
+					};
+				}
+
 				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
 
 				if (result.error) {
 					return { content: '', error: result.error };
 				}
 
-				const nodes = await getNodes();
 				const nodeDesc = findNodeByVersion(
 					nodes,
 					nodeType,
@@ -2447,6 +2511,13 @@ interface DataTableRecord {
 	name: string;
 	projectId: string;
 }
+
+type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+type DataTableReferenceOptions = {
+	projectId?: string;
+	permission?: DataTableReferencePermission;
+};
 
 interface DataTableIdOrNameRepository {
 	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;

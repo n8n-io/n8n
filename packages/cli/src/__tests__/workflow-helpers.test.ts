@@ -2,14 +2,13 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
-
-import type { IRun } from 'n8n-workflow';
+import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
-	getDataLastExecutedNodeData,
+	getLastExecutedNodeData,
+	getLastExecutedNodeRuns,
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
@@ -18,6 +17,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 } from '@/workflow-helpers';
+import { mock } from 'jest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
@@ -513,7 +513,7 @@ describe('validatePinDataSize', () => {
 	});
 });
 
-describe('getDataLastExecutedNodeData', () => {
+describe('getLastExecutedNodeData', () => {
 	const lastNodeTaskData: ITaskData = {
 		startTime: 0,
 		executionIndex: 0,
@@ -544,11 +544,71 @@ describe('getDataLastExecutedNodeData', () => {
 	it('returns last node run data when pinData is null', () => {
 		// Regression: destructure default `pinData = {}` only applies to undefined,
 		// so a null value used to throw `Cannot read properties of null`.
-		expect(() => getDataLastExecutedNodeData(buildRun(null))).not.toThrow();
-		expect(getDataLastExecutedNodeData(buildRun(null))).toBe(lastNodeTaskData);
+		expect(() => getLastExecutedNodeData(buildRun(null))).not.toThrow();
+		expect(getLastExecutedNodeData(buildRun(null))).toBe(lastNodeTaskData);
 	});
 
 	it('returns last node run data when pinData is undefined', () => {
-		expect(getDataLastExecutedNodeData(buildRun(undefined))).toBe(lastNodeTaskData);
+		expect(getLastExecutedNodeData(buildRun(undefined))).toBe(lastNodeTaskData);
+	});
+});
+
+describe('getLastExecutedNodeRuns', () => {
+	function buildRun(
+		lastNodeExecuted: string | undefined,
+		runData: Record<string, ITaskData[]>,
+	): IRun {
+		return {
+			data: {
+				resultData: {
+					lastNodeExecuted,
+					runData,
+				},
+			},
+		} as unknown as IRun;
+	}
+
+	it('returns an empty array when no last node executed is recorded', () => {
+		expect(getLastExecutedNodeRuns(buildRun(undefined, {}))).toEqual([]);
+	});
+
+	it('returns an empty array when the recorded last node has no run data', () => {
+		expect(getLastExecutedNodeRuns(buildRun('Last executed node', {}))).toEqual([]);
+		expect(
+			getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': [] })),
+		).toEqual([]);
+	});
+
+	it('returns every recorded run of the last executed node, in order', () => {
+		const runs = [
+			mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } }),
+			mock<ITaskData>({ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } }),
+			mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } }),
+		];
+		expect(
+			getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs })),
+		).toEqual(runs);
+	});
+
+	it('sorts runs by executionIndex when recorded out of order', () => {
+		const run0 = mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } });
+		const run1 = mock<ITaskData>({ executionIndex: 1, data: { main: [[{ json: { value: 1 } }]] } });
+		const run2 = mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } });
+		const outOfOrderRuns = [run2, run0, run1];
+		expect(
+			getLastExecutedNodeRuns(
+				buildRun('Last executed node', { 'Last executed node': outOfOrderRuns }),
+			),
+		).toEqual([run0, run1, run2]);
+	});
+
+	it('does not mutate the original runData array', () => {
+		const runs = [
+			mock<ITaskData>({ executionIndex: 2, data: { main: [[{ json: { value: 2 } }]] } }),
+			mock<ITaskData>({ executionIndex: 0, data: { main: [[{ json: { value: 0 } }]] } }),
+		];
+		const snapshot = [...runs];
+		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));
+		expect(runs).toEqual(snapshot);
 	});
 });
