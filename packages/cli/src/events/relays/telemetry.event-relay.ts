@@ -541,6 +541,7 @@ export class TelemetryEventRelay extends EventRelay {
 		uiContext,
 		isDynamic,
 		usesExternalSecrets,
+		jweEnabled,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -552,6 +553,7 @@ export class TelemetryEventRelay extends EventRelay {
 			uiContext,
 			is_dynamic: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
+			jwe_enabled: jweEnabled ?? false,
 		});
 	}
 
@@ -580,6 +582,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialType,
 		isDynamic,
 		usesExternalSecrets,
+		jweEnabled,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
@@ -588,6 +591,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_id: credentialId,
 			is_dynamic: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
+			jwe_enabled: jweEnabled ?? false,
 		});
 	}
 
