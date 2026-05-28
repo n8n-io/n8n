@@ -11,12 +11,12 @@ import type { McpServerConfig } from '@n8n/instance-ai';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
-import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
 type Transport = 'sse' | 'streamableHttp';
 
@@ -209,7 +209,7 @@ export class InstanceAiMcpRegistryService {
 				continue;
 			}
 
-			const resolvedServer = await this.resolveRegistryServer(
+			const resolvedServer = this.resolveRegistryServer(
 				connection.id,
 				connection.serverSlug,
 				connection.credentialId,
@@ -247,13 +247,13 @@ export class InstanceAiMcpRegistryService {
 		return resolved;
 	}
 
-	private async resolveRegistryServer(
+	private resolveRegistryServer(
 		connectionId: string,
 		serverSlug: string,
 		credentialId: string,
 		authType: string,
 		remotes: McpRegistryRemote[],
-	): Promise<ResolvedRegistryServer | null> {
+	): ResolvedRegistryServer | null {
 		const remote = getPreferredRemote(remotes);
 		if (!remote) {
 			this.logger.warn('Skipping MCP registry connection without supported remote transport', {
