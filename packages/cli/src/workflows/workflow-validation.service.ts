@@ -12,7 +12,22 @@ import {
 	isTriggerLikeNode,
 	toExecutionContextEstablishmentHookParameter,
 	CHAT_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
+
+// Mirrors the `fullAccess` set in the execution engine
+// (packages/core/src/execution-engine/node-execution-context/node-execution-context.ts):
+// nodes that can use *any* credential type at runtime regardless of declared
+// `description.credentials`. For these, `node.credentials` can carry leftover
+// entries from previous selections — only the credential pointed at by the
+// active `authentication` parameter is in use.
+const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
+const FULL_ACCESS_NODE_TYPES = new Set([
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+]);
 import type {
 	INode,
 	INodes,
@@ -186,15 +201,19 @@ export class WorkflowValidationService {
 			// workflow import), and the DB state should remain consistent regardless.
 			if (!node.credentials) continue;
 
-			for (const credentialType of Object.keys(node.credentials)) {
-				let typeDef: ICredentialType;
+			const activeCredentialTypes = this.getActiveCredentialTypes(node);
+
+			for (const credentialType of activeCredentialTypes) {
+				if (!node.credentials[credentialType]) continue;
+
+				let typeDef: ICredentialType | undefined;
 				try {
 					typeDef = this.credentialTypes.getByName(credentialType);
 				} catch {
 					continue; // unknown type — let other validators surface it
 				}
 
-				if (!typeDef.restrictToSupportedNodes) continue;
+				if (!typeDef?.restrictToSupportedNodes) continue;
 
 				// `typeDef.supportedNodes` from the loader holds short node names
 				// (e.g. "mattermost"), but `node.type` is fully qualified
@@ -217,6 +236,42 @@ export class WorkflowValidationService {
 			isValid: false,
 			error: `Cannot save workflow: ${violations.join(' ')}`,
 		};
+	}
+
+	/**
+	 * Returns the credential types that are actively in use on a node — the
+	 * subset of `node.credentials` keys we should validate against.
+	 *
+	 * For "full-access" nodes (HTTP Request + its tool variants), the editor
+	 * spreads `node.credentials` instead of replacing it when the user switches
+	 * credential type, leaving inactive keys behind. Only the credential
+	 * pointed at by the active `authentication` parameter is in use, so we
+	 * limit the check to that one — otherwise the validator would reject a
+	 * save based on an entry the user can't even see in the UI.
+	 *
+	 * For all other nodes, every entry in `node.credentials` corresponds to a
+	 * declared credential the node may use (gated by `displayOptions` at
+	 * runtime), so all keys remain candidates.
+	 */
+	private getActiveCredentialTypes(node: INode): string[] {
+		if (!node.credentials) return [];
+
+		if (!FULL_ACCESS_NODE_TYPES.has(node.type)) {
+			return Object.keys(node.credentials);
+		}
+
+		const params = (node.parameters ?? {}) as Record<string, unknown>;
+		const auth = typeof params.authentication === 'string' ? params.authentication : null;
+
+		if (auth === 'predefinedCredentialType') {
+			const cred = params.nodeCredentialType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		if (auth === 'genericCredentialType') {
+			const cred = params.genericAuthType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		return [];
 	}
 
 	validateForActivation(

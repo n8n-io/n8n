@@ -945,17 +945,33 @@ describe('WorkflowValidationService', () => {
 			return credentialTypes;
 		};
 
+		// Helper for HTTP-Request-shaped nodes — the editor sets `authentication`
+		// + `nodeCredentialType` on the parameter object to indicate which
+		// credential is actively selected on the node.
+		const httpRequestNodeWith = (
+			activeCredentialType: string | null,
+			boundCredentials: INode['credentials'],
+			overrides: Partial<INode> = {},
+		): INode =>
+			mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+				parameters: activeCredentialType
+					? { authentication: 'predefinedCredentialType', nodeCredentialType: activeCredentialType }
+					: { authentication: 'none' },
+				credentials: boundCredentials,
+				...overrides,
+			});
+
 		it('rejects a workflow binding a restricted credential to a non-supported node', () => {
 			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
 				'n8n-nodes-base.restrictedConsumer',
 			]);
 
-			const httpNode = mock<INode>({
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				disabled: false,
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
 			});
-			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
 
 			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
 
@@ -985,12 +1001,9 @@ describe('WorkflowValidationService', () => {
 		it('renders "(no nodes)" when the FQ supportedNodes list is empty', () => {
 			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, []);
 
-			const httpNode = mock<INode>({
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				disabled: false,
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
 			});
-			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
 
 			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
 
@@ -1007,12 +1020,9 @@ describe('WorkflowValidationService', () => {
 				'n8n-nodes-base.slack',
 			]);
 
-			const httpNode = mock<INode>({
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				disabled: false,
+			const httpNode = httpRequestNodeWith('slackApi', {
+				slackApi: { id: 'cred-2', name: 'Slack creds' },
 			});
-			httpNode.credentials = { slackApi: { id: 'cred-2', name: 'Slack creds' } };
 
 			expect(
 				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
@@ -1024,12 +1034,11 @@ describe('WorkflowValidationService', () => {
 				'n8n-nodes-base.restrictedConsumer',
 			]);
 
-			const httpNode = mock<INode>({
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				disabled: true,
-			});
-			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+			const httpNode = httpRequestNodeWith(
+				'restrictedApi',
+				{ restrictedApi: { id: 'cred-1', name: 'Restricted creds' } },
+				{ disabled: true },
+			);
 
 			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
 
@@ -1038,17 +1047,66 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toMatch(/HTTP Request/);
 		});
 
+		it('ignores a stale credential entry left over from a prior selection on HTTP Request', () => {
+			// User picked restrictedApi, then switched to slackApi. The editor spreads
+			// node.credentials so the old key sticks around even though only slackApi
+			// is selected per parameters.nodeCredentialType. We must not flag the
+			// inactive restrictedApi binding — the user sees Slack in the UI.
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('slackApi', {
+				restrictedApi: { id: 'cred-r1', name: 'Stale restricted' },
+				slackApi: { id: 'cred-s1', name: 'Active Slack' },
+			});
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('rejects a restricted credential that IS the active selection on HTTP Request', () => {
+			// Sibling of the stale-entry test: when nodeCredentialType points AT the
+			// restricted type, the validator must fire — defense vs. someone POSTing
+			// an illegal binding through the API.
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-r1', name: 'Active restricted' },
+				slackApi: { id: 'cred-s1', name: 'Stale Slack' },
+			});
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+		});
+
+		it('ignores all entries on HTTP Request when authentication is "none"', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith(null, {
+				restrictedApi: { id: 'cred-r1', name: 'Leftover from earlier auth setup' },
+			});
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
 		it('aggregates violations across multiple nodes', () => {
 			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
 				'n8n-nodes-base.restrictedConsumer',
 			]);
 
-			const httpNode = mock<INode>({
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				disabled: false,
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
 			});
-			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
 
 			const slackNode = mock<INode>({
 				name: 'Slack',
