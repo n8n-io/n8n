@@ -38,6 +38,7 @@ test('splitScriptIntoSubtitleChunks rejects invalid maxChars', () => {
 test('assEscape escapes characters that are special in ASS dialogue text', () => {
 	assert.equal(assEscape('第一行\n{重点}'), '第一行\\N\\{重点\\}');
 	assert.equal(assEscape('第一行\\n{重点}'), '第一行\\N\\{重点\\}');
+	assert.equal(assEscape('第一行\\N第二行'), '第一行\\N第二行');
 	assert.equal(assEscape('C:\\素材\\片段'), 'C:\\\\素材\\\\片段');
 });
 

@@ -38,8 +38,8 @@ export function splitScriptIntoSubtitleChunks(text, options = {}) {
 }
 
 export function assEscape(text) {
-	return String(text).replace(/\\n|\n|\\|[{}]/g, (match) => {
-		if (match === '\\n' || match === '\n') return '\\N';
+	return String(text).replace(/\\[nN]|\n|\\|[{}]/g, (match) => {
+		if (match === '\\n' || match === '\\N' || match === '\n') return '\\N';
 		if (match === '\\') return '\\\\';
 
 		return `\\${match}`;
