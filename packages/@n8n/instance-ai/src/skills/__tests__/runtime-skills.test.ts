@@ -52,22 +52,28 @@ describe('Instance AI runtime skills', () => {
 			(entry) => entry.name === 'credential-setup-with-computer-use',
 		);
 
-		expect(skill).toMatchObject({
-			name: 'credential-setup-with-computer-use',
-			recommendedTools: expect.arrayContaining([
-				'research',
-				'ask-user',
-				'browser_connect',
-				'browser_snapshot',
-				'browser_capture_secret',
-				'browser_create_credential',
-			]),
-		});
+		expect(skill?.name).toBe('credential-setup-with-computer-use');
+		for (const tool of [
+			'research',
+			'ask-user',
+			'browser_connect',
+			'browser_snapshot',
+			'browser_capture_secret',
+			'browser_create_credential',
+		]) {
+			expect(skill?.recommendedTools).toContain(tool);
+		}
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('credential-setup-with-computer-use');
 		expect(loaded?.instructions).toContain('Computer Use browser tools');
 		expect(loaded?.instructions).toContain('browser_capture_secret');
+		expect(loaded?.instructions).toContain('interactive: false');
+		expect(loaded?.instructions).toContain('`ref`');
+		expect(loaded?.instructions).toContain('`redactedKey`');
+		expect(loaded?.instructions).toContain('same `credentialsKey`');
+		expect(loaded?.instructions).toContain('`data`');
+		expect(loaded?.instructions).toContain('`resolveData`');
 		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
 	});
 });

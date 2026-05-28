@@ -238,6 +238,54 @@ describe('runExpectedToolsInvokedCheck', () => {
 		});
 	});
 
+	describe('anyOfToolCalls — actual tool-call alternatives', () => {
+		const credentialSetupScenario: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'Help me set up Slack credentials',
+			expectedToolInvocations: {
+				anyOfToolCalls: [
+					{ toolName: 'load_skill', argsContainAny: ['credential-setup-with-computer-use'] },
+					{ toolName: 'browser_navigate' },
+				],
+			},
+		};
+
+		it('passes when one expected actual tool call happened with matching args', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'load_skill',
+							args: { skillId: 'credential-setup-with-computer-use' },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('passes when a browser fallback tool call happened', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] }),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails when only an unrelated skill was loaded', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({ toolCalls: [{ toolName: 'load_skill', args: { skillId: 'other-skill' } }] }),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('credential-setup-with-computer-use');
+		});
+	});
+
 	describe('allOfToolCalls — actual tool-call requirements', () => {
 		const dataTableScenario: DiscoveryTestCase = {
 			id: 'test',
