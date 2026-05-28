@@ -14,8 +14,8 @@ import {
 } from './workflow-utils.mjs';
 
 test('resolveVoicePreset returns official speaker ids', () => {
-	assert.equal(VOICE_PRESETS.cancan_v2.speaker, 'BV700_V2_streaming');
-	assert.equal(resolveVoicePreset('cancan_v2').speaker, 'BV700_V2_streaming');
+	assert.equal(VOICE_PRESETS.xiaohe.speaker, 'zh_female_xiaohe_uranus_bigtts');
+	assert.equal(resolveVoicePreset('xiaohe').speaker, 'zh_female_xiaohe_uranus_bigtts');
 	assert.equal(resolveVoicePreset('', 'fallback_speaker').speaker, 'fallback_speaker');
 	assert.throws(() => resolveVoicePreset('unknown_voice'), /Unknown voice preset/);
 });
@@ -111,7 +111,7 @@ test('buildTtsSegments merges single narration into one request', () => {
 				{ role: 'narrator', text: '第二段。' },
 			],
 		},
-		{ voiceSingle: 'cancan_v2' },
+		{ voiceSingle: 'xiaohe' },
 		{ segmentsDir: '/tmp/job/tts/segments', fallbackSpeaker: 'fallback' },
 	);
 
@@ -119,7 +119,7 @@ test('buildTtsSegments merges single narration into one request', () => {
 		{
 			segmentIndex: 1,
 			role: 'narrator',
-			speaker: 'BV700_V2_streaming',
+			speaker: 'zh_female_xiaohe_uranus_bigtts',
 			text: '第一段。\n第二段。',
 			audioPath: '/tmp/job/tts/segments/001-narrator.mp3',
 			timingPath: '/tmp/job/tts/segments/001-narrator-timing.json',
@@ -137,12 +137,12 @@ test('buildTtsSegments keeps dialogue turns with role-specific speakers', () => 
 				{ role: 'B', text: '第二句。' },
 			],
 		},
-		{ voiceA: 'qingcang_v2', voiceB: 'female_general_v2' },
+		{ voiceA: 'yunzhou', voiceB: 'xiaohe' },
 		{ segmentsDir: '/tmp/job/tts/segments' },
 	);
 
-	assert.equal(segments[0].speaker, 'BV701_V2_streaming');
-	assert.equal(segments[1].speaker, 'BV001_V2_streaming');
+	assert.equal(segments[0].speaker, 'zh_male_m191_uranus_bigtts');
+	assert.equal(segments[1].speaker, 'zh_female_xiaohe_uranus_bigtts');
 	assert.equal(segments[1].audioPath, '/tmp/job/tts/segments/002-B.mp3');
 });
 

@@ -1,10 +1,10 @@
 export const VOICE_PRESETS = {
-	cancan_v2: { speaker: 'BV700_V2_streaming', label: '灿灿 2.0' },
-	qingcang_v2: { speaker: 'BV701_V2_streaming', label: '擎苍 2.0' },
-	female_general_v2: { speaker: 'BV001_V2_streaming', label: '通用女声 2.0' },
-	cancan: { speaker: 'BV700_streaming', label: '灿灿' },
-	qingcang: { speaker: 'BV701_streaming', label: '擎苍' },
-	male_general: { speaker: 'BV002_streaming', label: '通用男声' },
+	xiaohe: { speaker: 'zh_female_xiaohe_uranus_bigtts', label: '小何' },
+	vivi: { speaker: 'zh_female_vv_uranus_bigtts', label: 'Vivi' },
+	yunzhou: { speaker: 'zh_male_m191_uranus_bigtts', label: '云舟' },
+	xiaotian: { speaker: 'zh_male_taocheng_uranus_bigtts', label: '小天' },
+	cute_girl: { speaker: 'saturn_zh_female_keainvsheng_tob', label: '可爱女生' },
+	cheerful_boy: { speaker: 'saturn_zh_male_shuanglangshaonian_tob', label: '爽朗少年' },
 };
 
 export function resolveVoicePreset(key, fallbackSpeaker = '') {

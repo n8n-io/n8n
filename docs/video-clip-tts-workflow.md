@@ -95,12 +95,14 @@ The exposed voice fields are restricted to common official Doubao/Volcengine pre
 
 | Preset | Speaker ID | Use |
 | --- | --- | --- |
-| 灿灿 2.0 | `BV700_V2_streaming` | Default single narration |
-| 擎苍 2.0 | `BV701_V2_streaming` | Dialogue role A / narrator |
-| 通用女声 2.0 | `BV001_V2_streaming` | Dialogue role B |
-| 灿灿 | `BV700_streaming` | Legacy general voice |
-| 擎苍 | `BV701_streaming` | Legacy narrator voice |
-| 通用男声 | `BV002_streaming` | Legacy male voice |
+| 小何 | `zh_female_xiaohe_uranus_bigtts` | Default single narration / dialogue role B |
+| Vivi | `zh_female_vv_uranus_bigtts` | Female narration |
+| 云舟 | `zh_male_m191_uranus_bigtts` | Dialogue role A |
+| 小天 | `zh_male_taocheng_uranus_bigtts` | Male narration |
+| 可爱女生 | `saturn_zh_female_keainvsheng_tob` | Bright female narration |
+| 爽朗少年 | `saturn_zh_male_shuanglangshaonian_tob` | Bright male narration |
+
+These presets were verified against the local `DOUBAO_TTS_V2_RESOURCE_ID=seed-tts-2.0` configuration.
 
 ## Processing Flow
 
