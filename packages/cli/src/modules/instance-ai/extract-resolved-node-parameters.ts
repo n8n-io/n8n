@@ -35,8 +35,28 @@ import type { NodeTypes } from '@/node-types';
  */
 const MAX_RESOLVED_LEAF_CHARS = 8_000;
 
-/** Expression context variables that can't be reconstructed faithfully outside a live run. */
-const UNRECONSTRUCTABLE_CONTEXT_VARS = ['$ai', '$response', '$request', '$pageCount', '$secrets'];
+/**
+ * Expression context variables we don't reconstruct in the replay.
+ *
+ * - `$ai`, `$response`, `$request`, `$pageCount` only exist mid-execution
+ *   (AI-tool call, HTTP roundtrip, pagination loop) — genuinely irreproducible
+ *   outside a live run.
+ * - `$secrets`, `$vars` are persisted but we deliberately don't load them
+ *   here. Treating their access as "unreconstructable" tells the agent the
+ *   empty/throw is expected, not a real workflow bug.
+ */
+const UNRECONSTRUCTABLE_CONTEXT_VARS = [
+	'$ai',
+	'$response',
+	'$request',
+	'$pageCount',
+	'$secrets',
+	'$vars',
+];
+
+function mentionsUnreconstructableVar(raw: string): boolean {
+	return UNRECONSTRUCTABLE_CONTEXT_VARS.some((variable) => raw.includes(variable));
+}
 
 function capResolvedLeaf(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
@@ -54,11 +74,12 @@ function classifyExpressionFailure(
 	raw: string,
 	errorMessage: string,
 ): ResolvedExpressionFailure['reason'] {
+	if (mentionsUnreconstructableVar(raw)) return 'unreconstructable-context';
+
 	for (const variable of UNRECONSTRUCTABLE_CONTEXT_VARS) {
-		if (raw.includes(variable) || errorMessage.includes(variable)) {
-			return 'unreconstructable-context';
-		}
+		if (errorMessage.includes(variable)) return 'unreconstructable-context';
 	}
+
 	return 'expression-error';
 }
 
@@ -274,7 +295,15 @@ export async function extractResolvedNodeParameters(
 				// when `foo` is missing). Flag these explicitly so the agent doesn't have
 				// to mentally diff `parameters` against `resolved` to find the cause.
 				if (resolvedValue === null || resolvedValue === undefined || resolvedValue === '') {
-					emptyResolutions.push({ path, raw: value, resolved: resolvedValue });
+					const entry: EmptyExpressionResolution = {
+						path,
+						raw: value,
+						resolved: resolvedValue,
+					};
+					if (mentionsUnreconstructableVar(value)) {
+						entry.reason = 'unreconstructable-context';
+					}
+					emptyResolutions.push(entry);
 				}
 				return capResolvedLeaf(resolvedValue);
 			} catch (error) {

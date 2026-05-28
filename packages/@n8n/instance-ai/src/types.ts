@@ -110,6 +110,8 @@ export interface EmptyExpressionResolution {
 	raw: string;
 	/** The resolved value — one of `null`, `undefined`, or `""`. */
 	resolved: null | undefined | '';
+	/** Set when the expression references a non-reconstructed context var (`$vars`, `$secrets`, `$ai`, `$response`, `$request`, `$pageCount`) */
+	reason?: 'unreconstructable-context';
 }
 
 export interface ResolvedNodeParametersResult {

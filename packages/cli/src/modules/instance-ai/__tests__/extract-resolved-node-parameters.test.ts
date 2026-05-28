@@ -186,6 +186,40 @@ describe('extractResolvedNodeParameters', () => {
 		});
 	});
 
+	it('tags emptyResolutions touching $vars (and other unreconstructable contexts) with reason="unreconstructable-context"', async () => {
+		// $vars is injected as {} during replay, so $vars.foo silently resolves to
+		// undefined. Without the tag, the agent reads this as a real workflow bug
+		// — but it just means we don't reconstruct variables in the replay.
+		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+		const set = makeNode('Set', 'n8n-nodes-base.set', {
+			fromVars: '={{ $vars.apiKey }}',
+			fromSecrets: '={{ $secrets.token }}',
+			realBug: '={{ $json.missing }}',
+		});
+		const repo = createMockExecutionRepository(
+			makeResolutionExecution({
+				nodes: [trigger, set],
+				connections: connect('Trigger', 'Set'),
+				runData: {
+					Trigger: [makeTaskData([{}])],
+				},
+			}),
+		);
+
+		const result = await extractResolvedNodeParameters(
+			repo as unknown as ExecutionRepository,
+			nodeTypes,
+			'exec-1',
+			'Set',
+		);
+
+		const byPath = new Map(result.emptyResolutions.map((e) => [e.path, e]));
+		expect(byPath.get('fromVars')?.reason).toBe('unreconstructable-context');
+		expect(byPath.get('fromSecrets')?.reason).toBe('unreconstructable-context');
+		// `$json.missing` is a real "no value upstream" — no reason tag.
+		expect(byPath.get('realBug')?.reason).toBeUndefined();
+	});
+
 	it('flags expressions that resolved to nullish/empty values in emptyResolutions', async () => {
 		const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const set = makeNode('Set', 'n8n-nodes-base.set', {
