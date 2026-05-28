@@ -35,6 +35,9 @@ export interface ChatIntegrationDescriptor {
 	label: string;
 	icon: string;
 	credentialTypes: string[];
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
 }
 
 export interface AgentScheduleConfig {
@@ -135,7 +138,7 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
 
 export const agentBuilderModeSchema = z.enum(['default', 'custom']);
 export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;

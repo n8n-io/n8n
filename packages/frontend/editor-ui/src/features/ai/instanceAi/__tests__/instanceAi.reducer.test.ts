@@ -318,6 +318,14 @@ describe('instanceAi.reducer', () => {
 			expect(tc.renderHint).toBe('tasks');
 		});
 
+		test('tool-call assigns skill render hint for skill tools', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'load_skill'));
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.renderHint).toBe('skill');
+		});
+
 		test('tool-result resolves matching toolCallId with isLoading=false and result set', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'some-tool'));
@@ -648,8 +656,8 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('build-workflow-with-agent')).toBe('builder');
 		});
 
-		test('returns data-table for data-table tool', () => {
-			expect(getRenderHint('manage-data-tables-with-agent')).toBe('data-table');
+		test('returns default for direct data-table tool', () => {
+			expect(getRenderHint('data-tables')).toBe('default');
 		});
 
 		test('returns eval-setup for eval setup tool', () => {

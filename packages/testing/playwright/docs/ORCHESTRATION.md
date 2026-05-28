@@ -113,6 +113,20 @@ test.describe('Feature', () => {
 });
 ```
 
+## Attempt-Aware Retry Filtering
+
+When a shard fails in CI and the user clicks **Re-run failed jobs**, GitHub re-runs the full shard manifest. `janitor filter-shard` shrinks that to just the specs that failed in the previous attempt.
+
+```bash
+echo "$MATRIX_SPECS" | janitor filter-shard
+```
+
+- Reads candidate spec paths from stdin (newline- or space-separated)
+- On `GITHUB_RUN_ATTEMPT == 1`: passes candidates through unchanged
+- On `GITHUB_RUN_ATTEMPT > 1`: POSTs `{ runId, previousAttempt, candidates }` to the coordinator webhook (default `https://internal.users.n8n.cloud/webhook/failed-specs`, override with `--url=<...>` or `JANITOR_FILTER_SHARD_URL`), prints the intersection
+- **Fails open** on any error (timeout, non-2xx, parse error, fallback response) — emits the original candidate list so a coordinator outage never breaks CI
+- Wired into `test-e2e-reusable.yml` between "Pre-pull Test Container Images" and "Run Tests"; the coordinator (an n8n workflow) holds the Currents API key server-side, so fork PRs get the same benefit without exposing secrets
+
 ## Refreshing Metrics
 
 ```bash

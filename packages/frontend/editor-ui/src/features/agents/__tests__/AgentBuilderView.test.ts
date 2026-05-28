@@ -82,6 +82,7 @@ const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
+const fetchConfigMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -172,7 +173,7 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
 		config: mockConfig,
-		fetchConfig: vi.fn().mockImplementation(async () => {
+		fetchConfig: fetchConfigMock.mockImplementation(async () => {
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
 			mockConfig.value = withDefaultLlm(intendedConfig);
@@ -409,6 +410,7 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		fetchConfigMock.mockClear();
 	});
 
 	it('renders the build chat in the editing experience without the old mode toggle', async () => {
@@ -566,6 +568,26 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(vm.isBuilt).toBe(true);
 	});
+
+	it('refreshes full config after trigger connection changes the agent', async () => {
+		const wrapper = await renderView();
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+
+		capabilities.vm.$emit('add-trigger');
+		await nextTick();
+
+		const modalData = openModalWithDataMock.mock.calls[0]?.[0]?.data as
+			| { onAgentChanged?: () => Promise<void> | void }
+			| undefined;
+		expect(modalData?.onAgentChanged).toBeTypeOf('function');
+
+		fetchConfigMock.mockClear();
+		getAgentMock.mockClear();
+		await modalData?.onAgentChanged?.();
+
+		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+	});
 });
 
 describe('AgentBuilderView — three-column shell', () => {
@@ -588,6 +610,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		fetchConfigMock.mockClear();
 	});
 
 	it('renders the two-column shell: chat and editor', async () => {

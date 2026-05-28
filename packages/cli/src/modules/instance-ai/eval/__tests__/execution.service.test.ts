@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
-import type { User } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IRunExecutionData,
@@ -8,10 +8,11 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -28,7 +29,7 @@ jest.mock('../mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
 jest.mock('../workflow-analysis', () => ({
-	assertUnpinCompatibility: jest.fn(),
+	partitionAiRoots: jest.fn(),
 	buildVendorLlmRouting: jest.fn().mockReturnValue({
 		subNodeToRoot: new Map(),
 		rootToSubNode: new Map(),
@@ -96,15 +97,14 @@ jest.mock('n8n-workflow', () => {
 // ---------------------------------------------------------------------------
 
 import { EvalExecutionService } from '../execution.service';
+import { createLlmMockHandler } from '../mock-handler';
 import {
-	assertUnpinCompatibility,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	partitionAiRoots,
 } from '../workflow-analysis';
-import { createLlmMockHandler } from '../mock-handler';
 import type { MockHints } from '../workflow-analysis';
-import { UserError } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,7 +113,7 @@ import { UserError } from 'n8n-workflow';
 const generateMockHintsMock = jest.mocked(generateMockHints);
 const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
-const assertUnpinCompatibilityMock = jest.mocked(assertUnpinCompatibility);
+const partitionAiRootsMock = jest.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
@@ -201,10 +201,12 @@ describe('EvalExecutionService', () => {
 
 		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger, postHogClient);
 
-		// Default mock returns — happy path
+		// Default mock returns — happy path. partitionAiRoots returns an empty
+		// partition (no AI roots in the test workflow) so the kill-switch
+		// short-circuits and the wire server stays off unless a test overrides.
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
-		assertUnpinCompatibilityMock.mockImplementation(() => undefined);
+		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		createLlmMockHandlerMock.mockReturnValue(jest.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
@@ -311,21 +313,30 @@ describe('EvalExecutionService', () => {
 		});
 	});
 
-	// ── unpinNodes handling ──────────────────────────────────────────
+	// ── pinNodes / interception partition ────────────────────────────
 
-	describe('unpinNodes', () => {
+	describe('interception partition', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 		});
 
-		it('calls assertUnpinCompatibility with an empty list when unpinNodes is omitted', async () => {
+		it('calls partitionAiRoots with an empty explicit pin list when pinNodes is omitted', async () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(expect.anything(), []);
+			expect(partitionAiRootsMock).toHaveBeenCalledWith(expect.anything(), []);
 		});
 
-		it('omits the exclusion set when unpinNodes is empty', async () => {
-			await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+		it('forwards explicit pinNodes from the request to partitionAiRoots', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser(), { pinNodes: ['Agent'] });
+
+			expect(partitionAiRootsMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'wf-1' }), [
+				'Agent',
+			]);
+		});
+
+		it('omits the exclusion set when the partition returns no unpinNodes', async () => {
+			// Default mock returns empty unpinNodes → no AI roots intercepted.
+			await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
@@ -333,78 +344,82 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
-		// PostHog kill-switch: non-empty unpinNodes only runs when the flag
-		// resolves to ON. Flag OFF refuses the request before any other work
-		// so vendor traffic can never reach the real provider.
+		it("surfaces the partition's typo-guard error when an explicit pin name is invalid", async () => {
+			partitionAiRootsMock.mockImplementation(() => {
+				throw new UserError('Cannot pin — not found in workflow: "Ghost".');
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+				pinNodes: ['Ghost'],
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual([expect.stringContaining('not found in workflow')]);
+			expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+			expect(mockWireServerStart).not.toHaveBeenCalled();
+		});
+
+		// PostHog kill-switch: when partitionAiRoots wants to intercept any
+		// roots, the flag is consulted. Flag OFF silently degrades to the
+		// pinned baseline so the eval still produces a result — no error,
+		// just the today-baseline behaviour. This is the right default once
+		// interception is the default-on path.
 		describe('PostHog kill-switch (flag off)', () => {
 			beforeEach(() => {
+				partitionAiRootsMock.mockReturnValue({
+					unpinNodes: ['Agent'],
+					pinNodes: [],
+					autoPinned: [],
+				});
 				postHogClient.getFeatureFlags.mockResolvedValue({
 					'085_eval_vendor_sdk_interception': false,
 				});
 			});
 
-			it('runs the compatibility guard first, then refuses with the gate error when the guard passes', async () => {
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+			it('silently degrades to the pinned baseline (no wire server, no error)', async () => {
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-				expect(result.success).toBe(false);
-				expect(result.errors).toEqual([expect.stringContaining('currently disabled')]);
-				// Guard runs first so the user gets actionable diagnostics when their
-				// workflow has a permanent compatibility issue. When the guard passes,
-				// the gate fires with the generic "currently disabled" message.
-				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'wf-1' }),
-					['Agent'],
-				);
-				expect(generateMockHintsMock).not.toHaveBeenCalled();
-				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
+				// No refusal — the eval still completes through the pinned path.
+				expect(result.errors).toEqual([]);
+				expect(mockWireServerStart).not.toHaveBeenCalled();
+				expect(mockProcessRunExecutionData).toHaveBeenCalledTimes(1);
 			});
 
-			it("surfaces the guard's error when the workflow has a permanent compatibility issue", async () => {
-				assertUnpinCompatibilityMock.mockImplementation(() => {
-					throw new UserError(
-						'Cannot unpin AI root nodes — protocol-binary sub-nodes ' +
-							'(cannot be intercepted via HTTP): "Mem" (memoryPostgresChat) → "Agent"',
-					);
+			it('does not consult PostHog when the partition has nothing to intercept', async () => {
+				partitionAiRootsMock.mockReturnValue({
+					unpinNodes: [],
+					pinNodes: [],
+					autoPinned: [],
 				});
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
-
-				expect(result.success).toBe(false);
-				// Guard's protocol-binary message wins over the generic gate message —
-				// the user needs to fix the workflow regardless of when the feature ships.
-				expect(result.errors).toEqual([expect.stringContaining('memoryPostgresChat')]);
-				expect(result.errors[0]).not.toContain('currently disabled');
-				// Guard refused before the PostHog check fires.
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('still runs the normal pinned path when unpinNodes is omitted (no flag check)', async () => {
 				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-				expect(generateMockHintsMock).toHaveBeenCalled();
-				expect(mockProcessRunExecutionData).toHaveBeenCalled();
+			});
+
+			it('also degrades silently when PostHog itself rejects (fail-closed)', async () => {
+				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(result.errors).toEqual([]);
+				expect(mockWireServerStart).not.toHaveBeenCalled();
 			});
 		});
 
-		// Flag ON (or unset — fail-open default): non-empty unpinNodes proceeds
-		// into the rewrite path and boots the wire server.
+		// Flag ON (or unset — fail-open default): the partition's unpinNodes
+		// drive the rewrite path and boot the wire server.
 		describe('PostHog kill-switch (flag on)', () => {
-			it('forwards unpinNodes to assertUnpinCompatibility', async () => {
-				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
-
-				expect(assertUnpinCompatibilityMock).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'wf-1' }),
-					['Agent'],
-				);
+			beforeEach(() => {
+				partitionAiRootsMock.mockReturnValue({
+					unpinNodes: ['Agent'],
+					pinNodes: [],
+					autoPinned: [],
+				});
 			});
 
-			it('forwards the exclusion set to identifyNodesForPinData', async () => {
-				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+			it('forwards the exclusion set to identifyNodesForPinData when interception is enabled', async () => {
+				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'wf-1' }),
@@ -413,7 +428,7 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('boots and tears down the wire server around the workflow run', async () => {
-				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: ['Agent'] });
+				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(mockWireServerStart).toHaveBeenCalledTimes(1);
 				expect(mockProcessRunExecutionData).toHaveBeenCalledTimes(1);
@@ -424,32 +439,24 @@ describe('EvalExecutionService', () => {
 			it('tears down the wire server even if the workflow run throws', async () => {
 				mockProcessRunExecutionData.mockRejectedValue(new Error('explode'));
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(result.success).toBe(false);
 				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
 				expect(mockRestoreNoProxy).toHaveBeenCalledTimes(1);
 			});
 
-			it('does not boot the wire server when unpinNodes is empty', async () => {
-				await service.executeWithLlmMock('wf-1', makeUser(), { unpinNodes: [] });
+			it('does not boot the wire server when the partition has no unpinNodes', async () => {
+				partitionAiRootsMock.mockReturnValue({
+					unpinNodes: [],
+					pinNodes: [],
+					autoPinned: [],
+				});
+
+				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(mockWireServerStart).not.toHaveBeenCalled();
 				expect(mockWireServerStop).not.toHaveBeenCalled();
-			});
-
-			it('fails closed when PostHog rejects (treats flag as off and refuses the request)', async () => {
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
-
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
-
-				expect(result.success).toBe(false);
-				expect(result.errors).toEqual([expect.stringContaining('currently disabled')]);
-				expect(mockWireServerStart).not.toHaveBeenCalled();
 			});
 
 			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
@@ -458,32 +465,12 @@ describe('EvalExecutionService', () => {
 					throw new Error('env mutation blocked');
 				});
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(result.success).toBe(false);
 				expect(result.errors).toEqual([expect.stringContaining('env mutation blocked')]);
 				expect(mockWireServerStart).toHaveBeenCalledTimes(1);
 				expect(mockWireServerStop).toHaveBeenCalledTimes(1);
-			});
-
-			it('returns an error result and skips workflow execution when the compatibility guard refuses', async () => {
-				assertUnpinCompatibilityMock.mockImplementation(() => {
-					throw new (require('n8n-workflow').UserError)(
-						'Cannot unpin "Agent" — incompatible memory backend',
-					);
-				});
-
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
-
-				expect(result.success).toBe(false);
-				expect(result.errors).toEqual([expect.stringContaining('Cannot unpin "Agent"')]);
-				expect(mockProcessRunExecutionData).not.toHaveBeenCalled();
-				// Server was never started — guard runs before boot.
-				expect(mockWireServerStart).not.toHaveBeenCalled();
 			});
 
 			it('records a wire-server turn against the AI root in nodeResults via onIntercept', async () => {
@@ -506,9 +493,7 @@ describe('EvalExecutionService', () => {
 					return makeIRun();
 				});
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(result.nodeResults['Agent']).toBeDefined();
 				expect(result.nodeResults['Agent'].executionMode).toBe('mocked');
@@ -552,14 +537,105 @@ describe('EvalExecutionService', () => {
 					return makeIRun();
 				});
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 				// 'pinned' from the bypass pass survives — preservation rule.
 				expect(result.nodeResults['Agent'].executionMode).toBe('pinned');
 				// The turn is still recorded against the same entry.
 				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+			});
+
+			// Headline ledger-attribution rule for M3: a single eval run produces
+			// two kinds of traffic — vendor-SDK model turns (attributed to the AI
+			// root via the wire server's URL path) and tool HTTP traffic
+			// (attributed to the tool node via the existing helpers.httpRequest
+			// interceptor in `request-helper-functions.ts:1147`). The two must
+			// land in separate `nodeResults` entries; tools whose HTTP traffic
+			// gets folded into the Agent's ledger would mask real bugs.
+			it('splits the ledger: model turns to the Agent root, tool HTTP to the tool node', async () => {
+				const innerMockHandler = jest.fn().mockResolvedValue({
+					body: { content: 'tool result' },
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				mockProcessRunExecutionData.mockImplementation(async () => {
+					const opts = capturedWireServerOptions.last as {
+						onIntercept?: (turn: unknown) => void;
+					};
+					// Model turn — wire server's onIntercept fires with the root name.
+					opts.onIntercept?.({
+						rootName: 'Agent',
+						url: 'https://api.openai.com/v1/chat/completions',
+						method: 'POST',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						requestBody: { model: 'gpt-4o', messages: [] },
+						mockResponse: {
+							tool_calls: [{ id: 'c1', function: { name: 'getOrder', arguments: '{}' } }],
+						},
+					});
+
+					// Tool HTTP — `evalLlmMockHandler` is invoked from
+					// `request-helper-functions.ts` with the tool node's
+					// identity. The SUT passes `additionalData` as the first
+					// positional argument to the `WorkflowExecute` constructor
+					// (see `runWorkflow()` in `execution.service.ts`). If that
+					// contract ever changes, the explicit guard below fails
+					// loudly with an actionable message instead of silently
+					// reading the wrong argument slot.
+					const wfExecuteCtor = jest.mocked(
+						(await import('n8n-core')).WorkflowExecute,
+					) as unknown as jest.Mock;
+					const additionalData = wfExecuteCtor.mock.calls[0][0] as {
+						evalLlmMockHandler?: (req: unknown, node: unknown) => Promise<unknown>;
+					};
+					if (!additionalData?.evalLlmMockHandler) {
+						throw new Error(
+							'WorkflowExecute(additionalData, ...) contract changed — ' +
+								'arg 0 no longer carries evalLlmMockHandler. Update the ledger-split test.',
+						);
+					}
+					await additionalData.evalLlmMockHandler(
+						{ url: 'https://orders.example.com/v1/orders/42', method: 'GET' },
+						{
+							id: 'tool-node',
+							name: 'Get Order Tool',
+							type: 'n8n-nodes-base.httpRequestTool',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					);
+
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				// Model turn attributed to Agent only.
+				expect(result.nodeResults['Agent']).toBeDefined();
+				expect(result.nodeResults['Agent'].interceptedRequests).toHaveLength(1);
+				expect(result.nodeResults['Agent'].interceptedRequests[0].nodeType).toBe(
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				);
+
+				// Tool HTTP attributed to the tool node, NOT to the Agent.
+				expect(result.nodeResults['Get Order Tool']).toBeDefined();
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests).toHaveLength(1);
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests[0].url).toBe(
+					'https://orders.example.com/v1/orders/42',
+				);
+				expect(result.nodeResults['Get Order Tool'].interceptedRequests[0].nodeType).toBe(
+					'n8n-nodes-base.httpRequestTool',
+				);
+				expect(result.nodeResults['Get Order Tool'].executionMode).toBe('mocked');
+
+				// Cross-check: neither side's ledger contains the other side's URL.
+				const agentUrls = result.nodeResults['Agent'].interceptedRequests.map((r) => r.url);
+				const toolUrls = result.nodeResults['Get Order Tool'].interceptedRequests.map((r) => r.url);
+				expect(agentUrls).not.toContain('https://orders.example.com/v1/orders/42');
+				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
 			});
 
 			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
@@ -597,9 +673,7 @@ describe('EvalExecutionService', () => {
 					return makeIRun();
 				});
 
-				const result = await service.executeWithLlmMock('wf-1', makeUser(), {
-					unpinNodes: ['Agent'],
-				});
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 				// 'real' (from config-issue pre-marking) gets upgraded to 'mocked'.
 				expect(result.nodeResults['HTTP Request']).toBeDefined();
