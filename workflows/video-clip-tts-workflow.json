@@ -223,7 +223,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $json.llmApiMode === 'responses' ? { model: $env.DOUBAO_LLM_MODEL || $env.ARK_MODEL_NAME, input: $json.llmMessages.map((message) => ({ role: message.role, content: [{ type: 'input_text', text: message.content }] })), temperature: Number($env.DOUBAO_LLM_TEMPERATURE || 0.7), max_output_tokens: 1600 } : { model: $env.DOUBAO_LLM_MODEL || $env.ARK_MODEL_NAME, messages: $json.llmMessages, temperature: Number($env.DOUBAO_LLM_TEMPERATURE || 0.7), response_format: { type: 'json_object' } } }}",
+        "jsonBody": "={{ $json.llmApiMode === 'responses' ? { model: $env.DOUBAO_LLM_MODEL || $env.ARK_MODEL_NAME, input: $json.llmMessages.map((message) => ({ role: message.role, content: [{ type: 'input_text', text: message.content }] })), temperature: Number($env.DOUBAO_LLM_TEMPERATURE || 0.7), max_output_tokens: 3000, thinking: { type: 'disabled' } } : { model: $env.DOUBAO_LLM_MODEL || $env.ARK_MODEL_NAME, messages: $json.llmMessages, temperature: Number($env.DOUBAO_LLM_TEMPERATURE || 0.7), response_format: { type: 'json_object' } } }}",
         "options": {
           "response": {
             "response": {
