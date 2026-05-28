@@ -69,13 +69,26 @@ Use \`patch_config\` with:
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
-- The write path fills native provider tool defaults. Do not invent provider tool keys.
+- Web search lives under \`config.webSearch\`.
+- Only OpenAI and Anthropic models support native web search. For those models, set
+  \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
+  user asks to disable web search. Omitting \`provider\` also means native.
+- For every other provider, never use \`provider: "native"\` or omit
+  \`provider\` for enabled web search.
+- For Brave or SearXNG search, call \`ask_credential\`, then set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
+- Brave and SearXNG remain fallback tools even when the model provider also supports native search.
+- When patching only \`/model\` and \`/credential\`, do not patch
+  \`/config/webSearch\` if the existing provider is \`"brave"\` or \`"searxng"\`
+  unless the user explicitly asked to change the web-search method.
+- Never write \`{ "enabled": true }\` alone for fallback search.
+- The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.
 
 #### Configure Fallback Services
 
-- Services that require credentials must call \`ask_credential\` first.
-- Persist only the credential id returned by \`ask_credential\`.
+- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
+- For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
 #### Add Node Or Workflow Tools
 
@@ -87,7 +100,7 @@ Use \`patch_config\` with:
 
 Bad: inventing top-level fields
 \`\`\`json
-{ "temperature": 0.7 }
+{ "webSearch": { "enabled": true } }
 \`\`\`
 
 Bad: provider namespace as provider tool
@@ -102,7 +115,7 @@ Bad: copying credential IDs from \`list_credentials\`
 
 Bad: replacing \`config\` while dropping unrelated settings
 \`\`\`json
-{ "config": { "thinking": { "provider": "anthropic", "budgetTokens": 1024 } } }
+{ "config": { "webSearch": { "enabled": true } } }
 \`\`\`
 
 ### Gotchas
@@ -110,12 +123,14 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`write_config\` replaces the full config; include every field that should survive.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
+- Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
 - Empty, placeholder, or guessed \`instructions\` are rejected; ask for details instead.
 
 ### Verify
 
 - The final payload validates against the Config schema reference.
 - Existing unrelated config, tools, skills, integrations, and memory remain present unless intentionally changed.
+- Existing Brave or SearXNG web search remains present on model-only changes.
 - Credential fields use ids returned by the correct interactive credential tools.
 - Provider tool keys are valid and match the selected model provider.
 

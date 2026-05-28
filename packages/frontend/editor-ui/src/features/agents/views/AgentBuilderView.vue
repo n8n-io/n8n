@@ -48,6 +48,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
@@ -422,6 +423,18 @@ async function flushAutosave() {
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
 
+function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
+	return {
+		...config,
+		memory: {
+			...config.memory,
+			enabled: true,
+			storage: 'n8n',
+			lastMessages: config.memory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
+		},
+	};
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
@@ -440,7 +453,11 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: deepCopy(localConfig.value),
+		// The memory toggle is gone, but older agent configs may still have
+		// session memory disabled. Normalize on save so legacy configs are
+		// corrected the next time the user makes a real edit, without mutating
+		// config during component mount.
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
 	});
 }
 
