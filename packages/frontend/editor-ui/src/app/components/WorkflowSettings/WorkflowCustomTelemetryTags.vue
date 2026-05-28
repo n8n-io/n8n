@@ -3,10 +3,12 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -242,9 +244,21 @@ const onModalOpenChange = (open: boolean) => {
 		</ElRow>
 		<N8nDialog :open="showModal" size="large" @update:open="onModalOpenChange">
 			<N8nDialogHeader>
-				<N8nDialogTitle>
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.title') }}
-				</N8nDialogTitle>
+				<div :class="$style.customTelemetryTagsModalTitle">
+					<N8nIconButton
+						icon="chevron-left"
+						variant="ghost"
+						size="small"
+						:aria-label="i18n.baseText('generic.back')"
+						@click="cancelModal"
+					/>
+					<N8nDialogTitle>
+						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.title') }}
+					</N8nDialogTitle>
+				</div>
+				<N8nDialogDescription>
+					{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
+				</N8nDialogDescription>
 			</N8nDialogHeader>
 			<div
 				:class="$style.customTelemetryTagsModal"
@@ -281,7 +295,7 @@ const onModalOpenChange = (open: boolean) => {
 					data-test-id="workflow-settings-custom-telemetry-tags-save"
 					@click="saveModal"
 				>
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.done') }}
+					{{ i18n.baseText('generic.save') }}
 				</N8nButton>
 			</N8nDialogFooter>
 		</N8nDialog>
@@ -330,6 +344,12 @@ const onModalOpenChange = (open: boolean) => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.customTelemetryTagsModalTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .customTelemetryTagsModal {

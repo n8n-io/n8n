@@ -84,10 +84,16 @@ const renderComponent = createComponentRenderer(WorkflowCustomTelemetryTags, {
 				emits: ['update:open'],
 				template: '<div v-if="open"><slot /></div>',
 			},
+			N8nDialogDescription: { template: '<p><slot /></p>' },
 			N8nDialogFooter: { template: '<footer><slot /></footer>' },
 			N8nDialogHeader: { template: '<header><slot /></header>' },
 			N8nDialogTitle: { template: '<h2><slot /></h2>' },
 			N8nIcon: { template: '<span />' },
+			N8nIconButton: {
+				emits: ['click'],
+				template:
+					'<button type="button" :aria-label="$attrs[\'aria-label\']" @click="$emit(\'click\')" />',
+			},
 			N8nText: { template: '<p :data-test-id="$attrs[\'data-test-id\']"><slot /></p>' },
 			N8nTooltip: { template: '<span><slot /></span>' },
 			ParameterInputList: ParameterInputListStub,
@@ -107,6 +113,17 @@ async function openModal(getByTestId: (id: string) => HTMLElement) {
 }
 
 describe('WorkflowCustomTelemetryTags', () => {
+	it('should render the modal title, back button, description, and save action', async () => {
+		const { getByLabelText, getByRole, getByTestId, getByText } = renderComponent();
+
+		await openModal(getByTestId);
+
+		expect(getByLabelText('Back')).toBeVisible();
+		expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
+		expect(getByText("Add custom tags to this workflow's OpenTelemetry spans.")).toBeVisible();
+		expect(getByText('Save')).toBeVisible();
+	});
+
 	it('should render existing custom telemetry tags in the modal', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
