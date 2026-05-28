@@ -40,6 +40,28 @@ export const NodeUsableAsToolRule = createRule({
 				}
 
 				const usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
+				const outputsProperty = findObjectProperty(descriptionValue, 'outputs');
+				const inputsProperty = findObjectProperty(descriptionValue, 'inputs');
+				if (
+					outputsProperty?.value?.type === TSESTree.AST_NODE_TYPES.ArrayExpression &&
+					inputsProperty?.value?.type === TSESTree.AST_NODE_TYPES.ArrayExpression
+				) {
+					const isAiOutput = outputsProperty?.value?.elements?.some((element) => {
+						const isAiOutputEnum =
+							element?.type === TSESTree.AST_NODE_TYPES.MemberExpression &&
+							element?.object?.type === TSESTree.AST_NODE_TYPES.Identifier &&
+							element?.object?.name === 'NodeConnectionTypes' &&
+							element?.property?.type === TSESTree.AST_NODE_TYPES.Identifier &&
+							element?.property?.name !== 'Main';
+						const isAiOutputLiteral =
+							element?.type === TSESTree.AST_NODE_TYPES.Literal && element?.value !== 'main';
+						return isAiOutputEnum || isAiOutputLiteral;
+					});
+					const isEmptyInputs = inputsProperty?.value?.elements?.length === 0;
+					if (isAiOutput && isEmptyInputs) {
+						return;
+					}
+				}
 
 				if (!usableAsToolProperty) {
 					context.report({

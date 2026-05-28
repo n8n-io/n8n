@@ -31,7 +31,7 @@ function onRate(rating: RatingFeedback) {
 		<slot></slot>
 		<MessageRating
 			v-if="message.showRating && !isUserMessage"
-			:style="message.ratingStyle"
+			:minimal="message.ratingStyle === 'minimal'"
 			:show-feedback="message.showFeedback"
 			@feedback="onRate"
 		/>

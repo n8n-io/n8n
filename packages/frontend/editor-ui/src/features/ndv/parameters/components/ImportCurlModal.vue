@@ -5,11 +5,13 @@ import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
 const telemetry = useTelemetry();
+const toast = useToast();
 const i18n = useI18n();
 
 const uiStore = useUIStore();
@@ -18,7 +20,7 @@ const ndvStore = useNDVStore();
 const curlCommand = ref('');
 const modalBus = createEventBus();
 
-const inputRef = ref<HTMLTextAreaElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
 	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
@@ -35,6 +37,10 @@ onMounted(() => {
 
 function onInput(value: string): void {
 	curlCommand.value = value;
+}
+
+function onFocus(): void {
+	inputRef.value?.select();
 }
 
 function closeDialog(): void {
@@ -76,13 +82,24 @@ function sendTelemetry(
 }
 
 async function onImport() {
-	const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
-	const { importCurlCommand } = useImportCurlCommand({
-		onImportSuccess,
-		onImportFailure,
-		onAfterImport,
-	});
-	importCurlCommand(curlCommand);
+	try {
+		const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
+		const { importCurlCommand } = useImportCurlCommand({
+			onImportSuccess,
+			onImportFailure,
+			onAfterImport,
+		});
+		importCurlCommand(curlCommand);
+	} catch {
+		// Handles WASM loading failures (e.g. wrong MIME type for tree-sitter.wasm)
+		toast.showToast({
+			title: i18n.baseText('importCurlParameter.showError.failedToLoad.title'),
+			message: i18n.baseText('importCurlParameter.showError.failedToLoad.message'),
+			type: 'error',
+			duration: 0,
+		});
+		onImportFailure({ invalidProtocol: false });
+	}
 }
 </script>
 
@@ -105,7 +122,7 @@ async function onImport() {
 						data-test-id="import-curl-modal-input"
 						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
 						@update:model-value="onInput"
-						@focus="$event.target.select()"
+						@focus="onFocus"
 					/>
 				</N8nInputLabel>
 			</div>

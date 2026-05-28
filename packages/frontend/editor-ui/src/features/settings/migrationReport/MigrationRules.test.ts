@@ -121,7 +121,10 @@ describe('MigrationRules', () => {
 			});
 
 			// API called with correct context
-			expect(breakingChangesApi.getReport).toHaveBeenCalledWith(rootStore.restApiContext);
+			expect(breakingChangesApi.getReport).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				undefined,
+			);
 
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
@@ -391,7 +394,10 @@ describe('MigrationRules', () => {
 
 			// API called and data reloaded
 			await waitFor(() => {
-				expect(breakingChangesApi.refreshReport).toHaveBeenCalledWith(rootStore.restApiContext);
+				expect(breakingChangesApi.refreshReport).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					undefined,
+				);
 				expect(screen.getByText('Updated Rule')).toBeInTheDocument();
 				expect(screen.getByText('10 Workflows')).toBeInTheDocument();
 			});

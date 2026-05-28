@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	WebhookType,
 	Workflow,
@@ -6,20 +5,21 @@ import type {
 	IWebhookDescription,
 	INodeType,
 	INodeTypes,
-	Expression,
 	IWorkflowExecuteAdditionalData,
+	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { getWebhookDescription, getNodeWebhookUrl } from '../webhook-helper-functions';
 
 describe('Webhook Helper Functions', () => {
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ id: 'workflow-id', expression, nodeTypes });
 	const nodeType = mock<INodeType>();
 	const node = mock<INode>({ name: 'test-node' });
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	describe('getWebhookDescription', () => {
 		const tests: Array<{

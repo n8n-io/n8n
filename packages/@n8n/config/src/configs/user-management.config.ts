@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { PasswordConfig } from './password.config';
 
 @Config
 class SmtpAuth {
@@ -83,7 +84,7 @@ type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** How to send emails */
+	/** Email delivery method: `smtp` or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 
@@ -101,6 +102,9 @@ const INVALID_JWT_REFRESH_TIMEOUT_WARNING =
 export class UserManagementConfig {
 	@Nested
 	emails: EmailConfig;
+
+	@Nested
+	password: PasswordConfig;
 
 	/** JWT secret to use. If unset, n8n will generate its own. */
 	@Env('N8N_USER_MANAGEMENT_JWT_SECRET')

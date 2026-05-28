@@ -40,10 +40,10 @@ const goToUpgrade = async () => {
 			</I18nT>
 		</div>
 		<template #footer>
-			<N8nButton type="secondary" native-type="button" @click="visible = false">{{
+			<N8nButton variant="subtle" native-type="button" @click="visible = false">{{
 				locale.baseText('generic.cancel')
 			}}</N8nButton>
-			<N8nButton type="primary" native-type="button" @click="goToUpgrade">{{
+			<N8nButton variant="solid" native-type="button" @click="goToUpgrade">{{
 				locale.baseText('projects.create.limitReached.link')
 			}}</N8nButton>
 		</template>

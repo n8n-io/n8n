@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -75,12 +75,13 @@ const setupWorkflow = async () => {
 			role: 'credential:owner',
 		},
 	);
-	return { savedCredential, resolver };
+	return { savedCredential, resolver, owner };
 };
 
 describe('Dynamic Credentials API', () => {
 	let savedCredential: CredentialsEntity;
 	let resolver: DynamicCredentialResolver;
+	let owner: User;
 
 	beforeAll(async () => {
 		// Mock OAuth metadata endpoint for resolver validation
@@ -109,7 +110,7 @@ describe('Dynamic Credentials API', () => {
 
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
-		({ savedCredential, resolver } = await setupWorkflow());
+		({ savedCredential, resolver, owner } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
@@ -204,6 +205,64 @@ describe('Dynamic Credentials API', () => {
 					.set('Authorization', 'Bearer test-token')
 					.set('X-Authorization', 'Bearer ')
 					.expect(401);
+			});
+		});
+	});
+
+	describe('Cookie Authentication Bypass', () => {
+		describe('POST /credentials/:id/authorize', () => {
+			describe('when a user is authenticated via cookie', () => {
+				it('should allow access without static auth token', async () => {
+					const response = await testServer
+						.authAgentFor(owner)
+						.post(`/credentials/${savedCredential.id}/authorize`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						// Note: NO X-Authorization header provided
+						.expect(200);
+
+					expect(response.body.data).toBeDefined();
+					expect(typeof response.body.data).toBe('string');
+					expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				});
+
+				it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+					const response = await testServer
+						.authAgentFor(owner)
+						.post(`/credentials/${savedCredential.id}/authorize`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+						.expect(200);
+
+					expect(response.body.data).toBeDefined();
+					expect(typeof response.body.data).toBe('string');
+					expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				});
+			});
+		});
+
+		describe('DELETE /credentials/:id/revoke', () => {
+			describe('when a user is authenticated via cookie', () => {
+				it('should allow access without static auth token', async () => {
+					await testServer
+						.authAgentFor(owner)
+						.delete(`/credentials/${savedCredential.id}/revoke`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						// Note: NO X-Authorization header provided
+						.expect(204);
+				});
+
+				it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+					await testServer
+						.authAgentFor(owner)
+						.delete(`/credentials/${savedCredential.id}/revoke`)
+						.query({ resolverId: resolver.id })
+						.set('Authorization', 'Bearer test-token')
+						.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+						.expect(204);
+				});
 			});
 		});
 	});

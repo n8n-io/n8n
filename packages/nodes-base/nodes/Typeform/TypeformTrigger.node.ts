@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -18,6 +20,7 @@ import type {
 	ITypeformDefinition,
 } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
+import { verifySignature } from './TypeformTriggerHelpers';
 
 export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -181,17 +184,21 @@ export class TypeformTrigger implements INodeType {
 
 				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
 
-				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
+				// Generate a secret for webhook signature verification
+				const webhookSecret = randomBytes(32).toString('hex');
+
 				const body = {
 					url: webhookUrl,
 					enabled: true,
 					verify_ssl: true,
+					secret: webhookSecret,
 				};
 
 				await apiRequest.call(this, 'PUT', endpoint, body);
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhookId;
+				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -212,6 +219,7 @@ export class TypeformTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -220,6 +228,15 @@ export class TypeformTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify webhook signature if secret is configured
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const version = this.getNode().typeVersion;
 		const bodyData = this.getBodyData();
 

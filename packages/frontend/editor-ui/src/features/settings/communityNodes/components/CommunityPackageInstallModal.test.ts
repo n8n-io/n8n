@@ -232,6 +232,10 @@ describe('CommunityPackageInstallModal', () => {
 				type: 'unverified',
 				packageName: 'n8n-nodes-test',
 				nodeType: 'n8n-nodes-test.TestNode',
+				telemetry: {
+					hasQuickConnect: false,
+					source: 'cnr settings page',
+				},
 			});
 		});
 

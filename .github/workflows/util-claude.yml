@@ -25,17 +25,31 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
       - name: Run Claude PR Action
-        uses: anthropics/claude-code-action@de8e0b9c42c6cb58e904c857f164aa072244c1ac # beta
+        uses: anthropics/claude-code-action@d668cc452deb931732f24c6b1bbf24d97bc0c586 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Or use OAuth token instead:
           # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           timeout_minutes: '60'
+          settings: |
+            {
+              "extraKnownMarketplaces": {
+                "n8n": {
+                  "source": {
+                    "source": "directory",
+                    "path": "./.claude/plugins/n8n"
+                  }
+                }
+              },
+              "enabledPlugins": {
+                "n8n@n8n": true
+              }
+            }
           # mode: tag  # Default: responds to @claude mentions
           # Optional: Restrict network access to specific domains only
           # experimental_allowed_domains: |

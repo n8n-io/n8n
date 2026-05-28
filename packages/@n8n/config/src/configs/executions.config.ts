@@ -55,6 +55,29 @@ class RecoveryConfig {
 	workflowDeactivationEnabled: boolean = false;
 }
 
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
+@Config
+class QueueRetentionConfig {
+	/**
+	 * How many completed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes completed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_COMPLETED', nonNegativeIntSchema)
+	keepLastCompleted: number = 0;
+
+	/**
+	 * How many failed Bull jobs to keep in Redis.
+	 *
+	 * - `0` removes failed jobs immediately (default).
+	 * - `n` keeps the last `n` completed jobs and trims older ones.
+	 */
+	@Env('N8N_EXECUTIONS_QUEUE_KEEP_LAST_FAILED', nonNegativeIntSchema)
+	keepLastFailed: number = 0;
+}
+
 const executionModeSchema = z.enum(['regular', 'queue']);
 
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
@@ -73,7 +96,7 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_TIMEOUT')
 	timeout: number = -1;
 
-	/** How long (seconds) a workflow execution may run for at most. */
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
 	maxTimeout: number = 3600; // 1h
 
@@ -110,6 +133,9 @@ export class ExecutionsConfig {
 	queueRecovery: QueueRecoveryConfig;
 
 	@Nested
+	queueRetention: QueueRetentionConfig;
+
+	@Nested
 	recovery: RecoveryConfig;
 
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
@@ -127,4 +153,8 @@ export class ExecutionsConfig {
 	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
+
+	/** Whether scheduled executions receive a deduplication key enforced by a unique DB index. */
+	@Env('N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED')
+	scheduledExecutionDeduplicationEnabled: boolean = false;
 }

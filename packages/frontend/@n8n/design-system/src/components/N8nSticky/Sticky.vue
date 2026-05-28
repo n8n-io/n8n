@@ -4,6 +4,11 @@ import { computed, ref, watch } from 'vue';
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
+import {
+	isValidHexColor,
+	adjustColorLightness,
+	getContrastTextColor,
+} from '../../utils/colorUtils';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
@@ -36,6 +41,26 @@ const styles = computed((): { height: string; width: string } => ({
 }));
 
 const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+
+const getCustomColorStyles = (hexColor: string) => {
+	if (!isValidHexColor(hexColor)) {
+		return {};
+	}
+
+	return {
+		'--sticky--color--background': hexColor,
+		'--sticky--border-color--custom-light': adjustColorLightness(hexColor, -20),
+		'--sticky--border-color--custom-dark': adjustColorLightness(hexColor, 80),
+		'--sticky--color--text--custom': getContrastTextColor(hexColor),
+	};
+};
+
+const customColorStyles = computed(() => {
+	if (typeof props.backgroundColor === 'string') {
+		return getCustomColorStyles(props.backgroundColor);
+	}
+	return {};
+});
 
 watch(
 	() => props.editMode,
@@ -81,9 +106,10 @@ const onInputScroll = (event: WheelEvent) => {
 			'n8n-sticky': true,
 			[$style.sticky]: true,
 			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: true,
+			[$style[`color-${backgroundColor}`]]: typeof backgroundColor === 'number',
+			[$style.customColor]: typeof backgroundColor === 'string' && isValidHexColor(backgroundColor),
 		}"
-		:style="styles"
+		:style="{ ...styles, ...customColorStyles }"
 		@keydown.prevent
 	>
 		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
@@ -130,6 +156,23 @@ const onInputScroll = (event: WheelEvent) => {
 
 	background-color: var(--sticky--color--background);
 	border: 1px solid var(--sticky--border-color);
+}
+
+// Custom colors - text contrast and theme-aware borders
+.customColor {
+	--sticky--color--text: var(--sticky--color--text--custom);
+	--color--text--shade-1: var(--sticky--color--text--custom);
+	--sticky--border-color: var(--sticky--border-color--custom-light);
+}
+
+:global(body[data-theme='dark']) .customColor {
+	--sticky--border-color: var(--sticky--border-color--custom-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme='light'])) .customColor {
+		--sticky--border-color: var(--sticky--border-color--custom-dark);
+	}
 }
 
 .clickable {
@@ -187,13 +230,17 @@ const onInputScroll = (event: WheelEvent) => {
 	padding: var(--spacing--2xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	cursor: default;
 
-	.el-textarea {
+	.n8n-input {
 		height: 100%;
+		align-items: stretch;
 
-		.el-textarea__inner {
-			height: 100%;
-			resize: unset;
+		> div {
+			align-items: stretch;
 		}
+	}
+
+	textarea {
+		resize: unset;
 	}
 }
 

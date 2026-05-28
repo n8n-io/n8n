@@ -16,7 +16,7 @@ interface Props {
 	/** Function to get node type information */
 	getNodeType: (nodeName: string) => INodeTypeDescription | null;
 	/** Function to format issue messages */
-	formatIssueMessage: (value: WorkflowNodeIssue['value']) => string;
+	formatNodeIssueMessage: (value: WorkflowNodeIssue['value']) => string;
 }
 
 interface Emits {
@@ -54,9 +54,9 @@ function handleEditClick() {
 		/>
 
 		<!-- Issue message -->
-		<div :class="$style.issueMessage" :aria-label="`Issue: ${formatIssueMessage(issue.value)}`">
+		<div :class="$style.issueMessage" :aria-label="`Issue: ${formatNodeIssueMessage(issue.value)}`">
 			<span :class="$style.nodeName">{{ issue.node }}:</span>
-			{{ formatIssueMessage(issue.value) }}
+			{{ formatNodeIssueMessage(issue.value) }}
 		</div>
 
 		<!-- Navigate chevron -->

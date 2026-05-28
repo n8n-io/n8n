@@ -8,7 +8,7 @@ const table = {
 const FOREIGN_KEY_NAME = 'projects_creatorId_foreign';
 
 export class AddCreatorIdToProjectTable1764276827837 implements ReversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up({
 		escape,

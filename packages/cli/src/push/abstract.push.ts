@@ -64,6 +64,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.emit('message', { pushRef, userId, msg });
 	}
 
+	protected getConnection(pushRef: string): Connection | undefined {
+		return this.connections[pushRef];
+	}
+
 	protected remove(pushRef?: string) {
 		if (!pushRef) return;
 
@@ -74,6 +78,8 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
+		if (pushRefs.length === 0) return;
+
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),

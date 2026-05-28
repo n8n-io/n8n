@@ -1,10 +1,17 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
+import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
+import { trackNodeExecution } from './trackNodeExecution';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
@@ -15,6 +22,9 @@ export async function nodeExecuteAfter(
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const stateStore = useWorkflowExecutionStateStore(
+		createWorkflowExecutionStateId(workflowsStore.workflowId),
+	);
 	const assistantStore = useAssistantStore();
 
 	/**
@@ -50,8 +60,25 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
+	const activeExecutionId = stateStore.activeExecutionId;
+	if (typeof activeExecutionId === 'string') {
+		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
+			pushDataWithPlaceholderOutputData,
+		);
+
+		if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
+			void trackNodeExecution(pushDataWithPlaceholderOutputData, workflowsStore.workflowId);
+		}
+	}
+
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
+
+	// Side effects
+	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
+		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
+	} else if (pushData.data.executionStatus !== 'waiting') {
+		void trackNodeExecution(pushData, workflowsStore.workflowId);
+	}
 
 	void assistantStore.onNodeExecution(pushData);
 }

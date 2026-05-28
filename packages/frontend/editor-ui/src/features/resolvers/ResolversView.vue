@@ -124,10 +124,15 @@ async function onAction(action: string, resolver: CredentialResolver) {
 					</div>
 				</template>
 				<template #additionalContent>
-					<N8nButton type="highlight" class="mr-2xs" element="a" :href="docsUrl" target="_blank">
+					<N8nButton
+						variant="ghost"
+						class="mr-2xs n8n-button--highlight"
+						:href="docsUrl"
+						target="_blank"
+					>
 						Learn more <N8nIcon icon="arrow-up-right" />
 					</N8nButton>
-					<N8nButton type="primary" @click="createResolver">
+					<N8nButton variant="solid" @click="createResolver">
 						{{ i18n.baseText('credentialResolver.addNew') }}
 					</N8nButton>
 				</template>
@@ -135,7 +140,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 		</div>
 		<div v-else>
 			<div :class="$style.actionBar">
-				<N8nButton class="ml-auto" type="primary" icon="plus" @click="createResolver">
+				<N8nButton variant="solid" class="ml-auto" icon="plus" @click="createResolver">
 					{{ i18n.baseText('credentialResolver.addNew') }}
 				</N8nButton>
 			</div>

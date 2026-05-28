@@ -32,7 +32,13 @@ import type { Scope } from '@n8n/permissions';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
-import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	calculateWorkflowChecksum,
+	type INode,
+	type IPinData,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { saveCredential } from '../shared/db/credentials';
@@ -47,9 +53,7 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 let owner: User;
 let member: User;
@@ -108,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -137,6 +142,14 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const workflow = makeWorkflow({ withPinData: false });
+		workflow.pinData = { data: [{ json: { data: largeValue } }] };
+		const response = await authOwnerAgent.post('/workflows').send(workflow);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should retain accept `workflow.id`', async () => {
@@ -211,13 +224,19 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(scopes).toEqual(
 			[
+				'execution:reveal',
 				'workflow:delete',
+				'workflow:disableRedaction',
+				'workflow:enableRedaction',
 				'workflow:execute',
 				'workflow:execute-chat',
+				'workflow:export',
 				'workflow:move',
 				'workflow:publish',
 				'workflow:read',
 				'workflow:share',
+				'workflow:unpublish',
+				'workflow:unshare',
 				'workflow:update',
 			].sort(),
 		);
@@ -821,6 +840,56 @@ describe('POST /workflows', () => {
 			expect(createdWorkflow?.settings).toMatchObject({ saveExecutionProgress: true });
 			expect(createdWorkflow?.meta).toMatchObject({ testMeta: 'value' });
 		});
+
+		test('should persist redactionPolicy setting to the database on create', async () => {
+			testServer.license.enable('feat:dataRedaction');
+			const payload = {
+				name: 'Redaction Policy Workflow',
+				nodes: [],
+				connections: {},
+				settings: { redactionPolicy: 'non-manual' },
+			};
+
+			const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
+
+			const dbWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'non-manual' });
+		});
+
+		test('should strip redactionPolicy on create when user lacks workflow:enableRedaction scope', async () => {
+			testServer.license.enable('feat:dataRedaction');
+
+			const customRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update', 'workflow:create'],
+				{
+					roleType: 'project',
+					displayName: 'Workflow Creator No Redaction',
+					description: 'Can create workflows but not enable redaction',
+				},
+			);
+
+			const teamProject = await createTeamProject('Redaction Test Project', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+
+			const payload = {
+				name: 'Stripped Redaction Workflow',
+				nodes: [],
+				connections: {},
+				settings: { redactionPolicy: 'non-manual' },
+				projectId: teamProject.id,
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const dbWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(dbWorkflow?.settings?.redactionPolicy).toBeUndefined();
+		});
 	});
 });
 
@@ -1097,12 +1166,17 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -1115,7 +1189,9 @@ describe('GET /workflows', () => {
 					'workflow:update',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:publish',
+					'workflow:unpublish',
 				].sort(),
 			);
 		}
@@ -1136,8 +1212,10 @@ describe('GET /workflows', () => {
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
+				'workflow:export',
 				'workflow:publish',
 				'workflow:read',
+				'workflow:unpublish',
 				'workflow:update',
 			]);
 
@@ -1145,13 +1223,19 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -1173,13 +1257,19 @@ describe('GET /workflows', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -1190,13 +1280,19 @@ describe('GET /workflows', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2256,12 +2352,17 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -2274,7 +2375,9 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:update',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:publish',
+					'workflow:unpublish',
 				].sort(),
 			);
 
@@ -2300,8 +2403,10 @@ describe('GET /workflows?includeFolders=true', () => {
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
+				'workflow:export',
 				'workflow:publish',
 				'workflow:read',
+				'workflow:unpublish',
 				'workflow:update',
 			]);
 
@@ -2309,13 +2414,19 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:reveal',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2342,13 +2453,19 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2359,13 +2476,19 @@ describe('GET /workflows?includeFolders=true', () => {
 				[
 					'workflow:create',
 					'workflow:delete',
+					'workflow:disableRedaction',
+					'workflow:enableRedaction',
 					'workflow:execute',
 					'workflow:execute-chat',
+					'workflow:export',
+					'workflow:import',
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -3066,10 +3189,20 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versions[0].versionId).toBe(workflow.versionId);
 	});
 
-	test('should update the version counter', async () => {
+	test('should update the version counter when nodes change', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
-			name: 'name updated',
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
 			versionId: workflow.versionId,
 		};
 
@@ -3085,6 +3218,21 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionCounter).toBe(workflow.versionCounter + 1);
 	});
 
+	test('should not update the version counter on metadata-only changes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updated = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(updated?.versionCounter).toBe(workflow.versionCounter);
+	});
+
 	test('should update workflow without updating its active version', async () => {
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
@@ -3092,6 +3240,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const payload = {
 			nodes: [],
+			connections: {},
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
@@ -3323,6 +3472,32 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
 
+	test('should reject update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ pinData: { myNode: [{ json: { data: largeValue } }] } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflow(
+			{ pinData: { myNode: [{ json: { data: largeValue } }] } as IPinData },
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Updated name' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('Updated name');
+	});
+
 	describe('Security: Mass Assignment Protection on Update', () => {
 		test.each([
 			{
@@ -3488,6 +3663,121 @@ describe('PATCH /workflows/:workflowId', () => {
 			saveDataErrorExecution: 'all',
 		});
 		expect(updatedWorkflow?.name).toBe('Updated Name');
+	});
+
+	test('should persist updated redactionPolicy setting to the database', async () => {
+		testServer.license.enable('feat:dataRedaction');
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					redactionPolicy: 'none',
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			settings: { redactionPolicy: 'all' },
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'all' });
+	});
+
+	test('should strip redactionPolicy on update when user lacks workflow:enableRedaction scope (none → all)', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		// Custom role with workflow:update but NOT enableRedaction
+		const customRole = await createCustomRoleWithScopeSlugs(
+			['workflow:read', 'workflow:update', 'workflow:create'],
+			{
+				roleType: 'project',
+				displayName: 'Workflow Updater No Redaction',
+				description: 'Can update workflows but not enable redaction',
+			},
+		);
+
+		const teamProject = await createTeamProject('Redaction Update Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'none' } },
+			teamProject,
+		);
+
+		const response = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'all' } });
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+		// redactionPolicy must remain 'none' — the change was stripped
+		expect(dbWorkflow?.settings?.redactionPolicy).toBe('none');
+	});
+
+	test('should strip redactionPolicy on update when user lacks workflow:disableRedaction scope (all → none)', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		// Custom role with enableRedaction but NOT disableRedaction
+		const customRole = await createCustomRoleWithScopeSlugs(
+			['workflow:read', 'workflow:update', 'workflow:create', 'workflow:enableRedaction'],
+			{
+				roleType: 'project',
+				displayName: 'Workflow Updater Enable Redaction Only',
+				description: 'Can enable but not disable redaction',
+			},
+		);
+
+		const teamProject = await createTeamProject('Redaction Disable Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'all' } },
+			teamProject,
+		);
+
+		const response = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'none' } });
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+		// redactionPolicy must remain 'all' — the disabling change was stripped
+		expect(dbWorkflow?.settings?.redactionPolicy).toBe('all');
+	});
+
+	test('member can enable and disable redactionPolicy on a workflow in their own personal project', async () => {
+		testServer.license.enable('feat:dataRedaction');
+
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { redactionPolicy: 'none' } },
+			member,
+		);
+
+		const enableResponse = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'all' } });
+
+		expect(enableResponse.statusCode).toBe(200);
+		expect(
+			(await workflowRepository.findOneBy({ id: workflow.id }))?.settings?.redactionPolicy,
+		).toBe('all');
+
+		const disableResponse = await authMemberAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ settings: { redactionPolicy: 'none' } });
+
+		expect(disableResponse.statusCode).toBe(200);
+		expect(
+			(await workflowRepository.findOneBy({ id: workflow.id }))?.settings?.redactionPolicy,
+		).toBe('none');
 	});
 });
 
@@ -3829,6 +4119,139 @@ describe('POST /workflows/:workflowId/activate', () => {
 		});
 	});
 
+	test('should emit only activation event when activating inactive workflow', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				workflow: expect.objectContaining({
+					activeVersionId: workflow.versionId,
+				}),
+			}),
+		);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+	});
+
+	test('should emit both deactivation and activation events when updating active workflow', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const oldVersionId = workflow.activeVersionId!;
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		// Should emit deactivation event for the old version FIRST
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				deactivatedVersionId: oldVersionId,
+			}),
+		);
+
+		// Should emit activation event for the new version AFTER
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				workflow: expect.objectContaining({
+					activeVersionId: newVersionId,
+				}),
+			}),
+		);
+
+		const deactivationCallIndex = emitSpy.mock.calls.findIndex(
+			(call) => call[0] === 'workflow-deactivated',
+		);
+		const activationCallIndex = emitSpy.mock.calls.findIndex(
+			(call) => call[0] === 'workflow-activated',
+		);
+		expect(deactivationCallIndex).toBeLessThan(activationCallIndex);
+	});
+
+	test('should emit only deactivation event when activation fails on active workflow', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const oldVersionId = workflow.activeVersionId!;
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		// Mock activeWorkflowManager.add to fail
+		const addSpy = jest
+			.spyOn(activeWorkflowManagerLike, 'add')
+			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(response.statusCode).toBe(400);
+
+		// Should emit deactivation event for the old version
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				deactivatedVersionId: oldVersionId,
+			}),
+		);
+
+		// Should NOT emit activation event (activation failed)
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-activated', expect.anything());
+
+		// Verify workflow is deactivated in database
+		const updatedWorkflow = await workflowRepository.findOne({
+			where: { id: workflow.id },
+		});
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
+
+		addSpy.mockRestore();
+	});
+
+	test('should emit no events when activation fails on inactive workflow', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Mock activeWorkflowManager.add to fail
+		const addSpy = jest
+			.spyOn(activeWorkflowManagerLike, 'add')
+			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(response.statusCode).toBe(400);
+
+		// Should NOT emit any workflow events
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-activated', expect.anything());
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+
+		// Verify workflow remains inactive
+		const updatedWorkflow = await workflowRepository.findOne({
+			where: { id: workflow.id },
+		});
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
+
+		addSpy.mockRestore();
+	});
+
 	test('should not activate an archived workflow', async () => {
 		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
 
@@ -3953,35 +4376,108 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(updatedWorkflow?.activeVersionId).toBeNull();
 		expect(updatedWorkflow?.activeVersion).toBeNull();
 	});
+
+	test('should block deactivation when expectedChecksum does not match', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		// Simulate another user updating the workflow
+		await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated by another user',
+			versionId: workflow.versionId,
+		});
+
+		// Try to deactivate with outdated checksum
+		const outdatedChecksum = await calculateWorkflowChecksum(workflow);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/deactivate`)
+			.send({ expectedChecksum: outdatedChecksum });
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
+	});
+
+	test('should allow deactivation when expectedChecksum matches', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		// Get the current workflow to compute correct checksum
+		const getResponse = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const currentChecksum = await calculateWorkflowChecksum(getResponse.body.data);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/deactivate`)
+			.send({ expectedChecksum: currentChecksum });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.active).toBe(false);
+		expect(response.body.data.activeVersionId).toBeNull();
+	});
+
+	test('should allow deactivation without expectedChecksum (backward compatible)', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`).send({});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.active).toBe(false);
+	});
 });
 
 describe('POST /workflows/:workflowId/run', () => {
-	let sharingSpy: jest.SpyInstance;
-	let tamperingSpy: jest.SpyInstance;
-	let workflow: IWorkflowBase;
+	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
+		const dbWorkflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
 
-	beforeAll(() => {
-		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+		// Send modified workflowData with an extra injected node
+		const tamperedWorkflowData = {
+			...dbWorkflow,
+			nodes: [
+				...dbWorkflow.nodes,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
 
-		sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled');
-		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
-		workflow = workflowRepository.create({ id: uuid() });
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should accept the request (the DB workflow exists)
+		// It should NOT use the tampered workflowData
+		expect(response.statusCode).not.toBe(404);
 	});
 
-	test('should prevent tampering if sharing is enabled', async () => {
-		sharingSpy.mockReturnValue(true);
+	test('should return 404 for a non-existent workflow', async () => {
+		const nonExistentId = uuid();
+		const fakeWorkflow = workflowRepository.create({ id: nonExistentId });
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
+		const response = await authOwnerAgent
+			.post(`/workflows/${nonExistentId}/run`)
+			.send({ workflowData: fakeWorkflow });
 
-		expect(tamperingSpy).toHaveBeenCalledTimes(1);
-	});
-
-	test('should skip tampering prevention if sharing is disabled', async () => {
-		sharingSpy.mockReturnValue(false);
-
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
-
-		expect(tamperingSpy).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(404);
 	});
 });
 
@@ -4129,6 +4625,49 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(historyRecord).not.toBeNull();
 		expect(historyRecord!.nodes).toEqual(workflow.nodes);
 		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
+
+	test('should block archive when expectedChecksum does not match', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		// Simulate another user updating the workflow
+		await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Updated by another user',
+			versionId: workflow.versionId,
+		});
+
+		// Try to archive with outdated checksum
+		const outdatedChecksum = await calculateWorkflowChecksum(workflow);
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send({ expectedChecksum: outdatedChecksum });
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
+	});
+
+	test('should allow archive when expectedChecksum matches', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		// Get the current workflow to compute correct checksum
+		const getResponse = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const currentChecksum = await calculateWorkflowChecksum(getResponse.body.data);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send({ expectedChecksum: currentChecksum });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.isArchived).toBe(true);
+	});
+
+	test('should allow archive without expectedChecksum (backward compatible)', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send({});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.isArchived).toBe(true);
 	});
 });
 

@@ -40,7 +40,6 @@ const projectsStore = useProjectsStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
-const validateOnBlur = ref(false);
 const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
@@ -181,8 +180,6 @@ function closeModal() {
 }
 
 async function handleSubmit() {
-	validateOnBlur.value = true;
-
 	if (!isValid.value) {
 		return;
 	}
@@ -226,6 +223,18 @@ onMounted(async () => {
 			input.focus();
 		});
 	}
+	if (props.mode === 'new') {
+		// This validation rule is not added for "edit" mode
+		// since we added this rule a while after variables were released
+		// and we want to add the "don't start with number" validation in a backwards-compatible manner.
+		keyValidationRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^[A-Za-z_]/,
+				message: i18n.baseText('variables.editing.key.error.regex-no-start-with-number'),
+			},
+		});
+	}
 });
 </script>
 
@@ -251,7 +260,7 @@ onMounted(async () => {
 					data-test-id="variable-modal-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="keyValidationRules"
 					@validate="(value: boolean) => (formValidation.key = value)"
 				/>
@@ -281,7 +290,7 @@ onMounted(async () => {
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 6 }"
 					:maxlength="VALUE_MAX_LENGTH"
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="valueValidationRules"
 					@validate="(value: boolean) => (formValidation.value = value)"
 				/>
@@ -325,7 +334,7 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="tertiary"
+					variant="subtle"
 					:label="i18n.baseText('variables.modal.button.cancel')"
 					data-test-id="variable-modal-cancel-button"
 					@click="closeModal"

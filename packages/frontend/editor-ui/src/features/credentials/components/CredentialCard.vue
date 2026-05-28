@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -11,14 +12,17 @@ import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 
 import {
 	N8nActionToggle,
 	N8nBadge,
+	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nText,
@@ -32,6 +36,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 
 const emit = defineEmits<{
 	click: [credentialId: string];
+	connected: [credentialId: string];
 }>();
 
 const props = withDefaults(
@@ -51,17 +56,32 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
+const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
+const isConnecting = ref(false);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
 	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
 );
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
+
+const isPrivateUnconnected = computed(
+	() =>
+		isDynamicCredentialsEnabled.value &&
+		props.data.isResolvable === true &&
+		props.data.connectedByMe === false,
+);
+
+const isPrivateConnected = computed(
+	() =>
+		isDynamicCredentialsEnabled.value &&
+		props.data.isResolvable === true &&
+		props.data.connectedByMe === true,
+);
+
 const actions = computed(() => {
 	const items = [
 		{
@@ -95,8 +115,33 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+
 function onClick() {
 	emit('click', props.data.id);
+}
+
+async function onConnect() {
+	const credential = credentialsStore.getCredentialById(props.data.id);
+	if (!credential) return;
+
+	// Direct OAuth flow only applies to OAuth credential types. Fall back to
+	// the edit modal for anything else — today only OAuth credentials can be
+	// resolvable, but this keeps the button safe if that ever changes.
+	if (!isOAuthCredentialType(credential.type)) {
+		onClick();
+		return;
+	}
+
+	isConnecting.value = true;
+	try {
+		const success = await authorize(credential);
+		if (success) {
+			emit('connected', props.data.id);
+		}
+	} finally {
+		isConnecting.value = false;
+	}
 }
 
 async function onAction(action: string) {
@@ -190,6 +235,13 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="credentialHasDependents"
+					resource-type="credential"
+					:resource-id="data.id"
+					source="credential_card"
+					data-test-id="credential-card-dependents"
+				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"
 					:resource="data"
@@ -199,6 +251,30 @@ function moveResource() {
 					:show-badge-border="false"
 					:global="data.isGlobal"
 				/>
+				<N8nTooltip v-if="isPrivateUnconnected" placement="top">
+					<template #content>
+						{{ locale.baseText('credentials.item.connect.tooltip') }}
+					</template>
+					<N8nButton
+						type="primary"
+						size="mini"
+						:loading="isConnecting"
+						data-test-id="credential-card-connect"
+						@click="onConnect"
+					>
+						{{ locale.baseText('credentials.item.connect') }}
+					</N8nButton>
+				</N8nTooltip>
+				<span
+					v-else-if="isPrivateConnected"
+					:class="$style.connectedLabel"
+					data-test-id="credential-card-connected"
+				>
+					<N8nIcon icon="circle-check" size="small" color="success" />
+					<N8nText size="small" color="success">
+						{{ locale.baseText('credentials.item.connected') }}
+					</N8nText>
+				</span>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -239,12 +315,19 @@ function moveResource() {
 
 .cardActions {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
+}
+
+.connectedLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .dynamicBadgeText {

@@ -1,6 +1,4 @@
-import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -8,7 +6,9 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
+	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadOptionsContext } from '../load-options-context';
 
@@ -31,7 +31,7 @@ describe('LoadOptionsContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {
@@ -50,7 +50,7 @@ describe('LoadOptionsContext', () => {
 	const loadOptionsContext = new LoadOptionsContext(workflow, node, additionalData, path);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCredentials', () => {

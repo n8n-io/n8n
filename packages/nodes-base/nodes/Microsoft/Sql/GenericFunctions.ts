@@ -259,8 +259,21 @@ export async function executeSqlQueryAndPrepareResults(
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
+	queryValues: Array<string | number | boolean | IDataObject> = [],
 ): Promise<INodeExecutionData[]> {
-	const rawResult: IResult<any> = await pool.request().query(rawQuery);
+	const request = pool.request();
+
+	let processedQuery = rawQuery;
+	if (queryValues.length > 0) {
+		// Process in reverse order so $10 is replaced before $1
+		for (let i = queryValues.length; i >= 1; i--) {
+			const paramName = `p${i}`;
+			processedQuery = processedQuery.replace(new RegExp(`\\$${i}(?!\\d)`, 'g'), `@${paramName}`);
+			request.input(paramName, queryValues[i - 1]);
+		}
+	}
+
+	const rawResult: IResult<any> = await request.query(processedQuery);
 	const { recordsets, rowsAffected } = rawResult;
 	if (Array.isArray(recordsets) && recordsets.length > 0) {
 		const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];

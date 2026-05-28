@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { DOCS_HELP_NOTICE } from '../constants';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
 import { SecretsProvider } from '../types';
 import type { SecretsProviderSettings } from '../types';
@@ -148,7 +148,7 @@ export class AwsSecretsManager extends SecretsProvider {
 	async update() {
 		const secrets = await this.fetchAllSecrets();
 
-		const supportedSecrets = secrets.filter((s) => EXTERNAL_SECRETS_NAME_REGEX.test(s.secretName));
+		const supportedSecrets = secrets;
 
 		this.cachedSecrets = Object.fromEntries(
 			supportedSecrets.map((s) => [s.secretName, s.secretValue]),

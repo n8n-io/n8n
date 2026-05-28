@@ -13,11 +13,6 @@ interface CreateVariableDto {
 	projectId?: string;
 }
 
-interface UpdateVariableDto {
-	key?: string;
-	value?: string;
-}
-
 export class VariablesApiHelper {
 	constructor(private api: ApiHelpers) {}
 
@@ -43,34 +38,6 @@ export class VariablesApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get variables: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
-	/**
-	 * Get a variable by ID
-	 */
-	async getVariable(id: string): Promise<VariableResponse> {
-		const response = await this.api.request.get(`/rest/variables/${id}`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to get variable: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
-	/**
-	 * Update a variable by ID
-	 */
-	async updateVariable(id: string, updates: UpdateVariableDto): Promise<VariableResponse> {
-		const response = await this.api.request.patch(`/rest/variables/${id}`, { data: updates });
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to update variable: ${await response.text()}`);
 		}
 
 		const result = await response.json();
@@ -108,18 +75,5 @@ export class VariablesApiHelper {
 	): Promise<VariableResponse> {
 		const key = `${keyPrefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 		return await this.createVariable({ key, value, projectId });
-	}
-
-	/**
-	 * Clean up variables by key pattern (useful for test cleanup)
-	 */
-	async cleanupTestVariables(keyPattern?: string): Promise<void> {
-		const variables = await this.getAllVariables();
-
-		const variablesToDelete = keyPattern
-			? variables.filter((variable) => variable.key.includes(keyPattern))
-			: variables.filter((variable) => variable.key.startsWith('TEST_'));
-
-		await Promise.all(variablesToDelete.map((variable) => this.deleteVariable(variable.id)));
 	}
 }

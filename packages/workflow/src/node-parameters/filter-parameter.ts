@@ -310,6 +310,8 @@ export function executeFilterCondition(
 				case 'lte':
 					return left <= right;
 			}
+
+			break;
 		}
 		case 'dateTime': {
 			const left = leftValue as DateTime;
@@ -339,6 +341,8 @@ export function executeFilterCondition(
 				case 'beforeOrEquals':
 					return left.toMillis() <= right.toMillis();
 			}
+
+			break;
 		}
 		case 'boolean': {
 			const left = leftValue as boolean;
@@ -358,6 +362,8 @@ export function executeFilterCondition(
 				case 'notEquals':
 					return left !== right;
 			}
+
+			break;
 		}
 		case 'array': {
 			const left = (leftValue ?? []) as unknown[];
@@ -385,6 +391,8 @@ export function executeFilterCondition(
 				case 'notEmpty':
 					return left.length !== 0;
 			}
+
+			break;
 		}
 		case 'object': {
 			const left = leftValue;
@@ -395,6 +403,8 @@ export function executeFilterCondition(
 				case 'notEmpty':
 					return !!left && Object.keys(left).length !== 0;
 			}
+
+			break;
 		}
 	}
 

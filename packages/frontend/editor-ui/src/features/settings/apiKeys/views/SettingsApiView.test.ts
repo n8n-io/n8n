@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
@@ -228,7 +228,7 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByTestId('action-toggle'));
+		await fireEvent.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
 		await fireEvent.click(screen.getByTestId('action-delete'));
 
 		expect(screen.getByText('Delete this API Key?')).toBeInTheDocument();

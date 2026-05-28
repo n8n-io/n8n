@@ -42,7 +42,6 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 	private async migrateUp(
 		table: Table,
 		{
-			dbType,
 			escape,
 			runQuery,
 			schemaBuilder: { addNotNull, addColumns, dropColumns, dropForeignKey, column },
@@ -58,8 +57,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const roleColumnName = table === 'user' ? 'globalRoleId' : 'roleId';
 		const roleColumn = escape.columnName(roleColumnName);
 		const scope = roleScopes[table];
-		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
-		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
+		const roleField = `'${scope}:' || R.name`;
 		const subQuery = `
         SELECT ${roleField} as role, T.${idColumn} as id${
 					table !== 'user' ? `, T.${uidColumn} as uid` : ''
@@ -70,11 +68,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const where = `WHERE ${tableName}.${idColumn} = mapping.id${
 			table !== 'user' ? ` AND ${tableName}.${uidColumn} = mapping.uid` : ''
 		}`;
-		const swQuery = isMySQL
-			? `UPDATE ${tableName}, (${subQuery}) as mapping
-            SET ${tableName}.role = mapping.role
-            ${where}`
-			: `UPDATE ${tableName}
+		const swQuery = `UPDATE ${tableName}
             SET role = mapping.role
             FROM (${subQuery}) as mapping
             ${where}`;
@@ -94,7 +88,6 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 	private async migrateDown(
 		table: Table,
 		{
-			dbType,
 			escape,
 			runQuery,
 			schemaBuilder: { addNotNull, addColumns, dropColumns, addForeignKey, column },
@@ -110,8 +103,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const uidColumn = escape.columnName(uidColumns[table]);
 		const roleColumn = escape.columnName(roleColumnName);
 		const scope = roleScopes[table];
-		const isMySQL = ['mariadb', 'mysqldb'].includes(dbType);
-		const roleField = isMySQL ? `CONCAT('${scope}:', R.name)` : `'${scope}:' || R.name`;
+		const roleField = `'${scope}:' || R.name`;
 		const subQuery = `
 			SELECT R.id as role_id, T.${idColumn} as id${table !== 'user' ? `, T.${uidColumn} as uid` : ''}
 			FROM ${tableName} T
@@ -120,11 +112,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
 		const where = `WHERE ${tableName}.${idColumn} = mapping.id${
 			table !== 'user' ? ` AND ${tableName}.${uidColumn} = mapping.uid` : ''
 		}`;
-		const query = isMySQL
-			? `UPDATE ${tableName}, (${subQuery}) as mapping
-				SET ${tableName}.${roleColumn} = mapping.role_id
-				${where}`
-			: `UPDATE ${tableName}
+		const query = `UPDATE ${tableName}
 				SET ${roleColumn} = mapping.role_id
 				FROM (${subQuery}) as mapping
 				${where}`;

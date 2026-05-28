@@ -47,6 +47,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
+		passwordMinLength: 8,
 	},
 	templatesEndpointHealthy: false,
 	api: {
@@ -156,7 +157,7 @@ export const getTooltip = () => {
 /**
  * Query version that returns null if not found
  */
-export const queryTooltip = () => document.querySelector('.n8n-tooltip') as HTMLElement | null;
+export const queryTooltip = () => document.querySelector('.n8n-tooltip');
 
 /**
  * Get a within() wrapper for querying inside the tooltip

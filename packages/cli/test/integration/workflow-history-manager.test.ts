@@ -165,6 +165,65 @@ describe('Workflow History Manager', () => {
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
+	test('should not prune named versions when license feature is enabled', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockImplementation((feature: string) => feature === 'feat:namedVersions');
+
+		const workflow = await createWorkflow();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 5, oldDate);
+
+		await repo.update({ versionId: versions[0].versionId }, { name: 'Named Version 1' });
+		await repo.update(
+			{ versionId: versions[1].versionId },
+			{ name: 'Named Version 2', description: 'Version with description' },
+		);
+		await repo.update(
+			{ versionId: versions[2].versionId },
+			{ name: 'Named Version 3', description: 'Also has description' },
+		);
+		// versions[3] and versions[4] remain unnamed
+
+		await manager.prune();
+
+		expect(license.isLicensed).toHaveBeenCalledWith('feat:namedVersions');
+
+		// Named versions should be preserved
+		expect(await repo.count({ where: { versionId: versions[0].versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: versions[1].versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: versions[2].versionId } })).toBe(1);
+
+		// Unnamed versions should be deleted
+		expect(await repo.count({ where: { versionId: versions[3].versionId } })).toBe(0);
+		expect(await repo.count({ where: { versionId: versions[4].versionId } })).toBe(0);
+	});
+
+	test('should prune named versions when license feature is disabled', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+		license.isLicensed.mockReturnValue(false);
+
+		const workflow = await createWorkflow();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 3, oldDate);
+
+		// Set names on versions
+		await repo.update({ versionId: versions[0].versionId }, { name: 'Named Version 1' });
+		await repo.update({ versionId: versions[1].versionId }, { name: 'Named Version 2' });
+		await repo.update(
+			{ versionId: versions[2].versionId },
+			{ name: 'Named Version 3', description: 'Version with description' },
+		);
+
+		await manager.prune();
+
+		// All versions should be deleted
+		expect(await repo.count({ where: { versionId: In(versions.map((v) => v.versionId)) } })).toBe(
+			0,
+		);
+	});
+
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();

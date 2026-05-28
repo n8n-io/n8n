@@ -1,5 +1,11 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { mockDeep } from 'jest-mock-extended';
+import get from 'lodash/get';
+import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import nock from 'nock';
+
+import { GraphQL } from '../GraphQL.node';
 
 describe('GraphQL Node', () => {
 	describe('valid request', () => {
@@ -108,6 +114,77 @@ describe('GraphQL Node', () => {
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['workflow.refresh_token.json'],
 			credentials,
+		});
+	});
+
+	describe('error response', () => {
+		const createMockExecuteFunctions = (parameters: IDataObject) => {
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameter, _idx, fallbackValue) => {
+				return get(parameters, parameter) ?? fallbackValue;
+			});
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.helpers.returnJsonArray.mockImplementation(returnJsonArray);
+			mockExecuteFunctions.helpers.constructExecutionMetaData.mockImplementation(
+				constructExecutionMetaData,
+			);
+			return mockExecuteFunctions;
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should format error response if response.errors is an array with objects', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({
+				errors: [{ message: 'Bad format 1' }, { message: 'Bad format 2' }],
+			});
+			const node = new GraphQL();
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Bad format 1, Bad format 2',
+			);
+		});
+
+		it('should format error response if response.errors is an array with strings', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({
+				errors: ['Bad format 1', 'Bad format 2'],
+			});
+			const node = new GraphQL();
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Bad format 1, Bad format 2',
+			);
+		});
+
+		it('should format error response if response.errors is a string', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({
+				errors: 'Bad format',
+			});
+			const node = new GraphQL();
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Bad format');
+		});
+
+		it('should fallback to unexpected error if response.errors is not an array or string', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({
+				errors: 123,
+			});
+			const node = new GraphQL();
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Unexpected error');
 		});
 	});
 });

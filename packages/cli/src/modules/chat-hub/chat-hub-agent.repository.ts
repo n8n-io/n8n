@@ -40,6 +40,15 @@ export class ChatHubAgentRepository extends Repository<ChatHubAgent> {
 		});
 	}
 
+	async getManyByUserIdWithToolIds(userId: string) {
+		return await this.createQueryBuilder('agent')
+			.leftJoin('agent.tools', 'tool')
+			.addSelect('tool.id')
+			.where('agent.ownerId = :userId', { userId })
+			.orderBy('agent.createdAt', 'DESC')
+			.getMany();
+	}
+
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
 		return await em.findOne(ChatHubAgent, {

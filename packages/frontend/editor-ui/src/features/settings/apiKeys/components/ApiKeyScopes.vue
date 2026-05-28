@@ -3,11 +3,9 @@ import { ref, computed, watch } from 'vue';
 
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { I18nT } from 'vue-i18n';
 
 import { ElOption, ElOptionGroup, ElSelect } from 'element-plus';
-import { N8nCheckbox, N8nInputLabel, N8nLink, N8nNotice } from '@n8n/design-system';
+import { N8nCheckbox, N8nInputLabel } from '@n8n/design-system';
 // Define props
 const props = defineProps({
 	modelValue: {
@@ -18,17 +16,12 @@ const props = defineProps({
 		type: Array,
 		default: () => [],
 	},
-	enabled: {
-		type: Boolean,
-		default: false,
-	},
 });
 
 const emit = defineEmits(['update:modelValue']);
 const selectedScopes = ref(props.modelValue);
 
 const i18n = useI18n();
-const { goToUpgrade } = usePageRedirectionHelper();
 
 const checkAll = ref(false);
 const indeterminate = ref(false);
@@ -72,10 +65,6 @@ watch(checkAll, (newValue) => {
 		selectedScopes.value = [];
 	}
 });
-
-function goToUpgradeApiKeyScopes() {
-	void goToUpgrade('api-key-scopes', 'upgrade-api-key-scopes');
-}
 </script>
 
 <template>
@@ -98,7 +87,6 @@ function goToUpgradeApiKeyScopes() {
 				<template #header>
 					<N8nCheckbox
 						v-model="checkAll"
-						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
 						:label="i18n.baseText('settings.api.scopes.selectAll')"
@@ -106,7 +94,7 @@ function goToUpgradeApiKeyScopes() {
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
-					<ElOptionGroup :disabled="!enabled" :label="capitalCase(resource).toUpperCase()">
+					<ElOptionGroup :label="capitalCase(resource).toUpperCase()">
 						<ElOption
 							v-for="action in actions"
 							:key="`${resource}:${action}`"
@@ -117,15 +105,6 @@ function goToUpgradeApiKeyScopes() {
 				</template>
 			</ElSelect>
 		</N8nInputLabel>
-		<N8nNotice v-if="!enabled">
-			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
-				<template #link>
-					<N8nLink size="small" @click="goToUpgradeApiKeyScopes">
-						{{ i18n.baseText('generic.upgrade') }}
-					</N8nLink>
-				</template>
-			</I18nT>
-		</N8nNotice>
 	</div>
 </template>
 

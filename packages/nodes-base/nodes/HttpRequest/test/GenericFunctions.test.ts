@@ -1,4 +1,7 @@
-import { updadeQueryParameterConfig } from '../GenericFunctions';
+import { mock } from 'jest-mock-extended';
+import type { INode } from 'n8n-workflow';
+
+import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
@@ -59,5 +62,60 @@ describe('updadeQueryParameterConfig', () => {
 			updateQueryParam(qs, 'key', 'second');
 			expect(qs.key).toEqual(['first', 'second']);
 		});
+	});
+});
+
+describe('getAllowedDomains', () => {
+	const node = mock<INode>();
+
+	it('should return undefined when allowedHttpRequestDomains is not set', () => {
+		const result = getAllowedDomains(node, {});
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when allowedHttpRequestDomains is "all"', () => {
+		const result = getAllowedDomains(node, { allowedHttpRequestDomains: 'all' });
+		expect(result).toBeUndefined();
+	});
+
+	it('should throw when allowedHttpRequestDomains is "none"', () => {
+		expect(() => getAllowedDomains(node, { allowedHttpRequestDomains: 'none' })).toThrow(
+			'This credential is configured to prevent use within an HTTP Request node',
+		);
+	});
+
+	it('should throw when allowedHttpRequestDomains is "domains" but allowedDomains is empty', () => {
+		expect(() =>
+			getAllowedDomains(node, {
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '',
+			}),
+		).toThrow('No allowed domains specified');
+	});
+
+	it('should throw when allowedHttpRequestDomains is "domains" but allowedDomains is whitespace', () => {
+		expect(() =>
+			getAllowedDomains(node, {
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '   ',
+			}),
+		).toThrow('No allowed domains specified');
+	});
+
+	it('should throw when allowedHttpRequestDomains is "domains" but allowedDomains is undefined', () => {
+		expect(() =>
+			getAllowedDomains(node, {
+				allowedHttpRequestDomains: 'domains',
+			}),
+		).toThrow('No allowed domains specified');
+	});
+
+	it('should return allowedDomains string when allowedHttpRequestDomains is "domains" with valid domains', () => {
+		const result = getAllowedDomains(node, {
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.com, *.api.io',
+		});
+
+		expect(result).toBe('example.com, *.api.io');
 	});
 });

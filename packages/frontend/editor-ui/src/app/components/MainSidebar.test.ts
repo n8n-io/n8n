@@ -19,7 +19,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
 	}),
-	useRoute: () => reactive({}),
+	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 
@@ -73,7 +73,7 @@ describe('MainSidebar', () => {
 		// Default experiment store values
 		personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 		personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-		recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
+		recommendedTemplatesStore.isFeatureEnabled = false;
 	});
 
 	it('renders the sidebar without error', () => {
@@ -123,7 +123,7 @@ describe('MainSidebar', () => {
 			templatesStore.hasCustomTemplatesHost = false;
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 
@@ -136,7 +136,7 @@ describe('MainSidebar', () => {
 			settingsStore.isTemplatesEnabled = true;
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => true);
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 

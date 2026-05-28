@@ -341,6 +341,61 @@ describe('MSSQL tests', () => {
 				errorMessage,
 			);
 		});
+
+		it('should replace $1 with @p1 and bind the value', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users WHERE id = $1', 0, [42]);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE id = @p1');
+			assertParameters({ p1: 42 });
+		});
+
+		it('should replace multiple $N placeholders and bind all values', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM users WHERE age > $1 AND name = $2',
+				0,
+				[18, 'John'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE age > @p1 AND name = @p2');
+			assertParameters({ p1: 18, p2: 'John' });
+		});
+
+		it('should replace the same $N placeholder used multiple times', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE id = $1 OR parent_id = $1',
+				0,
+				['abc'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE id = @p1 OR parent_id = @p1');
+			assertParameters({ p1: 'abc' });
+		});
+
+		it('should not confuse $1 with $10 when replacing parameters', async () => {
+			const values = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'];
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE c1 = $1 AND c10 = $10',
+				0,
+				values,
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE c1 = @p1 AND c10 = @p10');
+			assertParameters({ p1: 'v1', p10: 'v10' });
+		});
+
+		it('should execute query without parameters when queryValues is empty', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0, []);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
 	});
 
 	describe('escapeIdentifier', () => {

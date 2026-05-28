@@ -1,5 +1,6 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { CommandClass } from '@n8n/decorators';
+import { CommandMetadata, type CommandClass } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import argvParser from 'yargs-parser';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -29,7 +30,11 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 
 	const run = async (argv: string[] = []) => {
 		const command = new Command();
-		command.flags = argvParser(argv);
+		const rawFlags = argvParser(argv, { string: ['id'] });
+		const entry = Container.get(CommandMetadata)
+			.getEntries()
+			.find(([, e]) => e.class === Command)?.[1];
+		command.flags = entry?.flagsSchema ? entry.flagsSchema.parse(rawFlags) : rawFlags;
 		await command.init?.();
 		await command.run();
 		return command;

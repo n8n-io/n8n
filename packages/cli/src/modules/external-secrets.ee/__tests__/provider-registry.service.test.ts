@@ -119,12 +119,41 @@ describe('ProviderRegistry', () => {
 
 			const result = registry.getConnected();
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toBe(dummyProvider);
+			expect(result.size).toBe(1);
+			expect(result.get('dummy')).toBe(dummyProvider);
 		});
 
 		it('should return empty array when no providers are connected', () => {
+			registry.add('dummy', dummyProvider);
+			registry.add('another', anotherProvider);
+
 			const result = registry.getConnected();
+
+			expect(result.size).toBe(0);
+		});
+	});
+
+	describe('getConnectedNames', () => {
+		it('should return all connected provider names', async () => {
+			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
+			await dummyProvider.connect();
+
+			await anotherProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
+			anotherProvider.setState('error', new Error('Test error'));
+
+			registry.add('dummy', dummyProvider);
+			registry.add('another', anotherProvider);
+
+			const result = registry.getConnectedNames();
+
+			expect(result).toEqual(['dummy']);
+		});
+
+		it('should return empty array when no providers are connected', () => {
+			registry.add('dummy', dummyProvider);
+			registry.add('another', anotherProvider);
+
+			const result = registry.getConnectedNames();
 
 			expect(result).toEqual([]);
 		});

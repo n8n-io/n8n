@@ -4,8 +4,14 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import UserStack from './UserStack.vue';
 
 export default {
-	title: 'Modules/UserStack',
+	title: 'Core/UserStack',
 	component: UserStack,
+
+	parameters: {
+		docs: {
+			description: { component: 'An overlapping avatar stack for displaying multiple users.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({

@@ -47,6 +47,7 @@ const buildMenuOptions: BuildMenuItemsOptions = {
 	isLoading: false,
 	i18n: mockI18n,
 	settings: mockSettings.providers,
+	credentials: null,
 };
 
 describe(buildModelSelectorMenuItems, () => {
@@ -228,6 +229,36 @@ describe(buildModelSelectorMenuItems, () => {
 		expect(personalAgentsGroup?.children?.[0].label).toBe('generic.loadingEllipsis');
 		expect(personalAgentsGroup?.children?.[0].disabled).toBe(true);
 		expect(personalAgentsGroup?.children?.[1].label).toBe('chatHub.agent.newAgent');
+	});
+
+	it('should show "+ Add Model" button when provider has no models but has a credential', () => {
+		const agents = createMockModelsResponse({
+			openai: { models: [] },
+		});
+
+		const result = buildModelSelectorMenuItems(agents, {
+			...buildMenuOptions,
+			credentials: { openai: 'cred-123' },
+		});
+
+		const openaiGroup = result.find((item) => item.id === 'openai');
+		expect(openaiGroup).toBeDefined();
+		const addModelItem = openaiGroup?.children?.find((item) => item.id === 'openai::add-model');
+		expect(addModelItem).toBeDefined();
+		expect(addModelItem?.label).toBe('chatHub.agent.addModel');
+	});
+
+	it('should not show "+ Add Model" button when provider has no models and no credential', () => {
+		const agents = createMockModelsResponse({
+			openai: { models: [] },
+		});
+
+		const result = buildModelSelectorMenuItems(agents, buildMenuOptions);
+
+		const openaiGroup = result.find((item) => item.id === 'openai');
+		expect(openaiGroup).toBeDefined();
+		const addModelItem = openaiGroup?.children?.find((item) => item.id === 'openai::add-model');
+		expect(addModelItem).toBeUndefined();
 	});
 
 	it('should show empty state for workflow agents', () => {

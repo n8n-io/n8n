@@ -25,12 +25,13 @@ import type {
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
+	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
-import { deepCopy, isObjectEmpty } from './utils';
+import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
@@ -185,7 +186,16 @@ export class WorkflowDataProxy {
 	}
 
 	private buildAgentToolInfo(node: INode) {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType: INodeType | undefined = this.workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+		);
+		if (!nodeType) {
+			return {
+				name: node.name,
+				type: node.type,
+			};
+		}
 		const type = nodeType.description.displayName;
 		const params = NodeHelpers.getNodeParameters(
 			nodeType.description.properties,
@@ -758,6 +768,19 @@ export class WorkflowDataProxy {
 				});
 			}
 
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
+			}
+
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -1218,6 +1241,24 @@ export class WorkflowDataProxy {
 
 										if (pinnedData) {
 											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
+										}
+										// The active node has not run yet (e.g. partial execution),
+										// so paired item resolution cannot trace through the chain.
+										// Fall back to reading directly from the referenced node's
+										// run data, which is what first()/last()/all() do.
+										const nodeRunData = that.getNodeExecutionOrPinnedData({
+											nodeName,
+										});
+										if (nodeRunData.length) {
+											// In the UI preview itemIndex is always 0, but guard against
+											// out-of-bounds access in case that assumption ever changes.
+											if (itemIndex >= nodeRunData.length) {
+												throw createExpressionError(
+													`"${nodeName}" node has ${nodeRunData.length} item(s) but expression references item ${itemIndex}`,
+													{ itemIndex },
+												);
+											}
+											return that.returnExecutionData(nodeRunData[itemIndex], resolveFullItem);
 										}
 									}
 

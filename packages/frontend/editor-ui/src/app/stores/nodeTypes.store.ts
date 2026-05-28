@@ -19,12 +19,13 @@ import type {
 	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	Workflow,
+	INodeTypes,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { ERROR_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -34,6 +35,7 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -54,7 +56,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const communityNodeType = computed(() => {
 		return (nodeTypeName: string) => {
-			return vettedCommunityNodeTypes.value.get(nodeTypeName);
+			// First try direct lookup by map key (package name without preview token)
+			const direct = vettedCommunityNodeTypes.value.get(nodeTypeName);
+			if (direct) return direct;
+
+			// Fallback: search by nodeDescription.name (handles preview token mismatch)
+			const cleanedName = removePreviewToken(nodeTypeName);
+			for (const communityNode of vettedCommunityNodeTypes.value.values()) {
+				const descName = communityNode.nodeDescription?.name;
+				if (descName === nodeTypeName || removePreviewToken(descName ?? '') === cleanedName) {
+					return communityNode;
+				}
+			}
+
+			return undefined;
 		};
 	});
 
@@ -142,17 +157,17 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const isConfigNode = computed(() => {
-		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
-			if (!workflow.nodes[node.name]) {
+		return (workflow: WorkflowObjectAccessors, node: INode, nodeTypeName: string): boolean => {
+			if (!workflow.getNode(node.name)) {
 				return false;
 			}
-			const nodeType = getNodeType.value(nodeTypeName);
+			const nodeType =
+				getNodeType.value(nodeTypeName) ?? communityNodeType.value(nodeTypeName)?.nodeDescription;
 			if (!nodeType) {
 				return false;
 			}
 			const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
 			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-
 			return outputTypes
 				? outputTypes.filter((output) => output !== NodeConnectionTypes.Main).length > 0
 				: false;
@@ -178,6 +193,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				return outputTypes.includes(NodeConnectionTypes.AiTool);
 			} else {
 				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool) ?? false;
+			}
+		};
+	});
+
+	const isModelNode = computed(() => {
+		return (nodeTypeName: string) => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (nodeType?.outputs && Array.isArray(nodeType.outputs)) {
+				const outputTypes = nodeType.outputs.map(
+					(output: NodeConnectionType | INodeOutputConfiguration) =>
+						typeof output === 'string' ? output : output.type,
+				);
+
+				return outputTypes.includes(NodeConnectionTypes.AiLanguageModel);
+			} else {
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiLanguageModel) ?? false;
 			}
 		};
 	});
@@ -270,7 +301,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const isConfigurableNode = computed(() => {
 		return (
-			workflow: Workflow,
+			workflow: WorkflowObjectAccessors,
 			node: INode,
 			nodeTypeName: string,
 			nodeTypeVersion?: number,
@@ -343,7 +374,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -425,11 +455,43 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getIsNodeInstalled = computed(() => {
 		return (nodeTypeName: string) => {
+			const cleanedNodeTypeName = removePreviewToken(nodeTypeName);
 			return (
-				!!getNodeType.value(nodeTypeName) || !!communityNodeType.value(nodeTypeName)?.isInstalled
+				!!getNodeType.value(cleanedNodeTypeName) ||
+				!!communityNodeType.value(cleanedNodeTypeName)?.isInstalled
 			);
 		};
 	});
+
+	function getAllNodeTypes(): INodeTypes {
+		const nodeTypes: INodeTypes = {
+			nodeTypes: {},
+			init: async (): Promise<void> => {},
+			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+				const nodeTypeDescription =
+					getNodeType.value(nodeType, version) ??
+					communityNodeType.value(nodeType)?.nodeDescription ??
+					null;
+				if (nodeTypeDescription === null) {
+					return undefined;
+				}
+
+				return {
+					description: nodeTypeDescription,
+					// As we do not have the trigger/poll functions available in the frontend
+					// we use the information available to figure out what are trigger nodes
+					// @ts-ignore
+					trigger:
+						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
+							nodeTypeDescription.inputs.length === 0 &&
+							!nodeTypeDescription.webhooks) ||
+						undefined,
+				};
+			},
+		} as unknown as INodeTypes;
+
+		return nodeTypes;
+	}
 
 	// #endregion
 
@@ -443,6 +505,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigNode,
 		isTriggerNode,
 		isToolNode,
+		isModelNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,
@@ -460,6 +523,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodesInformation,
 		getFullNodesProperties,
 		getNodeTypes,
+		getAllNodeTypes,
 		loadNodeTypesIfNotLoaded,
 		getNodeTranslationHeaders,
 		setNodeTypes,

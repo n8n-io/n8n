@@ -3,12 +3,25 @@ import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { ICredentialsResponse } from '../credentials.types';
+
+const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn();
+
+vi.mock('../composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
+	}),
+}));
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -37,7 +50,12 @@ describe('CredentialCard', () => {
 			envFeatureFlags: {
 				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 			},
+			activeModules: ['dynamic-credentials'],
 		} as unknown as FrontendSettings;
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+		mockAuthorize.mockReset();
+		mockIsOAuthCredentialType.mockReset();
+		mockIsOAuthCredentialType.mockReturnValue(true);
 	});
 
 	it('should render name and home project name', () => {
@@ -88,12 +106,12 @@ describe('CredentialCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Change owner');
+		expect(actions).toHaveTextContent('Move');
 	});
 
 	it('should set readOnly variant based on prop', () => {
@@ -204,6 +222,138 @@ describe('CredentialCard', () => {
 			const { queryByTestId } = renderComponent({ props: { data } });
 
 			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('private credentials connect flow', () => {
+		const privateUnconnectedData = (overrides = {}) =>
+			createCredential({
+				id: 'cred-1',
+				isResolvable: true,
+				connectedByMe: false,
+				homeProject: { name: 'Test Project' },
+				...overrides,
+			});
+
+		it('should show the Connect button when private and not connected', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { data: privateUnconnectedData() },
+			});
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-not-connected')).not.toBeInTheDocument();
+		});
+
+		it('should still show project badge alongside the Connect button', () => {
+			const { getByTestId } = renderComponent({
+				props: { data: privateUnconnectedData() },
+			});
+
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+		});
+
+		it('should show Connected label when private and connected', () => {
+			const data = createCredential({
+				isResolvable: true,
+				connectedByMe: true,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			const connectedLabel = getByTestId('credential-card-connected');
+			expect(connectedLabel).toBeInTheDocument();
+			expect(connectedLabel).toHaveTextContent('Connected');
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should not show Connected label for non-resolvable credentials', () => {
+			const data = createCredential({
+				isResolvable: false,
+				connectedByMe: true,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { queryByTestId, getByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should show sharing badge when credential is not resolvable', () => {
+			const data = createCredential({
+				isResolvable: false,
+				connectedByMe: false,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { queryByTestId, getByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should call authorize with the credential and emit "connected" on success', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockAuthorize).toHaveBeenCalledWith(credential);
+			expect(emitted('connected')).toEqual([[data.id]]);
+		});
+
+		it('should fall back to opening the edit modal when the credential is not an OAuth type', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'notOAuthApi' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockIsOAuthCredentialType.mockReturnValue(false);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockIsOAuthCredentialType).toHaveBeenCalledWith('notOAuthApi');
+			expect(mockAuthorize).not.toHaveBeenCalled();
+			expect(emitted('click')).toEqual([[data.id]]);
+			expect(emitted('connected')).toBeUndefined();
+		});
+
+		it('should not emit "connected" if authorize fails', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(false);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockAuthorize).toHaveBeenCalled();
+			expect(emitted('connected')).toBeUndefined();
+		});
+
+		it('should not open the edit modal when Connect button is clicked', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(emitted('click')).toBeUndefined();
 		});
 	});
 });

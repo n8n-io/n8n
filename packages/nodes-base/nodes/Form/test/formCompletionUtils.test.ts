@@ -1,9 +1,25 @@
+jest.mock('n8n-core', () => ({
+	getHtmlSandboxCSP: jest.fn(
+		() =>
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+	),
+	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+	// Empty stand-in: the test registers a fake instance via `Container.set`
+	// below so `Container.get(InstanceSettings)` returns that object directly.
+	InstanceSettings: class {},
+}));
+
+import { Container } from '@n8n/di';
 import { type Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
-import { type INode, type IWebhookFunctions } from 'n8n-workflow';
+import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
+import { verifyFormUserAuthToken } from '../utils/utils';
 import * as utils from '../utils/utils';
+
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 describe('formCompletionUtils', () => {
 	let mockWebhookFunctions: MockProxy<IWebhookFunctions>;
@@ -15,6 +31,7 @@ describe('formCompletionUtils', () => {
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
+		webhookId: 'test-webhook',
 	});
 
 	const nodeNameWithFileToDownload = 'prevNode0';
@@ -88,6 +105,15 @@ describe('formCompletionUtils', () => {
 			disabled: false,
 		};
 
+		beforeEach(() => {
+			jest
+				.mocked(getHtmlSandboxCSP)
+				.mockReturnValue(
+					'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				);
+			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
+		});
+
 		afterEach(() => {
 			jest.resetAllMocks();
 		});
@@ -146,6 +172,36 @@ describe('formCompletionUtils', () => {
 			});
 
 			sanitizeHtmlSpy.mockRestore();
+		});
+
+		it.each([
+			['\\n', '\n'],
+			['\\\\n', '\\n'],
+		])('should replace %j with %j in completionMessage', async (pattern, replacement) => {
+			const completionMessage = `Some message${pattern}Other text`;
+			const responseText = 'Response text';
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage,
+					responseText,
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: undefined,
+				formTitle: 'Form Title',
+				message: `Some message${replacement}Other text`,
+				redirectUrl: undefined,
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseText: 'Response text',
+				title: 'Form Completion',
+				dangerousCustomCss: undefined,
+			});
 		});
 
 		it('throw an error if no binary data with the field name is found', async () => {
@@ -299,7 +355,7 @@ describe('formCompletionUtils', () => {
 
 			expect(mockResponse.setHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
@@ -311,6 +367,52 @@ describe('formCompletionUtils', () => {
 					completionMessage: 'Form has been submitted successfully',
 					options: { formTitle: 'Form Title' },
 					respondWith: 'redirect',
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.any(String),
+			);
+			expect(mockResponse.render).toHaveBeenCalled();
+		});
+
+		it('embeds an x-auth-token-compatible authToken when an authed user is provided', async () => {
+			const authedUser: IUser = {
+				id: 'user-1',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+			};
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger, authedUser);
+
+			const renderArgs = jest.mocked(mockResponse.render).mock.calls.at(-1)?.[1] as unknown as {
+				authToken: string;
+			};
+			expect(renderArgs.authToken).toBeTruthy();
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode)).toEqual(authedUser);
+		});
+
+		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+			jest.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
 			});

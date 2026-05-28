@@ -19,17 +19,24 @@ Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
+import { Telemetry } from '@/telemetry';
+import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
+const mockHandleRequest = jest.fn().mockResolvedValue(undefined);
 jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 	const StreamableHTTPServerTransport = jest.fn().mockImplementation((_opts) => ({
-		handleRequest: jest.fn().mockResolvedValue(undefined),
+		handleRequest: mockHandleRequest,
 		close: jest.fn().mockResolvedValue(undefined),
 	}));
 	return { StreamableHTTPServerTransport };
 });
 
-const createReq = (overrides: Partial<AuthenticatedRequest> = {}): AuthenticatedRequest =>
-	({ user: { id: 'user-1' }, body: {}, ...overrides }) as unknown as AuthenticatedRequest;
+type AuthenticatedMcpRequest = AuthenticatedRequest & {
+	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+};
+
+const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
+	({ user: { id: 'user-1' }, body: {}, ...overrides }) as unknown as AuthenticatedMcpRequest;
 
 const createRes = (): FlushableResponse => {
 	const res = mock<FlushableResponse>();
@@ -41,6 +48,7 @@ const createRes = (): FlushableResponse => {
 describe('McpController', () => {
 	let controller: McpController;
 	const logger = mock<Logger>();
+	const telemetry = { track: jest.fn() } as unknown as Telemetry;
 	const mcpService = { getServer: jest.fn() } as unknown as McpService;
 	const mcpSettingsService = { getEnabled: jest.fn() } as unknown as McpSettingsService;
 
@@ -48,6 +56,7 @@ describe('McpController', () => {
 		jest.clearAllMocks();
 
 		Container.set(Logger, logger);
+		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
 
@@ -74,6 +83,35 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
 	});
 
+	test('tracks successful initialize connections with auth type', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+			connect: jest.fn().mockResolvedValue(undefined),
+			close: jest.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '1.0.0',
+			auth_type: 'oauth',
+			mcp_connection_status: 'success',
+		});
+	});
+
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
 		const req = {} as Request;
 		const res = createRes();
@@ -85,5 +123,27 @@ describe('McpController', () => {
 		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	describe('GET /http', () => {
+		test('returns 403 if MCP access is disabled', async () => {
+			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+			const res = createRes();
+			await controller.handleGet(createReq(), res);
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+		});
+
+		test('delegates to transport.handleRequest', async () => {
+			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+			(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			});
+			const req = createReq();
+			const res = createRes();
+			await controller.handleGet(req, res);
+			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);
+		});
 	});
 });

@@ -13,26 +13,34 @@ export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './global-state';
 export * from './interfaces';
+export * from './sub-workflow-output';
 export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
+export * from './trimmed-task-data';
 export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-validation';
+export * from './node-grouping-validation';
 export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
+export * from './highlighted-data';
 export * from './workflow';
 export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';
 export * from './workflow-validation';
+export * from './workflow-structure-validation';
 export * from './versioned-node-type';
 export * from './type-validation';
+export * from './credential-domain-restrictions';
 export * from './result';
 export * from './schemas';
 export * from './run-execution-data/run-execution-data';
+export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
@@ -51,10 +59,11 @@ export {
 	randomString,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
-	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	sanitizeXmlName,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,
@@ -86,6 +95,7 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './workflow-environments-helper';
 
 export type {
 	DocMetadata,

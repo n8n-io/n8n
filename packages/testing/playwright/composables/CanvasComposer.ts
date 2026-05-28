@@ -16,15 +16,6 @@ export class CanvasComposer {
 	}
 
 	/**
-	 * Execute a node and wait for success toast notification
-	 * @param nodeName - The node to execute
-	 */
-	async executeNodeAndWaitForToast(nodeName: string): Promise<void> {
-		await this.n8n.canvas.executeNode(nodeName);
-		await this.n8n.notifications.waitForNotificationAndClose('Node executed successfully');
-	}
-
-	/**
 	 * Copy selected nodes and verify success toast
 	 */
 	async copySelectedNodesWithToast(): Promise<void> {
@@ -62,8 +53,8 @@ export class CanvasComposer {
 	 * Switch between editor and workflow history and back
 	 */
 	async switchBetweenEditorAndHistory(): Promise<void> {
-		await this.n8n.page.getByTestId('workflow-history-button').click();
-		await this.n8n.page.getByTestId('workflow-history-close-button').click();
+		await this.n8n.canvas.openWorkflowHistory();
+		await this.n8n.canvas.closeWorkflowHistory();
 		await this.n8n.page.waitForLoadState();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
@@ -73,7 +64,7 @@ export class CanvasComposer {
 	 * Switch between editor and workflow list and back
 	 */
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
-		await this.n8n.page.getByTestId('menu-item').first().click();
+		await this.n8n.sideBar.clickHomeButton();
 		await this.n8n.workflows.cards.getWorkflows().first().click();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
@@ -114,32 +105,6 @@ export class CanvasComposer {
 					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
 			);
 		}
-	}
-
-	/**
-	 * Delay workflow GET request to simulate loading during page reload.
-	 * Useful for testing save-blocking behavior during real loading states.
-	 *
-	 * @param workflowId - The workflow ID to delay loading for
-	 * @param delayMs - Delay in milliseconds (default: 2000)
-	 */
-	async delayWorkflowLoad(workflowId: string, delayMs: number = 2000): Promise<void> {
-		await this.n8n.page.route(`**/rest/workflows/${workflowId}`, async (route) => {
-			if (route.request().method() === 'GET') {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
-			}
-			await route.continue();
-		});
-	}
-
-	/**
-	 * Remove the workflow load delay route handler.
-	 * Should be called after delayWorkflowLoad() when testing is complete.
-	 *
-	 * @param workflowId - The workflow ID to stop delaying
-	 */
-	async undelayWorkflowLoad(workflowId: string): Promise<void> {
-		await this.n8n.page.unroute(`**/rest/workflows/${workflowId}`);
 	}
 
 	/**

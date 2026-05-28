@@ -1,17 +1,24 @@
-import { Delete, Options, Post, RestController } from '@n8n/decorators';
-import { Request, Response } from 'express';
-
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { Time } from '@n8n/constants';
 import { CredentialsEntity } from '@n8n/db';
-import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
-import { DynamicCredentialResolverRegistry } from './services';
-import { getBearerToken, getDynamicCredentialMiddlewares } from './utils';
+import { Delete, Options, Post, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+
+import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
+import { DynamicCredentialsConfig } from './dynamic-credentials.config';
+import { DynamicCredentialResolverRegistry } from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
+import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
+import { getDynamicCredentialMiddlewares } from './utils';
+
+const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 
 @RestController('/credentials')
 export class DynamicCredentialsController {
@@ -22,6 +29,7 @@ export class DynamicCredentialsController {
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
+		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -72,10 +80,17 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
 	}
 
-	@Delete('/:id/revoke', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
+	@Delete('/:id/revoke', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitPerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
+	})
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
-		const token = getBearerToken(req);
+		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
@@ -83,21 +98,14 @@ export class DynamicCredentialsController {
 
 		if (resolver.deleteSecret) {
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			await resolver.deleteSecret(
-				credential.id,
-				{
-					identity: token,
-					version: 1,
-				},
-				{
-					configuration: resolverConfig,
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-				},
-			);
+			await resolver.deleteSecret(credential.id, credentialContext, {
+				configuration: resolverConfig,
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+			});
 		}
 
 		res.status(204).send(); // 204 No Content indicates successful deletion
@@ -113,10 +121,17 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
 	}
 
-	@Post('/:id/authorize', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
+	@Post('/:id/authorize', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitAuthorizePerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
+	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
-		const token = getBearerToken(req);
+		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
@@ -124,10 +139,10 @@ export class DynamicCredentialsController {
 
 		if (resolver.validateIdentity) {
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			await resolver.validateIdentity(token, {
+			await resolver.validateIdentity(credentialContext, {
 				resolverId: resolverEntity.id,
 				resolverName: resolverEntity.type,
 				configuration: resolverConfig,
@@ -139,7 +154,8 @@ export class DynamicCredentialsController {
 			{
 				cid: credential.id,
 				origin: 'dynamic-credential',
-				authorizationHeader: req.headers.authorization ?? '',
+				authorizationHeader: req.headers.authorization || `Bearer ${credentialContext.identity}`,
+				authMetadata: credentialContext.metadata,
 				credentialResolverId: req.query.resolverId,
 			},
 		];

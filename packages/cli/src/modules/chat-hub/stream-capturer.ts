@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
-type Write = ServerResponse['write'];
 type End = ServerResponse['end'];
 
 export type ChunkTransformer = (chunk: string) => Promise<string>;
@@ -15,7 +14,7 @@ export function interceptResponseWrites<T extends Response>(
 	res: T,
 	transform: ChunkTransformer,
 ): T {
-	const originalWrite = res.write.bind(res) as Write;
+	const originalWrite = res.write.bind(res);
 	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
 
@@ -107,6 +106,7 @@ type Handlers = {
 	onItem?: (message: AggregatedMessage, delta: string) => Promise<void>;
 	onEnd?: (message: AggregatedMessage) => Promise<void>;
 	onError?: (message: AggregatedMessage, errText?: string) => Promise<void>;
+	onCancel?: (message: AggregatedMessage) => Promise<void>;
 };
 
 export function createStructuredChunkAggregator(
@@ -114,10 +114,10 @@ export function createStructuredChunkAggregator(
 	retryOfMessageId: ChatMessageId | null,
 	handlers: Handlers = {},
 ) {
-	const { onBegin, onItem, onEnd, onError } = handlers;
+	const { onBegin, onItem, onEnd, onError, onCancel } = handlers;
 
-	const active = new Map<MessageKey, AggregatedMessage>();
 	const activeByKey = new Map<MessageKey, AggregatedMessage>();
+	let cancelled = false;
 
 	let previousMessageId: ChatMessageId | null = initialPreviousMessageId;
 
@@ -148,7 +148,17 @@ export function createStructuredChunkAggregator(
 		return message;
 	};
 
-	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage> => {
+	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage | null> => {
+		// After cancelAll(), ignore any further chunks
+		if (cancelled) {
+			return null;
+		}
+
+		// Skip keepalive heartbeat chunks used to prevent proxy timeouts
+		if ((chunk.type as string) === 'keepalive') {
+			return null;
+		}
+
 		const { type, content, metadata } = chunk;
 		const key = keyOf(metadata);
 
@@ -191,13 +201,17 @@ export function createStructuredChunkAggregator(
 		return message;
 	};
 
-	const finalizeAll = () => {
-		for (const message of active.values()) {
+	const cancelAll = async () => {
+		cancelled = true;
+		const messages = Array.from(activeByKey.values());
+		activeByKey.clear();
+
+		for (const message of messages) {
 			message.status = 'cancelled';
 			message.updatedAt = new Date();
+			await onCancel?.(message);
 		}
-		active.clear();
 	};
 
-	return { ingest, finalizeAll };
+	return { ingest, cancelAll };
 }

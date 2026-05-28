@@ -370,10 +370,26 @@ const unsafeObjectProperties = new Set([
 	'prototype',
 	'constructor',
 	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
 	'mainModule',
 	'binding',
+	'_linkedBinding',
 	'_load',
 	'prepareStackTrace',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__defineGetter__',
+	'__defineSetter__',
+	'caller',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
 ]);
 
 /**
@@ -384,6 +400,16 @@ const unsafeObjectProperties = new Set([
  */
 export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
+}
+
+const unsafeObjectPropertyTokenPattern = new RegExp(
+	`\\b(?:${[...unsafeObjectProperties]
+		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|')})\\b`,
+);
+
+export function containsUnsafeObjectPropertyToken(input: string) {
+	return unsafeObjectPropertyTokenPattern.test(input);
 }
 
 /**
@@ -401,56 +427,12 @@ export function setSafeObjectProperty(
 	}
 }
 
-export function isDomainAllowed(
-	urlString: string,
-	options: {
-		allowedDomains: string;
-	},
-): boolean {
-	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
-		return true; // If no restrictions are set, allow all domains
-	}
+const DANGEROUS_XML_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
 
-	try {
-		const url = new URL(urlString);
+export function sanitizeXmlName(name: string) {
+	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
 
-		// Normalize hostname: lowercase and remove trailing dot
-		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-
-		// Reject empty hostnames
-		if (!hostname) {
-			return false;
-		}
-
-		const allowedDomainsList = options.allowedDomains
-			.split(',')
-			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
-			.filter(Boolean);
-
-		for (const allowedDomain of allowedDomainsList) {
-			// Handle wildcard domains (*.example.com)
-			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2);
-				// Ensure the suffix itself is valid
-				if (!domainSuffix) continue;
-
-				// Wildcard matches only subdomains, not the base domain itself
-				// *.example.com matches sub.example.com but NOT example.com
-				if (hostname.endsWith('.' + domainSuffix)) {
-					return true;
-				}
-			}
-			// Exact match
-			else if (hostname === allowedDomain) {
-				return true;
-			}
-		}
-
-		return false;
-	} catch (error) {
-		// If URL parsing fails, deny access to be safe
-		return false;
-	}
+	return name;
 }
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
@@ -498,4 +480,11 @@ export function sanitizeFilename(fileName: string): string {
 	}
 
 	return sanitized;
+}
+
+/** Generates a cryptographically secure 64-character hex token (256 bits). */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
 }

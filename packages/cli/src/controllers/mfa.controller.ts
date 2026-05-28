@@ -1,3 +1,4 @@
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import {
 	createUserKeyedRateLimiter,
@@ -10,6 +11,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
@@ -23,11 +25,18 @@ export class MFAController {
 		private authService: AuthService,
 		private userRepository: UserRepository,
 		private eventService: EventService,
+		private instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Post('/enforce-mfa')
 	@GlobalScope('user:enforceMfa')
 	async enforceMFA(req: MFA.Enforce) {
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'MFA enforcement is managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
 			// The current user tries to enforce MFA, but does not have
 			// MFA set up for them self. We are forbidding this, to
@@ -37,6 +46,19 @@ export class MFAController {
 			);
 		}
 		await this.mfaService.enforceMFA(req.body.enforce);
+
+		this.eventService.emit('instance-policies-updated', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			settingName: '2fa_enforcement',
+			value: req.body.enforce,
+		});
+
 		return;
 	}
 

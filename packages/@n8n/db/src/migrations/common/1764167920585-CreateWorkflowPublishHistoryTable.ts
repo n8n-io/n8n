@@ -11,7 +11,8 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 				column('versionId').varchar(36).notNull,
 				column('event')
 					.varchar(36)
-					.notNull.comment(
+					.notNull.withEnumCheck(['activated', 'deactivated'])
+					.comment(
 						'Type of history record: activated (workflow is now active), deactivated (workflow is now inactive)',
 					),
 				column('userId').uuid,
@@ -31,8 +32,7 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'SET NULL',
-			})
-			.withEnumCheck('event', ['activated', 'deactivated']);
+			});
 
 		const escapedWphTableName = escape.tableName(workflowPublishHistoryTableName);
 		const workflowEntityTableName = escape.tableName('workflow_entity');

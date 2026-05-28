@@ -29,22 +29,27 @@ runs:
   steps:
     - name: Login to GitHub Container Registry
       if: inputs.login-ghcr == 'true'
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
+      shell: bash
+      env:
+        GHCR_TOKEN: ${{ github.token }}
+        GHCR_USER: ${{ github.actor }}
+      run: |
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          'echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin'
 
     - name: Login to DockerHub
       if: inputs.login-dockerhub == 'true'
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-      with:
-        username: ${{ inputs.dockerhub-username }}
-        password: ${{ inputs.dockerhub-password }}
+      shell: bash
+      env:
+        DOCKER_USER: ${{ inputs.dockerhub-username }}
+        DOCKER_PASS: ${{ inputs.dockerhub-password }}
+      run: |
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
 
     - name: Login to DHI Registry
       if: inputs.login-dhi == 'true'
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
       with:
         registry: dhi.io
         username: ${{ inputs.dockerhub-username }}

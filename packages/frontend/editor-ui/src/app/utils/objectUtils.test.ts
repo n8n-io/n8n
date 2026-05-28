@@ -6,10 +6,15 @@ import {
 	omitKey,
 } from '@/app/utils/objectUtils';
 
-const testData = [1, '', true, null, undefined, new Date(), () => {}].map((value) => [
-	value,
-	typeof value,
-]);
+const testData: Array<[string, unknown]> = [
+	['a number', 1],
+	['an empty string', ''],
+	['a boolean', true],
+	['null', null],
+	['undefined', undefined],
+	['a Date object', new Date('2020-01-01')],
+	['a function', () => {}],
+];
 
 describe('objectUtils', () => {
 	describe('isObjectOrArray', () => {
@@ -21,7 +26,7 @@ describe('objectUtils', () => {
 			assert(isObjectOrArray([]));
 		});
 
-		test.each(testData)('should return false for %j (type %s)', (value) => {
+		test.each(testData)('should return false for %s', (_, value) => {
 			assert(!isObjectOrArray(value));
 		});
 	});
@@ -35,7 +40,7 @@ describe('objectUtils', () => {
 			assert(!isObject([]));
 		});
 
-		test.each(testData)('should return false for %j (type %s)', (value) => {
+		test.each(testData)('should return false for %s', (_, value) => {
 			assert(!isObject(value));
 		});
 	});

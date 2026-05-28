@@ -274,6 +274,7 @@ export class GetAllHandler implements OperationHandler {
 		//https://developer.todoist.com/rest/v2/#get-active-tasks
 		const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
 		const filters = ctx.getNodeParameter('filters', itemIndex) as IDataObject;
+		const nodeVersion = ctx.getNode().typeVersion;
 
 		validateNodeParameters(
 			filters,
@@ -300,7 +301,11 @@ export class GetAllHandler implements OperationHandler {
 			qs.label = filters.labelId;
 		}
 		if (filters.filter) {
-			qs.filter = filters.filter;
+			if (nodeVersion >= 2.2) {
+				qs.query = filters.filter;
+			} else {
+				qs.filter = filters.filter;
+			}
 		}
 		if (filters.lang) {
 			qs.lang = filters.lang;
@@ -315,7 +320,9 @@ export class GetAllHandler implements OperationHandler {
 			assertParamIsNumber('limit', limit, ctx.getNode());
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/tasks', qs, limit);
+		// https://developer.todoist.com/api/v1/#tag/Tasks/operation/get_tasks_by_filter_api_v1_tasks_filter_get
+		const endpoint = qs.query ? '/tasks/filter' : '/tasks';
+		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
 
 		return { data };
 	}
@@ -862,7 +869,9 @@ export class QuickAddHandler implements OperationHandler {
 			body.auto_reminder = options.auto_reminder;
 		}
 
-		const data = await todoistSyncRequest.call(ctx, body, {}, '/quick/add');
+		const nodeVersion = ctx.getNode().typeVersion;
+		const quickAddEndpoint = nodeVersion >= 2.2 ? '/tasks/quick' : '/quick/add';
+		const data = await todoistSyncRequest.call(ctx, body, {}, quickAddEndpoint);
 
 		return {
 			data,

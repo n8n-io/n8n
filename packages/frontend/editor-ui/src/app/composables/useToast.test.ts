@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 import { useTelemetry } from './useTelemetry';
+import { useUIStore } from '@/app/stores/ui.store';
 import { vi } from 'vitest';
 
 vi.mock('./useTelemetry');
@@ -12,6 +13,10 @@ describe('useToast', () => {
 	let telemetryTrackSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
+		const appEl = document.createElement('div');
+		appEl.id = 'n8n-app';
+		document.body.appendChild(appEl);
+
 		createTestingPinia();
 
 		telemetryTrackSpy = vi.fn();
@@ -20,6 +25,10 @@ describe('useToast', () => {
 		} as unknown as ReturnType<typeof useTelemetry>);
 
 		toast = useToast();
+	});
+
+	afterEach(() => {
+		document.getElementById('n8n-app')?.remove();
 	});
 
 	it('should show a message', async () => {
@@ -202,6 +211,90 @@ describe('useToast', () => {
 			});
 
 			expect(telemetryTrackSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('notification suppression', () => {
+		it('should not render non-error notification when notifications are suppressed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
+
+			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
+
+			// If the notification was rendered, waitFor would find it within its timeout.
+			// Since it should be suppressed, we verify it never appears.
+			await expect(
+				waitFor(
+					() => {
+						expect(screen.getByRole('alert')).toBeVisible();
+					},
+					{ timeout: 200 },
+				),
+			).rejects.toThrow();
+		});
+
+		it('should not render error notification when notifications are suppressed and errors are not allowed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = false;
+
+			toast.showMessage({
+				message: 'Error should not appear',
+				title: 'Suppressed error',
+				type: 'error',
+			});
+
+			await expect(
+				waitFor(
+					() => {
+						expect(screen.getByRole('alert')).toBeVisible();
+					},
+					{ timeout: 200 },
+				),
+			).rejects.toThrow();
+			expect(telemetryTrackSpy).not.toHaveBeenCalled();
+		});
+
+		it('should render error notification when notifications are suppressed and errors are allowed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
+
+			toast.showMessage({
+				message: 'Error should appear',
+				title: 'Allowed error',
+				type: 'error',
+			});
+
+			await waitFor(() => {
+				expect(screen.getByRole('alert')).toBeVisible();
+				expect(
+					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
+				).toHaveTextContent('Allowed error');
+				expect(screen.getByRole('alert')).toContainHTML('<p>Error should appear</p>');
+			});
+		});
+
+		it('should track telemetry for allowed suppressed error notification', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
+
+			toast.showMessage({
+				message: 'Allowed error tracked',
+				title: 'Allowed error',
+				type: 'error',
+			});
+
+			await waitFor(() => {
+				expect(telemetryTrackSpy).toHaveBeenCalledWith('Instance FE emitted error', {
+					error_title: 'Allowed error',
+					error_message: 'Allowed error tracked',
+					caused_by_credential: false,
+					workflow_id: expect.any(String),
+				});
+			});
 		});
 	});
 

@@ -181,7 +181,12 @@ function onEnter() {
 			</ElRow>
 		</template>
 		<template #footer="{ close }">
-			<N8nButton :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
+			<N8nButton
+				variant="subtle"
+				:label="i18n.baseText('tagsManager.done')"
+				style="margin-left: auto"
+				@click="close"
+			/>
 		</template>
 	</Modal>
 </template>

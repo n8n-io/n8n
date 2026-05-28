@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nIcon from './Icon.vue';
 
 export default {
-	title: 'Atoms/Icon',
+	title: 'Core/Icon',
 	component: N8nIcon,
 	argTypes: {
 		icon: {
@@ -41,6 +41,14 @@ export default {
 		strokeWidth: {
 			control: {
 				type: 'number',
+			},
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A visual glyph component for representing actions, objects, and states.',
 			},
 		},
 	},

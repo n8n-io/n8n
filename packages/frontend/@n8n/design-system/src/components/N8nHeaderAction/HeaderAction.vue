@@ -42,14 +42,13 @@ const emit = defineEmits<{
 	<N8nTooltip :disabled="!tooltip" :show-after="TOOLTIP_DELAY_MS">
 		<template #content>{{ tooltip || label }}</template>
 		<N8nIconButton
-			type="secondary"
-			text
+			variant="ghost"
 			size="small"
 			icon-size="large"
 			:icon="icon"
 			:aria-label="label"
 			:data-test-id="testId"
-			:class="{ [$style.dangerAction]: danger }"
+			:class="danger ? $style.dangerAction : undefined"
 			v-bind="$attrs"
 			@click.stop="emit('click', $event)"
 		/>

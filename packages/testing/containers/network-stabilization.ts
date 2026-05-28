@@ -11,7 +11,7 @@ import os from 'os';
  * @param maxWaitMs - Maximum time to wait before giving up (default: 10000ms)
  */
 export async function waitForNetworkQuiet(
-	quietDurationMs = 2000,
+	quietDurationMs = 1000,
 	maxWaitMs = 10000,
 ): Promise<void> {
 	// Only run in CI on Linux

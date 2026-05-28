@@ -19,10 +19,15 @@ import {
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
-import { N8nButton, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
+import { N8nButton, N8nIcon, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import { useMessageAgentSessionLink } from '@/features/agents/composables/useMessageAgentSessionLink';
 const MIN_IO_PANEL_WIDTH = 200;
 
 const {
@@ -57,12 +62,15 @@ defineSlots<{ actions: {} }>();
 
 const locale = useI18n();
 const nodeTypeStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const uiStore = useUIStore();
+const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const type = computed(() => nodeTypeStore.getNodeType(logEntry.node.type));
 const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, false));
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
+const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
 const container = useTemplateRef<HTMLElement>('container');
 const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
 	container,
@@ -121,13 +129,23 @@ function handleResizeEnd() {
 			</template>
 			<template #actions>
 				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
+					<N8nButton
+						v-if="messageAgentSessionLink"
+						variant="subtle"
+						size="xsmall"
+						data-test-id="log-details-view-agent-session"
+						@click.stop="messageAgentSessionLink.open()"
+					>
+						<N8nIcon icon="external-link" :class="$style.viewSessionIcon" />
+						{{ locale.baseText('logs.details.header.actions.viewAgentSession') }}
+					</N8nButton>
 					<KeyboardShortcutTooltip
 						:label="locale.baseText('generic.shortcutHint')"
 						:shortcut="{ keys: ['i'] }"
 					>
 						<N8nButton
-							size="mini"
-							type="secondary"
+							variant="subtle"
+							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
 						>
@@ -139,8 +157,8 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['o'] }"
 					>
 						<N8nButton
-							size="mini"
-							type="secondary"
+							variant="subtle"
+							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"
 						>
@@ -180,6 +198,7 @@ function handleResizeEnd() {
 						:log-entry="logEntry"
 						:collapsing-table-column-name="collapsingInputTableColumnName"
 						:search-shortcut="searchShortcutPriorityPanel === 'input' ? 'ctrl+f' : undefined"
+						:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
 						@collapsing-table-column-changed="emit('collapsingInputTableColumnChanged', $event)"
 					/>
 				</N8nResizeWrapper>
@@ -192,8 +211,22 @@ function handleResizeEnd() {
 					:log-entry="logEntry"
 					:collapsing-table-column-name="collapsingOutputTableColumnName"
 					:search-shortcut="searchShortcutPriorityPanel === 'output' ? 'ctrl+f' : undefined"
+					:show-redacted-overlay="panels !== LOG_DETAILS_PANEL_STATE.BOTH"
 					@collapsing-table-column-changed="emit('collapsingOutputTableColumnChanged', $event)"
 				/>
+				<div
+					v-if="isRedacted && panels === LOG_DETAILS_PANEL_STATE.BOTH"
+					:class="$style.redactedOverlay"
+				>
+					<RedactedDataState
+						:title="locale.baseText('ndv.output.redacted.title')"
+						:is-dynamic-credentials="isDynamicCredentials"
+						:can-reveal="canReveal"
+						wide
+						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
+						@reveal="revealData"
+					/>
+				</div>
 			</template>
 		</div>
 	</div>
@@ -234,11 +267,16 @@ function handleResizeEnd() {
 	margin-right: var(--spacing--2xs);
 }
 
+.viewSessionIcon {
+	margin-right: var(--spacing--3xs);
+}
+
 .executionSummary {
 	flex-shrink: 1;
 }
 
 .content {
+	position: relative;
 	flex-shrink: 1;
 	flex-grow: 1;
 	display: flex;
@@ -249,6 +287,19 @@ function handleResizeEnd() {
 .outputPanel {
 	width: 0;
 	flex-grow: 1;
+}
+
+.redactedOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: var(--spacing--3xl);
+	z-index: 1;
 }
 
 .inputResizer {

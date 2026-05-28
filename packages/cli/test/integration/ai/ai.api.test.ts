@@ -79,6 +79,7 @@ describe('POST /ai/free-credits', () => {
 				'credential:read',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);

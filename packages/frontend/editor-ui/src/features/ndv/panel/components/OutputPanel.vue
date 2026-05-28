@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
-import { storeToRefs } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { storeToRefs } from 'pinia';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
@@ -18,11 +19,16 @@ import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
+import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -37,7 +43,6 @@ type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
-	workflowObject: Workflow;
 	runIndex: number;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
@@ -72,14 +77,17 @@ const emit = defineEmits<{
 
 // Stores
 
-const ndvStore = useNDVStore();
+const workflowId = useInjectWorkflowId();
+const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
 const { dirtinessByName } = useNodeDirtiness();
+const uiStore = useUIStore();
 
 // Composables
 
@@ -103,10 +111,15 @@ const collapsingColumnName = ref<string | null>(null);
 
 // Computed
 
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
+
 const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -118,7 +131,10 @@ const hasAiMetadata = computed(() => {
 	}
 
 	if (node.value) {
-		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const connectedSubNodes = workflowDocumentStore.value.getParentNodes(
+			node.value.name,
+			'ALL_NON_MAIN',
+		);
 		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
@@ -209,7 +225,7 @@ const allToolsWereUnusedNotice = computed(() => {
 	// as it likely ends up unactionable noise to the user
 	if (pinnedData.hasData.value) return undefined;
 
-	const toolsAvailable = props.workflowObject.getParentNodes(
+	const toolsAvailable = workflowDocumentStore.value.getParentNodes(
 		node.value.name,
 		NodeConnectionTypes.AiTool,
 		1,
@@ -237,7 +253,7 @@ const insertTestData = () => {
 	});
 
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		node_type: node.value?.type,
 		pane: 'output',
@@ -257,11 +273,15 @@ const openSettings = () => {
 	emit('openSettings');
 	telemetry.track('User clicked ndv link', {
 		node_type: node.value?.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: 'output',
 		type: 'settings',
 	});
+};
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 };
 
 const onRunIndexChange = (run: number) => {
@@ -469,7 +489,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="i18n.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(node, workflowObject)" />
+				<span v-n8n-html="waitingNodeTooltip(node, workflowObject, runTaskData?.metadata)" />
 			</NDVEmptyState>
 		</template>
 
@@ -489,6 +509,26 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.output.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.output.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
 		</template>
 
 		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>

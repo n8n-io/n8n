@@ -1,8 +1,8 @@
 import { BreakingChangeRecommendation } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
 import { INode } from 'n8n-workflow';
 
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 	id: string = 'process-env-access-v2';
 	getMetadata(): BreakingChangeRuleMetadata {

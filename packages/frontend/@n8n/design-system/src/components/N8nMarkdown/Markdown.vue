@@ -99,7 +99,10 @@ const htmlContent = computed(() => {
 	const fileIdRegex = new RegExp('fileId:([0-9]+)');
 	let contentToRender = props.content;
 	if (props.withMultiBreaks) {
-		contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
+		contentToRender = contentToRender.replace(/\n{3,}/g, (match) => {
+			// Keep \n\n for the paragraph break, add &nbsp;\n for each extra blank line
+			return '\n\n' + '&nbsp;\n'.repeat(match.length - 2);
+		});
 	}
 	const html = md.render(contentToRender);
 

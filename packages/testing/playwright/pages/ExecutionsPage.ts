@@ -4,6 +4,11 @@ import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
+	async goto(projectId?: string) {
+		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
+		await this.page.goto(url);
+	}
+
 	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
@@ -46,6 +51,10 @@ export class ExecutionsPage extends BasePage {
 
 	getExecutionsList(): Locator {
 		return this.page.getByTestId('current-executions-list');
+	}
+
+	getGlobalExecutionItems(): Locator {
+		return this.page.getByTestId('global-execution-list-item');
 	}
 
 	getExecutionsSidebar(): Locator {
@@ -104,9 +113,20 @@ export class ExecutionsPage extends BasePage {
 		await this.getFilterButton().click();
 	}
 
-	async selectStatus(status: string): Promise<void> {
-		await this.getStatusSelect().click();
-		await this.page.waitForTimeout(1000);
+	getFilterBadge(): Locator {
+		return this.page.getByTestId('execution-filter-badge');
+	}
+
+	getFilterResetButton(): Locator {
+		return this.page.getByTestId('executions-filter-reset-button');
+	}
+
+	async resetFilter(): Promise<void> {
+		await this.getFilterResetButton().click();
+	}
+
+	async selectFilterStatus(status: string): Promise<void> {
+		await this.getStatusSelect().getByRole('combobox').click();
 		await this.page.getByRole('option', { name: status }).click();
 	}
 }

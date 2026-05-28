@@ -1,7 +1,6 @@
 import type InfisicalClient from 'infisical-node';
 import { UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
-import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { SecretsProvider } from '../types';
 import type { SecretsProviderSettings } from '../types';
 
@@ -145,7 +144,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	getSecretNames(): string[] {
-		return Object.keys(this.cachedSecrets).filter((k) => EXTERNAL_SECRETS_NAME_REGEX.test(k));
+		return Object.keys(this.cachedSecrets);
 	}
 
 	hasSecret(name: string): boolean {

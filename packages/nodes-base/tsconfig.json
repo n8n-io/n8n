@@ -42,6 +42,7 @@
 		"../core/nodes-testing/**/*.ts",
 		"../../node_modules/jest-expect-message/types/index.d.ts"
 	],
+	"exclude": [],
 	"references": [
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.esm.json" },

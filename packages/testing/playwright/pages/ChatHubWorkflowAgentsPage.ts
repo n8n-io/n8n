@@ -1,10 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { ChatHubSidebar } from './components/ChatHubSidebar';
 
 export class ChatHubWorkflowAgentsPage extends BasePage {
-	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
+	async goto() {
+		await this.page.goto('/home/chat/workflow-agents');
+	}
 
 	constructor(page: Page) {
 		super(page);

@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -9,12 +8,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	NodeConnectionType,
 	IRunData,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -22,6 +21,7 @@ import {
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -45,7 +45,7 @@ describe('SupplyDataContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		name: 'Test Node',
@@ -59,7 +59,11 @@ describe('SupplyDataContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>({
 		resultData: { runData: {} },
@@ -69,7 +73,7 @@ describe('SupplyDataContext', () => {
 	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const supplyDataContext = new SupplyDataContext(
@@ -247,7 +251,7 @@ describe('SupplyDataContext', () => {
 				abortSignal,
 			);
 
-			const sendMessageSpy = jest.spyOn(supplyDataContext, 'sendMessageToUI');
+			const sendMessageSpy = vi.spyOn(supplyDataContext, 'sendMessageToUI');
 
 			supplyDataContext.logNodeOutput(json, numberArg, stringArg);
 
@@ -264,12 +268,14 @@ describe('SupplyDataContext', () => {
 			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {
@@ -421,12 +427,14 @@ describe('SupplyDataContext', () => {
 
 		it('should attach hints to task data when adding output', async () => {
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {
@@ -488,12 +496,14 @@ describe('SupplyDataContext', () => {
 
 		it('should not add hints property to task data if no hints exist', async () => {
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 
 			// Create run execution data with plain object (not mock) to avoid mock functions
@@ -554,12 +564,14 @@ describe('SupplyDataContext', () => {
 		it('should handle hints when tool is used in AI workflow', async () => {
 			// This test simulates the Google Sheets Update Row tool scenario
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
 				hooks: mockHooks,
 				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 			const testRunExecutionData = mock<IRunExecutionData>({
 				resultData: {

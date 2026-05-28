@@ -252,32 +252,6 @@ describe('InsightsController', () => {
 					new BadRequestError('endDate must be the same as or after startDate'),
 				);
 			});
-
-			it('should throw a BadRequestError when endDate is in the future', async () => {
-				// ARRANGE
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
-
-				// ACT & ASSERT
-				await expect(
-					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: new Date('2025-06-10'),
-						endDate: futureDate,
-						projectId: 'test-project',
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
-
-			it('should throw a BadRequestError when startDate is in the future', async () => {
-				// ARRANGE
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
-
-				// ACT & ASSERT
-				await expect(
-					controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: futureDate,
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
 		});
 
 		describe('with license restrictions', () => {
@@ -527,32 +501,6 @@ describe('InsightsController', () => {
 					new BadRequestError('endDate must be the same as or after startDate'),
 				);
 			});
-
-			it('should throw a BadRequestError when endDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
-
-				await expect(
-					controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: new Date('2025-06-10'),
-						endDate: futureDate,
-						skip: 20,
-						take: 5,
-						projectId: 'test-project',
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
-
-			it('should throw a BadRequestError when startDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day in the future
-
-				await expect(
-					controller.getInsightsByWorkflow(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: futureDate,
-						skip: 0,
-						take: 5,
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
 		});
 
 		describe('with license restrictions', () => {
@@ -779,28 +727,6 @@ describe('InsightsController', () => {
 					new BadRequestError('endDate must be the same as or after startDate'),
 				);
 			});
-
-			it('should throw a BadRequestError when endDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-				await expect(
-					controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: new Date('2025-06-10'),
-						endDate: futureDate,
-						projectId: 'test-project',
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
-
-			it('should throw a BadRequestError when startDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-				await expect(
-					controller.getInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: futureDate,
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
 		});
 
 		describe('with license restrictions', () => {
@@ -948,28 +874,6 @@ describe('InsightsController', () => {
 				).rejects.toThrowError(
 					new BadRequestError('endDate must be the same as or after startDate'),
 				);
-			});
-
-			it('should throw a BadRequestError when endDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-				await expect(
-					controller.getTimeSavedInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: new Date('2025-06-10'),
-						endDate: futureDate,
-						projectId: 'test-project',
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
-			});
-
-			it('should throw a BadRequestError when startDate is in the future', async () => {
-				const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-				await expect(
-					controller.getTimeSavedInsightsByTime(mock<AuthenticatedRequest>(), mock<Response>(), {
-						startDate: futureDate,
-					}),
-				).rejects.toThrowError(new BadRequestError('must be in the past'));
 			});
 		});
 

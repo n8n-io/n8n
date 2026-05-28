@@ -11,20 +11,26 @@ import { useToast } from '@/app/composables/useToast';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExecutionsStore } from '../executions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { storeToRefs } from 'pinia';
-import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
+const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const isAgentsView = () => settingsStore.isModuleActive('agents') && route.query.view === 'agents';
 const overview = useProjectPages();
 
 const {
@@ -40,7 +46,7 @@ onBeforeMount(async () => {
 
 	void externalHooks.run('executionsList.openDialog');
 	telemetry.track('User opened Executions log', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 });
 
@@ -48,8 +54,21 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('executionsList.workflowExecutions'));
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	await executionsStore.initialize();
+	if (!isAgentsView()) {
+		await executionsStore.initialize();
+	}
 });
+
+// When switching from agents view back to workflows, initialize the executions
+// store if it hasn't been loaded yet (skipped on mount when ?view=agents).
+watch(
+	() => route.query.view,
+	async (newView, oldView) => {
+		if (oldView === 'agents' && newView !== 'agents') {
+			await executionsStore.initialize();
+		}
+	},
+);
 
 onBeforeUnmount(() => {
 	executionsStore.reset();
@@ -58,7 +77,7 @@ onBeforeUnmount(() => {
 
 async function loadWorkflows() {
 	try {
-		await workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined);
+		await workflowsListStore.fetchAllWorkflows(route.params?.projectId as string | undefined);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadWorkflows.title'));
 	}
@@ -67,7 +86,7 @@ async function loadWorkflows() {
 function onDocumentVisibilityChange() {
 	if (document.visibilityState === 'hidden') {
 		executionsStore.stopAutoRefreshInterval();
-	} else {
+	} else if (!isAgentsView()) {
 		void executionsStore.startAutoRefreshInterval();
 	}
 }

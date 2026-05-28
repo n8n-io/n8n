@@ -17,6 +17,7 @@ import { objectExtensions } from './object-extensions';
 import { stringExtensions } from './string-extensions';
 import { checkIfValueDefinedOrThrow } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { isSafeObjectProperty } from '../utils';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -454,26 +455,36 @@ interface FoundFunction {
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
+	// Coerce to string early so the name is stable for the property check below
+	const name = typeof functionName === 'string' ? functionName : String(functionName);
+
+	// Ensure the property name is in the allowed set before looking it up
+	if (!isSafeObjectProperty(name)) {
+		throw new ExpressionExtensionError(
+			`Cannot access "${name}" via expression extension due to security concerns`,
+		);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
-		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input) && functionName !== 'toDate' && functionName !== 'toDateTime') {
+		foundFunction = arrayExtensions.functions[name];
+	} else if (isDate(input) && name !== 'toDate' && name !== 'toDateTime') {
 		// If it's a string date (from $json), convert it to a Date object,
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
 		input = new Date(input as string);
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (typeof input === 'string') {
-		foundFunction = stringExtensions.functions[functionName];
+		foundFunction = stringExtensions.functions[name];
 	} else if (typeof input === 'number') {
-		foundFunction = numberExtensions.functions[functionName];
+		foundFunction = numberExtensions.functions[name];
 	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (input !== null && typeof input === 'object') {
-		foundFunction = objectExtensions.functions[functionName];
+		foundFunction = objectExtensions.functions[name];
 	} else if (typeof input === 'boolean') {
-		foundFunction = booleanExtensions.functions[functionName];
+		foundFunction = booleanExtensions.functions[name];
 	}
 
 	// Look for generic or builtin
@@ -482,13 +493,13 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
-		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
+		if (inputAny && name && typeof inputAny[name] === 'function') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			return { type: 'native', function: inputAny[functionName] };
+			return { type: 'native', function: inputAny[name] };
 		}
 
 		// Use a generic version if available
-		foundFunction = genericExtensions[functionName];
+		foundFunction = genericExtensions[name];
 	}
 
 	if (!foundFunction) {

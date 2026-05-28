@@ -140,7 +140,7 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		if (!data) {
 			throw new CredentialResolverDataNotFoundError();
 		}
-		const plaintext = this.cipher.decrypt(data);
+		const plaintext = await this.cipher.decryptV2(data);
 		try {
 			const secret = jsonParse<ICredentialDataDecryptedObject>(plaintext);
 			return secret;
@@ -160,7 +160,7 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		const parsedOptions = await this.parseOptions(handle.configuration);
 		const key = await this.resolveIdentifier(context, parsedOptions);
 
-		const encryptedData = this.cipher.encrypt(data);
+		const encryptedData = await this.cipher.encryptV2(data);
 
 		await this.storage.setCredentialData(
 			credentialId,
@@ -223,15 +223,11 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		return await identifier.resolve(context, parsedOptions);
 	}
 
-	async validateIdentity(identity: string, handle: CredentialResolverHandle): Promise<void> {
+	async validateIdentity(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<void> {
 		const parsedOptions = await this.parseOptions(handle.configuration);
-		await this.resolveIdentifier(
-			{
-				identity,
-				version: 1,
-				metadata: {},
-			},
-			parsedOptions,
-		);
+		await this.resolveIdentifier(context, parsedOptions);
 	}
 }

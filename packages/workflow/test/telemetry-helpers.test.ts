@@ -3,13 +3,16 @@ import { mock } from 'vitest-mock-extended';
 
 import { nodeTypes } from './ExpressionExtensions/helpers';
 import type { NodeTypes } from './node-types';
-import { STICKY_NODE_TYPE } from '../src/constants';
+import {
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
 	IConnections,
 	INode,
 	INodeTypeDescription,
-	INodeTypes,
 	IRun,
 	IRunData,
 	NodeConnectionType,
@@ -33,6 +36,14 @@ import {
 import { randomInt } from '../src/utils';
 import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
+vi.mock('../src/node-helpers', async () => {
+	const actual = await vi.importActual<typeof import('../src/node-helpers')>('../src/node-helpers');
+	return {
+		...actual,
+		getNodeParameters: vi.fn().mockImplementation(actual.getNodeParameters),
+	};
+});
+
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
 		for (const url of validUrls(numericId)) {
@@ -46,6 +57,33 @@ describe('getDomainBase should return protocol plus domain', () => {
 			const { full, protocolPlusDomain } = url;
 			expect(getDomainBase(full)).toBe(protocolPlusDomain);
 		}
+	});
+
+	test('should handle multi-level TLDs correctly', () => {
+		// Test cases for multi-level TLDs (country codes, special services)
+		const testCases = [
+			{ input: 'https://api.example.co.uk/path', expected: 'example.co.uk' },
+			{ input: 'https://user.service.com.au/api', expected: 'service.com.au' },
+			{ input: 'https://api.example.co.jp/test', expected: 'example.co.jp' },
+			{ input: 'https://test.example.gov.uk/data', expected: 'example.gov.uk' },
+			{ input: 'https://sub.domain.org.nz/path', expected: 'domain.org.nz' },
+			{ input: 'api.example.co.uk/path', expected: 'example.co.uk' },
+		];
+
+		testCases.forEach(({ input, expected }) => {
+			expect(getDomainBase(input)).toBe(expected);
+		});
+	});
+
+	test('should handle edge cases', () => {
+		// Single word domains, localhost, etc.
+		expect(getDomainBase('https://localhost/path')).toBe('localhost');
+		expect(getDomainBase('https://example/path')).toBe('example');
+	});
+
+	test('should handle IP addresses', () => {
+		expect(getDomainBase('https://192.168.1.1/path')).toBe('192.168.1.1');
+		expect(getDomainBase('https://[::1]/path')).toBe('[::1]');
 	});
 });
 
@@ -938,7 +976,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'httpBasicAuth',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -993,7 +1030,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'activeCampaignApi',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -1198,7 +1234,6 @@ describe('generateNodesGraph', () => {
 						position: [600, 240],
 						credential_set: false,
 						domain_base: '',
-						domain_path: '',
 					},
 				},
 				notes: {},
@@ -1318,9 +1353,9 @@ describe('generateNodesGraph', () => {
 	});
 
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
-		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
+		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }], connections: {} });
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.mocked(nodeHelpers.getNodeParameters).mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -1833,6 +1868,693 @@ describe('generateNodesGraph', () => {
 			evaluationTriggerNodeNames: [],
 		});
 	});
+
+	test('should handle MCP Client node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	describe('ai_model telemetry', () => {
+		test('should capture ai_model for LM node with plain string model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with modelName param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelName: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with resourceLocator model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							model: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test.each([
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
+				name: 'OpenAI',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.anthropic',
+				name: 'Anthropic',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.ollama',
+				name: 'Ollama',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.googleGemini',
+				name: 'Google Gemini',
+			},
+		])('should capture ai_model for $name vendor node via modelId', ({ nodeType }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							modelId: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'vendor-node-id',
+						name: 'Vendor Node',
+						type: nodeType,
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should not capture ai_model for non-AI node', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {},
+						id: 'manual-trigger-id',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBeUndefined();
+		});
+	});
+
+	describe('ai token usage telemetry', () => {
+		test('should capture tokens for LM node with tokenUsage in runData', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionIndex: 0,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsage: {
+												promptTokens: 150,
+												completionTokens: 80,
+												totalTokens: 230,
+											},
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
+		});
+
+		test('should capture tokens from tokenUsageEstimate when tokenUsage is absent', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionIndex: 0,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsageEstimate: {
+												promptTokens: 200,
+												completionTokens: 100,
+												totalTokens: 300,
+											},
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(200);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(100);
+		});
+
+		test('should sum tokens across multiple runs (agent multi-call)', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const makeTaskData = (prompt: number, completion: number) => ({
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 0,
+				executionStatus: 'success' as const,
+				data: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{
+								json: {
+									tokenUsage: {
+										promptTokens: prompt,
+										completionTokens: completion,
+										totalTokens: prompt + completion,
+									},
+								},
+							},
+						],
+					],
+				},
+				source: [],
+			});
+
+			const runData: IRunData = {
+				'LM Node': [makeTaskData(150, 80), makeTaskData(200, 120), makeTaskData(100, 50)],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(450);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(250);
+		});
+
+		test('should not set token fields when no runData is provided', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
+
+		test('should not set token fields when runData has no token usage data', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionIndex: 0,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											response: { generations: [] },
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
+
+		test('should capture tokens from task metadata for standalone vendor nodes', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelId: { value: 'gpt-4o' } },
+						id: 'openai-node-id',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				OpenAI: [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionIndex: 0,
+						executionStatus: 'success',
+						data: { main: [[{ json: { content: 'hello' } }]] },
+						metadata: {
+							tokenUsage: { inputTokens: 120, outputTokens: 45 },
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(120);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(45);
+		});
+
+		test('should sum metadata tokens across multiple task runs for vendor nodes', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelId: { value: 'claude-3-opus' } },
+						id: 'anthropic-node-id',
+						name: 'Anthropic',
+						type: '@n8n/n8n-nodes-langchain.anthropic',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const makeTaskData = (input: number, output: number) => ({
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 0,
+				executionStatus: 'success' as const,
+				data: { main: [[{ json: { content: 'response' } }]] },
+				metadata: {
+					tokenUsage: { inputTokens: input, outputTokens: output },
+				},
+				source: [],
+			});
+
+			const runData: IRunData = {
+				Anthropic: [makeTaskData(100, 50), makeTaskData(200, 80)],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(300);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(130);
+		});
+
+		test('should prefer ai_languageModel data over metadata when both exist', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionIndex: 0,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsage: {
+												promptTokens: 150,
+												completionTokens: 80,
+												totalTokens: 230,
+											},
+										},
+									},
+								],
+							],
+						},
+						metadata: {
+							tokenUsage: { inputTokens: 999, outputTokens: 999 },
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
+		});
+	});
+
+	describe('ai_gateway_credentials telemetry', () => {
+		test('should set ai_gateway_credentials=true when a credential is AI Gateway managed', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+						credentials: {
+							openAiApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+						},
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBe(true);
+		});
+
+		test('should not set ai_gateway_credentials when credentials are not AI Gateway managed', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+						credentials: {
+							openAiApi: { id: 'cred-id', name: 'My OpenAI' },
+						},
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBeUndefined();
+		});
+
+		test('should not set ai_gateway_credentials when node has no credentials', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBeUndefined();
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {
@@ -2109,42 +2831,42 @@ function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
@@ -2164,7 +2886,7 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'htp://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
@@ -2874,6 +3596,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		status: error ? 'error' : 'success',
 		startedAt: new Date(),
 		stoppedAt: new Date(),
+		storedAt: 'db',
 		data: {
 			startData: {},
 			resultData: {
@@ -2999,7 +3722,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			},
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
 		);
 
@@ -3053,7 +3776,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			],
 		});
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
 		);
 
@@ -3081,7 +3804,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: 'gpt-4' }),
 		);
 
@@ -3171,7 +3894,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
 		);
 

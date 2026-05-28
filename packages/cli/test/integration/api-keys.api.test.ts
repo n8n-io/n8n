@@ -1,6 +1,5 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -10,31 +9,22 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { LicenseMocker } from './shared/license';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-let licenseMocker: LicenseMocker;
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
-
-	licenseMocker = new LicenseMocker();
-	licenseMocker.mock(Container.get(License));
-	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
-	licenseMocker.reset();
-	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 describe('When public API is disabled', () => {

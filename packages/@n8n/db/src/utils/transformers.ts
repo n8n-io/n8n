@@ -26,7 +26,7 @@ export const objectRetriever: ValueTransformer = {
 
 /**
  * Transformer for sqlite JSON columns to mimic JSON-as-object behavior
- * from Postgres and MySQL.
+ * from Postgres.
  */
 const jsonColumn: ValueTransformer = {
 	to: (value: object): string | object =>

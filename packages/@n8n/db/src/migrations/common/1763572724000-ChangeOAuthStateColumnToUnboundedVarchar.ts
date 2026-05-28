@@ -8,7 +8,6 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 {
 	async up({
 		isSqlite,
-		isMysql,
 		isPostgres,
 		escape,
 		copyTable,
@@ -48,16 +47,6 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 			await dropTable(TABLE_NAME);
 
 			await queryRunner.query(`ALTER TABLE ${tempTableName} RENAME TO ${tableName};`);
-		} else if (isMysql) {
-			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('state')} TEXT;`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('codeChallenge')} TEXT NOT NULL;`,
-			);
-			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('redirectUri')} TEXT NOT NULL;`,
-			);
 		} else if (isPostgres) {
 			await queryRunner.query(
 				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('state')} TYPE VARCHAR,` +

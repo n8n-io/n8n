@@ -1,4 +1,8 @@
-import { CreateVariableRequestDto, VariableListRequestDto } from '@n8n/api-types';
+import {
+	CreateVariableRequestDto,
+	UpdateVariableRequestDto,
+	VariableListRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -56,7 +60,7 @@ export class VariablesController {
 	async updateVariable(
 		req: AuthenticatedRequest<{ id: string }>,
 		_res: Response,
-		@Body payload: CreateVariableRequestDto,
+		@Body payload: UpdateVariableRequestDto,
 	) {
 		const id = req.params.id;
 		try {

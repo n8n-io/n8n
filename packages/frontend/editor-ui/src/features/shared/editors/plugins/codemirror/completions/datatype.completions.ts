@@ -35,6 +35,7 @@ import {
 	STRING_SECTIONS,
 	TARGET_NODE_PARAMETER_FACET,
 	VARIABLE_SECTIONS,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -54,6 +55,7 @@ import {
 	isCredentialsModalOpen,
 	isPseudoParam,
 	isSplitInBatchesAbsent,
+	isValidJavascriptIdentifier,
 	longestCommonPrefix,
 	prefixMatch,
 	resolveAutocompleteExpression,
@@ -64,6 +66,8 @@ import {
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -72,6 +76,7 @@ export async function datatypeCompletions(
 	context: CompletionContext,
 ): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
 	if (!word) return null;
@@ -100,6 +105,7 @@ export async function datatypeCompletions(
 		try {
 			resolved = await resolveAutocompleteExpression(
 				`={{ ${base} }}`,
+				workflowDocumentId,
 				targetNodeParameterContext?.nodeName,
 			);
 		} catch (error) {
@@ -111,6 +117,7 @@ export async function datatypeCompletions(
 			try {
 				resolved = await resolveAutocompleteExpression(
 					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					workflowDocumentId,
 					targetNodeParameterContext?.nodeName,
 				);
 			} catch {
@@ -121,7 +128,9 @@ export async function datatypeCompletions(
 		if (resolved === null) return null;
 
 		try {
-			options = (await datatypeOptions({ resolved, base, tail })).map(stripExcessParens(context));
+			options = (await datatypeOptions({ resolved, base, tail }, workflowDocumentId)).map(
+				stripExcessParens(context),
+			);
 		} catch {
 			options = [];
 		}
@@ -136,7 +145,11 @@ export async function datatypeCompletions(
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = await explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = await explicitDataTypeOptions(
+			word.text,
+			workflowDocumentId,
+			targetNodeParameterContext,
+		);
 		from = word.to;
 	}
 
@@ -200,25 +213,33 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 
 async function explicitDataTypeOptions(
 	expression: string,
+	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ): Promise<AliasCompletion[]> {
 	try {
 		const resolved = await resolveAutocompleteExpression(
 			`={{ ${expression} }}`,
+			workflowDocumentId,
 			targetNodeParameterContext?.nodeName,
 		);
-		return await datatypeOptions({
-			resolved,
-			base: expression,
-			tail: '',
-			transformLabel: (label) => '.' + label,
-		});
+		return await datatypeOptions(
+			{
+				resolved,
+				base: expression,
+				tail: '',
+				transformLabel: (label) => '.' + label,
+			},
+			workflowDocumentId,
+		);
 	} catch {
 		return [];
 	}
 }
 
-async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletion[]> {
+async function datatypeOptions(
+	input: AutocompleteInput,
+	workflowDocumentId: WorkflowDocumentId,
+): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -254,7 +275,7 @@ async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletio
 	}
 
 	if (typeof resolved === 'object') {
-		return await objectOptions(input as AutocompleteInput<IDataObject>);
+		return await objectOptions(input as AutocompleteInput<IDataObject>, workflowDocumentId);
 	}
 
 	return [];
@@ -399,6 +420,7 @@ const createCompletionOption = ({
 
 const customObjectOptions = async (
 	input: AutocompleteInput<IDataObject>,
+	workflowDocumentId: WorkflowDocumentId,
 ): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
@@ -411,11 +433,11 @@ const customObjectOptions = async (
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return await inputOptions(base);
+		return await inputOptions(base, workflowDocumentId);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return await nodeRefOptions(base);
+		return await nodeRefOptions(base, workflowDocumentId);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -427,11 +449,14 @@ const customObjectOptions = async (
 	return [];
 };
 
-const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Completion[]> => {
+const objectOptions = async (
+	input: AutocompleteInput<IDataObject>,
+	workflowDocumentId: WorkflowDocumentId,
+): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
-	if (isSplitInBatchesAbsent()) SKIP.add('context');
+	if (isSplitInBatchesAbsent(workflowDocumentId)) SKIP.add('context');
 
 	let rawKeys = Object.keys(resolved);
 
@@ -440,7 +465,7 @@ const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Com
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = await customObjectOptions(input);
+	const customOptions = await customObjectOptions(input, workflowDocumentId);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -956,7 +981,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = async (base: string) => {
+export const nodeRefOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1045,7 +1070,7 @@ export const nodeRefOptions = async (base: string) => {
 		},
 	];
 
-	const noParams = await hasNoParams(base);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))
@@ -1055,7 +1080,7 @@ export const nodeRefOptions = async (base: string) => {
 	});
 };
 
-export const inputOptions = async (base: string) => {
+export const inputOptions = async (base: string, workflowDocumentId: WorkflowDocumentId) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1118,7 +1143,7 @@ export const inputOptions = async (base: string) => {
 		},
 	];
 
-	const noParams = await hasNoParams(base);
+	const noParams = await hasNoParams(base, workflowDocumentId);
 	return applySections({
 		options: options
 			.filter((option) => !(option.doc.name === 'params' && noParams))
@@ -1244,7 +1269,6 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) => {
-			const needsBracketAccess = /\//.test(secret);
 			const option = createCompletionOption({
 				name: secret,
 				doc: {
@@ -1256,7 +1280,7 @@ export const secretOptions = (base: string) => {
 			});
 
 			// Override the apply handler for keys that need bracket access
-			if (needsBracketAccess) {
+			if (!isValidJavascriptIdentifier(secret)) {
 				option.apply = applyBracketAccessCompletion;
 			}
 
@@ -1269,18 +1293,56 @@ export const secretOptions = (base: string) => {
 
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
+	const settingsStore = useSettingsStore();
 
-	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption({
+	const externalSecretProviderToOption = (provider: string, section?: 'global' | 'project') => {
+		const doc: DocMetadata = {
 			name: provider,
-			doc: {
-				name: provider,
-				returnType: 'Object',
-				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
-				docURL: i18n.baseText('settings.externalSecrets.docs'),
-			},
-		}),
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
+			docURL: i18n.baseText('settings.externalSecrets.docs'),
+		};
+		if (section) {
+			doc.section = section;
+			doc.description = i18n.baseText(
+				`codeNodeEditor.completer.$secrets.group.${section}.description`,
+			);
+		}
+
+		return createCompletionOption({
+			name: provider,
+			doc,
+		});
+	};
+
+	const projectSecretsEnabled =
+		settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
+	if (!projectSecretsEnabled) {
+		return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+			externalSecretProviderToOption(provider),
+		);
+	}
+
+	const globalSecretProviders = Object.keys(externalSecretsStore.globalSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'global'),
 	);
+	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'project'),
+	);
+	const secretSections: Record<string, CompletionSection> = {
+		project: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.project'),
+			rank: 1,
+		},
+		global: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.global'),
+			rank: 2,
+		},
+	};
+	return applySections({
+		options: projectSecretProviders.concat(globalSecretProviders),
+		sections: secretSections,
+	});
 };
 
 /**
@@ -1475,8 +1537,8 @@ export const objectGlobalOptions = () => {
 };
 
 const regexes = {
-	generalRef: /\$[^$'"]+\.(.*)/, // $input. or $json. or similar ones
-	selectorRef: /\$\(['"][\S\s]+['"]\)\.(.*)/, // $('nodeName').
+	generalRef: /\$[^$'"]+\.(.*)/, // $input. or $json. or $json?. or similar ones
+	selectorRef: /\$\(['"][\S\s]+['"]\)\??\.(.*)/, // $('nodeName'). or $('nodeName')?.
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
 	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
@@ -1484,7 +1546,7 @@ const regexes = {
 	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
-	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
+	indexedAccess: /([^"{\s]+\[.+\])\??\.(.*)/, // 'abc'[0]. or 'abc'[0]?. or similar ones
 	objectLiteral: /\(\{.*\}\)\.(.*)/, // ({}).
 
 	mathGlobal: /Math\.(.*)/, // Math.

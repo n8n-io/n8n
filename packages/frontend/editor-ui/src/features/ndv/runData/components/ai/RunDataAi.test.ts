@@ -91,7 +91,7 @@ describe('RunDataAi', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflowExecutionData = executionResponse;
+		workflowsStore.setWorkflowExecutionData(executionResponse);
 	});
 
 	it('should render the log that belong to given run index', async () => {

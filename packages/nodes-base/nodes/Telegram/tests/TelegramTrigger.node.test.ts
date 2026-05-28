@@ -1,8 +1,9 @@
 import { mock } from 'jest-mock-extended';
-import { type INode, type Workflow } from 'n8n-workflow';
+import type { IHookFunctions, INode, Workflow } from 'n8n-workflow';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
+import { apiRequest } from '../GenericFunctions';
 import { TelegramTrigger } from '../TelegramTrigger.node';
 
 jest.mock('../GenericFunctions', () => {
@@ -171,6 +172,48 @@ describe('TelegramTrigger', () => {
 			});
 
 			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+		});
+	});
+
+	describe('create', () => {
+		test('should set drop_pending_updates for version 1.3', async () => {
+			const telegramTrigger = new TelegramTrigger();
+			const mockHookFunctions = mock<IHookFunctions>({
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook'),
+				getNodeParameter: jest.fn().mockReturnValue(['message']),
+				getNode: jest.fn().mockReturnValue({ id: '2', typeVersion: 1.3 }),
+				getWorkflow: jest.fn().mockReturnValue({ id: '1' }),
+			});
+
+			await telegramTrigger.webhookMethods.default.create.call(mockHookFunctions);
+
+			expect(jest.mocked(apiRequest)).toHaveBeenCalledWith(
+				'POST',
+				'setWebhook',
+				expect.objectContaining({
+					drop_pending_updates: true,
+				}),
+			);
+		});
+
+		test('should not set drop_pending_updates for version 1.2', async () => {
+			const telegramTrigger = new TelegramTrigger();
+			const mockHookFunctions = mock<IHookFunctions>({
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook'),
+				getNodeParameter: jest.fn().mockReturnValue(['*']),
+				getNode: jest.fn().mockReturnValue({ id: '2', typeVersion: 1.2 }),
+				getWorkflow: jest.fn().mockReturnValue({ id: '1' }),
+			});
+
+			await telegramTrigger.webhookMethods.default.create.call(mockHookFunctions);
+
+			expect(jest.mocked(apiRequest)).toHaveBeenCalledWith(
+				'POST',
+				'setWebhook',
+				expect.objectContaining({
+					drop_pending_updates: false,
+				}),
+			);
 		});
 	});
 });

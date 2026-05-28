@@ -1,32 +1,30 @@
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { ResourceParentFolder } from '../folders.types';
 
 export function useParentFolder() {
 	const foldersStore = useFoldersStore();
 	const projectsStore = useProjectsStore();
-	const workflowsStore = useWorkflowsStore();
 
-	// This loads user's home project and parent folder data if they are not already loaded.
+	// Fetches parent folder data from cache or API.
 	// This happens when user lands straight on the new workflow page and we have nothing in the store.
-	const fetchAndSetParentFolder = async (folderId?: string) => {
-		if (!folderId) return;
+	const fetchParentFolder = async (folderId?: string): Promise<ResourceParentFolder | null> => {
+		if (!folderId) return null;
 
-		let parentFolder = foldersStore.getCachedFolder(folderId);
-		if (!parentFolder && projectsStore.currentProjectId) {
+		let folder = foldersStore.getCachedFolder(folderId);
+		if (!folder && projectsStore.currentProjectId) {
 			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
-			parentFolder = foldersStore.getCachedFolder(folderId);
+			folder = foldersStore.getCachedFolder(folderId);
 		}
 
-		if (parentFolder) {
-			workflowsStore.setParentFolder({
-				...parentFolder,
-				parentFolderId: parentFolder.parentFolder ?? null,
-			});
-		}
+		if (!folder) return null;
 
-		return parentFolder ?? null;
+		return {
+			id: folder.id,
+			name: folder.name,
+			parentFolderId: folder.parentFolder ?? null,
+		};
 	};
 
-	return { fetchAndSetParentFolder };
+	return { fetchParentFolder };
 }
