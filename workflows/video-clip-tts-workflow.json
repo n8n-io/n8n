@@ -1,11 +1,11 @@
 {
-  "name": "MVP - TTS Video Clip Composer",
+  "name": "MVP - Viewpoint TTS Video Clip Composer",
   "nodes": [
     {
       "parameters": {
         "path": "video-clip-tts-upload",
         "formTitle": "TTS Video Clip Composer",
-        "formDescription": "Upload a cover image, proof screenshot, TTS script, and background video to create an edited 16:9 MP4.",
+        "formDescription": "Upload visual assets, enter a viewpoint, choose official Doubao voices, and create an edited 16:9 MP4.",
         "formFields": {
           "values": [
             {
@@ -19,21 +19,144 @@
               "requiredField": true
             },
             {
-              "fieldLabel": "tts_script",
+              "fieldLabel": "background_video",
               "fieldType": "file",
               "requiredField": true
             },
             {
-              "fieldLabel": "background_video",
-              "fieldType": "file",
-              "requiredField": true
+              "fieldLabel": "viewpoint",
+              "fieldType": "textarea",
+              "requiredField": true,
+              "placeholder": "输入你对这件事情的观点、角度或想表达的核心判断"
+            },
+            {
+              "fieldLabel": "script_mode",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "single",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "single"
+                  },
+                  {
+                    "option": "dialogue"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice_single",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "cancan_v2",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "cancan_v2"
+                  },
+                  {
+                    "option": "qingcang_v2"
+                  },
+                  {
+                    "option": "female_general_v2"
+                  },
+                  {
+                    "option": "cancan"
+                  },
+                  {
+                    "option": "qingcang"
+                  },
+                  {
+                    "option": "male_general"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice_a",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "qingcang_v2",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "cancan_v2"
+                  },
+                  {
+                    "option": "qingcang_v2"
+                  },
+                  {
+                    "option": "female_general_v2"
+                  },
+                  {
+                    "option": "cancan"
+                  },
+                  {
+                    "option": "qingcang"
+                  },
+                  {
+                    "option": "male_general"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice_b",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "female_general_v2",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "cancan_v2"
+                  },
+                  {
+                    "option": "qingcang_v2"
+                  },
+                  {
+                    "option": "female_general_v2"
+                  },
+                  {
+                    "option": "cancan"
+                  },
+                  {
+                    "option": "qingcang"
+                  },
+                  {
+                    "option": "male_general"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "script_style",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "short_video_commentary",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "short_video_commentary"
+                  },
+                  {
+                    "option": "knowledge_explainer"
+                  },
+                  {
+                    "option": "sharp_commentary"
+                  },
+                  {
+                    "option": "warm_storytelling"
+                  }
+                ]
+              }
             }
           ]
         },
         "responseMode": "responseNode"
       },
       "id": "0f3d4c1a-17c9-4fa0-8f8a-a913adbcf4a1",
-      "name": "Upload Assets",
+      "name": "Upload Assets And Viewpoint",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2,
       "position": [
@@ -44,7 +167,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst now = new Date();\nconst stamp = now.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}Z$/, '').replace('T', '-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = `${stamp}-${random}`;\nconst repoDir = ($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n').replace(/\\/+$/, '');\nconst baseDir = ($env.VIDEO_CLIP_JOBS_DIR || `${repoDir}/tmp/n8n-video-jobs`).replace(/\\/+$/, '');\nconst jobDir = `${baseDir}/${jobId}`;\nreturn [{ json: { jobId, baseDir, repoDir, jobDir, inputsDir: `${jobDir}/inputs`, ttsDir: `${jobDir}/tts`, renderDir: `${jobDir}/render` }, binary: item.binary }];"
+        "jsCode": "const item = $input.first();\nconst now = new Date();\nconst iso = now.toISOString();\nconst stamp = iso.slice(0, 19).split('-').join('').split(':').join('').split('T').join('-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = stamp + '-' + random;\nfunction trimTrailingSlash(value) {\n  let text = String(value || '');\n  while (text.endsWith('/')) text = text.slice(0, -1);\n  return text;\n}\nconst repoDir = trimTrailingSlash($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n');\nconst baseDir = trimTrailingSlash($env.VIDEO_CLIP_JOBS_DIR || repoDir + '/tmp/n8n-video-jobs');\nconst jobDir = baseDir + '/' + jobId;\nreturn [{ json: { ...item.json, jobId, baseDir, repoDir, jobDir, inputsDir: jobDir + '/inputs', ttsDir: jobDir + '/tts', ttsSegmentsDir: jobDir + '/tts/segments', renderDir: jobDir + '/render' }, binary: item.binary }];"
       },
       "id": "be754c0e-5a12-49df-8cb9-d0e37f77c4c7",
       "name": "Prepare Job",
@@ -57,7 +180,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst item = $input.first();\nconst binary = item.binary || {};\nconst keyAliases = {\n  coverImage: ['cover_image', 'coverImage'],\n  screenshotImage: ['proof_screenshot', 'proofScreenshot'],\n  scriptText: ['tts_script', 'ttsScript'],\n  backgroundVideo: ['background_video', 'backgroundVideo']\n};\nfunction firstBinaryKey(keys) {\n  return keys.find((key) => binary[key]);\n}\nfunction decodeTextBuffer(buffer) {\n  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {\n    return new TextDecoder('utf-8').decode(buffer.subarray(3));\n  }\n  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {\n    return new TextDecoder('utf-16le').decode(buffer.subarray(2));\n  }\n  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {\n    return new TextDecoder('utf-16be').decode(buffer.subarray(2));\n  }\n  let evenNulls = 0;\n  let oddNulls = 0;\n  const sampleLength = Math.min(buffer.length, 2000);\n  for (let index = 0; index < sampleLength; index += 1) {\n    if (buffer[index] === 0) {\n      if (index % 2 === 0) evenNulls += 1;\n      else oddNulls += 1;\n    }\n  }\n  if (oddNulls > sampleLength * 0.2 && evenNulls < sampleLength * 0.05) {\n    return new TextDecoder('utf-16le').decode(buffer);\n  }\n  if (evenNulls > sampleLength * 0.2 && oddNulls < sampleLength * 0.05) {\n    return new TextDecoder('utf-16be').decode(buffer);\n  }\n  try {\n    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);\n  } catch (error) {\n    return new TextDecoder('gb18030').decode(buffer);\n  }\n}\nfunction normalizeScriptText(text) {\n  const withoutNulls = String(text).split(String.fromCharCode(0)).join('');\n  const lf = String.fromCharCode(10);\n  const cr = String.fromCharCode(13);\n  let normalized = withoutNulls.split(cr + lf).join(lf).split(cr).join(lf);\n  while (normalized.includes(lf + lf + lf)) {\n    normalized = normalized.split(lf + lf + lf).join(lf + lf);\n  }\n  return normalized.trim();\n}\nconst uploadKeys = {\n  coverImage: firstBinaryKey(keyAliases.coverImage),\n  screenshotImage: firstBinaryKey(keyAliases.screenshotImage),\n  scriptText: firstBinaryKey(keyAliases.scriptText),\n  backgroundVideo: firstBinaryKey(keyAliases.backgroundVideo)\n};\nfor (const [name, key] of Object.entries(uploadKeys)) {\n  if (!key) throw new Error('Missing uploaded file: ' + name + '. Accepted field names: ' + keyAliases[name].join(', '));\n}\nfs.mkdirSync(item.json.inputsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsDir, { recursive: true });\nfs.mkdirSync(item.json.renderDir, { recursive: true });\nconst files = {\n  coverImage: item.json.inputsDir + '/cover.png',\n  screenshotImage: item.json.inputsDir + '/screenshot.png',\n  scriptText: item.json.inputsDir + '/script.txt',\n  backgroundVideo: item.json.inputsDir + '/background.mp4'\n};\nfor (const [inputName, target] of [['coverImage', files.coverImage], ['screenshotImage', files.screenshotImage], ['backgroundVideo', files.backgroundVideo]]) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, uploadKeys[inputName]);\n  fs.writeFileSync(target, buffer);\n}\nconst scriptBuffer = await this.helpers.getBinaryDataBuffer(0, uploadKeys.scriptText);\nconst scriptText = normalizeScriptText(decodeTextBuffer(scriptBuffer));\nif (!scriptText) throw new Error('TTS script is empty');\nfs.writeFileSync(files.scriptText, scriptText, 'utf8');\nreturn [{ json: { ...item.json, files, scriptText, scriptEncodingNormalized: true } }];"
+        "jsCode": "const fs = require('fs');\nconst item = $input.first();\nconst binary = item.binary || {};\nconst keyAliases = {\n  coverImage: ['cover_image', 'coverImage'],\n  screenshotImage: ['proof_screenshot', 'proofScreenshot'],\n  backgroundVideo: ['background_video', 'backgroundVideo']\n};\nfunction firstBinaryKey(keys) { return keys.find((key) => binary[key]); }\nfunction cleanText(value) {\n  const lf = String.fromCharCode(10);\n  const cr = String.fromCharCode(13);\n  let text = String(value || '').split(String.fromCharCode(0)).join('').split(cr + lf).join(lf).split(cr).join(lf);\n  while (text.includes(lf + lf + lf)) text = text.split(lf + lf + lf).join(lf + lf);\n  return text.trim();\n}\nconst uploadKeys = {\n  coverImage: firstBinaryKey(keyAliases.coverImage),\n  screenshotImage: firstBinaryKey(keyAliases.screenshotImage),\n  backgroundVideo: firstBinaryKey(keyAliases.backgroundVideo)\n};\nfor (const [name, key] of Object.entries(uploadKeys)) {\n  if (!key) throw new Error('Missing uploaded file: ' + name + '. Accepted field names: ' + keyAliases[name].join(', '));\n}\nconst viewpoint = cleanText(item.json.viewpoint);\nif (!viewpoint) throw new Error('viewpoint is required');\nconst scriptMode = ['single', 'dialogue'].includes(item.json.script_mode) ? item.json.script_mode : 'single';\nconst scriptStyle = item.json.script_style || 'short_video_commentary';\nconst selectedVoices = {\n  voiceSingle: item.json.voice_single || 'cancan_v2',\n  voiceA: item.json.voice_a || 'qingcang_v2',\n  voiceB: item.json.voice_b || 'female_general_v2'\n};\nfs.mkdirSync(item.json.inputsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsSegmentsDir, { recursive: true });\nfs.mkdirSync(item.json.renderDir, { recursive: true });\nconst files = {\n  coverImage: item.json.inputsDir + '/cover.png',\n  screenshotImage: item.json.inputsDir + '/screenshot.png',\n  backgroundVideo: item.json.inputsDir + '/background.mp4',\n  scriptText: item.json.inputsDir + '/script.txt',\n  generatedScript: item.json.inputsDir + '/generated-script.json',\n  llmPrompt: item.json.inputsDir + '/script-prompt.txt',\n  llmResponse: item.json.inputsDir + '/script-response.json'\n};\nfor (const [inputName, target] of [['coverImage', files.coverImage], ['screenshotImage', files.screenshotImage], ['backgroundVideo', files.backgroundVideo]]) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, uploadKeys[inputName]);\n  fs.writeFileSync(target, buffer);\n}\nreturn [{ json: { ...item.json, files, viewpoint, scriptMode, scriptStyle, selectedVoices } }];"
       },
       "id": "f2a77f74-f84b-43d9-8057-7ca810f8610f",
       "name": "Save Uploaded Files",
@@ -70,26 +193,27 @@
     },
     {
       "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst skillPath = item.repoDir + '/tools/video-composer/script-writer/SKILL.md';\nif (!fs.existsSync(skillPath)) throw new Error('Script writer skill not found: ' + skillPath);\nfor (const [name, value] of Object.entries({ DOUBAO_LLM_URL: $env.DOUBAO_LLM_URL, DOUBAO_LLM_API_KEY: $env.DOUBAO_LLM_API_KEY, DOUBAO_LLM_MODEL: $env.DOUBAO_LLM_MODEL })) {\n  if (!value) throw new Error('Missing required LLM env var: ' + name);\n}\nconst skill = fs.readFileSync(skillPath, 'utf8');\nconst targetLength = item.scriptMode === 'dialogue' ? '500-900 Chinese characters' : '350-800 Chinese characters';\nconst userPrompt = [\n  'User viewpoint:', item.viewpoint,\n  '',\n  'Generation settings:',\n  '- mode: ' + item.scriptMode,\n  '- style: ' + item.scriptStyle,\n  '- targetLength: ' + targetLength,\n  '',\n  'Return strict JSON following the schema. Do not output Markdown.'\n].join('\\n');\nconst messages = [\n  { role: 'system', content: skill },\n  { role: 'user', content: userPrompt }\n];\nfs.writeFileSync(item.files.llmPrompt, JSON.stringify({ messages }, null, 2), 'utf8');\nreturn [{ json: { ...item, llmMessages: messages } }];"
+      },
+      "id": "5fc67e1b-bb9a-4d45-9294-5b4fa9c83400",
+      "name": "Prepare Script Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{$env.DOUBAO_TTS_URL}}",
+        "url": "={{$env.DOUBAO_LLM_URL}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-Api-App-Id",
-              "value": "={{$env.DOUBAO_TTS_APP_ID}}"
-            },
-            {
-              "name": "X-Api-Access-Key",
-              "value": "={{$env.DOUBAO_TTS_API_KEY}}"
-            },
-            {
-              "name": "X-Api-Resource-Id",
-              "value": "={{$env.DOUBAO_TTS_RESOURCE_ID || 'seed-tts-2.0'}}"
-            },
-            {
-              "name": "X-Api-Request-Id",
-              "value": "={{$json.jobId}}"
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.DOUBAO_LLM_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -99,32 +223,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { user: { uid: 'n8n-video-clip' }, req_params: { text: $json.scriptText, speaker: $env.DOUBAO_TTS_VOICE || 'zh_female_shuangkuaisisi_moon_bigtts', audio_params: { format: 'mp3', sample_rate: 24000, enable_subtitle: true, enable_timestamp: true } } } }}",
+        "jsonBody": "={{ { model: $env.DOUBAO_LLM_MODEL, messages: $json.llmMessages, temperature: Number($env.DOUBAO_LLM_TEMPERATURE || 0.7), response_format: { type: 'json_object' } } }}",
         "options": {
           "response": {
             "response": {
-              "responseFormat": "text"
+              "responseFormat": "json"
             }
           }
         }
       },
-      "id": "f7379bdb-f54e-4fc6-b74d-0ea84f208929",
-      "name": "Doubao TTS Request",
+      "id": "d4e20524-36aa-48a6-9abf-01c5367b0b94",
+      "name": "Doubao Script Generation Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        720,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const fs = require('fs');\nconst previous = $('Save Uploaded Files').first().json;\nconst responseItem = $input.first().json;\nconst raw = typeof responseItem.data === 'string' ? responseItem.data : JSON.stringify(responseItem);\nconst responsePath = previous.ttsDir + '/tts-response.jsonstream';\nfs.writeFileSync(responsePath, raw);\nfunction parseSseFrames(text) {\n  const frames = [];\n  for (const block of text.split(/\\r?\\n\\r?\\n/)) {\n    const dataLines = block\n      .split(/\\r?\\n/)\n      .filter((line) => line.startsWith('data:'))\n      .map((line) => line.slice(5).trim())\n      .filter(Boolean);\n    for (const data of dataLines) {\n      frames.push(JSON.parse(data));\n    }\n  }\n  return frames;\n}\nfunction parseJsonStream(text) {\n  const frames = [];\n  let index = 0;\n  while (index < text.length) {\n    while (index < text.length && /\\s/.test(text[index])) index += 1;\n    if (index >= text.length) break;\n    let depth = 0;\n    let inString = false;\n    let escaped = false;\n    let end = index;\n    for (; end < text.length; end += 1) {\n      const ch = text[end];\n      if (inString) {\n        if (escaped) escaped = false;\n        else if (ch === '\\\\') escaped = true;\n        else if (ch === '\"') inString = false;\n        continue;\n      }\n      if (ch === '\"') inString = true;\n      else if (ch === '{') depth += 1;\n      else if (ch === '}') {\n        depth -= 1;\n        if (depth === 0) { end += 1; break; }\n      }\n    }\n    if (end <= index || depth !== 0) break;\n    frames.push(JSON.parse(text.slice(index, end)));\n    index = end;\n  }\n  return frames;\n}\nfunction parseTtsFrames(text) {\n  if (/^data:/m.test(text) || /^event:/m.test(text)) {\n    const sseFrames = parseSseFrames(text);\n    if (sseFrames.length > 0) return sseFrames;\n  }\n  return parseJsonStream(text);\n}\nconst frames = parseTtsFrames(raw);\nconst audioBase64Chunks = frames.map((frame) => frame.data).filter((data) => typeof data === 'string' && data.length > 0);\nif (audioBase64Chunks.length === 0) {\n  const first = frames[0] || responseItem;\n  const code = first?.code || first?.header?.code || 'unknown';\n  const message = first?.message || first?.header?.message || 'Doubao TTS response did not include audio chunks';\n  throw new Error('Doubao TTS failed: ' + code + ' ' + message);\n}\nconst timingFrames = frames\n  .map((frame) => frame.sentence ? { sentence: frame.sentence } : null)\n  .filter(Boolean);\nconst timingPath = previous.ttsDir + '/timing.json';\nfs.writeFileSync(timingPath, JSON.stringify({ frames: timingFrames }, null, 2), 'utf8');\nconst audioPath = previous.ttsDir + '/audio.mp3';\nconst audio = Buffer.concat(audioBase64Chunks.map((chunk) => Buffer.from(chunk, 'base64')));\nfs.writeFileSync(audioPath, audio);\nif (fs.statSync(audioPath).size === 0) throw new Error('Doubao TTS audio is empty');\nconst ttsAudio = await this.helpers.prepareBinaryData(audio, 'tts-audio.mp3', 'audio/mpeg');\nreturn [{\n  json: { ...previous, audioPath, ttsResponsePath: responsePath, ttsTimingPath: timingPath, ttsFrames: frames.length, ttsAudioChunks: audioBase64Chunks.length, ttsTimingFrames: timingFrames.length },\n  binary: { ttsAudio }\n}];"
-      },
-      "id": "ca19b3fe-5e0c-4541-bb84-a6dfefc98156",
-      "name": "Save TTS Audio",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
       "position": [
         960,
         0
@@ -132,10 +243,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.files.coverImage,\n    screenshotImage: item.files.screenshotImage,\n    backgroundVideo: item.files.backgroundVideo,\n    scriptText: item.files.scriptText,\n    ttsAudio: item.audioPath,\n    subtitleTiming: item.ttsTimingPath\n  },\n  output: {\n    video: `${item.renderDir}/final.mp4`,\n    subtitles: `${item.renderDir}/subtitles.ass`,\n    ffmpegLog: `${item.renderDir}/ffmpeg.log`\n  },\n  video: { width: 1920, height: 1080, fps: 30, coverDuration: 3, screenshotDuration: 4 },\n  layout: { coverTop: { x: 80, y: 60, width: 560 }, screenshotTop: { x: 1280, y: 60, width: 560 }, subtitleBottomMargin: 90 }\n};\nconst jobPath = `${item.jobDir}/job.json`;\nfs.writeFileSync(jobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, jobPath, outputVideo: job.output.video, ffmpegLog: job.output.ffmpegLog } }];"
+        "jsCode": "const fs = require('fs');\nconst { pathToFileURL } = require('url');\nconst previous = $('Prepare Script Prompt').first().json;\nconst response = $input.first().json;\nconst utils = await import(pathToFileURL(previous.repoDir + '/tools/video-composer/workflow-utils.mjs').href);\nfs.writeFileSync(previous.files.llmResponse, JSON.stringify(response, null, 2), 'utf8');\nconst content = response?.choices?.[0]?.message?.content || response?.output_text || response?.message?.content || response?.data?.content || JSON.stringify(response);\nconst generatedScript = utils.parseGeneratedScript(content, previous.scriptMode);\nconst generatedScriptText = utils.buildGeneratedScriptText(generatedScript);\nfs.writeFileSync(previous.files.generatedScript, JSON.stringify(generatedScript, null, 2), 'utf8');\nfs.writeFileSync(previous.files.scriptText, generatedScriptText, 'utf8');\nconst ttsSegments = utils.buildTtsSegments(generatedScript, previous.selectedVoices, {\n  segmentsDir: previous.ttsSegmentsDir,\n  fallbackSpeaker: $env.DOUBAO_TTS_VOICE || ''\n});\nreturn [{ json: { ...previous, generatedScript, generatedScriptText, generatedScriptTitle: generatedScript.title, generatedScriptSummary: generatedScript.summary, ttsSegments } }];"
       },
-      "id": "f3511981-d156-4783-ad12-11a74c29a33b",
-      "name": "Build Job Config",
+      "id": "81cdd62a-cdb5-4796-bb19-cab8e7c5b8da",
+      "name": "Parse Generated Script",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -145,10 +256,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = `${item.repoDir}/tools/video-composer/compose-video.mjs`;\nfunction runComposer() {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, item.jobPath], {\n      cwd: item.repoDir,\n      stdio: ['ignore', 'pipe', 'pipe']\n    });\n    let stdout = '';\n    let stderr = '';\n    const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => {\n      stdout += chunk.toString('utf8');\n      if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput);\n    });\n    child.stderr.on('data', (chunk) => {\n      stderr += chunk.toString('utf8');\n      if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput);\n    });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) {\n        resolve({ stdout, stderr });\n        return;\n      }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error(`Video composer failed with exit code ${code}${signal ? ` signal ${signal}` : ''}${detail ? `:\\n${detail}` : ''}`));\n    });\n  });\n}\nconst result = await runComposer();\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
+        "jsCode": "const fs = require('fs');\nconst { spawnSync } = require('child_process');\nconst { pathToFileURL } = require('url');\nconst item = $input.first().json;\nconst utils = await import(pathToFileURL(item.repoDir + '/tools/video-composer/workflow-utils.mjs').href);\nfor (const [name, value] of Object.entries({ DOUBAO_TTS_URL: $env.DOUBAO_TTS_URL, DOUBAO_TTS_API_KEY: $env.DOUBAO_TTS_API_KEY, DOUBAO_TTS_APP_ID: $env.DOUBAO_TTS_APP_ID })) {\n  if (!value) throw new Error('Missing required TTS env var: ' + name);\n}\nfunction run(command, args, label) {\n  const result = spawnSync(command, args, { encoding: 'utf8' });\n  if (result.status !== 0) throw new Error(label + ' failed: ' + (result.stderr || result.stdout));\n  return result.stdout.trim();\n}\nfunction duration(filePath) {\n  const output = run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath], 'ffprobe');\n  const value = Number(output);\n  if (!Number.isFinite(value) || value <= 0) throw new Error('Invalid audio duration for ' + filePath + ': ' + output);\n  return value;\n}\nasync function requestTts(segment) {\n  const response = await fetch($env.DOUBAO_TTS_URL, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'X-Api-App-Id': $env.DOUBAO_TTS_APP_ID,\n      'X-Api-Access-Key': $env.DOUBAO_TTS_API_KEY,\n      'X-Api-Resource-Id': $env.DOUBAO_TTS_RESOURCE_ID || 'seed-tts-2.0',\n      'X-Api-Request-Id': item.jobId + '-' + String(segment.segmentIndex).padStart(3, '0')\n    },\n    body: JSON.stringify({\n      user: { uid: 'n8n-video-clip' },\n      req_params: {\n        text: segment.text,\n        speaker: segment.speaker,\n        audio_params: { format: 'mp3', sample_rate: 24000, enable_subtitle: true, enable_timestamp: true }\n      }\n    })\n  });\n  const raw = await response.text();\n  fs.writeFileSync(segment.responsePath, raw, 'utf8');\n  if (!response.ok) throw new Error('TTS segment ' + segment.segmentIndex + ' HTTP ' + response.status + ': ' + raw.slice(0, 500));\n  const frames = utils.parseTtsResponseFrames(raw);\n  const parsed = utils.extractAudioAndTiming(frames);\n  if (parsed.audioBase64Chunks.length === 0) throw new Error('TTS segment ' + segment.segmentIndex + ' returned no audio. role=' + segment.role + ' speaker=' + segment.speaker + ' text=' + segment.text.slice(0, 80));\n  const audio = Buffer.concat(parsed.audioBase64Chunks.map((chunk) => Buffer.from(chunk, 'base64')));\n  fs.writeFileSync(segment.audioPath, audio);\n  fs.writeFileSync(segment.timingPath, JSON.stringify({ frames: parsed.timingFrames }, null, 2), 'utf8');\n  return { ...segment, timingFrames: parsed.timingFrames, duration: duration(segment.audioPath), audioSize: audio.length };\n}\nconst segmentMetas = [];\nfor (const segment of item.ttsSegments) {\n  segmentMetas.push(await requestTts(segment));\n}\nconst pauseSeconds = item.scriptMode === 'dialogue' ? Math.max(0, Number($env.VIDEO_CLIP_DIALOGUE_PAUSE_MS || 180) || 0) / 1000 : 0;\nconst audioPath = item.ttsDir + '/audio.mp3';\nconst concatInputs = [];\nconst concatLabels = [];\nlet inputIndex = 0;\nfor (let index = 0; index < segmentMetas.length; index += 1) {\n  concatInputs.push('-i', segmentMetas[index].audioPath);\n  concatLabels.push('[' + inputIndex + ':a]');\n  inputIndex += 1;\n  if (pauseSeconds > 0 && index < segmentMetas.length - 1) {\n    concatInputs.push('-f', 'lavfi', '-t', String(pauseSeconds), '-i', 'anullsrc=channel_layout=stereo:sample_rate=24000');\n    concatLabels.push('[' + inputIndex + ':a]');\n    inputIndex += 1;\n  }\n}\nrun('ffmpeg', ['-y', ...concatInputs, '-filter_complex', concatLabels.join('') + 'concat=n=' + concatLabels.length + ':v=0:a=1[aout]', '-map', '[aout]', '-c:a', 'libmp3lame', '-q:a', '2', audioPath], 'ffmpeg concat');\nconst mergedTiming = utils.mergeTimingEvents(segmentMetas, { pauseSeconds });\nconst ttsTimingPath = item.ttsDir + '/timing.json';\nfs.writeFileSync(ttsTimingPath, JSON.stringify({ frames: mergedTiming.frames, duration: mergedTiming.duration, pauseSeconds, segments: segmentMetas.map(({ timingFrames, ...meta }) => meta) }, null, 2), 'utf8');\nconst audio = fs.readFileSync(audioPath);\nconst ttsAudio = await this.helpers.prepareBinaryData(audio, 'tts-audio.mp3', 'audio/mpeg');\nreturn [{ json: { ...item, audioPath, ttsTimingPath, ttsSegmentMetas: segmentMetas.map(({ timingFrames, ...meta }) => meta), ttsDuration: duration(audioPath), ttsPauseSeconds: pauseSeconds }, binary: { ttsAudio } }];"
       },
-      "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
-      "name": "Run Composer Script",
+      "id": "1f21fd61-f9f5-438b-b149-9bb694d66589",
+      "name": "Synthesize And Merge TTS Segments",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -158,10 +269,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst item = $('Build Job Config').first().json;\nif (!fs.existsSync(item.outputVideo)) {\n  throw new Error('Final video was not created: ' + item.outputVideo);\n}\nconst video = fs.readFileSync(item.outputVideo);\nconst size = video.length;\nif (size === 0) throw new Error('Final video is empty: ' + item.outputVideo);\nconst binary = {\n  finalVideo: await this.helpers.prepareBinaryData(video, 'final.mp4', 'video/mp4')\n};\nif (item.audioPath && fs.existsSync(item.audioPath)) {\n  const audio = fs.readFileSync(item.audioPath);\n  binary.ttsAudio = await this.helpers.prepareBinaryData(audio, 'tts-audio.mp3', 'audio/mpeg');\n}\nreturn [{ json: { jobId: item.jobId, jobDir: item.jobDir, videoPath: item.outputVideo, audioPath: item.audioPath, ffmpegLog: item.ffmpegLog, size }, binary }];"
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.files.coverImage,\n    screenshotImage: item.files.screenshotImage,\n    backgroundVideo: item.files.backgroundVideo,\n    scriptText: item.files.scriptText,\n    ttsAudio: item.audioPath,\n    subtitleTiming: item.ttsTimingPath\n  },\n  output: {\n    video: item.renderDir + '/final.mp4',\n    subtitles: item.renderDir + '/subtitles.ass',\n    ffmpegLog: item.renderDir + '/ffmpeg.log'\n  },\n  video: { width: 1920, height: 1080, fps: 30, coverDuration: 3, screenshotDuration: 4 },\n  layout: {\n    coverTop: { x: 80, y: 60, width: 560 },\n    screenshotTop: { x: 1280, y: 60, width: 560 },\n    cornerImageTreatment: { enabled: true, blur: 2, opacity: 0.82, borderColor: 'white', borderWidth: 6 },\n    subtitleBottomMargin: 90\n  }\n};\nconst jobPath = item.jobDir + '/job.json';\nfs.writeFileSync(jobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, jobPath, outputVideo: job.output.video, ffmpegLog: job.output.ffmpegLog } }];"
       },
-      "id": "db4a22de-a8cc-4724-a426-d767b67f8887",
-      "name": "Verify Final Video",
+      "id": "f3511981-d156-4783-ad12-11a74c29a33b",
+      "name": "Build Job Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -171,21 +282,47 @@
     },
     {
       "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = item.repoDir + '/tools/video-composer/compose-video.mjs';\nfunction runComposer() {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, item.jobPath], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = '';\n    let stderr = '';\n    const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Video composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runComposer();\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
+      },
+      "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
+      "name": "Run Composer Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $('Build Job Config').first().json;\nif (!fs.existsSync(item.outputVideo)) throw new Error('Final video was not created: ' + item.outputVideo);\nconst video = fs.readFileSync(item.outputVideo);\nconst size = video.length;\nif (size === 0) throw new Error('Final video is empty: ' + item.outputVideo);\nconst binary = { finalVideo: await this.helpers.prepareBinaryData(video, 'final.mp4', 'video/mp4') };\nif (item.audioPath && fs.existsSync(item.audioPath)) {\n  const audio = fs.readFileSync(item.audioPath);\n  binary.ttsAudio = await this.helpers.prepareBinaryData(audio, 'tts-audio.mp3', 'audio/mpeg');\n}\nreturn [{ json: { jobId: item.jobId, jobDir: item.jobDir, videoPath: item.outputVideo, audioPath: item.audioPath, ffmpegLog: item.ffmpegLog, size, generatedScriptText: item.generatedScriptText, generatedScriptTitle: item.generatedScriptTitle, generatedScriptSummary: item.generatedScriptSummary, scriptMode: item.scriptMode, selectedVoices: item.selectedVoices, ttsDuration: item.ttsDuration, ttsPauseSeconds: item.ttsPauseSeconds }, binary }];"
+      },
+      "id": "db4a22de-a8cc-4724-a426-d767b67f8887",
+      "name": "Verify Final Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: true, jobId: $json.jobId, videoPath: $json.videoPath, jobDir: $json.jobDir, ffmpegLog: $json.ffmpegLog, size: $json.size } }}"
+        "responseBody": "={{ { ok: true, jobId: $json.jobId, videoPath: $json.videoPath, audioPath: $json.audioPath, jobDir: $json.jobDir, ffmpegLog: $json.ffmpegLog, size: $json.size, generatedScriptTitle: $json.generatedScriptTitle, generatedScriptSummary: $json.generatedScriptSummary, generatedScriptText: $json.generatedScriptText, scriptMode: $json.scriptMode, selectedVoices: $json.selectedVoices, ttsDuration: $json.ttsDuration } }}"
       },
       "id": "0c4f9831-a1b2-4c30-a08e-b7d1660a750a",
       "name": "Respond With Result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1920,
+        2400,
         0
       ]
     }
   ],
   "connections": {
-    "Upload Assets": {
+    "Upload Assets And Viewpoint": {
       "main": [
         [
           {
@@ -211,25 +348,47 @@
       "main": [
         [
           {
-            "node": "Doubao TTS Request",
+            "node": "Prepare Script Prompt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Doubao TTS Request": {
+    "Prepare Script Prompt": {
       "main": [
         [
           {
-            "node": "Save TTS Audio",
+            "node": "Doubao Script Generation Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save TTS Audio": {
+    "Doubao Script Generation Request": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Script": {
+      "main": [
+        [
+          {
+            "node": "Synthesize And Merge TTS Segments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthesize And Merge TTS Segments": {
       "main": [
         [
           {
