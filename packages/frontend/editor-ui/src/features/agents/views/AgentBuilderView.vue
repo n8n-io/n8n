@@ -599,6 +599,8 @@ async function initialize() {
 			void router.replace({ query: { ...route.query, prompt: undefined } });
 			startChat(prompt);
 		}
+	} catch (error: unknown) {
+		showError(error, locale.baseText('agents.builder.loadError'));
 	} finally {
 		initialized.value = true;
 	}
@@ -901,13 +903,6 @@ function onSwitchAgent(nextAgentId: string) {
 					@config-updated="onConfigUpdated"
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
-					@update:streaming="onBuildChatStreamingChange"
-					@update:tools="onQuickActionAddTool"
-					@update:connected-triggers="onConnectedTriggersUpdate"
-					@update:full-width="isChatFullWidth = $event"
-					@trigger-added="onTriggerAdded"
-					@agent-published="onPublished"
-					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 				<N8nResizeWrapper
 					v-else
@@ -948,6 +943,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:full-width="isChatFullWidth = $event"
 						@trigger-added="onTriggerAdded"
 						@agent-published="onPublished"
+						@agent-changed="refreshAgentAfterIntegrationChange"
 					/>
 				</N8nResizeWrapper>
 

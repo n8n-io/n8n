@@ -6035,6 +6035,7 @@
 	"agents.delete.modal.title": "Delete \"{name}\"?",
 	"agents.delete.modal.description": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
 	"agents.delete.modal.button.delete": "Delete",
+	"agents.builder.loadError": "Could not load agent",
 	"agents.builder.saveError": "Could not save agent settings",
 	"agents.builder.chatColumn.ariaLabel": "Chat",
 	"agents.builder.chatMode.build": "Build",
