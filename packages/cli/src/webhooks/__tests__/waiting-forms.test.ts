@@ -732,4 +732,95 @@ describe('WaitingForms', () => {
 			expect(result).toEqual({ valid: false, webhookPath: undefined });
 		});
 	});
+
+	describe('cookie sanitization (n8nUserAuth)', () => {
+		const buildExecutionWithResumeNode = (resumeNodeType: string) =>
+			mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'ResumeNode',
+						runData: {},
+						error: undefined,
+					},
+					resumeToken: undefined,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'ResumeNode',
+							type: resumeNodeType,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+		const buildReqWithAuthCookie = () =>
+			({
+				method: 'GET',
+				headers: { host: 'localhost:5678', cookie: 'n8n-auth=jwt.token; other=value' },
+				cookies: { 'n8n-auth': 'jwt.token', other: 'value' },
+				params: { path: '123', suffix: undefined },
+				url: '/form-waiting/123',
+			}) as unknown as WaitingWebhookRequest;
+
+		it('preserves the n8n-auth cookie when the resume node is a Form node', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				buildExecutionWithResumeNode(FORM_NODE_TYPE),
+			);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(req.headers.cookie).toContain('n8n-auth=jwt.token');
+			expect(req.cookies['n8n-auth']).toBe('jwt.token');
+		});
+
+		it('strips the n8n-auth cookie when the resume node is not allowlisted', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				buildExecutionWithResumeNode('other-node-type'),
+			);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(req.headers.cookie).not.toContain('n8n-auth=');
+			expect(req.headers.cookie).toContain('other=value');
+			expect(req.cookies['n8n-auth']).toBeUndefined();
+		});
+
+		it('strips the n8n-auth cookie when the execution cannot be resolved', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			try {
+				await waitingForms.executeWebhook(req, res);
+			} catch {
+				// NotFoundError is expected for missing execution; we still want to verify sanitize ran first.
+			}
+
+			expect(req.headers.cookie).not.toContain('n8n-auth=');
+			expect(req.cookies['n8n-auth']).toBeUndefined();
+		});
+	});
 });

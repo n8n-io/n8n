@@ -91,6 +91,7 @@ function buildPrompt(modelRecommendationsSection: string | null) {
 		toolList: '(none)',
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
+		enabledModules: [],
 	});
 }
 
@@ -98,7 +99,7 @@ describe('builder model recommendations', () => {
 	it('formats the latest tool-capable model ids from the provider catalog', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
-		expect(section).toContain('## Recommended LLM models');
+		expect(section).toContain('### Recommended LLM Models');
 		expect(section).toContain('newest release_date first');
 		expect(section).toMatch(
 			/`anthropic\/claude-opus-4-7` Claude Opus 4\.7 .*`anthropic\/claude-sonnet-4-6` Claude Sonnet 4\.6/,
@@ -110,19 +111,91 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('injects the recommendation section only when catalog recommendations are available', () => {
-		const section = buildModelRecommendationsSection(catalog);
-		const llmSkillWithRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: section,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
-		const llmSkillWithoutRecommendations = getBuilderRuntimeSkills({
-			modelRecommendationsSection: null,
-		}).find((skill) => skill.id === 'agent-builder-llm-selection');
+	it('injects always-needed builder guidance into the base builder prompt', () => {
+		const prompt = buildPrompt(null);
 
-		expect(llmSkillWithRecommendations?.instructions).toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).not.toContain('## Recommended LLM models');
-		expect(llmSkillWithoutRecommendations?.instructions).toContain('do not recommend or name');
-		expect(buildPrompt(section)).not.toContain('## Recommended LLM models');
-		expect(buildPrompt(null)).not.toContain('## Recommended LLM models');
+		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## LLM Selection Guidance');
+		expect(prompt).toContain('## Memory Guidance');
+		expect(prompt).toContain('## Tool Guidance');
+		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
+		expect(prompt).not.toContain('agent-builder-config-mutation');
+		expect(prompt).not.toContain('agent-builder-llm-selection');
+		expect(prompt).not.toContain('agent-builder-memory');
+		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('tells the builder to preserve fallback web search on model switches', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain(
+			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
+		);
+		expect(prompt).toContain(
+			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
+		);
+		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
+		expect(prompt).toContain(
+			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
+		);
+		expect(prompt).toContain(
+			'Preserve existing Brave/SearXNG `config.webSearch` on model switches unless',
+		);
+	});
+
+	it('injects custom tool builder guidance into the base builder prompt', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain("import { Tool } from '@n8n/agents';");
+		expect(prompt).toContain("export default new Tool('tool_name')");
+		expect(prompt).toContain('Custom handlers run in a V8 isolate');
+		expect(prompt).toContain('No network, filesystem, process, Buffer, fetch, timers');
+		expect(prompt).toContain('ctx.suspend(payload)');
+		expect(prompt).toContain('Execution is capped at 5 seconds and about 32 MB memory');
+	});
+
+	it('injects the recommendation section only into the LLM selection prompt', () => {
+		const section = buildModelRecommendationsSection(catalog);
+
+		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
+		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
+		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
+		expect(buildPrompt(null)).toContain('do not recommend or name');
+	});
+
+	it('keeps always-on interaction, expression, and workflow guidance in the main prompt', () => {
+		const prompt = buildPrompt('### Recommended LLM Models\n\n- OpenAI: `openai/gpt-5` GPT-5');
+
+		expect(prompt).toContain('### Recommended LLM Models');
+		expect(prompt).toContain('Never call two interactive tools in parallel');
+		expect(prompt).toContain('$fromAI');
+		expect(prompt).toContain('$now.toISO()');
+		expect(prompt).toContain('$today');
+		expect(prompt).toContain('## Workflow');
+		expect(prompt).toContain('Before every `write_config` or `patch_config`, call `read_config`');
+		expect(prompt).toContain('## Example flows');
+	});
+
+	it('registers only optional builder runtime skills', () => {
+		const skills = getBuilderRuntimeSkills({ enabledModules: [] });
+
+		expect(skills.map((skill) => skill.id)).toEqual([
+			'agent-builder-integrations',
+			'agent-builder-target-skills',
+		]);
+		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
+		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
+		expect(skills[0].instructions).toContain('Linear node tools');
+	});
+
+	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
+		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+
+		expect(integrationsSkill?.instructions).not.toContain('slackOAuth2Api');
+		expect(integrationsSkill?.instructions).not.toContain('prefer the OAuth variant');
 	});
 });

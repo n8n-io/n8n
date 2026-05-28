@@ -78,7 +78,7 @@ export function renderObservationLog(
 
 	if (roots.length === 0) return null;
 
-	const lines: string[] = ['<observations>', '## Memory', '', MEMORY_INTRO, MARKER_LEGEND, ''];
+	const lines: string[] = ['<observations>', MEMORY_INTRO, MARKER_LEGEND, ''];
 	for (const root of roots) {
 		lines.push(renderBullet(root));
 		for (const child of childrenByParent.get(root.id) ?? []) {

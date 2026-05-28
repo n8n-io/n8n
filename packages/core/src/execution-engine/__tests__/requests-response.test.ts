@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteData, IRunData, EngineRequest, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DirectedGraph } from '../partial-execution-utils';
 import { nodeTypes, types } from './mock-node-types';

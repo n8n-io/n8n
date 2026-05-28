@@ -11,7 +11,6 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -46,6 +45,8 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -56,29 +57,27 @@ import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
-jest.mock('node:fs', () => ({
-	...jest.requireActual('node:fs'),
-	existsSync: jest.fn().mockReturnValue(false),
-	renameSync: jest.fn(),
+vi.mock('node:fs', async (importActual) => ({
+	...(await importActual()),
+	existsSync: vi.fn().mockReturnValue(false),
+	renameSync: vi.fn(),
 }));
 
 const nodeTypes = Helpers.NodeTypes();
 
 beforeEach(() => {
-	jest.restoreAllMocks();
-	jest.resetAllMocks();
+	vi.restoreAllMocks();
+	vi.resetAllMocks();
 });
 
 describe('WorkflowExecute', () => {
 	beforeEach(() => {
 		// Test workflows are not fully configured and would fail validation.
 		// Mock out the check so execution tests can focus on execution logic.
-		jest
-			.spyOn(
-				WorkflowExecute.prototype as unknown as { checkForWorkflowIssues: () => void },
-				'checkForWorkflowIssues',
-			)
-			.mockImplementation(() => {});
+		vi.spyOn(
+			WorkflowExecute.prototype as unknown as { checkForWorkflowIssues: () => void },
+			'checkForWorkflowIssues',
+		).mockImplementation(() => {});
 	});
 
 	describe('retryOnFail', () => {
@@ -99,7 +98,7 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
-			const runNodeSpy = jest.spyOn(workflowExecute, 'runNode').mockResolvedValue({
+			const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockResolvedValue({
 				data: [[{ json: { error: null } }]],
 			});
 
@@ -277,7 +276,7 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -320,10 +319,10 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
-			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+			vi.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
 
 			// ACT
 			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
@@ -355,7 +354,7 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -400,7 +399,7 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -443,10 +442,10 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
-			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
+			vi.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
 
 			// ACT
 			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
@@ -478,7 +477,7 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -524,7 +523,7 @@ describe('WorkflowExecute', () => {
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
 			// Set restartExecutionId to simulate a resumed execution
 			additionalData.restartExecutionId = 'previous-execution-id';
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -557,7 +556,7 @@ describe('WorkflowExecute', () => {
 
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
 			// restartExecutionId is undefined by default
-			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+			const runHookSpy = vi.spyOn(additionalData.hooks!, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
@@ -646,7 +645,7 @@ describe('WorkflowExecute', () => {
 			const dirtyNodeNames = [node1.name];
 			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
-			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(
@@ -676,9 +675,9 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
-			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
 
-			const recreateNodeExecutionStackSpy = jest.spyOn(
+			const recreateNodeExecutionStackSpy = vi.spyOn(
 				partialExecutionUtils,
 				'recreateNodeExecutionStack',
 			);
@@ -754,9 +753,9 @@ describe('WorkflowExecute', () => {
 			const dirtyNodeNames: string[] = [];
 			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
-			const processRunExecutionDataSpy = jest
+			const processRunExecutionDataSpy = vi
 				.spyOn(workflowExecute, 'processRunExecutionData')
-				.mockImplementationOnce(jest.fn());
+				.mockImplementationOnce(vi.fn());
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(
@@ -819,8 +818,8 @@ describe('WorkflowExecute', () => {
 			};
 			const dirtyNodeNames: string[] = [];
 
-			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
-			const recreateNodeExecutionStackSpy = jest.spyOn(
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+			const recreateNodeExecutionStackSpy = vi.spyOn(
 				partialExecutionUtils,
 				'recreateNodeExecutionStack',
 			);
@@ -872,8 +871,8 @@ describe('WorkflowExecute', () => {
 			};
 			const dirtyNodeNames: string[] = [];
 
-			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
-			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+			const cleanRunDataSpy = vi.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
@@ -925,8 +924,8 @@ describe('WorkflowExecute', () => {
 			const runData: IRunData = {};
 			const dirtyNodeNames: string[] = [trigger.name, dirtyNode.name];
 
-			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
-			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
+			vi.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(vi.fn());
+			const cleanRunDataSpy = vi.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
@@ -978,9 +977,9 @@ describe('WorkflowExecute', () => {
 			};
 			const dirtyNodeNames: string[] = [];
 
-			const processRunExecutionDataSpy = jest
+			const processRunExecutionDataSpy = vi
 				.spyOn(workflowExecute, 'processRunExecutionData')
-				.mockImplementationOnce(jest.fn());
+				.mockImplementationOnce(vi.fn());
 
 			const expectedToolExecutor: INode = {
 				name: 'PartialExecutionToolExecutor',
@@ -1030,7 +1029,9 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
-			jest.spyOn(additionalData.hooks, 'runHook');
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
+			vi.spyOn(additionalData.hooks, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -1053,7 +1054,7 @@ describe('WorkflowExecute', () => {
 			const dirtyNodeNames: string[] = [];
 			const destinationNode = node2.name;
 
-			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
+			const processRunExecutionDataSpy = vi.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
@@ -1078,7 +1079,9 @@ describe('WorkflowExecute', () => {
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
-			jest.spyOn(additionalData.hooks, 'runHook');
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
+			vi.spyOn(additionalData.hooks, 'runHook');
 
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -1099,7 +1102,7 @@ describe('WorkflowExecute', () => {
 			const dirtyNodeNames: string[] = [];
 			const destinationNode = node1.name;
 
-			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
+			const processRunExecutionDataSpy = vi.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
@@ -1139,9 +1142,9 @@ describe('WorkflowExecute', () => {
 			const dirtyNodeNames: string[] = [];
 			const destinationNode = node2.name;
 
-			const processRunExecutionDataSpy = jest
+			const processRunExecutionDataSpy = vi
 				.spyOn(workflowExecute, 'processRunExecutionData')
-				.mockImplementationOnce(jest.fn());
+				.mockImplementationOnce(vi.fn());
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
@@ -1159,12 +1162,12 @@ describe('WorkflowExecute', () => {
 		const startNode = mock<INode>({ name: 'Start Node' });
 		const unknownNode = mock<INode>({ name: 'Unknown Node', type: 'unknownNode' });
 
-		let nodeParamIssuesSpy: jest.SpyInstance;
+		let nodeParamIssuesSpy: MockInstance;
 
 		const nodeTypes = mock<INodeTypes>();
 
 		beforeEach(() => {
-			nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
+			nodeParamIssuesSpy = vi.spyOn(NodeHelpers, 'getNodeParametersIssues');
 			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 				// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
 				if (type === 'unknownNode') return undefined as unknown as INodeType;
@@ -1407,7 +1410,7 @@ describe('WorkflowExecute', () => {
 			// This simulates a scenario where TOOL_EXECUTOR_NODE_NAME would be in checkNodes
 			// but doesn't exist in the workflow.nodes (e.g., dynamically added during execution)
 			const originalGetParentNodes = workflow.getParentNodes.bind(workflow);
-			jest.spyOn(workflow, 'getParentNodes').mockImplementation((nodeName) => {
+			vi.spyOn(workflow, 'getParentNodes').mockImplementation((nodeName) => {
 				if (nodeName === 'destination') {
 					// Return parent nodes including TOOL_EXECUTOR_NODE_NAME that doesn't exist in workflow.nodes
 					return [TOOL_EXECUTOR_NODE_NAME, 'node1', 'trigger'];
@@ -1440,7 +1443,7 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = mock<INodeTypes>();
 		const triggerNode = mock<INode>();
 		const triggerResponse = mock<ITriggerResponse>({
-			closeFunction: jest.fn(),
+			closeFunction: vi.fn(),
 			// This node should never trigger, or return
 			manualTriggerFunction: async () => await new Promise(() => {}),
 		});
@@ -1580,7 +1583,7 @@ describe('WorkflowExecute', () => {
 		let workflowExecute: WorkflowExecute;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
@@ -1599,7 +1602,7 @@ describe('WorkflowExecute', () => {
 				[undefined as unknown as INodeExecutionData],
 			];
 			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
-			expect(nodeSuccessData[0]).toEqual([undefined]);
+			expect(nodeSuccessData[0]).toEqual([]);
 			expect(nodeSuccessData[1]).toEqual([]);
 		});
 
@@ -2070,7 +2073,7 @@ describe('WorkflowExecute', () => {
 
 	describe('getFullRunData', () => {
 		afterAll(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		test('should return complete IRun object with all properties correctly set', () => {
@@ -2086,7 +2089,7 @@ describe('WorkflowExecute', () => {
 			);
 
 			const startedAt = new Date('2023-01-01T00:00:00.000Z');
-			jest.useFakeTimers().setSystemTime(startedAt);
+			vi.useFakeTimers().setSystemTime(startedAt);
 
 			const result1 = workflowExecute.getFullRunData(startedAt);
 
@@ -2100,7 +2103,7 @@ describe('WorkflowExecute', () => {
 			});
 
 			const stoppedAt = new Date('2023-01-01T00:00:10.000Z');
-			jest.setSystemTime(stoppedAt);
+			vi.setSystemTime(stoppedAt);
 			// @ts-expect-error read-only property
 			workflowExecute.status = 'running';
 
@@ -2148,8 +2151,10 @@ describe('WorkflowExecute', () => {
 
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
-			jest.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
-			jest.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation();
+			// Touch the proxy property so vi.spyOn can find it.
+			void additionalData.hooks.runHook;
+			vi.spyOn(additionalData.hooks, 'runHook').mockResolvedValue(undefined);
+			vi.spyOn(workflowExecute, 'moveNodeMetadata').mockImplementation(() => {});
 		});
 
 		test('should handle different workflow completion scenarios', async () => {
@@ -2268,14 +2273,14 @@ describe('WorkflowExecute', () => {
 		test('should default to current time when stoppedAt not provided to getFullRunData', () => {
 			const startedAt = new Date('2023-01-01T00:00:00.000Z');
 			const currentTime = new Date('2023-01-01T00:00:03.250Z');
-			jest.useFakeTimers().setSystemTime(currentTime);
+			vi.useFakeTimers().setSystemTime(currentTime);
 
 			const result = workflowExecute.getFullRunData(startedAt);
 
 			expect(result.startedAt).toEqual(startedAt);
 			expect(result.stoppedAt).toEqual(currentTime);
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 	});
 
@@ -2415,7 +2420,7 @@ describe('WorkflowExecute', () => {
 				'manual',
 				runExecutionData,
 			);
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		test('should return true when node has no input connections', () => {
@@ -2643,7 +2648,9 @@ describe('WorkflowExecute', () => {
 
 			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
 
-			jest.spyOn(mockHooks, 'runHook').mockResolvedValue(undefined);
+			// Touch the proxy property so vi.spyOn can find it.
+			void mockHooks.runHook;
+			vi.spyOn(mockHooks, 'runHook').mockResolvedValue(undefined);
 		});
 
 		test('should send error chunk when workflow execution fails', async () => {
@@ -2999,7 +3006,7 @@ describe('WorkflowExecute', () => {
 
 			// Spy on convertBinaryData
 			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
-			const convertBinaryDataSpy = jest.spyOn(convertBinaryDataModule, 'convertBinaryData');
+			const convertBinaryDataSpy = vi.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT
 			await workflowExecute.run({
@@ -3073,7 +3080,7 @@ describe('WorkflowExecute', () => {
 			workflowExecute.runExecutionData = runExecutionData;
 
 			assert(additionalData.hooks);
-			const runHook = jest.fn();
+			const runHook = vi.fn();
 			additionalData.hooks.runHook = runHook;
 
 			const promise = workflowExecute.processRunExecutionData(workflow);
@@ -3105,15 +3112,15 @@ describe('WorkflowExecute', () => {
 						waitingExecutionSource: {},
 						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
 					},
-					resumeToken: runHook.mock.lastCall[1][0].data?.resumeToken,
+					resumeToken: runHook.mock.lastCall![1][0].data?.resumeToken,
 				},
 			};
 
-			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
-			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
+			expect(runHook.mock.lastCall![0]).toEqual('workflowExecuteAfter');
+			expect(JSON.stringify(runHook.mock.lastCall![1][0].data)).toBe(
 				JSON.stringify(updatedExecutionData.data),
 			);
-			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
+			expect(runHook.mock.lastCall![1][0].status).toEqual('canceled');
 		});
 
 		test('should set status to canceled when execution timeout is reached', async () => {

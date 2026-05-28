@@ -148,6 +148,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private mcpClients: McpClient[] = [];
 
+	private defaultExecutionOptions?: ExecutionOptions;
+
 	private buildPromise: Promise<AgentRuntime> | undefined;
 
 	private eventBus = new AgentEventBus();
@@ -446,6 +448,29 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/**
+	 * Set default execution options for all `generate()` and `stream()` calls.
+	 * Options passed directly to those methods take precedence over these defaults.
+	 *
+	 * @example
+	 * ```typescript
+	 * const agent = new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .instructions('You are a helpful assistant.')
+	 *   .configuration({ maxIterations: 5 });
+	 *
+	 * // Uses maxIterations: 5 from defaults
+	 * await agent.generate('Hello');
+	 *
+	 * // Overrides maxIterations to 10 for this call only
+	 * await agent.generate('Hello', { maxIterations: 10 });
+	 * ```
+	 */
+	configuration(options: ExecutionOptions): this {
+		this.defaultExecutionOptions = options;
+		return this;
+	}
+
 	/** Get the evals attached to this agent. */
 	get evaluations(): BuiltEval[] {
 		return [...this.agentEvals];
@@ -592,12 +617,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Wait for any in-flight background tasks (title generation, future
-	 * observer cycles) to settle. Call before letting the agent go out of
-	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client attached via `.mcp()`. Errors from
+	 *   individual client disconnects are swallowed so a single misbehaving
+	 *   server does not prevent the others from closing.
+	 *
+	 * Safe to call multiple times.
 	 */
 	async close(): Promise<void> {
-		if (this.runtime) await this.runtime.dispose();
+		const tasks: Array<Promise<unknown>> = [];
+		if (this.runtime) tasks.push(this.runtime.dispose());
+		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
+		await Promise.allSettled(tasks);
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -606,7 +640,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
 		const runtime = await this.ensureBuilt();
-		return await runtime.generate(this.toMessages(input), options);
+		const mergedOptions = this.mergeWithDefaults(options);
+		return await runtime.generate(this.toMessages(input), mergedOptions);
 	}
 
 	/** Stream a response. Lazy-builds on first call. */
@@ -615,7 +650,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
 		const runtime = await this.ensureBuilt();
-		return await runtime.stream(this.toMessages(input), options);
+		const mergedOptions = this.mergeWithDefaults(options);
+		return await runtime.stream(this.toMessages(input), mergedOptions);
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -663,6 +699,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			return await this.resume('generate', { approved: false }, options);
 		}
 		return await this.resume('stream', { approved: false }, options);
+	}
+
+	private mergeWithDefaults(
+		options?: RunOptions & ExecutionOptions,
+	): (RunOptions & ExecutionOptions) | undefined {
+		if (!this.defaultExecutionOptions) return options;
+		return { ...this.defaultExecutionOptions, ...options };
 	}
 
 	/**
@@ -806,6 +849,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
+			await this.skillSource.prepare?.();
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {

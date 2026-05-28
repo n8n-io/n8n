@@ -1,4 +1,5 @@
-import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
+import * as AgentsRuntime from '@n8n/agents';
+import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
@@ -41,6 +42,10 @@ jest.mock('@ai-sdk/openai', () => ({
 // ---------------------------------------------------------------------------
 
 describe('buildFromJson()', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 		name: 'test-agent',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -103,6 +108,30 @@ describe('buildFromJson()', () => {
 				};
 			}
 		).memoryConfig;
+
+	const getProviderToolNames = (agent: unknown): string[] =>
+		(
+			agent as {
+				providerTools?: BuiltProviderTool[];
+			}
+		).providerTools?.map((tool) => tool.name) ?? [];
+
+	const getProviderTool = (agent: unknown, name: string): BuiltProviderTool | undefined =>
+		(
+			agent as {
+				providerTools?: BuiltProviderTool[];
+			}
+		).providerTools?.find((tool) => tool.name === name);
+
+	const getLocalToolNames = (agent: unknown): string[] =>
+		(
+			agent as {
+				tools?: BuiltTool[];
+			}
+		).tools?.map((tool) => tool.name) ?? [];
+
+	const getDefaultExecutionOptions = (agent: unknown) =>
+		(agent as { defaultExecutionOptions?: { maxIterations?: number } }).defaultExecutionOptions;
 
 	const makeMockMemoryFactory = () => jest.fn();
 
@@ -502,6 +531,186 @@ describe('buildFromJson()', () => {
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
+	it.each([
+		['anthropic/claude-sonnet-4-5', 'anthropic.web_search_20250305'],
+		['openai/gpt-4o', 'openai.web_search'],
+	])('enables native web search when explicitly enabled for %s', async (model, expectedTool) => {
+		const agent = await buildFromJson(
+			makeConfig({ model, config: { webSearch: { enabled: true } } }),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain(expectedTool);
+	});
+
+	it('rejects native web search config for unsupported providers without fallback settings', async () => {
+		await expect(
+			buildFromJson(
+				makeConfig({
+					model: 'google/gemini-2.5-flash',
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
+	});
+
+	it('does not enable native web search when config is sparse', async () => {
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+	});
+
+	it('does not enable native web search when explicitly disabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: false } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 5 },
+					'openai.image_generation': {},
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+		expect(getProviderToolNames(agent)).toContain('openai.image_generation');
+	});
+
+	it('preserves native web search args when explicitly enabled', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true } },
+				providerTools: {
+					'anthropic.web_search': { maxUses: 3 },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderTool(agent, 'anthropic.web_search_20250305')?.args).toEqual({
+			maxUses: 3,
+		});
+	});
+
+	it('preserves explicitly configured native web search versions for the selected provider', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true } },
+				providerTools: {
+					'anthropic.web_search_20260209': {},
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20260209');
+		expect(getProviderToolNames(agent)).not.toContain('anthropic.web_search_20250305');
+	});
+
+	it('adds fallback web search tool for providers without native web search', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('uses fallback web search when configured for native-capable providers', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('uses native web search when native provider is explicitly configured', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				config: { webSearch: { enabled: true, provider: 'native' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20250305');
+		expect(getLocalToolNames(agent)).not.toContain('web_search');
+	});
+
+	it('requires fallback web search credentials for providers without native web search', async () => {
+		await expect(
+			buildFromJson(
+				makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'brave' } },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Web search is enabled but no search credential is configured.');
+	});
+
 	it('sets toolCallConcurrency', async () => {
 		const config = makeConfig({ config: { toolCallConcurrency: 5 } });
 
@@ -516,6 +725,22 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
+	});
+
+	it('sets maxIterations via configuration()', async () => {
+		const config = makeConfig({ config: { maxIterations: 10 } });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getDefaultExecutionOptions(agent)?.maxIterations).toBe(10);
 	});
 
 	it('configures memory when enabled', async () => {
@@ -559,6 +784,54 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('configures observational memory worker models with their own credentials', async () => {
+		const observeSpy = jest.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
+		const reflectSpy = jest.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
+		const credentialProvider = {
+			resolve: jest.fn(async (credentialId: string) => ({
+				apiKey: `${credentialId}-api-key`,
+				url: `https://${credentialId}.example/v1`,
+			})),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'reflector-key',
+					},
+				},
+			},
+		});
+
+		await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(observeSpy).toHaveBeenCalledWith({
+			id: 'openai/gpt-4o-mini',
+			apiKey: 'observer-key-api-key',
+			baseURL: 'https://observer-key.example/v1',
+		});
+		expect(reflectSpy).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'reflector-key-api-key',
+			baseURL: 'https://reflector-key.example/v1',
+		});
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('observer-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('reflector-key');
 	});
 
 	it('enables observational memory by default when memory is enabled', async () => {
@@ -625,6 +898,63 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
+	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
+		const extractSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+		const reflectSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+		const credentialProvider = {
+			resolve: jest.fn(async (credentialId: string) => ({
+				apiKey: `${credentialId}-api-key`,
+				url: `https://${credentialId}.example/v1`,
+			})),
+			list: jest.fn().mockResolvedValue([]),
+		};
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'embedding-key',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
+					reflectorModel: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'episodic-reflector-key',
+					},
+				},
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(extractSpy).toHaveBeenCalledWith({
+			id: 'openai/gpt-4o-mini',
+			apiKey: 'extractor-key-api-key',
+			baseURL: 'https://extractor-key.example/v1',
+		});
+		expect(reflectSpy).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'episodic-reflector-key-api-key',
+			baseURL: 'https://episodic-reflector-key.example/v1',
+		});
+		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
+			embeddingProviderOptions: {
+				apiKey: 'embedding-key-api-key',
+				baseURL: 'https://embedding-key.example/v1',
+			},
+		});
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
+		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
+	});
+
 	it('can disable observational memory while keeping message memory', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: false } },
@@ -664,6 +994,101 @@ describe('buildFromJson()', () => {
 		expect(memoryFactory).not.toHaveBeenCalled();
 		expect(agent.snapshot.hasMemory).toBe(false);
 		expect(getMemoryConfig(agent)).toBeUndefined();
+	});
+
+	// -------------------------------------------------------------------------
+	// MCP servers
+	// -------------------------------------------------------------------------
+
+	describe('mcpServers', () => {
+		it('does not invoke buildMcpClient when mcpServers is absent', async () => {
+			const buildMcpClient = jest.fn();
+			await buildFromJson(
+				makeConfig(),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('does not invoke buildMcpClient when mcpServers is an empty array', async () => {
+			const buildMcpClient = jest.fn();
+			await buildFromJson(
+				makeConfig({ mcpServers: [] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('silently skips MCP wiring when no buildMcpClient is provided', async () => {
+			// No buildMcpClient -> the loop is a no-op; build still succeeds.
+			await expect(
+				buildFromJson(
+					makeConfig({
+						mcpServers: [
+							{
+								name: 'github',
+								url: 'https://api.example.test/mcp',
+								transport: 'streamableHttp',
+								authentication: 'none',
+							},
+						],
+					}),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).resolves.toBeDefined();
+		});
+
+		it('calls buildMcpClient once per configured server and passes each entry through', async () => {
+			const buildMcpClient = jest
+				.fn()
+				.mockImplementation(async () => ({ close: jest.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+						{
+							name: 'fs',
+							url: 'https://fs.example.test/mcp',
+							transport: 'sse',
+							authentication: 'none',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).toHaveBeenCalledTimes(2);
+			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
+			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
+		});
 	});
 });
 
@@ -983,6 +1408,103 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
+		});
+	});
+
+	describe('mcpServers', () => {
+		const base = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+
+		it('parses a minimal MCP server entry with defaults', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'github', url: 'https://api.example.test/mcp' }],
+			});
+			expect(parsed.mcpServers?.[0]).toMatchObject({
+				name: 'github',
+				url: 'https://api.example.test/mcp',
+				transport: 'streamableHttp',
+				authentication: 'none',
+			});
+		});
+
+		it('rejects duplicate MCP server names', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [
+						{ name: 'dup', url: 'https://a.example.test/mcp' },
+						{ name: 'dup', url: 'https://b.example.test/mcp' },
+					],
+				}),
+			).toThrow();
+		});
+
+		it('rejects names with invalid characters', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+				}),
+			).toThrow();
+		});
+
+		it('rejects more than 20 MCP server entries', () => {
+			const servers = Array.from({ length: 21 }, (_, i) => ({
+				name: `s${i}`,
+				url: 'https://a.example.test/mcp',
+			}));
+			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
+		});
+
+		it('parses an allow-mode toolFilter', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://a.example.test/mcp',
+						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+					},
+				],
+			});
+			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
+				mode: 'allow',
+				tools: ['search_repositories'],
+			});
+		});
+
+		it('parses approval mode "global"', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://a.example.test/mcp',
+						approval: { mode: 'global' },
+					},
+				],
+			});
+			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
+		});
+
+		it('rejects approval mode "selected" with an empty tools array', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://a.example.test/mcp',
+							approval: { mode: 'selected', tools: [] },
+						},
+					],
+				}),
+			).toThrow();
 		});
 	});
 });

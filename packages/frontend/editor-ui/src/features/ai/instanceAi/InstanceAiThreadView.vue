@@ -26,11 +26,11 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
+import { scrubSecretsInText } from './scrubSecrets';
 import { useCanvasPreview } from './useCanvasPreview';
-import { useEventRelay } from './useEventRelay';
-import { useExecutionPushEvents } from './useExecutionPushEvents';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
@@ -69,6 +69,7 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
+const telemetry = useTelemetry();
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -87,10 +88,7 @@ const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
 
-// --- Execution tracking via push events (drives canvas relay) ---
-const executionTracking = useExecutionPushEvents();
-
-// --- Fix-with-AI offer (failure data sent by the iframe via postMessage) ---
+// --- Fix-with-AI offer (failure data emitted by the artifact host) ---
 const failedRun = ref<WorkflowFailuresReport | null>(null);
 const dismissedExecutionId = ref<string | null>(null);
 
@@ -134,6 +132,17 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+
+// Focus the composer when plan-edit mode is entered. The thread runtime
+// owns the activePlanEdit state; this watcher just reacts to the transition.
+watch(
+	() => thread.activePlanEdit,
+	(next, prev) => {
+		if (next && !prev) {
+			void nextTick(() => chatInputRef.value?.focus());
+		}
+	},
+);
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
@@ -406,10 +415,23 @@ watch(
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
+function focusChatInputIfFocusIsIdle() {
+	const activeElement = document.activeElement;
+	if (
+		activeElement instanceof HTMLElement &&
+		activeElement !== document.body &&
+		activeElement !== document.documentElement
+	) {
+		return;
+	}
+
+	chatInputRef.value?.focus();
+}
+
 // Focus input on initial render (ref rebinds when messages load)
 watch(chatInputRef, (el) => {
 	if (el) {
-		void nextTick(() => el.focus());
+		void nextTick(focusChatInputIfFocusIsIdle);
 	}
 });
 
@@ -419,29 +441,59 @@ watch(
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
 			userScrolledUp.value = false;
-			void nextTick(() => {
-				chatInputRef.value?.focus();
-			});
+			void nextTick(focusChatInputIfFocusIsIdle);
 		}
 	},
 );
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 const inputAreaHeight = ref(120);
-let resizeObserver: ResizeObserver | null = null;
+const scrollButtonBottomOffset = ref(144);
+let inputContainerResizeObserver: ResizeObserver | null = null;
+let inputSwapResizeObserver: ResizeObserver | null = null;
+
+function updateScrollButtonBottomOffset() {
+	const container = inputContainerRef.value;
+	const inputSwap = inputSwapRef.value;
+	if (!container || !inputSwap) {
+		scrollButtonBottomOffset.value = inputAreaHeight.value + 24;
+		return;
+	}
+
+	const containerBottom = container.getBoundingClientRect().bottom;
+	const inputSwapTop = inputSwap.getBoundingClientRect().top;
+	scrollButtonBottomOffset.value = Math.max(24, containerBottom - inputSwapTop + 24);
+}
 
 watch(
 	inputContainerRef,
 	(el) => {
-		resizeObserver?.disconnect();
+		inputContainerResizeObserver?.disconnect();
 		if (el) {
-			resizeObserver = new ResizeObserver((entries) => {
+			inputContainerResizeObserver = new ResizeObserver((entries) => {
 				for (const entry of entries) {
 					inputAreaHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
 				}
+				updateScrollButtonBottomOffset();
 			});
-			resizeObserver.observe(el);
+			inputContainerResizeObserver.observe(el);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	inputSwapRef,
+	(el) => {
+		inputSwapResizeObserver?.disconnect();
+		if (el) {
+			inputSwapResizeObserver = new ResizeObserver(() => {
+				updateScrollButtonBottomOffset();
+			});
+			inputSwapResizeObserver.observe(el);
+			updateScrollButtonBottomOffset();
 		}
 	},
 	{ immediate: true },
@@ -477,32 +529,60 @@ async function syncRouteToStore() {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
-	void nextTick(() => chatInputRef.value?.focus());
+	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
 	thread.closeSSE();
 	contentResizeObserver?.disconnect();
-	resizeObserver?.disconnect();
-	executionTracking.cleanup();
+	inputContainerResizeObserver?.disconnect();
+	inputSwapResizeObserver?.disconnect();
 });
 
-// --- Workflow preview ref for iframe relay ---
 const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
-
-const eventRelay = useEventRelay({
-	workflowExecutions: executionTracking.workflowExecutions,
-	activeWorkflowId: preview.activeWorkflowId,
-	getBufferedEvents: executionTracking.getBufferedEvents,
-	clearEventLog: executionTracking.clearEventLog,
-	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
-});
 
 // --- Message handlers ---
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
+
+	const planEdit = thread.activePlanEdit;
+	if (planEdit) {
+		thread.cancelPlanEdit();
+		telemetry.track('User finished providing input', {
+			thread_id: thread.id,
+			input_thread_id: planEdit.inputThreadId ?? '',
+			instance_id: rootStore.instanceId,
+			type: 'plan-review',
+			provided_inputs: [
+				{
+					label: 'plan',
+					options: ['approve', 'ask-for-edits', 'deny'],
+					option_chosen: 'ask-for-edits',
+				},
+			],
+			skipped_inputs: [],
+			num_tasks: planEdit.taskCount,
+			feedback: scrubSecretsInText(message),
+		});
+		thread.markPlanUpdatePending(planEdit.requestId);
+		void thread
+			.confirmAction(planEdit.requestId, {
+				kind: 'approval',
+				approved: false,
+				userInput: message,
+			})
+			.then((success) => {
+				if (success) {
+					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
+				} else {
+					thread.clearPlanUpdatePending(planEdit.requestId);
+				}
+			});
+		return;
+	}
+
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
@@ -645,13 +725,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 					<!-- Scroll to bottom button -->
 					<div
 						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${inputAreaHeight + 8}px` }"
+						:style="{ bottom: `${scrollButtonBottomOffset}px` }"
 					>
-						<Transition name="fade">
+						<Transition name="scroll-button-fade">
 							<N8nIconButton
 								v-if="userScrolledUp && thread.hasMessages"
 								variant="outline"
 								icon="arrow-down"
+								size="large"
+								icon-size="large"
 								:class="$style.scrollToBottomButton"
 								@click="
 									scrollToBottom(true);
@@ -677,7 +759,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel
 										v-if="hasFloatingConfirmation"
@@ -691,11 +773,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:is-plan-edit-mode="thread.activePlanEdit !== null"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
 										@submit="handleSubmit"
 										@stop="handleStop"
+										@cancel-plan-edit="thread.cancelPlanEdit"
 									/>
 								</Transition>
 							</div>
@@ -785,10 +869,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
-						<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
-     workflows via openWorkflow postMessage instead of remounting. -->
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
+								v-if="preview.activeWorkflowId.value"
+								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
 									$style.previewSlot,
@@ -796,8 +880,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
-								@iframe-ready="eventRelay.handleIframeReady"
-								@workflow-loaded="eventRelay.handleWorkflowLoaded"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -1002,14 +1084,34 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 }
 
 .scrollToBottomButton {
-	pointer-events: auto;
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	--button--color: var(--icon-color--strong);
+	--button--color--background: var(--background--surface);
+	--button--color--background-hover: var(--color--foreground--tint-2);
+	--button--color--background-active: var(--color--foreground--tint-2);
+	--button--shadow: var(--shadow--xs);
+	--button--shadow--hover: var(--shadow--xs);
+	--button--shadow--active: var(--shadow--xs);
+	--button--border-color: var(--border-color);
+	--button--border-color--hover: var(--border-color);
+	--button--border-color--active: var(--border-color);
+	--button--border--shadow: 0 0 0 1px var(--button--border-color);
+	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	--button--radius: var(--radius--full);
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
+	pointer-events: auto;
+
+	&.scrollToBottomButton {
+		background-color: var(--background--surface);
+		border: var(--border);
+		border-radius: var(--radius--full);
+		box-shadow: var(--shadow--xs);
+		color: var(--icon-color--strong);
+
+		&:hover {
+			background-color: var(--color--foreground--tint-2);
+			box-shadow: var(--shadow--xs);
+		}
 	}
 }
 
@@ -1094,6 +1196,16 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.scroll-button-fade-enter-from,
+.scroll-button-fade-leave-to {
+	opacity: 0;
+}
+
+.scroll-button-fade-enter-active,
+.scroll-button-fade-leave-active {
+	transition: opacity 0.12s ease;
 }
 
 .preview-panel-slide-enter-active,
