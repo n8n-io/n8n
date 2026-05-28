@@ -119,15 +119,17 @@ export class McpService {
 	async isMcpAppsEnabled(user: User): Promise<boolean> {
 		if (this.globalConfig.endpoints.mcpAppsEnabled) return true;
 
+		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>>;
 		try {
-			const flags = await this.postHogClient.getFeatureFlags(user);
-			return flags?.[MCP_APPS_FLAG] === MCP_APPS_VARIANT_ENABLED;
+			flags = await this.postHogClient.getFeatureFlags(user);
 		} catch (error) {
 			this.logger.warn('Failed to resolve MCP Apps feature flag', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return false;
 		}
+
+		return flags?.[MCP_APPS_FLAG] === MCP_APPS_VARIANT_ENABLED;
 	}
 
 	async getServer(user: User, mcpAppsEnabled?: boolean) {
