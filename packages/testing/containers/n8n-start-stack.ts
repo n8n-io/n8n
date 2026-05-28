@@ -8,6 +8,7 @@ import type { CloudflaredResult } from './services/cloudflared';
 import type { KentResult } from './services/kent';
 import type { KeycloakResult } from './services/keycloak';
 import type { MailpitResult } from './services/mailpit';
+import type { N8nSandboxResult } from './services/n8n-sandbox';
 import type { NgrokResult } from './services/ngrok';
 import { services as SERVICE_REGISTRY } from './services/registry';
 import type { TracingResult } from './services/tracing';
@@ -60,6 +61,7 @@ ${colors.yellow}Options:${colors.reset}
   --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
   --mailpit         Enable Mailpit for email testing
   --kent            Enable Kent (Sentry mock) for error tracking testing
+  --sandbox <name>  Enable Instance AI sandbox provider (n8n-sandbox)
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -100,6 +102,9 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
   npm run stack --queue --tracing
 
+  ${colors.bright}# With Instance AI n8n sandbox service${colors.reset}
+  npm run stack --sandbox=n8n-sandbox
+
   ${colors.bright}# With public tunnel (webhooks accessible from internet)${colors.reset}
   npm run stack --tunnel
 
@@ -118,6 +123,7 @@ ${Object.keys(BASE_PERFORMANCE_PLANS)
   pnpm services --services postgres
   pnpm services --services postgres,redis
   pnpm services --services postgres,mailpit,proxy
+  pnpm services --sandbox=n8n-sandbox
 
   ${colors.bright}# Parallel instances${colors.reset}
   npm run stack --name test-1
@@ -131,6 +137,12 @@ ${colors.yellow}Notes:${colors.reset}
   • Performance plans simulate cloud constraints (SQLite only, resource-limited)
   • Press Ctrl+C to stop all containers
 `);
+}
+
+const SENSITIVE_ENV_NAME_PATTERN = /(PASSWORD|SECRET|TOKEN|API_KEY|PRIVATE_KEY)/i;
+
+function formatEnvSummaryValue(key: string, value: string): string {
+	return `${key}=${SENSITIVE_ENV_NAME_PATTERN.test(key) ? '<redacted>' : value}`;
 }
 
 async function main() {
@@ -151,6 +163,7 @@ async function main() {
 			ngrok: { type: 'boolean' },
 			mailpit: { type: 'boolean' },
 			kent: { type: 'boolean' },
+			sandbox: { type: 'string' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -189,6 +202,13 @@ async function main() {
 	if (values.ngrok) services.push('ngrok');
 	if (values.mailpit) services.push('mailpit');
 	if (values.kent) services.push('kent');
+	if (values.sandbox) {
+		if (values.sandbox !== 'n8n-sandbox') {
+			log.error(`Unsupported sandbox provider: '${values.sandbox}'. Supported: n8n-sandbox`);
+			process.exit(1);
+		}
+		services.push('n8nSandbox');
+	}
 
 	// Build configuration
 	const config: N8NConfig = {
@@ -261,7 +281,9 @@ async function main() {
 	// Services-only mode: start containers, write .env, no n8n
 	if (servicesOnly) {
 		if (services.length === 0) {
-			log.error('No services specified. Use flags like --postgres, --redis, --mailpit, etc.');
+			log.error(
+				'No services specified. Use flags like --postgres, --redis, --mailpit, --sandbox, etc.',
+			);
 			process.exit(1);
 		}
 
@@ -292,7 +314,7 @@ async function main() {
 					...(service.extraEnv?.(result, true) ?? {}),
 				};
 				const varSummary = Object.entries(vars)
-					.map(([k, v]) => `${k}=${v}`)
+					.map(([k, v]) => formatEnvSummaryValue(k, v))
 					.join(', ');
 				log.success(`${name}${varSummary ? `: ${varSummary}` : ''}`);
 			}
@@ -302,6 +324,14 @@ async function main() {
 			if (mailpitResult) {
 				console.log('');
 				log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
+			}
+
+			const sandboxResult = stack.serviceResults.n8nSandbox as N8nSandboxResult | undefined;
+			if (sandboxResult) {
+				console.log('');
+				log.info(
+					`n8n Sandbox API: ${colors.cyan}${sandboxResult.meta.externalServiceUrl}${colors.reset}`,
+				);
 			}
 
 			console.log('');
@@ -414,6 +444,14 @@ async function main() {
 			log.info(`Frontend DSN: ${colors.cyan}${kentResult.meta.frontendDsn}${colors.reset}`);
 		}
 
+		const sandboxResult = stack.serviceResults.n8nSandbox as N8nSandboxResult | undefined;
+		if (sandboxResult) {
+			console.log('');
+			log.header('Instance AI Sandbox');
+			log.info(`Provider: ${colors.cyan}n8n-sandbox${colors.reset}`);
+			log.info(`API URL: ${colors.cyan}${sandboxResult.meta.externalServiceUrl}${colors.reset}`);
+		}
+
 		console.log('');
 		log.info('Containers are running in the background');
 		log.info(
@@ -455,6 +493,7 @@ function displayConfig(config: N8NConfig) {
 	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
 	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
 	if (services.includes('kent')) enabledFeatures.push('Sentry Mock (Kent)');
+	if (services.includes('n8nSandbox')) enabledFeatures.push('Instance AI Sandbox');
 
 	if (enabledFeatures.length > 0) {
 		log.info(`Services: ${enabledFeatures.join(', ')}`);
@@ -472,6 +511,12 @@ function displayConfig(config: N8NConfig) {
 		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
 	} else {
 		log.info('Tracing: disabled');
+	}
+
+	if (services.includes('n8nSandbox')) {
+		log.info('Instance AI sandbox: enabled (n8n-sandbox)');
+	} else {
+		log.info('Instance AI sandbox: disabled');
 	}
 
 	// Display tunnel status

@@ -29,6 +29,12 @@ pnpm stack --plan starter
 
 # Public tunnel for webhook testing
 pnpm stack --tunnel
+
+# Instance AI n8n sandbox service
+pnpm stack --sandbox=n8n-sandbox
+
+# Services only for local pnpm dev
+pnpm services --sandbox=n8n-sandbox
 ```
 
 When started, you'll see the URL: `http://localhost:[port]`
@@ -363,6 +369,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
+| `n8nSandbox` | - | n8n sandbox service for Instance AI |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
@@ -384,6 +391,7 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
 | `--mailpit` | Enable email testing (Mailpit) |
+| `--sandbox n8n-sandbox` | Enable n8n sandbox service for Instance AI |
 
 ## Telemetry
 

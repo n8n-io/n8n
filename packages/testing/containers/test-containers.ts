@@ -43,6 +43,9 @@ const DEFAULT_IMAGES = {
 	localstack: 'localstack/localstack:4.13.1',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
 	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
+	n8nSandboxServiceApi: 'n8nio/n8n-sandbox-service-api:latest',
+	n8nSandboxServiceRunner: 'n8nio/n8n-sandbox-service-runner-dind:latest',
+	n8nSandboxServiceSandbox: 'n8nio/n8n-sandbox-service-sandbox:latest',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -121,4 +124,7 @@ export const TEST_CONTAINER_IMAGES = {
 	localstack: getImage('localstack'),
 	postgresExporter: getImage('postgresExporter'),
 	cadvisor: getImage('cadvisor'),
+	n8nSandboxServiceApi: getImage('n8nSandboxServiceApi'),
+	n8nSandboxServiceRunner: getImage('n8nSandboxServiceRunner'),
+	n8nSandboxServiceSandbox: getImage('n8nSandboxServiceSandbox'),
 } as const;

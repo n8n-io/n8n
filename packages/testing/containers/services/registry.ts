@@ -8,6 +8,7 @@ import { loadBalancer } from './load-balancer';
 import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
+import { n8nSandbox } from './n8n-sandbox';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
 import { postgres, createPostgresHelper } from './postgres';
@@ -43,6 +44,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kent,
 	postgresExporter,
 	cadvisor,
+	n8nSandbox,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
