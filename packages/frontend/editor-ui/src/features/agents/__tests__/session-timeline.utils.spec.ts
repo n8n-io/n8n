@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	computeIdleRanges,
+	builtinToolLabelKey,
 	itemFilterKey,
 	sessionBounds,
 	kindColorToken,
@@ -126,6 +127,20 @@ describe('formatDuration', () => {
 	it('formats multi-hour durations as hours and minutes', () => {
 		expect(formatDuration(60 * 60_000)).toBe('1h');
 		expect(formatDuration(2 * 60 * 60_000 + 30 * 60_000)).toBe('2h 30m');
+	});
+});
+
+describe('builtinToolLabelKey', () => {
+	it('uses the chat display key for native and fallback web search tools', () => {
+		expect(builtinToolLabelKey('web_search')).toBe('agents.chat.toolNames.webSearch');
+		expect(builtinToolLabelKey('anthropic.web_search_20250305')).toBe(
+			'agents.chat.toolNames.webSearch',
+		);
+		expect(builtinToolLabelKey('openai.web_search')).toBe('agents.chat.toolNames.webSearch');
+	});
+
+	it('does not label unrelated tools as web search', () => {
+		expect(builtinToolLabelKey('custom_web_search')).toBeNull();
 	});
 });
 

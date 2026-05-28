@@ -1,6 +1,7 @@
+import type { BaseTextKey } from '@n8n/i18n';
 import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
-import { formatToolNameForDisplay } from './utils/toolDisplayName';
+import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -124,9 +125,7 @@ export function chartBlockColor(kind: EventKind): string {
  * than their raw machine name. Returns `null` for any tool not in the map so
  * callers fall back to the raw `toolName`.
  */
-export type BuiltinToolLabelKey =
-	| 'agentSessions.timeline.tool.richInteraction'
-	| 'agentSessions.timeline.tool.richInteractionDisplay';
+export type BuiltinToolLabelKey = BaseTextKey;
 
 /**
  * Resolve the i18n label for a tool entry. Some built-in tools (currently
@@ -147,7 +146,7 @@ export function builtinToolLabelKey(
 				? 'agentSessions.timeline.tool.richInteractionDisplay'
 				: 'agentSessions.timeline.tool.richInteraction';
 		default:
-			return null;
+			return getToolNameTranslationKey(toolName) ?? null;
 	}
 }
 
