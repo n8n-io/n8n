@@ -20,6 +20,7 @@ import type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
@@ -45,6 +46,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
 
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	resolveNodeTypeDefinition,
@@ -770,6 +772,7 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			nodeTypes,
 			allowSendingParameterValues,
 			license,
 			roleService,
@@ -1066,6 +1069,7 @@ export class InstanceAiAdapterService {
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
+					nodeTypes,
 				);
 			},
 
@@ -1082,6 +1086,35 @@ export class InstanceAiAdapterService {
 				}
 
 				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+			},
+
+			getResolvedNodeParameters: async (
+				executionId: string,
+				nodeName: string,
+				options?: { itemIndex?: number; runIndex?: number },
+			): Promise<ResolvedNodeParametersResult> => {
+				await assertExecutionAccess(executionId);
+
+				if (!allowSendingParameterValues) {
+					return {
+						nodeName,
+						runIndex: options?.runIndex ?? 0,
+						itemIndex: options?.itemIndex ?? 0,
+						parameters: null,
+						resolved: null,
+						failedExpressions: [],
+						emptyResolutions: [],
+						suppressed: 'parameter-values-disabled',
+					} satisfies ResolvedNodeParametersResult;
+				}
+
+				return await extractResolvedNodeParameters(
+					executionRepository,
+					nodeTypes,
+					executionId,
+					nodeName,
+					options,
+				);
 			},
 		};
 	}
@@ -3065,6 +3098,7 @@ export async function extractExecutionDebugInfo(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const execution = await executionRepository.findSingleExecution(executionId, {
 		includeData: true,
@@ -3088,6 +3122,8 @@ export async function extractExecutionDebugInfo(
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
 	let failedNode: ExecutionDebugInfo['failedNode'];
+	let failedItemIndex: number | undefined;
+	let failedRunIndex: number | undefined;
 
 	if (runData) {
 		const workflowNodes = execution.workflowData?.nodes ?? [];
@@ -3113,6 +3149,12 @@ export async function extractExecutionDebugInfo(
 
 			// Capture the first failed node with its error and input data
 			if (lastRun.error !== undefined && !failedNode) {
+				const errorContext = (lastRun.error as { context?: Record<string, unknown> }).context;
+				failedItemIndex =
+					typeof errorContext?.itemIndex === 'number' ? errorContext.itemIndex : undefined;
+				failedRunIndex =
+					typeof errorContext?.runIndex === 'number' ? errorContext.runIndex : nodeRuns.length - 1;
+
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
@@ -3138,6 +3180,27 @@ export async function extractExecutionDebugInfo(
 						: undefined,
 				};
 			}
+		}
+	}
+
+	// Attach resolved-parameter view for the failed node so the agent sees both the
+	// raw expression and what it resolved to (or which expression threw).
+	if (failedNode && includeOutputData && nodeTypes) {
+		try {
+			const {
+				nodeName: _omitName,
+				suppressed: _omitSuppressed,
+				...bundle
+			} = await extractResolvedNodeParameters(
+				executionRepository,
+				nodeTypes,
+				executionId,
+				failedNode.name,
+				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
+			);
+			failedNode.resolvedParameters = bundle;
+		} catch {
+			// debug must always succeed — silently skip the resolved-params view.
 		}
 	}
 

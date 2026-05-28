@@ -91,6 +91,23 @@ describe('bridgeMessageSchema', () => {
 			expect(parsed.type).toBe('getNodeItem');
 		});
 
+		it('parses a valid evaluateExpression envelope (with itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+				itemIndex: 2,
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
+		it('parses a valid evaluateExpression envelope (without itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -148,6 +165,124 @@ describe('bridgeMessageSchema', () => {
 			// permit itemIndex since the host's getter takes none.
 			expect(() =>
 				bridgeMessageSchema.parse({ type: 'getNodeItem', nodeName: 'Foo', itemIndex: 0 }),
+			).toThrow();
+		});
+	});
+
+	describe('evaluateExpression', () => {
+		it('rejects missing expression', () => {
+			expect(() => bridgeMessageSchema.parse({ type: 'evaluateExpression' })).toThrow();
+		});
+
+		it('rejects non-string expression', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'evaluateExpression', expression: 42 }),
+			).toThrow();
+		});
+
+		it('rejects negative itemIndex', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					itemIndex: -1,
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					branchIndex: 0,
+				}),
+			).toThrow();
+		});
+	});
+
+	describe('getPairedItem', () => {
+		it('parses a minimal valid envelope (null source)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'getPairedItem',
+				destinationNodeName: 'Foo',
+				incomingSourceData: null,
+				initialPairedItem: { item: 0 },
+			});
+			expect(parsed.type).toBe('getPairedItem');
+		});
+
+		it('parses a fully populated envelope (nested sourceOverwrite)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: {
+						previousNode: 'Src',
+						previousNodeOutput: 0,
+						previousNodeRun: 1,
+					},
+					initialPairedItem: {
+						item: 2,
+						input: 0,
+						sourceOverwrite: { previousNode: 'Other' },
+					},
+				}),
+			).not.toThrow();
+		});
+
+		it('rejects missing destinationNodeName', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects negative item index', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: -1 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on the envelope (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+					usedMethodName: '$getPairedItem',
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested sourceData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: { previousNode: 'Src', hijack: 'x' },
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested pairedItemData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0, hijack: 'x' },
+				}),
 			).toThrow();
 		});
 	});

@@ -24,6 +24,7 @@ function createMockContext(
 			stop: jest.fn(),
 			getDebugInfo: jest.fn(),
 			getNodeOutput: jest.fn(),
+			getResolvedNodeParameters: jest.fn(),
 		},
 		credentialService: {} as never,
 		nodeService: {} as never,
@@ -427,6 +428,106 @@ describe('executions tool', () => {
 				startIndex: undefined,
 				maxItems: undefined,
 			});
+		});
+	});
+
+	// ── get-resolved-node-parameters ────────────────────────────────────────
+
+	describe('get-resolved-node-parameters action', () => {
+		it('should call executionService.getResolvedNodeParameters with all options', async () => {
+			const resolution = {
+				nodeName: 'HTTP Request',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: { url: '=https://example.com/api/{{ $json.id }}' },
+				resolved: { url: 'https://example.com/api/123' },
+				failedExpressions: [],
+				emptyResolutions: [],
+			};
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
+				resolution,
+			);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'HTTP Request',
+					itemIndex: 2,
+					runIndex: 1,
+				},
+				{} as never,
+			);
+
+			expect(context.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+				'exec-1',
+				'HTTP Request',
+				{ itemIndex: 2, runIndex: 1 },
+			);
+			expect(result).toEqual(resolution);
+		});
+
+		it('should pass undefined options when itemIndex/runIndex are omitted', async () => {
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue({
+				nodeName: 'Set',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: {},
+				resolved: {},
+				failedExpressions: [],
+				emptyResolutions: [],
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'Set',
+				},
+				{} as never,
+			);
+
+			expect(context.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+				'exec-1',
+				'Set',
+				{ itemIndex: undefined, runIndex: undefined },
+			);
+		});
+
+		it('should pass through suppressed responses verbatim', async () => {
+			const suppressed = {
+				nodeName: 'HTTP Request',
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: null,
+				resolved: null,
+				failedExpressions: [],
+				emptyResolutions: [],
+				suppressed: 'parameter-values-disabled',
+			};
+			const context = createMockContext();
+			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
+				suppressed,
+			);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'get-resolved-node-parameters' as const,
+					executionId: 'exec-1',
+					nodeName: 'HTTP Request',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual(suppressed);
 		});
 	});
 

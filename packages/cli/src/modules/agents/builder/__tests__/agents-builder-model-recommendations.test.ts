@@ -119,6 +119,8 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
 		expect(prompt).not.toContain('agent-builder-memory');
@@ -177,10 +179,15 @@ describe('builder model recommendations', () => {
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		expect(getBuilderRuntimeSkills({ enabledModules: [] }).map((skill) => skill.id)).toEqual([
+		const skills = getBuilderRuntimeSkills({ enabledModules: [] });
+
+		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
 			'agent-builder-target-skills',
 		]);
+		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
+		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
+		expect(skills[0].instructions).toContain('Linear node tools');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
