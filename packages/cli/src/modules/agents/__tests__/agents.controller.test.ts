@@ -125,10 +125,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-allowed',
 				name: 'Allowed Slack',
 				type: 'slackApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
@@ -198,10 +203,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-oauth',
 				name: 'Slack OAuth',
 				type: 'slackOAuth2Api',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
@@ -250,10 +260,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-telegram',
 				name: 'Telegram Bot',
 				type: 'telegramApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
