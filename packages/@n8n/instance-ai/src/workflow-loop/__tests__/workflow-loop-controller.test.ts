@@ -233,6 +233,68 @@ describe('handleBuildOutcome', () => {
 		});
 	});
 
+	it('surfaces the build outcome failureSignature as the blocked reason, not the budget-exhausted guidance', () => {
+		// When the pre-save submit budget is hit, the loop synthesises a fresh terminalRemediation
+		// with generic "budget exhausted" guidance. The orchestrator-visible reason text must come
+		// from the build outcome's real failure (failureSignature / blockingReason) so the AI keeps
+		// seeing the actual error rather than the generic notice. The synthetic remediation still
+		// carries shouldEdit:false - the stop signal lives on the remediation object, not in the error text.
+		const realFailure =
+			'Workflow save failed: nodes[9].parameters (invalid_type): Expected object, received null';
+		let state = makeState({ runId: 'run_1' });
+		const first = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: realFailure,
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+		state = first.state;
+		const second = handleBuildOutcome(state, [first.attempt], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: realFailure,
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+		state = second.state;
+		const third = handleBuildOutcome(state, [first.attempt, second.attempt], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: realFailure,
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+
+		expect(third.action.type).toBe('blocked');
+		// The reason text the orchestrator sees is the real failure, not the
+		// "The workflow could not be saved after three submit attempts..." copy
+		// that lives on `state.lastRemediation`.
+		if (third.action.type === 'blocked') {
+			expect(third.action.reason).toBe(realFailure);
+		}
+		expect(third.state.lastRemediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+		});
+	});
+
 	it('ignores stale build outcomes from a different run without resetting state', () => {
 		const state = makeState({
 			runId: 'run_current',

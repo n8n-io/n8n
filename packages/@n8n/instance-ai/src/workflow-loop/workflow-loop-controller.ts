@@ -124,10 +124,16 @@ export function handleBuildOutcome(
 			outcome.needsUserInput || terminalRemediation?.shouldEdit === false ? 'blocked' : 'failure';
 		attempt.failureSignature = outcome.failureSignature;
 
+		// Prefer the build outcome's own failure description over the remediation
+		// guidance text. The guidance is for "what to do next" (e.g. "budget
+		// exhausted, stop editing") while blockingReason / failureSignature carry
+		// "what went wrong" — the AI needs the latter as the primary error signal.
+		// Falling back to terminal guidance only when the outcome has no specific
+		// failure info preserves the previous behaviour for empty-outcome cases.
 		const reason =
-			terminalRemediation?.guidance ??
 			outcome.blockingReason ??
 			outcome.failureSignature ??
+			terminalRemediation?.guidance ??
 			'Builder failed to submit workflow';
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
