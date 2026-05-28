@@ -201,6 +201,92 @@ describe('bridgeMessageSchema', () => {
 		});
 	});
 
+	describe('getPairedItem', () => {
+		it('parses a minimal valid envelope (null source)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'getPairedItem',
+				destinationNodeName: 'Foo',
+				incomingSourceData: null,
+				initialPairedItem: { item: 0 },
+			});
+			expect(parsed.type).toBe('getPairedItem');
+		});
+
+		it('parses a fully populated envelope (nested sourceOverwrite)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: {
+						previousNode: 'Src',
+						previousNodeOutput: 0,
+						previousNodeRun: 1,
+					},
+					initialPairedItem: {
+						item: 2,
+						input: 0,
+						sourceOverwrite: { previousNode: 'Other' },
+					},
+				}),
+			).not.toThrow();
+		});
+
+		it('rejects missing destinationNodeName', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects negative item index', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: -1 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on the envelope (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+					usedMethodName: '$getPairedItem',
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested sourceData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: { previousNode: 'Src', hijack: 'x' },
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested pairedItemData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0, hijack: 'x' },
+				}),
+			).toThrow();
+		});
+	});
+
 	describe('fromAi', () => {
 		it('accepts a minimal envelope (type only)', () => {
 			// `name` is optional in the schema so empty calls reach the host's
