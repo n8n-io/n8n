@@ -1019,7 +1019,7 @@ describe('WorkflowValidationService', () => {
 			).toBe(true);
 		});
 
-		it('skips disabled nodes', () => {
+		it('validates disabled nodes too — illegal bindings must never be persisted', () => {
 			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
 				'n8n-nodes-base.restrictedConsumer',
 			]);
@@ -1031,9 +1031,11 @@ describe('WorkflowValidationService', () => {
 			});
 			httpNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
 
-			expect(
-				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
-			).toBe(true);
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+			expect(result.error).toMatch(/HTTP Request/);
 		});
 
 		it('aggregates violations across multiple nodes', () => {

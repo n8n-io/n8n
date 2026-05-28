@@ -181,7 +181,10 @@ export class WorkflowValidationService {
 		const violations: string[] = [];
 
 		for (const node of nodes) {
-			if (node.disabled || !node.credentials) continue;
+			// Validate disabled nodes too — illegal bindings must never be persisted.
+			// A disabled node can be re-enabled later (separate save, direct DB write,
+			// workflow import), and the DB state should remain consistent regardless.
+			if (!node.credentials) continue;
 
 			for (const credentialType of Object.keys(node.credentials)) {
 				let typeDef: ICredentialType;

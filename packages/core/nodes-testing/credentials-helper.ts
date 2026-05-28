@@ -93,7 +93,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		try {
 			const typeDef = this.credentialTypes.getByName(credentialType);
 			if (!typeDef.restrictToSupportedNodes) return true;
-			return typeDef.supportedNodes?.includes(nodeType) ?? false;
+			// `typeDef.supportedNodes` from the loader holds short node names; the FQ
+			// list (matching `nodeType`) is exposed via `getSupportedNodes`.
+			return this.credentialTypes.getSupportedNodes(credentialType).includes(nodeType);
 		} catch {
 			return true;
 		}
