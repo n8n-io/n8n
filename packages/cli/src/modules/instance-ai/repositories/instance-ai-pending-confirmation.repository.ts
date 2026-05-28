@@ -53,8 +53,9 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		return result.affected ?? 0;
 	}
 
-	async findExpired(now: Date): Promise<InstanceAiPendingConfirmation[]> {
-		return await this.find({ where: { expiresAt: LessThan(now) } });
+	async deleteExpired(now: Date): Promise<number> {
+		const result = await this.delete({ expiresAt: LessThan(now) });
+		return result.affected ?? 0;
 	}
 
 	async findByThreadId(threadId: string): Promise<InstanceAiPendingConfirmation[]> {

@@ -2187,26 +2187,14 @@ export class InstanceAiService {
 
 	private async pruneStalePendingConfirmations(now: number): Promise<void> {
 		try {
-			const expired = await this.pendingConfirmationRepo.findExpired(new Date(now));
-			if (expired.length === 0) {
+			const count = await this.pendingConfirmationRepo.deleteExpired(new Date(now));
+			if (count === 0) {
 				this.logger.debug('No stale Instance AI pending confirmations to drop');
 				return;
 			}
-			for (const row of expired) {
-				try {
-					await this.pendingConfirmationRepo.deleteByRequestId(row.requestId);
-				} catch (error: unknown) {
-					this.logger.warn('Failed to drop expired pending confirmation', {
-						requestId: row.requestId,
-						error: getErrorMessage(error),
-					});
-				}
-			}
-			this.logger.info('Dropped stale Instance AI pending confirmations', {
-				count: expired.length,
-			});
+			this.logger.info('Dropped stale Instance AI pending confirmations', { count });
 		} catch (error: unknown) {
-			this.logger.warn('Failed to scan stale Instance AI pending confirmations', {
+			this.logger.warn('Failed to drop stale Instance AI pending confirmations', {
 				error: getErrorMessage(error),
 			});
 		}
