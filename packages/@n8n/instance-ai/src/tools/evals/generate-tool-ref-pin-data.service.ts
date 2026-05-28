@@ -132,6 +132,7 @@ export async function generateToolRefPinData(
 		const llm = createEvalAgent('eval-tool-ref-pin-data', {
 			model: HAIKU_MODEL,
 			instructions: SYSTEM_INSTRUCTIONS,
+			cache: true,
 		});
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: userText }] },

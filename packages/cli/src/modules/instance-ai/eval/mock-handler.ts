@@ -278,6 +278,7 @@ async function callLlm(
 
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
+		cache: true,
 	})
 		.tool(createQuirksLookupTool(requestInfo.serviceName, requestInfo.method, requestInfo.pathname))
 		.tool(createSubmitResponseTool(capture));

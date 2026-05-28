@@ -483,6 +483,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
+				cache: true,
 			});
 
 			const result = await agent.generate(userPrompt, {

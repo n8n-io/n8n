@@ -242,6 +242,7 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 		const agent = createEvalAgent('eval-sample-rows', {
 			model: HAIKU_MODEL,
 			instructions: BATCH_SYSTEM_INSTRUCTIONS,
+			cache: true,
 		});
 		const realExamplesBlock = buildRealExamplesBlock(input.realExamples, generatedColumns);
 		const sections = [buildAgentContextBlock(input.context)];
