@@ -433,6 +433,26 @@ type OrchestratorResumeReason =
 	| 'planned_checkpoint'
 	| 'replan';
 
+/** A pending-confirmation orphan that's already passed the `canResumeOrphan`
+ *  predicate — i.e. has the SDK-side pointers (`toolCallId`, `checkpointKey`)
+ *  needed to rebuild a suspended run from the checkpoint blob. */
+type ResumableOrphan = NonNullable<
+	Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>
+> & {
+	toolCallId: string;
+	checkpointKey: string;
+};
+
+/** Result of `rebuildSuspendedRunFromCheckpoint`. Each failure variant
+ *  corresponds to one rebuild step the caller can log distinctly; `ready`
+ *  carries the fully-assembled state for `runState.suspendRun`. */
+type RebuildSuspendedRunOutcome =
+	| { kind: 'ready'; state: SuspendedRunState<User> }
+	| { kind: 'no-user' }
+	| { kind: 'no-checkpoint'; error?: unknown }
+	| { kind: 'env-failure'; error: unknown }
+	| { kind: 'agent-failure'; error: unknown };
+
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
@@ -4304,10 +4324,7 @@ export class InstanceAiService {
 
 	private canResumeOrphan(
 		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
-	): orphan is typeof orphan & {
-		toolCallId: string;
-		checkpointKey: string;
-	} {
+	): orphan is ResumableOrphan {
 		return Boolean(orphan.toolCallId && orphan.checkpointKey);
 	}
 
@@ -4355,20 +4372,66 @@ export class InstanceAiService {
 	 * (`groupIdByRunId`) keeps working.
 	 */
 	private async tryResumeFromOrphan(
-		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>> & {
-			toolCallId: string;
-			checkpointKey: string;
-		},
+		orphan: ResumableOrphan,
 		data: ConfirmationData,
 	): Promise<boolean> {
-		const user = await this.revalidateActiveUser(orphan.userId);
-		if (!user) {
-			this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
-				requestId: orphan.requestId,
-				userId: orphan.userId,
-			});
-			return false;
+		const outcome = await this.rebuildSuspendedRunFromCheckpoint(orphan);
+		switch (outcome.kind) {
+			case 'ready':
+				// Re-seed the in-memory runState so `resumeSuspendedRun` can find
+				// this confirmation by requestId and the rest of the cancel /
+				// liveness / shutdown paths see the run as live. We deliberately
+				// do NOT call `persistPendingConfirmation` again — the DB row
+				// was already consumed by `claim()` above.
+				this.runState.suspendRun(orphan.threadId, outcome.state);
+				return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
+			case 'no-user':
+				this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
+					requestId: orphan.requestId,
+					userId: orphan.userId,
+				});
+				return false;
+			case 'no-checkpoint':
+				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
+					requestId: orphan.requestId,
+					checkpointKey: orphan.checkpointKey,
+					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
+				});
+				return false;
+			case 'env-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
+			case 'agent-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
 		}
+	}
+
+	/**
+	 * Rebuild the in-memory pieces a suspended run needs (user, agent,
+	 * execution environment) from a persisted orphan row + checkpoint, and
+	 * package them into a `SuspendedRunState`. The caller wraps the result in
+	 * `runState.suspendRun` and hands off to `resumeSuspendedRun`.
+	 *
+	 * Returns a discriminated union so the caller can log a precise reason
+	 * per failure mode without inlining each step's try/catch. Logging here
+	 * would be premature — the helper has the failure context but not the
+	 * routing decision (`tryResumeFromOrphan` decides whether the failure is
+	 * worth surfacing to the user vs. just retrying).
+	 */
+	private async rebuildSuspendedRunFromCheckpoint(
+		orphan: ResumableOrphan,
+	): Promise<RebuildSuspendedRunOutcome> {
+		const user = await this.revalidateActiveUser(orphan.userId);
+		if (!user) return { kind: 'no-user' };
 
 		// Bail early if the checkpoint store doesn't have a usable snapshot —
 		// `load()` throws UserError for expired tombstones and returns
@@ -4376,20 +4439,9 @@ export class InstanceAiService {
 		// to resume.
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
-			if (!state) {
-				this.logger.warn('Cannot resume orphaned run: checkpoint missing', {
-					requestId: orphan.requestId,
-					checkpointKey: orphan.checkpointKey,
-				});
-				return false;
-			}
+			if (!state) return { kind: 'no-checkpoint' };
 		} catch (error: unknown) {
-			this.logger.warn('Cannot resume orphaned run: checkpoint unavailable', {
-				requestId: orphan.requestId,
-				checkpointKey: orphan.checkpointKey,
-				error: getErrorMessage(error),
-			});
-			return false;
+			return { kind: 'no-checkpoint', error };
 		}
 
 		const abortController = new AbortController();
@@ -4404,12 +4456,7 @@ export class InstanceAiService {
 				this.threadPushRef.get(orphan.threadId),
 			);
 		} catch (error: unknown) {
-			this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
-				requestId: orphan.requestId,
-				threadId: orphan.threadId,
-				error: getErrorMessage(error),
-			});
-			return false;
+			return { kind: 'env-failure', error };
 		}
 
 		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
@@ -4427,38 +4474,29 @@ export class InstanceAiService {
 				timeZone: this.runState.getTimeZone(orphan.threadId) ?? this.defaultTimeZone,
 			});
 		} catch (error: unknown) {
-			this.logger.warn('Cannot resume orphaned run: failed to build agent', {
-				requestId: orphan.requestId,
-				threadId: orphan.threadId,
-				error: getErrorMessage(error),
-			});
-			return false;
+			return { kind: 'agent-failure', error };
 		}
 
-		// Re-seed the in-memory runState so `resumeSuspendedRun` can find this
-		// confirmation by requestId and the rest of the cancel / liveness /
-		// shutdown paths see the run as live. We deliberately do NOT call
-		// `persistPendingConfirmation` again — the DB row was already
-		// consumed by `claim()` above.
-		this.runState.suspendRun(orphan.threadId, {
-			runId: orphan.runId,
-			agentRunId: orphan.checkpointKey,
-			agent,
-			threadId: orphan.threadId,
-			user,
-			toolCallId: orphan.toolCallId,
-			requestId: orphan.requestId,
-			abortController,
-			messageGroupId: orphan.messageGroupId ?? undefined,
-			createdAt: Date.now(),
-			tracing: undefined,
-			modelId: environment.modelId,
-			checkpoint: orphan.checkpointTaskId
-				? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
-				: undefined,
-		});
-
-		return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
+		return {
+			kind: 'ready',
+			state: {
+				runId: orphan.runId,
+				agentRunId: orphan.checkpointKey,
+				agent,
+				threadId: orphan.threadId,
+				user,
+				toolCallId: orphan.toolCallId,
+				requestId: orphan.requestId,
+				abortController,
+				messageGroupId: orphan.messageGroupId ?? undefined,
+				createdAt: Date.now(),
+				tracing: undefined,
+				modelId: environment.modelId,
+				checkpoint: orphan.checkpointTaskId
+					? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
+					: undefined,
+			},
+		};
 	}
 
 	private async revalidateActiveUser(userId: string): Promise<User | null> {
