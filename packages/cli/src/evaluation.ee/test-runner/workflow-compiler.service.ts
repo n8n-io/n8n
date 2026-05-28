@@ -242,11 +242,40 @@ export class WorkflowCompilerService {
 				},
 			};
 		}
+		if (metric.type === 'string_similarity') {
+			return {
+				operation: 'setMetrics',
+				metric: 'stringSimilarity',
+				actualAnswer: metric.config.inputs.actualAnswer,
+				expectedAnswer: metric.config.inputs.expectedAnswer,
+				options: { metricName: metric.name },
+			};
+		}
+		if (metric.type === 'categorization') {
+			return {
+				operation: 'setMetrics',
+				metric: 'categorization',
+				actualAnswer: metric.config.inputs.actualAnswer,
+				expectedAnswer: metric.config.inputs.expectedAnswer,
+				options: { metricName: metric.name },
+			};
+		}
+		if (metric.type === 'tools_used') {
+			return {
+				operation: 'setMetrics',
+				metric: 'toolsUsed',
+				expectedTools: metric.config.inputs.expectedTools,
+				intermediateSteps: metric.config.inputs.intermediateSteps,
+				options: { metricName: metric.name },
+			};
+		}
 		const { preset, prompt, inputs } = metric.config;
 		return {
 			operation: 'setMetrics',
 			metric: preset,
-			prompt,
+			// Omit `prompt` entirely when not overridden so the Set Metrics
+			// node's per-preset schema default fills in at runtime.
+			...(prompt !== undefined ? { prompt } : {}),
 			actualAnswer: inputs.actualAnswer,
 			...(preset === 'correctness' ? { expectedAnswer: inputs.expectedAnswer ?? '' } : {}),
 			...(preset === 'helpfulness' ? { userQuery: inputs.userQuery ?? '' } : {}),

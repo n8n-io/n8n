@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { EvaluationConfig, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
+	EvaluationConfigRepository,
 	TestCaseExecutionRepository,
 	TestRun,
 	TestRunRepository,
@@ -56,6 +57,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
+import { WorkflowCompilerService } from './workflow-compiler.service';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -97,6 +99,8 @@ export class TestRunnerService {
 		private readonly license: License,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
+		private readonly evaluationConfigRepository: EvaluationConfigRepository,
+		private readonly workflowCompiler: WorkflowCompilerService,
 	) {}
 
 	/**
@@ -568,6 +572,11 @@ export class TestRunnerService {
 			workflowVersionId?: string;
 			evaluationConfigId?: string;
 			evaluationConfigSnapshot?: IDataObject;
+			// Explicit opt-in to the WorkflowCompilerService pipeline. The
+			// wizard sets this so the runner builds an executable graph from
+			// the saved EvaluationConfig; collection runs leave it unset and
+			// continue to execute their pinned workflow JSON as-is.
+			compileFromConfig?: boolean;
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -614,14 +623,71 @@ export class TestRunnerService {
 			} as typeof baseWorkflow;
 		}
 
-		// 0. Create new Test Run
+		// Look the config up BEFORE creating the TestRun row so we can stamp
+		// the snapshot onto the row, but DO NOT compile here yet — we want
+		// compile failures to land on the row as a recoverable error code,
+		// not propagate as HTTP 500 with no row to show in the run history.
+		let evaluationConfigSnapshot = options?.evaluationConfigSnapshot ?? null;
+		let configToCompile: EvaluationConfig | undefined;
+		let configLookupErrorCode: 'EVALUATION_CONFIG_NOT_FOUND' | undefined;
+		if (options?.compileFromConfig && options?.evaluationConfigId) {
+			const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
+				options.evaluationConfigId,
+				workflowId,
+			);
+			if (!config) {
+				configLookupErrorCode = 'EVALUATION_CONFIG_NOT_FOUND';
+			} else {
+				configToCompile = config;
+				// Persist the config shape onto the TestRun so later UI lookups
+				// don't depend on a possibly-mutated config row.
+				evaluationConfigSnapshot = config as unknown as IDataObject;
+			}
+		}
+
+		// 0. Create new Test Run (row exists before any failure can occur).
 		const testRun = await this.testRunRepository.createTestRun(workflowId, {
 			collectionId: options?.collectionId ?? null,
 			workflowVersionId: options?.workflowVersionId ?? null,
 			evaluationConfigId: options?.evaluationConfigId ?? null,
-			evaluationConfigSnapshot: options?.evaluationConfigSnapshot ?? null,
+			evaluationConfigSnapshot,
 		});
 		assert(testRun, 'Unable to create a test run');
+
+		// Config look-up failed → close out the row now and return a
+		// resolved `finished` so the controller still gets a clean 202 and
+		// the FE shows the error code on the run.
+		if (configLookupErrorCode) {
+			await this.testRunRepository.markAsError(testRun.id, configLookupErrorCode, {
+				evaluationConfigId: options?.evaluationConfigId,
+			});
+			return { testRun, finished: Promise.resolve() };
+		}
+
+		if (configToCompile) {
+			// Strip any user-added EvaluationTrigger nodes before compiling —
+			// the compiler injects its own `__eval_trigger` and rewires the
+			// dataset feed; leaving a stale user trigger in place would
+			// duplicate the entry point and confuse the runner's wiring.
+			const stripped = {
+				...workflow,
+				nodes: workflow.nodes.filter((n) => n.type !== EVALUATION_TRIGGER_NODE_TYPE),
+			} as typeof workflow;
+			try {
+				workflow = this.workflowCompiler.compile(stripped, configToCompile) as typeof workflow;
+			} catch (error) {
+				// Compile errors are user-facing config problems (reserved
+				// name conflict, unreachable end node, etc.) — record them on
+				// the run row so the FE can surface a sensible message
+				// instead of propagating as a generic 500.
+				const message = error instanceof Error ? error.message : String(error);
+				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR', {
+					evaluationConfigId: options?.evaluationConfigId,
+					reason: message,
+				});
+				return { testRun, finished: Promise.resolve() };
+			}
+		}
 
 		// Detach the long-running execution from the awaited setup so callers
 		// (the controller) can return the new `testRun.id` to the FE without

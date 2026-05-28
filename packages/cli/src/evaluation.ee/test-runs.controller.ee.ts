@@ -178,6 +178,12 @@ export class TestRunsController {
 			req.user,
 			workflowId,
 			concurrency,
+			payload.evaluationConfigId
+				? {
+						evaluationConfigId: payload.evaluationConfigId,
+						compileFromConfig: payload.compileFromConfig === true,
+					}
+				: undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

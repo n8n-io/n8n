@@ -38,10 +38,35 @@ export class EvaluationConfigValidator {
 		this.checkReachability(args, errors);
 		this.checkMetricUniqueness(args, errors);
 		this.checkBooleanCoercion(args, errors);
+		this.checkMetricInputsNonEmpty(args, errors);
 		this.checkDatasetSource(args, errors);
 		await this.checkDataTableAccess(args, errors);
 		await this.checkLlmJudgeProvidersAndCredentials(args, errors);
 		return errors;
+	}
+
+	// Zod's `z.string().min(1)` accepts whitespace, but a whitespace input
+	// resolves to nothing at run time — the deterministic scorers throw
+	// "Expected answer is missing" / "Intermediate steps missing" and LLM
+	// judges produce meaningless scores. Reject empty-after-trim early so
+	// the user gets a save-time error tied to the correct field.
+	private checkMetricInputsNonEmpty(args: ValidateArgs, errors: EvaluationApiError[]): void {
+		for (const metric of args.config.metrics) {
+			const inputs = collectMetricInputStrings(metric);
+			for (const [field, value] of Object.entries(inputs)) {
+				if (typeof value !== 'string' || value.trim().length === 0) {
+					errors.push({
+						code: EvaluationErrorCode.METRIC_INPUT_EMPTY,
+						message: `Metric "${metric.name}" input "${field}" must not be empty`,
+						details: {
+							metricId: metric.id,
+							metricName: metric.name,
+							field: `config.inputs.${field}`,
+						},
+					});
+				}
+			}
+		}
 	}
 
 	private getNodeByName(workflow: IWorkflowBase, name: string): INode | undefined {
@@ -244,6 +269,35 @@ export class EvaluationConfigValidator {
 			}
 		}
 	}
+}
+
+// Returns the named input strings each metric type carries. Used by the
+// "non-empty after trim" validator pass — kept here as a small helper so the
+// per-type fan-out is in one place.
+function collectMetricInputStrings(metric: EvaluationMetric): Record<string, unknown> {
+	if (metric.type === 'expression') {
+		return { expression: metric.config.expression };
+	}
+	if (metric.type === 'llm_judge') {
+		const { actualAnswer, expectedAnswer, userQuery } = metric.config.inputs;
+		const out: Record<string, unknown> = { actualAnswer };
+		if (expectedAnswer !== undefined) out.expectedAnswer = expectedAnswer;
+		if (userQuery !== undefined) out.userQuery = userQuery;
+		return out;
+	}
+	if (metric.type === 'string_similarity' || metric.type === 'categorization') {
+		return {
+			actualAnswer: metric.config.inputs.actualAnswer,
+			expectedAnswer: metric.config.inputs.expectedAnswer,
+		};
+	}
+	if (metric.type === 'tools_used') {
+		return {
+			expectedTools: metric.config.inputs.expectedTools,
+			intermediateSteps: metric.config.inputs.intermediateSteps,
+		};
+	}
+	return {};
 }
 
 /**
