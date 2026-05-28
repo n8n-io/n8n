@@ -244,6 +244,13 @@ export function normalizeJob(rawJob) {
 				width: 560,
 				...(rawJob.layout?.screenshotTop ?? {}),
 			},
+			cornerImageTreatment: {
+				enabled: rawJob.layout?.cornerImageTreatment?.enabled ?? true,
+				blur: rawJob.layout?.cornerImageTreatment?.blur ?? 2,
+				opacity: rawJob.layout?.cornerImageTreatment?.opacity ?? 0.82,
+				borderColor: rawJob.layout?.cornerImageTreatment?.borderColor ?? 'white',
+				borderWidth: rawJob.layout?.cornerImageTreatment?.borderWidth ?? 6,
+			},
 			subtitleBottomMargin: rawJob.layout?.subtitleBottomMargin ?? 90,
 		},
 	};
@@ -522,8 +529,29 @@ function scaleAndPad(input, width, height, label) {
 	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
 
-function scaleStaticOverlay(input, maxWidth, maxHeight, duration, fps, label) {
-	return `${input}scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,setsar=1,fps=${fps},trim=duration=${duration},setpts=PTS-STARTPTS,drawbox=x=0:y=0:w=iw:h=ih:color=white:t=6${label}`;
+function scaleStaticOverlay(input, maxWidth, maxHeight, duration, fps, label, treatment = null) {
+	const filters = [
+		`scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1`,
+		'setsar=1',
+		`fps=${fps}`,
+		`trim=duration=${duration}`,
+		'setpts=PTS-STARTPTS',
+	];
+
+	if (treatment?.enabled) {
+		const blur = Math.max(0, Number(treatment.blur) || 0);
+		const opacity = Math.min(1, Math.max(0, Number(treatment.opacity) || 1));
+		if (blur > 0) filters.push(`boxblur=${blur}`);
+		if (opacity < 1) filters.push(`colorchannelmixer=aa=${opacity}`);
+	}
+
+	const borderColor = treatment?.borderColor ?? 'white';
+	const borderWidth = Math.max(0, Number(treatment?.borderWidth ?? 6) || 0);
+	if (borderWidth > 0) {
+		filters.push(`drawbox=x=0:y=0:w=iw:h=ih:color=${borderColor}:t=${borderWidth}`);
+	}
+
+	return `${input}${filters.join(',')}${label}`;
 }
 
 function backgroundSegment(input, start, duration, width, height, label) {
@@ -564,6 +592,7 @@ export function buildFfmpegArgs(
 						timeline.body.duration,
 						fps,
 						'[covertop]',
+						job.layout.cornerImageTreatment,
 					),
 					scaleStaticOverlay(
 						'[screentopsrc]',
@@ -572,6 +601,7 @@ export function buildFfmpegArgs(
 						timeline.body.duration,
 						fps,
 						'[screentop]',
+						job.layout.cornerImageTreatment,
 					),
 					`[bodybg][covertop]overlay=${job.layout.coverTop.x}:${job.layout.coverTop.y}:eof_action=pass[body1]`,
 					`[body1][screentop]overlay=${job.layout.screenshotTop.x}:${job.layout.screenshotTop.y}:eof_action=pass[body]`,

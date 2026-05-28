@@ -387,6 +387,48 @@ test('buildFfmpegArgs starts audio immediately while the body stage continues th
 	assert.match(filter, /\[screenmainsrc\]scale=.*reset_sar=1/);
 });
 
+test('buildFfmpegArgs softens only body-stage corner images when treatment is enabled', () => {
+	const job = normalizeJob({
+		jobId: 'corner-treatment',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+		layout: {
+			cornerImageTreatment: {
+				enabled: true,
+				blur: 2,
+				opacity: 0.82,
+				borderColor: 'white',
+				borderWidth: 6,
+			},
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 20 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+	const parts = filter.split(';');
+	const coverMainPart = parts.find((part) => part.startsWith('[covermainsrc]'));
+	const screenMainPart = parts.find((part) => part.startsWith('[screenmainsrc]'));
+	const coverTopPart = parts.find((part) => part.startsWith('[covertopsrc]'));
+	const screenTopPart = parts.find((part) => part.startsWith('[screentopsrc]'));
+
+	assert.match(coverTopPart, /boxblur=2/);
+	assert.match(coverTopPart, /colorchannelmixer=aa=0\.82/);
+	assert.match(screenTopPart, /boxblur=2/);
+	assert.match(screenTopPart, /colorchannelmixer=aa=0\.82/);
+	assert.doesNotMatch(coverMainPart, /boxblur=2/);
+	assert.doesNotMatch(screenMainPart, /boxblur=2/);
+});
+
 test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing', () => {
 	const job = normalizeJob({
 		jobId: 'safe-subtitle-path',
