@@ -10,6 +10,7 @@ const DECODE_FALLBACK_TTL_MS = 30 * 60 * 1000;
 
 export interface DaytonaAuthManagerOptions {
 	apiUrl?: string;
+	target?: string;
 	/** Static API key for direct mode. Mutually exclusive with `getAuthToken`. */
 	staticApiKey?: string;
 	/** Per-call token resolver for proxy mode (short-lived JWT). Mutually exclusive with `staticApiKey`. */
@@ -101,7 +102,9 @@ export class DaytonaAuthManager {
 		const apiKey = this.options.getAuthToken
 			? await this.options.getAuthToken()
 			: this.options.staticApiKey;
-		const connection: DaytonaConfig = { apiKey, apiUrl: this.options.apiUrl };
+		const connection: DaytonaConfig = { apiKey };
+		if (this.options.apiUrl !== undefined) connection.apiUrl = this.options.apiUrl;
+		if (this.options.target !== undefined) connection.target = this.options.target;
 
 		let decodedFromJwt = false;
 		if (this.options.getAuthToken && apiKey) {

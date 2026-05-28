@@ -327,6 +327,7 @@ interface ToolBatchContext {
 	toolMap: Map<string, BuiltTool>;
 	list: AgentMessageList;
 	runId: string;
+	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 }
@@ -1029,6 +1030,7 @@ export class AgentRuntime {
 			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
+			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
 		};
@@ -1124,6 +1126,7 @@ export class AgentRuntime {
 				toolMap,
 				list,
 				runId,
+				persistence: options?.persistence,
 				telemetry: runTelemetry,
 				executionCounter: options?.executionCounter,
 				toolCalls: result.toolCalls,
@@ -1299,6 +1302,7 @@ export class AgentRuntime {
 			toolMap: pendingLoopContext.toolMap,
 			list,
 			runId,
+			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
 		};
@@ -1441,6 +1445,7 @@ export class AgentRuntime {
 					toolMap,
 					list,
 					runId,
+					persistence: options?.persistence,
 					telemetry: runTelemetry,
 					executionCounter: options?.executionCounter,
 					toolCalls,
@@ -1939,6 +1944,8 @@ export class AgentRuntime {
 							tc.input as JSONValue,
 							toolMap,
 							list,
+							runId,
+							ctx.persistence,
 							undefined,
 							resolvedTelemetry,
 							executionCounter,
@@ -2041,6 +2048,7 @@ export class AgentRuntime {
 			toolMap,
 			list,
 			runId,
+			persistence,
 			telemetry: resolvedTelemetry,
 			executionCounter,
 		} = ctx;
@@ -2063,6 +2071,8 @@ export class AgentRuntime {
 			resumedEntry.input,
 			toolMap,
 			list,
+			runId,
+			persistence,
 			pendingResume.resumeData,
 			resolvedTelemetry,
 			executionCounter,
@@ -2140,6 +2150,7 @@ export class AgentRuntime {
 				toolMap,
 				list,
 				runId,
+				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
 			});
@@ -2168,6 +2179,8 @@ export class AgentRuntime {
 		toolInput: JSONValue,
 		toolMap: Map<string, BuiltTool>,
 		list: AgentMessageList,
+		runId: string,
+		persistence?: AgentPersistenceOptions,
 		resumeData?: unknown,
 		resolvedTelemetry?: BuiltTelemetry,
 		executionCounter?: AgentExecutionCounter,
@@ -2247,7 +2260,10 @@ export class AgentRuntime {
 				toolInput,
 				resolvedTelemetry,
 				async () =>
-					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId),
+					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+						runId,
+						persistence,
+					}),
 			);
 		} catch (error) {
 			return makeToolError(error as Error);

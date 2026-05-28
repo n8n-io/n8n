@@ -79,7 +79,7 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<{ status: string }> => {
+): Promise<{ status: string; agent?: AgentResource }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',

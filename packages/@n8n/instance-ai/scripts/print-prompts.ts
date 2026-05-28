@@ -19,7 +19,6 @@ import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
 } from '../src/tools/orchestration/build-workflow-agent.prompt';
-import { DATA_TABLE_AGENT_PROMPT } from '../src/tools/orchestration/data-table-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
@@ -138,12 +137,6 @@ function collectAgents(): AgentEntry[] {
 					body: createSandboxBuilderAgentPrompt('/workspace'),
 				},
 			],
-		},
-		{
-			folder: 'data-table',
-			displayName: 'Sub-Agent — Data Table Manager',
-			source: 'src/tools/orchestration/data-table-agent.prompt.ts → DATA_TABLE_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: DATA_TABLE_AGENT_PROMPT }],
 		},
 		{
 			folder: 'browser-credential-setup',

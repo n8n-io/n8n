@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -24,6 +24,7 @@ const route = useRoute();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
 );
@@ -60,10 +61,12 @@ const groupedThreads = computed(() => {
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
 	for (const thread of store.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
-		if (!groups.has(group)) {
-			groups.set(group, []);
+		let threads = groups.get(group);
+		if (!threads) {
+			threads = [];
+			groups.set(group, threads);
 		}
-		groups.get(group)!.push(thread);
+		threads.push(thread);
 	}
 
 	return groupOrder.flatMap((groupName) => {
@@ -92,6 +95,10 @@ async function handleDeleteThread(threadId: string) {
 function startRename(threadId: string, currentTitle: string) {
 	editingThreadId.value = threadId;
 	editingTitle.value = currentTitle;
+	void nextTick(() => {
+		renameInput.value?.focus();
+		renameInput.value?.select();
+	});
 }
 
 async function confirmRename(threadId: string) {
@@ -181,10 +188,10 @@ function handleThreadAction(action: string, threadId: string) {
 						<!-- Inline rename mode -->
 						<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
 							<input
+								ref="renameInput"
 								v-model="editingTitle"
 								:class="$style.renameInput"
 								type="text"
-								autofocus
 								@keydown.enter="confirmRename(thread.id)"
 								@keydown.escape="cancelRename"
 								@blur="confirmRename(thread.id)"

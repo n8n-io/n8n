@@ -289,7 +289,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			daytonaTokenRefreshSkewMs: 300_000,
-			builderSandboxTtlMs: 600_000,
+			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',

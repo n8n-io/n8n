@@ -10,7 +10,6 @@ import type {
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
 	FetchedPage,
-	WebSearchResponse,
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
@@ -21,6 +20,7 @@ import type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
@@ -35,6 +35,7 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
@@ -45,19 +46,14 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
 
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
-import {
-	fetchAndExtract,
-	maybeSummarize,
-	braveSearch,
-	searxngSearch,
-	LRUCache,
-} from './web-research';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
@@ -114,6 +110,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -130,6 +128,8 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
+
+type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -184,7 +184,7 @@ export class InstanceAiAdapterService {
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private templatesService: BuilderTemplatesService | undefined;
+	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -265,7 +265,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private getTemplatesService(): BuilderTemplatesService {
+	private getTemplatesService(): BuilderTemplatesServiceInstance {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
@@ -772,6 +772,7 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			nodeTypes,
 			allowSendingParameterValues,
 			license,
 			roleService,
@@ -1068,6 +1069,7 @@ export class InstanceAiAdapterService {
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
+					nodeTypes,
 				);
 			},
 
@@ -1084,6 +1086,35 @@ export class InstanceAiAdapterService {
 				}
 
 				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+			},
+
+			getResolvedNodeParameters: async (
+				executionId: string,
+				nodeName: string,
+				options?: { itemIndex?: number; runIndex?: number },
+			): Promise<ResolvedNodeParametersResult> => {
+				await assertExecutionAccess(executionId);
+
+				if (!allowSendingParameterValues) {
+					return {
+						nodeName,
+						runIndex: options?.runIndex ?? 0,
+						itemIndex: options?.itemIndex ?? 0,
+						parameters: null,
+						resolved: null,
+						failedExpressions: [],
+						emptyResolutions: [],
+						suppressed: 'parameter-values-disabled',
+					} satisfies ResolvedNodeParametersResult;
+				}
+
+				return await extractResolvedNodeParameters(
+					executionRepository,
+					nodeTypes,
+					executionId,
+					nodeName,
+					options,
+				);
 			},
 		};
 	}
@@ -1429,6 +1460,14 @@ export class InstanceAiAdapterService {
 			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
+		const referenceScopes = {
+			read: ['dataTable:read'],
+			readRow: ['dataTable:readRow'],
+			writeRow: ['dataTable:writeRow'],
+			update: ['dataTable:update'],
+			delete: ['dataTable:delete'],
+		} satisfies Record<DataTableReferencePermission, Scope[]>;
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1471,6 +1510,15 @@ export class InstanceAiAdapterService {
 					options,
 				);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
+			},
+
+			async resolveTableReference(dataTableId: string, options?: DataTableReferenceOptions) {
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					referenceScopes[options?.permission ?? 'read'],
+					dataTableId,
+					options,
+				);
+				return { id: resolvedId, name: tableName, projectId };
 			},
 
 			async getSchema(dataTableId, options) {
@@ -1957,13 +2005,31 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
+				const nodes = await getNodes();
+
+				// Synthetic MCP registry nodes have no on-disk type-def, so the
+				// standard resolver would 404 on them. Match either the bare slug
+				// (e.g. `notion`) or the package-prefixed form, then synthesise
+				// the TypeScript content from the in-memory description.
+				const registryNode =
+					nodes.find((n) => n.name === `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`) ??
+					(nodeType.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)
+						? nodes.find((n) => n.name === nodeType)
+						: undefined);
+				if (registryNode) {
+					const builderHint = registryNode.builderHint?.searchHint;
+					return {
+						content: synthesizeMcpRegistryTypeDef(registryNode),
+						...(builderHint ? { builderHint } : {}),
+					};
+				}
+
 				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
 
 				if (result.error) {
 					return { content: '', error: result.error };
 				}
 
-				const nodes = await getNodes();
 				const nodeDesc = findNodeByVersion(
 					nodes,
 					nodeType,
@@ -2478,6 +2544,13 @@ interface DataTableRecord {
 	name: string;
 	projectId: string;
 }
+
+type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+type DataTableReferenceOptions = {
+	projectId?: string;
+	permission?: DataTableReferencePermission;
+};
 
 interface DataTableIdOrNameRepository {
 	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;
@@ -3025,6 +3098,7 @@ export async function extractExecutionDebugInfo(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const execution = await executionRepository.findSingleExecution(executionId, {
 		includeData: true,
@@ -3048,6 +3122,8 @@ export async function extractExecutionDebugInfo(
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
 	let failedNode: ExecutionDebugInfo['failedNode'];
+	let failedItemIndex: number | undefined;
+	let failedRunIndex: number | undefined;
 
 	if (runData) {
 		const workflowNodes = execution.workflowData?.nodes ?? [];
@@ -3073,6 +3149,12 @@ export async function extractExecutionDebugInfo(
 
 			// Capture the first failed node with its error and input data
 			if (lastRun.error !== undefined && !failedNode) {
+				const errorContext = (lastRun.error as { context?: Record<string, unknown> }).context;
+				failedItemIndex =
+					typeof errorContext?.itemIndex === 'number' ? errorContext.itemIndex : undefined;
+				failedRunIndex =
+					typeof errorContext?.runIndex === 'number' ? errorContext.runIndex : nodeRuns.length - 1;
+
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
@@ -3098,6 +3180,27 @@ export async function extractExecutionDebugInfo(
 						: undefined,
 				};
 			}
+		}
+	}
+
+	// Attach resolved-parameter view for the failed node so the agent sees both the
+	// raw expression and what it resolved to (or which expression threw).
+	if (failedNode && includeOutputData && nodeTypes) {
+		try {
+			const {
+				nodeName: _omitName,
+				suppressed: _omitSuppressed,
+				...bundle
+			} = await extractResolvedNodeParameters(
+				executionRepository,
+				nodeTypes,
+				executionId,
+				failedNode.name,
+				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
+			);
+			failedNode.resolvedParameters = bundle;
+		} catch {
+			// debug must always succeed — silently skip the resolved-params view.
 		}
 	}
 
