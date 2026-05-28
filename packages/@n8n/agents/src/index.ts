@@ -207,6 +207,17 @@ export {
 	sanitizeSubAgentTaskName,
 } from './runtime/sub-agent-task-path';
 export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
+export {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	createDelegateSubAgentTool,
+} from './runtime/delegate-sub-agent-tool';
+export type {
+	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentInput,
+	DelegateSubAgentPolicy,
+	DelegateSubAgentRequest,
+	DelegateSubAgentToolOutput,
+} from './runtime/delegate-sub-agent-tool';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {
