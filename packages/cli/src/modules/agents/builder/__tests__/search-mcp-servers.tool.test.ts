@@ -42,7 +42,9 @@ describe('buildSearchMcpServersTool', () => {
 							title: 'Create pages in Markdown',
 						},
 					],
-					nodeTypeName: '@n8n/mcp-registry.notion',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.notion',
+					},
 				},
 			],
 		});
