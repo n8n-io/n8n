@@ -434,6 +434,30 @@ describe('SecuritySettingsController', () => {
 					);
 				});
 
+				it('should emit `redaction-enforcement-updated` with before/after when settings are disabled', async () => {
+					enableRedactionFlag();
+					instanceRedactionEnforcementService.get.mockResolvedValue({
+						enforced: true,
+						manual: false,
+						production: true,
+					});
+					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
+
+					await ownerAgent
+						.post('/settings/security')
+						.send({ redactionEnforcement: { floor: 'off' } })
+						.expect(200);
+
+					expect(eventService.emit).toHaveBeenCalledWith(
+						'redaction-enforcement-updated',
+						expect.objectContaining({
+							user: expect.objectContaining({ id: expect.any(String) }),
+							before: { enforced: true, manual: false, production: true },
+							after: { enforced: false, manual: false, production: false },
+						}),
+					);
+				});
+
 				it('should not emit when save is idempotent', async () => {
 					enableRedactionFlag();
 					instanceRedactionEnforcementService.get.mockResolvedValue({
