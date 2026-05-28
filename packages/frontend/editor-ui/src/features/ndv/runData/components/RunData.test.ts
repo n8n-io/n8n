@@ -1426,11 +1426,12 @@ describe('RunData', () => {
 			metadata,
 		};
 
+		const testWorkflowId = workflowId ?? 'test-workflow';
 		const pinia = createTestingPinia({
 			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
+				[getNDVStoreId(createWorkflowDocumentId(testWorkflowId))]: {
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -1446,18 +1447,16 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
-		ndvStore = mockedStore(useNDVStore);
+		workflowsStore.setWorkflowId(testWorkflowId);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
-
-		workflowsStore.setWorkflowId(testWorkflowId);
 
 		workflowsStore.setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
