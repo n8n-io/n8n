@@ -154,6 +154,19 @@ export class JsTaskRunner extends TaskRunner {
 		);
 		this.mode = jsRunnerConfig.insecureMode ? 'insecure' : 'secure';
 
+		// Prevent sandbox escape via process.getBuiltinModule (available in Node.js v22+).
+		// User code inside the VM can reach the outer process through outer-realm objects
+		// (e.g. Buffer.global.process) and use getBuiltinModule to load child_process etc.
+		if ('getBuiltinModule' in process) {
+			Object.defineProperty(process, 'getBuiltinModule', {
+				value: () => {
+					throw new Error('Access to Node.js built-in modules is not allowed in the sandbox');
+				},
+				writable: false,
+				configurable: false,
+			});
+		}
+
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,

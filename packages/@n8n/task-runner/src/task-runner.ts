@@ -103,9 +103,9 @@ export abstract class TaskRunner extends EventEmitter {
 		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
 
-		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
-
-		const wsUrl = `ws://${taskBrokerHost}/runners/_ws?id=${this.id}`;
+		const { host: taskBrokerHost, protocol: taskBrokerProtocol } = new URL(opts.taskBrokerUri);
+		const wsScheme = taskBrokerProtocol === 'https:' ? 'wss' : 'ws';
+		const wsUrl = `${wsScheme}://${taskBrokerHost}/runners/_ws?id=${this.id}`;
 		this.ws = new WebSocket(wsUrl, {
 			headers: {
 				authorization: `Bearer ${opts.grantToken}`,
