@@ -97,3 +97,7 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export { ExecutionContextService } from './execution-context.service';
 export { establishExecutionContext } from './execution-context';
 export { isEngineRequest } from './requests-response';
+// Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
+// can reuse the same schema-driven cred synthesizer the wire-server URL
+// rewrite expects. See its `getDecrypted` catch path for the consumer.
+export { buildEvalMockCredentials } from './eval-mock-helpers';

@@ -8,6 +8,7 @@ import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { TOTAL_PROJECT_PERMISSIONS } from '@/features/project-roles/projectRoleScopes';
 
 const mockPush = vi.fn();
 
@@ -92,7 +93,7 @@ describe('RoleHoverPopover', () => {
 		it('should display permission count', () => {
 			const { getByText } = renderComponent();
 
-			expect(getByText('3/52 permissions')).toBeInTheDocument();
+			expect(getByText(`3/${TOTAL_PROJECT_PERMISSIONS} permissions`)).toBeInTheDocument();
 		});
 
 		it('should display role description when available', () => {
