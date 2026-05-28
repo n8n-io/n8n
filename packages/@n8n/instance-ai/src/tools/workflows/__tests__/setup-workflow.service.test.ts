@@ -22,6 +22,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			list: jest.fn(),
 			get: jest.fn(),
 			getAsWorkflowJSON: jest.fn(),
+			getWorkflowHead: jest.fn(),
 			getWorkflowSnapshot: jest.fn(),
 			createFromWorkflowJSON: jest.fn(),
 			updateFromWorkflowJSON: jest.fn(),

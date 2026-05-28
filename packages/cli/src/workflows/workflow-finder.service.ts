@@ -63,6 +63,52 @@ export class WorkflowFinderService {
 		return sharedWorkflow.workflow;
 	}
 
+	/**
+	 * Read-access check that only loads the workflow head (versionId, updatedAt).
+	 * Avoids materializing the heavyweight `nodes`/`connections`/`settings` JSON
+	 * columns — useful for cache-validity checks where callers don't need the
+	 * full workflow body.
+	 */
+	async findWorkflowHeadForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+	): Promise<{ versionId: string; updatedAt: Date } | null> {
+		let where: FindOptionsWhere<SharedWorkflow> = {};
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const [projectRoles, workflowRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('workflow', scopes),
+			]);
+
+			where = {
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, ...where },
+			relations: { workflow: true },
+			select: {
+				workflowId: true,
+				workflow: { id: true, versionId: true, updatedAt: true },
+			},
+		});
+
+		if (!sharedWorkflow?.workflow) return null;
+		return {
+			versionId: sharedWorkflow.workflow.versionId,
+			updatedAt: sharedWorkflow.workflow.updatedAt,
+		};
+	}
+
 	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 

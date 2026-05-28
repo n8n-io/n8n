@@ -83,31 +83,39 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (patches) {
 				// Patch mode: apply str_replace to existing code.
-				// One fetch per turn — its versionId validates the cache, and its
-				// json rebuilds the code when the cache is stale or absent. Patches
-				// built against drifted `lastCode` would otherwise overwrite edits
-				// the user made in the canvas between turns.
-				let baseCode = lastCode;
-				if (workflowId) {
+				// Cache-hit fast path: a cheap head check (versionId/updatedAt only,
+				// no nodes/connections payload) confirms the cached `lastCode` still
+				// matches what's on the server. On match we skip the full fetch
+				// entirely; on drift we invalidate and fall through to the snapshot
+				// fetch below, which returns body + versionId in one round-trip.
+				if (lastCode && lastCodeVersionId && workflowId) {
 					try {
-						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
-						if (!baseCode || snapshot.versionId !== lastCodeVersionId) {
-							baseCode = generateWorkflowCode(snapshot.json);
-							lastCode = baseCode;
-							lastCodeVersionId = snapshot.versionId;
+						const head = await context.workflowService.getWorkflowHead(workflowId);
+						if (head.versionId !== lastCodeVersionId) {
+							lastCode = null;
+							lastCodeVersionId = null;
 						}
 					} catch {
-						// Best-effort: fall back to cached code if we have it. The next
-						// save runs validation, so applying to stale code can't silently
-						// corrupt the workflow.
-						if (!baseCode) {
-							return {
-								success: false,
-								errors: [
-									'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
-								],
-							};
-						}
+						// Best-effort: a transient head-lookup failure shouldn't break
+						// patch mode. If the cache is stale, patches will either fail to
+						// apply cleanly or the next save will surface the conflict.
+					}
+				}
+
+				let baseCode = lastCode;
+				if (!baseCode && workflowId) {
+					try {
+						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+						baseCode = generateWorkflowCode(snapshot.json);
+						lastCode = baseCode;
+						lastCodeVersionId = snapshot.versionId;
+					} catch {
+						return {
+							success: false,
+							errors: [
+								'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
+							],
+						};
 					}
 				}
 				if (!baseCode) {
