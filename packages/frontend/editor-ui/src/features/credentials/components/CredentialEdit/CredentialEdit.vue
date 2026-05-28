@@ -521,15 +521,15 @@ onMounted(async () => {
 			}
 		}
 
-		try {
-			await externalHooks.run('credentialsEdit.credentialModalOpened', {
+		void externalHooks
+			.run('credentialsEdit.credentialModalOpened', {
 				credentialType: credentialTypeName.value,
 				isEditingCredential: props.mode === 'edit',
 				activeNode: ndvStore.value.activeNode,
+			})
+			.catch((error) => {
+				console.error('[CredentialEdit] External hooks execution failed', error);
 			});
-		} catch (error) {
-			console.error('[CredentialEdit] External hooks execution failed', error);
-		}
 
 		setTimeout(async () => {
 			if (credentialId.value) {
@@ -713,6 +713,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 			i18n.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
 		);
 		closeDialog();
+		throw error;
 
 		return;
 	}
