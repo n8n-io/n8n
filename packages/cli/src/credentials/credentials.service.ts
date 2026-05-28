@@ -9,7 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { ListQueryDb, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -88,6 +88,22 @@ type GetManyCredentialsOptions = {
 	filters?: {
 		dependency?: CredentialDependencyFilter;
 	};
+};
+
+type WorkflowCredentialResult = {
+	id: string;
+	name: string;
+	type: string;
+	createdAt: string;
+	updatedAt: string;
+	scopes: Scope[];
+	isManaged: boolean;
+	isGlobal: boolean;
+	isResolvable: boolean;
+	homeProject: SlimProject | null;
+	sharedWithProjects: SlimProject[];
+	currentUserHasAccess: boolean;
+	connectedByMe?: boolean;
 };
 
 @Service()
@@ -546,7 +562,7 @@ export class CredentialsService {
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: { workflowId: string } | { projectId: string },
-	) {
+	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
