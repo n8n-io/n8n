@@ -10,6 +10,7 @@ The existing video composition behavior remains unchanged:
 - Cover image is centered in the opening stage.
 - Uploaded screenshot is centered in the second stage.
 - Cover and screenshot move to the top-left and top-right during the body stage.
+- The body-stage top-left and top-right images may use a light blur treatment so they feel like secondary visual anchors instead of competing with subtitles and background motion.
 - The final video duration is determined by the final merged TTS audio duration.
 - Final output exposes previewable TTS audio and final MP4 binary data in n8n.
 
@@ -223,6 +224,7 @@ The workflow stays as one importable n8n workflow.
 
 12. `Run Composer Script`
     - Reuses the existing composer.
+    - Applies the body-stage corner image treatment described in the visual treatment section.
 
 13. `Verify Final Video`
     - Reuses existing binary preview behavior.
@@ -272,6 +274,28 @@ Rules:
 - For normal generated scripts, the script writer should target enough spoken text so the final TTS duration is longer than the visual intro.
 - Background video loops or trims as needed to cover the final duration.
 
+## Body-Stage Corner Image Treatment
+
+During the body stage, the cover image and uploaded screenshot are displayed as smaller corner elements. These corner elements are supporting context, not the main focus.
+
+Rules:
+
+- Apply the treatment only to the third/body stage corner images.
+- Do not blur the opening centered cover image.
+- Do not blur the second-stage centered screenshot image.
+- Use a light blur or softening effect, enough to visually separate the corner images from active narration but not so much that the image identity is lost.
+- Keep the current proportional scaling behavior; do not crop the uploaded images to force a fixed aspect ratio.
+- Preserve a subtle border or padding if needed for readability against moving backgrounds.
+- The treatment should be configurable in the composer job config, with MVP defaults enabled.
+
+Suggested MVP defaults:
+
+- `layout.cornerImageTreatment.enabled = true`
+- `layout.cornerImageTreatment.blur = 2`
+- `layout.cornerImageTreatment.opacity = 0.82`
+- `layout.cornerImageTreatment.borderColor = "white"`
+- `layout.cornerImageTreatment.borderWidth = 6`
+
 ## Timing Merge
 
 For each TTS segment:
@@ -311,6 +335,7 @@ Focused tests should cover:
 - FFmpeg concat argument generation.
 - Composer compatibility with merged `audio.mp3` and `timing.json`.
 - Final video duration follows the merged TTS duration.
+- Body-stage corner image treatment applies only to third-stage corner images.
 
 Smoke validation:
 
