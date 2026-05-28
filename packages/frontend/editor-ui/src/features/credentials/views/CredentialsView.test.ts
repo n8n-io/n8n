@@ -2,10 +2,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '../credentials.store';
+import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
@@ -14,6 +17,16 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
+
+const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn(() => true);
+
+vi.mock('../composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
+	}),
+}));
 
 vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
@@ -80,7 +93,20 @@ describe('CredentialsView', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockAuthorize.mockReset();
 	});
+
+	const enableDynamicCredentials = () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = {
+			...settingsStore.settings,
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+			activeModules: ['dynamic-credentials'],
+		} as unknown as typeof settingsStore.settings;
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+	};
 
 	it('should render credentials', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
@@ -390,6 +416,87 @@ describe('CredentialsView', () => {
 			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+	});
+
+	describe('private credentials connect flow', () => {
+		const buildPrivateUnconnectedCredential = (
+			overrides: Partial<ICredentialsResponse> = {},
+		): ICredentialsResponse =>
+			({
+				id: 'cred-1',
+				name: 'Private OAuth cred',
+				type: 'oAuth2Api',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				scopes: ['credential:update'],
+				isManaged: false,
+				isResolvable: true,
+				connectedByMe: false,
+				...overrides,
+			}) as ICredentialsResponse;
+
+		it('maps connectedByMe and isResolvable to the credential card', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [buildPrivateUnconnectedCredential()];
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('renders the Connected label for connected private credentials', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildPrivateUnconnectedCredential({ connectedByMe: true }),
+			];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			expect(getByTestId('credential-card-connected')).toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('refetches credentials when the Connect button completes successfully', async () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credential = buildPrivateUnconnectedCredential();
+			credentialsStore.allCredentials = [credential];
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+			await flushPromises();
+
+			expect(mockAuthorize).toHaveBeenCalledWith(credential);
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+		});
+
+		it('does not refetch credentials when the Connect flow is cancelled or fails', async () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credential = buildPrivateUnconnectedCredential();
+			credentialsStore.allCredentials = [credential];
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(false);
+
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+			await flushPromises();
+
+			expect(mockAuthorize).toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 		});
 	});
 });

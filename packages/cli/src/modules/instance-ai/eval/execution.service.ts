@@ -42,12 +42,12 @@ import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
 import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
-	assertUnpinCompatibility,
 	buildVendorLlmRouting,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
+	partitionAiRoots,
 	type VendorLlmRouting,
 } from './workflow-analysis';
 
@@ -89,11 +89,13 @@ export class EvalExecutionService {
 			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
 		}
 
-		const unpinNodes = options.unpinNodes ?? [];
-
-		// Compatibility guard runs before the kill-switch so actionable errors aren't shadowed.
+		// Partition AI roots into "intercept via wire server" vs "leave pinned".
+		// Default-on: every root with compatible sub-nodes gets intercepted;
+		// callers can opt specific roots out via `pinNodes` (e.g. for A/B
+		// comparison). Roots whose sub-nodes are incompatible auto-pin.
+		let partitioned: ReturnType<typeof partitionAiRoots>;
 		try {
-			assertUnpinCompatibility(workflowEntity, unpinNodes);
+			partitioned = partitionAiRoots(workflowEntity, options.pinNodes ?? []);
 		} catch (error) {
 			if (error instanceof UserError) {
 				return this.errorResult(executionId, error.message);
@@ -101,15 +103,23 @@ export class EvalExecutionService {
 			throw error;
 		}
 
+		for (const entry of partitioned.autoPinned) {
+			this.logger.debug(
+				`[EvalMock] Auto-pinning AI root "${entry.root}" — sub-node "${entry.subNode}" (${entry.subNodeType}) is ${entry.reason}`,
+			);
+		}
+
+		// Kill-switch: when interception is disabled, every root falls back to
+		// the pinned path regardless of partition or explicit `pinNodes`.
 		let interceptionEnabled = false;
+		let unpinNodes = partitioned.unpinNodes;
 		if (unpinNodes.length > 0) {
 			interceptionEnabled = await this.isInterceptionEnabled(user);
 			if (!interceptionEnabled) {
-				return this.errorResult(
-					executionId,
-					'`unpinNodes` is reserved — vendor SDK interception is currently disabled. ' +
-						'Submit the request without `unpinNodes` to use the existing pinned path.',
+				this.logger.warn(
+					'[EvalMock] Vendor SDK interception disabled by kill-switch — pinning all AI roots',
 				);
+				unpinNodes = [];
 			}
 		}
 

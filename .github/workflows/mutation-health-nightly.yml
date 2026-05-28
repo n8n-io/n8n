@@ -1,0 +1,118 @@
+name: 'Mutation Health (nightly)'
+
+on:
+  schedule:
+    # 03:30 UTC daily — outside CI rush, before EU morning.
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Workspace package to mutate'
+        type: choice
+        options:
+          - n8n-workflow
+        default: n8n-workflow
+
+permissions:
+  contents: read
+
+# Prevent overlapping scheduled + manual runs from racing on the same
+# ledger row. The writer MERGE is idempotent, but two concurrent runs
+# would emit duplicate event rows for the same picked file.
+concurrency:
+  group: mutation-health-${{ github.event.inputs.package || 'n8n-workflow' }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
+  PKG_DIR: packages/workflow # 1-to-1 mapping today; generalise when more packages are wired up
+  REPORTS_DIR: packages/workflow/reports/mutation
+  READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
+
+jobs:
+  run:
+    name: Mutate one file, ledger writeback
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # Shallow clone is fine — pick-next no longer reads git history.
+        # Staleness is purely age-based via last_checked_at.
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Fetch live ledger from BigQuery
+        run: |
+          mkdir -p "$REPORTS_DIR"
+          curl --fail -sS "$READER_URL?package=$PACKAGE_NAME" -o "$REPORTS_DIR/live-ledger.json"
+
+      - name: Pick next source file
+        id: pick
+        run: |
+          picked_json=$(node scripts/mutation-health/pick-next.mjs \
+            --package-dir "$PKG_DIR" \
+            --ledger-file "$REPORTS_DIR/live-ledger.json")
+          echo "$picked_json"
+          src_repo=$(echo "$picked_json" | jq -r '.picked.source_file_path // ""')
+          if [ -z "$src_repo" ]; then
+            echo "::notice::Picker returned no work (all-green / empty ledger). Exiting cleanly."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          src_rel="${src_repo#"$PKG_DIR"/}"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "source-rel=$src_rel" >> "$GITHUB_OUTPUT"
+
+      - name: Mutate the picked source file
+        if: steps.pick.outputs.skip != 'true'
+        # Exit code semantics from mutate.mjs:
+        #   0 — score >= threshold (green)
+        #   1 — score < threshold (red) — emit step still runs, this is normal
+        #   2 — usage error
+        #   3 — Stryker hard failure (no summary.json) — must fail the job
+        # We capture rc explicitly so we can distinguish "below threshold" from
+        # "Stryker crashed." continue-on-error: true would collapse them.
+        run: |
+          set +e
+          pnpm --filter "$PACKAGE_NAME" mutate "${{ steps.pick.outputs.source-rel }}"
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::Stryker hard-failed with exit code $rc."
+            exit "$rc"
+          fi
+          echo "Mutate exit $rc ($([ "$rc" = "0" ] && echo green || echo red))."
+
+      - name: Emit BQ payload
+        if: steps.pick.outputs.skip != 'true'
+        run: node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
+
+      - name: POST result payload
+        if: steps.pick.outputs.skip != 'true'
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: |
+          if [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run, POST skipped (payload uploaded as artefact)."
+            exit 0
+          fi
+          curl --fail -sS -X POST \
+            -H 'Content-Type: application/json' \
+            --data @"$REPORTS_DIR/bq-payload.json" \
+            "$MUTATION_HEALTH_WEBHOOK"
+
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mutation-health-${{ env.PACKAGE_NAME }}-${{ github.run_id }}
+          path: |
+            ${{ env.REPORTS_DIR }}/raw.json
+            ${{ env.REPORTS_DIR }}/raw.html
+            ${{ env.REPORTS_DIR }}/summary.json
+            ${{ env.REPORTS_DIR }}/bq-payload.json
+            ${{ env.REPORTS_DIR }}/live-ledger.json
+          retention-days: 14
+          if-no-files-found: warn

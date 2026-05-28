@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
-import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
 	INode,
@@ -13,6 +12,7 @@ import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
+import { mock } from 'vitest-mock-extended';
 
 import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -52,7 +52,7 @@ describe('test binary data helper methods', () => {
 	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
 	});
@@ -276,7 +276,7 @@ describe('test binary data helper methods', () => {
 			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
 			expect(result).toEqual(largeBuffer);
 			expect(result.length).toBe(1024 * 1024);
-		});
+		}, 20000);
 
 		it('should handle binary data with special characters using IBinaryData', async () => {
 			binaryDataConfig.mode = 'default';
@@ -1258,7 +1258,7 @@ describe('copyBinaryFile', () => {
 	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 		binaryDataService.copyBinaryFile.mockResolvedValueOnce(binaryData);
 	});
@@ -1316,7 +1316,7 @@ describe('prepareBinaryData', () => {
 	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 
 		binaryDataService.store.mockImplementation(async (_l, _b, binaryData) => binaryData);

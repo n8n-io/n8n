@@ -37,3 +37,12 @@ export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore>
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
+/**
+ * Context-supplied read-only signal for the workflow editor. When provided and
+ * its current value is `true`, the canvas is treated as read-only on top of
+ * the editor's own read-only signals (permissions, archive, branch, collab,
+ * builder streaming). Used by adapters (e.g. the AI artifact host) to lock
+ * editing while an external agent is mutating the workflow.
+ */
+export const EditorExternalReadOnlyKey: InjectionKey<Readonly<Ref<boolean>>> =
+	Symbol('EditorExternalReadOnly');
