@@ -70,6 +70,7 @@ export function useNodeHelpers() {
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -417,7 +418,6 @@ export function useNodeHelpers() {
 		node: INodeUi,
 		foundIssues: INodeIssueObjectProperty,
 	): void {
-		const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 		if (!isDynamicCredentialsEnabled.value) return;
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
