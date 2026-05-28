@@ -11,6 +11,7 @@ import {
 	filterAndManageProcessedItems,
 	salesforceApiRequest,
 	escapeSoqlString,
+	getResourceLocatorValue,
 	validateSoqlFieldName,
 	validateSoqlOperator,
 	validateSoqlObjectName,
@@ -1074,6 +1075,33 @@ describe('Salesforce -> GenericFunctions', () => {
 				const jwtOptions = (mockJwt.sign as jest.Mock).mock.calls[0][2];
 				expect(jwtOptions.algorithm).toBe('RS256');
 				expect(jwtOptions.header?.alg).toBe('RS256');
+			});
+		});
+
+		describe('getResourceLocatorValue', () => {
+			it('returns a raw string unchanged (legacy options-field shape)', () => {
+				expect(getResourceLocatorValue('0011700000QABCDE')).toBe('0011700000QABCDE');
+			});
+
+			it('extracts the value from a resourceLocator object', () => {
+				expect(
+					getResourceLocatorValue({ __rl: true, mode: 'list', value: '0011700000QABCDE' }),
+				).toBe('0011700000QABCDE');
+				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: '0011700000QABCDE' })).toBe(
+					'0011700000QABCDE',
+				);
+			});
+
+			it('returns undefined for missing or empty values', () => {
+				expect(getResourceLocatorValue(undefined)).toBeUndefined();
+				expect(getResourceLocatorValue(null)).toBeUndefined();
+				expect(getResourceLocatorValue('')).toBeUndefined();
+				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: '' })).toBeUndefined();
+				expect(getResourceLocatorValue({ __rl: true, mode: 'list', value: null })).toBeUndefined();
+			});
+
+			it('coerces non-string inner values to strings', () => {
+				expect(getResourceLocatorValue({ __rl: true, mode: 'id', value: 12345 })).toBe('12345');
 			});
 		});
 

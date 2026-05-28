@@ -164,6 +164,22 @@ export async function salesforceApiRequestAllItems(
 }
 
 /**
+ * Reads a value that may come from a legacy `options`-typed field (raw string)
+ * or a `resourceLocator` field ({ __rl, mode, value }). Returns the string id
+ * or `undefined` if the value is missing/empty.
+ */
+export function getResourceLocatorValue(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'string') return value;
+	if (typeof value === 'object' && 'value' in (value as Record<string, unknown>)) {
+		const inner = (value as { value: unknown }).value;
+		if (inner === undefined || inner === null || inner === '') return undefined;
+		return String(inner);
+	}
+	return undefined;
+}
+
+/**
  * Sorts the given options alphabetically
  *
  */

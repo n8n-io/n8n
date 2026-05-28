@@ -482,27 +482,146 @@ describe('Salesforce', () => {
 		});
 
 		describe('getAccounts', () => {
-			it('should return accounts with sorted options', async () => {
+			// Still used by OpportunityDescription's accountId fields. The Contact
+			// node migrated to listSearch (see `searchAccounts` below) — Opportunity
+			// remains a follow-up. The cap keeps `getAccounts` responsive in the
+			// meantime.
+			it('should cap the SOQL query and use a single request', async () => {
 				const mockAccounts = [
 					{ Id: 'acc1', Name: 'ACME Corp' },
 					{ Id: 'acc2', Name: 'ABC Inc' },
 				];
 
-				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockAccounts);
+				salesforceApiRequestSpy.mockResolvedValue({ records: mockAccounts });
 
 				const result = await node.methods.loadOptions.getAccounts.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
-					'records',
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
 					'/query',
 					{},
-					{ q: 'SELECT id, Name FROM Account' },
+					{ q: 'SELECT Id, Name FROM Account ORDER BY Name LIMIT 1000' },
 				);
 				expect(result).toEqual([
 					{ name: 'ACME Corp', value: 'acc1' },
 					{ name: 'ABC Inc', value: 'acc2' },
 				]);
+			});
+
+			it('should handle an empty Account table without error', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.loadOptions.getAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual([]);
+			});
+
+			it('should handle a response missing the records property', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({});
+
+				const result = await node.methods.loadOptions.getAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual([]);
+			});
+		});
+
+		describe('searchAccounts (listSearch)', () => {
+			it('should issue an unfiltered, capped SOQL query and map results to {name, value}', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [
+						{ Id: 'acc1', Name: 'ACME Corp' },
+						{ Id: 'acc2', Name: 'Acme Subsidiary' },
+					],
+				});
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(salesforceApiRequestAllItemsSpy).not.toHaveBeenCalled();
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				const [method, endpoint, body, qs] = salesforceApiRequestSpy.mock.calls[0];
+				expect(method).toBe('GET');
+				expect(endpoint).toBe('/query');
+				expect(body).toEqual({});
+				const query = (qs as { q: string }).q;
+				expect(query).toBe('SELECT Id, Name FROM Account ORDER BY Name LIMIT 50');
+				expect(result).toEqual({
+					results: [
+						{ name: 'ACME Corp', value: 'acc1' },
+						{ name: 'Acme Subsidiary', value: 'acc2' },
+					],
+					paginationToken: undefined,
+				});
+			});
+
+			it('should narrow results with a SOQL LIKE clause when a filter is provided', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [{ Id: 'acc1', Name: 'Acme Corp' }],
+				});
+
+				await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions, 'acme');
+
+				const [, , , qs] = salesforceApiRequestSpy.mock.calls[0];
+				expect((qs as { q: string }).q).toBe(
+					"SELECT Id, Name FROM Account WHERE Name LIKE '%acme%' ORDER BY Name LIMIT 50",
+				);
+			});
+
+			it('should escape single quotes in the filter to prevent breaking the SOQL string', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions, "O'Brien");
+
+				const [, , , qs] = salesforceApiRequestSpy.mock.calls[0];
+				expect((qs as { q: string }).q).toBe(
+					"SELECT Id, Name FROM Account WHERE Name LIKE '%O\\'Brien%' ORDER BY Name LIMIT 50",
+				);
+			});
+
+			it('should surface the Salesforce nextRecordsUrl as the paginationToken', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [{ Id: 'acc1', Name: 'Acme Corp' }],
+					nextRecordsUrl: '/services/data/v59.0/query/01g4o00000abcdef-50',
+				});
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result.paginationToken).toBe('/services/data/v59.0/query/01g4o00000abcdef-50');
+			});
+
+			it('should follow the cursor when called with a paginationToken', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({
+					records: [{ Id: 'acc51', Name: 'Page 2 Account' }],
+				});
+
+				const result = await node.methods.listSearch.searchAccounts.call(
+					mockLoadOptionsFunctions,
+					undefined,
+					'/services/data/v59.0/query/01g4o00000abcdef-50',
+				);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledTimes(1);
+				const [method, endpoint] = salesforceApiRequestSpy.mock.calls[0];
+				expect(method).toBe('GET');
+				// The cursor segment is appended onto `/query/`; no SOQL is re-sent.
+				expect(endpoint).toBe('/query/01g4o00000abcdef-50');
+				expect(result.results).toEqual([{ name: 'Page 2 Account', value: 'acc51' }]);
+			});
+
+			it('should return an empty result set for an org with no accounts', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({ records: [] });
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual({ results: [], paginationToken: undefined });
+			});
+
+			it('should tolerate a response without a records property', async () => {
+				salesforceApiRequestSpy.mockResolvedValue({});
+
+				const result = await node.methods.listSearch.searchAccounts.call(mockLoadOptionsFunctions);
+
+				expect(result).toEqual({ results: [], paginationToken: undefined });
 			});
 		});
 
@@ -2145,6 +2264,113 @@ describe('Salesforce', () => {
 				);
 			});
 
+			// NODE-5080: the Account field migrated from a `loadOptions`-typed select
+			// to a `resourceLocator`. New workflows save `{ __rl, mode, value }`
+			// objects; existing workflows keep saving raw strings. Execute must
+			// extract the underlying Id from either shape.
+			it('should accept Account as a resourceLocator object (list mode)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'RL-List Contact',
+						additionalFields: {
+							acconuntId: { __rl: true, mode: 'list', value: 'acc-from-list' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-list', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'RL-List Contact',
+						AccountId: 'acc-from-list',
+					}),
+				);
+			});
+
+			it('should accept Account as a resourceLocator object (id mode)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'RL-Id Contact',
+						additionalFields: {
+							acconuntId: { __rl: true, mode: 'id', value: '0011700000QABCDE' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-id', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'RL-Id Contact',
+						AccountId: '0011700000QABCDE',
+					}),
+				);
+			});
+
+			it('should omit AccountId when the resourceLocator value is empty', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'RL-Empty Contact',
+						additionalFields: {
+							acconuntId: { __rl: true, mode: 'list', value: '' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-rl-empty', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				const body = salesforceApiRequestSpy.mock.calls[0][2] as Record<string, unknown>;
+				expect(body).not.toHaveProperty('AccountId');
+				expect(body).toEqual(expect.objectContaining({ LastName: 'RL-Empty Contact' }));
+			});
+
+			it('should still accept Account as a legacy raw string id', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'create',
+						lastname: 'Legacy String Contact',
+						additionalFields: {
+							acconuntId: 'legacy-acc-id',
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'contact-legacy', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					'/sobjects/contact',
+					expect.objectContaining({
+						LastName: 'Legacy String Contact',
+						AccountId: 'legacy-acc-id',
+					}),
+				);
+			});
+
 			it('should handle contact upsert operation', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
 					(param: string, index?: number): any => {
@@ -2306,6 +2532,31 @@ describe('Salesforce', () => {
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
 					'You must add at least one update field',
+				);
+			});
+
+			// NODE-5080: parallel to the Create-path resourceLocator tests above.
+			it('should accept Account as a resourceLocator object on update', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'contact',
+						operation: 'update',
+						contactId: 'contact-rl-update',
+						updateFields: {
+							acconuntId: { __rl: true, mode: 'list', value: 'acc-updated' },
+						},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					'/sobjects/contact/contact-rl-update',
+					expect.objectContaining({ AccountId: 'acc-updated' }),
 				);
 			});
 		});
