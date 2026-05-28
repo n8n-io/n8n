@@ -77,10 +77,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 		createMemoryFactory = jest.fn().mockReturnValue(jest.fn());
 	});
 
-	it('builds a delegate tool that calls the foreground runner with host-controlled source', async () => {
+	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
-			source,
+			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
 			createToolExecutor,
@@ -136,7 +136,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	it('passes incrementing child counts from the SDK tool to the runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
-			source,
+			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
 			createToolExecutor,
@@ -190,7 +190,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		runner.runForeground.mockRejectedValue(new Error('child failed'));
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
-			source,
+			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
 			createToolExecutor,

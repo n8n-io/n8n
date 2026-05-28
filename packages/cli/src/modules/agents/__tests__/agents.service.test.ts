@@ -474,15 +474,21 @@ describe('AgentsService', () => {
 			expect(savedEntity.description).toBe(agent.description);
 		});
 
-		it('stores subAgents when the inbound config provides it', async () => {
+		it('stores subAgents when the inbound config provides saved agent refs', async () => {
 			const agent = makeAgent();
+			const subAgent = makeAgent({ id: 'agent-2', activeVersionId: 'published-version-2' });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) => {
+				if (id === agentId) return agent;
+				if (id === 'agent-2') return subAgent;
+				return null;
+			});
 
 			const configWithSubAgents = {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
-				subAgents: { enabled: true },
+				subAgents: { agents: [{ agentId: 'agent-2' }] },
 			} as AgentJsonConfig;
 			jest.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
@@ -492,7 +498,7 @@ describe('AgentsService', () => {
 			await service.updateConfig(agentId, projectId, configWithSubAgents);
 
 			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(savedEntity.schema?.subAgents).toEqual({ enabled: true });
+			expect(savedEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'agent-2' }] });
 		});
 
 		it('rejects unpublished subagent references', async () => {
@@ -508,7 +514,7 @@ describe('AgentsService', () => {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
-				subAgents: { enabled: true, agents: [{ agentId: 'agent-2' }] },
+				subAgents: { agents: [{ agentId: 'agent-2' }] },
 			} as AgentJsonConfig;
 			jest.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,

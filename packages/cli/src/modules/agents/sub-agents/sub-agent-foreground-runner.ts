@@ -40,16 +40,6 @@ export interface SubAgentForegroundResult {
 	result: GenerateResult;
 }
 
-export const PREDEFINED_SUB_AGENT_INSTRUCTIONS = `\
-You are a focused subagent working on a specific delegated task.
-
-You start with fresh context. Use only the task, context, and expected output provided to you.
-
-Complete the task thoroughly but concisely. Return:
-- The answer or result
-- Key findings or decisions
-- Any uncertainty, missing context, or issues encountered`;
-
 @Service()
 export class SubAgentForegroundRunner {
 	constructor(private readonly sourceResolver: SubAgentSourceResolver) {}

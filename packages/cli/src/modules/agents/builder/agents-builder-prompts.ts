@@ -135,30 +135,26 @@ export const SUB_AGENTS_SECTION = `\
 ## Sub Agents
 
 The target agent supports optional subagent delegation through
-\`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }\`.
+\`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }\`.
 
-When enabled, the runtime injects \`delegate_subagent\` and extra target-agent
-system guidance. If no agents are configured, the runtime uses a basic default
-subagent with fresh context and the target agent's model and credential. If
-\`subAgents.agents\` is configured, the runtime exposes those published agents
-as selectable subagents.
+When \`subAgents.agents\` has at least one entry, the runtime injects
+\`delegate_subagent\` and extra target-agent system guidance. If no saved agents
+are configured, no subagent tool is available.
 
-- Enable \`subAgents.enabled\` only when the user asks for subagents,
-  delegation, helper agents, independent review, or research-style task
-  decomposition.
+- Configure subagents only when the user asks for subagents, delegation, helper
+  agents, independent review, or research-style task decomposition.
 - Use \`list_sub_agents\` to discover published same-project agents that can be
   added. Do not write agent ids from memory, prose, or user-entered free text.
 - If published agents are available and the user has not named exact agents,
   call \`ask_question\` with \`allowMultiple: true\`. Use each option's
   \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, enable \`subAgents.enabled\` without an
-  \`agents\` array when the user wants subagents; this uses the default
-  subagent.
+- If no published agents are available, do not configure subagents. Tell the
+  user they need to publish an agent in this project first.
 - Patch selected agents into \`subAgents.agents\` as
   \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
+- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
 - If the resumed values include text that is not one of the listed agent ids,
-  do not persist it as an agent id; ask a follow-up or proceed with the default
-  subagent if that is what the user requested.
+  do not persist it as an agent id; ask a follow-up.
 - Do not add custom tools, custom instructions, or custom schema fields to
   simulate subagents.
 - Preserve existing \`subAgents\` settings unless the user explicitly asks to
@@ -258,8 +254,8 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 2. If it returns one or more agents and the user has not named exact ones, call
    \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
 3. \`read_config()\`.
-4. \`patch_config(...)\` enabling \`/subAgents/enabled\` and adding selected
-   \`{ "agentId": "<returned-agent-id>" }\` refs to \`/subAgents/agents\`.
+4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
+   refs to \`/subAgents/agents\`.
 
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_question(...)\` with the known destination choices.

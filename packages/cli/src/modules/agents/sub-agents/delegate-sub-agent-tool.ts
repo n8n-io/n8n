@@ -14,15 +14,14 @@ import type {
 
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
-	source?: SubAgentSource;
-	sourcesById?: Record<string, SubAgentSource>;
+	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	parentTaskPath?: SubAgentTaskPath;
 	policy?: SubAgentRunPolicy;
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
-	const { runner, source, sourcesById, availableSubAgents, parentTaskPath, policy, ...runContext } =
+	const { runner, sourcesById, availableSubAgents, parentTaskPath, policy, ...runContext } =
 		options;
 
 	return createDelegateSubAgentTool({
@@ -31,7 +30,6 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		...(policy !== undefined ? { policy } : {}),
 		runSubAgent: async (request) => {
 			const selectedSource = selectSubAgentSource({
-				source,
 				sourcesById,
 				subAgentId: request.subAgentId,
 			});
@@ -75,15 +73,13 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 }
 
 function selectSubAgentSource(options: {
-	source?: SubAgentSource;
-	sourcesById?: Record<string, SubAgentSource>;
+	sourcesById: Record<string, SubAgentSource>;
 	subAgentId?: string;
 }): SubAgentSource | undefined {
-	const { source, sourcesById, subAgentId } = options;
+	const { sourcesById, subAgentId } = options;
 	if (subAgentId) return sourcesById?.[subAgentId];
-	if (source) return source;
 
-	const sources = Object.values(sourcesById ?? {});
+	const sources = Object.values(sourcesById);
 	return sources.length === 1 ? sources[0] : undefined;
 }
 

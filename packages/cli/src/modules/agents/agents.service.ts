@@ -108,10 +108,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
-import {
-	PREDEFINED_SUB_AGENT_INSTRUCTIONS,
-	SubAgentForegroundRunner,
-} from './sub-agents/sub-agent-foreground-runner';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -128,9 +125,8 @@ interface InjectRuntimeDependenciesParams {
 }
 
 interface SubAgentDelegationConfig {
-	source?: SubAgentSource;
-	sourcesById?: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
+	sourcesById: Record<string, SubAgentSource>;
+	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
 }
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
@@ -1740,6 +1736,7 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
+		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -2192,10 +2189,7 @@ export class AgentsService {
 		projectId: string,
 	): Promise<SubAgentDelegationConfig | undefined> {
 		const configuredAgents = config.subAgents?.agents ?? [];
-		if (configuredAgents.length === 0) {
-			const source = createPredefinedSubAgentSource(config);
-			return source ? { source } : undefined;
-		}
+		if (configuredAgents.length === 0) return undefined;
 
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
@@ -2225,16 +2219,9 @@ function getProviderPrefix(modelId: string): string {
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }
 
-function createPredefinedSubAgentSource(config: AgentJsonConfig): SubAgentSource | undefined {
-	if (!config.model || !config.credential?.trim()) return undefined;
-
-	return {
-		type: 'inline',
-		config: {
-			name: `${config.name} Sub Agent`,
-			model: config.model,
-			credential: config.credential,
-			instructions: PREDEFINED_SUB_AGENT_INSTRUCTIONS,
-		},
-	};
+function normalizeSubAgentsConfig(
+	subAgents: AgentJsonConfig['subAgents'],
+): AgentJsonConfig['subAgents'] {
+	if (!subAgents) return undefined;
+	return { agents: subAgents.agents ?? [] };
 }
