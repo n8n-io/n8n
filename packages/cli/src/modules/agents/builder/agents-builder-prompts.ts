@@ -56,17 +56,34 @@ Never write empty, placeholder, or guessed \`instructions\`. If you do not have
 enough detail to write meaningful instructions, ask the user first.`;
 }
 
-export const BUILDER_SKILL_ROUTING_SECTION = `\
-## Builder Runtime Skills
+/**
+ * Build the routing section that tells the builder LLM which runtime skills
+ * exist and what they cover. Module-gated skills (like `agent-builder-mcp`)
+ * are only listed when their owning module is active so the LLM doesn't try
+ * to load a skill the runtime won't surface.
+ */
+export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<string>): string {
+	const lines: string[] = [
+		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
+			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
+			'  be a chat integration/trigger or a node/workflow tool.',
+		'- `agent-builder-target-skills`: creating skills for the target agent.',
+	];
+
+	if (enabledModules?.includes('mcp')) {
+		lines.push(
+			'- `agent-builder-mcp`: adding, removing, or updating MCP (Model Context Protocol) servers.',
+		);
+	}
+
+	return `\
+## Builder runtime skills
 
 Additional specialized builder guidance is available through runtime skills.
 Before these specialized tasks, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
-- \`agent-builder-integrations\`: schedule and chat integrations. Use it before
-  deciding whether Slack, Linear, Telegram, or another external product should
-  be a chat integration/trigger or a node/workflow tool.
-- \`agent-builder-target-skills\`: creating skills for the target agent.
+${lines.join('\n')}
 
 Requests for "web search", "Brave web search", or "SearXNG web search" are
 agent config changes, not node-tool tasks. Follow the Config schema reference:
@@ -76,6 +93,7 @@ to add a Brave/SearXNG node tool or node integration.
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
+}
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools
@@ -211,6 +229,7 @@ export interface BuilderPromptContext {
 	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
+	enabledModules: string[];
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
@@ -221,6 +240,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		toolList,
 		agentPreviewPath,
 		modelRecommendationsSection,
+		enabledModules,
 	} = ctx;
 
 	const sections = [
@@ -228,11 +248,11 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
-		getConfigMutationPrompt(),
+		getConfigMutationPrompt(enabledModules),
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
-		BUILDER_SKILL_ROUTING_SECTION,
+		getBuilderSkillRoutingSection(enabledModules),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,

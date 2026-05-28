@@ -33,6 +33,8 @@ import {
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { OauthService } from '@/oauth/oauth.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -176,6 +178,7 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
 	) {}
 
@@ -184,9 +187,10 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		enabledModules?: ReadonlyArray<string>,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
+			json: this.getJsonTools(agentId, projectId, credentialProvider, user, enabledModules),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
@@ -196,6 +200,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		enabledModules?: ReadonlyArray<string>,
 	): BuiltTool[] {
 		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
 			.description(
@@ -421,7 +426,7 @@ export class AgentsBuilderToolsService {
 				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
 		};
 
-		return [
+		const tools: BuiltTool[] = [
 			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
@@ -434,6 +439,18 @@ export class AgentsBuilderToolsService {
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
 		];
+
+		if (enabledModules?.includes('mcp')) {
+			tools.push(
+				buildVerifyMcpServerTool({
+					credentialProvider,
+					oauthService: this.oauthService,
+					projectId,
+				}),
+			);
+		}
+
+		return tools;
 	}
 
 	private getSharedTools(
