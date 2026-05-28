@@ -1558,20 +1558,18 @@ export class InstanceAiService {
 			message: { id: userMessageId, text: message },
 		});
 
-		this.trackInFlightExecution(
-			this.executeRun(
-				user,
-				threadId,
-				runId,
-				message,
-				abortController,
-				attachments,
-				messageGroupId,
-				timeZone,
-				false,
-				undefined,
-				undefined,
-			),
+		this.startExecuteRun(
+			user,
+			threadId,
+			runId,
+			message,
+			abortController,
+			attachments,
+			messageGroupId,
+			timeZone,
+			false,
+			undefined,
+			undefined,
 		);
 
 		return runId;
@@ -2115,12 +2113,32 @@ export class InstanceAiService {
 	 * (finally block + SDK `cleanupRun`) to finish before the DB closes.
 	 * The promise removes itself from the set on settle so the set doesn't
 	 * grow unbounded across long-running threads.
+	 *
+	 * Prefer `startExecuteRun` / `startProcessResumedStream` over calling this
+	 * directly — they make tracking unmissable by binding the spawn and the
+	 * tracking together in one method.
 	 */
 	private trackInFlightExecution(promise: Promise<unknown>): void {
 		const tracked = promise.finally(() => {
 			this.inFlightExecutions.delete(tracked);
 		});
 		this.inFlightExecutions.add(tracked);
+	}
+
+	/**
+	 * Single spawn point for the executor — guarantees shutdown can drain the
+	 * run before closing the DB. New call sites should always go through this
+	 * wrapper rather than invoking `executeRun` directly.
+	 */
+	private startExecuteRun(...args: Parameters<InstanceAiService['executeRun']>): void {
+		this.trackInFlightExecution(this.executeRun(...args));
+	}
+
+	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
+	private startProcessResumedStream(
+		...args: Parameters<InstanceAiService['processResumedStream']>
+	): void {
+		this.trackInFlightExecution(this.processResumedStream(...args));
 	}
 
 	/**
@@ -3247,20 +3265,18 @@ export class InstanceAiService {
 				? 'replan'
 				: 'background_task_completed';
 
-		this.trackInFlightExecution(
-			this.executeRun(
-				user,
-				threadId,
-				runId,
-				message,
-				abortController,
-				undefined,
-				messageGroupId,
-				timeZone,
-				isReplanFollowUp,
-				checkpoint,
-				resumeReason,
-			),
+		this.startExecuteRun(
+			user,
+			threadId,
+			runId,
+			message,
+			abortController,
+			undefined,
+			messageGroupId,
+			timeZone,
+			isReplanFollowUp,
+			checkpoint,
+			resumeReason,
 		);
 
 		return runId;
@@ -3409,6 +3425,11 @@ export class InstanceAiService {
 		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
+	/**
+	 * Run body for a fresh orchestrator turn. Never call directly — go through
+	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
+	 * and shutdown can drain it before the DB closes.
+	 */
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -4595,24 +4616,28 @@ export class InstanceAiService {
 			},
 		});
 
-		this.trackInFlightExecution(
-			this.processResumedStream(agent, resumeData, {
-				runId,
-				agentRunId,
-				threadId,
-				user: activeUser,
-				toolCallId,
-				signal: abortController.signal,
-				abortController,
-				snapshotStorage: this.dbSnapshotStorage,
-				tracing: resumeTracing ?? tracing,
-				modelId,
-				checkpoint,
-			}),
-		);
+		this.startProcessResumedStream(agent, resumeData, {
+			runId,
+			agentRunId,
+			threadId,
+			user: activeUser,
+			toolCallId,
+			signal: abortController.signal,
+			abortController,
+			snapshotStorage: this.dbSnapshotStorage,
+			tracing: resumeTracing ?? tracing,
+			modelId,
+			checkpoint,
+		});
 		return true;
 	}
 
+	/**
+	 * Run body for a resumed suspended orchestrator turn. Never call directly
+	 * — go through `startProcessResumedStream` so the promise is registered
+	 * with `inFlightExecutions` and shutdown can drain it before the DB
+	 * closes.
+	 */
 	private async processResumedStream(
 		agent: unknown,
 		resumeData: Record<string, unknown>,
