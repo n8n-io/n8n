@@ -191,7 +191,7 @@ export function ffmpegHasFilter(name) {
 }
 
 function scaleAndPad(input, width, height, label) {
-	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
+	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
 
 function backgroundSegment(input, start, duration, width, height, label) {

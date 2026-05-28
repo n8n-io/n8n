@@ -197,6 +197,7 @@ test('buildFfmpegArgs pads short audio instead of stopping at audio length', () 
 	assert.match(filter, /\[3:a\]apad,atrim=0:7,asetpts=PTS-STARTPTS\[aout\]/);
 	assert.match(filter, /concat=n=3:v=1:a=0/);
 	assert.match(filter, /color=c=black:s=1920x1080:d=0\.01\[body\]/);
+	assert.match(filter, /\[1:v\]scale=.*reset_sar=1/);
 });
 
 test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing', () => {
