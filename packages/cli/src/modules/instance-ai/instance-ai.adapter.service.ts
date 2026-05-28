@@ -465,6 +465,14 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
+			async getWorkflowHead(workflowId: string) {
+				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+			},
+
 			async getWorkflowSnapshot(workflowId: string) {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
