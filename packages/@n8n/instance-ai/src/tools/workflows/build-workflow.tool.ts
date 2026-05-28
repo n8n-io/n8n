@@ -50,7 +50,11 @@ export const buildWorkflowInputSchema = z.object({
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// Keeps the last code submitted (or patched) so patches work even before save,
 	// and always match the LLM's own code — not a roundtripped version.
+	// lastCodeVersionId pins the cache to the workflow version it was derived
+	// from; a mismatch on the next turn (user edited the workflow in the canvas)
+	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
+	let lastCodeVersionId: string | null = null;
 
 	return new Tool('build-workflow')
 		.description(
@@ -79,20 +83,31 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (patches) {
 				// Patch mode: apply str_replace to existing code.
-				// Source priority: lastCode (same session) → fetch from backend (cross-session)
+				// One fetch per turn — its versionId validates the cache, and its
+				// json rebuilds the code when the cache is stale or absent. Patches
+				// built against drifted `lastCode` would otherwise overwrite edits
+				// the user made in the canvas between turns.
 				let baseCode = lastCode;
-				if (!baseCode && workflowId) {
+				if (workflowId) {
 					try {
-						const json = await context.workflowService.getAsWorkflowJSON(workflowId);
-						baseCode = generateWorkflowCode(json);
-						lastCode = baseCode; // Sync so future patches match this code
+						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+						if (!baseCode || snapshot.versionId !== lastCodeVersionId) {
+							baseCode = generateWorkflowCode(snapshot.json);
+							lastCode = baseCode;
+							lastCodeVersionId = snapshot.versionId;
+						}
 					} catch {
-						return {
-							success: false,
-							errors: [
-								'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
-							],
-						};
+						// Best-effort: fall back to cached code if we have it. The next
+						// save runs validation, so applying to stale code can't silently
+						// corrupt the workflow.
+						if (!baseCode) {
+							return {
+								success: false,
+								errors: [
+									'Patch mode: no previous code and could not fetch workflow. Send full code instead.',
+								],
+							};
+						}
 					}
 				}
 				if (!baseCode) {
@@ -184,6 +199,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						projectId ? { projectId } : undefined,
 					);
+					lastCodeVersionId = updated.versionId;
 					return {
 						success: true,
 						workflowId: updated.id,
@@ -198,6 +214,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						markAsAiTemporary: true,
 					});
 					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+					lastCodeVersionId = created.versionId;
 					return {
 						success: true,
 						workflowId: created.id,

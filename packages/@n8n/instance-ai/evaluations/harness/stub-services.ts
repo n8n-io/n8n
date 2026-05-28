@@ -83,6 +83,14 @@ export async function createStubServices(
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
+		async getWorkflowSnapshot(workflowId: string) {
+			const latest = capturedWorkflows[capturedWorkflows.length - 1];
+			return {
+				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				versionId: 'eval-version',
+				updatedAt: 0,
+			};
+		},
 		async createFromWorkflowJSON(json: WorkflowJSON) {
 			capturedWorkflows.push(json);
 			return {
