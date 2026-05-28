@@ -106,7 +106,7 @@
     "@chat-adapter/state-memory": "catalog:",
     "@chat-adapter/telegram": "catalog:",
     "@google-cloud/secret-manager": "5.6.0",
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/agents": "workspace:*",
     "@n8n/ai-node-sdk": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",

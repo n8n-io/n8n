@@ -41,13 +41,15 @@
 		"vue-i18n": "catalog:frontend"
 	},
 	"devDependencies": {
-		"@modelcontextprotocol/sdk": "1.26.0",
+		"@modelcontextprotocol/sdk": "catalog:",
 		"@n8n/eslint-config": "workspace:*",
 		"@n8n/typescript-config": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
+		"@types/semver": "^7.7.0",
 		"@vitejs/plugin-vue": "catalog:frontend",
 		"@vue/test-utils": "catalog:frontend",
 		"rimraf": "catalog:",
+		"semver": "^7.5.4",
 		"typescript": "catalog:",
 		"unplugin-icons": "catalog:frontend",
 		"vite": "catalog:",
@@ -57,6 +59,6 @@
 		"vue-tsc": "catalog:frontend"
 	},
 	"peerDependencies": {
-		"@modelcontextprotocol/sdk": "1.26.0"
+		"@modelcontextprotocol/sdk": "catalog:"
 	}
 }

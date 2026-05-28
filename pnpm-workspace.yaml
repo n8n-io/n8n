@@ -43,6 +43,7 @@ catalog:
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
+  '@modelcontextprotocol/sdk': 1.26.0
   '@n8n/typeorm': 0.3.20-17
   '@n8n_io/ai-assistant-sdk': 1.21.0
   '@openrouter/ai-sdk-provider': ^2.8.0
