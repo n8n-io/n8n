@@ -56,6 +56,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -139,6 +140,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
+	createWorkflowDocumentId,
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
@@ -2311,7 +2313,10 @@ export function useCanvasOperations() {
 		});
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (executionStateStore.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}
