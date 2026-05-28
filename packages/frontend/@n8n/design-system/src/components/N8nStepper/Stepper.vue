@@ -38,7 +38,7 @@ defineSlots<{
 			</aside>
 
 			<div :class="[$style.content, showIndex ? null : $style.contentNoIndex]">
-				<div role="header" :class="$style.header">
+				<div :class="$style.header">
 					<N8nText step="sm" bold>{{ step.title }}</N8nText>
 					<N8nText v-if="step.description" step="sm" color="text-light">{{
 						step.description
