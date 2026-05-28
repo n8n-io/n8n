@@ -36,7 +36,8 @@
 	},
 	"dependencies": {
 		"@n8n/design-system": "workspace:*",
-		"vue": "catalog:frontend"
+		"vue": "catalog:frontend",
+		"vue-i18n": "catalog:frontend"
 	},
 	"devDependencies": {
 		"@modelcontextprotocol/ext-apps": "catalog:",

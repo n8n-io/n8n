@@ -8,18 +8,25 @@ import {
 } from '@modelcontextprotocol/ext-apps';
 import { N8nButton, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import { computed, onMounted, ref, shallowRef, watchEffect } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { setLocaleFromHost, type MessageSchema } from '../../i18n';
 
 type WorkflowResult = {
 	url?: unknown;
 	name?: unknown;
 };
 
+const { t } = useI18n<{ message: MessageSchema }>({ useScope: 'global' });
+
 const hostContext = ref<McpUiHostContext>();
 const workflowUrl = ref<string>();
 const appRef = shallowRef<App>();
 
 const ariaLabel = computed(() =>
-	workflowUrl.value ? 'Workflow ready to open' : 'Creating workflow',
+	workflowUrl.value
+		? t('workflowPreview.ariaLabel.ready')
+		: t('workflowPreview.ariaLabel.creating'),
 );
 
 watchEffect(() => {
@@ -36,6 +43,8 @@ watchEffect(() => {
 	if (context?.styles?.css?.fonts) {
 		applyHostFonts(context.styles.css.fonts);
 	}
+
+	setLocaleFromHost(context?.locale);
 });
 
 function readWorkflowResult(structured: unknown): WorkflowResult | undefined {
@@ -89,7 +98,7 @@ onMounted(async () => {
 			size="medium"
 			@click="handleOpenWorkflow"
 		>
-			Open in n8n
+			{{ t('workflowPreview.openButton') }}
 			<template #icon>
 				<N8nIcon icon="arrow-up-right" />
 			</template>
