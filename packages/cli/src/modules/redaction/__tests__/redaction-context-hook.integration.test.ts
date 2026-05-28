@@ -1,11 +1,11 @@
 import { Container } from '@n8n/di';
-import { Cipher } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
 import {
 	ExecutionContextHookRegistry,
 	ExecutionContextService,
 	establishExecutionContext,
+	type Cipher,
 } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
 import {
 	createRunExecutionData,
 	type INode,
@@ -14,7 +14,7 @@ import {
 	type WorkflowSettings,
 } from 'n8n-workflow';
 
-import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 import { RedactionContextHook } from '../redaction-context-hook';
 
 /**

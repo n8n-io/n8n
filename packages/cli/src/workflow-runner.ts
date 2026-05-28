@@ -220,9 +220,7 @@ export class WorkflowRunner {
 				await establishExecutionContext(
 					contextWorkflow,
 					data.executionData,
-					{
-						encryptedRunnerIdentity: data.encryptedRunnerIdentity,
-					},
+					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
 					data.executionMode,
 				);
 			} catch (error) {

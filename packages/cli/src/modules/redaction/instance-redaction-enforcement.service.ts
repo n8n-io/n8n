@@ -24,18 +24,21 @@ export class InstanceRedactionEnforcementService {
 
 	async get(): Promise<RedactionEnforcementSettings> {
 		if (!isRedactionEnforcementEnabled()) return REDACTION_ENFORCEMENT_DEFAULTS;
+		return await this.load();
+	}
 
+	async buildContext(): Promise<{ enforcement: RedactionEnforcementSettings } | undefined> {
+		if (!isRedactionEnforcementEnabled()) return undefined;
+		return { enforcement: await this.load() };
+	}
+
+	private async load(): Promise<RedactionEnforcementSettings> {
 		const raw = await this.cacheService.get<string>(KEY, {
 			refreshFn: async () => await this.loadFromDatabase(),
 		});
 
 		if (raw === undefined) return REDACTION_ENFORCEMENT_DEFAULTS;
 		return this.parseStoredValue(raw, 'cache') ?? REDACTION_ENFORCEMENT_DEFAULTS;
-	}
-
-	async buildContext(): Promise<{ enforcement: RedactionEnforcementSettings } | undefined> {
-		if (!isRedactionEnforcementEnabled()) return undefined;
-		return { enforcement: await this.get() };
 	}
 
 	async set(next: RedactionEnforcementSettings): Promise<void> {
