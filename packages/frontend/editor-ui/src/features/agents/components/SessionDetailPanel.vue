@@ -40,7 +40,7 @@ const fullExecutionHref = computed((): string => {
 	return router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
 		params: {
-			name: props.item.workflowId,
+			workflowId: props.item.workflowId,
 			executionId: props.item.workflowExecutionId,
 		},
 	}).href;
