@@ -127,7 +127,7 @@ const currentNodePaneType = computed((): MainPanelType => {
 });
 
 const mainPanelDimensions = computed(() => {
-	return ndvStore.mainPanelDimensions[currentNodePaneType.value];
+	return ndvStore.value.mainPanelDimensions[currentNodePaneType.value];
 });
 
 const calculatedPositions = computed(
@@ -234,7 +234,7 @@ function setMainPanelWidth(relativeWidth?: number): void {
 	const mainPanelRelativeWidth =
 		relativeWidth || pxToRelativeWidth(initialMainPanelWidth[currentNodePaneType.value]);
 
-	ndvStore.setMainPanelDimensions({
+	ndvStore.value.setMainPanelDimensions({
 		panelType: currentNodePaneType.value,
 		dimensions: {
 			relativeWidth: mainPanelRelativeWidth,
@@ -253,7 +253,7 @@ function setPositions(relativeLeft: number): void {
 	const isInputless = currentNodePaneType.value === 'inputless';
 
 	if (isMinLeft) {
-		ndvStore.setMainPanelDimensions({
+		ndvStore.value.setMainPanelDimensions({
 			panelType: currentNodePaneType.value,
 			dimensions: {
 				relativeLeft: minimumLeftPosition.value,
@@ -264,7 +264,7 @@ function setPositions(relativeLeft: number): void {
 	}
 
 	if (isMaxRight) {
-		ndvStore.setMainPanelDimensions({
+		ndvStore.value.setMainPanelDimensions({
 			panelType: currentNodePaneType.value,
 			dimensions: {
 				relativeLeft: 1 - mainPanelDimensions.value.relativeWidth - maximumRightPosition.value,
@@ -274,7 +274,7 @@ function setPositions(relativeLeft: number): void {
 		return;
 	}
 
-	ndvStore.setMainPanelDimensions({
+	ndvStore.value.setMainPanelDimensions({
 		panelType: currentNodePaneType.value,
 		dimensions: {
 			relativeLeft: isInputless ? minimumLeftPosition.value : mainPanelRelativeLeft,

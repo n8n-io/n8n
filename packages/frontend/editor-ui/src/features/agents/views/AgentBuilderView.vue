@@ -203,6 +203,17 @@ async function fetchAgent(
 	agentName.value = data.name;
 }
 
+async function refreshAgentAfterIntegrationChange(
+	targetProjectId: string = projectId.value,
+	targetAgentId: string = agentId.value,
+) {
+	if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
+	await Promise.all([
+		fetchAgent(targetProjectId, targetAgentId),
+		fetchConfig(targetProjectId, targetAgentId),
+	]);
+}
+
 function sessionIdForPreview(): string {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
 }
@@ -632,12 +643,14 @@ function onOpenAddToolModal() {
 }
 
 function onOpenAddTriggerModal(initialTriggerType?: string) {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	uiStore.openModalWithData({
 		name: AGENT_ADD_TRIGGER_MODAL_KEY,
 		data: {
 			initialTriggerType,
-			projectId: projectId.value,
-			agentId: agentId.value,
+			projectId: targetProjectId,
+			agentId: targetAgentId,
 			agentName: agentName.value,
 			isPublished: Boolean(agent.value?.activeVersionId),
 			connectedTriggers: connectedTriggers.value,
@@ -645,6 +658,7 @@ function onOpenAddTriggerModal(initialTriggerType?: string) {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
 			onAgentPublished: (updated: AgentResource) => onPublished(updated),
+			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }
@@ -919,6 +933,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
 					@agent-published="onPublished"
+					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 			</N8nResizeWrapper>
 
