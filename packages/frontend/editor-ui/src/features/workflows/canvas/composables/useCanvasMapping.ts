@@ -23,6 +23,12 @@ import type {
 	ExecutionOutputMap,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import type { useCanvasNodeGroupView } from './useCanvasNodeGroupView';
+import {
+	buildCollapsedGroupByNodeId,
+	mapGroupsToVueFlowNodes,
+	reanchorCollapsedConnections,
+} from './useCanvasMapping.groups';
 import {
 	checkOverlap,
 	mapLegacyConnectionsToCanvasConnections,
@@ -47,6 +53,11 @@ import {
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
+import {
+	CONFIGURABLE_NODE_SIZE,
+	CONFIGURATION_NODE_SIZE,
+	DEFAULT_NODE_SIZE,
+} from '@/app/utils/nodeViewUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
@@ -62,11 +73,17 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 	renderData,
+	groupView,
+	nodeGroupIdToAutofocusTitle,
+	readOnly,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
+	groupView?: ReturnType<typeof useCanvasNodeGroupView>;
+	nodeGroupIdToAutofocusTitle?: Ref<string | null>;
+	readOnly?: Ref<boolean> | boolean;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -562,74 +579,158 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
+	const isReadOnly = computed(() => {
+		if (readOnly === undefined) return false;
+		return typeof readOnly === 'boolean' ? readOnly : readOnly.value;
+	});
+
+	const collapsedMemberIds = computed(() => {
+		const ids = new Set<string>();
+		if (!groupView) return ids;
+		for (const group of workflowDocumentStore.value.allGroups) {
+			if (!groupView.isGroupCollapsed(group.id)) continue;
+			for (const id of group.nodeIds) ids.add(id);
+		}
+		return ids;
+	});
+
+	// Per-node dimensions used to size the group member rect. Each render
+	// type maps to its design-system default; node-types whose footprint
+	// is stored on the node (e.g. sticky notes) are read downstream.
+	const memberDimensionsByNodeId = computed(() => {
+		const byId: Record<string, { width: number; height: number }> = {};
+		for (const node of nodes.value) {
+			const render = renderTypeByNodeId.value[node.id];
+			if (render?.type === CanvasNodeRenderType.Default) {
+				if (render.options.configuration) {
+					byId[node.id] = { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
+				} else if (render.options.configurable) {
+					byId[node.id] = { width: CONFIGURABLE_NODE_SIZE[0], height: CONFIGURABLE_NODE_SIZE[1] };
+				} else {
+					byId[node.id] = { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
+				}
+			}
+		}
+		return byId;
+	});
+
+	const groupVueFlowNodes = computed(() => {
+		if (!groupView) return [];
+		const allGroups = workflowDocumentStore.value.allGroups;
+		if (allGroups.length === 0) return [];
+		const runIterationsById: Record<string, number> = {};
+		for (const node of nodes.value) {
+			runIterationsById[node.id] =
+				filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0;
+		}
+		return mapGroupsToVueFlowNodes({
+			allGroups,
+			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+			getNodeDimensions: (id) => memberDimensionsByNodeId.value[id],
+			isGroupCollapsed: (id) => groupView.isGroupCollapsed(id),
+			autofocusGroupId: nodeGroupIdToAutofocusTitle?.value ?? null,
+			readOnly: isReadOnly.value,
+			aggregates: {
+				nodeExecutionRunningById: nodeExecutionRunningById.value,
+				nodeExecutionWaitingForNextById: nodeExecutionWaitingForNextById.value,
+				nodeHasIssuesById: nodeHasIssuesById.value,
+				nodeExecutionStatusById: nodeExecutionStatusById.value,
+				nodeExecutionRunDataIterationsById: runIterationsById,
+			},
+			nodeExecutionRunDataIterationsById: runIterationsById,
+		});
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
+		const hiddenMembers = collapsedMemberIds.value;
 
-		return [
-			...nodes.value.map<CanvasNode>((node) => {
-				const outputConnections = connectionsBySourceNode[node.name] ?? {};
-				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
+		const memberNodes = nodes.value.map<CanvasNode>((node) => {
+			const outputConnections = connectionsBySourceNode[node.name] ?? {};
+			const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 
-				const data: CanvasNodeData = {
-					id: node.id,
-					name: node.name,
-					subtitle: nodeSubtitleById.value[node.id] ?? '',
-					type: node.type,
-					typeVersion: node.typeVersion,
-					disabled: node.disabled,
-					connections: {
-						[CanvasConnectionMode.Input]: inputConnections,
-						[CanvasConnectionMode.Output]: outputConnections,
-					},
-					issues: {
-						validation: nodeValidationErrorsById.value[node.id],
-						visible: nodeHasIssuesById.value[node.id],
-					},
-					execution: {
-						status: nodeExecutionStatusById.value[node.id],
-						waiting: nodeExecutionWaitingById.value[node.id],
-						waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
-						running: nodeExecutionRunningById.value[node.id],
-					},
-					runData: {
-						outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
-						iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
-						visible: !!nodeExecutionRunDataById.value[node.id],
-					},
-					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
-				};
+			const data: CanvasNodeData = {
+				id: node.id,
+				name: node.name,
+				subtitle: nodeSubtitleById.value[node.id] ?? '',
+				type: node.type,
+				typeVersion: node.typeVersion,
+				disabled: node.disabled,
+				connections: {
+					[CanvasConnectionMode.Input]: inputConnections,
+					[CanvasConnectionMode.Output]: outputConnections,
+				},
+				issues: {
+					validation: nodeValidationErrorsById.value[node.id],
+					visible: nodeHasIssuesById.value[node.id],
+				},
+				execution: {
+					status: nodeExecutionStatusById.value[node.id],
+					waiting: nodeExecutionWaitingById.value[node.id],
+					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
+					running: nodeExecutionRunningById.value[node.id],
+				},
+				runData: {
+					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
+					iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
+					visible: !!nodeExecutionRunDataById.value[node.id],
+				},
+				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
+			};
 
-				return {
-					id: node.id,
-					label: node.name,
-					type: 'canvas-node',
-					position: { x: node.position[0], y: node.position[1] },
-					data,
-					...additionalNodePropertiesById.value[node.id],
-					draggable: node.draggable,
-				};
-			}),
-		];
+			return {
+				id: node.id,
+				label: node.name,
+				type: 'canvas-node',
+				position: { x: node.position[0], y: node.position[1] },
+				data,
+				...additionalNodePropertiesById.value[node.id],
+				draggable: node.draggable,
+				hidden: hiddenMembers.has(node.id) ? true : undefined,
+			};
+		});
+
+		// Group title-bar VueFlow nodes are appended after member nodes so that
+		// the slot resolver in Canvas.vue can route by `type` without needing
+		// to interleave.
+		return [...memberNodes, ...(groupVueFlowNodes.value as CanvasNode[])];
+	});
+
+	const collapsedGroupByNodeIdIndex = computed(() => {
+		if (!groupView) return new Map();
+		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
+			groupView.isGroupCollapsed(id),
+		);
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
-		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
-			(connection) => {
-				const type = getConnectionType(connection);
-				const label = getConnectionLabel(connection);
-				const data = getConnectionData(connection);
+		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
+		const reanchored = reanchorCollapsedConnections(raw, collapsedGroupByNodeIdIndex.value);
+		return reanchored.map((connection) => {
+			const type = getConnectionType(connection);
+			// A merged connection bundles multiple underlying edges, so its
+			// item count would be ambiguous — drop the label.
+			const merged = (connection.data as { merged?: boolean } | undefined)?.merged === true;
+			const label = merged ? '' : getConnectionLabel(connection);
+			// Honour a status promoted by re-anchor dedupe; otherwise
+			// recompute from the underlying source node's runtime state.
+			const promotedStatus = (connection.data as CanvasConnectionData | undefined)?.status;
+			const baseData = getConnectionData(connection);
+			const data: CanvasConnectionData = {
+				...baseData,
+				status: promotedStatus ?? baseData.status,
+			};
 
-				return {
-					...connection,
-					data,
-					type,
-					label,
-					markerEnd: MarkerType.ArrowClosed,
-				};
-			},
-		);
+			return {
+				...connection,
+				data,
+				type,
+				label,
+				markerEnd: MarkerType.ArrowClosed,
+			};
+		});
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

@@ -10,6 +10,7 @@ import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
 const {
 	size = 'large',
 	spinnerScrim = false,
@@ -93,7 +94,7 @@ const groupedExecutionErrors = computed(() => {
 			<template #content>
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
-			<N8nIcon icon="node-execution-error" :size="size" />
+			<CanvasNodeStatusMark status="error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
@@ -138,10 +139,9 @@ const groupedExecutionErrors = computed(() => {
 	<div
 		v-else-if="hasRunData && executionStatus === 'success'"
 		data-test-id="canvas-node-status-success"
-		:class="[...commonClasses, $style.runData]"
+		:class="commonClasses"
 	>
-		<N8nIcon icon="node-success" :size="size" />
-		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
+		<CanvasNodeStatusMark status="success" :iterations="runDataIterations" :size="size" />
 	</div>
 </template>
 

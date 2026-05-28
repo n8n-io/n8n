@@ -224,8 +224,9 @@ function onActivate(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use './_canvasNodeExecutionStatus.scss' as exec;
 .node {
-	--canvas-node--border-width: 1.5px;
+	@include exec.canvas-node-border-defaults;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
@@ -238,18 +239,7 @@ function onActivate(event: MouseEvent) {
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid
-		var(
-			--canvas-node--border-color,
-			light-dark(
-				oklch(
-					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
-				),
-				oklch(
-					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
-				)
-			)
-		);
+	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
 	border-radius: var(--radius--lg);
 
 	&.trigger {
@@ -336,11 +326,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.success {
-		--canvas-node--border-width: 2px;
-		--canvas-node--border-color: var(
-			--color-canvas-node-success-border-color,
-			var(--color--success)
-		);
+		@include exec.status-success;
 	}
 
 	&.warning {
@@ -349,7 +335,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.error {
-		--canvas-node--border-color: var(--canvas-node--border-color--error, var(--color--danger));
+		@include exec.status-error;
 	}
 
 	&.pinned {
@@ -368,15 +354,11 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		border-color: transparent;
-		--canvas-node--border-color: var(
-			--color-canvas-node-running-border-color,
-			var(--node--border-color--running)
-		);
+		@include exec.status-running-border;
 	}
 
 	&.waiting {
-		--canvas-node--border-color: transparent;
+		@include exec.status-waiting-border;
 	}
 
 	&.placeholder {
@@ -395,27 +377,14 @@ function onActivate(event: MouseEvent) {
 /* stylelint-disable */
 .running::after,
 .waiting::after {
-	content: '';
-	position: absolute;
-	inset: -3px;
-	border-radius: 10px;
-	z-index: -1;
-	background: conic-gradient(
-		from var(--node--gradient-angle),
-		rgba(255, 109, 90, 1),
-		rgba(255, 109, 90, 1) 20%,
-		rgba(255, 109, 90, 0.2) 35%,
-		rgba(255, 109, 90, 0.2) 65%,
-		rgba(255, 109, 90, 1) 90%,
-		rgba(255, 109, 90, 1)
-	);
+	@include exec.status-animated-after;
 }
 
 .running::after {
-	animation: border-rotate 1.5s linear infinite;
+	@include exec.status-running-animation;
 }
 .waiting::after {
-	animation: border-rotate 4.5s linear infinite;
+	@include exec.status-waiting-animation;
 }
 
 @property --node--gradient-angle {

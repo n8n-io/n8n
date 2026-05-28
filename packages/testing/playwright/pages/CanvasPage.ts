@@ -1132,6 +1132,18 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(`[data-test-id="canvas-node-group"][data-group-id="${groupId}"]`);
 	}
 
+	groupToggleButton(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-toggle');
+	}
+
+	getNodeGroupFrame(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async toggleNodeGroup(title: string) {
+		await this.groupToggleButton(title).click();
+	}
+
 	async selectNodes(nodeNames: string[]): Promise<void> {
 		if (nodeNames.length === 0) return;
 		await this.nodeByName(nodeNames[0]).click();
