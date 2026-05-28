@@ -238,7 +238,7 @@ export class InstanceAiMcpRegistryService {
 					continue;
 				}
 
-				serverConfig.customFetch = this.createCustomFetch(oauth2FetchContext, user);
+				serverConfig.fetch = this.createCustomFetch(oauth2FetchContext, user);
 			}
 
 			resolved.push(serverConfig);
