@@ -71,7 +71,21 @@ describe('WorkflowCustomTelemetryTags', () => {
 
 		expect(getByLabelText('Back')).toBeVisible();
 		expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
-		expect(getByText("Add custom tags to this workflow's OpenTelemetry spans.")).toBeVisible();
+		expect(
+			getByText((_, element) => {
+				const text = element?.textContent?.replace(/\s+/g, ' ').trim();
+				return Boolean(
+					element?.id === 'reka-dialog-description-v-1' &&
+						text?.includes(
+							"Add custom tags to this workflow's OpenTelemetry spans. Learn more in the",
+						),
+				);
+			}),
+		).toBeVisible();
+		expect(getByRole('link', { name: 'documentation' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+		);
 		expect(getByText('Save')).toBeVisible();
 	});
 

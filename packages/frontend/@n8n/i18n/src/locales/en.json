@@ -3876,6 +3876,8 @@
 	"workflowSettings.customTelemetryTags.configure": "Configure",
 	"workflowSettings.customTelemetryTags.placeholder": "Add tag",
 	"workflowSettings.customTelemetryTags.modal.title": "Custom telemetry tags",
+	"workflowSettings.customTelemetryTags.modal.learnMore": "Learn more in the",
+	"workflowSettings.customTelemetryTags.modal.documentation": "documentation",
 	"workflowSettings.customTelemetryTags.tag.key.displayName": "Key",
 	"workflowSettings.customTelemetryTags.tag.key.placeholder": "Key",
 	"workflowSettings.customTelemetryTags.tag.value.displayName": "Value",

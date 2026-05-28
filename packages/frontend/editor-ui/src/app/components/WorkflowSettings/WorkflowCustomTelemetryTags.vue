@@ -18,6 +18,8 @@ import { useI18n } from '@n8n/i18n';
 import type { ICustomTelemetryTag } from 'n8n-workflow';
 import { ElCol, ElRow } from 'element-plus';
 
+const OPEN_TELEMETRY_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
+
 type Props = {
 	modelValue?: ICustomTelemetryTag[];
 	isReadOnly: boolean;
@@ -205,6 +207,18 @@ const onModalOpenChange = (open: boolean) => {
 				</div>
 				<N8nDialogDescription :class="$style.customTelemetryTagsModalDescription">
 					{{ i18n.baseText('workflowSettings.customTelemetryTags.description') }}
+					{{ ' ' }}
+					{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.learnMore') }}
+					{{ ' ' }}
+					<a
+						:class="$style.customTelemetryTagsDocsLink"
+						:href="OPEN_TELEMETRY_DOCS_URL"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.documentation') }}
+						<N8nIcon icon="arrow-up-right" size="xsmall" />
+					</a>
 				</N8nDialogDescription>
 			</N8nDialogHeader>
 			<div
@@ -374,6 +388,18 @@ const onModalOpenChange = (open: boolean) => {
 
 .customTelemetryTagsModalDescription {
 	margin-top: var(--spacing--3xs);
+}
+
+.customTelemetryTagsDocsLink {
+	color: inherit;
+	text-decoration: underline;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 
 .customTelemetryTagsModal {
