@@ -143,7 +143,9 @@ function main() {
 	lines.push('| --- | --- | --- | --- |');
 	for (const check of checks) {
 		const observed =
-			check.observed === null ? 'n/a' : `${check.observed.toFixed(2)} ${check.sentinel.note ? '' : ''}`;
+			check.observed === null
+				? 'n/a'
+				: `${check.observed.toFixed(2)} ${check.sentinel.note ? '' : ''}`;
 		const status = check.status === 'pass' ? 'ok' : check.status === 'fail' ? 'FAIL' : 'skipped';
 		lines.push(
 			`| \`${check.sentinel.metric}\` | ${observed} | ${check.sentinel.max} | ${status} |`,
@@ -164,7 +166,9 @@ function main() {
 		console.error(`\n[sentinel] ${breaches.length} catastrophic regression(s) detected.`);
 		process.exit(1);
 	}
-	console.log(`\n[sentinel] All ${checks.filter((c) => c.status !== 'skip').length} sentinels passed.`);
+	console.log(
+		`\n[sentinel] All ${checks.filter((c) => c.status !== 'skip').length} sentinels passed.`,
+	);
 }
 
 main();

@@ -4,9 +4,11 @@ import { waitForCanvasReady } from './helpers/canvas-ready';
 import { medianBy, withWarmup } from './helpers/iterate';
 import {
 	forceBrowserGc,
-	logHeapLimitOnce,
 	maybeCapturePostExecHeap,
+	readHeapLimitOnce,
+	type PostExecHeap,
 } from './helpers/post-exec-heap';
+import { buildExecutionReportSections, fmt, firstDefined, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
 import { attachMetric, measurePerformance } from '../../../utils/performance-helper';
 
@@ -61,6 +63,10 @@ test.describe(
 				await n8n.page.setViewportSize({ width: 1536, height: 960 });
 				await n8n.page.emulateMedia({ reducedMotion: 'reduce' });
 
+				const execRows: string[][] = [];
+				let v8HeapLimitGb: number | null = null;
+				let postExecHeap: PostExecHeap | null = null;
+
 				for (const scenario of SCENARIOS) {
 					const slug = METRIC_SLUG[scenario];
 					const { workflow, pinnedDataBytes } = buildCanvasBenchmarkWorkflow({
@@ -89,9 +95,10 @@ test.describe(
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 
-					// Verify Chromium's V8 heap limit reflects our launch arg (~8 GB expected,
-					// ~2 GB means the flag was silently ignored). Logs once per page lifecycle.
-					await logHeapLimitOnce(n8n.page, tier);
+					// Read the actual V8 heap limit once per page to verify the launch arg
+					// took effect (default ~2 GB, with our flag we expect ~4 GB capped by
+					// Chromium pointer compression). Surfaced in the final report.
+					v8HeapLimitGb = firstDefined(await readHeapLimitOnce(n8n.page), v8HeapLimitGb);
 
 					const execSamples = await withWarmup(ITERATIONS, async () => {
 						return await measurePerformance(n8n.page, `exec-${tier}-${slug}`, async () => {
@@ -138,18 +145,24 @@ test.describe(
 					// Heap capture is expensive (40-55s stabilization). Only do it after the
 					// heaviest scenario — that's the most meaningful leak signal anyway, and
 					// running getStableHeap 3× per tier eats the test budget.
-					await maybeCapturePostExecHeap({
-						scenario,
-						tier,
-						testInfo,
-						page: n8n.page,
-						baseUrl: n8nContainer.baseUrl,
-						metrics: services.observability.metrics,
-					});
-
-					console.log(
-						`[CANVAS EXEC ${tier} ${slug}] exec=${medianBy(execSamples, (sample) => sample).toFixed(0)}ms · render=${renderMs.toFixed(0)}ms`,
+					postExecHeap = firstDefined(
+						await maybeCapturePostExecHeap({
+							scenario,
+							tier,
+							testInfo,
+							page: n8n.page,
+							baseUrl: n8nContainer.baseUrl,
+							metrics: services.observability.metrics,
+						}),
+						postExecHeap,
 					);
+
+					execRows.push([
+						scenario,
+						fmt.bytes(pinnedDataBytes),
+						fmt.ms(medianBy(execSamples, (sample) => sample)),
+						fmt.ms(renderMs),
+					]);
 
 					expect(medianBy(execSamples, (sample) => sample)).toBeGreaterThan(0);
 
@@ -158,6 +171,13 @@ test.describe(
 					// a few scenarios.
 					await forceBrowserGc(n8n.page);
 				}
+
+				console.log(
+					formatReport(
+						`Canvas Execution Benchmark — ${tier} tier`,
+						buildExecutionReportSections({ v8HeapLimitGb, execRows, postExecHeap }),
+					),
+				);
 			});
 		}
 	},

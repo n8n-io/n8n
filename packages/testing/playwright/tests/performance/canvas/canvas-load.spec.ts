@@ -2,6 +2,7 @@ import { TIER_CONFIG, buildCanvasBenchmarkWorkflow, type Tier } from './fixtures
 import { waitForCanvasReady } from './helpers/canvas-ready';
 import { bytesToMb, captureCdpMetrics } from './helpers/cdp-metrics';
 import { medianBy, withWarmup } from './helpers/iterate';
+import { fmt, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
 import { attachMetric, getStableHeap } from '../../../utils/performance-helper';
 
@@ -54,7 +55,9 @@ test.describe(
 					};
 				});
 
-				const server = await getStableHeap(n8nContainer.baseUrl, services.observability.metrics);
+				const server = await getStableHeap(n8nContainer.baseUrl, services.observability.metrics, {
+					logGC: false,
+				});
 
 				const dimensions = { tier };
 				const medianLoad = medianBy(samples, (sample) => sample.coldLoadMs);
@@ -108,7 +111,25 @@ test.describe(
 				);
 
 				console.log(
-					`[CANVAS LOAD ${tier}] cold=${medianLoad.toFixed(0)}ms · server heap=${server.heapUsedMB.toFixed(1)}MB · browser heap=${medianBrowserHeap.toFixed(1)}MB · DOM=${medianDomNodes} · layout=${medianLayout.toFixed(1)}ms`,
+					formatReport(`Canvas Load Benchmark — ${tier} tier`, [
+						{
+							heading: 'Page',
+							rows: [
+								{ label: 'Cold load', value: fmt.ms(medianLoad) },
+								{ label: 'DOM nodes', value: fmt.count(medianDomNodes) },
+								{ label: 'Layout duration', value: fmt.ms(medianLayout) },
+								{ label: 'Script duration', value: fmt.ms(medianScript) },
+							],
+						},
+						{
+							heading: 'Memory',
+							rows: [
+								{ label: 'Server heap', value: fmt.mb(server.heapUsedMB) },
+								{ label: 'Server RSS', value: fmt.mb(server.rssMB) },
+								{ label: 'Browser heap', value: fmt.mb(medianBrowserHeap) },
+							],
+						},
+					]),
 				);
 
 				expect(medianLoad).toBeGreaterThan(0);

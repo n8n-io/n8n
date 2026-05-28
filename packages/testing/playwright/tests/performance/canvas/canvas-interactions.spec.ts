@@ -2,6 +2,7 @@ import { TIER_CONFIG, buildCanvasBenchmarkWorkflow, type Tier } from './fixtures
 import { waitForCanvasReady } from './helpers/canvas-ready';
 import { captureFrameStats } from './helpers/frame-stats';
 import { medianBy, withWarmup } from './helpers/iterate';
+import { fmt, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
 import { attachMetric, measurePerformance } from '../../../utils/performance-helper';
 
@@ -164,7 +165,44 @@ test.describe(
 				await attachMetric(testInfo, `canvas-tidy-up-${tier}-ms`, tidyMs, 'ms', dimensions);
 
 				console.log(
-					`[CANVAS INTERACTIONS ${tier}] zoom p95=${medianBy(zoomSamples, (sample) => sample.p95FrameMs).toFixed(1)}ms · pan p95=${medianBy(panSamples, (sample) => sample.p95FrameMs).toFixed(1)}ms · drag=${medianBy(dragSamples, (sample) => sample).toFixed(0)}ms · tidy=${tidyMs.toFixed(0)}ms`,
+					formatReport(`Canvas Interactions Benchmark — ${tier} tier`, [
+						{
+							heading: 'Frame stats (p95)',
+							rows: [
+								{
+									label: 'Zoom',
+									value: fmt.ms(medianBy(zoomSamples, (sample) => sample.p95FrameMs)),
+								},
+								{
+									label: 'Pan',
+									value: fmt.ms(medianBy(panSamples, (sample) => sample.p95FrameMs)),
+								},
+								{
+									label: 'Pan longtasks',
+									value: fmt.count(medianBy(panSamples, (sample) => sample.longtaskCount)),
+								},
+							],
+						},
+						{
+							heading: 'Interactions',
+							rows: [
+								{
+									label: 'Drag response',
+									value: fmt.ms(medianBy(dragSamples, (sample) => sample)),
+								},
+								{
+									label: 'Multi-node move',
+									value: fmt.ms(medianBy(moveSamples, (sample) => sample)),
+								},
+								{
+									label: 'Duplicate',
+									value: fmt.ms(medianBy(duplicateSamples, (sample) => sample)),
+								},
+								{ label: 'NDV open', value: fmt.ms(medianBy(ndvSamples, (sample) => sample)) },
+								{ label: 'Tidy up', value: fmt.ms(tidyMs) },
+							],
+						},
+					]),
 				);
 
 				expect(medianBy(panSamples, (sample) => sample.p95FrameMs)).toBeGreaterThan(0);

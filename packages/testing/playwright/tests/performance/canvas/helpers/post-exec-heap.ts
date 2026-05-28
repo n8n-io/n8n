@@ -14,21 +14,32 @@ interface PostExecHeapArgs {
 	metrics: MetricsHelper;
 }
 
+export interface PostExecHeap {
+	server: number;
+	browser: number;
+}
+
 /**
  * Capture post-execution heap snapshots only after the heaviest scenario.
  * `getStableHeap` takes 40-55s per call — running it for every scenario
  * eats most of the test budget. The heaviest scenario is the most meaningful
  * leak signal anyway, so we trade scenario granularity for test stability.
+ *
+ * Returns the captured values so the caller can include them in its own
+ * per-test report; returns null for any other scenario.
  */
-export async function maybeCapturePostExecHeap(args: PostExecHeapArgs): Promise<void> {
-	if (args.scenario !== 'heavy-concentrated') return;
+export async function maybeCapturePostExecHeap(
+	args: PostExecHeapArgs,
+): Promise<PostExecHeap | null> {
+	if (args.scenario !== 'heavy-concentrated') return null;
 	const cdp = await captureCdpMetrics(args.page);
-	const server = await getStableHeap(args.baseUrl, args.metrics);
+	const server = await getStableHeap(args.baseUrl, args.metrics, { logGC: false });
 	const dimensions = { tier: args.tier };
+	const browserMb = bytesToMb(cdp.JSHeapUsedSize);
 	await attachMetric(
 		args.testInfo,
 		`canvas-post-exec-browser-heap-${args.tier}-mb`,
-		bytesToMb(cdp.JSHeapUsedSize),
+		browserMb,
 		'MB',
 		dimensions,
 	);
@@ -39,9 +50,7 @@ export async function maybeCapturePostExecHeap(args: PostExecHeapArgs): Promise<
 		'MB',
 		dimensions,
 	);
-	console.log(
-		`[POST-EXEC HEAP ${args.tier}] server=${server.heapUsedMB.toFixed(1)}MB · browser=${bytesToMb(cdp.JSHeapUsedSize).toFixed(1)}MB`,
-	);
+	return { server: server.heapUsedMB, browser: browserMb };
 }
 
 /**
@@ -64,18 +73,19 @@ export async function forceBrowserGc(page: Page): Promise<void> {
 const loggedHeapLimitFor = new WeakSet<Page>();
 
 /**
- * Log Chromium's actual V8 jsHeapSizeLimit once per page. Used to verify
- * that the `--js-flags=--max-old-space-size=N` launch arg from
- * playwright-projects.ts actually took effect — default Chromium reports
- * ~2 GB, with the flag set we expect ~8 GB. A 2 GB reading means the flag
- * is being silently ignored.
+ * Read Chromium's actual V8 jsHeapSizeLimit once per page, in gigabytes.
+ * Returns the value the first time it's called for a given page and null on
+ * subsequent calls. Used to verify that the `--js-flags=--max-old-space-size=N`
+ * launch arg from playwright-projects.ts actually took effect — default
+ * Chromium reports ~2 GB, with the flag set we expect ~4 GB (Chromium
+ * pointer-compression cap). A 2 GB reading means the flag is being silently
+ * ignored.
  */
-export async function logHeapLimitOnce(page: Page, label: string): Promise<void> {
-	if (loggedHeapLimitFor.has(page)) return;
+export async function readHeapLimitOnce(page: Page): Promise<number | null> {
+	if (loggedHeapLimitFor.has(page)) return null;
 	loggedHeapLimitFor.add(page);
-	const heapLimitGb = await page.evaluate(() => {
+	return await page.evaluate(() => {
 		const memory = (performance as unknown as { memory?: { jsHeapSizeLimit: number } }).memory;
 		return memory ? memory.jsHeapSizeLimit / (1024 * 1024 * 1024) : -1;
 	});
-	console.log(`[V8 ${label}] jsHeapSizeLimit: ${heapLimitGb.toFixed(2)} GB`);
 }
