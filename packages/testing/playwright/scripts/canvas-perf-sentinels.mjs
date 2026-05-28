@@ -148,8 +148,7 @@ function main() {
 	lines.push('| --- | --- | --- | --- |');
 	for (const check of checks) {
 		const observed = check.observed === null ? 'missing' : check.observed.toFixed(2);
-		const status =
-			check.status === 'pass' ? 'ok' : check.status === 'missing' ? 'MISSING' : 'FAIL';
+		const status = check.status === 'pass' ? 'ok' : check.status === 'missing' ? 'MISSING' : 'FAIL';
 		lines.push(
 			`| \`${check.sentinel.metric}\` | ${observed} | ${check.sentinel.max} | ${status} |`,
 		);
