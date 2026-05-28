@@ -6,6 +6,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
+	InstanceAiSandboxProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -60,6 +61,15 @@ const URL_FIELD_MAP: Record<string, string> = {
 const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'];
 const SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'];
 const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENTIAL_TYPES];
+const DEFAULT_SANDBOX_PROVIDER: InstanceAiSandboxProvider = 'n8n-sandbox';
+
+function isSupportedSandboxProvider(value: string): value is InstanceAiSandboxProvider {
+	return value === 'n8n-sandbox' || value === 'daytona';
+}
+
+function normalizeSandboxProvider(value: string | undefined): InstanceAiSandboxProvider {
+	return value && isSupportedSandboxProvider(value) ? value : DEFAULT_SANDBOX_PROVIDER;
+}
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
@@ -124,6 +134,7 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
+		this.config.sandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
 		const envSnapshot = {
 			sandboxEnabled: this.config.sandboxEnabled,
 			sandboxProvider: this.config.sandboxProvider,
@@ -165,7 +176,7 @@ export class InstanceAiSettingsService {
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
 			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
+			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			daytonaCredentialId: this.adminDaytonaCredentialId,
@@ -191,6 +202,7 @@ export class InstanceAiSettingsService {
 				'proxy',
 			);
 		}
+		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
 		const previousBrowserMcp = c.browserMcp;
@@ -524,6 +536,30 @@ export class InstanceAiSettingsService {
 		}
 	}
 
+	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
+		const c = this.config;
+		const sandboxProvider: string =
+			update.sandboxProvider !== undefined
+				? update.sandboxProvider
+				: normalizeSandboxProvider(c.sandboxProvider);
+		if (!isSupportedSandboxProvider(sandboxProvider)) {
+			throw new UnprocessableRequestError(
+				`Unsupported sandbox provider "${sandboxProvider}". Supported providers: n8n-sandbox, daytona.`,
+			);
+		}
+
+		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
+		if (
+			sandboxEnabled &&
+			sandboxProvider === 'n8n-sandbox' &&
+			c.n8nSandboxServiceUrl.trim().length === 0
+		) {
+			throw new UnprocessableRequestError(
+				'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
+			);
+		}
+	}
+
 	private envVarModelConfig(): ModelConfig {
 		return this.envVarModelConfigForModel(this.config.model);
 	}
@@ -564,7 +600,8 @@ export class InstanceAiSettingsService {
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
-		if (persisted.sandboxProvider !== undefined) c.sandboxProvider = persisted.sandboxProvider;
+		if (persisted.sandboxProvider !== undefined)
+			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.daytonaCredentialId !== undefined)

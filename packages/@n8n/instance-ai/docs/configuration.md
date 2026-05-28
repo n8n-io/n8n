@@ -57,8 +57,8 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox for code execution. When true, the builder agent writes TypeScript files and validates with `tsc` instead of using the string-based `build-workflow` tool. |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `daytona` | Sandbox provider: `daytona` for isolated Docker containers, `n8n-sandbox` for the n8n sandbox service, `local` for direct host execution (dev only, no isolation). |
+| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox-backed workflow building. When false, workflow builder capability is unavailable. |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. |
 | `DAYTONA_API_URL` | string | `''` | Daytona API URL (e.g. `https://app.daytona.io/api`). Required when provider is `daytona`. |
 | `DAYTONA_API_KEY` | string | `''` | Daytona API key for authentication. Required when provider is `daytona`. |
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
@@ -67,9 +67,10 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
 
-**Modes**: When sandbox is enabled, the builder agent works in two modes:
-- **Sandbox mode** (Daytona/n8n-sandbox/local): agent writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses `submit-workflow` to save. Gets full filesystem access and `execute_command`.
-- **Tool mode** (fallback when sandbox unavailable): original `build-workflow` tool with string-based code validation.
+When sandbox is enabled, the builder agent writes TypeScript to
+`~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses
+`submit-workflow` to save. It receives filesystem access and `execute_command`
+from the configured sandbox workspace. There is no no-sandbox builder fallback.
 
 Sandbox workspaces persist per thread — the same container is reused across messages in a conversation. Workspaces are destroyed on server shutdown.
 
@@ -162,24 +163,21 @@ N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
-# With sandbox (Daytona — isolated code execution for builder agent)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
-N8N_INSTANCE_AI_SANDBOX_ENABLED=true
-N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
-DAYTONA_API_URL=https://app.daytona.io/api
-DAYTONA_API_KEY=dtn_xxx
-
-# With sandbox (local — development only, no isolation)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
-N8N_INSTANCE_AI_SANDBOX_ENABLED=true
-N8N_INSTANCE_AI_SANDBOX_PROVIDER=local
-
 # With sandbox (n8n sandbox service)
+# CI can start it with:
+# pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
+
+# With sandbox (Daytona — explicit provider)
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_SANDBOX_ENABLED=true
+N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
+DAYTONA_API_URL=https://app.daytona.io/api
+DAYTONA_API_KEY=dtn_xxx
 
 # With filesystem gateway (user runs daemon on their machine)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7

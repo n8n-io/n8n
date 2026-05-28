@@ -93,10 +93,6 @@ jest.mock('../workflows/apply-workflow-credentials.tool', () => ({
 	createApplyWorkflowCredentialsTool: jest.fn(() => ({ id: 'apply-workflow-credentials' })),
 }));
 
-jest.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: jest.fn(() => ({ id: 'build-workflow' })),
-}));
-
 jest.mock('../workflows.tool', () => ({
 	createWorkflowsTool: jest.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-filtered' : 'workflows',
@@ -122,9 +118,63 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 	} as unknown as InstanceAiContext;
 }
 
+type ToolStub = { id: string };
+type ToolFactoryMock<TArgs extends unknown[]> = jest.Mock<ToolStub, TArgs>;
+
+function getToolFactoryMock<TArgs extends unknown[]>(
+	modulePath: string,
+	exportName: string,
+): ToolFactoryMock<TArgs> {
+	const module: Record<string, ToolFactoryMock<TArgs>> = jest.requireMock(modulePath);
+	return module[exportName];
+}
+
+function resetToolFactoryMocks(): void {
+	getToolFactoryMock<[]>(
+		'../attachments/parse-file.tool',
+		'createParseFileTool',
+	).mockImplementation(() => ({ id: 'parse-file' }));
+	getToolFactoryMock<[]>('../credentials.tool', 'createCredentialsTool').mockImplementation(() => ({
+		id: 'credentials',
+	}));
+	getToolFactoryMock<[unknown, string?]>(
+		'../data-tables.tool',
+		'createDataTablesTool',
+	).mockImplementation((_context: unknown, scope?: string) => ({
+		id: scope ? `data-tables-${scope}` : 'data-tables',
+	}));
+	getToolFactoryMock<[]>('../evals/evals.tool', 'createEvalsTool').mockImplementation(() => ({
+		id: 'evals',
+	}));
+	getToolFactoryMock<[]>('../executions.tool', 'createExecutionsTool').mockImplementation(() => ({
+		id: 'executions',
+	}));
+	getToolFactoryMock<[unknown, string?]>('../nodes.tool', 'createNodesTool').mockImplementation(
+		(_context: unknown, scope?: string) => ({
+			id: scope ? `nodes-${scope}` : 'nodes',
+		}),
+	);
+	getToolFactoryMock<[]>('../research.tool', 'createResearchTool').mockImplementation(() => ({
+		id: 'research',
+	}));
+	getToolFactoryMock<[]>('../shared/ask-user.tool', 'createAskUserTool').mockImplementation(() => ({
+		id: 'ask-user',
+	}));
+	getToolFactoryMock<[unknown, unknown?]>(
+		'../workflows.tool',
+		'createWorkflowsTool',
+	).mockImplementation((_context: unknown, options?: unknown) => ({
+		id: options ? 'workflows-filtered' : 'workflows',
+	}));
+	getToolFactoryMock<[]>('../workspace.tool', 'createWorkspaceTool').mockImplementation(() => ({
+		id: 'workspace',
+	}));
+}
+
 describe('domain tool construction', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		resetToolFactoryMocks();
 		jest.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
@@ -143,8 +193,8 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
 		});
+		expect(domainTools.has('build-workflow')).toBe(false);
 	});
 
 	it('creates the native orchestrator domain tool map', () => {

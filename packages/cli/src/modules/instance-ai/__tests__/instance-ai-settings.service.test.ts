@@ -27,9 +27,11 @@ describe('InstanceAiSettingsService', () => {
 			browserMcp: false,
 			mcpServers: '',
 			sandboxEnabled: false,
-			sandboxProvider: '',
+			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: '',
 			sandboxTimeout: 60,
+			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceApiKey: '',
 			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
@@ -46,6 +48,15 @@ describe('InstanceAiSettingsService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		Object.assign(globalConfig.instanceAi, {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceApiKey: '',
+			mcpServers: '',
+			browserMcp: false,
+		});
+		globalConfig.deployment.type = 'default';
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,
@@ -93,6 +104,23 @@ describe('InstanceAiSettingsService', () => {
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('should reject unsupported sandbox providers', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await expect(
+				service.updateAdminSettings({ sandboxProvider: 'local' } as never),
+			).rejects.toThrow(/Unsupported sandbox provider/);
+		});
+
+		it('should require a service URL when enabling n8n sandbox', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
+				/N8N_SANDBOX_SERVICE_URL/,
+			);
 		});
 	});
 

@@ -98,7 +98,7 @@ describe('SettingsInstanceAiView', () => {
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,

@@ -380,6 +380,7 @@ export type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,
+	InstanceAiSandboxProvider,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,

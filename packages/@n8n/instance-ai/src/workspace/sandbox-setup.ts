@@ -210,42 +210,6 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-/**
- * Return the absolute on-disk path of a host-installed package, or `null`
- * if it can't be resolved. Used by the local provider to point the sandbox
- * at the workspace SDK via a `file:` reference instead of the npm registry.
- */
-function resolveHostDepPath(name: string): string | null {
-	try {
-		const pkgPath = hostRequire.resolve(`${name}/package.json`);
-		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
- * location via `file:` — so the local provider picks up workspace SDK
- * changes after `pnpm build` without needing a publish.
- *
- * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
- * resolved on disk (e.g. a stripped-down test harness).
- */
-function buildLocalProviderPackageJson(): string {
-	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
-	if (!sdkPath) return PACKAGE_JSON;
-	return buildPackageJson(`file:${sdkPath}`);
-}
-
-function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
-	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
-}
-
-function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
-	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
-}
-
 let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
@@ -253,7 +217,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	root: string,
 	logger?: Logger,
 ): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+	if (!isLinkWorkspaceSdkEnabled()) return;
 
 	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
 		sdkTarballPromise = null;
@@ -445,12 +409,9 @@ async function writeWorkspaceFile(
  */
 const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
 
-function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
+function getLazyFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const filesystem = workspace.filesystem;
-	if (!filesystem) return null;
-
-	const provider = filesystem.provider;
-	if (provider !== 'local' && provider !== 'lazy') return null;
+	if (filesystem?.provider !== 'lazy') return null;
 
 	const basePath = Reflect.get(filesystem, 'basePath');
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
@@ -467,17 +428,17 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
 
-	const localRoot = getLocalFilesystemRoot(workspace);
-	if (localRoot) {
-		workspaceRootCache.set(workspace, localRoot);
-		return localRoot;
+	const lazyRoot = getLazyFilesystemRoot(workspace);
+	if (lazyRoot) {
+		workspaceRootCache.set(workspace, lazyRoot);
+		return lazyRoot;
 	}
 
 	await initializeLazyFilesystem(workspace);
-	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
-	if (initializedLocalRoot) {
-		workspaceRootCache.set(workspace, initializedLocalRoot);
-		return initializedLocalRoot;
+	const initializedLazyRoot = getLazyFilesystemRoot(workspace);
+	if (initializedLazyRoot) {
+		workspaceRootCache.set(workspace, initializedLazyRoot);
+		return initializedLazyRoot;
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');
@@ -564,11 +525,6 @@ function parseTarOctal(block: Buffer, start: number, length: number): number | n
 /**
  * Write the curated workflow examples archive into `${root}/examples/`.
  *
- * Used by the Daytona / n8n-sandbox factory paths. The local provider
- * deliberately skips this — dev iteration on the SDK doesn't need the
- * curated reference set, and the agent there operates fine without it
- * (same fallback as a cold start with the CDN unreachable).
- *
  * The CDN payload is a flat `.tar.gz` of `<slug>.ts` + `index.txt`. We
  * write the bytes into the sandbox and run `tar -xzf` in-sandbox to
  * expand them into `examples/` — far cheaper than 100+ individual
@@ -584,11 +540,6 @@ export async function writeCuratedExamples(
 	logger?: Logger,
 ): Promise<void> {
 	if (!bundle?.archive) return;
-
-	if (workspace.filesystem?.provider === 'local') {
-		logger?.debug('[sandbox-setup] skipping curated examples for local provider');
-		return;
-	}
 
 	// Defense-in-depth for the curated CDN bundle. This validates the narrow
 	// archive shape we publish, not arbitrary user-supplied tar files.
@@ -681,11 +632,7 @@ export async function setupSandboxWorkspace(
 
 	const files = new Map<string, string>();
 
-	// Config files. Local provider runs on the dev host, so point the SDK at
-	// its workspace location via `file:` — this makes SDK changes visible in
-	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
-	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildWorkspacePackageJson(workspace));
+	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 

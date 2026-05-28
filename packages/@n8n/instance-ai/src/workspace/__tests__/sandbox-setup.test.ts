@@ -41,16 +41,18 @@ function createSetupContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createLocalWorkspace(
+function createFilesystemWorkspace(
 	writeFile: jest.Mock<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>,
 	mkdir?: jest.Mock<Promise<void>, [string, { recursive?: boolean }?]>,
 ): SandboxWorkspace {
 	return {
 		filesystem: {
-			provider: 'local',
-			basePath: '/sandbox',
+			provider: 'daytona',
 			writeFile,
 			mkdir: mkdir ?? jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {}),
+		},
+		sandbox: {
+			executeCommand: jest.fn(),
 		},
 	};
 }
@@ -187,10 +189,10 @@ describe('setupSandboxWorkspace', () => {
 			async () => {},
 		);
 
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
+		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
-			([path]) => path === '/sandbox/.sandbox-initialized',
+			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
 		);
 		expect(markerCallIndex).toBeGreaterThan(-1);
 		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
@@ -219,48 +221,16 @@ describe('setupSandboxWorkspace', () => {
 		const mkdir = jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {});
 
 		// Setup context defaults to an empty workflow list, mirroring a fresh DB.
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile, mkdir), createSetupContext());
+		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile, mkdir), createSetupContext());
 
 		const mkdirPaths = mkdir.mock.calls.map(([path]) => path);
 		expect(mkdirPaths).toEqual(
-			expect.arrayContaining(['/sandbox/src', '/sandbox/chunks', '/sandbox/workflows']),
+			expect.arrayContaining([
+				'/home/daytona/workspace/src',
+				'/home/daytona/workspace/chunks',
+				'/home/daytona/workspace/workflows',
+			]),
 		);
-	});
-
-	it('never writes examples/ on the local provider even when a bundle is available', async () => {
-		// Local provider is for SDK dev iteration; the agent operates fine without
-		// the curated reference set, so setupSandboxWorkspace must not pay the
-		// per-file/archive write cost here.
-		const runInSandbox: RunInSandboxMock = jest.fn<
-			Promise<{ exitCode: number; stdout: string; stderr: string }>,
-			[SandboxWorkspace, string, string?]
-		>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
-			Promise<string | null>,
-			[SandboxWorkspace, string]
-		>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
-			async () => {},
-		);
-
-		const bundle: BuilderTemplatesBundle = {
-			archive: Buffer.from('opaque-archive-bytes'),
-			version: 'test-sha',
-		};
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext(bundle));
-
-		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths.some((p) => p.includes('/examples/'))).toBe(false);
-		expect(writtenPaths.some((p) => p.endsWith('.templates.tar.gz'))).toBe(false);
-		// `tar` must not be exec'd on the local provider either.
-		const tarInvocations = runInSandbox.mock.calls.filter(([, cmd]) => cmd.includes('tar -xzf'));
-		expect(tarInvocations).toEqual([]);
 	});
 
 	it('rejects setup file paths that escape the workspace root', async () => {
@@ -289,9 +259,9 @@ describe('setupSandboxWorkspace', () => {
 		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
 		workflowService.get.mockResolvedValue({ id: '../escape' });
 
-		await expect(setupSandboxWorkspace(createLocalWorkspace(writeFile), context)).rejects.toThrow(
-			'Sandbox workspace setup failed during write-workspace-files',
-		);
+		await expect(
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), context),
+		).rejects.toThrow('Sandbox workspace setup failed during write-workspace-files');
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {
@@ -314,11 +284,11 @@ describe('setupSandboxWorkspace', () => {
 		);
 
 		await expect(
-			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
 		).rejects.toThrow('Sandbox npm install failed');
 
 		expect(writeFile.mock.calls).not.toContainEqual([
-			'/sandbox/.sandbox-initialized',
+			'/home/daytona/workspace/.sandbox-initialized',
 			expect.any(String),
 			{ recursive: true },
 		]);
@@ -343,13 +313,13 @@ describe('setupSandboxWorkspace', () => {
 			.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>()
 			.mockImplementation(async (path) => {
 				await Promise.resolve();
-				if (path === '/sandbox/.sandbox-initialized') {
+				if (path === '/home/daytona/workspace/.sandbox-initialized') {
 					throw new Error('primary write failed');
 				}
 			});
 
 		await expect(
-			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
 		).resolves.toBe(true);
 
 		expect(
@@ -381,13 +351,13 @@ describe('setupSandboxWorkspace', () => {
 			.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>()
 			.mockImplementation(async (path) => {
 				await Promise.resolve();
-				if (path === '/sandbox/.sandbox-initialized') {
+				if (path === '/home/daytona/workspace/.sandbox-initialized') {
 					throw new Error('primary write failed');
 				}
 			});
 
 		const error = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile),
+			createFilesystemWorkspace(writeFile),
 			createSetupContext(),
 		).catch((caught: unknown) => caught);
 
@@ -396,7 +366,7 @@ describe('setupSandboxWorkspace', () => {
 			'Sandbox workspace setup failed during write-initialization-marker',
 		);
 		expect((error as Error).message).toContain(
-			'Failed to write sandbox workspace file "/sandbox/.sandbox-initialized"',
+			'Failed to write sandbox workspace file "/home/daytona/workspace/.sandbox-initialized"',
 		);
 		expect((error as Error).message).toContain('primary write failed');
 		expect((error as Error).message).toContain('command fallback failed');
@@ -449,7 +419,7 @@ describe('setupSandboxWorkspace', () => {
 });
 
 describe('getWorkspaceRoot', () => {
-	it('uses the resolved filesystem base path for lazy local workspaces', async () => {
+	it('uses the resolved filesystem base path for lazy workspaces', async () => {
 		let initialized = false;
 		const executeCommand = jest.fn();
 		const init = jest.fn<Promise<void>, []>(async () => {
@@ -600,7 +570,7 @@ describe('writeCuratedExamples', () => {
 		{ name: 'slack-daily-summary.ts', content: 'export default {};' },
 	]);
 
-	it('writes the archive and runs tar on a non-local provider', async () => {
+	it('writes the archive and runs tar on filesystem-backed providers', async () => {
 		const { fn, fs } = loadWriteCuratedExamples();
 		const { workspace, filesystem } = makeDaytonaWorkspace();
 
@@ -704,26 +674,6 @@ describe('writeCuratedExamples', () => {
 		await fn(workspace, null);
 
 		expect(filesystem.writeFile).not.toHaveBeenCalled();
-		expect(fs.runInSandbox).not.toHaveBeenCalled();
-	});
-
-	it('skips the local provider even with a non-empty bundle', async () => {
-		const { fn, fs } = loadWriteCuratedExamples();
-		const writeFile = jest.fn<Promise<void>, [string, string | Buffer, { recursive?: boolean }?]>(
-			async () => {},
-		);
-		const workspace = {
-			filesystem: {
-				provider: 'local',
-				basePath: '/sandbox',
-				writeFile,
-				mkdir: jest.fn<Promise<void>, [string, { recursive?: boolean }?]>(async () => {}),
-			},
-		} as unknown as SandboxWorkspace;
-
-		await fn(workspace, { archive: ARCHIVE, version: '"v1"' });
-
-		expect(writeFile).not.toHaveBeenCalled();
 		expect(fs.runInSandbox).not.toHaveBeenCalled();
 	});
 });

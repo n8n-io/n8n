@@ -24,8 +24,7 @@ function makeAgentResult(
 }
 
 jest.mock('@n8n/instance-ai', () => ({
-	// BUILDER_AGENT_PROMPT is imported by sub-agent-roles.ts; provide a stub string.
-	BUILDER_AGENT_PROMPT: 'stub-builder-prompt',
+	createSandboxBuilderAgentPrompt: jest.fn(() => 'stub-builder-prompt'),
 	MAX_STEPS: { BUILDER: 60 },
 	createSubAgent: jest.fn(() => ({
 		generate: jest.fn().mockResolvedValue({

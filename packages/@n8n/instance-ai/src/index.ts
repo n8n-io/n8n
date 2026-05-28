@@ -65,13 +65,13 @@ const loadInstanceAgent = lazyModule(
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
 );
-const loadBuildWorkflowAgentPrompt = lazyModule(
-	() =>
-		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
-);
 const loadBuildWorkflowAgentTool = lazyModule(
 	() =>
 		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
+);
+const loadBuildWorkflowAgentPrompt = lazyModule(
+	() =>
+		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
 );
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
@@ -194,10 +194,11 @@ export {
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
 
-export declare const BUILDER_AGENT_PROMPT: typeof BuildWorkflowAgentPromptMod.BUILDER_AGENT_PROMPT;
-
 export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
 	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
+
+export const createSandboxBuilderAgentPrompt: typeof BuildWorkflowAgentPromptMod.createSandboxBuilderAgentPrompt =
+	lazyFunction(() => loadBuildWorkflowAgentPrompt().createSandboxBuilderAgentPrompt);
 
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
@@ -243,7 +244,6 @@ export type Tool = EvalAgentsMod.Tool;
 export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;
 export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
-defineLazyExport('BUILDER_AGENT_PROMPT', () => loadBuildWorkflowAgentPrompt().BUILDER_AGENT_PROMPT);
 defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
 defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);

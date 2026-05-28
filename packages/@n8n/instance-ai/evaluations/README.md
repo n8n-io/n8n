@@ -343,22 +343,21 @@ workspace, runs `tsc` to validate, and calls `submit-workflow` to save the
 parsed `WorkflowJSON`. This exercises the production builder agent end-to-end
 (sandbox prompt, file I/O, real type checking).
 
-Required env vars (Daytona provider — the default):
+Required env vars (n8n sandbox service — the default):
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...           # builder + judge LLM
 LANGSMITH_API_KEY=ls__...              # only for --backend langsmith
-DAYTONA_API_URL=https://app.daytona.io/api
-DAYTONA_API_KEY=dtn_...
+N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
+N8N_SANDBOX_SERVICE_API_KEY=n8n-sandbox-ci-key
 
 # Optional
-N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona      # default; set 'local' or 'n8n-sandbox' to switch
-N8N_INSTANCE_AI_SANDBOX_IMAGE=daytonaio/sandbox:0.5.0   # default
+N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox  # default; set 'daytona' for Daytona
 N8N_INSTANCE_AI_SANDBOX_TIMEOUT=300000        # per-command timeout (ms)
 ```
 
 The CLI fails fast at startup if the chosen provider is misconfigured (e.g.,
-Daytona selected without API URL/key). The chosen provider is recorded under
+n8n sandbox selected without a service URL). The chosen provider is recorded under
 `summary.json → sandbox.provider`.
 
 > **Daytona cold-start.** The very first sandbox creation triggers an image

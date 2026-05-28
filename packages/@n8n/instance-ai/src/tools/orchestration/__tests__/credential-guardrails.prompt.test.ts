@@ -1,13 +1,9 @@
 import { buildBrowserAgentPrompt } from '../browser-credential-setup.prompt';
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../build-workflow-agent.prompt';
+import { createSandboxBuilderAgentPrompt } from '../build-workflow-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../plan-agent-prompt';
 
 describe('credential guardrail prompts', () => {
 	it('does not frame API keys as acceptable ask-user inputs in builder prompts', () => {
-		expect(BUILDER_AGENT_PROMPT).not.toContain('a chat ID, API key, external resource name');
 		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).not.toContain(
 			'a chat ID, API key, external resource name',
 		);
@@ -64,9 +60,7 @@ describe('credential guardrail prompts', () => {
 	});
 
 	it('tells the builder to wrap ambiguous resource matches with placeholder()', () => {
-		// Both prompts inline PLACEHOLDERS_RULE, which now covers the multi-match case.
 		const sharedRule = '**Resource IDs with more than one candidate**';
-		expect(BUILDER_AGENT_PROMPT).toContain(sharedRule);
 		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).toContain(sharedRule);
 
 		// The sandbox builder additionally repeats the rule at resource-discovery time,
@@ -77,26 +71,20 @@ describe('credential guardrail prompts', () => {
 	});
 
 	it('keeps builder prompts grounded in the inline setup card', () => {
-		for (const prompt of [
-			BUILDER_AGENT_PROMPT,
-			createSandboxBuilderAgentPrompt('/tmp/workspace'),
-		]) {
-			expect(prompt).toContain('inline setup card in the AI Assistant panel');
-			expect(prompt).not.toMatch(/setup wizard/i);
-		}
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).toContain('inline setup card in the AI Assistant panel');
+		expect(prompt).not.toMatch(/setup wizard/i);
 	});
 
 	it('does not inline bulky static node guides in builder prompts', () => {
-		for (const prompt of [
-			BUILDER_AGENT_PROMPT,
-			createSandboxBuilderAgentPrompt('/tmp/workspace'),
-		]) {
-			expect(prompt).toContain('## Node Configuration Safety Rules');
-			expect(prompt).not.toContain('nodes(action="guide")');
-			expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
-			expect(prompt).not.toContain('#### Complete Operator Reference');
-			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
-		}
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).toContain('## Node Configuration Safety Rules');
+		expect(prompt).not.toContain('nodes(action="guide")');
+		expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
+		expect(prompt).not.toContain('#### Complete Operator Reference');
+		expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
 	});
 
 	it('does not instruct the sandbox builder about publishing when publish is not on its tool surface', () => {

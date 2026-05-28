@@ -161,6 +161,25 @@ const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
+type SupportedSandboxProvider = 'daytona' | 'n8n-sandbox';
+
+function resolveSupportedSandboxProvider(provider: string): SupportedSandboxProvider {
+	if (provider === 'daytona' || provider === 'n8n-sandbox') return provider;
+	throw new OperationalError(
+		`Unsupported Instance AI sandbox provider "${provider}". Supported providers: n8n-sandbox, daytona.`,
+	);
+}
+
+function requireN8nSandboxServiceUrl(value: string): string {
+	const serviceUrl = value.trim();
+	if (serviceUrl.length === 0) {
+		throw new OperationalError(
+			'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
+		);
+	}
+	return serviceUrl;
+}
+
 function slugifySandboxName(value: string, maxLen: number): string {
 	const slug = value
 		.toLowerCase()
@@ -636,20 +655,16 @@ export class InstanceAiService {
 			sandboxNamePrefix,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
+		const provider = resolveSupportedSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
-				provider:
-					sandboxProvider === 'n8n-sandbox'
-						? 'n8n-sandbox'
-						: sandboxProvider === 'daytona'
-							? 'daytona'
-							: 'local',
+				provider,
 				timeout: sandboxTimeout,
 			};
 		}
 
-		if (sandboxProvider === 'daytona') {
+		if (provider === 'daytona') {
 			return {
 				enabled: true,
 				provider: 'daytona',
@@ -663,19 +678,11 @@ export class InstanceAiService {
 			};
 		}
 
-		if (sandboxProvider === 'n8n-sandbox') {
-			return {
-				enabled: true,
-				provider: 'n8n-sandbox',
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-				timeout: sandboxTimeout,
-			};
-		}
-
 		return {
 			enabled: true,
-			provider: 'local',
+			provider: 'n8n-sandbox',
+			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
+			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
 		};
 	}

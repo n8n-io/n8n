@@ -132,6 +132,7 @@ jest.mock('@n8n/instance-ai', () => {
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
+	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -803,6 +804,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockImplementation(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		}));
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -1862,6 +1870,23 @@ describe('InstanceAiService — terminal outcome replay', () => {
 });
 
 describe('InstanceAiService — agent tree snapshots', () => {
+	beforeEach(() => {
+		(buildAgentTreeFromEvents as jest.Mock).mockImplementation(
+			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: events
+					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
+					.join(''),
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			}),
+		);
+	});
+
 	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
 		const service = createSnapshotService();
 		const terminalEvent: InstanceAiEvent = {

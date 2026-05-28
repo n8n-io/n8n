@@ -30,7 +30,6 @@ import type {
 } from '../../workflows/submit-workflow.tool';
 
 const {
-	recordSuccessfulWorkflowBuilds,
 	resultFromPostStreamError,
 	resultFromTerminalRemediation,
 	resultFromLaterFailedMainSubmit,
@@ -178,9 +177,10 @@ function createSpawnableContext(
 	permissionOverrides: Partial<InstanceAiPermissions> = {},
 	overrides: Partial<OrchestrationContext> = {},
 ): OrchestrationContext {
+	const workspace = createRuntimeSkillWorkspace().workspace;
 	return createMockContext({
 		domainContext: createMockDomainContext(permissionOverrides),
-		domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
+		workspace,
 		spawnBackgroundTask: jest.fn().mockReturnValue({
 			status: 'started',
 			taskId: 'build-task',
@@ -244,7 +244,7 @@ describe('getBuilderSessionMemory', () => {
 		expect(getBuilderSessionMemory({ memory }, true)).toBe(memory);
 	});
 
-	it('skips memory when the builder falls back to tool mode', () => {
+	it('skips memory when the builder is not using the shared workspace', () => {
 		const memory = {} as OrchestrationContext['memory'];
 
 		expect(getBuilderSessionMemory({ memory }, false)).toBeUndefined();
@@ -1694,8 +1694,8 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 				getEventsForRuns: jest.fn().mockReturnValue([]),
 			},
 			domainContext: createMockDomainContext(),
+			workspace: createRuntimeSkillWorkspace().workspace,
 			domainTools: mockToolRegistry({
-				'build-workflow': mockBuiltTool('build-workflow'),
 				nodes: mockBuiltTool('nodes'),
 				workflows: mockBuiltTool('workflows'),
 				'data-tables': mockBuiltTool('data-tables'),
@@ -1947,7 +1947,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 	it('does not apply the edit approval gate without domain context', async () => {
 		const context = createMockContext({
-			domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
+			workspace: createRuntimeSkillWorkspace().workspace,
 			spawnBackgroundTask: jest.fn().mockReturnValue({
 				status: 'started',
 				taskId: 'build-task',
@@ -1960,7 +1960,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		await executeTool(tool, editInput, { suspend });
 
 		expect(suspend).not.toHaveBeenCalled();
-		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 	});
 
 	it('skips suspend in a replan follow-up', async () => {
@@ -2045,39 +2045,5 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
 		expect(suspend).not.toHaveBeenCalled();
 		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
-	});
-});
-
-describe('recordSuccessfulWorkflowBuilds', () => {
-	it('records workflow IDs returned from successful build-workflow executions', async () => {
-		const onWorkflowId = jest.fn();
-		const input = { prompt: 'build it' };
-		const context = { runId: 'run-1' };
-		const result = { success: true, workflowId: 'wf-main', displayName: 'Main' };
-		const handler = jest.fn(
-			async (_input: unknown, _context?: unknown) => await Promise.resolve(result),
-		);
-		const tool = { name: 'build-workflow', description: 'build-workflow', handler };
-
-		recordSuccessfulWorkflowBuilds(tool, onWorkflowId);
-
-		await expect(executeTool(tool, input, context)).resolves.toBe(result);
-		expect(handler).toHaveBeenCalledWith(input, context);
-		expect(onWorkflowId).toHaveBeenCalledWith('wf-main');
-	});
-
-	it('does not record failed or incomplete build-workflow results', async () => {
-		const onWorkflowId = jest.fn();
-		const handler = jest
-			.fn()
-			.mockResolvedValueOnce({ success: false, workflowId: 'wf-failed' })
-			.mockResolvedValueOnce({ success: true });
-		const tool = { name: 'build-workflow', description: 'build-workflow', handler };
-
-		recordSuccessfulWorkflowBuilds(tool, onWorkflowId);
-
-		await executeTool(tool, {});
-		await executeTool(tool, {});
-		expect(onWorkflowId).not.toHaveBeenCalled();
 	});
 });

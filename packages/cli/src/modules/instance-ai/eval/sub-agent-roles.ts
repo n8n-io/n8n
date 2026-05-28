@@ -1,4 +1,4 @@
-import { BUILDER_AGENT_PROMPT, MAX_STEPS } from '@n8n/instance-ai';
+import { createSandboxBuilderAgentPrompt, MAX_STEPS } from '@n8n/instance-ai';
 
 export interface SubAgentRoleConfig {
 	/** System prompt that drives the agent's behavior. */
@@ -19,7 +19,7 @@ export interface SubAgentRoleConfig {
  */
 export const SUB_AGENT_ROLES: Record<string, SubAgentRoleConfig> = {
 	builder: {
-		systemPrompt: BUILDER_AGENT_PROMPT,
+		systemPrompt: createSandboxBuilderAgentPrompt('/workspace'),
 		label: 'builder',
 		defaultMaxSteps: MAX_STEPS.BUILDER,
 	},

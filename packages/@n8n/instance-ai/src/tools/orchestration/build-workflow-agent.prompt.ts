@@ -1,15 +1,12 @@
 /**
  * System prompts for the preconfigured workflow builder agent.
  *
- * Two variants:
- * - BUILDER_AGENT_PROMPT: Original tool-based builder (no sandbox)
- * - createSandboxBuilderAgentPrompt(): Sandbox-based builder with real files + tsc
+ * The builder runs only in sandbox mode, with real files + tsc.
  */
 
 import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
-	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
@@ -105,10 +102,10 @@ const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating work
    - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
    - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.`;
 
-function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
+function composeSdkRulesAndPatterns(): string {
 	return [
 		SDK_CODE_RULES,
-		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		SANDBOX_WORKFLOW_RULES,
 		TOOL_NAMING_RULES,
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
@@ -118,42 +115,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	].join('\n\n');
 }
 
-const SDK_RULES_AND_PATTERNS_TOOL = composeSdkRulesAndPatterns('tool');
-const SDK_RULES_AND_PATTERNS_SANDBOX = composeSdkRulesAndPatterns('sandbox');
-
-// ── Original tool-based builder prompt ───────────────────────────────────────
-
-export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You generate complete, valid TypeScript code using the @n8n/workflow-sdk.
-
-${BUILDER_OUTPUT_DISCIPLINE}
-
-## Repair Strategy
-When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
-
-## Escalation
-${ASK_USER_FALLBACK}
-
-${PLACEHOLDERS_RULE}
-
-## Mandatory Process
-1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
-2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
-3. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
-4. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
-5. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
-6. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
-
-Do NOT produce visible output until step 6. All reasoning happens internally.
-
-## Credential Rules (tool mode)
-- Use \`newCredential('Credential Name', 'credential-id')\` only when the user selected a specific existing credential or the workflow already has one.
-- If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; the build tools mock unresolved credentials for verification.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` in tool mode.
-- When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
-- Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
-
-${SDK_RULES_AND_PATTERNS_TOOL}
-`;
+const SDK_RULES_AND_PATTERNS_SANDBOX = composeSdkRulesAndPatterns();
 
 // ── Sandbox-based builder prompt ─────────────────────────────────────────────
 

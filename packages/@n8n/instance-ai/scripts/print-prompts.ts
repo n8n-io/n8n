@@ -15,10 +15,7 @@ import { join, resolve } from 'path';
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
 import { buildBrowserAgentPrompt } from '../src/tools/orchestration/browser-credential-setup.prompt';
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../src/tools/orchestration/build-workflow-agent.prompt';
+import { createSandboxBuilderAgentPrompt } from '../src/tools/orchestration/build-workflow-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
@@ -126,11 +123,6 @@ function collectAgents(): AgentEntry[] {
 			displayName: 'Sub-Agent — Workflow Builder',
 			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts',
 			variants: [
-				{
-					file: 'tool',
-					label: 'tool mode (no sandbox) → BUILDER_AGENT_PROMPT',
-					body: BUILDER_AGENT_PROMPT,
-				},
 				{
 					file: 'sandbox',
 					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',

@@ -43,7 +43,7 @@ for approval before execution starts.
 - On denial: returns feedback for the LLM to revise the plan
 
 **Task kinds** map to executors:
-- `build-workflow` → workflow builder agent (sandbox or tool mode)
+- `build-workflow` → workflow builder agent (sandbox-backed)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → orchestrator-executed verification step
 
@@ -101,15 +101,10 @@ the builder runs detached from the orchestrator.
 
 **Returns**: `{ result: string }` — contains task ID for background tracking.
 
-**Two modes** (selected based on sandbox availability):
-
-- **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
-  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
-  Gets filesystem and `execute_command` tools from the workspace.
-- **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
-  `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
-
-Both modes: max 30 steps, publishes events to the event bus, non-blocking.
+Requires a sandbox workspace (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`). The agent
+writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for validation,
+and calls `submit-workflow`. It gets filesystem and `execute_command` tools from
+the workspace. Max 30 steps, publishes events to the event bus, non-blocking.
 
 **Sandbox-only tools** (not in `createAllTools`, only available to the builder):
 - `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
