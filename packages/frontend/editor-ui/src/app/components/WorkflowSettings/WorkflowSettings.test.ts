@@ -121,14 +121,30 @@ const createComponentWithCustomTelemetryTagsStub = createComponentRenderer(Workf
 		stubs: {
 			...workflowSettingsStubs,
 			WorkflowCustomTelemetryTags: {
-				props: ['modelValue', 'isReadOnly'],
+				props: ['modelValue', 'isReadOnly', 'saveTags'],
 				emits: ['update:modelValue', 'validity-change'],
+				methods: {
+					async saveCustomTelemetryTags() {
+						const tags = [{ key: 'env', value: 'production' }];
+						try {
+							await this.saveTags(tags);
+						} catch {
+							return;
+						}
+						this.$emit('update:modelValue', tags);
+					},
+				},
 				template: `
 					<div data-test-id="workflow-settings-custom-telemetry-tags">
 						<button
 							type="button"
 							data-test-id="workflow-settings-custom-telemetry-tags-update"
 							@click="$emit('update:modelValue', [{ key: 'env', value: 'production' }])"
+						/>
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-save-immediate"
+							@click="saveCustomTelemetryTags"
 						/>
 						<button
 							type="button"
@@ -257,6 +273,38 @@ describe('WorkflowSettingsVue', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should persist custom telemetry tags immediately with a partial settings payload', async () => {
+			workflowDocumentStore.setChecksum('test-checksum');
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith('1', {
+				settings: {
+					customTelemetryTags: [{ key: 'env', value: 'production' }],
+				},
+				expectedChecksum: 'test-checksum',
+			});
+			expect(workflowDocumentStore.settings.customTelemetryTags).toEqual([
+				{ key: 'env', value: 'production' },
+			]);
+		});
+
+		it('should show an error when immediate custom telemetry tag persistence fails', async () => {
+			const error = new Error('Save failed');
+			workflowsStore.updateWorkflow.mockRejectedValue(error);
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
+
+			await waitFor(() => {
+				expect(toast.showError).toHaveBeenCalledWith(error, 'Problem saving settings');
+			});
+			expect(workflowDocumentStore.settings.customTelemetryTags).toBeUndefined();
 		});
 
 		it('should disable workflow settings save when custom telemetry tags are invalid', async () => {

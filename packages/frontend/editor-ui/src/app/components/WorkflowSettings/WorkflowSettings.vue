@@ -27,7 +27,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
+import type {
+	ICustomTelemetryTag,
+	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
+} from 'n8n-workflow';
 import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -615,6 +619,19 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 		return { hours, minutes, seconds };
 	}
 	return { hours: 0, minutes: 0, seconds: 0 };
+};
+
+const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[]) => {
+	try {
+		await workflowsStore.updateWorkflow(String(route.params.workflowId), {
+			settings: { customTelemetryTags },
+			expectedChecksum: workflowDocumentStore.value.checksum,
+		});
+		workflowDocumentStore.value.mergeSettings({ customTelemetryTags });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
+		throw error;
+	}
 };
 
 const saveSettings = async () => {
@@ -1658,6 +1675,7 @@ onBeforeUnmount(() => {
 					v-if="settingsStore.isOtelEnabled"
 					v-model="workflowSettings.customTelemetryTags"
 					:is-read-only="isWorkflowSettingsReadOnly"
+					:save-tags="saveCustomTelemetryTags"
 					@validity-change="hasCustomTelemetryTagErrors = $event"
 				/>
 			</div>
