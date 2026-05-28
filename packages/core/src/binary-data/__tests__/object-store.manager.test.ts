@@ -1,13 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
 import type { MetadataResponseHeaders } from '@/binary-data/object-store/types';
 import { ObjectStoreManager } from '@/binary-data/object-store.manager';
 import { mockInstance, toFileId, toStream } from '@test/utils';
 
-jest.mock('fs/promises');
+vi.mock('fs/promises');
 
 const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreManager = new ObjectStoreManager(objectStoreService);
@@ -27,7 +27,7 @@ const mockBuffer = Buffer.from('Test data');
 const mockStream = toStream(mockBuffer);
 
 beforeAll(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('store()', () => {
@@ -128,7 +128,7 @@ describe('copyByFilePath()', () => {
 		const sourceFilePath = 'path/to/file/in/filesystem';
 		const metadata = { mimeType: 'text/plain' };
 
-		fs.readFile = jest.fn().mockResolvedValue(mockBuffer);
+		fs.readFile = vi.fn().mockResolvedValue(mockBuffer);
 
 		const result = await objectStoreManager.copyByFilePath(
 			{ type: 'execution', workflowId, executionId },

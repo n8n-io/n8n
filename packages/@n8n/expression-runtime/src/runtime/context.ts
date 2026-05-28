@@ -253,6 +253,45 @@ export function buildContext(
 		},
 	});
 
+	// $items — global accessor for a node's execution data. Unlike $() and
+	// $input this is a plain typed-RPC function (not a synthetic Proxy):
+	// the host enforces nothing structural here, the schema validates the
+	// args, and the host's `WorkflowDataProxy.$items` applies its own
+	// defaults when fields are undefined.
+	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'getItems', nodeName, outputIndex, runIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
+	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
+	// All three host aliases route to the same `handleFromAi` callback;
+	// the typed-RPC envelope is identical regardless of which name the
+	// expression used. `name` is forwarded as-is — host validates it
+	// (required, regex-restricted) and emits a structured `ExpressionError`
+	// on bad input.
+	const sendFromAi = (
+		name?: string,
+		description?: string,
+		valueType?: string,
+		defaultValue?: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'fromAi', name, description, valueType, defaultValue }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+	target.$fromAI = sendFromAi;
+	target.$fromAi = sendFromAi;
+	target.$fromai = sendFromAi;
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target
