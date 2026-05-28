@@ -163,13 +163,19 @@ function needsSetup(nodeType: INodeTypeDescription): boolean {
 	);
 }
 
-function makeUniqueName(baseName: string, existingNames: string[]): string {
+function makeUniqueName(
+	baseName: string,
+	existingNames: string[],
+	format?: (name: string, counter: number) => string,
+): string {
+	const defaultFormat = (name: string, counter: number) => `${name} (${counter})`;
+	const formatFn = format ?? defaultFormat;
 	if (!existingNames.includes(baseName)) return baseName;
 	let counter = 1;
-	while (existingNames.includes(`${baseName} (${counter})`)) {
+	while (existingNames.includes(formatFn(baseName, counter))) {
 		counter++;
 	}
-	return `${baseName} (${counter})`;
+	return formatFn(baseName, counter);
 }
 
 const agentProviderNodeTypes = new Set<string>(AI_VENDOR_NODE_TYPES);
@@ -496,6 +502,11 @@ function openConfigForNewMcpServer(
 
 function handleAddMcpServer(nodeType: INodeTypeDescription) {
 	const newServer = nodeTypeToNewMcpServer(nodeType);
+	newServer.name = makeUniqueName(
+		newServer.name,
+		getExistingMcpServerNames(workingMcpServers.value),
+		(name, counter) => `${name}-${counter}`,
+	);
 	openConfigForNewMcpServer(newServer, nodeType);
 }
 

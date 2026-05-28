@@ -80,7 +80,7 @@ const AUTHENTICATION_TO_CREDENTIAL_TYPE: Record<string, string | undefined> = {
 	headerAuth: 'httpHeaderAuth',
 	multipleHeadersAuth: 'httpMultipleHeadersAuth',
 	mcpOAuth2Api: 'mcpOAuth2Api',
-	none: undefined,
+	none: 'none',
 } satisfies Record<McpAuthenticationSchemaType, string | undefined>;
 
 function authenticationToCredentialType(authentication: string): string | undefined {
