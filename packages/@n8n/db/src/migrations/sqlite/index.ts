@@ -168,7 +168,6 @@ import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-Cre
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import { CreateEvaluationCollection1778496086558 } from '../common/1778496086558-CreateEvaluationCollection';
-import { AddResourceToOAuthAuthorizationCodes1778855321995 } from '../common/1778855321995-AddResourceToOAuthAuthorizationCodes';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateAgentExecutionTables1783000000001 } from '../common/1783000000001-CreateAgentExecutionTables';
 import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
@@ -186,6 +185,7 @@ import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddResourceToOAuthAuthorizationCodes1784000000017 } from '../common/1784000000017-AddResourceToOAuthAuthorizationCodes';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -357,7 +357,6 @@ const sqliteMigrations: Migration[] = [
 	AddWorkflowVersionToTestRun1778100001000,
 	AddEvaluationConfigColumnsToTestRun1778100002000,
 	CreateEvaluationCollection1778496086558,
-	AddResourceToOAuthAuthorizationCodes1778855321995,
 	CreateAgentTables1783000000000,
 	CreateAgentExecutionTables1783000000001,
 	CreateAgentObservationTables1784000000000,
@@ -377,6 +376,7 @@ const sqliteMigrations: Migration[] = [
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddResourceToOAuthAuthorizationCodes1784000000017,
 ];
 
 export { sqliteMigrations };
