@@ -213,7 +213,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: 'state-xyz',
-				resource: 'https://n8n.example.com/mcp-server/http',
+				resource: new URL('https://n8n.example.com/mcp-server/http'),
 			};
 
 			const res = mock<Response>();
@@ -277,7 +277,7 @@ describe('McpOAuthService', () => {
 			const params = {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
-				resource: 'https://attacker.example.com/mcp-server/http',
+				resource: new URL('https://attacker.example.com/mcp-server/http'),
 			};
 
 			const res = mock<Response>();
@@ -312,7 +312,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				// trailing slash — semantically equivalent to the canonical URL
-				resource: 'https://n8n.example.com/mcp-server/http/',
+				resource: new URL('https://n8n.example.com/mcp-server/http/'),
 			};
 
 			const res = mock<Response>();
