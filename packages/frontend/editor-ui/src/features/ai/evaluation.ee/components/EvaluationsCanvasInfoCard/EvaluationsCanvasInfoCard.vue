@@ -121,6 +121,19 @@ watch(
 	{ immediate: true },
 );
 
+// Re-check configs when the wizard closes — the user may have just completed
+// it and created a config. Without this, the cached `hasConfigs === false`
+// from the initial fetch would let the card pop back up over a workflow that
+// now has a config.
+watch(
+	() => wizardStore.isOpen,
+	(isOpen, wasOpen) => {
+		if (wasOpen && !isOpen && shouldRenderModuleQualifies.value) {
+			void checkConfigs();
+		}
+	},
+);
+
 onMounted(() => {
 	if (shouldRenderModuleQualifies.value && hasConfigs.value === null) void checkConfigs();
 });

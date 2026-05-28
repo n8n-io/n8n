@@ -541,7 +541,7 @@ function handleFinish() {
 								<N8nText size="small" bold color="text-dark">
 									{{ locale.baseText(metric.labelKey) }}
 								</N8nText>
-								<N8nBadge :class="$style.judgePill">
+								<N8nBadge v-if="isLlmJudgeMetric(metric.key)" :class="$style.judgePill">
 									{{ locale.baseText('evaluations.wizardSidepanel.metric.judgeTag') }}
 								</N8nBadge>
 							</div>
@@ -896,7 +896,7 @@ function handleFinish() {
 									<N8nText size="small" bold color="text-dark">
 										{{ locale.baseText(metric.labelKey) }}
 									</N8nText>
-									<N8nBadge :class="$style.judgePill">
+									<N8nBadge v-if="isLlmJudgeMetric(metric.key)" :class="$style.judgePill">
 										{{ locale.baseText('evaluations.wizardSidepanel.metric.judgeTag') }}
 									</N8nBadge>
 								</div>
@@ -1305,7 +1305,7 @@ function handleFinish() {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
 	border: var(--border);
-	border-radius: var(--border-radius--base);
+	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
 }
 

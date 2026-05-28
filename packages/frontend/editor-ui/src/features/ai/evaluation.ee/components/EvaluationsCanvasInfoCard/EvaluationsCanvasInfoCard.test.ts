@@ -142,4 +142,23 @@ describe('EvaluationsCanvasInfoCard', () => {
 		await nextTick();
 		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
 	});
+
+	it('re-checks configs when the wizard closes after a successful run', async () => {
+		const { findByTestId, queryByTestId } = renderComponent();
+		await findByTestId('evaluations-canvas-info-card');
+
+		// Open the wizard — card hides while it's open.
+		wizardIsOpen.value = true;
+		await nextTick();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+
+		// User creates a config inside the wizard, then closes it. The next
+		// configs fetch must reflect the new config, otherwise the card pops
+		// back up.
+		listEvaluationConfigs.mockResolvedValue([{ id: 'c1' }]);
+		wizardIsOpen.value = false;
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await nextTick();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+	});
 });
