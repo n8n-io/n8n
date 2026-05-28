@@ -12,7 +12,7 @@
 
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const OVERRIDES_PATH = path.join(scriptDir, 'license-overrides.json');
@@ -36,7 +36,11 @@ function licenseKey(licenses) {
 	if (!licenses || licenses.length === 0) return null;
 	const parts = licenses.map((l) => l.expression ?? l.license?.id ?? l.license?.name).filter(Boolean);
 	if (parts.length === 0) return null;
-	return parts.length === 1 ? parts[0] : parts.join(' AND ');
+	if (parts.length === 1) return parts[0];
+	// Per CycloneDX, multiple licenses[] entries on a single component represent
+	// a licensee choice (OR), not a conjunction. AND-conjoined or otherwise
+	// complex compounds must come through the `expression` field instead.
+	return `(${parts.join(' OR ')})`;
 }
 
 function licenseTextFor(licenses) {
@@ -48,15 +52,32 @@ function licenseTextFor(licenses) {
 	return null;
 }
 
+// npm package name grammar — scoped (@scope/name) or unscoped name.
+// SBOM metadata can ultimately originate from upstream package.json files,
+// so we constrain the segments before joining into a filesystem path to
+// reject traversal (`..`), absolute-path, and separator-injection attempts.
+const NPM_SCOPE_PATTERN = /^@[a-z0-9][a-z0-9._-]*$/i;
+const NPM_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+
 async function readLicenseFromDisk(nodeModulesDir, component) {
 	if (!nodeModulesDir) return null;
+	if (component.group && !NPM_SCOPE_PATTERN.test(component.group)) return null;
+	if (!component.name || !NPM_NAME_PATTERN.test(component.name)) return null;
+
+	const resolvedRoot = path.resolve(nodeModulesDir);
 	const pkgDir = component.group
-		? path.join(nodeModulesDir, component.group, component.name)
-		: path.join(nodeModulesDir, component.name);
+		? path.join(resolvedRoot, component.group, component.name)
+		: path.join(resolvedRoot, component.name);
+	const resolvedPkgDir = path.resolve(pkgDir);
+
+	// Defence in depth: even after the regex checks, confirm the resolved path
+	// remains within nodeModulesDir before reading anything.
+	const rootWithSep = resolvedRoot.endsWith(path.sep) ? resolvedRoot : resolvedRoot + path.sep;
+	if (!resolvedPkgDir.startsWith(rootWithSep)) return null;
 
 	let entries;
 	try {
-		entries = await readdir(pkgDir);
+		entries = await readdir(resolvedPkgDir);
 	} catch {
 		return null;
 	}
@@ -66,7 +87,7 @@ async function readLicenseFromDisk(nodeModulesDir, component) {
 	);
 	for (const candidate of candidates) {
 		try {
-			const text = await readFile(path.join(pkgDir, candidate), 'utf-8');
+			const text = await readFile(path.join(resolvedPkgDir, candidate), 'utf-8');
 			if (text && text.trim()) return text.trim();
 		} catch {
 			/* try next */
@@ -90,6 +111,10 @@ function applyOverride(component, overrides, matchedKeys) {
 	return {
 		...component,
 		licenses: [{ license: { id: override.license } }],
+		// Propagate the override flag so callers (e.g. the disk-text lookup)
+		// can opt out when the on-disk LICENSE is known to disagree with the
+		// overridden SPDX id.
+		_overrideSkipDiskText: override.skipDiskText === true,
 	};
 }
 
@@ -125,7 +150,14 @@ The n8n software includes open source packages, libraries, and modules, each of 
 		doc += '\n';
 	}
 
-	doc += '# License Texts\n\n';
+	doc += `# License Texts
+
+The license text below is reproduced from a single representative package per license.
+Copyright notices identify the contributor of that representative package only; each
+listed component carries its own copyright. The verbatim LICENSE file of every package
+is distributed inside its \`node_modules/\` directory in the n8n release artefact.
+
+`;
 	for (const key of sortedKeys) {
 		const text = texts.get(key);
 		doc += `## ${key} License Text\n\n`;
@@ -173,9 +205,10 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 			const inlineText = licenseTextFor(component.licenses);
 			if (inlineText) {
 				texts.set(key, inlineText);
-			} else if (readDiskText) {
+			} else if (readDiskText && !component._overrideSkipDiskText) {
 				// Disk lookup uses rawComponent (real group/name on disk) even when
 				// licenses were overridden, since the file location is independent of the SPDX expression.
+				// Skip when the override explicitly opts out (on-disk LICENSE disagrees with the overridden id).
 				const diskText = await readDiskText(rawComponent);
 				if (diskText) texts.set(key, diskText);
 			}
@@ -199,7 +232,16 @@ export async function renderSbom(sbom, overrides, { readDiskText } = {}) {
 	};
 }
 
-export { qualifiedName, isFirstParty, licenseKey, applyOverride };
+export {
+	qualifiedName,
+	isFirstParty,
+	licenseKey,
+	licenseTextFor,
+	copyrightFor,
+	applyOverride,
+	loadOverrides,
+	readLicenseFromDisk,
+};
 
 async function main() {
 	const [sbomPath, outputPath, nodeModulesDir] = process.argv.slice(2);
@@ -218,7 +260,6 @@ async function main() {
 			: undefined,
 	});
 
-	await writeFile(outputPath, markdown);
 	console.log(JSON.stringify(summary, null, 2));
 
 	if (unusedOverrides.length > 0) {
@@ -231,16 +272,23 @@ async function main() {
 	if (unresolved.length > 0) {
 		console.error('\nUnresolved (no license detected, no override):');
 		for (const line of unresolved) console.error('  ' + line);
+		// Refuse to write a partial markdown — a retried CI step or cached artifact must not
+		// pick up an incomplete THIRD_PARTY_LICENSES.md as if it were the canonical file.
 		process.exit(2);
 	}
 
 	if (unusedOverrides.length > 0) {
 		process.exit(3);
 	}
+
+	// Only write after all integrity checks pass.
+	await writeFile(outputPath, markdown);
 }
 
 // Run main() only when invoked as a script, not when imported by tests.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL correctly percent-encodes the argv path so the comparison
+// holds for checkouts containing spaces, unicode, '@', etc.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((err) => {
 		console.error(err);
 		process.exit(1);

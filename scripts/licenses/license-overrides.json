@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. Keys are PURLs (pkg:npm/<name>@<version>) — exact match required. 'source' points to where the license was verified so reviewers can re-check.",
+  "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. Keys are PURLs (pkg:npm/<name>@<version>) — exact match required. 'source' points to where the license was verified so reviewers can re-check. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden SPDX id.",
   "overrides": {
     "pkg:npm/%40ewoudenberg/difflib@0.1.0": {
       "license": "Python-2.0",
@@ -35,7 +35,7 @@
     },
     "pkg:npm/utf7@1.0.2": {
       "license": "MIT",
-      "source": "compiled/node_modules/utf7/LICENSE — text is verbatim MIT despite package.json declaring legacy licenses[]=BSD"
+      "source": "DISCREPANCY: package.json declares legacy licenses[]=BSD, but compiled/node_modules/utf7/LICENSE ships verbatim MIT text (https://github.com/chris-rock/node-utf7/blob/master/LICENSE). On-disk LICENSE file taken as authoritative — this is the file customers actually receive in the release tarball. If a future legal review concludes differently, set skipDiskText:true and switch license to BSD-3-Clause."
     }
   }
 }

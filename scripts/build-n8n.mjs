@@ -219,8 +219,14 @@ if (process.env.N8N_SKIP_LICENSES !== 'true') {
 		await generateProcess;
 		echo(chalk.green('✅ SBOM generated and THIRD_PARTY_LICENSES.md rendered'));
 	} catch (error) {
-		echo(chalk.yellow('⚠️  Warning: SBOM/license generation failed, continuing build...'));
 		echo(chalk.red(`ERROR: SBOM/license generation failed: ${error.message}`));
+		// In CI, fail loudly. A stale or missing THIRD_PARTY_LICENSES.md must never ship —
+		// the release workflow uploads it unconditionally and would otherwise publish
+		// an incomplete attribution file.
+		if (process.env.CI === 'true') {
+			throw error;
+		}
+		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
 	}
 } else {
 	echo(chalk.gray('INFO: Skipping SBOM/license generation (N8N_SKIP_LICENSES=true)'));

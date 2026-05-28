@@ -36,7 +36,10 @@ jobs:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
+    # No continue-on-error: SBOM is now the source of truth for
+    # THIRD_PARTY_LICENSES.md (served by the /third-party-licenses endpoint
+    # and attached to the GitHub release). A generation failure must block
+    # the release rather than silently shipping a stale or missing manifest.
     steps:
       - name: Checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
