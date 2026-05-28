@@ -11,12 +11,6 @@ nodes, custom code tools, or provider tools.
 Use this guidance before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
 or adding, changing, or removing entries in \`tools[]\` / \`providerTools\`.
 
-MCP servers are the preferred way to connect external services (GitHub,
-Slack, Notion, etc.). MCP servers are NOT discoverable via \`search_nodes\`.
-Use the \`agent-builder-mcp\` skill and \`search_mcp_servers\` tool instead.
-Fall back to node tools and workflow tools only when no MCP server is available.
-
-When no MCP server is available, prefer node tools over workflow tools, and workflow tools over custom tools.
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
 
