@@ -1069,30 +1069,6 @@ export class CanvasPage extends BasePage {
 		await this.getTidyUpButton().click();
 	}
 
-	/**
-	 * Read the Vue Flow viewport transform — scale and translate values from
-	 * the underlying transformation matrix. Mirrors `getCanvasZoomLevel()`'s
-	 * approach so changes to the Vue Flow DOM stay localized to one place.
-	 */
-	async getCanvasViewport(): Promise<{ scale: number; translateX: number; translateY: number }> {
-		return await this.page.evaluate(() => {
-			const canvasViewport = document.querySelector(
-				'.vue-flow__transformationpane.vue-flow__container',
-			);
-			if (canvasViewport) {
-				const transform = window.getComputedStyle(canvasViewport).transform;
-				if (transform && transform !== 'none') {
-					const matrix = transform.match(/matrix\(([^)]+)\)/);
-					if (matrix) {
-						const values = matrix[1].split(',').map((value) => parseFloat(value.trim()));
-						return { scale: values[0], translateX: values[4], translateY: values[5] };
-					}
-				}
-			}
-			return { scale: 1, translateX: 0, translateY: 0 };
-		});
-	}
-
 	async duplicateSelectedNodes(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+d');
 	}

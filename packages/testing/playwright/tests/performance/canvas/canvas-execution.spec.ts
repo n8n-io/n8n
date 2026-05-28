@@ -59,6 +59,11 @@ test.describe(
 				n8nContainer,
 				services,
 			}, testInfo) => {
+				test.skip(
+					tier !== 'S' && !!process.env.CI,
+					'CI only runs S tier; M / L run locally via `pnpm bench:canvas`',
+				);
+
 				test.setTimeout(TIER_TIMEOUT_MS[tier]);
 				await n8n.page.setViewportSize({ width: 1536, height: 960 });
 				await n8n.page.emulateMedia({ reducedMotion: 'reduce' });

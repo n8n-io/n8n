@@ -27,6 +27,11 @@ test.describe(
 				n8nContainer,
 				services,
 			}, testInfo) => {
+				test.skip(
+					tier !== 'S' && !!process.env.CI,
+					'CI only runs S tier; M / L run locally via `pnpm bench:canvas`',
+				);
+
 				const { workflow } = buildCanvasBenchmarkWorkflow({ tier });
 				const created = await api.workflows.createWorkflow(workflow);
 				const workflowId: string = String(created.id);
