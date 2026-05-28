@@ -55,7 +55,6 @@ const defaultEnabledExtensions: MarkdownEditorExtensionName[] = [
 	'link',
 	'table',
 	'taskList',
-	'strike',
 ];
 ```
 
@@ -92,7 +91,6 @@ const markdownEditorExtensions = {
 	}),
 	table: [Table, TableRow, TableHeader, TableCell],
 	taskList: [TaskList, TaskItem],
-	strike: Strike,
 };
 ```
 

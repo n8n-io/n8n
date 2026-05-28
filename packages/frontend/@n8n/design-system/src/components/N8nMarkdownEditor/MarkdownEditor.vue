@@ -3,8 +3,8 @@ import type { Editor } from '@tiptap/core';
 import { EditorContent } from '@tiptap/vue-3';
 import { computed, nextTick, ref, watch } from 'vue';
 
-import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
 import { useMarkdownEditor } from './composables/useMarkdownEditor';
+import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from './MarkdownEditor.types';
 import MarkdownEditorToolbar from './MarkdownEditorToolbar.vue';
 import { setEditorContent } from './markdownEditorUtils';
 

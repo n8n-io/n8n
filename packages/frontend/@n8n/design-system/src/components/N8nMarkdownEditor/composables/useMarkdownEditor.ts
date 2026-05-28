@@ -1,7 +1,6 @@
 /** These probably should be lazy loaded */
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import Strike from '@tiptap/extension-strike';
 import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -9,6 +8,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import { Markdown } from '@tiptap/markdown';
+import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { useEditor } from '@tiptap/vue-3';
@@ -23,13 +23,30 @@ import {
 	setEditorContent,
 } from '../markdownEditorUtils';
 
+type EditorProps = NonNullable<N8nMarkdownEditorProps['editorProps']>;
+type EditorAttributes = EditorProps['attributes'];
+type AttributeMap = Record<string, string>;
+
+const mergeMarkdownAttributes = (attributes: AttributeMap = {}) => ({
+	...attributes,
+	class: ['n8n-markdown', attributes.class].filter(Boolean).join(' '),
+	'data-test-id': 'n8n-markdown-editor-content',
+});
+
+const getMarkdownAttributes = (attributes: EditorAttributes): EditorAttributes => {
+	if (typeof attributes === 'function') {
+		return (state: EditorState) => mergeMarkdownAttributes(attributes(state));
+	}
+
+	return mergeMarkdownAttributes(attributes);
+};
+
 export const useMarkdownEditor = (
 	props: Readonly<N8nMarkdownEditorProps>,
 	emit: SetupContext<N8nMarkdownEditorEmits>['emit'],
 ) => {
 	const baseExtensions = [
 		StarterKit,
-		Strike,
 		Link.configure({
 			openOnClick: false,
 		}),
@@ -62,11 +79,7 @@ export const useMarkdownEditor = (
 		editable: !props.disabled && !props.readonly,
 		editorProps: {
 			...props.editorProps,
-			attributes: {
-				class: 'n8n-markdown',
-				'data-test-id': 'n8n-markdown-editor-content',
-				...props.editorProps?.attributes,
-			},
+			attributes: getMarkdownAttributes(props.editorProps?.attributes),
 			handleDOMEvents: {
 				...props.editorProps?.handleDOMEvents,
 				copy: (view: EditorView, event: ClipboardEvent) =>

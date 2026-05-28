@@ -144,9 +144,6 @@ catalogs:
     '@tiptap/extension-placeholder':
       specifier: 3.22.5
       version: 3.22.5
-    '@tiptap/extension-strike':
-      specifier: 3.22.5
-      version: 3.22.5
     '@tiptap/extension-table':
       specifier: 3.22.5
       version: 3.22.5
@@ -3590,9 +3587,6 @@ importers:
       '@tiptap/extension-placeholder':
         specifier: 'catalog:'
         version: 3.22.5(@tiptap/extensions@3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5))
-      '@tiptap/extension-strike':
-        specifier: 'catalog:'
-        version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
       '@tiptap/extension-table':
         specifier: 'catalog:'
         version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)

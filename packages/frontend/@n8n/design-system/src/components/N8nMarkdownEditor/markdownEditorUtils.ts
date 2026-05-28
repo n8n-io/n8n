@@ -43,7 +43,7 @@ export const isSelectionInsideNode = (editor: Editor, nodeName: string) => {
 };
 
 export const copyMarkdown = (editor: Editor, event: ClipboardEvent) => {
-	if (!event.clipboardData) return false;
+	if (!event.clipboardData || editor.state.selection.empty) return false;
 
 	event.clipboardData.setData('text/plain', editor.getMarkdown());
 	event.preventDefault();

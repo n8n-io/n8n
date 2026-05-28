@@ -204,13 +204,11 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(getEditorElement(wrapper.container)).toHaveAttribute('contenteditable', 'false');
 	});
 
-	it('copies editor content as markdown', async () => {
-		const { wrapper } = await renderEditor(
+	it('copies selected editor content as markdown', async () => {
+		const { wrapper, editor } = await renderEditor(
 			['# Heading', '', '**Bold text**', '', '- List item 1', '- List item 2'].join('\n'),
 		);
 		const textbox = getEditorElement(wrapper.container) as HTMLElement;
-		const range = document.createRange();
-		const selection = window.getSelection();
 		const clipboardData = {
 			setData: vi.fn(),
 			getData: vi.fn(),
@@ -218,9 +216,7 @@ describe('components/N8nMarkdownEditor', () => {
 		};
 		const copyEvent = new Event('copy', { bubbles: true, cancelable: true });
 
-		range.selectNodeContents(textbox);
-		selection?.removeAllRanges();
-		selection?.addRange(range);
+		editor.commands.selectAll();
 		Object.defineProperty(copyEvent, 'clipboardData', {
 			value: clipboardData,
 		});
@@ -229,7 +225,7 @@ describe('components/N8nMarkdownEditor', () => {
 
 		expect(clipboardData.setData).toHaveBeenCalledWith(
 			'text/plain',
-			'# Heading\n\n**Bold text**\n\n- List item 1\n- List item 2',
+			'# Heading\n\n**Bold text**\n\n- List item 1\n- List item 2\n\n',
 		);
 	});
 
@@ -256,6 +252,8 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(textbox.querySelector('strong')).toHaveTextContent('Bold text');
 		expect(textbox.querySelectorAll('li')).toHaveLength(2);
 		expect(editor.getMarkdown().trimEnd()).toBe(markdownContent);
-		expect(wrapper.emitted('update:modelValue').at(-1)?.[0].trimEnd()).toBe(markdownContent);
+		expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0].trimEnd()).toBe(
+			markdownContent,
+		);
 	});
 });
