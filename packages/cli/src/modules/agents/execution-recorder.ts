@@ -179,6 +179,26 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 	  }
+	| {
+			type: 'subagent';
+			taskName: string;
+			taskPath: string;
+			parentToolCallId?: string;
+			subAgentId?: string;
+			runId?: string;
+			status: 'running' | 'completed' | 'failed';
+			startTime: number;
+			endTime: number;
+			durationMs?: number;
+			usage?: {
+				promptTokens?: number;
+				completionTokens?: number;
+				totalTokens?: number;
+				cost?: number;
+			};
+			finishReason?: string;
+			error?: string;
+	  }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -276,6 +296,15 @@ export class ExecutionRecorder {
 					toolCallId: chunk.toolCallId ?? '',
 					timestamp: Date.now(),
 				});
+				break;
+			case 'subagent-started':
+				this.recordSubAgentStarted(chunk);
+				break;
+			case 'subagent-progress':
+				this.recordSubAgentProgress(chunk);
+				break;
+			case 'subagent-completed':
+				this.recordSubAgentCompleted(chunk);
 				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
@@ -455,5 +484,79 @@ export class ExecutionRecorder {
 			}
 		}
 		this.timeline.push(synthesized);
+	}
+
+	private recordSubAgentStarted(chunk: Extract<StreamChunk, { type: 'subagent-started' }>): void {
+		this.flushTextBuffer();
+		this.timeline.push({
+			type: 'subagent',
+			taskName: chunk.taskName,
+			taskPath: chunk.taskPath,
+			...(chunk.parentToolCallId !== undefined ? { parentToolCallId: chunk.parentToolCallId } : {}),
+			...(chunk.subAgentId !== undefined ? { subAgentId: chunk.subAgentId } : {}),
+			status: 'running',
+			startTime: chunk.startedAt,
+			endTime: 0,
+		});
+	}
+
+	private recordSubAgentProgress(chunk: Extract<StreamChunk, { type: 'subagent-progress' }>): void {
+		const existing = [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'subagent' } =>
+					e.type === 'subagent' && e.taskPath === chunk.taskPath && e.endTime === 0,
+			);
+		if (existing) return;
+
+		this.flushTextBuffer();
+		this.timeline.push({
+			type: 'subagent',
+			taskName: chunk.taskName,
+			taskPath: chunk.taskPath,
+			...(chunk.parentToolCallId !== undefined ? { parentToolCallId: chunk.parentToolCallId } : {}),
+			...(chunk.subAgentId !== undefined ? { subAgentId: chunk.subAgentId } : {}),
+			status: 'running',
+			startTime: chunk.timestamp,
+			endTime: 0,
+		});
+	}
+
+	private recordSubAgentCompleted(
+		chunk: Extract<StreamChunk, { type: 'subagent-completed' }>,
+	): void {
+		const pending = [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'subagent' } =>
+					e.type === 'subagent' && e.taskPath === chunk.taskPath && e.endTime === 0,
+			);
+		if (pending) {
+			pending.status = chunk.status;
+			pending.endTime = chunk.finishedAt;
+			pending.durationMs = chunk.durationMs;
+			if (chunk.runId !== undefined) pending.runId = chunk.runId;
+			if (chunk.usage !== undefined) pending.usage = chunk.usage;
+			if (chunk.finishReason !== undefined) pending.finishReason = chunk.finishReason;
+			if (chunk.error !== undefined) pending.error = chunk.error;
+			return;
+		}
+
+		this.flushTextBuffer();
+		this.timeline.push({
+			type: 'subagent',
+			taskName: chunk.taskName,
+			taskPath: chunk.taskPath,
+			...(chunk.parentToolCallId !== undefined ? { parentToolCallId: chunk.parentToolCallId } : {}),
+			...(chunk.subAgentId !== undefined ? { subAgentId: chunk.subAgentId } : {}),
+			...(chunk.runId !== undefined ? { runId: chunk.runId } : {}),
+			status: chunk.status,
+			startTime: chunk.startedAt,
+			endTime: chunk.finishedAt,
+			durationMs: chunk.durationMs,
+			...(chunk.usage !== undefined ? { usage: chunk.usage } : {}),
+			...(chunk.finishReason !== undefined ? { finishReason: chunk.finishReason } : {}),
+			...(chunk.error !== undefined ? { error: chunk.error } : {}),
+		});
 	}
 }

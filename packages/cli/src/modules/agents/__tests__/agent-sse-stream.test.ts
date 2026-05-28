@@ -65,3 +65,38 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 		expect(events).toEqual([{ type: 'error', message: 'null' }]);
 	});
 });
+
+describe('agent-sse-stream — subagent lifecycle chunks', () => {
+	it('passes subagent lifecycle chunks through as SSE events', async () => {
+		const events = await collectEvents([
+			{
+				type: 'subagent-started',
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+				parentToolCallId: 'tc1',
+				startedAt: 100,
+			},
+			{
+				type: 'subagent-completed',
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 100,
+				finishedAt: 250,
+				durationMs: 150,
+				runId: 'child-run-1',
+				finishReason: 'stop',
+			},
+		]);
+
+		expect(events).toEqual([
+			expect.objectContaining({ type: 'subagent-started', taskPath: '/root/research_api' }),
+			expect.objectContaining({
+				type: 'subagent-completed',
+				status: 'completed',
+				runId: 'child-run-1',
+			}),
+		]);
+	});
+});

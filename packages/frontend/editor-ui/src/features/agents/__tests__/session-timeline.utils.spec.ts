@@ -284,6 +284,43 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
+	it('maps a subagent timeline event to a delegate_subagent tool item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'subagent',
+					taskName: 'Research API',
+					taskPath: '/root/research_api',
+					parentToolCallId: 'tc-1',
+					status: 'completed',
+					startTime: 1000,
+					endTime: 1500,
+					durationMs: 500,
+					runId: 'child-run-1',
+					finishReason: 'stop',
+				},
+			]),
+		]);
+		const tool = items.find((i) => i.kind === 'tool');
+
+		expect(tool).toMatchObject({
+			toolName: 'delegate_subagent',
+			toolCallId: 'tc-1',
+			toolInput: {
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+			},
+			toolOutput: {
+				status: 'completed',
+				runId: 'child-run-1',
+				finishReason: 'stop',
+			},
+			toolSuccess: true,
+			timestamp: 1000,
+			endTimestamp: 1500,
+		});
+	});
+
 	it('treats tool-call events without a kind field as kind:tool (defensive)', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([

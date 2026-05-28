@@ -206,7 +206,23 @@ interface RawSuspensionEvent {
 	timestamp: number;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
+interface RawSubAgentEvent {
+	type: 'subagent';
+	taskName: string;
+	taskPath: string;
+	parentToolCallId?: string;
+	subAgentId?: string;
+	runId?: string;
+	status: 'running' | 'completed' | 'failed';
+	startTime: number;
+	endTime: number;
+	durationMs?: number;
+	usage?: unknown;
+	finishReason?: string;
+	error?: string;
+}
+
+type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent | RawSubAgentEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -277,6 +293,28 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolName: event.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
+				});
+			} else if (event.type === 'subagent') {
+				items.push({
+					kind: 'tool',
+					executionId: exec.id,
+					toolName: 'delegate_subagent',
+					...(event.parentToolCallId !== undefined ? { toolCallId: event.parentToolCallId } : {}),
+					toolInput: {
+						taskName: event.taskName,
+						taskPath: event.taskPath,
+						...(event.subAgentId !== undefined ? { subAgentId: event.subAgentId } : {}),
+					},
+					toolOutput: {
+						status: event.status,
+						...(event.runId !== undefined ? { runId: event.runId } : {}),
+						...(event.usage !== undefined ? { usage: event.usage } : {}),
+						...(event.finishReason !== undefined ? { finishReason: event.finishReason } : {}),
+						...(event.error !== undefined ? { error: event.error } : {}),
+					},
+					toolSuccess: event.status === 'completed',
+					timestamp: event.startTime,
+					endTimestamp: event.endTime || event.startTime,
 				});
 			}
 		}

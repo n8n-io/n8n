@@ -47,6 +47,21 @@ export interface AgentSseMessage {
 	content: AgentPersistedMessageContentPart[];
 }
 
+interface AgentSseSubAgentBase {
+	taskName: string;
+	taskPath: string;
+	parentRunId?: string;
+	parentToolCallId?: string;
+	subAgentId?: string;
+}
+
+interface AgentSseSubAgentUsage {
+	promptTokens?: number;
+	completionTokens?: number;
+	totalTokens?: number;
+	cost?: number;
+}
+
 export type AgentSseEvent =
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
@@ -78,6 +93,19 @@ export type AgentSseEvent =
 			isError?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
+	| ({ type: 'subagent-started'; startedAt: number } & AgentSseSubAgentBase)
+	| ({ type: 'subagent-progress'; stage: 'running'; timestamp: number } & AgentSseSubAgentBase)
+	| ({
+			type: 'subagent-completed';
+			status: 'completed' | 'failed';
+			startedAt: number;
+			finishedAt: number;
+			durationMs: number;
+			runId?: string;
+			usage?: AgentSseSubAgentUsage;
+			finishReason?: string;
+			error?: string;
+	  } & AgentSseSubAgentBase)
 	| { type: 'message'; message: AgentSseMessage }
 	| { type: 'code-delta'; delta: string }
 	| { type: 'config-updated' }

@@ -7,7 +7,7 @@ import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
 import { AgentEventBus } from '../event-bus';
@@ -1432,6 +1432,87 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const finishChunks = chunks.filter((c) => c.type === 'finish');
 		expect(finishChunks.length).toBe(1);
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
+	});
+
+	it('bridges subagent lifecycle events from tool context into stream chunks', async () => {
+		const lifecycleTool: BuiltTool = {
+			name: 'delegate_subagent',
+			description: 'Delegate work',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async (_input, ctx) => {
+				const toolCtx = ctx as ToolContext;
+				const base = {
+					taskName: 'Research API',
+					taskPath: '/root/research_api',
+					...(toolCtx.runId !== undefined ? { parentRunId: toolCtx.runId } : {}),
+					...(toolCtx.toolCallId !== undefined ? { parentToolCallId: toolCtx.toolCallId } : {}),
+				};
+				toolCtx.emitEvent?.({
+					type: AgentEvent.SubAgentStarted,
+					...base,
+					startedAt: 100,
+				});
+				toolCtx.emitEvent?.({
+					type: AgentEvent.SubAgentProgress,
+					...base,
+					stage: 'running',
+					timestamp: 150,
+				});
+				toolCtx.emitEvent?.({
+					type: AgentEvent.SubAgentCompleted,
+					...base,
+					status: 'completed',
+					startedAt: 100,
+					finishedAt: 200,
+					durationMs: 100,
+					runId: 'child-run-1',
+					finishReason: 'stop',
+				});
+				return await Promise.resolve({ ok: true });
+			},
+		};
+		const { runtime } = createRuntimeWithTools([lifecycleTool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'delegate_subagent',
+									args: { value: 'a' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'delegate_subagent', input: { value: 'a' } },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+
+		const { stream: readableStream } = await runtime.stream('run tools');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'subagent-started', taskPath: '/root/research_api' }),
+				expect.objectContaining({ type: 'subagent-progress', stage: 'running' }),
+				expect.objectContaining({
+					type: 'subagent-completed',
+					status: 'completed',
+					runId: 'child-run-1',
+				}),
+			]),
+		);
 	});
 });
 

@@ -9,6 +9,7 @@ import {
 } from './sub-agent-task-path';
 import { filterLlmMessages } from '../sdk/message';
 import { Tool } from '../sdk/tool';
+import { AgentEvent } from '../types/runtime/event';
 import type {
 	BuiltAgent,
 	ExecutionOptions,
@@ -162,6 +163,8 @@ async function handleDelegateSubAgent(
 	childCounts: Map<string, number>,
 ): Promise<DelegateSubAgentToolOutput> {
 	let taskPath: SubAgentTaskPath | undefined;
+	let request: DelegateSubAgentRequest | undefined;
+	let startedAt: number | undefined;
 	try {
 		const parentTaskPath = options.parentTaskPath;
 		assertSubAgentPolicyAllowsChild(parentTaskPath, options.policy);
@@ -172,7 +175,7 @@ async function handleDelegateSubAgent(
 		taskPath = createChildSubAgentTaskPath(parentTaskPath, input.taskName);
 		childCounts.set(childCountKey, childCount + 1);
 
-		const request = {
+		request = {
 			...input,
 			taskPath,
 			childCount,
@@ -182,8 +185,26 @@ async function handleDelegateSubAgent(
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
 		};
 
-		return await runSubAgent(request, options);
+		startedAt = Date.now();
+		emitSubAgentStarted(ctx, request, startedAt);
+		emitSubAgentProgress(ctx, request);
+		const output = await runSubAgent(request, options);
+		emitSubAgentCompleted(ctx, request, output, startedAt);
+		return output;
 	} catch (error) {
+		if (request !== undefined && startedAt !== undefined) {
+			emitSubAgentCompleted(
+				ctx,
+				request,
+				{
+					status: 'failed',
+					...(taskPath !== undefined ? { taskPath } : {}),
+					answer: '',
+					error: stringifyUnknown(error),
+				},
+				startedAt,
+			);
+		}
 		return {
 			status: 'failed',
 			...(taskPath !== undefined ? { taskPath } : {}),
@@ -191,6 +212,60 @@ async function handleDelegateSubAgent(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+function emitSubAgentStarted(
+	ctx: ToolContext,
+	request: DelegateSubAgentRequest,
+	startedAt: number,
+): void {
+	ctx.emitEvent?.({
+		type: AgentEvent.SubAgentStarted,
+		...subAgentLifecycleBase(request),
+		startedAt,
+	});
+}
+
+function emitSubAgentProgress(ctx: ToolContext, request: DelegateSubAgentRequest): void {
+	ctx.emitEvent?.({
+		type: AgentEvent.SubAgentProgress,
+		...subAgentLifecycleBase(request),
+		stage: 'running',
+		timestamp: Date.now(),
+	});
+}
+
+function emitSubAgentCompleted(
+	ctx: ToolContext,
+	request: DelegateSubAgentRequest,
+	output: DelegateSubAgentToolOutput,
+	startedAt: number,
+): void {
+	const finishedAt = Date.now();
+	ctx.emitEvent?.({
+		type: AgentEvent.SubAgentCompleted,
+		...subAgentLifecycleBase(request),
+		status: output.status,
+		startedAt,
+		finishedAt,
+		durationMs: finishedAt - startedAt,
+		...(output.runId !== undefined ? { runId: output.runId } : {}),
+		...(output.usage !== undefined ? { usage: output.usage } : {}),
+		...(output.finishReason !== undefined ? { finishReason: output.finishReason } : {}),
+		...(output.error !== undefined ? { error: output.error } : {}),
+	});
+}
+
+function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
+	return {
+		taskName: request.taskName,
+		taskPath: request.taskPath,
+		...(request.parentRunId !== undefined ? { parentRunId: request.parentRunId } : {}),
+		...(request.parentToolCallId !== undefined
+			? { parentToolCallId: request.parentToolCallId }
+			: {}),
+		...(request.subAgentId !== undefined ? { subAgentId: request.subAgentId } : {}),
+	};
 }
 
 async function runSubAgent(
@@ -284,6 +359,7 @@ function lastText(messages: AgentMessage[]): string {
 }
 
 function stringifyUnknown(value: unknown): string {
+	if (value instanceof Error) return value.message;
 	if (typeof value === 'string') return value;
 	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
 		return String(value);

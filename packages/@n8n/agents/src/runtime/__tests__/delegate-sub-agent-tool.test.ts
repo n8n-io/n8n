@@ -1,3 +1,4 @@
+import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { BuiltAgent, GenerateResult } from '../../types/sdk/agent';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -59,6 +60,49 @@ describe('createDelegateSubAgentTool', () => {
 			parentTaskPath: '/root',
 			childCount: 0,
 			policy: { maxChildren: 2 },
+		});
+	});
+
+	it('emits lifecycle events around runner callback execution', async () => {
+		const events: AgentEventData[] = [];
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api',
+					runId: 'child-run-1',
+					answer: 'done',
+					usage: {
+						promptTokens: 3,
+						completionTokens: 2,
+						totalTokens: 5,
+					},
+					finishReason: 'stop',
+				}),
+		});
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			emitEvent: (event) => events.push(event),
+		});
+
+		expect(events.map((event) => event.type)).toEqual([
+			AgentEvent.SubAgentStarted,
+			AgentEvent.SubAgentProgress,
+			AgentEvent.SubAgentCompleted,
+		]);
+		expect(events[0]).toMatchObject({
+			taskName: 'Research API',
+			taskPath: '/root/research_api',
+			parentRunId: 'parent-run-1',
+			parentToolCallId: 'tool-call-1',
+		});
+		expect(events[2]).toMatchObject({
+			status: 'completed',
+			runId: 'child-run-1',
+			usage: { totalTokens: 5 },
+			finishReason: 'stop',
 		});
 	});
 
@@ -137,14 +181,25 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('returns a failed output when the runner callback throws', async () => {
+		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async () => await Promise.reject(new Error('Runner failed')),
 		});
 
-		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+		await expect(
+			tool.handler?.(input, {
+				runId: 'parent-run-1',
+				emitEvent: (event) => events.push(event),
+			}),
+		).resolves.toMatchObject({
 			status: 'failed',
 			taskPath: '/root/research_api',
 			answer: '',
+			error: 'Runner failed',
+		});
+		expect(events[events.length - 1]).toMatchObject({
+			type: AgentEvent.SubAgentCompleted,
+			status: 'failed',
 			error: 'Runner failed',
 		});
 	});

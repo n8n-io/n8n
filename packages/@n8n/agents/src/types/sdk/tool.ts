@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentMessage } from './message';
+import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
@@ -18,6 +19,8 @@ export interface ToolExecutionContext {
 		threadId: string;
 		resourceId: string;
 	};
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: (event: AgentEventData) => void;
 }
 
 export interface ToolContext {
@@ -29,6 +32,8 @@ export interface ToolContext {
 	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -48,6 +53,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
 }
 
 export interface BuiltTool {

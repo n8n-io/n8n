@@ -205,6 +205,11 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);
+		case 'subagent-started':
+		case 'subagent-progress':
+		case 'subagent-completed':
+			ctx.send(chunk);
+			return { suspended: false };
 		case 'message': {
 			const sseMessage = toAgentSseMessage(chunk.message);
 			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });

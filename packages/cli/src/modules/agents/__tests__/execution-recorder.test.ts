@@ -98,6 +98,53 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('subagent lifecycle', () => {
+		it('records subagent start and completion as one timeline event', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({
+				type: 'subagent-started',
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+				parentToolCallId: 'tc1',
+				startedAt: 100,
+			});
+			recorder.record({
+				type: 'subagent-completed',
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startedAt: 100,
+				finishedAt: 250,
+				durationMs: 150,
+				runId: 'child-run-1',
+				usage: {
+					promptTokens: 3,
+					completionTokens: 2,
+					totalTokens: 5,
+				},
+				finishReason: 'stop',
+			});
+
+			const record = recorder.getMessageRecord();
+			const subagent = record.timeline.find((event) => event.type === 'subagent');
+
+			expect(subagent).toMatchObject({
+				type: 'subagent',
+				taskName: 'Research API',
+				taskPath: '/root/research_api',
+				parentToolCallId: 'tc1',
+				status: 'completed',
+				startTime: 100,
+				endTime: 250,
+				durationMs: 150,
+				runId: 'child-run-1',
+				usage: { totalTokens: 5 },
+			});
+		});
+	});
+
 	describe('display-only rich_interaction', () => {
 		it('records the standard tool-call/tool-result pair with displayOnly marker', () => {
 			const recorder = new ExecutionRecorder();

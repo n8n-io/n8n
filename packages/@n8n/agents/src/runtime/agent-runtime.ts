@@ -1204,20 +1204,39 @@ export class AgentRuntime {
 		// can show a mid-flight indicator between the LLM's tool-call message
 		// and the eventual tool-result message. Writer queues writes in order
 		// so the fire-and-forget is safe.
-		const onToolExecutionStart = (data: AgentEventData): void => {
-			if (data.type !== AgentEvent.ToolExecutionStart) return;
+		const writeEventChunk = (chunk: StreamChunk): void => {
 			// Swallow rejections: if the writer is already closed/errored (e.g.
 			// an abort raced ahead of the subscription cleanup) there is nothing
 			// useful to do with the chunk.
-			writer
-				.write({
-					type: 'tool-execution-start',
-					toolCallId: data.toolCallId,
-					toolName: data.toolName,
-				})
-				.catch(() => {});
+			writer.write(chunk).catch(() => {});
+		};
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			writeEventChunk({
+				type: 'tool-execution-start',
+				toolCallId: data.toolCallId,
+				toolName: data.toolName,
+			});
+		};
+		const onSubAgentStarted = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.SubAgentStarted) return;
+			const { type: _type, ...payload } = data;
+			writeEventChunk({ type: 'subagent-started', ...payload });
+		};
+		const onSubAgentProgress = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.SubAgentProgress) return;
+			const { type: _type, ...payload } = data;
+			writeEventChunk({ type: 'subagent-progress', ...payload });
+		};
+		const onSubAgentCompleted = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.SubAgentCompleted) return;
+			const { type: _type, ...payload } = data;
+			writeEventChunk({ type: 'subagent-completed', ...payload });
 		};
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+		this.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
+		this.eventBus.on(AgentEvent.SubAgentProgress, onSubAgentProgress);
+		this.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 
 		this.withTelemetryRootSpan(
 			'stream',
@@ -1238,6 +1257,9 @@ export class AgentRuntime {
 			})
 			.finally(() => {
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
+				this.eventBus.off(AgentEvent.SubAgentProgress, onSubAgentProgress);
+				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 			});
 
 		return readable;
@@ -2242,6 +2264,7 @@ export class AgentRuntime {
 					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 						runId,
 						persistence,
+						emitEvent: (event) => this.eventBus.emit(event),
 					}),
 			);
 		} catch (error) {
