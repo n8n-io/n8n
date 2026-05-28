@@ -120,32 +120,21 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
-		// Resolve the MCP Apps variant once per request so every downstream code
-		// path observes the same value. Resolving only on `initialize` (and
-		// letting `getServer` fall back on later requests) would cause repeated
-		// PostHog lookups, extra log noise on transient errors, and — because
-		// the server is rebuilt per request in stateless mode — could surface
-		// different tools on later calls than were advertised at handshake time.
-		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
-
-		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			auth_type: (
 				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
 			).mcpAuthType,
-			mcp_apps_enabled: mcpAppsResolution.enabled,
-			mcp_apps_variant: mcpAppsResolution.variant,
 		};
 
-		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
-					...telemetryPayload,
+					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
@@ -154,6 +143,15 @@ export class McpController {
 			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
 			return;
 		}
+
+		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
+
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+			...baseTelemetryPayload,
+			mcp_apps_enabled: mcpAppsResolution.enabled,
+			mcp_apps_variant: mcpAppsResolution.variant,
+		};
+
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.

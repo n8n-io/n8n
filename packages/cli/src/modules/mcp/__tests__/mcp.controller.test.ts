@@ -82,6 +82,36 @@ describe('McpController', () => {
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
 		expect(mcpService.getServer as unknown as jest.Mock).not.toHaveBeenCalled();
+		// MCP Apps variant resolution is skipped for rejected requests to
+		// avoid an unnecessary PostHog lookup.
+		expect(mcpService.resolveMcpAppsVariant as jest.Mock).not.toHaveBeenCalled();
+	});
+
+	test('tracks disabled-access init errors without MCP Apps variant fields', async () => {
+		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '1.0.0',
+			auth_type: 'oauth',
+			mcp_connection_status: 'error',
+			error: 'MCP access is disabled',
+		});
+		expect(mcpService.resolveMcpAppsVariant as jest.Mock).not.toHaveBeenCalled();
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
