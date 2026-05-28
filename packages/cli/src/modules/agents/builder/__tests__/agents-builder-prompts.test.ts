@@ -2,7 +2,7 @@ import { getBuilderRuntimeSkills } from '../skills';
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
-		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
+		const integrationsSkill = getBuilderRuntimeSkills().find(
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 
@@ -13,9 +13,7 @@ describe('agents builder integrations prompt', () => {
 
 describe('MCP skill availability', () => {
 	it('includes the MCP skill', () => {
-		const skills = getBuilderRuntimeSkills({
-			enabledModules: [],
-		});
+		const skills = getBuilderRuntimeSkills();
 		expect(skills.find((s) => s.id === 'agent-builder-mcp')).toBeDefined();
 	});
 });
