@@ -150,7 +150,7 @@ Do NOT produce visible output until step 6. All reasoning happens internally.
 - If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; the build tools mock unresolved credentials for verification.
 - NEVER use raw credential objects like \`{ id: '...', name: '...' }\` in tool mode.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
-- Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
+- Unresolved credentials (where the user chose mock data, no credential is available, or no explicit selection was made) will be automatically mocked via pinned data at submit time. Always declare realistic \`output\` on nodes that use unresolved credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
 ${SDK_RULES_AND_PATTERNS_TOOL}
 `;
@@ -398,7 +398,7 @@ credentials: {
 
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. Exact IDs and names come from \`credentials(action="list")\`.
 
-Use the two-argument form only when the user selected the credential, there is exactly one matching credential, or you are preserving a credential already present on an existing workflow. If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; \`submit-workflow\` mocks it for verification and the orchestrator handles setup after the build.
+Use the two-argument form only when the user selected the credential, there is exactly one matching credential, or you are preserving a credential already present on an existing workflow. If no exact credential was selected, more than one credential matches, or the service needs a new credential, use \`newCredential('Suggested Credential Name')\`; \`submit-workflow\` mocks it for verification and the orchestrator handles setup after the build. For nodes with unresolved credentials or unresolved resource placeholders, add realistic \`output\` data and call \`.generatePinData()\` on the workflow (or set explicit \`pinData\`) so \`verify-built-workflow\` can run the workflow before setup.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
@@ -472,7 +472,8 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 9. **Fix submission errors**: If \`submit-workflow\` returns errors, edit the file and submit again immediately. Skip tsc for validation-only errors. **Never end your turn on a file edit — always re-submit first.** The system compares file hashes: if the file changed since the last submit, all your work is discarded. End only on a successful re-submit or after you explicitly report the blocking error.
    If remediation includes \`shouldEdit: false\`, stop immediately and report its guidance. Do not edit files, run commands, or call \`submit-workflow\` again.
 
-10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+10. **Verify**: Follow the runtime verification instructions in your briefing. For submitted workflows, call \`verify-built-workflow\` with the work item ID and workflow ID, even when \`submit-workflow\` reported mocked credentials. It uses sidecar or saved pin data to fake unavailable services. Setup happens after verification.
+11. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 ### For complex workflows (5+ nodes, multiple integrations):
 
@@ -490,7 +491,8 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 6. **Write the main workflow** in \`${mainWorkflowPath}\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Trace wiring before declaring done**: For workflows containing IF, Switch, or Merge nodes, trace each branch from its source to its target — confirm IF outputs are wired with \`.onTrue()\`/\`.onFalse()\`, every Switch rule output is wired by zero-based \`.onCase(index, target)\`, and the Merge mode matches the data shape. Read each node's \`@builderHint\` for selection criteria.
 8. **Submit** the main workflow.
-9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+9. **Verify** the main workflow by following the runtime verification instructions in your briefing. Use \`verify-built-workflow\` with the work item ID and workflow ID before setup, even when unresolved credentials were mocked with pin data.
+10. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 

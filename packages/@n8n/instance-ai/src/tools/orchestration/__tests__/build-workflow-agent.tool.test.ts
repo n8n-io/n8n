@@ -39,6 +39,7 @@ const {
 	finalizeBuildResult,
 	shouldRecoverSavedWorkflowAfterFailedSubmit,
 	createBuildWorkflowAgentTool,
+	DETACHED_BUILDER_REQUIREMENTS,
 	buildWarmBuilderFollowUp,
 	createMainWorkflowSnapshot,
 	determineSetupRequirement,
@@ -559,6 +560,18 @@ describe('determineSetupRequirement', () => {
 				triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
 			}),
 		).toEqual({ status: 'not_required' });
+	});
+});
+
+describe('detached builder requirements', () => {
+	it('requires verify-built-workflow before setup for mocked credentials', () => {
+		expect(DETACHED_BUILDER_REQUIREMENTS).toContain(
+			'still call `verify-built-workflow` before setup',
+		);
+		expect(DETACHED_BUILDER_REQUIREMENTS).toContain(
+			'Missing credentials are not a reason to skip verification',
+		);
+		expect(DETACHED_BUILDER_REQUIREMENTS).toContain('Do not call setup tools from this');
 	});
 });
 

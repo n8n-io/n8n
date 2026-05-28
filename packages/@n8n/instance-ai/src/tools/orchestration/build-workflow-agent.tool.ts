@@ -826,6 +826,11 @@ triggers (form, webhook, chat, mcp, linear, github, slack, etc.), include an \`i
 payload. For manual and schedule triggers, omit \`inputData\` unless the workflow needs seed data.
 The pin-data adapter injects it as the trigger node's output.
 
+If \`submit-workflow\` reports mocked credentials, sidecar verification pin data, or saved workflow
+pin data, still call \`verify-built-workflow\` before setup. The verifier uses that pin data to fake
+unavailable service calls and validate the workflow wiring. Do not call setup tools from this
+builder task; setup is routed by the orchestrator after verification.
+
 ### Submit discipline
 
 **Every file edit MUST be followed by submit-workflow before you do anything else.**
@@ -834,6 +839,8 @@ The system tracks file hashes. If you edit the code and then call \`verify-built
 ### Verification
 
 - Call \`verify-built-workflow\` with the workItemId and workflowId from this task.
+- Missing credentials are not a reason to skip verification when submit produced mocked credential
+  metadata or pin data. Run verification first, then let the orchestrator handle setup.
 - Pick \`inputData\` based on trigger type:
   - **Manual / Schedule** — omit \`inputData\` unless the workflow needs seed data.
   - **Form Trigger** — pass \`inputData\` as a flat field map, e.g. \`{name: "Alice", email: "a@b.c"}\`. Do NOT wrap in \`formFields\` — production Form Trigger emits fields directly on \`$json\`, and the adapter rejects wrapped payloads.

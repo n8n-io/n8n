@@ -311,6 +311,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 			usesWorkflowPinDataForVerification: true,
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
+		expect(output.verificationGuidance).toContain('Call verify-built-workflow next');
 		expect(attempts).toHaveLength(1);
 		expect(attempts[0]).toMatchObject({
 			success: true,

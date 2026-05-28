@@ -106,6 +106,15 @@ describe('credential guardrail prompts', () => {
 		expect(prompt).not.toContain('Do NOT publish');
 	});
 
+	it('tells sandbox builders to generate mock pin data and verify before setup', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
+
+		expect(prompt).toContain('call `.generatePinData()` on the workflow');
+		expect(prompt).toContain('call `verify-built-workflow` with the work item ID and workflow ID');
+		expect(prompt).toContain('Setup happens after verification');
+		expect(prompt).toContain('even when unresolved credentials were mocked with pin data');
+	});
+
 	it('points sandbox builders at the task-specific workflow and chunks paths', () => {
 		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace', {
 			mainWorkflowPath: '/tmp/workspace/builder-work-items/wi-one/src/workflow.ts',
