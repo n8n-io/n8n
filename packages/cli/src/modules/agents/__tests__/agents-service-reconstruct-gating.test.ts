@@ -35,8 +35,16 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
 
+const buildFromJsonMock = jest.fn().mockImplementation(async () => builtAgent);
 jest.mock('../json-config/from-json-config', () => ({
-	buildFromJson: jest.fn().mockImplementation(async () => builtAgent),
+	buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
+}));
+
+const buildMcpClientForServerMock = jest
+	.fn()
+	.mockImplementation(async () => mock<agents.McpClient>());
+jest.mock('../json-config/mcp-client-factory', () => ({
+	buildMcpClientForServer: (...args: unknown[]) => buildMcpClientForServerMock(...args),
 }));
 
 // Avoid loading the rich-interaction tool (its import path resolves to runtime code).
@@ -72,15 +80,20 @@ function makeService(
 		mock(),
 		mock<Telemetry>(),
 		mock(),
+		mock(),
 	);
 }
 
-function makeAgentEntity(schemaConfig?: AgentJsonConfig['config']): Agent {
+function makeAgentEntity(
+	schemaConfig?: AgentJsonConfig['config'],
+	overrides?: Partial<AgentJsonConfig>,
+): Agent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
 		model: 'anthropic/claude-sonnet-4-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
+		...(overrides ?? {}),
 	};
 	return {
 		id: 'agent-1',
@@ -170,5 +183,90 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 		} else {
 			expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
 		}
+	});
+});
+
+describe('AgentsService.reconstructFromConfig — MCP gating', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		buildFromJsonMock.mockImplementation(async (_config, _descriptors, options) => {
+			// Drive the buildMcpClient callback exactly once per configured server,
+			// matching what the real buildFromJson does — this is what lets the
+			// gating test assert how many MCP clients were created.
+			const cfg = _config as AgentJsonConfig;
+			if (options?.buildMcpClient && cfg.mcpServers) {
+				for (const server of cfg.mcpServers) {
+					await options.buildMcpClient(server);
+				}
+			}
+			return builtAgent;
+		});
+	});
+
+	function setup(options: { mcpModuleEnabled?: boolean } = {}) {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeService(agentsToolsService, options.mcpModuleEnabled ? ['mcp'] : []);
+		return { service, credentialProvider };
+	}
+
+	it('does not call the MCP factory when no mcpServers are configured', async () => {
+		const { service, credentialProvider } = setup({ mcpModuleEnabled: true });
+		const entity = makeAgentEntity();
+
+		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
+
+		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
+	});
+
+	it('skips MCP wiring when the module is disabled, even if mcpServers are present', async () => {
+		const { service, credentialProvider } = setup({ mcpModuleEnabled: false });
+		const entity = makeAgentEntity(undefined, {
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://api.example.test/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		});
+
+		// We pass an `options` to buildFromJson with `buildMcpClient: undefined`,
+		// so the mock's loop is a no-op and the factory is never called.
+		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
+
+		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
+		const lastCall = buildFromJsonMock.mock.calls.at(-1) as unknown[];
+		const opts = lastCall[2] as { buildMcpClient: unknown };
+		expect(opts.buildMcpClient).toBeUndefined();
+	});
+
+	it('builds one MCP client per configured server when the module is enabled', async () => {
+		const { service, credentialProvider } = setup({ mcpModuleEnabled: true });
+		const entity = makeAgentEntity(undefined, {
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://api.example.test/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+				{
+					name: 'fs',
+					url: 'https://fs.example.test/mcp',
+					transport: 'sse',
+					authentication: 'none',
+				},
+			],
+		});
+
+		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
+
+		expect(buildMcpClientForServerMock).toHaveBeenCalledTimes(2);
+		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
+		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 	});
 });
