@@ -626,6 +626,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 
@@ -725,6 +726,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 
@@ -1009,6 +1011,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 

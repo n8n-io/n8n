@@ -313,6 +313,161 @@ describe('AgentsController integration credentials', () => {
 		});
 	});
 
+	it('persists the integration before publishing when connecting an unpublished agent', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-slack',
+				name: 'Slack Bot',
+				type: 'slackApi',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: null,
+			integrations: [],
+		};
+		const savedAgent = {
+			...agent,
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		const publishedAgent = {
+			...savedAgent,
+			publishedVersion: {},
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const agentsService = mock<AgentsService>();
+		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
+		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.connect.mockResolvedValue(undefined);
+		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);
+		const { controller } = makeController({
+			agentsService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toMatchObject({
+			status: 'connected',
+			agent: {
+				id: 'agent-1',
+				publishedVersion: {},
+				isRunnable: true,
+			},
+		});
+
+		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
+			broadcast: false,
+		});
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ id: 'user-1' },
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'user-1',
+			'project-1',
+		);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'connect',
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
+		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-slack',
+				name: 'Slack Bot',
+				type: 'slackApi',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: null,
+			integrations: [],
+		};
+		const savedAgent = {
+			...agent,
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		const publishedAgent = {
+			...savedAgent,
+			publishedVersion: {},
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const agentsService = mock<AgentsService>();
+		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
+		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
+		const { controller } = makeController({
+			agentsService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow('Slack connect failed');
+
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+	});
+
 	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
 		const settings = {
 			accessMode: 'private' as const,
@@ -411,7 +566,7 @@ describe('AgentsController integration credentials', () => {
 				features: {
 					app_home: {
 						home_tab_enabled: true,
-						messages_tab_enabled: false,
+						messages_tab_enabled: true,
 						messages_tab_read_only_enabled: false,
 					},
 					bot_user: {

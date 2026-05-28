@@ -272,9 +272,9 @@ describe('OwnershipService', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
 			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner already setup');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
@@ -287,9 +287,9 @@ describe('OwnershipService', () => {
 			userRepository.exists.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner shell user not found'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner shell user not found');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 		});

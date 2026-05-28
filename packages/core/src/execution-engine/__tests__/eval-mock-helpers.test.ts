@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	buildEvalMockCredentials,
@@ -564,7 +564,7 @@ describe('eval-mock-helpers', () => {
 		};
 
 		it('should return body when handler responds and returnFullResponse is false', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(successResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(successResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
@@ -572,7 +572,7 @@ describe('eval-mock-helpers', () => {
 		});
 
 		it('should return serialized response when returnFullResponse is true', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(successResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(successResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node, true);
 
@@ -594,7 +594,7 @@ describe('eval-mock-helpers', () => {
 				headers: { 'content-type': 'application/octet-stream' },
 				statusCode: 200,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(bufferResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(bufferResponse);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node, true);
 
@@ -604,7 +604,7 @@ describe('eval-mock-helpers', () => {
 		});
 
 		it('should return undefined when handler returns undefined', async () => {
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(undefined);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(undefined);
 
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
@@ -617,7 +617,7 @@ describe('eval-mock-helpers', () => {
 				headers: { 'content-type': 'application/json' },
 				statusCode: 404,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			await expect(
 				callEvalMockHandler(handler, requestOptions, node, false, 'axios'),
@@ -630,7 +630,7 @@ describe('eval-mock-helpers', () => {
 				headers: {},
 				statusCode: 500,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			await expect(
 				callEvalMockHandler(handler, requestOptions, node, false, 'legacy'),
@@ -643,11 +643,11 @@ describe('eval-mock-helpers', () => {
 				headers: { 'x-error': 'true' },
 				statusCode: 400,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'axios');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					isAxiosError: boolean;
@@ -666,11 +666,11 @@ describe('eval-mock-helpers', () => {
 				headers: { 'x-reason': 'denied' },
 				statusCode: 403,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node, false, 'legacy');
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & {
 					statusCode: number;
@@ -689,11 +689,11 @@ describe('eval-mock-helpers', () => {
 				headers: {},
 				statusCode: 401,
 			};
-			const handler: EvalLlmMockHandler = jest.fn().mockResolvedValue(errorResponse);
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(errorResponse);
 
 			try {
 				await callEvalMockHandler(handler, requestOptions, node);
-				fail('Expected error to be thrown');
+				expect.fail('Expected error to be thrown');
 			} catch (error: unknown) {
 				const err = error as Error & { isAxiosError: boolean };
 				expect(err.isAxiosError).toBe(true);
