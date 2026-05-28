@@ -1,3 +1,11 @@
+## [1.123.49](https://github.com/n8n-io/n8n/compare/n8n@1.123.48...n8n@1.123.49) (2026-05-28)
+
+
+### Bug Fixes
+
+* **core:** Drain webhook close functions to prevent MCP connection leaks ([#31188](https://github.com/n8n-io/n8n/issues/31188)) ([69b2fbd](https://github.com/n8n-io/n8n/commit/69b2fbd1027691c7aa723d1a31db16a74ec5fb91))
+
+
 ## [1.123.48](https://github.com/n8n-io/n8n/compare/n8n@1.123.47...n8n@1.123.48) (2026-05-27)
 
 
