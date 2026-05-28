@@ -1,7 +1,7 @@
 /**
  * Prepares and caches a Daytona Image descriptor with config files,
  * node_modules, and runtime skills pre-installed, and resolves a versioned
- * named snapshot (`n8n/instance-ai:<n8nVersion>-<setupHash>`) for sandbox
+ * named snapshot (`n8n/instance-ai:<n8nVersion>-<runtimeSkillsHash>`) for sandbox
  * creation.
  *
  * Two strategies for `ensureSnapshot`:
@@ -20,7 +20,6 @@
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
-import { createHash } from 'node:crypto';
 import { dirname as posixDirname } from 'node:path/posix';
 
 import { loadDaytona } from './lazy-daytona';
@@ -37,7 +36,7 @@ export interface CreateSnapshotOptions {
 }
 
 const DAYTONA_WORKSPACE_ROOT = '/home/daytona/workspace';
-const SETUP_HASH_LENGTH = 12;
+const EMPTY_RUNTIME_SKILLS_HASH = '000000000000';
 
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
 function b64(s: string): string {
@@ -60,7 +59,7 @@ export class SnapshotManager {
 
 	private snapshotPromise: Promise<string | null> | null = null;
 
-	private setupHashPromise: Promise<string> | null = null;
+	private snapshotSuffixPromise: Promise<string> | null = null;
 
 	private runtimeSkillBundlePromise: ReturnType<typeof buildRuntimeSkillWorkspaceBundle> | null =
 		null;
@@ -180,24 +179,13 @@ export class SnapshotManager {
 		return result;
 	}
 
-	private async setupHash(): Promise<string> {
-		this.setupHashPromise ??= (async () => {
+	private async snapshotSuffix(): Promise<string> {
+		this.snapshotSuffixPromise ??= (async () => {
 			const runtimeSkillBundle = await this.runtimeSkillBundle();
-			return createHash('sha256')
-				.update(
-					JSON.stringify({
-						baseImage: this.baseImage ?? 'daytonaio/sandbox:0.5.0',
-						packageJson: PACKAGE_JSON,
-						tsconfigJson: TSCONFIG_JSON,
-						buildMjs: BUILD_MJS,
-						skillsHash: runtimeSkillBundle?.skillsHash ?? '',
-					}),
-				)
-				.digest('hex')
-				.slice(0, SETUP_HASH_LENGTH);
+			return runtimeSkillBundle?.skillsHash ?? EMPTY_RUNTIME_SKILLS_HASH;
 		})();
 
-		return await this.setupHashPromise;
+		return await this.snapshotSuffixPromise;
 	}
 
 	private async runtimeSkillBundle(): ReturnType<typeof buildRuntimeSkillWorkspaceBundle> {
@@ -214,14 +202,14 @@ export class SnapshotManager {
 		if (!this.n8nVersion) {
 			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
-		return `n8n/instance-ai:${this.n8nVersion}-${await this.setupHash()}`;
+		return `n8n/instance-ai:${this.n8nVersion}-${await this.snapshotSuffix()}`;
 	}
 
 	/** Invalidate cached image (e.g., when base image changes). */
 	invalidate(): void {
 		this.cachedImage = null;
 		this.snapshotPromise = null;
-		this.setupHashPromise = null;
+		this.snapshotSuffixPromise = null;
 		this.runtimeSkillBundlePromise = null;
 	}
 }
