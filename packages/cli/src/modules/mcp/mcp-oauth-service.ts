@@ -233,7 +233,6 @@ export class McpOAuthService implements OAuthServerProvider {
 			throw new OAuthError('invalid_grant', 'Invalid authorization code');
 		}
 
-		// Convert URL to string if provided
 		const resourceStr = resource?.toString();
 		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
 
@@ -243,7 +242,8 @@ export class McpOAuthService implements OAuthServerProvider {
 		// - If both are specified: they must match exactly, otherwise we reject the exchange.
 		// - If only the token request specifies a resource: we use it (client override).
 		// - If only the authorization code contains a resource: we fall back to it.
-		// - If neither is specified: we default to the legacy 'mcp-server-api' audience.
+		// - If neither is specified: finalResource stays undefined, and
+		//   generateTokenPair falls back to getResourceUrl() (the canonical URL).
 		//
 		// This reconciliation is critical to prevent token substitution attacks, where an attacker
 		// attempts to exchange an authorization code issued for resource A to obtain a token for resource B.
@@ -283,35 +283,31 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * For refresh-token exchange, `resourceFromRequest` takes precedence over `scopesOrResource`.
+	 * Exchanges a refresh token for a new access token and refresh token.
 	 *
-	 * `scopesOrResource` may be:
-	 * - `string[]`: scopes (intentionally treated as no resource, resulting in `undefined`)
-	 * - `string` or `URL`: resource indicator
+	 * If a `resource` URL is provided, it is normalized and validated before being
+	 * forwarded to the token service. When `resource` is omitted, the token service
+	 * falls back to the canonical resource URL.
 	 *
-	 * This follows OAuth 2.1 refresh-token behavior, where scopes are not used for token refresh.
-	 * The selected resource is normalized and validated via `resolveAndValidateResourceIndicator()`.
+	 * @param client The authenticated OAuth client.
+	 * @param refreshToken The refresh token to rotate.
+	 * @param _scopes Not used per OAuth 2.1 refresh-token behavior.)
+	 * @param resource Optional RFC 8707 resource indicator.
 	 *
 	 * @see exchangeAuthorizationCode For initial authorization code exchange.
 	 */
+
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
 		refreshToken: string,
-		scopesOrResource?: string[] | string | URL,
-		resourceFromRequest?: string | URL,
+		_scopes?: string[],
+		resource?: URL,
 	): Promise<OAuthTokens> {
-		const rawResource = resourceFromRequest ?? scopesOrResource;
-		const resource =
-			typeof rawResource === 'string'
-				? rawResource
-				: rawResource instanceof URL
-					? rawResource.toString()
-					: undefined;
-
+		const resourceStr = resource?.toString();
 		return await this.tokenService.validateAndRotateRefreshToken(
 			refreshToken,
 			client.client_id,
-			this.resolveAndValidateResourceIndicator(resource),
+			this.resolveAndValidateResourceIndicator(resourceStr),
 		);
 	}
 
@@ -344,25 +340,16 @@ export class McpOAuthService implements OAuthServerProvider {
 	private getResourceIndicatorFromAuthorizationParams(
 		params: AuthorizationParams,
 	): string | undefined {
-		const hasResource = Reflect.has(params, 'resource');
-		if (!hasResource) {
+		const resource = params.resource;
+		if (resource === undefined || resource === null) {
 			return undefined;
 		}
-
-		const resource = Reflect.get(params, 'resource');
-
-		if (resource === null || resource === undefined) {
-			return undefined;
-		}
-
 		if (typeof resource === 'string') {
 			return resource;
 		}
-
 		if (resource instanceof URL) {
 			return resource.toString();
 		}
-
 		throw new InvalidResourceIndicatorError(String(resource), this.getCanonicalMcpResourceUrl());
 	}
 

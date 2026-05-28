@@ -285,10 +285,6 @@ export class McpOAuthTokenService {
 	 * had a hardcoded 'mcp-server-api' audience.
 	 */
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
-		if (audiences.length === 0) {
-			throw new Error('At least one audience is required');
-		}
-
 		try {
 			return this.jwtService.verify(token, {
 				audience: audiences as [string, ...string[]],

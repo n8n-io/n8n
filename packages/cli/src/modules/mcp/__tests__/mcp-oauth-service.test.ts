@@ -564,7 +564,7 @@ describe('McpOAuthService', () => {
 				client,
 				'old-refresh-token',
 				['read'],
-				'https://n8n.example.com/mcp-server/http',
+				new URL('https://n8n.example.com/mcp-server/http'),
 			);
 
 			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
@@ -622,7 +622,7 @@ describe('McpOAuthService', () => {
 					client,
 					'old-refresh-token',
 					['read'],
-					'https://attacker.example.com/mcp-server/http',
+					new URL('https://attacker.example.com/mcp-server/http'),
 				),
 			).rejects.toThrow('invalid_target');
 		});
@@ -652,7 +652,7 @@ describe('McpOAuthService', () => {
 				'old-refresh-token',
 				['read'],
 				// trailing slash — must be stripped before reaching token service
-				'https://n8n.example.com/mcp-server/http/',
+				new URL('https://n8n.example.com/mcp-server/http/'),
 			);
 
 			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
