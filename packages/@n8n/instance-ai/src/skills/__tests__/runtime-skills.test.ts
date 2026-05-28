@@ -45,4 +45,29 @@ describe('Instance AI runtime skills', () => {
 		}
 		expect(loadResult.content).toContain('Fast Routing');
 	});
+
+	it('loads the bundled Computer Use credential setup skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find(
+			(entry) => entry.name === 'credential-setup-with-computer-use',
+		);
+
+		expect(skill).toMatchObject({
+			name: 'credential-setup-with-computer-use',
+			recommendedTools: expect.arrayContaining([
+				'research',
+				'ask-user',
+				'browser_connect',
+				'browser_snapshot',
+				'browser_capture_secret',
+				'browser_create_credential',
+			]),
+		});
+		expect(skill?.linkedFiles.references).toEqual([]);
+
+		const loaded = await source.loadSkill('credential-setup-with-computer-use');
+		expect(loaded?.instructions).toContain('Computer Use browser tools');
+		expect(loaded?.instructions).toContain('browser_capture_secret');
+		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
+	});
 });

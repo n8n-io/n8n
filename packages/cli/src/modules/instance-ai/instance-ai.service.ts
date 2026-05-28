@@ -2656,9 +2656,6 @@ export class InstanceAiService {
 			abortSignal,
 			taskStorage,
 			timeZone: this.defaultTimeZone,
-			browserMcpConfig: this.instanceAiConfig.browserMcp
-				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
-				: undefined,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
 			runtimeSkillCatalog: baseRuntimeSkills,

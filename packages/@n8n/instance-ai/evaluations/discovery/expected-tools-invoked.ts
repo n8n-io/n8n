@@ -11,10 +11,9 @@
 //   - the rule names `spawn_sub_agent:<role>` and a sub-agent with that role
 //     was spawned.
 //
-// The asymmetry (sub-agent existence counts as discovery) matches the way
-// Instance AI dispatches browser-credential-setup: the orchestrator hands off
-// to a sub-agent and discovery has already happened by the time that
-// sub-agent has tools attached.
+// The asymmetry (sub-agent existence counts as discovery) lets planner and
+// builder dispatch checks assert that a specialized background agent was
+// reached even before it emits its own tool calls.
 // ---------------------------------------------------------------------------
 
 import type { EventOutcome } from '../types';

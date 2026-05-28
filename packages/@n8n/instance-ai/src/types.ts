@@ -1073,12 +1073,9 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
