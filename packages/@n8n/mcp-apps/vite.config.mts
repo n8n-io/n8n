@@ -6,20 +6,18 @@ import { defineConfig, type Plugin } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import svgLoader from 'vite-svg-loader';
 
+import { MCP_APPS, type McpAppId } from './src/apps-manifest';
+
 const appsRoot = resolve(__dirname, 'src/apps');
 
-const apps = {
-	'workflow-preview': 'workflow-preview',
-} satisfies Record<string, string>;
-
 export default defineConfig(({ mode }) => {
-	const appName = apps[mode as keyof typeof apps];
+	const app = MCP_APPS[mode as McpAppId];
 
-	if (!appName) {
+	if (!app) {
 		throw new Error(`Unknown MCP app mode: ${mode}`);
 	}
 
-	const appRoot = resolve(appsRoot, appName);
+	const appRoot = resolve(appsRoot, app.entry);
 
 	return {
 		root: appRoot,
@@ -42,7 +40,7 @@ export default defineConfig(({ mode }) => {
 			}),
 			icons({ compiler: 'vue3', autoInstall: true }),
 			viteSingleFile(),
-			renameHtmlOutput('index.html', `${appName}.html`),
+			renameHtmlOutput('index.html', app.htmlFile),
 		],
 		resolve: {
 			alias: {

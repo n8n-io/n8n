@@ -26,6 +26,7 @@ alongside it (see [Adding a new app](#adding-a-new-app)).
 
 ```
 src/
+  apps-manifest.ts          # single source of truth for the apps registry
   apps/                     # Vue UI apps, each built into a standalone HTML
     workflow-preview/
       App.vue               # root component
@@ -42,6 +43,12 @@ src/
     resource-loader.ts      # lazy reads built HTML from dist/apps
     index.ts                # public entry: @n8n/mcp-apps/server
 ```
+
+`apps-manifest.ts` is the canonical registry of MCP apps. Both the Vite
+build (entry directory + output HTML filename per `--mode`) and the
+server-side resource loader (compile-time union + runtime allow-list of
+loadable HTML files) derive from it, so the build and runtime stay in
+lockstep and there is no separate list to maintain.
 
 The Vite build (`pnpm build:ui`) emits one inlined HTML file per app into
 `dist/apps/<app>.html`. The TypeScript build (`pnpm build:server`) emits the
@@ -84,9 +91,19 @@ against the same key set.
 
 1. Create `src/apps/<app-name>/` with `index.html`, `main.ts`, and an
    `App.vue` root component. Mount it through the shared `i18n` instance.
-2. Register the app in the `apps` map and the build mode list in
-   `vite.config.mts` so `pnpm build:ui --mode <app-name>` produces
-   `dist/apps/<app-name>.html`.
+2. Add an entry to `MCP_APPS` in `src/apps-manifest.ts`:
+
+   ```ts
+   '<app-name>': {
+     entry: '<app-name>',           // directory under src/apps/
+     htmlFile: '<app-name>.html',   // output under dist/apps/
+   },
+   ```
+
+   This single entry teaches Vite about the new `--mode`, expands the
+   `McpAppHtmlFileName` type union, and adds the file to the
+   `loadAppHtml` runtime allow-list. `pnpm build:ui --mode <app-name>`
+   will then produce `dist/apps/<app-name>.html`.
 3. Add the app's URI constant to `src/server/constants.ts` and a
    `register<App>App` helper in `src/server/apps/` that calls
    `server.resource(...)` with `loadAppHtml('<app-name>.html')`.
