@@ -142,7 +142,7 @@ const activeTextStyle = computed(() => {
 
 const activeTextStyleLabel = computed(
 	() =>
-		textStyleOptions.value.find((option) => option.value === activeTextStyle.value)?.label ??
+		textStyleOptions.value.find((option) => option.id === activeTextStyle.value)?.label ??
 		translate('markdownEditor.text'),
 );
 

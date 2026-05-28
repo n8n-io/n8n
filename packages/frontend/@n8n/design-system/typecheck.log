@@ -1,0 +1,4 @@
+
+> @n8n/design-system@2.23.0 typecheck /Users/robn8n/code/n8n/packages/frontend/@n8n/design-system
+> vue-tsc --noEmit
+
