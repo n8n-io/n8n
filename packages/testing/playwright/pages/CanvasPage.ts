@@ -901,6 +901,10 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
 	}
 
+	getNodeDeprecatedStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-deprecated');
+	}
+
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,

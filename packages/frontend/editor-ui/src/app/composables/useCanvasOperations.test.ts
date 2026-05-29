@@ -44,6 +44,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -1409,6 +1410,81 @@ describe('useCanvasOperations', () => {
 				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
+		});
+	});
+
+	describe('deprecated nodes', () => {
+		const deprecatedType = 'n8n-nodes-base.function';
+		const replacementType = 'n8n-nodes-base.code';
+
+		it('should replace a deprecated node with its configured successor when added', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+
+			nodeTypesStore.nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({
+						name: deprecatedType,
+						deprecated: true,
+						replacedByNodeType: replacementType,
+					}),
+				},
+				[replacementType]: { 1: mockNodeTypeDescription({ name: replacementType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: deprecatedType }], {});
+
+			// The node that actually lands on the canvas uses the replacement type.
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(replacementType);
+			expect(added[0].type).toBe(replacementType);
+
+			// Exactly one warning toast is shown for the replacement.
+			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('should fall back to the No-Op node when no replacedByNodeType is configured', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+
+			nodeTypesStore.nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({ name: deprecatedType, deprecated: true }),
+				},
+				[NO_OP_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: NO_OP_NODE_TYPE }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: deprecatedType }], {});
+
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(NO_OP_NODE_TYPE);
+			expect(added[0].type).toBe(NO_OP_NODE_TYPE);
+			expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('should not replace a non-deprecated node nor show a warning toast', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			const normalType = 'type';
+
+			nodeTypesStore.nodeTypes = {
+				[normalType]: { 1: mockNodeTypeDescription({ name: normalType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: normalType }], {});
+
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(normalType);
+			expect(added[0].type).toBe(normalType);
+			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});
 
