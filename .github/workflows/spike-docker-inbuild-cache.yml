@@ -28,6 +28,9 @@ on:
         required: false
         default: 'blacksmith-8vcpu-ubuntu-2204'
         type: string
+  push:
+    branches:
+      - cat-bot/run-26628385540
 
 concurrency:
   group: spike-docker-inbuild-cache-${{ github.ref }}
