@@ -48,6 +48,12 @@ import type {
 // Public API
 // ---------------------------------------------------------------------------
 
+// Single version id reported for every stubbed workflow. The stub doesn't model
+// version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
+// must all report the same value — otherwise the build-workflow patch cache
+// always sees a version mismatch and the cache-hit path is never exercised.
+const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
+
 export interface StubServiceHandle {
 	context: InstanceAiContext;
 	/** Every WorkflowJSON passed to `workflowService.createFromWorkflowJSON`. */
@@ -84,13 +90,13 @@ export async function createStubServices(
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
 		async getWorkflowHead() {
-			return { versionId: 'eval-version', updatedAt: 0 };
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
 		},
 		async getWorkflowSnapshot(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return {
 				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
-				versionId: 'eval-version',
+				versionId: EVAL_WORKFLOW_VERSION_ID,
 				updatedAt: 0,
 			};
 		},
@@ -529,7 +535,7 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 	return {
 		id,
 		name: 'eval-workflow',
-		versionId: 'v1',
+		versionId: EVAL_WORKFLOW_VERSION_ID,
 		activeVersionId: null,
 		isArchived: false,
 		createdAt: now,
