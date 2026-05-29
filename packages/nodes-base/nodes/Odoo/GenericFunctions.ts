@@ -82,7 +82,7 @@ export function odooGetDBName(databaseName: string | undefined, url: string) {
 	return odooURL.hostname.split('.')[0];
 }
 
-function getOdooDatabaseNameFromJsonRpcBody(body: IDataObject): string | undefined {
+export function getOdooDatabaseNameFromJsonRpcBody(body: IDataObject): string | undefined {
 	const params = body.params as IDataObject | undefined;
 	const args = params?.args as unknown[] | undefined;
 	const db = args?.[0];
@@ -92,6 +92,17 @@ function getOdooDatabaseNameFromJsonRpcBody(body: IDataObject): string | undefin
 	const trimmedDb = db.trim();
 
 	return trimmedDb.length > 0 ? trimmedDb : undefined;
+}
+
+export function getOdooJsonRpcRequestHeaders(body: IDataObject) {
+	const db = getOdooDatabaseNameFromJsonRpcBody(body);
+
+	return {
+		Connection: 'keep-alive',
+		Accept: '*/*',
+		'Content-Type': 'application/json',
+		...(db ? { 'X-Odoo-Database': db } : {}),
+	};
 }
 
 function processFilters(value: IOdooFilterOperations) {
@@ -120,15 +131,8 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const db = getOdooDatabaseNameFromJsonRpcBody(body);
-
 		const options: IRequestOptions = {
-			headers: {
-				Connection: 'keep-alive',
-				Accept: '*/*',
-				'Content-Type': 'application/json',
-				...(db ? { 'X-Odoo-Database': db } : {}),
-			},
+			headers: getOdooJsonRpcRequestHeaders(body),
 			method: 'POST',
 			body,
 			uri: `${url}/jsonrpc`,

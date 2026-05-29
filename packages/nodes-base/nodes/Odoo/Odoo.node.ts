@@ -26,6 +26,7 @@ import {
 } from './descriptions';
 import type { IOdooFilterOperations } from './GenericFunctions';
 import {
+	getOdooJsonRpcRequestHeaders,
 	odooCreate,
 	odooDelete,
 	odooGet,
@@ -244,12 +245,7 @@ export class Odoo implements INodeType {
 					};
 
 					const options: IRequestOptions = {
-						headers: {
-							Connection: 'keep-alive',
-							Accept: '*/*',
-							'Content-Type': 'application/json',
-							...(db ? { 'X-Odoo-Database': db } : {}),
-						},
+						headers: getOdooJsonRpcRequestHeaders(body),
 						method: 'POST',
 						body,
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
