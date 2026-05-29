@@ -19,8 +19,7 @@
     "clean": "rimraf dist out .turbo",
     "test": "jest",
     "test:unit": "jest",
-    "test:dev": "jest --watch",
-    "postinstall": "node node_modules/electron/install.js"
+    "test:dev": "jest --watch"
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",
