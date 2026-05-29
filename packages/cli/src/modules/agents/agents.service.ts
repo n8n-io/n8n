@@ -316,10 +316,6 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isMcpModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('mcp');
-	}
-
 	/**
 	 * Best-effort close of an agent instance. Delegates to `agent.close()`
 	 * which disposes the runtime and disconnects any attached MCP clients.
@@ -1530,12 +1526,6 @@ export class AgentsService {
 		}
 
 		const mcpServers = config.mcpServers ?? [];
-		if (mcpServers.length > 0 && !this.isMcpModuleEnabled()) {
-			return {
-				valid: false,
-				error: 'MCP servers require the "mcp" agents module to be enabled.',
-			};
-		}
 		for (const server of mcpServers) {
 			if (server.authentication !== 'none' && !server.credential) {
 				return {
@@ -2015,18 +2005,12 @@ export class AgentsService {
 
 		const resolvedTools: BuiltTool[] = [];
 
-		// Only attach MCP clients when the module is enabled. Without the gate
-		// a previously-configured agent would still build live MCP connections
-		// after the operator removes the token from N8N_AGENTS_MODULES, which
-		// undermines the kill-switch.
-		const buildMcpClient = this.isMcpModuleEnabled()
-			? async (server: AgentJsonMcpServerConfig) =>
-					await buildMcpClientForServer(server, {
-						credentialProvider,
-						oauthService: this.oauthService,
-						projectId: agentEntity.projectId,
-					})
-			: undefined;
+		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
+			await buildMcpClientForServer(server, {
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId: agentEntity.projectId,
+			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,

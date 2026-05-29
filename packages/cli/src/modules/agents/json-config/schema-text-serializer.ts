@@ -296,14 +296,18 @@ function serializeUnion(
 ): string[] {
 	if (!fieldName) return [];
 
-	const objectBranches = (schema.anyOf ?? schema.oneOf ?? []).filter(
+	const branches = (schema.anyOf ?? schema.oneOf ?? []).filter(
 		(b): b is JSONSchema7 => typeof b === 'object' && b !== null,
 	);
+	if (!isObjectUnion(branches)) return serializeLeaf(schema, fieldName, optional, level);
+
+	const objectBranches = branches;
 	const discriminator = detectDiscriminator(objectBranches);
 	const requiredSuffix = optional ? '' : ' (required)';
 	const defaultSuffix =
 		schema.default !== undefined ? ` (default: ${JSON.stringify(schema.default)})` : '';
-	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}one of <discriminated by "${discriminator ?? 'type'}">${requiredSuffix}${defaultSuffix}`;
+	const descriptionSuffix = schema.description ? ` — ${schema.description}` : '';
+	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}one of <discriminated by "${discriminator ?? 'type'}">${requiredSuffix}${defaultSuffix}${descriptionSuffix}`;
 
 	const branchLines = objectBranches.map((branch) => {
 		const constProp = discriminator ? getConstValue(branch.properties?.[discriminator]) : undefined;
@@ -314,6 +318,18 @@ function serializeUnion(
 	});
 
 	return [header, ...branchLines];
+}
+
+function isObjectUnion(branches: JSONSchema7[]): boolean {
+	return (
+		branches.length > 0 &&
+		branches.every(
+			(branch) =>
+				branch.type === 'object' ||
+				branch.properties !== undefined ||
+				branch.additionalProperties !== undefined,
+		)
+	);
 }
 
 /**
