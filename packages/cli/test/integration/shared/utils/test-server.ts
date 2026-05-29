@@ -358,6 +358,10 @@ export const setupTestServer = ({
 					case 'encryption-keys':
 						await import('@/modules/encryption-key-manager/encryption-key.controller');
 						break;
+
+					case 'test-webhooks':
+						await import('@/webhooks/test-webhooks.controller');
+						break;
 				}
 			}
 
