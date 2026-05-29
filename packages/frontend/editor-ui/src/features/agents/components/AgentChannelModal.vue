@@ -367,7 +367,7 @@ async function loadChannelState() {
 }
 
 const credentialModalOpen = computed(
-	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
+	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
 
 watch(credentialModalOpen, async (isOpen, wasOpen) => {

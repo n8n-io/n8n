@@ -53,7 +53,6 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -832,27 +831,6 @@ function onOpenAddToolModal() {
 	});
 }
 
-function onOpenAddTriggerModal(initialTriggerType?: string) {
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	uiStore.openModalWithData({
-		name: AGENT_ADD_TRIGGER_MODAL_KEY,
-		data: {
-			initialTriggerType,
-			projectId: targetProjectId,
-			agentId: targetAgentId,
-			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.activeVersionId),
-			connectedTriggers: connectedTriggers.value,
-			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
-			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
-				onTriggerAdded(payload),
-			onAgentPublished: (updated: AgentResource) => onPublished(updated),
-			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
-		},
-	});
-}
-
 function onOpenToolFromList(target: ToolOpenTarget | number) {
 	const tools = localConfig.value?.tools ?? [];
 
@@ -1237,10 +1215,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				@update:config="onConfigFieldUpdate"
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"
-				@open-trigger="onOpenAddTriggerModal"
 				@add-tool="onOpenAddToolModal"
 				@add-skill="onOpenAddSkillModal"
-				@add-trigger="onOpenAddTriggerModal"
 				@upload-files="onUploadAgentFiles"
 				@delete-file="onDeleteAgentFile"
 				@remove-tool="onRemoveTool"
