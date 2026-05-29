@@ -43,6 +43,7 @@ Confirmed usable for the current API key and resource:
 | `zh_male_dayi_uranus_bigtts` | 大壹 | Video narration male backup |
 | `zh_female_xiaohe_uranus_bigtts` | 小何 | Default mature female guest |
 | `zh_female_vv_uranus_bigtts` | Vivi | Mature/general female host or guest |
+| `zh_female_yingyujiaoxue_uranus_bigtts` | Tina 老师 | Mature female teaching/podcast candidate |
 | `zh_female_shuangkuaisisi_uranus_bigtts` | 爽快思思 | Energetic female backup |
 | `zh_female_cancan_uranus_bigtts` | 知性灿灿 | Knowledgeable female backup |
 | `zh_female_kefunvsheng_uranus_bigtts` | 暖阳女声 | Warm female backup |
@@ -121,6 +122,7 @@ Recommended host voices:
 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男主持 - 刘飞 |
 | `host_male_sophie` | `zh_male_sophie_uranus_bigtts` | 男主持 - 魅力苏菲 |
 | `host_female_vivi` | `zh_female_vv_uranus_bigtts` | 女主持 - Vivi |
+| `host_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女主持 - Tina 老师 |
 
 Recommended guest voices:
 
@@ -128,6 +130,7 @@ Recommended guest voices:
 | --- | --- | --- |
 | `guest_female_xiaohe` | `zh_female_xiaohe_uranus_bigtts` | 女嘉宾 - 小何 |
 | `guest_female_vivi` | `zh_female_vv_uranus_bigtts` | 女嘉宾 - Vivi |
+| `guest_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女嘉宾 - Tina 老师 |
 | `guest_female_cancan` | `zh_female_cancan_uranus_bigtts` | 女嘉宾 - 知性灿灿 |
 | `guest_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男嘉宾 - 刘飞 |
 | `guest_male_dayi` | `zh_male_dayi_uranus_bigtts` | 男嘉宾 - 大壹 |
