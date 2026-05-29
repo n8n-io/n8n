@@ -112,7 +112,7 @@ function resolveAuthenticationFromNode(node: INode): string {
 	if (authentication) return authentication;
 
 	const credentialType = resolveCredentialType(node.credentials);
-	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? 'none';
+	if (credentialType) return CREDENTIAL_TYPE_TO_AUTHENTICATION[credentialType] ?? credentialType;
 
 	return 'none';
 }
