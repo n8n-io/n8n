@@ -43,6 +43,22 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Validate branch input
+        env:
+          BRANCH: ${{ inputs.branch || github.ref }}
+        run: |
+          # Allowlist of refs permitted to run on this job. The job exposes
+          # secrets to code checked out from `BRANCH`, so anything outside the
+          # allowlist is rejected to prevent arbitrary refs from accessing them.
+          # Commit SHAs are permitted to support the workflow_call path from
+          # ci-pull-requests.yml, which passes the install-and-build commit SHA.
+          if [[ "$BRANCH" =~ ^(refs/heads/)?(master|ai/.+|ai-.+)$ ]] || [[ "$BRANCH" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "Branch '$BRANCH' is allowed."
+          else
+            echo "::error::Branch '$BRANCH' is not in the allowlist. Permitted patterns: master, ai/*, ai-*, or a commit SHA."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
