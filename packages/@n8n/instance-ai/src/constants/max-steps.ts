@@ -9,8 +9,6 @@ export const MAX_STEPS = {
 	ORCHESTRATOR: 100,
 	/** Browser automation sub-agent — needs many steps for multi-page flows. */
 	BROWSER: 300,
-	/** Workflow builder sub-agent — complex multi-tool build/verify loops. */
-	BUILDER: 60,
 	/** Eval setup sub-agent — reads workflow, creates DataTable, patches eval nodes + validates. */
 	EVAL_SETUP: 30,
 	/** Planning sub-agent — breaks down multi-step tasks. */

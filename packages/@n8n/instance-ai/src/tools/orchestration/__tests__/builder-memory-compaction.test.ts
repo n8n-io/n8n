@@ -20,6 +20,13 @@ function makeMessage(id: string, text: string): TestBuilderMemoryMessage {
 	};
 }
 
+function makeMessageAt(id: string, text: string, createdAt: string): TestBuilderMemoryMessage {
+	return {
+		...makeMessage(id, text),
+		createdAt: new Date(createdAt),
+	};
+}
+
 function makeMemory(memoryStore: Partial<BuiltMemory>): jest.Mocked<BuiltMemory> {
 	return {
 		getThread: jest.fn(async () => {
@@ -133,6 +140,31 @@ describe('compactBuilderMemoryThread', () => {
 		expect(savedText).toContain('Mocked credential types: slackApi');
 		expect(savedText).toContain('Execution ID: exec-1');
 		expect(savedText).toContain('Workflow ready.');
+	});
+
+	it('only deletes messages at or after the requested compaction cutoff', async () => {
+		const messages = [
+			makeMessageAt('msg-before', 'original user request', '2026-01-01T00:00:00.000Z'),
+			makeMessageAt('msg-after', 'builder repair loop transcript', '2026-01-01T00:01:00.000Z'),
+		];
+		const memoryStore = makeMemory({
+			getMessages: jest.fn(async () => {
+				await Promise.resolve();
+				return messages;
+			}),
+			deleteMessages: jest.fn(async () => {
+				await Promise.resolve();
+			}),
+		});
+
+		const result = await compactBuilderMemoryThread(
+			makeCompactionInput(memoryStore, {
+				compactMessagesCreatedAtOrAfter: new Date('2026-01-01T00:00:30.000Z'),
+			}),
+		);
+
+		expect(result.rawMessageCount).toBe(1);
+		expect(memoryStore.deleteMessages).toHaveBeenCalledWith(['msg-after']);
 	});
 
 	it('re-compacts after a follow-up without duplicating old summaries', async () => {

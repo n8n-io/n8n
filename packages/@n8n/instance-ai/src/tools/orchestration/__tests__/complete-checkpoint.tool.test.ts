@@ -165,6 +165,100 @@ describe('createCompleteCheckpointTool', () => {
 		expect(res.result).toContain('planned');
 	});
 
+	it('rejects a succeeded claim that contradicts recorded verification failure', async () => {
+		const service = makeService({
+			getGraph: jest.fn().mockResolvedValue({
+				planRunId: 'r',
+				status: 'active',
+				tasks: [
+					{
+						id: 'wf-1',
+						kind: 'build-workflow',
+						status: 'succeeded',
+						deps: [],
+						title: 't',
+						spec: 's',
+					},
+					{
+						id: 'verify-1',
+						kind: 'checkpoint',
+						status: 'running',
+						deps: ['wf-1'],
+						title: 't',
+						spec: 's',
+					},
+				],
+			}),
+			markCheckpointSucceeded: jest.fn(),
+			markCheckpointFailed: jest
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		const context = {
+			...makeContext(service),
+			workflowTaskService: {
+				getBuildOutcomeByTask: jest
+					.fn()
+					.mockResolvedValue({ verification: { attempted: true, success: false } }),
+			},
+		} as unknown as OrchestrationContext;
+		const tool = createCompleteCheckpointTool(context);
+
+		const res = await executeTool(tool, {
+			taskId: 'verify-1',
+			status: 'succeeded',
+			result: 'looks good',
+		});
+
+		expect(res.ok).toBe(false);
+		expect(service.markCheckpointSucceeded).not.toHaveBeenCalled();
+		expect(service.markCheckpointFailed).toHaveBeenCalled();
+	});
+
+	it('allows a succeeded claim when recorded verification passed', async () => {
+		const service = makeService({
+			getGraph: jest.fn().mockResolvedValue({
+				planRunId: 'r',
+				status: 'active',
+				tasks: [
+					{
+						id: 'wf-1',
+						kind: 'build-workflow',
+						status: 'succeeded',
+						deps: [],
+						title: 't',
+						spec: 's',
+					},
+					{
+						id: 'verify-1',
+						kind: 'checkpoint',
+						status: 'running',
+						deps: ['wf-1'],
+						title: 't',
+						spec: 's',
+					},
+				],
+			}),
+			markCheckpointSucceeded: jest
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		const context = {
+			...makeContext(service),
+			workflowTaskService: {
+				getBuildOutcomeByTask: jest
+					.fn()
+					.mockResolvedValue({ verification: { attempted: true, success: true } }),
+			},
+		} as unknown as OrchestrationContext;
+		const tool = createCompleteCheckpointTool(context);
+
+		const res = await executeTool(tool, { taskId: 'verify-1', status: 'succeeded', result: 'ok' });
+
+		expect(res.ok).toBe(true);
+		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
+	});
+
 	it('returns an error when planned task service is absent', async () => {
 		const tool = createCompleteCheckpointTool({
 			...makeContext(makeService()),

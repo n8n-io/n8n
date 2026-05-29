@@ -24,6 +24,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 				'http-node-config-no-browser',
 				'oauth-with-computer-use-disabled',
 				'planner-no-credential-ask',
+				'workflow-builder-skill-loading',
 			]),
 		);
 	});
@@ -35,6 +36,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 		'http-node-config-no-browser',
 		'oauth-with-computer-use-disabled',
 		'planner-no-credential-ask',
+		'workflow-builder-skill-loading',
 	])('%s parses with a valid expectedToolInvocations rule', (slug) => {
 		const entry = cases.find((c) => c.fileSlug === slug);
 		expect(entry).toBeDefined();

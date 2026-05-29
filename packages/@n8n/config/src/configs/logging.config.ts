@@ -38,7 +38,6 @@ export const LOG_SCOPES = [
 	'token-exchange',
 	'instance-ai',
 	'agents',
-	'sub-agent-eval',
 	'instance-version-history',
 	'instance-settings-loader',
 	'instance-registry',

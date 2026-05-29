@@ -118,6 +118,36 @@ describe('extractExecutionResult', () => {
 		expect(result).toEqual({ executionId: 'missing-id', status: 'unknown' });
 	});
 
+	it('surfaces nodes that errored even when the execution status is success', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					'OK Node': [makeTaskData([{ ok: true }])],
+					'Failing Node': [makeTaskData([], { error: { message: 'node blew up' } })],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+
+		expect(result.status).toBe('success');
+		expect(result.erroredNodeNames).toEqual(['Failing Node']);
+	});
+
+	it('omits erroredNodeNames when every node succeeded', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'OK Node': [makeTaskData([{ ok: true }])] },
+			}),
+		);
+
+		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+
+		expect(result.erroredNodeNames).toBeUndefined();
+	});
+
 	it('maps "error" status to "error"', async () => {
 		const repo = createMockExecutionRepository(
 			makeExecution({ status: 'error', error: { message: 'boom' } }),

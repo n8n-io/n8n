@@ -4,7 +4,8 @@ import { InstanceAiTerminalResponseGuard } from '../terminal-response-guard';
 
 const runId = 'run-1';
 const rootAgentId = 'agent-root';
-const guard = () => new InstanceAiTerminalResponseGuard({ runId, rootAgentId });
+const guard = (options: { suppressCompletedFallback?: boolean } = {}) =>
+	new InstanceAiTerminalResponseGuard({ runId, rootAgentId, ...options });
 
 function runStart(): InstanceAiEvent {
 	return {
@@ -79,6 +80,16 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.event?.payload).toEqual({
 			text: 'I finished the run, but I did not generate a final response. I ran 3 tools; 1 tool errored.',
 		});
+	});
+
+	it('does not emit completed fallback when the run is intentionally silent', () => {
+		const decision = guard({ suppressCompletedFallback: true }).evaluateTerminal(
+			[runStart()],
+			'completed',
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('completed-silent-suppressed');
 	});
 
 	it('emits sanitized error when partial root text is followed by failure', () => {

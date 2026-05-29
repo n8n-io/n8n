@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import { mock } from 'jest-mock-extended';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -24,69 +25,78 @@ function createMockContext(
 		permissions?: Partial<InstanceAiPermissions>;
 	} = {},
 ): InstanceAiContext {
-	return {
-		userId: 'user-1',
-		workflowService: {
-			list: jest.fn(),
-			get: jest.fn().mockResolvedValue({
-				id: 'wf1',
-				name: 'Test WF',
-				versionId: 'v1',
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-				nodes: [],
-				connections: {},
-			}),
-			getAsWorkflowJSON: jest.fn().mockResolvedValue({
-				name: 'Test WF',
-				nodes: [],
-				connections: {},
-			}),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			unarchive: jest.fn(),
-			publish: jest.fn().mockResolvedValue({ activeVersionId: 'v1' }),
-			unpublish: jest.fn(),
-		},
-		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
-		},
-		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
-		},
-		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
-		},
-		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
-		},
-		permissions: {},
-		...overrides,
-	} as unknown as InstanceAiContext;
+	const context = mock<InstanceAiContext>();
+	context.userId = 'user-1';
+	context.plannedBuildTask = undefined;
+	context.loadedSkills = undefined;
+	context.allowedUpdateWorkflowIds = undefined;
+	context.aiCreatedWorkflowIds = undefined;
+	context.workflowService.list = jest.fn();
+	context.workflowService.get = jest.fn().mockResolvedValue({
+		id: 'wf1',
+		name: 'Test WF',
+		versionId: 'v1',
+		activeVersionId: null,
+		isArchived: false,
+		createdAt: '2024-01-01',
+		updatedAt: '2024-01-01',
+		nodes: [],
+		connections: {},
+	});
+	context.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue({
+		name: 'Test WF',
+		nodes: [],
+		connections: {},
+	});
+	context.workflowService.createFromWorkflowJSON = jest.fn();
+	context.workflowService.updateFromWorkflowJSON = jest.fn();
+	context.workflowService.archive = jest.fn();
+	context.workflowService.unarchive = jest.fn();
+	context.workflowService.publish = jest.fn().mockResolvedValue({ activeVersionId: 'v1' });
+	context.workflowService.unpublish = jest.fn();
+	context.executionService.list = jest.fn();
+	context.executionService.run = jest.fn();
+	context.executionService.getStatus = jest.fn();
+	context.executionService.getResult = jest.fn();
+	context.executionService.stop = jest.fn();
+	context.executionService.getDebugInfo = jest.fn();
+	context.executionService.getNodeOutput = jest.fn();
+	context.credentialService.list = jest.fn();
+	context.credentialService.get = jest.fn();
+	context.credentialService.delete = jest.fn();
+	context.credentialService.test = jest.fn();
+	context.nodeService.listAvailable = jest.fn();
+	context.nodeService.getDescription = jest.fn();
+	context.nodeService.listSearchable = jest.fn();
+	context.dataTableService.list = jest.fn();
+	context.dataTableService.create = jest.fn();
+	context.dataTableService.delete = jest.fn();
+	context.dataTableService.getSchema = jest.fn();
+	context.dataTableService.addColumn = jest.fn();
+	context.dataTableService.deleteColumn = jest.fn();
+	context.dataTableService.renameColumn = jest.fn();
+	context.dataTableService.queryRows = jest.fn();
+	context.dataTableService.insertRows = jest.fn();
+	context.dataTableService.updateRows = jest.fn();
+	context.dataTableService.deleteRows = jest.fn();
+	context.permissions = {} as typeof context.permissions;
+	Object.assign(context, overrides);
+	return context;
+}
+
+function createPlannedBuildTask(
+	overrides: Record<string, unknown> = {},
+): NonNullable<InstanceAiContext['plannedBuildTask']> {
+	const plannedBuildTask = mock<NonNullable<InstanceAiContext['plannedBuildTask']>>();
+	plannedBuildTask.threadId = 'thread-1';
+	plannedBuildTask.taskId = 'task-1';
+	plannedBuildTask.workItemId = 'wi_123';
+	plannedBuildTask.title = 'Build Slack to Notion';
+	plannedBuildTask.spec = 'Build it';
+	plannedBuildTask.workflowId = undefined;
+	plannedBuildTask.onSavedWorkflowBuildOutcome = undefined;
+	Object.assign(plannedBuildTask, overrides);
+	return plannedBuildTask;
 }
 
 function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
@@ -108,6 +118,8 @@ describe('workflows tool', () => {
 			'list',
 			'get',
 			'get-as-code',
+			'create',
+			'update',
 		] as const satisfies readonly WorkflowAction[];
 
 		it('should support get-as-code on full surface', async () => {
@@ -160,6 +172,13 @@ describe('workflows tool', () => {
 			[{ action: 'unpublish', workflowId: 'w1' }],
 			[{ action: 'delete', workflowId: 'w1' }],
 			[{ action: 'unarchive', workflowId: 'w1' }],
+			[
+				{
+					action: 'update-json',
+					workflowId: 'w1',
+					workflow: { name: 'Test WF', nodes: [], connections: {} },
+				},
+			],
 			[{ action: 'list-versions', workflowId: 'w1' }],
 			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
@@ -187,6 +206,110 @@ describe('workflows tool', () => {
 
 			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
+		});
+
+		it('should let the orchestrator create/update SDK workflows so saves can request approval', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'orchestrator');
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
+			expect(
+				schema.safeParse({ action: 'create', name: 'Test WF', code: 'export default workflow()' })
+					.success,
+			).toBe(true);
+			expect(
+				schema.safeParse({
+					action: 'update',
+					workflowId: 'w1',
+					patches: [{ old_str: 'old', new_str: 'new' }],
+				}).success,
+			).toBe(true);
+			expect(
+				schema.safeParse({
+					action: 'update-json',
+					workflowId: 'w1',
+					workflow: { name: 'Test WF', nodes: [], connections: {} },
+				}).success,
+			).toBe(false);
+			expect(getDescription(tool)).toContain('convert existing workflows to TypeScript SDK code');
+			expect(getDescription(tool)).toContain('create from workflow SDK code');
+			expect(getDescription(tool)).toContain('update from workflow SDK code or patches');
+			expect(getDescription(tool)).not.toContain('save a modified WorkflowJSON');
+		});
+
+		it('should allow planned build follow-ups to create workflows on the orchestrator surface', () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, {
+				surface: 'orchestrator',
+				allowedActions: builderWorkflowActions,
+			});
+			const schema = getInputSchema(tool);
+
+			expect(
+				schema.safeParse({ action: 'create', name: 'Test WF', code: 'export default workflow()' })
+					.success,
+			).toBe(true);
+			expect(
+				schema.safeParse({
+					action: 'update',
+					workflowId: 'w1',
+					patches: [{ old_str: 'old', new_str: 'new' }],
+				}).success,
+			).toBe(true);
+		});
+
+		it('should remind planned create follow-ups that workItemId is not a workflowId', async () => {
+			const context = createMockContext({
+				plannedBuildTask: createPlannedBuildTask(),
+			});
+			context.workflowService.list = jest.fn().mockResolvedValue([]);
+			const tool = createWorkflowsTool(context, {
+				surface: 'orchestrator',
+				allowedActions: ['list', 'get', 'get-as-code', 'create'],
+			});
+
+			const result = await executeTool(tool, { action: 'list' } as never, {} as never);
+
+			expect(result).toMatchObject({
+				workflows: [],
+				plannedBuildHint: expect.stringContaining('creates a new workflow'),
+			});
+			expect((result as { plannedBuildHint: string }).plannedBuildHint).toContain(
+				'workItemId wi_123 is tracking metadata, not a workflow ID',
+			);
+			expect((result as { plannedBuildHint: string }).plannedBuildHint).toContain(
+				'workflows(action="create")',
+			);
+		});
+
+		it('should steer planned create follow-ups away from guessed workflow IDs', async () => {
+			const context = createMockContext({
+				plannedBuildTask: createPlannedBuildTask(),
+			});
+			context.workflowService.get = jest.fn().mockRejectedValue(new Error('not found'));
+			context.workflowService.list = jest.fn().mockResolvedValue([]);
+			const tool = createWorkflowsTool(context, {
+				surface: 'orchestrator',
+				allowedActions: ['list', 'get', 'get-as-code', 'create'],
+			});
+
+			const result = await executeTool(
+				tool,
+				{ action: 'get', workflowId: 'wi_123' } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				workflowId: 'wi_123',
+				found: false,
+				availableWorkflows: [],
+				hint: expect.stringContaining('workflows(action="create")'),
+			});
+			expect((result as { hint: string }).hint).toContain(
+				'workItemId wi_123 is tracking metadata, not a workflow ID',
+			);
+			expect((result as { hint: string }).hint).toContain('Do not retry');
 		});
 	});
 
@@ -805,6 +928,28 @@ describe('workflows tool', () => {
 	});
 
 	describe('setup action', () => {
+		it('should block setup during planned build follow-up turns', async () => {
+			const context = createMockContext({
+				plannedBuildTask: createPlannedBuildTask({
+					workItemId: 'wi_1',
+				}),
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: undefined,
+			} as never);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason:
+					'Setup is handled by the verification checkpoint after the planned build is saved. Stop after workflows(action="create"|"update") in the build follow-up.',
+			});
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(applyNodeChanges).not.toHaveBeenCalled();
+		});
+
 		it('should block setup when updateWorkflow permission is blocked', async () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'blocked' },
@@ -925,6 +1070,44 @@ describe('workflows tool', () => {
 			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				'HTTP Request': { url: 'https://example.com/api' },
 			});
+		});
+
+		it('keeps trigger-test rollback snapshots scoped to each workflow', async () => {
+			const context = createMockContext();
+			const snapshotA = {
+				name: 'Workflow A',
+				nodes: [{ name: 'A', type: 'n8n-nodes-base.manualTrigger' }],
+				connections: {},
+			};
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValueOnce(snapshotA);
+			(applyNodeChanges as jest.Mock).mockResolvedValueOnce({
+				applied: [],
+				failed: [{ nodeName: 'A', error: 'invalid setup' }],
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const failedPreTest = await executeTool(tool, { action: 'setup', workflowId: 'wf-a' }, {
+				resumeData: {
+					approved: true,
+					action: 'test-trigger',
+					testTriggerNode: 'A',
+					nodeParameters: { A: { path: 'test' } },
+				},
+			} as never);
+
+			expect(failedPreTest).toMatchObject({ success: false });
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf-a',
+				snapshotA,
+			);
+
+			(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockClear();
+
+			await executeTool(tool, { action: 'setup', workflowId: 'wf-b' }, {
+				resumeData: { approved: false },
+			} as never);
+
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,0 +1,39 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that receives a webhook POST with a JSON body containing 'priority' and 'message'. Route priority 'urgent' items to Slack channel #incidents, priority 'normal' items to Gmail at ops@example.com, and send every unmatched priority to Slack channel #triage as the default fallback branch. Configure all nodes completely and don't ask for credentials."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"workflow-builder-regression",
+		"webhook",
+		"switch",
+		"fallback",
+		"slack",
+		"gmail"
+	],
+	"triggerType": "webhook",
+	"executionScenarios": [
+		{
+			"name": "urgent-routing",
+			"description": "Urgent payload routes to the incidents Slack branch",
+			"dataSetup": "The webhook receives {\"priority\":\"urgent\",\"message\":\"Database latency is high\"}. Slack returns success.",
+			"successCriteria": "The urgent branch sends the message to Slack channel #incidents and does not route it to the normal Gmail branch."
+		},
+		{
+			"name": "normal-routing",
+			"description": "Normal payload routes to the Gmail branch",
+			"dataSetup": "The webhook receives {\"priority\":\"normal\",\"message\":\"Daily handoff ready\"}. Gmail returns success.",
+			"successCriteria": "The normal branch sends an email to ops@example.com containing the message and does not route it to #incidents."
+		},
+		{
+			"name": "fallback-routing",
+			"description": "Unexpected priority routes to the fallback Slack branch",
+			"dataSetup": "The webhook receives {\"priority\":\"low\",\"message\":\"FYI only\"}. Slack returns success.",
+			"successCriteria": "The unmatched priority uses the default fallback branch and sends the message to Slack channel #triage."
+		}
+	]
+}

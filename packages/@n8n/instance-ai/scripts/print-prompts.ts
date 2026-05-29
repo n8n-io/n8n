@@ -9,15 +9,11 @@
 // sharing them outside the codebase.
 // ---------------------------------------------------------------------------
 
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../src/tools/orchestration/build-workflow-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
@@ -58,6 +54,11 @@ function parseArgs(argv: string[]): { outDir: string } {
 }
 
 function collectAgents(): AgentEntry[] {
+	const workflowBuilderSkill = readFileSync(
+		join(__dirname, '..', 'skills', 'workflow-builder', 'SKILL.md'),
+		'utf8',
+	);
+
 	return [
 		{
 			folder: 'main-agent',
@@ -121,21 +122,10 @@ function collectAgents(): AgentEntry[] {
 			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
 		},
 		{
-			folder: 'builder',
-			displayName: 'Sub-Agent — Workflow Builder',
-			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts',
-			variants: [
-				{
-					file: 'tool',
-					label: 'tool mode (no sandbox) → BUILDER_AGENT_PROMPT',
-					body: BUILDER_AGENT_PROMPT,
-				},
-				{
-					file: 'sandbox',
-					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',
-					body: createSandboxBuilderAgentPrompt('/workspace'),
-				},
-			],
+			folder: 'workflow-builder-skill',
+			displayName: 'Skill — Workflow Builder',
+			source: 'skills/workflow-builder/SKILL.md',
+			variants: [{ file: 'skill', body: workflowBuilderSkill }],
 		},
 		{
 			folder: 'delegate',

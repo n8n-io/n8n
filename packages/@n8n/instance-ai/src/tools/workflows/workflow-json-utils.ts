@@ -1,9 +1,18 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.manualTrigger',
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'n8n-nodes-base.scheduleTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
+	'n8n-nodes-base.slackTrigger',
+]);
+
+const KNOWN_WEBHOOK_ID_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
@@ -19,6 +28,22 @@ export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	if (!nodeType) return false;
 	if (isMockableTriggerNodeType(nodeType)) return true;
 	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
+}
+
+export function needsWebhookId(nodeType: string | undefined): boolean {
+	return nodeType !== undefined && KNOWN_WEBHOOK_ID_TRIGGER_TYPES.has(nodeType);
+}
+
+export function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
+	for (const node of json.nodes ?? []) {
+		if (
+			typeof node.parameters !== 'object' ||
+			node.parameters === null ||
+			Array.isArray(node.parameters)
+		) {
+			node.parameters = {};
+		}
+	}
 }
 
 function extractWorkflowIdParameter(value: unknown): string | undefined {

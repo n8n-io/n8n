@@ -22,7 +22,7 @@ import { runExpectedToolsInvokedCheck } from './expected-tools-invoked';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import type { DiscoveryCheckResult, DiscoveryTestCase } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
-import type { InstanceAiEventBus } from '../../src/event-bus';
+import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';
 import {
@@ -40,7 +40,6 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
@@ -236,6 +235,62 @@ function applyInstanceState(
 
 function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+function createInMemoryEventBus(): InstanceAiEventBus {
+	type EventHandler = (storedEvent: StoredEvent) => void;
+	const eventsByThread = new Map<string, StoredEvent[]>();
+	const subscribers = new Map<string, Set<EventHandler>>();
+
+	return {
+		publish(threadId, event) {
+			const events = eventsByThread.get(threadId) ?? [];
+			const storedEvent = { id: events.length + 1, event };
+			events.push(storedEvent);
+			eventsByThread.set(threadId, events);
+			for (const handler of subscribers.get(threadId) ?? []) {
+				handler(storedEvent);
+			}
+		},
+		subscribe(threadId, handler) {
+			const threadSubscribers = subscribers.get(threadId) ?? new Set<EventHandler>();
+			threadSubscribers.add(handler);
+			subscribers.set(threadId, threadSubscribers);
+			return () => {
+				threadSubscribers.delete(handler);
+			};
+		},
+		getEventsAfter(threadId, afterId) {
+			return (eventsByThread.get(threadId) ?? []).filter((event) => event.id > afterId);
+		},
+		getEventsForRun(threadId, runId) {
+			return (eventsByThread.get(threadId) ?? [])
+				.map((storedEvent) => storedEvent.event)
+				.filter((event) => event.runId === runId);
+		},
+		getEventsForRuns(threadId, runIds) {
+			const runIdSet = new Set(runIds);
+			return (eventsByThread.get(threadId) ?? [])
+				.map((storedEvent) => storedEvent.event)
+				.filter((event) => runIdSet.has(event.runId));
+		},
+		getNextEventId(threadId) {
+			return (eventsByThread.get(threadId)?.length ?? 0) + 1;
+		},
+	};
+}
+
+function wrapEventBusWithObserver(
+	bus: InstanceAiEventBus,
+	observer: (event: InstanceAiEvent) => void,
+): InstanceAiEventBus {
+	return {
+		...bus,
+		publish(threadId, event) {
+			observer(event);
+			bus.publish(threadId, event);
+		},
+	};
 }
 
 interface StubOrchestrationContextOptions {

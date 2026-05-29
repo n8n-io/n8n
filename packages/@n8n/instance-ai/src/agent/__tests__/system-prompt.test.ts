@@ -8,8 +8,29 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('before your first tool call');
 			expect(prompt).toContain('write one short sentence');
 			expect(prompt).toContain("Keep it tied to the user's goal, not the tool name");
+			expect(prompt).toContain('keep visible narration sparse');
+			expect(prompt).toContain('Let the activity/status UI show routine progress');
+			expect(prompt).toContain('Do not narrate transient validation, build, verification');
+			expect(prompt).toContain('Do not call any more tools after planning');
+			expect(prompt).toContain('applies to normal turns and system-generated follow-up turns');
 			expect(prompt).toContain('Never let an empty assistant message');
 			expect(prompt).toContain('[Calling tools: ...]');
+		});
+
+		it('instructs the agent to surface generated documents as artifacts instead of sandbox paths', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Do not show sandbox or workspace file paths');
+			expect(prompt).toContain('/home/daytona/workspace');
+			expect(prompt).toContain('<command:artifact-create>');
+		});
+
+		it('instructs the agent not to retry denied tool actions', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('When any tool returns `denied: true`');
+			expect(prompt).toContain('do not retry or re-issue the same mutating tool');
+			expect(prompt).toContain('no changes were made');
 		});
 	});
 
@@ -107,6 +128,10 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('## When to Plan');
 			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
+			expect(prompt).toContain('Do not load `workflow-builder` first');
+			expect(prompt).toContain(
+				'creation is only available inside the approved `build-workflow` follow-up',
+			);
 			expect(prompt).toContain('workflow tasks include any data table names');
 		});
 
@@ -127,12 +152,17 @@ describe('getSystemPrompt', () => {
 			);
 		});
 
-		it('routes existing-workflow edits through bypassPlan', () => {
+		it('routes existing-workflow edits through the workflow-builder skill and workflows update', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toMatch(/Any edit to an existing workflow that runs the builder/);
-			expect(prompt).toContain('`bypassPlan: true`');
+			expect(prompt).toContain('load the `workflow-builder` skill');
+			expect(prompt).toContain('call `workflows(action="update")` directly');
 			expect(prompt).toContain('existing `workflowId`');
+			expect(prompt).toContain(
+				'Existing-workflow edits and approved planned build follow-ups are direct main-agent skill flows',
+			);
+			expect(prompt).toContain('Load its linked references on demand');
 		});
 
 		it('routes non-build ops through direct tools', () => {
@@ -150,19 +180,19 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('post-build verify for bypassPlan', () => {
-		it('uses verificationReadiness as the post-build routing signal', () => {
+	describe('post-build verify for planned builds', () => {
+		it('keeps lifecycle detail in the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Post-build flow');
-			expect(prompt).toContain('verify-built-workflow');
+			expect(prompt).toContain('workflow-builder` skill owns node discovery');
+			expect(prompt).toContain('Use the `nodes` tool for node type IDs');
+			expect(prompt).toContain('do not use web research to discover node IDs');
+			expect(prompt).toContain('follow its build lifecycle reference');
 			expect(prompt).toContain('outcome.verificationReadiness');
 			expect(prompt).toContain('outcome.setupRequirement');
-			expect(prompt).toContain('outcome.verificationReadiness.status === "ready"');
-			expect(prompt).toContain('outcome.verificationReadiness.status === "needs_setup"');
-			expect(prompt).toContain('outcome.verificationReadiness.status === "not_verifiable"');
-			expect(prompt).toContain('outcome.setupRequirement.status === "required"');
-			expect(prompt).toContain('outcome.triggerNodes');
+			expect(prompt).not.toContain('Workflow lifecycle ownership');
+			expect(prompt).not.toContain('outcome.verificationReadiness.status === "ready"');
+			expect(prompt).not.toContain('### Per-trigger `inputData` shape');
 			expect(prompt).not.toContain('outcome.usesWorkflowPinDataForVerification');
 			expect(prompt).not.toContain('outcome.verificationPinData');
 		});
@@ -171,111 +201,123 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('inline setup card in the AI Assistant panel');
+			expect(prompt).toContain('Never describe workflow setup as something the user starts');
 			expect(prompt).toContain(
-				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+				'do not tell the user to open the workflow editor to configure setup',
 			);
 			expect(prompt).not.toMatch(/setup wizard/i);
 		});
 
-		it('makes post-build credential setup the default path', () => {
+		it('delegates detailed credential selection to the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
-			expect(prompt).toContain('building first and routing setup after verification');
+			expect(prompt).toContain('credential/resource selection');
+			expect(prompt).toContain("use the skill's placeholder/setup path");
+			expect(prompt).not.toContain('Ask once when a service has multiple credentials');
 		});
 
-		it('reads workflowId/workItemId from the outcome field, not result', () => {
+		it('reads workflowId/workItemId from planned task outcomes', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('outcome.workflowId');
 			expect(prompt).toContain('outcome.workItemId');
 			expect(prompt).toContain('outcome.verificationReadiness');
 			expect(prompt).toContain('outcome.setupRequirement');
-			expect(prompt).toMatch(/result.*only a short text summary/);
+			expect(prompt).toContain('<planned-task-follow-up type="checkpoint">');
+		});
+
+		it('keeps workItemId distinct from workflowId during planned build follow-ups', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('If `buildTask.workflowId` is absent');
+			expect(prompt).toContain('`workItemId` is tracking metadata');
+			expect(prompt).toContain('must never be used as a workflow ID');
+			expect(prompt).toContain('with that exact workflow ID');
+		});
+
+		it('keeps planned follow-up progress sparse without final completion text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Use little or no chat narration during internal validation');
+			expect(prompt).toContain(
+				'Planned follow-up turns should usually avoid chat text during internal repair loops',
+			);
+			expect(prompt).toContain('do not write a final completion message');
+			expect(prompt).toContain('checkpoint card is the reporting boundary');
 		});
 
 		it('reuses deterministic already-verified readiness instead of re-running verify', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('outcome.verificationReadiness.status === "already_verified"');
-			expect(prompt).toContain('do **not** call `verify-built-workflow` again');
+			expect(prompt).toContain('outcome.verificationReadiness');
+			expect(prompt).not.toContain('outcome.verificationReadiness.status === "already_verified"');
+			expect(prompt).not.toContain('do **not** call `verify-built-workflow` again');
 		});
 
-		it('leaves publish dependency ordering to the workflows tool', () => {
+		it('leaves publish policy to the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain(
-				'Only call `workflows(action="publish")` when the user explicitly asks',
-			);
+			expect(prompt).toContain('publish policy');
+			expect(prompt).not.toContain('Never publish automatically');
 			expect(prompt).not.toContain('outcome.supportingWorkflowIds');
 		});
 	});
 
 	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {
-		it('allows checkpoints to reuse successful structured verification evidence', () => {
+		it('routes checkpoint verification through the workflow-builder lifecycle', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Always require structured verification evidence');
-			expect(prompt).toContain('never trust builder prose');
-			expect(prompt).toContain('without re-running verification');
+			expect(prompt).toContain('Load `workflow-builder`');
+			expect(prompt).toContain('follow its build lifecycle reference');
 			expect(prompt).not.toContain('Always run your own verification');
 		});
 
-		it('routes verified checkpoint workflows with setup needs through workflow setup before completion', () => {
+		it('keeps setup after successful mock verification', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('workflows(action="setup")');
-			expect(prompt).toContain('outcome.setupRequirement.status === "required"');
-			expect(prompt).toContain('before `complete-checkpoint`');
-			expect(prompt).toContain('deferred: true');
-			expect(prompt).toContain(
-				'Do not call `credentials(action="setup")` or `apply-workflow-credentials`',
-			);
+			expect(prompt).toContain('outcome.setupRequirement');
+			expect(prompt).toContain('build lifecycle reference');
+			expect(prompt).toContain('verify/test with available mock or real data');
+			expect(prompt).toContain('setup is deferred after verification passes');
+			expect(prompt).toContain('verifiedWithMocks: true');
+			expect(prompt).toContain('setupDeferred: true');
 		});
 
-		it('tells the orchestrator it may patch during a checkpoint and will re-enter the same checkpoint', () => {
+		it('does not treat internal verification as an explicit user-requested run', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('patch in place');
-			expect(prompt).toMatch(
-				/you will receive another `<planned-task-follow-up type="checkpoint">` for the SAME checkpoint/,
+			expect(prompt).toContain(
+				'Internal verification is not a substitute for an explicit user request to run or execute the workflow',
 			);
-			expect(prompt).toContain('re-verify');
+			expect(prompt).toContain('executions(action="run", requireApproval=true)');
+			expect(prompt).toContain('so normal run approval applies');
+			expect(prompt).toContain('requireApproval=false');
+		});
+
+		it('tells the orchestrator it may patch directly during a checkpoint', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('patch and re-verify fixable errors');
+			expect(prompt).toContain('remediation guard stops edits');
 			expect(prompt).toContain('complete-checkpoint');
 		});
 
-		it('allows one more in-checkpoint patch if the first surfaced a new narrow bug', () => {
+		it('keeps checkpoint patch attempts bounded', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/call `complete-checkpoint`.*OR spawn one more in-checkpoint patch/);
-			expect(prompt).toMatch(/Keep the patch count small/);
-			expect(prompt).toMatch(/within two rounds/);
-		});
-
-		it('still warns not to end a checkpoint turn with an unsettled in-turn patch', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toMatch(
-				/Do NOT end a checkpoint turn that had an in-turn patch spawned without either calling `complete-checkpoint` on the next re-entry or spawning another bounded patch/,
-			);
+			expect(prompt).toContain('verification remains blocked');
+			expect(prompt).not.toMatch(/within two rounds/);
 		});
 	});
 
 	describe('multi-credential disambiguation guidance', () => {
-		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
+		it('keeps detailed disambiguation rules in the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Ask once when a service has multiple credentials of the same type');
-			expect(prompt).toContain('more than one entry of the type');
-			expect(prompt).toContain('single-select');
-			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
-		});
-
-		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
-			expect(prompt).toContain('List OAuth2 first');
+			expect(prompt).toContain('credential/resource selection');
+			expect(prompt).not.toContain('more than one entry of the type');
+			expect(prompt).not.toContain('With a single candidate, auto-apply and do not ask');
 		});
 	});
 

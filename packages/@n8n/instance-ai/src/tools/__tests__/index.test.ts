@@ -32,10 +32,6 @@ jest.mock('../nodes.tool', () => ({
 	})),
 }));
 
-jest.mock('../orchestration/build-workflow-agent.tool', () => ({
-	createBuildWorkflowAgentTool: jest.fn(() => ({ id: 'build-workflow-with-agent' })),
-}));
-
 jest.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: jest.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -89,10 +85,6 @@ jest.mock('../workflows/apply-workflow-credentials.tool', () => ({
 	createApplyWorkflowCredentialsTool: jest.fn(() => ({ id: 'apply-workflow-credentials' })),
 }));
 
-jest.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: jest.fn(() => ({ id: 'build-workflow' })),
-}));
-
 jest.mock('../workflows.tool', () => ({
 	createWorkflowsTool: jest.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-filtered' : 'workflows',
@@ -139,7 +131,6 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
 		});
 	});
 
@@ -164,6 +155,53 @@ describe('domain tool construction', () => {
 		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+	});
+
+	it('limits planned workflow-build follow-ups for new workflows to create actions', () => {
+		const context = makeContext({
+			plannedBuildTask: {
+				threadId: 'thread-a',
+				taskId: 'task-build',
+				workItemId: 'wi-1',
+				title: 'Build workflow',
+				spec: 'Build it',
+				plannedTaskService: {},
+			} as unknown as InstanceAiContext['plannedBuildTask'],
+		});
+
+		createOrchestratorDomainTools(context);
+
+		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
+			surface: 'orchestrator',
+			allowedActions: ['list', 'get', 'get-as-code', 'create'],
+			descriptionPrefix: 'Planned workflow-build follow-up for a new workflow',
+			descriptionSuffix: 'The workItemId wi-1 is build tracking metadata, not a workflowId.',
+		});
+	});
+
+	it('limits planned workflow-build follow-ups for existing workflows to update actions', () => {
+		const context = makeContext({
+			plannedBuildTask: {
+				threadId: 'thread-a',
+				taskId: 'task-build',
+				workItemId: 'wi-1',
+				title: 'Build workflow',
+				spec: 'Build it',
+				workflowId: 'wf-1',
+				plannedTaskService: {},
+			} as unknown as InstanceAiContext['plannedBuildTask'],
+		});
+
+		createOrchestratorDomainTools(context);
+
+		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
+			surface: 'orchestrator',
+			allowedActions: ['list', 'get', 'get-as-code', 'update'],
+			descriptionPrefix: 'Planned workflow-build follow-up for existing workflow wf-1',
+			descriptionSuffix: 'The workItemId wi-1 is build tracking metadata, not a workflowId.',
+		});
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

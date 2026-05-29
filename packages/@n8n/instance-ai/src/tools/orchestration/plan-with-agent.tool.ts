@@ -624,7 +624,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				'and best practices, designs the architecture, and shows it to the user ' +
 				'for approval. Use when the request requires 2 or more tasks with ' +
 				'dependencies. When this tool returns, the plan is already approved ' +
-				'and tasks are dispatched — just acknowledge briefly and end your turn.',
+				'and tasks are dispatched — end your turn without calling more tools.',
 		)
 		.input(
 			z.object({
@@ -644,6 +644,20 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			}),
 		)
 		.handler(async (input: { guidance?: string }) => {
+			if (context.domainContext?.plannedBuildTask) {
+				return {
+					result:
+						'You are already inside an approved build-workflow follow-up. Do not call plan again; load workflow-builder and call workflows(action="create") or workflows(action="update") for the current build task.',
+				};
+			}
+
+			if (context.isCheckpointFollowUp) {
+				return {
+					result:
+						'You are already inside an approved checkpoint follow-up. Do not call plan again; execute the checkpoint with verification/setup tools and then call complete-checkpoint exactly once.',
+				};
+			}
+
 			// ── Same-turn denial guard ─────────────────────────────────────
 			// If the user denied a plan earlier in this same message group, the
 			// orchestrator must not silently spawn another planner. Without this

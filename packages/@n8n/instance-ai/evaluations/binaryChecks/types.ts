@@ -9,6 +9,17 @@
 import type { WorkflowResponse } from '../clients/n8n-client';
 
 /**
+ * Evaluation feedback item. Compatible with LangSmith scoring.
+ */
+export interface Feedback {
+	evaluator: string;
+	metric: string;
+	score: number;
+	comment?: string;
+	kind: 'score' | 'metric' | 'detail';
+}
+
+/**
  * Result of a single binary check.
  */
 export interface BinaryCheckResult {

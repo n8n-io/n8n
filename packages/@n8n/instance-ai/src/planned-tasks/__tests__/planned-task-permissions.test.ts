@@ -1,7 +1,10 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
 import type { InstanceAiContext, PlannedTaskKind } from '../../types';
-import { applyPlannedTaskPermissions } from '../planned-task-permissions';
+import {
+	applyPlannedTaskPermissions,
+	getPlannedTaskPermissionOverrides,
+} from '../planned-task-permissions';
 
 function makeContext(
 	permissionOverrides: Partial<typeof DEFAULT_INSTANCE_AI_PERMISSIONS> = {},
@@ -19,19 +22,19 @@ function makeContext(
 
 describe('applyPlannedTaskPermissions', () => {
 	describe('build-workflow', () => {
-		it('should auto-approve workflow and data-table work owned by the builder task', () => {
+		it('should auto-approve data-table work owned by the builder task', () => {
 			const context = makeContext();
 			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 			expect(result.permissions).toMatchObject({
-				createWorkflow: 'always_allow',
-				updateWorkflow: 'always_allow',
-				runWorkflow: 'always_allow',
-				publishWorkflow: 'always_allow',
 				createDataTable: 'always_allow',
 				mutateDataTableSchema: 'always_allow',
 				mutateDataTableRows: 'always_allow',
 			});
+			expect(result.permissions?.createWorkflow).toBe('require_approval');
+			expect(result.permissions?.updateWorkflow).toBe('require_approval');
+			expect(result.permissions?.runWorkflow).toBe('require_approval');
+			expect(result.permissions?.publishWorkflow).toBe('require_approval');
 		});
 
 		it('should not affect destructive or open-ended permissions', () => {
@@ -48,7 +51,29 @@ describe('applyPlannedTaskPermissions', () => {
 			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 			expect(result.permissions?.fetchUrl).toBe('always_allow');
-			expect(result.permissions?.createWorkflow).toBe('always_allow');
+			expect(result.permissions?.createDataTable).toBe('always_allow');
+		});
+
+		it('should keep planned workflow saves behind explicit workflow approval', () => {
+			const overrides = getPlannedTaskPermissionOverrides('build-workflow');
+
+			expect(overrides).toMatchObject({
+				createDataTable: 'always_allow',
+			});
+			expect(overrides?.createWorkflow).toBeUndefined();
+			expect(overrides?.updateWorkflow).toBeUndefined();
+		});
+	});
+
+	describe('checkpoint', () => {
+		it('should auto-approve verification runs and scoped workflow repairs', () => {
+			const context = makeContext();
+			const result = applyPlannedTaskPermissions(context, 'checkpoint');
+
+			expect(result.permissions).toMatchObject({
+				runWorkflow: 'always_allow',
+				updateWorkflow: 'always_allow',
+			});
 		});
 	});
 

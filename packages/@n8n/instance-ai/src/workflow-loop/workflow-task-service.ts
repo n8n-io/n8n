@@ -31,6 +31,10 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 		return item?.lastBuildOutcome ?? undefined;
 	}
 
+	async getBuildOutcomeByTask(taskId: string): Promise<WorkflowBuildOutcome | undefined> {
+		return await this.storage.getBuildOutcomeByTask(this.threadId, taskId);
+	}
+
 	async getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined> {
 		const item = await this.storage.getWorkItem(this.threadId, workItemId);
 		return item?.state ?? undefined;

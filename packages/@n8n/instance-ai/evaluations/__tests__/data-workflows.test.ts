@@ -18,6 +18,10 @@ const FAKE_FILES = [
 	'github-notion-sync.json',
 	'weather-monitoring.json',
 	'weather-alert.json',
+	'workflow-builder-http-bearer-auth.json',
+	'workflow-builder-schedule-to-email.json',
+	'workflow-builder-switch-fallback-routing.json',
+	'workflow-builder-webhook-to-slack.json',
 	'README.md', // non-json filtered out
 ];
 
@@ -57,6 +61,10 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 			'github-notion-sync',
 			'weather-alert',
 			'weather-monitoring',
+			'workflow-builder-http-bearer-auth',
+			'workflow-builder-schedule-to-email',
+			'workflow-builder-switch-fallback-routing',
+			'workflow-builder-webhook-to-slack',
 		]);
 	});
 
@@ -107,6 +115,10 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				'daily-slack-summary',
 				'form-to-hubspot',
 				'github-notion-sync',
+				'workflow-builder-http-bearer-auth',
+				'workflow-builder-schedule-to-email',
+				'workflow-builder-switch-fallback-routing',
+				'workflow-builder-webhook-to-slack',
 			]);
 		});
 
@@ -116,6 +128,10 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				'cross-team-linear-report',
 				'daily-slack-summary',
 				'github-notion-sync',
+				'workflow-builder-http-bearer-auth',
+				'workflow-builder-schedule-to-email',
+				'workflow-builder-switch-fallback-routing',
+				'workflow-builder-webhook-to-slack',
 			]);
 		});
 	});

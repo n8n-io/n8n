@@ -18,6 +18,12 @@ import {
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import {
+	createWorkflowCodeService,
+	workflowCodeConfirmationSuspendSchema,
+	workflowCodeCreateActionSchema,
+	workflowCodeUpdateActionSchema,
+} from './workflows/workflow-code.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -72,7 +78,7 @@ const setupAction = z.object({
 			'Open the inline AI Assistant workflow setup card for credential and parameter configuration',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	projectId: z.string().optional().describe('Project ID'),
 });
 
 const validateAction = z.object({
@@ -88,11 +94,11 @@ const validateAction = z.object({
 		.describe('Issue categories to suppress from the result'),
 });
 
-const updateAction = z.object({
+const updateJsonAction = z.object({
 	action: z
-		.literal('update')
+		.literal('update-json')
 		.describe(
-			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
+			'Internal: save a complete modified WorkflowJSON back to the workflow. Use after reading via `get-json` and modifying the JSON. Replaces the full workflow definition.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflow: z
@@ -111,7 +117,7 @@ const publishBaseAction = z.object({
 });
 
 const publishExtendedAction = publishBaseAction.extend({
-	name: z.string().optional().describe('Name for the version'),
+	name: z.string().optional().describe('Name'),
 	description: z.string().optional().describe('Description for the version'),
 });
 
@@ -145,19 +151,13 @@ const updateVersionAction = z.object({
 		.describe('Update the name or description of a workflow version (null to clear a field)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
-	name: z.string().nullable().optional().describe('Name for the version'),
+	name: z.string().nullable().optional().describe('Name'),
 	description: z.string().nullable().optional().describe('Description for the version'),
 });
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const confirmationSuspendSchema = setupSuspendSchema.pick({
-	requestId: true,
-	message: true,
-	severity: true,
-});
-
-const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
+const suspendSchema = z.union([setupSuspendSchema, workflowCodeConfirmationSuspendSchema]);
 
 // Resume: union of standard confirmation (approved) and setup-specific fields.
 const resumeSchema = setupResumeSchema;
@@ -176,11 +176,13 @@ type Input =
 	| z.infer<typeof getAction>
 	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
+	| z.infer<typeof workflowCodeCreateActionSchema>
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof unarchiveAction>
 	| z.infer<typeof setupAction>
 	| z.infer<typeof validateAction>
-	| z.infer<typeof updateAction>
+	| z.infer<typeof workflowCodeUpdateActionSchema>
+	| z.infer<typeof updateJsonAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -198,11 +200,13 @@ export type WorkflowAction =
 	| 'get'
 	| 'get-json'
 	| 'get-as-code'
+	| 'create'
 	| 'delete'
 	| 'unarchive'
 	| 'setup'
 	| 'validate'
 	| 'update'
+	| 'update-json'
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
@@ -226,11 +230,13 @@ const WORKFLOW_ACTION_ORDER = [
 	'get',
 	'get-json',
 	'get-as-code',
+	'create',
 	'delete',
 	'unarchive',
 	'setup',
 	'validate',
 	'update',
+	'update-json',
 	'publish',
 	'unpublish',
 	'list-versions',
@@ -244,11 +250,13 @@ const WORKFLOW_ACTION_LABELS = {
 	get: 'inspect',
 	'get-json': 'inspect full WorkflowJSON',
 	'get-as-code': 'convert existing workflows to TypeScript SDK code',
+	create: 'create from workflow SDK code',
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
 	validate: 'validate configuration',
-	update: 'save a modified WorkflowJSON',
+	update: 'update from workflow SDK code or patches',
+	'update-json': 'save a modified WorkflowJSON',
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
@@ -256,6 +264,8 @@ const WORKFLOW_ACTION_LABELS = {
 	'restore-version': 'restore versions',
 	'update-version': 'update version metadata',
 } satisfies Record<WorkflowAction, string>;
+
+const DEFAULT_ORCHESTRATOR_WORKFLOW_ACTIONS = WORKFLOW_ACTION_ORDER;
 
 function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToolOptions {
 	return typeof options === 'string' ? { surface: options } : options;
@@ -271,14 +281,15 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		...(surface !== 'orchestrator'
-			? { 'get-json': getJsonAction, 'get-as-code': getAsCodeAction }
-			: {}),
+		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
+		'get-as-code': getAsCodeAction,
+		create: workflowCodeCreateActionSchema,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
 		validate: validateAction,
-		update: updateAction,
+		update: workflowCodeUpdateActionSchema,
+		...(surface !== 'orchestrator' ? { 'update-json': updateJsonAction } : {}),
 		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
@@ -296,7 +307,11 @@ function getWorkflowActions(
 	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
 	options: WorkflowsToolOptions,
 ): WorkflowAction[] {
-	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
+	const defaultActions =
+		options.surface === 'orchestrator'
+			? DEFAULT_ORCHESTRATOR_WORKFLOW_ACTIONS
+			: WORKFLOW_ACTION_ORDER;
+	const allowedActions = new Set(options.allowedActions ?? defaultActions);
 	return WORKFLOW_ACTION_ORDER.filter(
 		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
 	);
@@ -348,7 +363,8 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 	});
-	return { workflows };
+	const plannedBuildHint = getPlannedBuildWorkflowHint(context);
+	return { workflows, ...(plannedBuildHint ? { plannedBuildHint } : {}) };
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -366,11 +382,32 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			found: false as const,
 			error: message,
 			availableWorkflows: available,
-			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
-				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
+			hint: getWorkflowNotFoundHint(context),
 		};
 	}
+}
+
+function getPlannedBuildWorkflowHint(context: InstanceAiContext): string | undefined {
+	const task = context.plannedBuildTask;
+	if (!task) return undefined;
+
+	if (task.workflowId) {
+		return `Planned build task "${task.title}" targets workflow ${task.workflowId}; use workflows(action="update", workflowId="${task.workflowId}") after loading workflow-builder. The workItemId ${task.workItemId} is tracking metadata, not a workflow ID.`;
+	}
+
+	return `Planned build task "${task.title}" creates a new workflow; use workflows(action="create") after loading workflow-builder. The workItemId ${task.workItemId} is tracking metadata, not a workflow ID.`;
+}
+
+function getWorkflowNotFoundHint(context: InstanceAiContext): string {
+	const plannedBuildHint = getPlannedBuildWorkflowHint(context);
+	if (plannedBuildHint) {
+		return `${plannedBuildHint} Do not retry with a guessed workflow ID.`;
+	}
+
+	return (
+		'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflows(action="list")` for the current set. ' +
+		'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.'
+	);
 }
 
 async function handleGetJson(
@@ -473,11 +510,24 @@ async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
 	ctx: WorkflowToolContext,
-	state: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
+	stateByWorkflowId: Map<
+		string,
+		{ currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null }
+	>,
+	invalidateWorkflowCode: (workflowId: string) => void,
 ) {
+	const state = getSetupState(stateByWorkflowId, input.workflowId);
+	if (context.plannedBuildTask) {
+		return {
+			success: false,
+			denied: true,
+			reason:
+				'Setup is handled by the verification checkpoint after the planned build is saved. Stop after workflows(action="create"|"update") in the build follow-up.',
+		};
+	}
 	// `setup` mutates workflow nodes via applyNodeChanges (credentials and
 	// parameters are workflow-record fields), so it's gated under
-	// `updateWorkflow` like other workflow-mutating actions.
+	// `updateWorkflow` like other workflow-changing actions.
 	if (context.permissions?.updateWorkflow === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
@@ -508,6 +558,7 @@ async function handleSetup(
 	if (!resumeData.approved) {
 		if (state.preTestSnapshot) {
 			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
+			invalidateWorkflowCode(input.workflowId);
 			state.preTestSnapshot = null;
 		}
 		return {
@@ -530,6 +581,14 @@ async function handleSetup(
 		const applyFailures = preTestApply.failed;
 
 		if (applyFailures.length > 0) {
+			if (state.preTestSnapshot) {
+				await context.workflowService.updateFromWorkflowJSON(
+					input.workflowId,
+					state.preTestSnapshot,
+				);
+				invalidateWorkflowCode(input.workflowId);
+				state.preTestSnapshot = null;
+			}
 			return {
 				success: false,
 				error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
@@ -593,6 +652,7 @@ async function handleSetup(
 		);
 
 		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
+		invalidateWorkflowCode(input.workflowId);
 
 		// Fetch updated workflow to include in response so the frontend can refresh the canvas
 		const updatedWorkflow = await context.workflowService.getAsWorkflowJSON(input.workflowId);
@@ -670,6 +730,21 @@ async function handleSetup(
 	}
 }
 
+function getSetupState(
+	stateByWorkflowId: Map<
+		string,
+		{ currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null }
+	>,
+	workflowId: string,
+) {
+	let state = stateByWorkflowId.get(workflowId);
+	if (!state) {
+		state = { currentRequestId: null, preTestSnapshot: null };
+		stateByWorkflowId.set(workflowId, state);
+	}
+	return state;
+}
+
 async function handleValidate(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'validate' }>,
@@ -703,10 +778,11 @@ function isWorkflowJson(value: unknown): value is WorkflowJSON {
 	);
 }
 
-async function handleUpdate(
+async function handleUpdateJson(
 	context: InstanceAiContext,
-	input: Extract<Input, { action: 'update' }>,
+	input: Extract<Input, { action: 'update-json' }>,
 	ctx: WorkflowToolContext,
+	invalidateWorkflowCode: (workflowId: string) => void,
 ) {
 	const resumeData = ctx.resumeData;
 
@@ -738,6 +814,7 @@ async function handleUpdate(
 
 	try {
 		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		invalidateWorkflowCode(input.workflowId);
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
 		return {
@@ -960,6 +1037,7 @@ async function handleRestoreVersion(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'restore-version' }>,
 	ctx: WorkflowToolContext,
+	invalidateWorkflowCode: (workflowId: string) => void,
 ) {
 	const resumeData = ctx.resumeData;
 
@@ -992,6 +1070,7 @@ async function handleRestoreVersion(
 
 	try {
 		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
+		invalidateWorkflowCode(input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {
@@ -1007,7 +1086,7 @@ async function handleUpdateVersion(
 	ctx: WorkflowToolContext,
 ) {
 	// Gated under `updateWorkflow` — version metadata edits are workflow-record
-	// mutations, treated the same as live-workflow updates.
+	// edits, treated the same as live-workflow updates.
 	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.updateWorkflow === 'blocked') {
@@ -1083,12 +1162,13 @@ export function createWorkflowsTool(
 ) {
 	const options = normalizeOptions(optionsInput);
 	// Closure state for the setup action's suspend/resume cycle
-	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
-		currentRequestId: null,
-		preTestSnapshot: null,
-	};
+	const setupStateByWorkflowId = new Map<
+		string,
+		{ currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null }
+	>();
 
 	const inputSchema = buildInputSchema(context, options);
+	const workflowCodeService = createWorkflowCodeService(context);
 
 	return new Tool('workflows')
 		.description(getToolDescription(context, options))
@@ -1111,11 +1191,26 @@ export function createWorkflowsTool(
 				case 'unarchive':
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
-					return await handleSetup(context, workflowInput, ctx, setupState);
+					return await handleSetup(
+						context,
+						workflowInput,
+						ctx,
+						setupStateByWorkflowId,
+						workflowCodeService.invalidate,
+					);
 				case 'validate':
 					return await handleValidate(context, workflowInput);
+				case 'create':
+					return await workflowCodeService.create(workflowInput, ctx);
 				case 'update':
-					return await handleUpdate(context, workflowInput, ctx);
+					return await workflowCodeService.update(workflowInput, ctx);
+				case 'update-json':
+					return await handleUpdateJson(
+						context,
+						workflowInput,
+						ctx,
+						workflowCodeService.invalidate,
+					);
 				case 'publish':
 					return await handlePublish(context, workflowInput, ctx);
 				case 'unpublish':
@@ -1125,7 +1220,12 @@ export function createWorkflowsTool(
 				case 'get-version':
 					return await handleGetVersion(context, workflowInput);
 				case 'restore-version':
-					return await handleRestoreVersion(context, workflowInput, ctx);
+					return await handleRestoreVersion(
+						context,
+						workflowInput,
+						ctx,
+						workflowCodeService.invalidate,
+					);
 				case 'update-version':
 					return await handleUpdateVersion(context, workflowInput, ctx);
 				default:

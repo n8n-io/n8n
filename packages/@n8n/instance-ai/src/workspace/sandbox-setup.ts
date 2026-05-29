@@ -1,8 +1,8 @@
 /**
  * Sandbox Workspace Setup
  *
- * Handles first-time initialization of the sandbox workspace for the workflow
- * builder agent. Lazy and idempotent — checks for marker file before running.
+ * Handles first-time initialization of the sandbox workspace for runtime
+ * workspace-backed skills. Lazy and idempotent — checks for marker file before running.
  *
  * File I/O uses the workspace filesystem when available, with a sandbox command
  * fallback for providers that do not expose one.
@@ -564,10 +564,9 @@ function parseTarOctal(block: Buffer, start: number, length: number): number | n
 /**
  * Write the curated workflow examples archive into `${root}/examples/`.
  *
- * Used by the Daytona / n8n-sandbox factory paths. The local provider
- * deliberately skips this — dev iteration on the SDK doesn't need the
- * curated reference set, and the agent there operates fine without it
- * (same fallback as a cold start with the CDN unreachable).
+ * Used by `setupSandboxWorkspace` (local provider) and by the Daytona /
+ * n8n-sandbox factory paths, which skip the full setup but still need the
+ * curated reference material the agent can grep against.
  *
  * The CDN payload is a flat `.tar.gz` of `<slug>.ts` + `index.txt`. We
  * write the bytes into the sandbox and run `tar -xzf` in-sandbox to
@@ -653,7 +652,7 @@ export async function writeCuratedExamples(
 }
 
 /**
- * Initialize the sandbox workspace for the workflow builder agent.
+ * Initialize the sandbox workspace for runtime workspace-backed skills.
  * Idempotent — skips if already initialized (checks marker file).
  *
  * Writes config files, workflow JSONs, and the node catalog into the workspace.

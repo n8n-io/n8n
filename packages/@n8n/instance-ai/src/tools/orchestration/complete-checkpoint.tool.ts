@@ -35,6 +35,35 @@ const outputSchema = z.object({
 	ok: z.boolean(),
 });
 
+// Returns a description of a build dependency whose recorded verification ran
+// and failed, or undefined when none contradicts a 'succeeded' claim.
+async function findContradictingBuildFailure(
+	context: OrchestrationContext,
+	taskId: string,
+): Promise<string | undefined> {
+	const workflowTaskService = context.workflowTaskService;
+	if (!workflowTaskService?.getBuildOutcomeByTask || !context.plannedTaskService?.getGraph) {
+		return undefined;
+	}
+
+	const graph = await context.plannedTaskService.getGraph(context.threadId);
+	const checkpoint = graph?.tasks.find((t) => t.id === taskId && t.kind === 'checkpoint');
+	if (!checkpoint) return undefined;
+
+	const buildDepIds = checkpoint.deps.filter(
+		(depId) => graph?.tasks.find((t) => t.id === depId)?.kind === 'build-workflow',
+	);
+
+	for (const depId of buildDepIds) {
+		const outcome = await workflowTaskService.getBuildOutcomeByTask(depId);
+		const verification = outcome?.verification;
+		if (verification?.attempted && !verification.success) {
+			return verification.failureSignature ?? `build "${depId}" did not pass verification`;
+		}
+	}
+	return undefined;
+}
+
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
 	return new Tool('complete-checkpoint')
 		.description(
@@ -48,6 +77,25 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 		.handler(async (input: z.infer<typeof inputSchema>) => {
 			if (!context.plannedTaskService) {
 				return { ok: false, result: 'Error: planned task service not available.' };
+			}
+
+			// Don't let a 'succeeded' claim override recorded evidence that verification
+			// actually failed. Best-effort: skip the check if evidence isn't reachable.
+			if (input.status === 'succeeded') {
+				const failedNode = await findContradictingBuildFailure(context, input.taskId);
+				if (failedNode) {
+					await context.plannedTaskService.markCheckpointFailed(context.threadId, input.taskId, {
+						error: failedNode,
+						outcome: input.outcome,
+					});
+					return {
+						ok: false,
+						result:
+							`Error: cannot mark checkpoint "${input.taskId}" succeeded — the build it verifies ` +
+							`recorded a failed verification (${failedNode}). Fix the workflow and re-run ` +
+							'verify-built-workflow before settling the checkpoint.',
+					};
+				}
 			}
 
 			const settleResult =

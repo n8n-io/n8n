@@ -55,6 +55,11 @@ function isAgentMessage(value: unknown): value is AgentMessage {
 	return typeof value.role === 'string' && Array.isArray(value.content);
 }
 
+function isPendingUserInputMessage(message: AgentDbMessage): boolean {
+	const metadata = 'metadata' in message ? message.metadata : undefined;
+	return isRecord(metadata) && metadata.n8nPendingUserInput === true;
+}
+
 function toThread(entity: InstanceAiThread): Thread {
 	return {
 		id: entity.id,
@@ -262,7 +267,7 @@ export class TypeORMAgentMemory
 		const ordered = opts?.limit ? entities.reverse() : entities;
 		return ordered.flatMap((entity) => {
 			const message = this.toAgentMessage(entity);
-			return message ? [message] : [];
+			return message && !isPendingUserInputMessage(message) ? [message] : [];
 		});
 	}
 
@@ -283,7 +288,7 @@ export class TypeORMAgentMemory
 		return {
 			messages: entities.reverse().flatMap((entity) => {
 				const message = this.toAgentMessage(entity);
-				return message ? [message] : [];
+				return message && !isPendingUserInputMessage(message) ? [message] : [];
 			}),
 		};
 	}

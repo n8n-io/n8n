@@ -61,7 +61,7 @@ export async function requireCompletedHitlText(
 /**
  * Consume a sub-agent stream with HITL suspend/resume support.
  * Detects `tool-call-suspended` chunks, waits for user confirmation,
- * and resumes the stream. Used by delegate, builder, and other agent tools.
+ * and resumes the stream. Used by delegate, research, and other agent tools.
  *
  * Returns `{ text }` — a promise for the agent's full text output.
  * When HITL occurred, this returns the resumed stream's text (not the original).

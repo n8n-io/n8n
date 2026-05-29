@@ -2,12 +2,16 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 
 import { WorkSummaryAccumulator } from '../work-summary-accumulator';
 
-function toolCallEvent(toolCallId: string, toolName: string): InstanceAiEvent {
+function toolCallEvent(
+	toolCallId: string,
+	toolName: string,
+	args: Record<string, unknown> = {},
+): InstanceAiEvent {
 	return {
 		type: 'tool-call',
 		runId: 'run-1',
 		agentId: 'agent-1',
-		payload: { toolCallId, toolName, args: {} },
+		payload: { toolCallId, toolName, args },
 	};
 }
 
@@ -71,7 +75,7 @@ describe('WorkSummaryAccumulator', () => {
 		const accumulator = new WorkSummaryAccumulator();
 		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
 		accumulator.observe(toolResultEvent('tc-1'));
-		accumulator.observe(toolCallEvent('tc-2', 'build-workflow'));
+		accumulator.observe(toolCallEvent('tc-2', 'workflows', { action: 'create' }));
 		accumulator.observe(toolErrorEvent('tc-2', 'Compilation error'));
 		accumulator.observe(toolCallEvent('tc-3', 'list-credentials'));
 		accumulator.observe(toolResultEvent('tc-3'));
@@ -106,7 +110,7 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('truncates long error summaries to 500 chars', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'build-workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows', { action: 'create' }));
 		accumulator.observe(toolErrorEvent('tc-1', 'x'.repeat(1000)));
 
 		const summary = accumulator.toSummary();
@@ -116,10 +120,10 @@ describe('WorkSummaryAccumulator', () => {
 	it('de-duplicates by toolCallId (keeps latest outcome)', () => {
 		const accumulator = new WorkSummaryAccumulator();
 		// First attempt: fails
-		accumulator.observe(toolCallEvent('tc-1', 'build-workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows', { action: 'update' }));
 		accumulator.observe(toolErrorEvent('tc-1', 'Failed'));
 		// Resumed stream replays the same toolCallId as succeeded
-		accumulator.observe(toolCallEvent('tc-1', 'build-workflow'));
+		accumulator.observe(toolCallEvent('tc-1', 'workflows', { action: 'update' }));
 		accumulator.observe(toolResultEvent('tc-1'));
 
 		const summary = accumulator.toSummary();

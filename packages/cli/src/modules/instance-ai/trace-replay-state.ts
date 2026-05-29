@@ -27,6 +27,8 @@ export class TraceReplayState {
 
 	private sharedTraceSlug?: string;
 
+	private readonly runsBySlug = new Map<string, Map<string, Set<string>>>();
+
 	getActiveSlug(): string | undefined {
 		return this.activeSlug;
 	}
@@ -46,6 +48,7 @@ export class TraceReplayState {
 
 	clearEvents(slug: string): void {
 		this.eventsBySlug.delete(slug);
+		this.runsBySlug.delete(slug);
 		if (this.activeSlug === slug) {
 			this.activeSlug = undefined;
 		}
@@ -54,6 +57,21 @@ export class TraceReplayState {
 			this.sharedIdRemapper = undefined;
 			this.sharedTraceSlug = undefined;
 		}
+	}
+
+	registerRun(slug: string, threadId: string, runId: string): void {
+		const runsByThread = this.runsBySlug.get(slug) ?? new Map<string, Set<string>>();
+		const runIds = runsByThread.get(threadId) ?? new Set<string>();
+		runIds.add(runId);
+		runsByThread.set(threadId, runIds);
+		this.runsBySlug.set(slug, runsByThread);
+	}
+
+	getRegisteredRuns(slug: string): Array<{ threadId: string; runIds: string[] }> {
+		return [...(this.runsBySlug.get(slug)?.entries() ?? [])].map(([threadId, runIds]) => ({
+			threadId,
+			runIds: [...runIds],
+		}));
 	}
 
 	/**
@@ -74,15 +92,16 @@ export class TraceReplayState {
 		slug: string,
 		activeWriterEntries: Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
 	): unknown[] {
-		const fromWriters: unknown[] = [];
+		const events = [...(this.eventsBySlug.get(slug) ?? [])];
+		const seenWriters = new Set<unknown>();
 		for (const entry of activeWriterEntries) {
-			if (entry.traceSlug === slug && entry.tracing.traceWriter) {
-				fromWriters.push(...entry.tracing.traceWriter.getEvents());
+			const writer = entry.tracing.traceWriter;
+			if (entry.traceSlug === slug && writer && !seenWriters.has(writer)) {
+				seenWriters.add(writer);
+				events.push(...writer.getEvents());
 			}
 		}
-		if (fromWriters.length > 0) return fromWriters;
-
-		return this.eventsBySlug.get(slug) ?? [];
+		return events;
 	}
 
 	/**

@@ -121,6 +121,24 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
 	});
 
+	it('downgrades to failure when a node errored despite an execution status of success', async () => {
+		const context = createContext();
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'success',
+			data: { 'HTTP Request': [{ id: 1 }] },
+			erroredNodeNames: ['HTTP Request'],
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result: VerifyBuiltWorkflowOutput = await executeTool(tool, {
+			workItemId: 'wi_1',
+			workflowId: 'wf_1',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('does not treat mocked credentials as setup when the execution error is code-fixable', async () => {
 		const context = createContext();
 		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
@@ -149,6 +167,100 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			reason: 'runtime_failure',
 		});
 		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('routes generic workflow issue gates to setup when the build has unresolved setup context', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: true,
+			hasUnresolvedPlaceholders: true,
+			mockedCredentialTypes: ['slackApi'],
+			mockedNodeNames: ['Slack'],
+			summary: 'Built',
+		});
+		jest
+			.mocked(context.domainContext!.executionService.run)
+			.mockRejectedValue(
+				new Error(
+					'The workflow has issues and cannot be executed for that reason. Please fix them first.',
+				),
+			);
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({ verdict: 'needs_user_input' }),
+		);
+	});
+
+	it('does not treat unresolved placeholders as setup when the execution error is code-fixable', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: true,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node failed: Cannot read properties of undefined',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('routes setup-shaped placeholder failures to setup', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: true,
+			hasUnresolvedPlaceholders: true,
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Node parameter "Database" is required',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context);
+
+		const result = await executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({ verdict: 'needs_user_input' }),
+		);
 	});
 
 	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
@@ -601,6 +713,42 @@ describe('verify-built-workflow tool', () => {
 		expect(result.nodePreviews).toHaveLength(2);
 	});
 
+	it('does not verify a run that only executed trigger nodes', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({
+				triggerNodes: [{ nodeName: 'Webhook Trigger', nodeType: 'n8n-nodes-base.webhook' }],
+			}),
+			{
+				executionId: 'exec-trigger-only',
+				status: 'success',
+				data: { 'Webhook Trigger': [{ json: { body: { event: 'signup' } } }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		if (!('remediation' in result)) throw new Error('expected remediation in result');
+		expect(result.error).toContain('only executed trigger nodes');
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(updateBuildOutcome.mock.calls[0][1].verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'success',
+			failureSignature:
+				'Verification only executed trigger nodes; no downstream workflow nodes produced output.',
+			evidence: {
+				nodesExecuted: ['Webhook Trigger'],
+				errorMessage:
+					'Verification only executed trigger nodes; no downstream workflow nodes produced output.',
+			},
+		});
+	});
+
 	it('persists a failure verification record with failureSignature', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-2',
@@ -666,7 +814,7 @@ describe('verify-built-workflow tool', () => {
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
-	it('swallows storage errors when persisting verification', async () => {
+	it('logs and continues when persisting verification fails', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-3',
 			status: 'success',
@@ -677,6 +825,14 @@ describe('verify-built-workflow tool', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.executionId).toBe('exec-3');
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: failed to persist verification record',
+			expect.objectContaining({
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				error: 'storage unavailable',
+			}),
+		);
 	});
 
 	it('counts wrapped execution output items in previews and persisted evidence', async () => {

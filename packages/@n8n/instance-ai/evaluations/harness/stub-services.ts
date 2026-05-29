@@ -8,7 +8,7 @@
 // real node metadata — properties, type-definition source, discriminators
 // — rather than a stripped-down stub. Other services (workflows,
 // credentials, executions, data-tables) return minimal canned data — just
-// enough for the `build-workflow` tool path to succeed. The workflow JSON
+// enough for the workflow builder CRUD path to succeed. The workflow JSON
 // is captured via `workflowService.createFromWorkflowJSON` and exposed on
 // the capture array returned from `createStubServices`.
 // ---------------------------------------------------------------------------
@@ -57,8 +57,8 @@ export interface StubServiceHandle {
 export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
-	 * `ai-workflow-builder.ee/pnpm export:nodes`. Required — the agent's
-	 * builder sub-agent needs a non-empty node catalogue.
+	 * `ai-workflow-builder.ee/pnpm export:nodes`. Required — workflow-building
+	 * evals need a non-empty node catalogue.
 	 */
 	nodesJsonPath: string;
 	/** Optional user id. */
@@ -189,14 +189,9 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		// `verify-built-workflow` invokes `executionService.run()` after
-		// `submit-workflow` has captured the TS-compiled workflow JSON. The eval
-		// has no execution backend, but we want the builder agent's submit →
-		// verify → done sequence to complete cleanly so the production briefing
-		// (`DETACHED_BUILDER_REQUIREMENTS`) reads coherently. Returning a
-		// synthetic success here lets the agent terminate after submit. The
-		// eval's `buildSuccess` metric is derived from `submit-workflow` capture
-		// — never from this synthetic verdict — so this can't inflate the score.
+		// Some eval paths invoke executionService.run() after a workflow is built.
+		// The eval has no execution backend, so return a synthetic success; build
+		// success is derived from captured workflow JSON, never from this verdict.
 		async run(workflowId) {
 			return {
 				executionId: 'eval-exec-' + nanoid(),

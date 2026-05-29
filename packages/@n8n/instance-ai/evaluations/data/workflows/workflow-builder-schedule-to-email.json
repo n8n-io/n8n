@@ -1,0 +1,19 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that runs every day at 9am, fetches data from a Google Sheet (document ID '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms', sheet 'Daily Report'), and sends an email summary via Gmail to team@example.com with the subject 'Daily Report'. Configure all nodes completely and don't ask for credentials."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "workflow-builder-regression", "schedule", "google-sheets", "gmail"],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "daily-summary",
+			"description": "Scheduled workflow reads rows and sends a Gmail summary",
+			"dataSetup": "The Google Sheets read returns three daily report rows with status, owner, and notes fields. Gmail returns a successful send response.",
+			"successCriteria": "The workflow has a daily 9am schedule trigger, reads from document ID 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms and sheet Daily Report, and sends one Gmail message to team@example.com with subject Daily Report. The email body summarizes the sheet data rather than sending an empty or hardcoded message."
+		}
+	]
+}

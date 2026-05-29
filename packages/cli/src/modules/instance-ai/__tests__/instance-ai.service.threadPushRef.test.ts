@@ -28,7 +28,7 @@ jest.mock('@n8n/instance-ai', () => {
 import { InstanceAiService } from '../instance-ai.service';
 
 /**
- * Regression: planned-task workflow runs (build agent, checkpoint verifications)
+ * Regression: planned-task workflow runs (workflow builds, checkpoint verifications)
  * dispatch AFTER the orchestrator's main run finishes. They look up the iframe
  * `pushRef` from `threadPushRef` to route execution push events back to the user's
  * session. If a finally block in `executeRun` deletes the map before planned-task

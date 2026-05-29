@@ -132,7 +132,8 @@ prompts written by the orchestrator.
 ```mermaid
 graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
-    O -->|build-workflow-with-agent| S2[Builder Agent]
+    O -->|load_skill workflow-builder| SK[Workflow Builder Skill]
+    SK -->|create/update| T9[workflows tool]
     O -->|plan| S3[Planned Tasks]
     O -->|direct| T1[list-workflows]
     O -->|direct| T2[run-workflow]
@@ -140,19 +141,15 @@ graph TD
     O -->|direct| T4[plan]
     O -->|direct| T5[data-tables]
 
-    S3 -->|kind: build-workflow| S4[Builder Agent]
+    S3 -->|kind: build-workflow| O
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
     S1 -->|tools| T6[get-execution]
     S1 -->|tools| T7[get-workflow]
-    S2 -->|tools| T8[search-nodes]
-    S2 -->|tools| T9[build-workflow]
-
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
-    style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
-    style S4 fill:#bbf,stroke:#333
+    style SK fill:#cfc,stroke:#333
     style S7 fill:#bbf,stroke:#333
 ```
 
@@ -162,18 +159,20 @@ graph TD
 - Planning (plan tool — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
-**Single-task delegation** (`delegate`, `build-workflow-with-agent`):
-- Complex multi-step operations (building workflows, debugging failures)
-- Tasks that benefit from clean context (no accumulated noise)
-- Builder agent runs as a background task — returns immediately
+**Workflow building**:
+- New or multi-workflow requests go through `plan`; approved `build-workflow`
+  tasks resume the main orchestrator with the `workflow-builder` skill loaded.
+- Existing workflow edits load `workflow-builder` and call
+  `workflows(action="update")` directly in the current turn.
+- Workflow saves go through `workflows(action="create"|"update")`.
 
 **Multi-task plans** (`plan` tool):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured executor (builder, checkpoint, or delegate)
+- Each task is dispatched through the orchestrator, checkpoint flow, or delegate
 - User approves the plan before execution starts
 
-The orchestrator decides what to delegate based on complexity — simple reads
-stay direct, complex operations go to focused sub-agents.
+The orchestrator decides what to delegate based on complexity. Workflow
+creation and edits stay in the orchestrator through the workflow-builder skill.
 
 ## Package Responsibilities
 
@@ -183,11 +182,11 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
-- **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
+- **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builds
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
@@ -338,18 +337,18 @@ task has a `kind` that determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
+| `build-workflow` | Orchestrator follow-up with `workflow-builder` skill | workflows, nodes, credentials, data-tables, verify-built-workflow, executions |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
 | `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the
 `data-table-manager` skill and uses `data-tables` / `parse-file` directly.
 
-Build and delegate tasks run detached as background agents. Checkpoint
-tasks run as orchestrator follow-ups so they can inspect the latest workflow
-state before verifying. Dependencies are respected — a task only starts when all
-its `deps` have succeeded. The plan is shown to the user for approval before
-execution begins.
+Build and checkpoint tasks run as orchestrator follow-ups; workflow building
+loads the `workflow-builder` skill and saves through `workflows`. Delegate
+tasks still run detached as background agents. Dependencies are respected — a
+task only starts when all its `deps` have succeeded. The plan is shown to the
+user for approval before execution begins.
 
 ### Workflow Loop State Machine
 

@@ -46,7 +46,7 @@ export interface BuilderRecord {
 	feedback: FeedbackEntry[];
 	tokenInput?: number;
 	tokenOutput?: number;
-	/** Number of `submit-workflow` calls during the build. IA-only — EE
+	/** Number of workflow save calls during the build. IA-only — EE
 	 *  doesn't capture a tool-call timeline in the comparable shape. */
 	submitCalls?: number;
 	/** Number of tool calls that errored or returned a failed result. */
@@ -71,10 +71,10 @@ interface BuilderSummary {
 		primaryPassRate: number;
 		avgDiagnostic: number;
 		avgDurationMs: number;
-		/** Total `submit-workflow` calls aggregated across IA records. Undefined
+		/** Total workflow save calls aggregated across IA records. Undefined
 		 *  for EE (which doesn't capture a comparable tool-call timeline). */
 		submitCallsTotal?: number;
-		/** Mean `submit-workflow` calls per record (IA only). */
+		/** Mean workflow save calls per record (IA only). */
 		avgSubmitCalls?: number;
 		/** Total tool calls observed across IA records. */
 		toolCallsTotal?: number;
@@ -140,6 +140,18 @@ function isErroredIAToolCall(trace: IAToolCallTrace): boolean {
 	return false;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWorkflowSaveTool(trace: Pick<IAToolCallTrace, 'toolName' | 'args'>): boolean {
+	const args = isRecord(trace.args) ? trace.args : {};
+	return (
+		trace.toolName === 'build-workflow' ||
+		(trace.toolName === 'workflows' && (args.action === 'create' || args.action === 'update'))
+	);
+}
+
 interface IASummary {
 	builder: string;
 	dataset: string;
@@ -192,7 +204,7 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			feedback: r.feedback,
 			tokenInput: r.build.tokenUsage?.input,
 			tokenOutput: r.build.tokenUsage?.output,
-			submitCalls: tcs.filter((tc) => tc.toolName === 'submit-workflow').length,
+			submitCalls: tcs.filter(isWorkflowSaveTool).length,
 			toolCallErrors: tcs.filter(isErroredIAToolCall).length,
 			toolCallsTotal: tcs.length,
 			toolCalls: tcs,
@@ -698,8 +710,8 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		}
 		case 'workspace_mkdir':
 			return trunc(str(a.path));
-		case 'submit-workflow':
-			return trunc(`${str(a.name)} ${str(a.filePath)}`);
+		case 'build-workflow':
+			return trunc(`${str(a.action)} ${str(a.workflowId)}`);
 		case 'verify-built-workflow':
 			return trunc(str(a.workflowId) || str(a.workItemId));
 		case 'credentials':
@@ -874,7 +886,7 @@ function renderSummaryCard(
 	}
   ${
 		summary.totals.avgSubmitCalls !== undefined
-			? `<div class="metric"><strong>${summary.totals.avgSubmitCalls.toFixed(2)}</strong><span>avg submit calls</span></div>`
+			? `<div class="metric"><strong>${summary.totals.avgSubmitCalls.toFixed(2)}</strong><span>avg workflow saves</span></div>`
 			: ''
 	}
   ${failureBits ? `<div class="meta-row failures">Failures: ${escapeHtml(failureBits)}</div>` : ''}
@@ -884,11 +896,11 @@ function renderSummaryCard(
 function renderMetricsNote(): string {
 	return `<aside class="metrics-note">
   <strong>Metric definitions:</strong>
-  <span><b>Primary pass</b> — workflow passes only if a majority of LLM judges (2 of 3) find zero "don't" violations. Computed over all prompt attempts; build failures count as fail.</span>
-  <span><b>Average diagnostic</b> — mean fraction of criteria (dos + don'ts) satisfied across the dataset, averaged across judges. Range 0–1; gives partial credit.</span>
+  <span><b>Primary pass</b> — workflow passes according to the builder run's primary evaluator. Computed over all prompt attempts; build failures count as fail.</span>
+  <span><b>Average diagnostic</b> — mean diagnostic score across the dataset. Range 0–1; gives partial credit where the runner emits it.</span>
   <span><b>Average build time</b> — averaged across all attempts including failures, so build timeouts (20-min cap) inflate this number.</span>
-  <span><b>Tool error rate</b> — fraction of tool calls that errored or returned a failed result (e.g. <code>tsc</code> non-zero exit, <code>submit-workflow</code> rejection). Captures build-path roughness even on builds that eventually succeeded. <i>IA-only.</i></span>
-  <span><b>Avg submit calls</b> — mean <code>submit-workflow</code> invocations per build. 1.0 = clean first-try submit. <i>IA-only.</i></span>
+  <span><b>Tool error rate</b> — fraction of tool calls that errored or returned a failed result. Captures build-path roughness even on builds that eventually succeeded. <i>IA-only.</i></span>
+	  <span><b>Avg workflow saves</b> — mean workflow create/update invocations per build. 1.0 = clean first-try save. <i>IA-only.</i></span>
   <span><b>Verdicts</b> compare per-prompt primary pass between the two builders.</span>
 </aside>`;
 }

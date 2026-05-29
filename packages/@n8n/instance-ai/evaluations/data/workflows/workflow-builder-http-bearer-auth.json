@@ -1,0 +1,19 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that runs manually, calls GET https://api.example.com/v1/items with a Bearer token, and writes the response to a file. Configure all nodes completely and don't ask me for credentials - I'll set them up later."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["build", "workflow-builder-regression", "manual", "http", "bearer-auth", "file"],
+	"triggerType": "manual",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Manual execution fetches items and writes the response to a file",
+			"dataSetup": "The HTTP request to https://api.example.com/v1/items returns JSON containing two items. Credential setup is deferred and the HTTP node is mocked for verification.",
+			"successCriteria": "The workflow has a manual trigger, an HTTP Request configured for GET https://api.example.com/v1/items, bearer-token style authentication or a placeholder for the bearer token, and a downstream file-writing step that receives the HTTP response. The workflow executes without errors with mocked HTTP data."
+		}
+	]
+}

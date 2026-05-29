@@ -19,6 +19,7 @@ interface BuilderMemoryCompactionInput {
 	context: BuilderMemoryCompactionContext;
 	binding: BuilderMemoryBinding;
 	sessionId?: string;
+	compactMessagesCreatedAtOrAfter?: Date;
 	workflowId?: string;
 	workItemId: string;
 	sourceFilePath: string;
@@ -56,6 +57,12 @@ function stringifyForTokens(value: unknown): string {
 
 function stringifyMessageForTokens(message: AgentDbMessage): string {
 	return stringifyForTokens('content' in message ? message.content : message.data);
+}
+
+function getMessageCreatedAtMs(message: AgentDbMessage): number {
+	return message.createdAt instanceof Date
+		? message.createdAt.getTime()
+		: new Date(message.createdAt).getTime();
 }
 
 function formatList(label: string, values: string[] | undefined): string {
@@ -181,14 +188,19 @@ export async function compactBuilderMemoryThread(
 	}
 
 	const messages = await memory.getMessages(input.binding.thread);
-	const rawTokenEstimate = messages.reduce(
+	const compactAfterMs = input.compactMessagesCreatedAtOrAfter?.getTime();
+	const messagesToCompact =
+		compactAfterMs === undefined
+			? messages
+			: messages.filter((message) => getMessageCreatedAtMs(message) >= compactAfterMs);
+	const rawTokenEstimate = messagesToCompact.reduce(
 		(total, message) => total + estimateTokens(stringifyMessageForTokens(message)),
 		0,
 	);
 	const summary = buildSummaryContent(input);
 	const compactedTokenEstimate = estimateTokens(summary);
 
-	const oldMessageIds = messages.map((message) => message.id);
+	const oldMessageIds = messagesToCompact.map((message) => message.id);
 	const summaryMessage = buildSummaryMessage(input, summary);
 	await memory.saveThread({ id: input.binding.thread, resourceId: input.binding.resource });
 	await memory.saveMessages({
@@ -200,7 +212,7 @@ export async function compactBuilderMemoryThread(
 
 	return {
 		compacted: true,
-		rawMessageCount: messages.length,
+		rawMessageCount: messagesToCompact.length,
 		compactedMessageCount: 1,
 		rawTokenEstimate,
 		compactedTokenEstimate,

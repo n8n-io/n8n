@@ -95,12 +95,22 @@ const N8N_SKILLS_DIR_TEMPLATE = '$' + '{N8N_SKILLS_DIR}';
 const N8N_WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
 const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
+const RUNTIME_SKILL_WORKSPACE_TEMPLATES = [
+	N8N_SKILL_DIR_TEMPLATE,
+	N8N_SKILLS_DIR_TEMPLATE,
+	N8N_WORKSPACE_DIR_TEMPLATE,
+] as const;
+
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
 	return Object.keys(value).length > 0;
 }
 
 function withTrailingNewline(content: string): string {
 	return content.endsWith('\n') ? content : `${content}\n`;
+}
+
+function containsRuntimeSkillWorkspaceTemplate(content: string | undefined): boolean {
+	return RUNTIME_SKILL_WORKSPACE_TEMPLATES.some((template) => content?.includes(template) ?? false);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -642,11 +652,12 @@ export function createLazyWorkspaceRuntimeSkillSource({
 
 	let materialized: MaterializedRuntimeSkills | undefined;
 	let materializePromise: Promise<MaterializedRuntimeSkills | undefined> | undefined;
+	let materializationRequirementPromise: Promise<boolean> | undefined;
 
 	const workspaceSource: RuntimeSkillSource = {
 		registry: source.registry,
 		prepare: async () => {
-			await ensureMaterialized();
+			await ensureSource();
 		},
 		loadSkill: async (skillId) => await (await ensureSource()).loadSkill(skillId),
 		...(source.loadFile
@@ -690,9 +701,34 @@ export function createLazyWorkspaceRuntimeSkillSource({
 		return await materializePromise;
 	}
 
+	async function requiresWorkspaceMaterialization(): Promise<boolean> {
+		materializationRequirementPromise ??= sourceRequiresWorkspaceMaterialization(source);
+		return await materializationRequirementPromise;
+	}
+
 	async function ensureSource(): Promise<RuntimeSkillSource> {
+		if (materialized) return materialized.source;
+		if (!(await requiresWorkspaceMaterialization())) return source;
 		return (await ensureMaterialized())?.source ?? source;
 	}
 
 	return workspaceSource;
+}
+
+async function sourceRequiresWorkspaceMaterialization(
+	source: RuntimeSkillSource,
+): Promise<boolean> {
+	for (const entry of source.registry.skills) {
+		const skill = await source.loadSkill(entry.id);
+		if (containsRuntimeSkillWorkspaceTemplate(skill?.instructions)) return true;
+
+		if (!source.loadFile) continue;
+
+		for (const linkedFile of linkedFilesFor(entry)) {
+			const file = await source.loadFile(entry.id, linkedFile.path);
+			if (containsRuntimeSkillWorkspaceTemplate(file?.content)) return true;
+		}
+	}
+
+	return false;
 }

@@ -5,6 +5,7 @@ import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+import type { WorkflowAction, WorkflowsToolOptions } from './workflows.tool';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -27,10 +28,6 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
-const loadBuildWorkflowAgentTool = lazyMod(
-	() =>
-		require('./orchestration/build-workflow-agent.tool') as typeof import('./orchestration/build-workflow-agent.tool'),
-);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -74,16 +71,41 @@ const loadApplyWorkflowCredentialsTool = lazyMod(
 	() =>
 		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
 );
-const loadBuildWorkflowTool = lazyMod(
-	() =>
-		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
-);
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
+
+const PLANNED_BUILD_WORKFLOW_READ_ACTIONS = [
+	'list',
+	'get',
+	'get-as-code',
+] as const satisfies readonly WorkflowAction[];
+
+function getPlannedBuildWorkflowActions(context: InstanceAiContext): readonly WorkflowAction[] {
+	return [
+		...PLANNED_BUILD_WORKFLOW_READ_ACTIONS,
+		context.plannedBuildTask?.workflowId ? 'update' : 'create',
+	];
+}
+
+function getOrchestratorWorkflowsToolOptions(
+	context: InstanceAiContext,
+): 'orchestrator' | WorkflowsToolOptions {
+	if (!context.plannedBuildTask) return 'orchestrator';
+	const { workflowId, workItemId } = context.plannedBuildTask;
+
+	return {
+		surface: 'orchestrator',
+		allowedActions: getPlannedBuildWorkflowActions(context),
+		descriptionPrefix: workflowId
+			? `Planned workflow-build follow-up for existing workflow ${workflowId}`
+			: 'Planned workflow-build follow-up for a new workflow',
+		descriptionSuffix: `The workItemId ${workItemId} is build tracking metadata, not a workflowId.`,
+	};
+}
 
 /**
  * Creates all native n8n domain tools with the full action surface.
@@ -100,7 +122,6 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
-		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -117,7 +138,13 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context, 'orchestrator')],
+		[
+			DOMAIN_TOOL_IDS.WORKFLOWS,
+			loadWorkflowsTool().createWorkflowsTool(
+				context,
+				getOrchestratorWorkflowsToolOptions(context),
+			),
+		],
 		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
@@ -145,10 +172,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[ORCHESTRATION_TOOL_IDS.DELEGATE, loadDelegateTool().createDelegateTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT,
-			loadBuildWorkflowAgentTool().createBuildWorkflowAgentTool(context),
-		],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),

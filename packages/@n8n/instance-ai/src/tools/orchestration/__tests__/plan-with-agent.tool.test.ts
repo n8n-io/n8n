@@ -1,3 +1,4 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
 
 const {
@@ -6,6 +7,7 @@ const {
 	__testFormatMessagesForBriefing,
 	__testGetRecentMessages,
 	__testGetPriorToolObservations,
+	createPlanWithAgentTool,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
@@ -100,6 +102,39 @@ describe('clearPlannedTaskGraph', () => {
 		getGraph.mockRejectedValueOnce(new Error('db down'));
 
 		await expect(__testClearPlannedTaskGraph(context)).resolves.toBeUndefined();
+	});
+});
+
+describe('plan tool follow-up guards', () => {
+	it('does not spawn a new planner inside an approved build-workflow follow-up', async () => {
+		const tool = createPlanWithAgentTool({
+			domainContext: {
+				plannedBuildTask: {
+					threadId: 'thread-1',
+					taskId: 'build-1',
+					workItemId: 'wi_1',
+					title: 'Build workflow',
+					spec: 'Build it',
+					plannedTaskService: {} as PlannedTaskService,
+				},
+			},
+		} as OrchestrationContext);
+
+		const result = await executeTool<{ result: string }>(tool, {}, {});
+
+		expect(result.result).toContain('already inside an approved build-workflow follow-up');
+		expect(result.result).toContain('Do not call plan again');
+	});
+
+	it('does not spawn a new planner inside an approved checkpoint follow-up', async () => {
+		const tool = createPlanWithAgentTool({
+			isCheckpointFollowUp: true,
+		} as OrchestrationContext);
+
+		const result = await executeTool<{ result: string }>(tool, {}, {});
+
+		expect(result.result).toContain('already inside an approved checkpoint follow-up');
+		expect(result.result).toContain('complete-checkpoint exactly once');
 	});
 });
 

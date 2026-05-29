@@ -51,6 +51,7 @@ export function createAskUserTool() {
 				'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 				'on a previous "other" choice. Keep questions concise and ' +
 				'avoid questions that reference answers to previous questions. ' +
+				'For workflow planning/building, prefer assumptions, placeholders, and the setup/credential flows instead of asking for defaults or setup details such as trigger type, duration, event title, resource IDs or names, sender/from address, account label, credential choice, auth value, API key, or token. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
 		.input(askUserInputSchema)

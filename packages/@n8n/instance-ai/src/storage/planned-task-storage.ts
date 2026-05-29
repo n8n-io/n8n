@@ -1,11 +1,21 @@
 import { z } from 'zod';
 
-import { STORED_PLANNED_TASK_KINDS, type PlannedTaskGraph } from '../types';
+import {
+	PLANNED_TASK_KINDS,
+	STORED_PLANNED_TASK_KINDS,
+	type PlannedTaskGraph,
+	type PlannedTaskKind,
+	type PlannedTaskRecord,
+	type StoredPlannedTaskKind,
+} from '../types';
 import { getThread, patchThread, type PatchableThreadMemory } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiPlannedTasks';
+const LEGACY_TASK_REPLAN_ERROR =
+	'This data-table task was created by an older planner and needs replanning.';
 
 const plannedTaskKindSchema = z.enum(STORED_PLANNED_TASK_KINDS);
+const plannedTaskKindSet: ReadonlySet<string> = new Set(PLANNED_TASK_KINDS);
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
 
@@ -34,9 +44,41 @@ const plannedTaskGraphSchema = z.object({
 	tasks: z.array(plannedTaskRecordSchema),
 });
 
+type StoredPlannedTaskRecord = Omit<PlannedTaskRecord, 'kind'> & {
+	kind: StoredPlannedTaskKind;
+};
+
+type StoredPlannedTaskGraph = Omit<PlannedTaskGraph, 'tasks'> & {
+	tasks: StoredPlannedTaskRecord[];
+};
+
+function isPlannedTaskKind(kind: StoredPlannedTaskKind): kind is PlannedTaskKind {
+	return plannedTaskKindSet.has(kind);
+}
+
+function normalizeStoredTask(task: StoredPlannedTaskRecord): PlannedTaskRecord {
+	if (isPlannedTaskKind(task.kind)) return { ...task, kind: task.kind };
+
+	const needsReplan = task.status === 'planned' || task.status === 'running';
+	return {
+		...task,
+		kind: 'delegate',
+		status: needsReplan ? 'failed' : task.status,
+		error: task.error ?? (needsReplan ? LEGACY_TASK_REPLAN_ERROR : undefined),
+		finishedAt: needsReplan ? (task.finishedAt ?? Date.now()) : task.finishedAt,
+	};
+}
+
+function normalizeStoredGraph(graph: StoredPlannedTaskGraph): PlannedTaskGraph {
+	return {
+		...graph,
+		tasks: graph.tasks.map(normalizeStoredTask),
+	};
+}
+
 function parseGraph(raw: unknown): PlannedTaskGraph | null {
 	const result = plannedTaskGraphSchema.safeParse(raw);
-	return result.success ? result.data : null;
+	return result.success ? normalizeStoredGraph(result.data) : null;
 }
 
 export class PlannedTaskStorage {

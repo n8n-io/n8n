@@ -98,7 +98,7 @@ describe('PlannedTaskStorage', () => {
 			expect(loaded).toBeNull();
 		});
 
-		it('returns null for legacy manage-data-tables graphs', async () => {
+		it('loads legacy manage-data-tables graphs as failed tasks that can replan', async () => {
 			memory.getThread.mockResolvedValue({
 				metadata: {
 					instanceAiPlannedTasks: {
@@ -118,7 +118,15 @@ describe('PlannedTaskStorage', () => {
 			});
 
 			const loaded = await storage.get('thread-1');
-			expect(loaded).toBeNull();
+			expect(loaded).not.toBeNull();
+			expect(loaded?.tasks).toEqual([
+				expect.objectContaining({
+					id: 'tables-1',
+					kind: 'delegate',
+					status: 'failed',
+					error: 'This data-table task was created by an older planner and needs replanning.',
+				}),
+			]);
 		});
 	});
 
@@ -142,6 +150,50 @@ describe('PlannedTaskStorage', () => {
 			const checkpoint = result?.tasks.find((t) => t.id === 'verify-1');
 			expect(checkpoint?.status).toBe('running');
 			expect(checkpoint?.kind).toBe('checkpoint');
+		});
+
+		it('persists a normalized graph when updating legacy manage-data-tables tasks', async () => {
+			const graph = {
+				...makeGraph(),
+				tasks: [
+					{
+						id: 'tables-1',
+						title: 'Manage data tables',
+						kind: 'manage-data-tables',
+						spec: 'Import rows',
+						deps: [],
+						status: 'planned',
+					},
+				],
+			};
+			mockedPatchThread.mockImplementation(async (_mem, opts) => {
+				await Promise.resolve();
+				const patch = opts.update({
+					metadata: { instanceAiPlannedTasks: graph },
+				} as unknown as Parameters<typeof opts.update>[0]);
+
+				expect(patch?.metadata?.instanceAiPlannedTasks).toEqual(
+					expect.objectContaining({
+						tasks: [
+							expect.objectContaining({
+								id: 'tables-1',
+								kind: 'delegate',
+								status: 'failed',
+							}),
+						],
+					}),
+				);
+				return null;
+			});
+
+			const result = await storage.update('thread-1', (g) => g);
+
+			expect(result?.tasks[0]).toEqual(
+				expect.objectContaining({
+					kind: 'delegate',
+					status: 'failed',
+				}),
+			);
 		});
 	});
 });

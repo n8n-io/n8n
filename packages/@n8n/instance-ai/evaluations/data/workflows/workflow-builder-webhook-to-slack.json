@@ -1,0 +1,25 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that receives a webhook POST with a JSON body containing 'name' and 'message' fields, formats them into a Slack message like 'New message from {name}: {message}', and sends it to the #general channel. Configure all nodes completely and don't ask for credentials."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["build", "workflow-builder-regression", "webhook", "slack"],
+	"triggerType": "webhook",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Webhook payload is formatted into a Slack message",
+			"dataSetup": "The webhook receives {\"name\":\"Jane\",\"message\":\"Can someone review this?\"}. Slack returns a successful message send response.",
+			"successCriteria": "The workflow has a webhook POST trigger, reads the name and message fields from the webhook body, formats the Slack text as New message from Jane: Can someone review this?, and sends it to #general."
+		},
+		{
+			"name": "empty-message",
+			"description": "Webhook payload with an empty message still sends a meaningful Slack notification",
+			"dataSetup": "The webhook receives {\"name\":\"Alex\",\"message\":\"\"}. Slack returns success.",
+			"successCriteria": "The workflow does not crash when message is empty and still sends a Slack notification that includes the sender name."
+		}
+	]
+}

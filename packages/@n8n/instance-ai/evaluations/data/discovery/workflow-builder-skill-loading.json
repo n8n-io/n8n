@@ -1,0 +1,24 @@
+{
+	"id": "workflow-builder-skill-loading",
+	"userMessage": "Workflow ID wf-existing needs a simple edit: use the workflow-builder skill to update it so it sets a status field to new.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["workflow-builder"]
+			},
+			{
+				"toolName": "workflows",
+				"argsContainAny": ["update", "wf-existing", "status"]
+			}
+		],
+		"noneOf": [
+			"build-workflow",
+			"build-workflow-with-agent",
+			"delegate",
+			"spawn_sub_agent:workflow-builder",
+			"spawn_sub_agent:delegate"
+		]
+	},
+	"rationale": "Regression coverage for workflow-builder runtime skill routing on existing workflow edits. The orchestrator must load workflow-builder and call workflows(action=\"update\") directly; the forbidden entries assert legacy workflow-building delegation paths are not used."
+}

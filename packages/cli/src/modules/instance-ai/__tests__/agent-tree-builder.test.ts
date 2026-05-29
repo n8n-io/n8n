@@ -160,8 +160,8 @@ describe('buildAgentTreeFromEvents', () => {
 				agentId: 'agent-002',
 				payload: {
 					parentId: 'agent-001',
-					role: 'workflow-builder',
-					tools: ['build-workflow'],
+					role: 'research',
+					tools: ['workflows'],
 				},
 			},
 			{
@@ -174,7 +174,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'agent-completed',
 				runId: 'run-1',
 				agentId: 'agent-002',
-				payload: { role: 'workflow-builder', result: 'Done' },
+				payload: { role: 'research', result: 'Done' },
 			},
 			{
 				type: 'tool-result',
@@ -195,8 +195,8 @@ describe('buildAgentTreeFromEvents', () => {
 		expect(tree.children).toHaveLength(1);
 		expect(tree.children[0]).toMatchObject({
 			agentId: 'agent-002',
-			role: 'workflow-builder',
-			tools: ['build-workflow'],
+			role: 'research',
+			tools: ['workflows'],
 			status: 'completed',
 			textContent: 'Building workflow...',
 			result: 'Done',
@@ -338,7 +338,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'agent-001',
-				payload: { toolCallId: 'tc-2', toolName: 'build-workflow-with-agent', args: {} },
+				payload: { toolCallId: 'tc-2', toolName: 'workflows', args: { action: 'create' } },
 			},
 			{
 				type: 'run-finish',
@@ -351,7 +351,8 @@ describe('buildAgentTreeFromEvents', () => {
 		const tree = buildAgentTreeFromEvents(events);
 
 		expect(tree.toolCalls[0].renderHint).toBe('delegate');
-		expect(tree.toolCalls[1].renderHint).toBe('builder');
+		// Native `workflows` tool renders as the default tool-call step (builder hint is legacy-only).
+		expect(tree.toolCalls[1].renderHint).toBe('default');
 	});
 
 	it('should handle confirmation-request events', () => {

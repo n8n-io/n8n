@@ -17,7 +17,7 @@ export interface SubAgentBriefingInput {
 	artifacts?: Record<string, unknown>;
 	/** Additional context blocks (e.g., sandbox instructions, workflowId notes). */
 	additionalContext?: string;
-	/** Requirements block (e.g., DETACHED_BUILDER_REQUIREMENTS). */
+	/** Optional task-specific requirements block. */
 	requirements?: string;
 	/** Iteration log + task key for retry context. */
 	iteration?: {
@@ -34,9 +34,9 @@ export interface SubAgentBriefingInput {
 /**
  * Build a structured XML-formatted briefing for a sub-agent.
  *
- * All sub-agent spawn sites (delegate, builder) use this
- * instead of ad-hoc string concatenation. The XML structure gives the LLM
- * clear section boundaries and makes the briefing parseable.
+ * Sub-agent spawn sites use this instead of ad-hoc string concatenation.
+ * The XML structure gives the LLM clear section boundaries and makes the
+ * briefing parseable.
  */
 export async function buildSubAgentBriefing(input: SubAgentBriefingInput): Promise<string> {
 	const parts: string[] = [];
@@ -59,7 +59,7 @@ export async function buildSubAgentBriefing(input: SubAgentBriefingInput): Promi
 		parts.push(input.additionalContext);
 	}
 
-	// Requirements block — e.g., DETACHED_BUILDER_REQUIREMENTS
+	// Task-specific requirements block
 	if (input.requirements) {
 		parts.push(input.requirements);
 	}

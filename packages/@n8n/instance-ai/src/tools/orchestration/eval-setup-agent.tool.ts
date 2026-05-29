@@ -33,7 +33,7 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
 const EVAL_SETUP_WORKFLOW_ACTIONS = [
 	'get-json',
-	'update',
+	'update-json',
 ] as const satisfies readonly WorkflowAction[];
 
 /**

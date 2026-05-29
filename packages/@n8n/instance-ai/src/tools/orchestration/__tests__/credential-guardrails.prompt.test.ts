@@ -1,30 +1,61 @@
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../build-workflow-agent.prompt';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { PLANNER_AGENT_PROMPT } from '../plan-agent-prompt';
 
+const WORKFLOW_BUILDER_SKILL = readFileSync(
+	join(__dirname, '..', '..', '..', '..', 'skills', 'workflow-builder', 'SKILL.md'),
+	'utf8',
+);
+const WORKFLOW_BUILDER_SDK_RULES = readFileSync(
+	join(
+		__dirname,
+		'..',
+		'..',
+		'..',
+		'..',
+		'skills',
+		'workflow-builder',
+		'references',
+		'sdk-rules.md',
+	),
+	'utf8',
+);
+const WORKFLOW_BUILDER_LIFECYCLE = readFileSync(
+	join(
+		__dirname,
+		'..',
+		'..',
+		'..',
+		'..',
+		'skills',
+		'workflow-builder',
+		'references',
+		'build-lifecycle.md',
+	),
+	'utf8',
+);
+
 describe('credential guardrail prompts', () => {
-	it('does not frame API keys as acceptable ask-user inputs in builder prompts', () => {
-		expect(BUILDER_AGENT_PROMPT).not.toContain('a chat ID, API key, external resource name');
-		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).not.toContain(
-			'a chat ID, API key, external resource name',
-		);
+	it('does not frame API keys as acceptable ask-user inputs in the workflow-builder skill', () => {
+		expect(WORKFLOW_BUILDER_SKILL).not.toContain('a chat ID, API key, external resource name');
+		expect(WORKFLOW_BUILDER_SKILL).toContain('Never invent credential IDs, API tokens');
 	});
 
 	it('keeps inbound trigger authentication disabled unless explicitly requested', () => {
-		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
-
-		expect(prompt).toContain(
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain(
 			'The credential-selection guidance above applies to outbound service calls.',
 		);
-		expect(prompt).toContain(
-			'keep authentication at its default `none` unless the user explicitly asks to authenticate inbound traffic',
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain('keep authentication at its');
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain(
+			'default `none` unless the user explicitly asks to authenticate inbound traffic',
 		);
 	});
 
 	it('tells the planner not to block planning on credential selection', () => {
 		expect(PLANNER_AGENT_PROMPT).toContain('Handle credentials without blocking planning');
+		expect(PLANNER_AGENT_PROMPT).toContain('Treat `ask-user` as a last resort');
+		expect(PLANNER_AGENT_PROMPT).toContain('do not ask a bundle of setup/default questions');
 		expect(PLANNER_AGENT_PROMPT).toContain('If the user already named a credential');
 		expect(PLANNER_AGENT_PROMPT).toContain('If there is exactly one matching credential');
 		expect(PLANNER_AGENT_PROMPT).toContain('auto-select it, do not ask');
@@ -40,6 +71,10 @@ describe('credential guardrail prompts', () => {
 		expect(PLANNER_AGENT_PROMPT).toContain('cannot be discovered, only chosen');
 		expect(PLANNER_AGENT_PROMPT).toContain('credential-backed resource investigation');
 		expect(PLANNER_AGENT_PROMPT).toContain('Do not turn that into a credential-choice question');
+		expect(PLANNER_AGENT_PROMPT).toContain('Never ask for account identifiers');
+		expect(PLANNER_AGENT_PROMPT).toContain('Google account email');
+		expect(PLANNER_AGENT_PROMPT).toContain('Google Calendar ID/email');
+		expect(PLANNER_AGENT_PROMPT).toContain('workflows(action="setup")');
 		expect(PLANNER_AGENT_PROMPT).toContain('Record the chosen credential name in `assumptions`');
 	});
 
@@ -54,72 +89,26 @@ describe('credential guardrail prompts', () => {
 	});
 
 	it('tells the builder to wrap ambiguous resource matches with placeholder()', () => {
-		// Both prompts inline PLACEHOLDERS_RULE, which now covers the multi-match case.
-		const sharedRule = '**Resource IDs with more than one candidate**';
-		expect(BUILDER_AGENT_PROMPT).toContain(sharedRule);
-		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).toContain(sharedRule);
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain('Resource IDs with more than one candidate');
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain('If `explore-resources` returns more');
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain("`placeholder('Select <resource>')`");
+	});
 
-		// The sandbox builder additionally repeats the rule at resource-discovery time,
-		// so it cannot be missed in the step-by-step process.
-		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).toContain(
-			"If `explore-resources` returns more than one match and the user did not name a specific one, use `placeholder('Select <resource>')`",
+	it('keeps builder guidance grounded in the inline setup card', () => {
+		expect(WORKFLOW_BUILDER_LIFECYCLE).toContain('inline setup card');
+		expect(WORKFLOW_BUILDER_LIFECYCLE).toContain('the AI Assistant panel');
+		expect(WORKFLOW_BUILDER_LIFECYCLE).not.toMatch(/setup wizard/i);
+	});
+
+	it('does not inline bulky static node guides in the workflow-builder skill', () => {
+		expect(WORKFLOW_BUILDER_SDK_RULES).toContain('Node Configuration Safety Rules');
+		expect(WORKFLOW_BUILDER_SKILL).not.toContain('nodes(action="guide")');
+		expect(WORKFLOW_BUILDER_SKILL).not.toContain(
+			'### Set Node Updates - Comprehensive Type Handling Guide',
 		);
-	});
-
-	it('keeps builder prompts grounded in the inline setup card', () => {
-		for (const prompt of [
-			BUILDER_AGENT_PROMPT,
-			createSandboxBuilderAgentPrompt('/tmp/workspace'),
-		]) {
-			expect(prompt).toContain('inline setup card in the AI Assistant panel');
-			expect(prompt).not.toMatch(/setup wizard/i);
-		}
-	});
-
-	it('does not inline bulky static node guides in builder prompts', () => {
-		for (const prompt of [
-			BUILDER_AGENT_PROMPT,
-			createSandboxBuilderAgentPrompt('/tmp/workspace'),
-		]) {
-			expect(prompt).toContain('## Node Configuration Safety Rules');
-			expect(prompt).not.toContain('nodes(action="guide")');
-			expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
-			expect(prompt).not.toContain('#### Complete Operator Reference');
-			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
-		}
-	});
-
-	it('does not instruct the sandbox builder about publishing when publish is not on its tool surface', () => {
-		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace');
-
-		expect(prompt).not.toContain('workflows(action="publish")');
-		expect(prompt).not.toContain('Do NOT publish');
-	});
-
-	it('points sandbox builders at the task-specific workflow and chunks paths', () => {
-		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace', {
-			mainWorkflowPath: '/tmp/workspace/builder-work-items/wi-one/src/workflow.ts',
-			sourceDir: '/tmp/workspace/builder-work-items/wi-one/src',
-			chunksDir: '/tmp/workspace/builder-work-items/wi-one/chunks',
-			tsconfigPath: '/tmp/workspace/builder-work-items/wi-one/tsconfig.json',
-		});
-
-		expect(prompt).toContain(
-			'Your active main workflow file is `/tmp/workspace/builder-work-items/wi-one/src/workflow.ts`',
+		expect(WORKFLOW_BUILDER_SKILL).not.toContain('#### Complete Operator Reference');
+		expect(WORKFLOW_BUILDER_SKILL).not.toContain(
+			'## IMPORTANT: ResourceLocator Parameter Handling',
 		);
-		expect(prompt).toContain(
-			'Use `/tmp/workspace/builder-work-items/wi-one/chunks/` for supporting chunk files',
-		);
-		expect(prompt).toContain(
-			'execute_command: cd /tmp/workspace && npx tsc --noEmit --project /tmp/workspace/builder-work-items/wi-one/tsconfig.json 2>&1',
-		);
-		expect(prompt).not.toContain('Write workflow code to `/tmp/workspace/src/workflow.ts`');
-	});
-
-	it('uses the provided workspace root for fallback tsc validation', () => {
-		const prompt = createSandboxBuilderAgentPrompt('/tmp/custom-workspace');
-
-		expect(prompt).toContain('execute_command: cd /tmp/custom-workspace && npx tsc --noEmit 2>&1');
-		expect(prompt).not.toContain('execute_command: cd ~/workspace && npx tsc --noEmit 2>&1');
 	});
 });

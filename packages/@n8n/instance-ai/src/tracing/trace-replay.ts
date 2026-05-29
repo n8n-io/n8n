@@ -14,6 +14,7 @@ export interface TraceToolCall {
 	stepId: number;
 	agentRole: string;
 	toolName: string;
+	toolCallId?: string;
 	input: Record<string, unknown>;
 	output: Record<string, unknown>;
 }
@@ -23,8 +24,9 @@ export interface TraceToolSuspend {
 	stepId: number;
 	agentRole: string;
 	toolName: string;
+	toolCallId?: string;
 	input: Record<string, unknown>;
-	output: Record<string, unknown>;
+	output?: Record<string, unknown>;
 	suspendPayload: Record<string, unknown>;
 }
 
@@ -33,6 +35,7 @@ export interface TraceToolResume {
 	stepId: number;
 	agentRole: string;
 	toolName: string;
+	toolCallId?: string;
 	input: Record<string, unknown>;
 	output: Record<string, unknown>;
 	resumeData: Record<string, unknown>;
@@ -58,9 +61,12 @@ export class TraceIndex {
 
 	private cursors: Map<string, number>;
 
+	private pendingToolCallsAfterSuspend: Map<string, TraceToolCall[]>;
+
 	constructor(events: TraceEvent[]) {
 		this.byRole = new Map();
 		this.cursors = new Map();
+		this.pendingToolCallsAfterSuspend = new Map();
 
 		for (const event of events) {
 			if (!isToolEvent(event)) continue;
@@ -94,6 +100,47 @@ export class TraceIndex {
 	}
 
 	nextMatching(agentRole: string, expectedToolName: string): ToolTraceEvent | null {
+		const match = this.findNextMatching(agentRole, expectedToolName);
+		if (!match) return null;
+
+		this.cursors.set(agentRole, match.index + 1);
+		return match.event;
+	}
+
+	nextMatchingForReplay(
+		agentRole: string,
+		expectedToolName: string,
+		options: { preferSuspend?: boolean } = {},
+	): ToolTraceEvent | null {
+		if (options.preferSuspend !== true) {
+			const pending = this.consumePendingToolCall(agentRole, expectedToolName);
+			if (pending) return pending;
+		}
+
+		const match = this.findNextMatching(agentRole, expectedToolName);
+		if (!match) return null;
+
+		const nextEvent = match.events[match.index + 1];
+		if (
+			options.preferSuspend === true &&
+			match.event.kind === 'tool-call' &&
+			nextEvent?.kind === 'tool-suspend' &&
+			nextEvent.toolName === expectedToolName &&
+			isSameRecordedToolAttempt(match.event, nextEvent)
+		) {
+			this.cursors.set(agentRole, match.index + 2);
+			this.enqueuePendingToolCall(agentRole, expectedToolName, match.event);
+			return nextEvent;
+		}
+
+		this.cursors.set(agentRole, match.index + 1);
+		return match.event;
+	}
+
+	private findNextMatching(
+		agentRole: string,
+		expectedToolName: string,
+	): { events: ToolTraceEvent[]; event: ToolTraceEvent; index: number } | null {
 		const events = this.byRole.get(agentRole);
 		const cursor = this.cursors.get(agentRole) ?? 0;
 
@@ -103,18 +150,66 @@ export class TraceIndex {
 
 		const event = events[cursor];
 		if (event.toolName === expectedToolName) {
-			this.cursors.set(agentRole, cursor + 1);
-			return event;
+			return { events, event, index: cursor };
 		}
 
 		for (let i = cursor + 1; i < events.length; i++) {
 			if (events[i].toolName === expectedToolName) {
-				this.cursors.set(agentRole, i + 1);
-				return events[i];
+				return { events, event: events[i], index: i };
 			}
 		}
 
 		return null;
+	}
+
+	private enqueuePendingToolCall(
+		agentRole: string,
+		expectedToolName: string,
+		event: TraceToolCall,
+	): void {
+		const key = pendingToolCallKey(agentRole, expectedToolName);
+		const pending = this.pendingToolCallsAfterSuspend.get(key);
+		if (pending) {
+			pending.push(event);
+		} else {
+			this.pendingToolCallsAfterSuspend.set(key, [event]);
+		}
+	}
+
+	private consumePendingToolCall(
+		agentRole: string,
+		expectedToolName: string,
+	): TraceToolCall | null {
+		const key = pendingToolCallKey(agentRole, expectedToolName);
+		const pending = this.pendingToolCallsAfterSuspend.get(key);
+		const event = pending?.shift();
+		if (!event) return null;
+		if (pending?.length === 0) {
+			this.pendingToolCallsAfterSuspend.delete(key);
+		}
+		return event;
+	}
+}
+
+function pendingToolCallKey(agentRole: string, toolName: string): string {
+	return `${agentRole}\0${toolName}`;
+}
+
+function isSameRecordedToolAttempt(call: TraceToolCall, suspend: TraceToolSuspend): boolean {
+	if (call.toolCallId && suspend.toolCallId) {
+		return call.toolCallId === suspend.toolCallId;
+	}
+
+	const callInput = stringifyJson(call.input);
+	const suspendInput = stringifyJson(suspend.input);
+	return callInput !== undefined && callInput === suspendInput;
+}
+
+function stringifyJson(value: unknown): string | undefined {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return undefined;
 	}
 }
 

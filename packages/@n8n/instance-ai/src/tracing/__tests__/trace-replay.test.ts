@@ -222,7 +222,7 @@ describe('TraceIndex', () => {
 		const events: TraceEvent[] = [
 			{ kind: 'header', version: 1, testName: 'test', recordedAt: '' },
 			makeToolCall(1, 'orchestrator', 'search-nodes'),
-			makeToolCall(2, 'workflow-builder', 'build-workflow'),
+			makeToolCall(2, 'data-agent', 'workflows'),
 			makeToolCall(3, 'orchestrator', 'run-workflow'),
 		];
 
@@ -231,7 +231,7 @@ describe('TraceIndex', () => {
 		const e1 = index.next('orchestrator', 'search-nodes');
 		expect(e1.stepId).toBe(1);
 
-		const e2 = index.next('workflow-builder', 'build-workflow');
+		const e2 = index.next('data-agent', 'workflows');
 		expect(e2.stepId).toBe(2);
 
 		const e3 = index.next('orchestrator', 'run-workflow');
@@ -272,7 +272,7 @@ describe('TraceIndex', () => {
 	it('should scan forward for a matching tool when requested', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'credentials'),
-			makeToolCall(2, 'orchestrator', 'build-workflow-with-agent'),
+			makeToolCall(2, 'orchestrator', 'workflows'),
 			makeToolCall(3, 'orchestrator', 'plan'),
 		];
 
@@ -312,16 +312,45 @@ describe('TraceIndex', () => {
 
 	it('should handle suspend and resume events', () => {
 		const events: TraceEvent[] = [
-			makeToolCall(1, 'orchestrator', 'build-workflow'),
+			makeToolCall(1, 'orchestrator', 'workflows'),
 			makeSuspend(2, 'orchestrator', 'run-workflow'),
 			makeResume(3, 'orchestrator', 'run-workflow'),
 		];
 
 		const index = new TraceIndex(events);
 
-		expect(index.next('orchestrator', 'build-workflow').kind).toBe('tool-call');
+		expect(index.next('orchestrator', 'workflows').kind).toBe('tool-call');
 		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-suspend');
 		expect(index.next('orchestrator', 'run-workflow').kind).toBe('tool-resume');
+	});
+
+	it('should replay an adjacent suspension before the matching tool output', () => {
+		const events: TraceEvent[] = [
+			{
+				...makeToolCall(1, 'orchestrator', 'workflows'),
+				toolCallId: 'toolu-workflow-save',
+				input: { action: 'create', name: 'Recorded workflow' },
+				output: { success: true, workflowId: 'recorded-workflow-id' },
+			},
+			{
+				...makeSuspend(2, 'orchestrator', 'workflows'),
+				toolCallId: 'toolu-workflow-save',
+				input: { action: 'create', name: 'Recorded workflow' },
+				suspendPayload: { message: 'Create workflow Recorded workflow' },
+			},
+		];
+
+		const index = new TraceIndex(events);
+
+		expect(
+			index.nextMatchingForReplay('orchestrator', 'workflows', { preferSuspend: true })?.kind,
+		).toBe('tool-suspend');
+		const resumedEvent = index.nextMatchingForReplay('orchestrator', 'workflows');
+		expect(resumedEvent?.kind).toBe('tool-call');
+		expect(resumedEvent?.output).toEqual({
+			success: true,
+			workflowId: 'recorded-workflow-id',
+		});
 	});
 
 	it('should filter out header events', () => {
@@ -354,7 +383,7 @@ describe('TraceWriter', () => {
 	it('should record tool-call events with incrementing stepIds', () => {
 		const writer = new TraceWriter('test');
 		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
-		writer.recordToolCall('builder', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall('builder', 'workflows', { action: 'create' }, { workflowId: '5' });
 
 		const events = writer.getEvents();
 		expect(events).toHaveLength(3); // header + 2 tool-calls
@@ -370,7 +399,7 @@ describe('TraceWriter', () => {
 		const call2 = events[2] as TraceToolCall;
 		expect(call2.stepId).toBe(2);
 		expect(call2.agentRole).toBe('builder');
-		expect(call2.toolName).toBe('build-workflow');
+		expect(call2.toolName).toBe('workflows');
 	});
 
 	it('should record tool-suspend events', () => {
@@ -469,7 +498,7 @@ describe('parseTraceJsonl', () => {
 
 	it('should roundtrip with TraceWriter', () => {
 		const writer = new TraceWriter('roundtrip-test');
-		writer.recordToolCall('orch', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall('orch', 'workflows', { action: 'create' }, { workflowId: '5' });
 		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
 
 		const parsed = parseTraceJsonl(writer.toJsonl());

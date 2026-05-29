@@ -12,7 +12,7 @@ export function formatWorkflowLoopGuidance(
 		case 'ignored':
 			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
-			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
+			return `BUILD FAILED: ${action.reason}. Fix the workflow code and call \`workflows(action="create"|"update")\` again.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
@@ -29,7 +29,7 @@ export function formatWorkflowLoopGuidance(
 			return (
 				`VERIFY: Run workflow ${action.workflowId}. ` +
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
-				'Otherwise use `executions(action="run")`. ' +
+				'Otherwise use `executions(action="run", requireApproval=false)` for internal verification. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
 			);
@@ -38,22 +38,21 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
+				'Load the `workflow-builder` skill, then call `workflows(action="update")` directly ' +
+				`with \`workflowId: "${action.workflowId}"\`. ` +
+				'(no plan — this is a single-task rebuild; `workflowId` is required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
+				`Apply a structural repair using these details: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
-				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'In the `task` parameter, describe the targeted fix to apply.'
+				'Load the `workflow-builder` skill, then call `workflows(action="update")` directly ' +
+				`with \`workflowId: "${action.workflowId}"\` and targeted \`patches\`. ` +
+				'(no plan — this is a single-task patch; `workflowId` is required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate).'
 			);
 	}
 }

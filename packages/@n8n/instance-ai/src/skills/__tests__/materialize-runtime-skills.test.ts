@@ -21,6 +21,8 @@ import {
 } from '../materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+const WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
+
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
 	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
@@ -72,7 +74,10 @@ function emptyLinkedFiles(): RuntimeSkillLinkedFiles {
 	};
 }
 
-function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSource {
+function createRuntimeSkillSourceWithLinkedFile(
+	path: string,
+	options: { instructions?: string; fileContent?: string } = {},
+): RuntimeSkillSource {
 	const linkedFiles = emptyLinkedFiles();
 	linkedFiles.references.push({ path, bytes: 6, sha256: 'sha' });
 
@@ -95,13 +100,13 @@ function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSourc
 				id: 'test-skill',
 				name: 'test-skill',
 				description: 'Test skill',
-				instructions: 'Use the linked file.',
+				instructions: options.instructions ?? 'Use the linked file.',
 			}),
 		loadFile: async (skillId, filePath) =>
 			await Promise.resolve({
 				skillId,
 				filePath,
-				content: 'linked',
+				content: options.fileContent ?? 'linked',
 			}),
 	};
 }
@@ -232,7 +237,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(result.content).toContain('references/data-table-playbook.md');
 	});
 
-	it('materializes skills into the workspace before load_skill reads them', async () => {
+	it('loads bundled skills without opening the workspace when no workspace templates are needed', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand } = createMockWorkspace();
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
@@ -242,26 +247,49 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(runtimeSource);
 
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
-		const root = '/home/daytona/workspace';
-		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
-		const skillPath = `${skillDir}/SKILL.md`;
 
-		expect(executeCommand).toHaveBeenCalledTimes(1);
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(executeCommand).not.toHaveBeenCalled();
+		expect(writes.size).toBe(0);
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'data-table-manager',
+		});
+	});
+
+	it('materializes skills into the workspace before load_skill reads workspace templates', async () => {
+		const source = createRuntimeSkillSourceWithLinkedFile('references/notes.md', {
+			instructions: `Use workspace ${WORKSPACE_DIR_TEMPLATE}.`,
+		});
+		const { workspace, writes, executeCommand } = createMockWorkspace();
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			source,
+			workspace,
+		});
+		const loadTool = createSkillLoadTool(runtimeSource);
+
+		const result = await loadTool.handler?.({ skillId: 'test-skill' }, {});
+		const root = '/home/daytona/workspace';
+		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/test-skill`;
+		const skillPath = `${skillDir}/SKILL.md`;
+
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		expect(writes.get(skillPath)).toContain(`Use workspace ${root}.`);
+		expect(result).toMatchObject({
+			success: true,
+			skillId: 'test-skill',
 			path: skillPath,
 			skillDir,
 		});
 
-		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await loadTool.handler?.({ skillId: 'test-skill' }, {});
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 	});
 
 	it('uses prebaked runtime skills when the manifest matches the source hash', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = createRuntimeSkillSourceWithLinkedFile('references/notes.md', {
+			instructions: `Use workspace ${WORKSPACE_DIR_TEMPLATE}.`,
+		});
 		const { workspace, writes, executeCommand, writeFile } = createMockWorkspace();
 		const root = '/home/daytona/workspace';
 		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
@@ -273,23 +301,25 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			workspace,
 		});
 		const loadTool = createSkillLoadTool(runtimeSource);
-		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		const result = await loadTool.handler?.({ skillId: 'test-skill' }, {});
 
-		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
+		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/test-skill`;
 		const skillPath = `${skillDir}/SKILL.md`;
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(writes.get(skillPath)).toBeUndefined();
 		expect(result).toMatchObject({
 			success: true,
-			skillId: 'data-table-manager',
+			skillId: 'test-skill',
 			path: skillPath,
 			skillDir,
 		});
 	});
 
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = createRuntimeSkillSourceWithLinkedFile('references/notes.md', {
+			instructions: `Use workspace ${WORKSPACE_DIR_TEMPLATE}.`,
+		});
 		const { workspace, writes, writeFile } = createMockWorkspace();
 		const root = '/home/daytona/workspace';
 		const manifestPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`;
@@ -307,15 +337,17 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		});
 		const loadTool = createSkillLoadTool(runtimeSource);
 
-		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await loadTool.handler?.({ skillId: 'test-skill' }, {});
 
-		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
+		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/test-skill/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain(`Use workspace ${root}.`);
 	});
 
 	it('falls back to live materialization when the prebaked manifest is invalid', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = createRuntimeSkillSourceWithLinkedFile('references/notes.md', {
+			instructions: `Use workspace ${WORKSPACE_DIR_TEMPLATE}.`,
+		});
 		const { workspace, writes, writeFile } = createMockWorkspace();
 		const root = '/home/daytona/workspace';
 		const manifestPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`;
@@ -327,11 +359,11 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		});
 		const loadTool = createSkillLoadTool(runtimeSource);
 
-		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await loadTool.handler?.({ skillId: 'test-skill' }, {});
 
-		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
+		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/test-skill/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
-		expect(writes.get(skillPath)).toContain('data-tables');
+		expect(writes.get(skillPath)).toContain(`Use workspace ${root}.`);
 	});
 
 	it('rejects linked file paths that escape the materialized skill directory', async () => {

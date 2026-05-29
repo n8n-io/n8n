@@ -1,5 +1,5 @@
 /**
- * SDK prompt sections for the workflow builder sub-agent.
+ * SDK prompt sections for direct workflow-building guidance.
  *
  * Re-exports from the canonical source in @n8n/workflow-sdk/prompts.
  */

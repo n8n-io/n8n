@@ -103,6 +103,29 @@ function collectDependents(graph: PlannedTaskGraph, rootId: string): Set<string>
 	return dependents;
 }
 
+const CASCADE_CANCEL_PREFIX = 'Cancelled: dependency ';
+
+function cascadeCancelError(depId: string): string {
+	return `${CASCADE_CANCEL_PREFIX}"${depId}" failed`;
+}
+
+// A cascade victim, not a task the user cancelled directly.
+function isCascadeCancelled(task: PlannedTaskRecord): boolean {
+	return task.status === 'cancelled' && (task.error?.startsWith(CASCADE_CANCEL_PREFIX) ?? false);
+}
+
+function resetToPlanned(task: PlannedTaskRecord): PlannedTaskRecord {
+	const {
+		agentId: _agentId,
+		backgroundTaskId: _backgroundTaskId,
+		startedAt: _startedAt,
+		error: _error,
+		finishedAt: _finishedAt,
+		...rest
+	} = task;
+	return { ...rest, status: 'planned' };
+}
+
 function updateTaskRecord(
 	graph: PlannedTaskGraph,
 	taskId: string,
@@ -114,6 +137,38 @@ function updateTaskRecord(
 	const tasks = [...graph.tasks];
 	tasks[index] = updater(tasks[index]);
 	return { ...graph, tasks };
+}
+
+function revertRunningTaskToPlanned(
+	graph: PlannedTaskGraph,
+	taskId: string,
+	kind: PlannedTaskRecord['kind'],
+): { result: CheckpointSettleResult; graph: PlannedTaskGraph } {
+	const task = graph.tasks.find((t) => t.id === taskId);
+	if (!task) return { result: { ok: false, reason: 'not-found' }, graph };
+	if (task.kind !== kind) {
+		return { result: { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } }, graph };
+	}
+	if (task.status !== 'running') {
+		return {
+			result: { ok: false, reason: 'wrong-status', actual: { status: task.status } },
+			graph,
+		};
+	}
+
+	const tasks = graph.tasks.map<PlannedTaskRecord>((t) => {
+		if (t.id !== taskId) return t;
+		const {
+			agentId: _agentId,
+			backgroundTaskId: _backgroundTaskId,
+			startedAt: _startedAt,
+			...rest
+		} = t;
+		return { ...rest, status: 'planned' };
+	});
+
+	const next: PlannedTaskGraph = { ...graph, tasks };
+	return { result: { ok: true, graph: next }, graph: next };
 }
 
 export class PlannedTaskCoordinator implements PlannedTaskService {
@@ -201,16 +256,23 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		return await this.storage.update(threadId, (graph) =>
-			updateTaskRecord(graph, taskId, (task) => ({
+		return await this.storage.update(threadId, (graph) => {
+			const task = graph.tasks.find((t) => t.id === taskId);
+			if (!task) return null;
+			// Allow re-recording an already-succeeded task so an in-turn update
+			// (refining a workflow created earlier in the same build turn) overwrites
+			// the outcome the checkpoint reads. Other statuses stay terminal.
+			if (task.status !== 'running' && task.status !== 'succeeded') return graph;
+
+			return updateTaskRecord(graph, taskId, () => ({
 				...task,
 				status: 'succeeded',
 				result: update.result ?? task.result,
 				outcome: update.outcome ?? task.outcome,
 				finishedAt: update.finishedAt ?? Date.now(),
 				error: undefined,
-			})),
-		);
+			}));
+		});
 	}
 
 	async markFailed(
@@ -239,7 +301,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 					return {
 						...task,
 						status: 'cancelled',
-						error: `Cancelled: dependency "${taskId}" failed`,
+						error: cascadeCancelError(taskId),
 						finishedAt,
 					};
 				}
@@ -247,6 +309,70 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			});
 
 			return { ...graph, tasks };
+		});
+	}
+
+	/** A late genuine save is ground truth: flip a guard-failed build task back to
+	 *  `succeeded`, re-arm dependents the cascade cancelled once their deps hold,
+	 *  and reactivate an `awaiting_replan` graph. Never touches a cancelled plan. */
+	async recoverWorkflowBuildSuccess(
+		threadId: string,
+		taskId: string,
+		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null> {
+		return await this.storage.update(threadId, (graph) => {
+			if (graph.status === 'cancelled') return graph;
+
+			const task = graph.tasks.find((t) => t.id === taskId);
+			if (!task || task.kind !== 'build-workflow') return graph;
+			if (task.status !== 'failed' && task.status !== 'cancelled') return graph;
+
+			const finishedAt = update.finishedAt ?? Date.now();
+			const succeededIds = new Set(
+				graph.tasks.filter((t) => t.id === taskId || t.status === 'succeeded').map((t) => t.id),
+			);
+
+			// Re-arm transitive cascade victims, not just direct dependents.
+			const closure = collectDependents(graph, taskId);
+			const revivable = new Set(
+				graph.tasks.filter((t) => closure.has(t.id) && isCascadeCancelled(t)).map((t) => t.id),
+			);
+
+			// Drop candidates with a dep that can never be satisfied.
+			let changed = true;
+			while (changed) {
+				changed = false;
+				for (const id of [...revivable]) {
+					const candidate = graph.tasks.find((t) => t.id === id);
+					const satisfiable = candidate?.deps.every((depId) => {
+						if (succeededIds.has(depId) || revivable.has(depId)) return true;
+						const dep = graph.tasks.find((t) => t.id === depId);
+						return dep?.status === 'planned' || dep?.status === 'running';
+					});
+					if (!satisfiable) {
+						revivable.delete(id);
+						changed = true;
+					}
+				}
+			}
+
+			const tasks = graph.tasks.map<PlannedTaskRecord>((t) => {
+				if (t.id === taskId) {
+					return {
+						...t,
+						status: 'succeeded',
+						result: update.result ?? t.result,
+						outcome: update.outcome ?? t.outcome,
+						finishedAt,
+						error: undefined,
+					};
+				}
+				if (revivable.has(t.id)) return resetToPlanned(t);
+				return t;
+			});
+
+			const status = graph.status === 'awaiting_replan' ? 'active' : graph.status;
+			return { ...graph, status, tasks };
 		});
 	}
 
@@ -312,29 +438,29 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 
 		await this.storage.update(threadId, (graph) => {
-			const task = graph.tasks.find((t) => t.id === taskId);
-			if (!task) {
-				result = { ok: false, reason: 'not-found' };
-				return graph;
-			}
-			if (task.kind !== 'checkpoint') {
-				result = { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } };
-				return graph;
-			}
-			if (task.status !== 'running') {
-				result = { ok: false, reason: 'wrong-status', actual: { status: task.status } };
-				return graph;
-			}
+			const reverted = revertRunningTaskToPlanned(graph, taskId, 'checkpoint');
+			result = reverted.result;
+			return reverted.graph;
+		});
 
-			const tasks = graph.tasks.map<PlannedTaskRecord>((t) => {
-				if (t.id !== taskId) return t;
-				const { agentId: _agentId, startedAt: _startedAt, ...rest } = t;
-				return { ...rest, status: 'planned' };
-			});
+		return result;
+	}
 
-			const next: PlannedTaskGraph = { ...graph, tasks };
-			result = { ok: true, graph: next };
-			return next;
+	/**
+	 * Rewind a running workflow-build task back to `planned` after a follow-up
+	 * scheduling race. This mirrors checkpoint retry behavior: the build did not
+	 * fail, it simply never started its follow-up turn.
+	 */
+	async revertWorkflowBuildToPlanned(
+		threadId: string,
+		taskId: string,
+	): Promise<CheckpointSettleResult> {
+		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
+
+		await this.storage.update(threadId, (graph) => {
+			const reverted = revertRunningTaskToPlanned(graph, taskId, 'build-workflow');
+			result = reverted.result;
+			return reverted.graph;
 		});
 
 		return result;
@@ -386,7 +512,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 					return {
 						...t,
 						status: 'cancelled',
-						error: `Cancelled: dependency "${taskId}" failed`,
+						error: cascadeCancelError(taskId),
 						finishedAt,
 					};
 				}
@@ -406,14 +532,36 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update?: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		return await this.storage.update(threadId, (graph) =>
-			updateTaskRecord(graph, taskId, (task) => ({
-				...task,
-				status: 'cancelled',
-				error: update?.error ?? task.error,
-				finishedAt: update?.finishedAt ?? Date.now(),
-			})),
-		);
+		return await this.storage.update(threadId, (graph) => {
+			const target = graph.tasks.find((t) => t.id === taskId);
+			if (!target) return graph;
+
+			// Cascade like markFailed, else dependents wedge the graph forever.
+			const dependents = collectDependents(graph, taskId);
+			const finishedAt = update?.finishedAt ?? Date.now();
+
+			const tasks = graph.tasks.map<PlannedTaskRecord>((task) => {
+				if (task.id === taskId) {
+					return {
+						...task,
+						status: 'cancelled',
+						error: update?.error ?? task.error,
+						finishedAt,
+					};
+				}
+				if (dependents.has(task.id) && (task.status === 'planned' || task.status === 'running')) {
+					return {
+						...task,
+						status: 'cancelled',
+						error: cascadeCancelError(taskId),
+						finishedAt,
+					};
+				}
+				return task;
+			});
+
+			return { ...graph, tasks };
+		});
 	}
 
 	async tick(
@@ -470,11 +618,18 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 				return graph;
 			}
 
-			// Checkpoints run inline in the orchestrator (sequential, one per follow-up run).
-			// Give them priority over background dispatch to keep sequencing clean.
+			// Checkpoints and workflow builds run inline in the orchestrator
+			// (sequential, one per follow-up run). Give them priority over
+			// background dispatch to keep sequencing clean.
 			const readyCheckpoint = readyTasks.find((t) => t.kind === 'checkpoint');
 			if (readyCheckpoint) {
 				action = { type: 'orchestrate-checkpoint', graph, tasks: [readyCheckpoint] };
+				return graph;
+			}
+
+			const readyWorkflowBuild = readyTasks.find((t) => t.kind === 'build-workflow');
+			if (readyWorkflowBuild) {
+				action = { type: 'orchestrate-build-workflow', graph, tasks: [readyWorkflowBuild] };
 				return graph;
 			}
 
@@ -488,6 +643,17 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	async clear(threadId: string): Promise<void> {
 		await this.storage.clear(threadId);
+	}
+
+	// User Stop on an in-flight plan: terminate the graph so no later tick or
+	// post-run reschedule can resume it. No-op on approval/terminal graphs.
+	async cancelActivePlan(threadId: string): Promise<PlannedTaskGraph | null> {
+		return await this.storage.update(threadId, (graph) => {
+			if (graph.status === 'active' || graph.status === 'awaiting_replan') {
+				return { ...graph, status: 'cancelled' };
+			}
+			return graph;
+		});
 	}
 
 	/**

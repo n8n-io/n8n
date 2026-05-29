@@ -2744,23 +2744,33 @@ export async function extractExecutionResult(
 					? 'waiting'
 					: 'success';
 
+	const runData = execution.data?.resultData?.runData;
+
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
-	if (includeOutputData) {
-		const runData = execution.data?.resultData?.runData;
-		if (runData) {
-			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (lastRun?.data?.main) {
-					const outputItems = lastRun.data.main
-						.flat()
-						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-						.map((item) => item.json);
-					if (outputItems.length > 0) {
-						resultData[nodeName] = truncateNodeOutput(outputItems);
-					}
+	if (includeOutputData && runData) {
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			const lastRun = nodeRuns[nodeRuns.length - 1];
+			if (lastRun?.data?.main) {
+				const outputItems = lastRun.data.main
+					.flat()
+					.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
+					.map((item) => item.json);
+				if (outputItems.length > 0) {
+					resultData[nodeName] = truncateNodeOutput(outputItems);
 				}
+			}
+		}
+	}
+
+	// Node-level errors are lost from the top-level status when a node uses
+	// continueOnFail / onError; surface them so callers don't treat the run as clean.
+	const erroredNodeNames: string[] = [];
+	if (runData) {
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			if (nodeRuns[nodeRuns.length - 1]?.error !== undefined) {
+				erroredNodeNames.push(nodeName);
 			}
 		}
 	}
@@ -2777,6 +2787,7 @@ export async function extractExecutionResult(
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
 		error: errorMessage,
+		erroredNodeNames: erroredNodeNames.length > 0 ? erroredNodeNames : undefined,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};

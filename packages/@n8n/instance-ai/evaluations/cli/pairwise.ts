@@ -1,55 +1,36 @@
+#!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// Pairwise eval CLI for instance-ai.
+// Pairwise-style eval CLI for Instance AI workflow building.
 //
-// Pulls the pairwise dataset (default: notion-pairwise-workflows) from
-// LangSmith or a local file, builds one workflow per example via the
-// in-process instance-ai agent, and scores the result with the same
-// pairwise judge panel used by ai-workflow-builder.ee.
-//
-// Results are written to an output directory so a later step can build
-// a head-to-head comparison report against the ai-workflow-builder.ee
-// baseline.
+// This keeps the historical pairwise CLI/output contract while routing builds
+// through the main Instance AI orchestrator. Prompt-only examples from the
+// LangSmith pairwise dataset are wrapped as workflow eval cases; local workflow
+// fixtures can also be selected with --filter.
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
-// `SimpleWorkflow` is imported from `ai-workflow-builder.ee` via deep relative
-// paths; the `@/*` alias used inside that package collides with instance-ai's
-// own `@/*` mapping during transitive type-checking, so the type resolves to
-// `error` here. The `csvCell()` helper also calls `String(value)` on `unknown`
-// values by design.
-
-import { ChatAnthropic } from '@langchain/anthropic';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client as LangSmithClient } from 'langsmith';
-import { nanoid } from 'nanoid';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
 import { loadRuns, renderDocument } from './report';
-import {
-	createPairwiseEvaluator,
-	type Feedback,
-	type SimpleWorkflow,
-} from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
-import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
-import { buildSubAgentBriefing } from '../../src/agent/sub-agent-briefing';
-import { DETACHED_BUILDER_REQUIREMENTS } from '../../src/tools/orchestration/build-workflow-agent.tool';
-import type { SandboxConfig } from '../../src/workspace/create-workspace';
-import {
-	buildInProcess,
-	type InProcessBuildResult,
-	type ToolCallTrace,
-} from '../harness/in-process-builder';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
+import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger, type EvalLogger } from '../harness/logger';
-import { resolveSandboxConfig } from '../harness/sandbox-config';
+import { runWorkflowTestCase } from '../harness/runner';
+import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import type {
+	ConversationMetrics,
+	ExecutionScenarioResult,
+	ToolInteraction,
+	TranscriptTurn,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 
-/** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
- * is the spec the production planner hands the builder via
- * `dispatchPlannedTask`. Pair this with the production briefing wrapper
- * (`DETACHED_BUILDER_REQUIREMENTS`) below to keep the eval aligned with
- * what the builder sees in production. */
 const DEFAULT_DATASET = 'instance-ai-builder-from-plans';
+const MAX_CONCURRENT_BUILDS = 4;
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -67,7 +48,14 @@ interface PairwiseArgs {
 	outputDir: string;
 	judgeModel: string;
 	experimentName: string;
+	baseUrl: string;
+	email?: string;
+	password?: string;
+	filter?: string;
+	exclude?: string;
+	keepWorkflows: boolean;
 	verbose: boolean;
+	useLocalWorkflows: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -78,6 +66,11 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		return value && !value.startsWith('--') ? value : undefined;
 	};
 	const has = (flag: string): boolean => argv.includes(flag);
+
+	if (has('--help') || has('-h')) {
+		printHelp();
+		process.exit(0);
+	}
 
 	const iso = new Date().toISOString().replace(/[:.]/g, '-');
 	const defaultOutputDir = path.resolve(process.cwd(), '.output', 'pairwise', iso);
@@ -93,23 +86,59 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		exampleIds = new Set(ids);
 	}
 
+	const filter = get('--filter');
+
 	return {
 		dataset: get('--dataset') ?? DEFAULT_DATASET,
-		judges: parsePositiveInt(get('--judges'), '--judges') ?? Number(DEFAULTS.NUM_JUDGES),
-		iterations:
-			parsePositiveInt(get('--iterations'), '--iterations') ?? Number(DEFAULTS.REPETITIONS),
-		concurrency:
-			parsePositiveInt(get('--concurrency'), '--concurrency') ?? Number(DEFAULTS.CONCURRENCY),
+		judges: parsePositiveInt(get('--judges'), '--judges') ?? 1,
+		iterations: parsePositiveInt(get('--iterations'), '--iterations') ?? 1,
+		concurrency: parsePositiveInt(get('--concurrency'), '--concurrency') ?? MAX_CONCURRENT_BUILDS,
 		maxExamples: parsePositiveInt(get('--max-examples'), '--max-examples'),
 		exampleIds,
 		examplesJsonl: get('--examples-jsonl'),
-		timeoutMs:
-			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
+		timeoutMs: parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? 900_000,
 		outputDir: get('--output-dir') ?? defaultOutputDir,
-		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
+		judgeModel: get('--judge-model') ?? 'orchestrator-verifier',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
+		baseUrl: get('--base-url') ?? process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
+		email: get('--email'),
+		password: get('--password'),
+		filter,
+		exclude: get('--exclude'),
+		keepWorkflows: has('--keep-workflows'),
 		verbose: has('--verbose'),
+		useLocalWorkflows: has('--local-workflows') || filter !== undefined,
 	};
+}
+
+function printHelp(): void {
+	console.log(`Instance AI pairwise eval compatibility runner
+
+Usage:
+  pnpm eval:pairwise [flags]
+
+Default mode reads the historical LangSmith dataset:
+  --dataset <name>              Dataset name (default: ${DEFAULT_DATASET})
+  --examples-jsonl <path>       Re-run prompts from an existing results.jsonl
+  --example-ids-file <path>     Newline-delimited example ids to include
+
+Local workflow fixture mode:
+  --filter <substring[,..]>     Run matching evaluations/data/workflows/*.json
+  --exclude <substring[,..]>    Exclude matching workflow fixtures
+  --local-workflows             Run local workflow fixtures without a filter
+
+Common:
+  --base-url <url>              n8n URL (default: http://localhost:5678)
+  --email <email>               n8n login email (or N8N_EVAL_EMAIL)
+  --password <password>         n8n login password (or N8N_EVAL_PASSWORD)
+  --iterations <n>              Fresh build count per example
+  --concurrency <n>             Build concurrency (capped at ${MAX_CONCURRENT_BUILDS})
+  --timeout-ms <n>              Per-build timeout
+  --output-dir <path>           Output directory
+  --max-examples <n>            Limit selected examples
+  --keep-workflows              Leave built workflows in n8n
+  --verbose                     Verbose logging
+`);
 }
 
 function parsePositiveInt(raw: string | undefined, name: string): number | undefined {
@@ -139,21 +168,32 @@ interface DatasetExample {
 	prompt: string;
 	dos?: string;
 	donts?: string;
+	testCase: WorkflowTestCase;
 }
 
 async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
 	if (args.examplesJsonl) {
-		return loadExamplesFromJsonl(args.examplesJsonl, logger);
+		return examplesToWorkflowCases(loadExamplesFromJsonl(args.examplesJsonl, logger));
 	}
+
+	if (args.useLocalWorkflows) {
+		const fixtures = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+		logger.info(`Loaded ${String(fixtures.length)} local workflow fixture(s)`);
+		return fixtures.map(workflowFixtureToExample);
+	}
+
+	if (!process.env.LANGSMITH_API_KEY) {
+		throw new Error(
+			'LANGSMITH_API_KEY is required for dataset mode. Pass --filter workflow-builder- or --local-workflows to run local workflow fixtures instead.',
+		);
+	}
+
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
-	const examples: DatasetExample[] = [];
+	const examples: Array<Omit<DatasetExample, 'testCase'>> = [];
 	const layoutCounts = { evals: 0, context: 0, none: 0 };
 	for await (const raw of lsClient.listExamples({ datasetName: args.dataset })) {
 		const inputs = isRecord(raw.inputs) ? raw.inputs : {};
-		// The notion-pairwise-workflows dataset stores criteria under
-		// `inputs.evals.{dos,donts}`. Older fixtures used `inputs.context.*`
-		// — read both paths so both layouts work.
 		let criteria: Record<string, unknown> = {};
 		if (isRecord(inputs.evals)) {
 			criteria = inputs.evals;
@@ -164,7 +204,7 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 		} else {
 			layoutCounts.none++;
 		}
-		const example: DatasetExample = {
+		const example = {
 			id: raw.id,
 			prompt: typeof inputs.prompt === 'string' ? inputs.prompt : '',
 			dos: typeof criteria.dos === 'string' ? criteria.dos : undefined,
@@ -177,22 +217,19 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 		examples.push(example);
 	}
 	logger.verbose(
-		`Dataset criteria layout: evals=${layoutCounts.evals} context=${layoutCounts.context} none=${layoutCounts.none}`,
+		`Dataset criteria layout: evals=${String(layoutCounts.evals)} context=${String(layoutCounts.context)} none=${String(layoutCounts.none)}`,
 	);
-	return examples;
+	return examplesToWorkflowCases(examples);
 }
 
-/**
- * Load examples from a JSONL file. Accepts the shape produced by a previous
- * pairwise run (`results.jsonl`) where each row carries `exampleId`, `prompt`,
- * `dos`, `donts`. Useful for re-running a frozen example set after the source
- * LangSmith dataset has changed.
- */
-function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExample[] {
+function loadExamplesFromJsonl(
+	filePath: string,
+	logger: EvalLogger,
+): Array<Omit<DatasetExample, 'testCase'>> {
 	const absolute = path.resolve(filePath);
 	logger.info(`Loading examples from local JSONL: ${absolute}`);
 	const content = readFileSync(absolute, 'utf8');
-	const examples: DatasetExample[] = [];
+	const examples: Array<Omit<DatasetExample, 'testCase'>> = [];
 	const seen = new Set<string>();
 	let row = 0;
 	for (const line of content.split('\n')) {
@@ -203,18 +240,16 @@ function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExa
 		try {
 			parsed = JSON.parse(trimmed);
 		} catch (error) {
-			logger.warn(`Skipping JSONL row ${row}: invalid JSON (${(error as Error).message})`);
+			logger.warn(`Skipping JSONL row ${String(row)}: invalid JSON (${formatError(error)})`);
 			continue;
 		}
 		if (!isRecord(parsed)) continue;
 		const id = typeof parsed.exampleId === 'string' ? parsed.exampleId : '';
 		const prompt = typeof parsed.prompt === 'string' ? parsed.prompt : '';
 		if (!id || !prompt) {
-			logger.warn(`Skipping JSONL row ${row}: missing exampleId or prompt`);
+			logger.warn(`Skipping JSONL row ${String(row)}: missing exampleId or prompt`);
 			continue;
 		}
-		// Each iteration of the same example yields a row in results.jsonl;
-		// dedupe by id so we only run the example once per requested iteration.
 		if (seen.has(id)) continue;
 		seen.add(id);
 		examples.push({
@@ -224,13 +259,94 @@ function loadExamplesFromJsonl(filePath: string, logger: EvalLogger): DatasetExa
 			donts: typeof parsed.donts === 'string' ? parsed.donts : undefined,
 		});
 	}
-	logger.info(`Loaded ${examples.length} unique examples from ${absolute}`);
+	logger.info(`Loaded ${String(examples.length)} unique example(s) from ${absolute}`);
 	return examples;
+}
+
+function examplesToWorkflowCases(
+	examples: Array<Omit<DatasetExample, 'testCase'>>,
+): DatasetExample[] {
+	return examples.map((example) => ({
+		...example,
+		testCase: {
+			conversation: [{ role: 'user', text: example.prompt }],
+			complexity: 'medium',
+			tags: ['build', 'pairwise'],
+			executionScenarios: [
+				{
+					name: 'pairwise-checklist',
+					description: 'Verify the workflow against the pairwise checklist.',
+					dataSetup:
+						'Use realistic mocked data appropriate for the workflow. If the workflow is not executable because the prompt only asks for structure, inspect the workflow shape and configured node parameters.',
+					successCriteria: pairwiseSuccessCriteria(example),
+				},
+			],
+		},
+	}));
+}
+
+function workflowFixtureToExample(fixture: WorkflowTestCaseWithFile): DatasetExample {
+	const prompt =
+		fixture.testCase.conversation
+			.map((turn) => `${turn.role}: ${turn.text}`)
+			.join('\n\n')
+			.trim() || fixture.fileSlug;
+	const criteria = fixture.testCase.executionScenarios
+		.map((scenario) => `${scenario.name}: ${scenario.successCriteria}`)
+		.join('\n\n');
+	return {
+		id: fixture.fileSlug,
+		prompt,
+		dos: criteria || undefined,
+		testCase: fixture.testCase,
+	};
+}
+
+function pairwiseSuccessCriteria(example: Omit<DatasetExample, 'testCase'>): string {
+	const parts = [
+		'The built workflow must satisfy the user prompt.',
+		example.dos ? `Must do:\n${example.dos}` : '',
+		example.donts ? `Must not do:\n${example.donts}` : '',
+	].filter((part) => part.length > 0);
+	return parts.join('\n\n');
 }
 
 // ---------------------------------------------------------------------------
 // Per-example runner
 // ---------------------------------------------------------------------------
+
+interface BuildInteractivity {
+	askUserCount: number;
+	planToolCount: number;
+	autoApprovedSuspensions: number;
+	mockedCredentialTypes: string[];
+}
+
+interface FeedbackEntry {
+	evaluator: string;
+	metric: string;
+	score: number;
+	kind?: string;
+	comment?: string;
+}
+
+interface ToolCallSuspension {
+	message?: string;
+	questions?: unknown;
+	severity?: string;
+	autoApproved: boolean;
+}
+
+interface ToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+	suspension?: ToolCallSuspension;
+}
 
 interface ExampleRecord {
 	exampleId: string;
@@ -238,102 +354,282 @@ interface ExampleRecord {
 	prompt: string;
 	dos?: string;
 	donts?: string;
-	workflow: SimpleWorkflow | null;
+	workflow: WorkflowResponse | null;
 	build: {
 		success: boolean;
 		errorClass?: string;
 		errorMessage?: string;
 		durationMs: number;
 		extraWorkflowCount: number;
-		interactivity: InProcessBuildResult['interactivity'];
+		interactivity: BuildInteractivity;
 	};
 	toolCalls: ToolCallTrace[];
-	feedback: Feedback[];
+	feedback: FeedbackEntry[];
+}
+
+interface RunContext {
+	client: N8nClient;
+	seededCredentialTypes: string[];
+	preRunWorkflowIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	args: PairwiseArgs;
+	logger: EvalLogger;
 }
 
 async function runExample(
 	example: DatasetExample,
 	iteration: number,
-	judgeLlm: BaseChatModel,
-	args: PairwiseArgs,
-	logger: EvalLogger,
-	sandboxConfig: SandboxConfig,
+	context: RunContext,
 ): Promise<ExampleRecord> {
-	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
-	const logPath = path.join(
-		args.outputDir,
-		'chunks',
-		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
-	);
-	// Wrap the prompt the same way the production orchestrator wraps the spec
-	// it hands to the builder sub-agent (see `build-workflow-agent.tool.ts`).
-	// Keeping this aligned with prod is what closes the eval/prod gap —
-	// `DETACHED_BUILDER_REQUIREMENTS` is what tells the builder it must
-	// `submit-workflow` then `verify-built-workflow` before stopping.
-	//
-	// `workItemId` round-trips: the briefing's `additionalContext` tells the
-	// agent its work-item ID, the agent passes it to `verify-built-workflow`,
-	// which reads back the build outcome from the in-memory
-	// `workflowTaskService` keyed on the same ID.
-	const workItemId = 'wi_' + nanoid(8);
-	const builderPrompt = await buildSubAgentBriefing({
-		task: example.prompt,
-		additionalContext: `[WORK ITEM ID: ${workItemId}]`,
-		requirements: DETACHED_BUILDER_REQUIREMENTS,
-	});
-	const build = await buildInProcess({
-		prompt: builderPrompt,
-		workItemId,
-		timeoutMs: args.timeoutMs,
-		logPath,
-		sandboxConfig,
-	});
+	const startedAt = Date.now();
+	context.logger.verbose(`[${example.id} #${String(iteration)}] building workflow...`);
 
+	let result: WorkflowTestCaseResult;
+	try {
+		result = await runWorkflowTestCase({
+			client: context.client,
+			testCase: example.testCase,
+			timeoutMs: context.args.timeoutMs,
+			seededCredentialTypes: context.seededCredentialTypes,
+			preRunWorkflowIds: context.preRunWorkflowIds,
+			claimedWorkflowIds: context.claimedWorkflowIds,
+			logger: context.logger,
+			keepWorkflows: context.args.keepWorkflows,
+		});
+	} catch (error) {
+		const durationMs = Date.now() - startedAt;
+		return {
+			exampleId: example.id,
+			iteration,
+			prompt: example.prompt,
+			dos: example.dos,
+			donts: example.donts,
+			workflow: null,
+			build: {
+				success: false,
+				errorClass: 'framework_error',
+				errorMessage: formatError(error),
+				durationMs,
+				extraWorkflowCount: 0,
+				interactivity: emptyInteractivity(context.seededCredentialTypes),
+			},
+			toolCalls: [],
+			feedback: buildFailureFeedback(formatError(error)),
+		};
+	}
+
+	const durationMs = Date.now() - startedAt;
 	const record: ExampleRecord = {
 		exampleId: example.id,
 		iteration,
 		prompt: example.prompt,
 		dos: example.dos,
 		donts: example.donts,
-		workflow: build.workflow ?? null,
+		workflow: result.workflowJson ?? null,
 		build: {
-			success: build.success,
-			errorClass: build.errorClass,
-			errorMessage: build.errorMessage,
-			durationMs: build.durationMs,
-			extraWorkflowCount: build.extraWorkflows.length,
-			interactivity: build.interactivity,
+			success: result.workflowBuildSuccess,
+			errorClass: result.workflowBuildSuccess ? undefined : 'build_failure',
+			errorMessage: result.buildError,
+			durationMs,
+			extraWorkflowCount: 0,
+			interactivity: interactivityFromResult(
+				result.conversationMetrics,
+				result.transcript,
+				context.seededCredentialTypes,
+			),
 		},
-		toolCalls: build.toolCalls,
-		feedback: [],
+		toolCalls: toolCallsFromTranscript(result.transcript),
+		feedback: feedbackFromScenarioResults(result),
 	};
 
-	if (!build.workflow) {
-		logger.warn(
-			`[${example.id} #${iteration}] build failed (${build.errorClass ?? 'unknown'}): ${build.errorMessage ?? 'no details'}`,
-		);
-		return record;
-	}
-
-	try {
-		const evaluator = createPairwiseEvaluator(judgeLlm, { numJudges: args.judges });
-		const feedback = await evaluator.evaluate(build.workflow, {
-			prompt: example.prompt,
-			dos: example.dos,
-			donts: example.donts,
-		});
-		record.feedback = feedback;
-		const primary = feedback.find((f) => f.metric === 'pairwise_primary');
-		logger.info(
-			`[${example.id} #${iteration}] pairwise_primary=${primary?.score ?? 'n/a'} duration=${build.durationMs}ms`,
-		);
-	} catch (error) {
-		logger.error(
-			`[${example.id} #${iteration}] judge panel failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
-	}
-
+	const primary = record.feedback.find((f) => f.metric === 'pairwise_primary');
+	context.logger.info(
+		`[${example.id} #${String(iteration)}] pairwise_primary=${String(primary?.score ?? 'n/a')} duration=${String(durationMs)}ms`,
+	);
 	return record;
+}
+
+function feedbackFromScenarioResults(result: WorkflowTestCaseResult): FeedbackEntry[] {
+	if (!result.workflowBuildSuccess) {
+		return buildFailureFeedback(result.buildError ?? 'Workflow build failed');
+	}
+
+	const scenarioResults = result.executionScenarioResults;
+	const total = scenarioResults.length;
+	const passed = scenarioResults.filter((scenario) => scenario.success).length;
+	const primary = total > 0 && passed === total ? 1 : 0;
+	const diagnostic =
+		total === 0
+			? primary
+			: scenarioResults.reduce((sum, scenario) => sum + scenario.score, 0) / total;
+	const comment = summarizeScenarioReasoning(scenarioResults);
+
+	return [
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_primary',
+			score: primary,
+			kind: 'score',
+			comment,
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_diagnostic',
+			score: diagnostic,
+			kind: 'score',
+			comment,
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_judges_passed',
+			score: passed,
+			kind: 'score',
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_total_passes',
+			score: passed,
+			kind: 'score',
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_total_violations',
+			score: Math.max(total - passed, 0),
+			kind: 'score',
+		},
+	];
+}
+
+function buildFailureFeedback(comment: string): FeedbackEntry[] {
+	return [
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_primary',
+			score: 0,
+			kind: 'score',
+			comment,
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_diagnostic',
+			score: 0,
+			kind: 'score',
+			comment,
+		},
+		{
+			evaluator: 'orchestrator-workflow-eval',
+			metric: 'pairwise_judges_passed',
+			score: 0,
+			kind: 'score',
+		},
+	];
+}
+
+function summarizeScenarioReasoning(results: ExecutionScenarioResult[]): string {
+	return results
+		.map((result) => {
+			const prefix = result.success ? 'PASS' : 'FAIL';
+			return `${prefix} ${result.scenario.name}: ${result.reasoning}`;
+		})
+		.join('\n\n')
+		.slice(0, 4000);
+}
+
+function emptyInteractivity(seededCredentialTypes: string[]): BuildInteractivity {
+	return {
+		askUserCount: 0,
+		planToolCount: 0,
+		autoApprovedSuspensions: 0,
+		mockedCredentialTypes: [...seededCredentialTypes],
+	};
+}
+
+function interactivityFromResult(
+	metrics: ConversationMetrics | undefined,
+	transcript: TranscriptTurn[] | undefined,
+	seededCredentialTypes: string[],
+): BuildInteractivity {
+	const interactions = transcript?.flatMap((turn) => turn.toolInteractions) ?? [];
+	const askUserCount =
+		metrics?.confirmationAskedByKind.questions ??
+		interactions.filter((interaction) => interaction.kind === 'ask-user').length;
+	const planToolCount = interactions.filter((interaction) => interaction.kind === 'plan').length;
+	const autoApprovedSuspensions = interactions.filter(
+		(interaction) => interaction.kind === 'confirmation' && interaction.approved === true,
+	).length;
+
+	return {
+		askUserCount,
+		planToolCount,
+		autoApprovedSuspensions,
+		mockedCredentialTypes: [...seededCredentialTypes],
+	};
+}
+
+function toolCallsFromTranscript(transcript: TranscriptTurn[] | undefined): ToolCallTrace[] {
+	const traces: ToolCallTrace[] = [];
+	let step = 1;
+	for (const turn of transcript ?? []) {
+		for (const interaction of turn.toolInteractions) {
+			const trace = traceFromInteraction(step, interaction);
+			if (!trace) continue;
+			traces.push(trace);
+			step++;
+		}
+	}
+	return traces;
+}
+
+function traceFromInteraction(step: number, interaction: ToolInteraction): ToolCallTrace | null {
+	if (interaction.kind === 'tool-call') {
+		return {
+			step,
+			toolCallId: `transcript-${String(step)}`,
+			toolName: interaction.toolName,
+		};
+	}
+	if (interaction.kind === 'plan') {
+		return {
+			step,
+			toolCallId: `transcript-${String(step)}`,
+			toolName: 'plan',
+			args: { tasks: interaction.tasks },
+		};
+	}
+	if (interaction.kind === 'ask-user') {
+		return {
+			step,
+			toolCallId: `transcript-${String(step)}`,
+			toolName: 'ask-user',
+			args: { questions: interaction.questions },
+			result: interaction.answers ? { answers: interaction.answers } : undefined,
+		};
+	}
+	if (interaction.kind === 'setup-wizard') {
+		return {
+			step,
+			toolCallId: `transcript-${String(step)}`,
+			toolName: 'workflows',
+			result: {
+				completedNodes: interaction.completedNodes,
+				skippedNodes: interaction.skippedNodes,
+				reason: interaction.reason,
+			},
+		};
+	}
+	if (interaction.kind === 'confirmation') {
+		return {
+			step,
+			toolCallId: `transcript-${String(step)}`,
+			toolName: interaction.toolName,
+			suspension: {
+				message: interaction.resumeReason,
+				autoApproved: interaction.approved === true,
+			},
+			result: { approved: interaction.approved },
+		};
+	}
+	return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,28 +652,13 @@ interface Summary {
 		buildFailures: Record<string, number>;
 		primaryPassRate: number;
 		avgDiagnostic: number;
-		/** Total `submit-workflow` tool invocations across all records. */
 		submitCallsTotal: number;
-		/** Mean `submit-workflow` invocations per build. 1.0 = every build called
-		 *  submit exactly once; >1.0 = builds had to fix and re-submit. */
 		avgSubmitCalls: number;
-		/** (errored tool calls) / (total tool calls) micro-averaged across all
-		 *  runs. Captures how rough the build path was even on builds that
-		 *  eventually succeeded — every TypeScript compile error or failed
-		 *  domain tool call shows up here. */
 		toolCallErrorRate: number;
-		/** Total tool calls observed (used as the error-rate denominator and
-		 *  surfaced for context). */
 		toolCallsTotal: number;
-		/** Total errored tool calls observed (numerator of `toolCallErrorRate`). */
 		toolCallErrors: number;
 	};
-	interactivity: {
-		askUserCount: number;
-		planToolCount: number;
-		autoApprovedSuspensions: number;
-		mockedCredentialTypes: string[];
-	};
+	interactivity: BuildInteractivity;
 	sandbox: { provider: string };
 }
 
@@ -388,31 +669,43 @@ async function writeOutputs(
 	startedAt: Date,
 	finishedAt: Date,
 	logger: EvalLogger,
-	sandboxProvider: string,
 	silent = false,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
 	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
 
-	// results.jsonl + per-workflow files. Workflow JSON is immutable per
-	// (exampleId, iteration), so skip any file already on disk to avoid
-	// O(N²) rewrites across incremental flushes.
+	const sorted = [...records].sort(compareRecords);
 	const jsonlPath = path.join(outputDir, 'results.jsonl');
-	const lines: string[] = [];
-	for (const record of records) {
-		lines.push(JSON.stringify(record));
-		if (record.workflow) {
-			const slug = safeFilename(`${record.exampleId}_${record.iteration}`);
-			const workflowPath = path.join(outputDir, 'workflows', `${slug}.json`);
-			if (!(await fileExists(workflowPath))) {
-				await fs.writeFile(workflowPath, JSON.stringify(record.workflow, null, 2), 'utf8');
-			}
+	await fs.writeFile(
+		jsonlPath,
+		sorted.map((record) => JSON.stringify(record)).join('\n') + '\n',
+		'utf8',
+	);
+
+	for (const record of sorted) {
+		if (!record.workflow) continue;
+		const slug = safeFilename(`${record.exampleId}_${String(record.iteration)}`);
+		const workflowPath = path.join(outputDir, 'workflows', `${slug}.json`);
+		if (!(await fileExists(workflowPath))) {
+			await fs.writeFile(workflowPath, JSON.stringify(record.workflow, null, 2), 'utf8');
 		}
 	}
-	await fs.writeFile(jsonlPath, lines.join('\n') + '\n', 'utf8');
 
-	// results.csv — flat metric columns for spreadsheet import
-	const csvPath = path.join(outputDir, 'results.csv');
+	await writeCsv(path.join(outputDir, 'results.csv'), sorted);
+
+	const summary = summarizeRecords(sorted, args, startedAt, finishedAt);
+	await fs.writeFile(
+		path.join(outputDir, 'summary.json'),
+		JSON.stringify(summary, null, 2),
+		'utf8',
+	);
+	if (!silent) {
+		logger.success(`Wrote ${String(records.length)} result(s) to ${outputDir}`);
+	}
+	return summary;
+}
+
+async function writeCsv(csvPath: string, records: ExampleRecord[]): Promise<void> {
 	const csvHeader = [
 		'exampleId',
 		'iteration',
@@ -428,20 +721,21 @@ async function writeOutputs(
 		'pairwiseDiagnostic',
 		'pairwiseJudgesPassed',
 	].join(',');
-	const csvRows = records.map((r) => {
-		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
-		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
-		const errors = r.toolCalls.filter(isErroredToolCall).length;
+	const csvRows = records.map((record) => {
+		const find = (metric: string) =>
+			record.feedback.find((feedback) => feedback.metric === metric)?.score ?? '';
+		const saveCalls = record.toolCalls.filter(isWorkflowSaveTool).length;
+		const errors = record.toolCalls.filter(isErroredToolCall).length;
 		return [
-			r.exampleId,
-			r.iteration,
-			r.build.success ? 1 : 0,
-			r.build.errorClass ?? '',
-			r.build.durationMs,
-			r.build.interactivity.askUserCount,
-			r.build.interactivity.planToolCount,
-			submits,
-			r.toolCalls.length,
+			record.exampleId,
+			record.iteration,
+			record.build.success ? 1 : 0,
+			record.build.errorClass ?? '',
+			record.build.durationMs,
+			record.build.interactivity.askUserCount,
+			record.build.interactivity.planToolCount,
+			saveCalls,
+			record.toolCalls.length,
 			errors,
 			find('pairwise_primary'),
 			find('pairwise_diagnostic'),
@@ -451,8 +745,14 @@ async function writeOutputs(
 			.join(',');
 	});
 	await fs.writeFile(csvPath, [csvHeader, ...csvRows].join('\n') + '\n', 'utf8');
+}
 
-	// summary.json
+function summarizeRecords(
+	records: ExampleRecord[],
+	args: PairwiseArgs,
+	startedAt: Date,
+	finishedAt: Date,
+): Summary {
 	const buildFailures: Record<string, number> = {};
 	let buildSuccess = 0;
 	let primaryPassSum = 0;
@@ -479,41 +779,33 @@ async function writeOutputs(
 			allMockedCreds.add(type);
 		}
 
-		// `toolCalls` is the ordered timeline captured by the trace collector.
-		// We count any tool call that errored OR returned a failed result —
-		// hard native agent tool failures are rare, but `submit-workflow` rejections
-		// and `execute_command` returning a non-zero `tsc` exit are common and
-		// dominate the "rough path" signal we care about. Suspensions are
-		// benign (auto-approved or surfaced via `errorClass` separately).
-		for (const tc of record.toolCalls) {
+		for (const toolCall of record.toolCalls) {
 			toolCallsTotal++;
-			if (isErroredToolCall(tc)) toolCallErrors++;
-			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
+			if (isErroredToolCall(toolCall)) toolCallErrors++;
+			if (isWorkflowSaveTool(toolCall)) submitCallsTotal++;
 		}
 
-		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
+		const primary = record.feedback.find(
+			(feedback) => feedback.metric === 'pairwise_primary',
+		)?.score;
 		if (typeof primary === 'number') {
 			primaryPassSum += primary;
 			primaryPassCount++;
 		} else if (!record.build.success) {
-			// A build failure means the agent had its chance and produced no
-			// workflow — that's a failed attempt at the pairwise criteria, not
-			// a measurement gap. Count it as 0 so the pass rate isn't inflated
-			// by silently dropping failures from the denominator. Judge errors
-			// (build succeeded but the panel threw) are still excluded — those
-			// are tooling problems, not builder problems.
 			primaryPassCount++;
 		}
-		const diag = record.feedback.find((f) => f.metric === 'pairwise_diagnostic')?.score;
-		if (typeof diag === 'number') {
-			diagnosticSum += diag;
+		const diagnostic = record.feedback.find(
+			(feedback) => feedback.metric === 'pairwise_diagnostic',
+		)?.score;
+		if (typeof diagnostic === 'number') {
+			diagnosticSum += diagnostic;
 			diagnosticCount++;
 		}
 	}
 
-	const summary: Summary = {
+	return {
 		builder: 'instance-ai',
-		dataset: args.dataset,
+		dataset: args.useLocalWorkflows ? `local-workflows:${args.filter ?? 'all'}` : args.dataset,
 		judgeModel: args.judgeModel,
 		numJudges: args.judges,
 		iterations: args.iterations,
@@ -521,7 +813,7 @@ async function writeOutputs(
 		startedAt: startedAt.toISOString(),
 		finishedAt: finishedAt.toISOString(),
 		totals: {
-			examples: new Set(records.map((r) => r.exampleId)).size,
+			examples: new Set(records.map((record) => record.exampleId)).size,
 			runs: records.length,
 			buildSuccess,
 			buildFailures,
@@ -539,24 +831,10 @@ async function writeOutputs(
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},
-		sandbox: { provider: sandboxProvider },
+		sandbox: { provider: 'orchestrator' },
 	};
-	await fs.writeFile(
-		path.join(outputDir, 'summary.json'),
-		JSON.stringify(summary, null, 2),
-		'utf8',
-	);
-	if (!silent) {
-		logger.success(`Wrote ${records.length} results to ${outputDir}`);
-	}
-	return summary;
 }
 
-/**
- * Regenerate the cross-run HTML report from `<reportRoot>/*` so the page
- * stays current as examples complete. Best-effort: a render failure is
- * logged but does not abort the run.
- */
 async function regenerateReport(
 	reportRoot: string,
 	reportFile: string,
@@ -567,11 +845,9 @@ async function regenerateReport(
 		if (runs.length === 0) return;
 		const html = renderDocument(runs);
 		await fs.writeFile(reportFile, html, 'utf8');
-		logger.verbose(`Regenerated report (${runs.length} run(s)) at ${reportFile}`);
+		logger.verbose(`Regenerated report (${String(runs.length)} run(s)) at ${reportFile}`);
 	} catch (error) {
-		logger.warn(
-			`Report regeneration failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
+		logger.warn(`Report regeneration failed: ${formatError(error)}`);
 	}
 }
 
@@ -583,116 +859,99 @@ async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 	logger.info(
-		`pairwise eval: dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
+		`pairwise eval: dataset=${args.dataset} iterations=${String(args.iterations)} target=${args.baseUrl}`,
 	);
-
-	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
-	if (!apiKey) {
-		throw new Error(
-			'Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — both the builder agent and the judge LLM need it.',
-		);
-	}
-
-	const sandboxConfig = resolveSandboxConfig(process.env);
-	if (!sandboxConfig.enabled) {
-		throw new Error('resolveSandboxConfig returned a disabled config — this should never happen.');
-	}
-	logger.info(
-		`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
-	);
-
-	const judgeLlm = new ChatAnthropic({
-		model: args.judgeModel,
-		apiKey,
-		temperature: 0,
-		maxTokens: 8192,
-	});
 
 	const examples = await loadExamples(args, logger);
-	let filtered = examples;
-	if (args.exampleIds) {
-		const ids = args.exampleIds;
-		filtered = examples.filter((e) => ids.has(e.id));
-		const missing = Array.from(ids).filter((id) => !examples.some((e) => e.id === id));
-		logger.info(
-			`Filtered to ${filtered.length} examples by --example-ids-file (${ids.size} requested${missing.length ? `, ${missing.length} not found` : ''})`,
-		);
-		if (missing.length) {
-			logger.warn(
-				`Missing IDs: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', ...' : ''}`,
-			);
-		}
-	}
+	const filtered = filterExamples(examples, args, logger);
 	const selected = args.maxExamples !== undefined ? filtered.slice(0, args.maxExamples) : filtered;
-	logger.info(`Running ${selected.length} examples x ${args.iterations} iterations`);
+	if (selected.length === 0) {
+		throw new Error('No examples selected.');
+	}
+	logger.info(
+		`Running ${String(selected.length)} example(s) x ${String(args.iterations)} iteration(s)`,
+	);
 
-	const limit = pLimit(args.concurrency);
+	const client = new N8nClient(args.baseUrl);
+	logger.info(`Authenticating with ${args.baseUrl}...`);
+	await client.login(args.email, args.password);
+	logger.success('Authenticated');
+
+	logger.info('Seeding credentials...');
+	const seedResult = await seedCredentials(client, undefined, logger);
+	logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)`);
+
+	const preRunWorkflowIds = await snapshotWorkflowIds(client);
+	const claimedWorkflowIds = new Set<string>();
 	const records: ExampleRecord[] = [];
 	const startedAt = new Date();
 	const reportRoot = path.dirname(args.outputDir);
 	const reportFile = path.join(reportRoot, 'report.html');
-
-	// Serialize incremental writes so concurrent example completions don't
-	// race on the same output files.
+	const context: RunContext = {
+		client,
+		seededCredentialTypes: seedResult.seededTypes,
+		preRunWorkflowIds,
+		claimedWorkflowIds,
+		args,
+		logger,
+	};
+	const limit = pLimit(Math.min(args.concurrency, MAX_CONCURRENT_BUILDS));
 	let writeQueue: Promise<unknown> = Promise.resolve();
-	const flushIncremental = async (): Promise<unknown> => {
+
+	const flushIncremental = async (): Promise<void> => {
 		writeQueue = writeQueue.then(async () => {
-			const snapshot = [...records].sort((a, b) =>
-				a.exampleId === b.exampleId
-					? a.iteration - b.iteration
-					: a.exampleId.localeCompare(b.exampleId),
-			);
-			await writeOutputs(
-				args.outputDir,
-				snapshot,
-				args,
-				startedAt,
-				new Date(),
-				logger,
-				sandboxConfig.provider,
-				true,
-			);
+			await writeOutputs(args.outputDir, records, args, startedAt, new Date(), logger, true);
 			await regenerateReport(reportRoot, reportFile, logger);
 		});
-		return await writeQueue;
+		await writeQueue;
 	};
 
-	const work: Array<Promise<void>> = [];
-	for (const example of selected) {
-		for (let i = 1; i <= args.iterations; i++) {
-			work.push(
-				limit(async () => {
-					const record = await runExample(example, i, judgeLlm, args, logger, sandboxConfig);
-					records.push(record);
-					await flushIncremental();
-				}),
-			);
+	try {
+		const work: Array<Promise<void>> = [];
+		for (const example of selected) {
+			for (let iteration = 1; iteration <= args.iterations; iteration++) {
+				work.push(
+					limit(async () => {
+						const record = await runExample(example, iteration, context);
+						records.push(record);
+						await flushIncremental();
+					}),
+				);
+			}
 		}
-	}
-	await Promise.all(work);
-	await writeQueue;
+		await Promise.all(work);
+		await writeQueue;
 
-	const finishedAt = new Date();
-	records.sort((a, b) =>
-		a.exampleId === b.exampleId
-			? a.iteration - b.iteration
-			: a.exampleId.localeCompare(b.exampleId),
-	);
-	await writeOutputs(
-		args.outputDir,
-		records,
-		args,
-		startedAt,
-		finishedAt,
-		logger,
-		sandboxConfig.provider,
-	);
-	await regenerateReport(reportRoot, reportFile, logger);
-	logger.info(`Report: ${reportFile}`);
+		const finishedAt = new Date();
+		await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger);
+		await regenerateReport(reportRoot, reportFile, logger);
+		logger.info(`Report: ${reportFile}`);
+		logger.info(
+			`Pairwise-compatible outputs are in ${args.outputDir}; builds used the main Instance AI orchestrator.`,
+		);
+	} finally {
+		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
+	}
+}
+
+function filterExamples(
+	examples: DatasetExample[],
+	args: PairwiseArgs,
+	logger: EvalLogger,
+): DatasetExample[] {
+	if (!args.exampleIds) return examples;
+	const ids = args.exampleIds;
+	const filtered = examples.filter((example) => ids.has(example.id));
+	const missing = Array.from(ids).filter((id) => !examples.some((example) => example.id === id));
 	logger.info(
-		`Note: LangSmith feedback upload is not yet wired up — scores are in ${args.outputDir}. ` +
-			'Run scripts/upload-pairwise-to-langsmith.ts against summary.json to push results.',
+		`Filtered to ${String(filtered.length)} example(s) by --example-ids-file (${String(ids.size)} requested${missing.length ? `, ${String(missing.length)} not found` : ''})`,
 	);
+	if (missing.length > 0) {
+		logger.warn(
+			`Missing IDs: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', ...' : ''}`,
+		);
+	}
+	return filtered;
 }
 
 // ---------------------------------------------------------------------------
@@ -707,32 +966,32 @@ function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
 }
 
-/**
- * Whether a tool call should count toward the "tool error rate" metric.
- *
- * Catches three flavours:
- * 1. **Hard native agent failure** (`trace.error` set) — tool threw / rejected.
- * 2. **Tool returned a failed result object** — e.g. `submit-workflow`
- *    returning `{ success: false, errors: [...] }`. Looks at top-level
- *    `success === false` or non-empty `errors` array, plus a string
- *    `error` field.
- * 3. **`execute_command` returned a non-zero exit code** — e.g. `tsc`
- *    spitting out compile errors. Looks for an `Exit code: <non-zero>`
- *    marker in the result text.
- */
+function compareRecords(a: ExampleRecord, b: ExampleRecord): number {
+	if (a.exampleId === b.exampleId) return a.iteration - b.iteration;
+	return a.exampleId.localeCompare(b.exampleId);
+}
+
+function isWorkflowSaveTool(trace: Pick<ToolCallTrace, 'toolName' | 'args'>): boolean {
+	const args = isRecord(trace.args) ? trace.args : {};
+	return (
+		trace.toolName === 'build-workflow' ||
+		(trace.toolName === 'workflows' && (args.action === 'create' || args.action === 'update'))
+	);
+}
+
 function isErroredToolCall(trace: ToolCallTrace): boolean {
 	if (trace.error !== undefined) return true;
-	const r = trace.result;
-	if (r === null || r === undefined) return false;
+	const result = trace.result;
+	if (result === null || result === undefined) return false;
 
-	if (typeof r === 'object' && !Array.isArray(r)) {
-		const obj = r as Record<string, unknown>;
-		if (obj.success === false) return true;
-		if (typeof obj.error === 'string' && obj.error.length > 0) return true;
-		if (Array.isArray(obj.errors) && obj.errors.length > 0) return true;
+	if (typeof result === 'object' && !Array.isArray(result)) {
+		const obj = result;
+		if ('success' in obj && obj.success === false) return true;
+		if ('error' in obj && typeof obj.error === 'string' && obj.error.length > 0) return true;
+		if ('errors' in obj && Array.isArray(obj.errors) && obj.errors.length > 0) return true;
 	}
 
-	if (typeof r === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(r)) {
+	if (typeof result === 'string' && /\bExit code:\s*[1-9]\d*\b/.test(result)) {
 		return true;
 	}
 
@@ -750,16 +1009,32 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 function csvCell(value: unknown): string {
 	if (value === null || value === undefined) return '';
-	const str = String(value);
+	const str = stringifyForOutput(value);
 	if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
 		return '"' + str.replace(/"/g, '""') + '"';
 	}
 	return str;
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
+function formatError(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	return stringifyForOutput(error);
+}
+
+function stringifyForOutput(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+		return value.toString();
+	}
+	if (typeof value === 'symbol') return value.description ?? '[symbol]';
+	if (typeof value === 'function') return '[function]';
+	try {
+		return JSON.stringify(value) ?? '[object]';
+	} catch {
+		return '[unserializable object]';
+	}
+}
 
 if (require.main === module) {
 	main().catch((error) => {

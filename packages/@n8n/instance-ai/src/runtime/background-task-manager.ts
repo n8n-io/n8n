@@ -46,7 +46,7 @@ export interface BackgroundTaskDedupeKey {
 	plannedTaskId?: string;
 	/** Target workflow ID for this background task. Fallback dedupe key when there is no planned task. */
 	workflowId?: string;
-	/** Agent role (e.g. 'workflow-builder'). Scopes the workflowId fallback so different roles against the same workflow don't collide. */
+	/** Agent role (e.g. 'research'). Scopes the workflowId fallback so different roles against the same workflow don't collide. */
 	role: string;
 }
 
@@ -69,8 +69,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	dedupeKey?: BackgroundTaskDedupeKey;
 	/**
 	 * Link this background task to a running checkpoint in the planned-task
-	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
-	 * delegate) from inside a
+	 * graph. Set when the orchestrator spawns a detached delegate task from inside a
 	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
 	 * net defers failing the checkpoint while any child with this id is still
 	 * running, and the settlement path re-emits the checkpoint follow-up when

@@ -1,3 +1,5 @@
+import type { RuntimeSkillSource } from '@n8n/agents';
+
 const mockAgentInstances: Array<{
 	model: jest.Mock;
 	instructions: jest.Mock;
@@ -17,22 +19,26 @@ const mockMemoryBuilder = {
 	build: jest.fn(),
 };
 
+function mockAgentImplementation(this: (typeof mockAgentInstances)[number]) {
+	this.model = jest.fn().mockReturnThis();
+	this.instructions = jest.fn().mockReturnThis();
+	this.tool = jest.fn().mockReturnThis();
+	this.deferredTool = jest.fn().mockReturnThis();
+	this.skills = jest.fn().mockReturnThis();
+	this.checkpoint = jest.fn().mockReturnThis();
+	this.memory = jest.fn().mockReturnThis();
+	this.telemetry = jest.fn().mockReturnThis();
+	this.workspace = jest.fn().mockReturnThis();
+	mockAgentInstances.push(this);
+}
+
+function mockMemoryImplementation() {
+	return mockMemoryBuilder;
+}
+
 jest.mock('@n8n/agents', () => ({
-	Agent: jest.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
-		this.model = jest.fn().mockReturnThis();
-		this.instructions = jest.fn().mockReturnThis();
-		this.tool = jest.fn().mockReturnThis();
-		this.deferredTool = jest.fn().mockReturnThis();
-		this.skills = jest.fn().mockReturnThis();
-		this.checkpoint = jest.fn().mockReturnThis();
-		this.memory = jest.fn().mockReturnThis();
-		this.telemetry = jest.fn().mockReturnThis();
-		this.workspace = jest.fn().mockReturnThis();
-		mockAgentInstances.push(this);
-	}),
-	Memory: jest.fn().mockImplementation(function Memory() {
-		return mockMemoryBuilder;
-	}),
+	Agent: jest.fn().mockImplementation(mockAgentImplementation),
+	Memory: jest.fn().mockImplementation(mockMemoryImplementation),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -42,36 +48,35 @@ const mockBuiltTool = (name: string, marker?: string) => ({
 	marker,
 });
 
+const mockCreateAllToolMap = (context: { runLabel?: string }) =>
+	new Map([
+		['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+		['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
+		['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+		['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
+	]);
+
+const mockCreateOrchestratorToolMap = (context: { runLabel?: string }) =>
+	new Map([
+		['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+		['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
+		['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+		['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
+		['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
+	]);
+
+const mockCreateOrchestrationToolMap = (context: { runId: string }) =>
+	new Map([
+		['plan', mockBuiltTool(`plan-${context.runId}`)],
+		['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
+		['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
+		['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
+	]);
+
 jest.mock('../../tools', () => ({
-	createAllTools: jest.fn(
-		(context: { runLabel?: string }) =>
-			new Map([
-				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
-				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
-				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
-				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
-			]),
-	),
-	createOrchestratorDomainTools: jest.fn(
-		(context: { runLabel?: string }) =>
-			new Map([
-				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
-				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
-				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
-				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
-				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
-			]),
-	),
-	createOrchestrationTools: jest.fn(
-		(context: { runId: string }) =>
-			new Map([
-				['plan', mockBuiltTool(`plan-${context.runId}`)],
-				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['build-workflow-with-agent', mockBuiltTool(`build-${context.runId}`)],
-				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
-				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
-			]),
-	),
+	createAllTools: jest.fn(mockCreateAllToolMap),
+	createOrchestratorDomainTools: jest.fn(mockCreateOrchestratorToolMap),
+	createOrchestrationTools: jest.fn(mockCreateOrchestrationToolMap),
 }));
 
 jest.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
@@ -101,9 +106,13 @@ const { createToolsFromLocalMcpServer } =
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
 		createToolsFromLocalMcpServer: jest.Mock;
 	};
-const { createOrchestratorDomainTools } =
+const { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('../../tools') as { createOrchestratorDomainTools: jest.Mock };
+	require('../../tools') as {
+		createAllTools: jest.Mock;
+		createOrchestratorDomainTools: jest.Mock;
+		createOrchestrationTools: jest.Mock;
+	};
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -140,8 +149,8 @@ function getToolKey(tool: Record<string, unknown>) {
 
 describe('createInstanceAgent', () => {
 	beforeEach(() => {
-		Agent.mockClear();
-		Memory.mockClear();
+		Agent.mockReset().mockImplementation(mockAgentImplementation);
+		Memory.mockReset().mockImplementation(mockMemoryImplementation);
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.lastMessages.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
@@ -150,6 +159,9 @@ describe('createInstanceAgent', () => {
 			lastMessages: 20,
 		});
 		mockAgentInstances.length = 0;
+		createAllTools.mockReset().mockImplementation(mockCreateAllToolMap);
+		createOrchestratorDomainTools.mockReset().mockImplementation(mockCreateOrchestratorToolMap);
+		createOrchestrationTools.mockReset().mockImplementation(mockCreateOrchestrationToolMap);
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 	});
@@ -183,7 +195,6 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-run-1']).toMatchObject({ name: 'build-run-1' });
 		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
@@ -226,6 +237,40 @@ describe('createInstanceAgent', () => {
 		});
 		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
 		expect(deferredTools['executions-checkpoint-run']).toBeUndefined();
+	});
+
+	it('eager-loads node browsing for planned workflow build follow-up runs', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'planned-build-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				plannedBuildTask: {
+					threadId: 'thread-1',
+					taskId: 'build-1',
+					workItemId: 'wi-1',
+					title: 'Build workflow',
+					spec: 'Build it',
+					plannedTaskService: {},
+				},
+			},
+			orchestrationContext: {
+				runId: 'planned-build-run',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['nodes-planned-build-run']).toMatchObject({
+			name: 'nodes-planned-build-run',
+		});
+		expect(deferredTools['nodes-planned-build-run']).toBeUndefined();
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
@@ -300,7 +345,81 @@ describe('createInstanceAgent', () => {
 					},
 				],
 			},
-			loadSkill: jest.fn(),
+			loadSkill: jest.fn(
+				async (skillId: string) =>
+					await Promise.resolve({
+						id: skillId,
+						name: skillId,
+						description: 'Loaded skill.',
+						instructions: 'Loaded skill.',
+					}),
+			),
+		};
+		const context = {
+			runLabel: 'skills-test',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+			loadedSkills: undefined as Set<string> | undefined,
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context,
+			orchestrationContext: {
+				runId: 'skills-test',
+				browserMcpConfig: undefined,
+				runtimeSkills,
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const skillsCalls = (mockAgentInstances[0]?.skills.mock.calls ?? []) as unknown as Array<
+			[RuntimeSkillSource]
+		>;
+		const trackedRuntimeSkills = skillsCalls[0]?.[0];
+		if (!trackedRuntimeSkills) throw new Error('Expected runtime skills to be attached');
+
+		expect(trackedRuntimeSkills).not.toBe(runtimeSkills);
+		expect(trackedRuntimeSkills.registry).toBe(runtimeSkills.registry);
+		await trackedRuntimeSkills.loadSkill('data-table-manager');
+
+		expect(context.loadedSkills).toEqual(new Set(['data-table-manager']));
+	});
+
+	it('tracks when the orchestrator loads the workflow-builder skill', async () => {
+		const loadedSkills = new Set<string>();
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [
+					{
+						id: 'workflow-builder',
+						name: 'workflow-builder',
+						description: 'Build workflows.',
+						hash: 'skill-hash',
+						linkedFiles: {
+							references: [],
+							templates: [],
+							scripts: [],
+							assets: [],
+							examples: [],
+							other: [],
+						},
+					},
+				],
+			},
+			loadSkill: jest.fn(
+				async (skillId: string) =>
+					await Promise.resolve({
+						id: skillId,
+						name: 'workflow-builder',
+						description: 'Build workflows.',
+						instructions: 'Build workflows.',
+					}),
+			),
 		};
 
 		await createInstanceAgent({
@@ -310,6 +429,7 @@ describe('createInstanceAgent', () => {
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
+				loadedSkills,
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
@@ -319,7 +439,14 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
+		const skillsCalls = (mockAgentInstances[0]?.skills.mock.calls ?? []) as unknown as Array<
+			[RuntimeSkillSource]
+		>;
+		const trackedRuntimeSkills = skillsCalls[0]?.[0];
+		if (!trackedRuntimeSkills) throw new Error('Expected runtime skills to be attached');
+		await trackedRuntimeSkills.loadSkill('workflow-builder');
+
+		expect(loadedSkills.has('workflow-builder')).toBe(true);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

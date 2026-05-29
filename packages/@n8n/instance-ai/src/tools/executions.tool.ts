@@ -57,6 +57,12 @@ const runAction = z.object({
 		.max(MAX_TIMEOUT_MS)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
+	requireApproval: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true when the user explicitly asked to run/execute the workflow, even inside a checkpoint follow-up. Set false only for internal verification runs scoped by the checkpoint.',
+		),
 });
 
 const debugAction = z.object({
@@ -182,8 +188,9 @@ async function handleRun(
 	const allowList = context.allowedRunWorkflowIds;
 	const allowedByScope =
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowList === undefined || allowList.has(input.workflowId));
-	const needsApproval = !allowedByScope;
+		(allowList === undefined ||
+			(allowList.has(input.workflowId) && input.requireApproval === false));
+	const needsApproval = input.requireApproval === true || !allowedByScope;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {

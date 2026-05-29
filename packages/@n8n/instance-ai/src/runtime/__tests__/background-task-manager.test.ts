@@ -50,7 +50,7 @@ describe('BackgroundTaskManager', () => {
 						await new Promise(() => {});
 						return 'never';
 					},
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-1' },
 					onFailed,
 					onSettled,
 				}),
@@ -80,7 +80,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'task-2',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-1' },
 				}),
 			);
 
@@ -293,7 +293,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-1' },
 				}),
 			);
 			expect(first.status).toBe('started');
@@ -303,7 +303,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-1' },
 				}),
 			);
 
@@ -320,7 +320,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-trace' },
 				}),
 			);
 			const createTraceContext = jest.fn();
@@ -329,7 +329,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					createTraceContext,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-trace' },
 				}),
 			);
 
@@ -343,7 +343,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await promise,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-2' },
 				}),
 			);
 
@@ -354,7 +354,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-2' },
 				}),
 			);
 			expect(second.status).toBe('started');
@@ -365,7 +365,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+					dedupeKey: { role: 'research', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -374,7 +374,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run,
-					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+					dedupeKey: { role: 'research', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -392,7 +392,7 @@ describe('BackgroundTaskManager', () => {
 					taskId: 'task-A',
 					run: async () => await new Promise(() => {}),
 					dedupeKey: {
-						role: 'workflow-builder',
+						role: 'research',
 						plannedTaskId: 'planned-A',
 						workflowId: 'wf-shared',
 					},
@@ -406,7 +406,7 @@ describe('BackgroundTaskManager', () => {
 					taskId: 'task-B',
 					run,
 					dedupeKey: {
-						role: 'workflow-builder',
+						role: 'research',
 						plannedTaskId: 'planned-B',
 						workflowId: 'wf-shared',
 					},
@@ -422,9 +422,9 @@ describe('BackgroundTaskManager', () => {
 			manager.spawn(
 				makeSpawnOptions({
 					taskId: 'builder',
-					role: 'workflow-builder',
+					role: 'research',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+					dedupeKey: { role: 'research', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -452,7 +452,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 't4',
 					onLimitReached,
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-fresh' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-fresh' },
 				}),
 			);
 			expect(result.status).toBe('limit-reached');
@@ -464,7 +464,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'first',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-3' },
 				}),
 			);
 			manager.cancelTask('thread-1', 'first');
@@ -473,7 +473,7 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 'second',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+					dedupeKey: { role: 'research', plannedTaskId: 'planned-3' },
 				}),
 			);
 			expect(second.status).toBe('started');

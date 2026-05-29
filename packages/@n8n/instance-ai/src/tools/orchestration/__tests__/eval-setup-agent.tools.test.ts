@@ -55,7 +55,7 @@ describe('buildEvalSetupTools', () => {
 
 		const result = (await workflows?.handler!(
 			{
-				action: 'update',
+				action: 'update-json',
 				workflowId: 'w1',
 				workflow,
 			},
@@ -80,6 +80,13 @@ describe('buildEvalSetupTools', () => {
 		expect(
 			schema.safeParse({
 				action: 'update',
+				workflowId: 'w1',
+				workflow: { name: 'Eval setup', nodes: [], connections: {} },
+			}).success,
+		).toBe(false);
+		expect(
+			schema.safeParse({
+				action: 'update-json',
 				workflowId: 'w1',
 				workflow: { name: 'Eval setup', nodes: [], connections: {} },
 			}).success,

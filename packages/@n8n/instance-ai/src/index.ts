@@ -7,8 +7,7 @@ import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
-import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
-import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
+import type * as BuilderMemoryCompactionMod from './tools/orchestration/builder-memory-compaction';
 import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
@@ -65,16 +64,12 @@ const loadInstanceAgent = lazyModule(
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
 );
-const loadBuildWorkflowAgentPrompt = lazyModule(
-	() =>
-		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
-);
-const loadBuildWorkflowAgentTool = lazyModule(
-	() =>
-		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
-);
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
+);
+const loadBuilderMemoryCompaction = lazyModule(
+	() =>
+		require('./tools/orchestration/builder-memory-compaction') as typeof BuilderMemoryCompactionMod,
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -194,13 +189,11 @@ export {
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
 
-export declare const BUILDER_AGENT_PROMPT: typeof BuildWorkflowAgentPromptMod.BUILDER_AGENT_PROMPT;
-
-export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
-	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
-
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
+export const compactBuilderMemoryThread: typeof BuilderMemoryCompactionMod.compactBuilderMemoryThread =
+	lazyFunction(() => loadBuilderMemoryCompaction().compactBuilderMemoryThread);
+export type { BuilderMemoryCompactionResult } from './tools/orchestration/builder-memory-compaction';
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
@@ -243,7 +236,6 @@ export type Tool = EvalAgentsMod.Tool;
 export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 export declare const SONNET_MODEL: typeof EvalAgentsMod.SONNET_MODEL;
 export declare const HAIKU_MODEL: typeof EvalAgentsMod.HAIKU_MODEL;
-defineLazyExport('BUILDER_AGENT_PROMPT', () => loadBuildWorkflowAgentPrompt().BUILDER_AGENT_PROMPT);
 defineLazyExport('SONNET_MODEL', () => loadEvalAgents().SONNET_MODEL);
 defineLazyExport('HAIKU_MODEL', () => loadEvalAgents().HAIKU_MODEL);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
@@ -309,6 +301,7 @@ export type {
 	PendingConfirmation,
 	RunStateTimeoutDetails,
 	StartedRunState,
+	SuspendedPlannedBuildFollowUp,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
 export { InstanceAiTerminalResponseGuard } from './runtime/terminal-response-guard';
@@ -367,7 +360,7 @@ export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
 export {
 	applyPlannedTaskPermissions,
-	PLANNED_TASK_PERMISSION_OVERRIDES,
+	getPlannedTaskPermissionOverrides,
 } from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
@@ -433,7 +426,6 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 } from './types';
-export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export {
 	classifyAttachments,

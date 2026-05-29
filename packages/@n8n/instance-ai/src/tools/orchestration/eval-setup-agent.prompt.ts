@@ -23,7 +23,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
    c. **If the task does NOT contain a \`PRODUCTION ADAPTER\` section**, wire \`EvaluationTrigger\` directly to the agent's \`main\` input — no Set node, no rewrites. The agent's existing parameters reference \`$json.<column>\` already (the orchestrator validated this).
    d. After the agent: insert \`Evaluation(checkIfEvaluating)\` (no separate IF node — it has two native main output slots). Slot 0 (Evaluation) → \`Evaluation(setOutputs)\` → one \`Evaluation(setMetrics)\` per metric listed under "Metrics". Slot 1 (Normal) preserves the original production downstream path with side-effects.
    e. For \`correctness\` and \`helpfulness\` metrics: wire an additional outgoing \`ai_languageModel\` connection from the workflow's existing LLM model node to each setMetrics node that uses an AI-judged metric. The LLM gets reused — same node, additional connection. Without this, AI-judged metrics fail silently.
-4. **Save** the modified workflow via \`workflows(action="update", ...)\`.
+4. **Save** the modified workflow via \`workflows(action="update-json", ...)\`.
 5. **Validate**: re-read the workflow via \`workflows(action="get-json", workflowId)\` and assert:
    - EvaluationTrigger → target AI agent (direct \`main\` connection, no intermediate node).
    - Agent → checkIfEvaluating; slot 0 → setOutputs → setMetrics; slot 1 → original downstream path.

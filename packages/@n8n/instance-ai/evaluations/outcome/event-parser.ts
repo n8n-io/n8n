@@ -17,13 +17,6 @@ import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set([
-	'build-workflow',
-	'submit-workflow',
-	'patch-workflow',
-	'build-workflow-with-agent',
-]);
-
 const EXECUTION_TOOL = 'run-workflow';
 const DATA_TABLE_TOOL = 'create-data-table';
 
@@ -97,7 +90,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				toolCalls.push(toolCall);
 
 				// Extract resource IDs from tool results
-				extractResourceIds(toolName, result, workflowIds, executionIds, dataTableIds);
+				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				break;
 			}
 
@@ -435,12 +428,13 @@ function countEvents(events: CapturedEvent[], type: string): number {
 
 function extractResourceIds(
 	toolName: string,
+	args: Record<string, unknown>,
 	result: unknown,
 	workflowIds: string[],
 	executionIds: string[],
 	dataTableIds: string[],
 ): void {
-	if (WORKFLOW_TOOLS.has(toolName)) {
+	if (isWorkflowMutation(toolName, args)) {
 		const id = extractIdFromResult(result, 'workflowId', 'id');
 		if (id) workflowIds.push(id);
 	}
@@ -454,6 +448,13 @@ function extractResourceIds(
 		const id = extractIdFromResult(result, 'dataTableId', 'id');
 		if (id) dataTableIds.push(id);
 	}
+}
+
+function isWorkflowMutation(toolName: string, args: Record<string, unknown>): boolean {
+	return (
+		toolName === 'build-workflow' ||
+		(toolName === 'workflows' && (args.action === 'create' || args.action === 'update'))
+	);
 }
 
 function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {

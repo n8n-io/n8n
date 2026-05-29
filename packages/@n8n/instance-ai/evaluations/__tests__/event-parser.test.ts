@@ -52,8 +52,8 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-call',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
-						args: { name: 'Test' },
+						toolName: 'workflows',
+						args: { action: 'create', name: 'Test' },
 					},
 				},
 			},
@@ -64,7 +64,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflows',
 						result: { workflowId: 'wf-123' },
 					},
 				},
@@ -73,19 +73,23 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.toolCalls).toHaveLength(1);
-		expect(result.toolCalls[0].toolName).toBe('build-workflow');
+		expect(result.toolCalls[0].toolName).toBe('workflows');
 		expect(result.toolCalls[0].durationMs).toBe(500);
 		expect(result.workflowIds).toContain('wf-123');
 	});
 
-	it('extracts workflow IDs from known tool results', () => {
+	it('extracts workflow IDs from workflow mutation results', () => {
 		const events: CapturedEvent[] = [
 			{
 				timestamp: 1000,
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'submit-workflow', args: {} },
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'workflows',
+						args: { action: 'create' },
+					},
 				},
 			},
 			{
@@ -165,7 +169,11 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-err', toolName: 'build-workflow', args: {} },
+					payload: {
+						toolCallId: 'tc-err',
+						toolName: 'workflows',
+						args: { action: 'create' },
+					},
 				},
 			},
 			{
@@ -219,7 +227,11 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: {} },
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'workflows',
+						args: { action: 'create' },
+					},
 				},
 			},
 			{

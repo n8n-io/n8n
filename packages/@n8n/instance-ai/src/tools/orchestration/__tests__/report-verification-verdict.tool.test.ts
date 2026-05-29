@@ -9,6 +9,7 @@ function createWorkflowTaskService(reportVerificationVerdict = jest.fn()) {
 		reportBuildOutcome: jest.fn(),
 		reportVerificationVerdict,
 		getBuildOutcome: jest.fn(),
+		getBuildOutcomeByTask: jest.fn(),
 		getWorkflowLoopState: jest.fn(),
 		updateBuildOutcome: jest.fn(),
 	};
@@ -100,7 +101,9 @@ describe('report-verification-verdict tool', () => {
 		const result = await executeTool(tool, baseInput, {} as never);
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
+		expect((result as { guidance: string }).guidance).toContain(
+			'executions(action="run", requireApproval=false)',
+		);
 	});
 
 	it('returns patch guidance when needs_patch produces patch action', async () => {
@@ -136,7 +139,8 @@ describe('report-verification-verdict tool', () => {
 			shouldEdit: true,
 		});
 		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('workItemId');
+		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
+		expect((result as { guidance: string }).guidance).toContain('workflows(action="update")');
 		expect((result as { guidance: string }).guidance).toContain('patch');
 	});
 
@@ -315,7 +319,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('workflow-builder');
+		expect((result as { guidance: string }).guidance).toContain('workflows(action="update")');
 		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
 	});
 

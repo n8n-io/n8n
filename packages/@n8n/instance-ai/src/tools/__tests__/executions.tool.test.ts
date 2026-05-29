@@ -290,7 +290,7 @@ describe('executions tool', () => {
 		});
 
 		describe('allowedRunWorkflowIds scope', () => {
-			it('runs without HITL when always_allow + workflow id is in the allow-list', async () => {
+			it('runs without HITL when an allow-listed checkpoint run is explicitly internal verification', async () => {
 				const context = createMockContext({
 					permissions: { runWorkflow: 'always_allow' },
 					allowedRunWorkflowIds: new Set(['wf-1']),
@@ -304,7 +304,7 @@ describe('executions tool', () => {
 				const tool = createExecutionsTool(context);
 				await executeTool(
 					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
+					{ action: 'run' as const, workflowId: 'wf-1', requireApproval: false },
 					createAgentCtx({ suspend: suspendFn }) as never,
 				);
 
@@ -312,6 +312,30 @@ describe('executions tool', () => {
 				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
 					timeout: undefined,
 				});
+			});
+
+			it('requires HITL approval when a scoped checkpoint run omits internal-verification approval intent', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+				});
+				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Scoped WF' });
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: 'Execute Scoped WF (ID: wf-1)',
+					}),
+				);
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
 			});
 
 			it('still requires HITL approval when always_allow is set but workflow id is NOT in the allow-list', async () => {
@@ -330,6 +354,30 @@ describe('executions tool', () => {
 				);
 
 				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
+			});
+
+			it('requires HITL approval for explicit user-requested runs even when workflow id is in the allow-list', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+				});
+				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Scoped WF' });
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1', requireApproval: true },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: 'Execute Scoped WF (ID: wf-1)',
+					}),
+				);
 				expect(context.executionService.run).not.toHaveBeenCalled();
 				expect(result).toBeUndefined();
 			});

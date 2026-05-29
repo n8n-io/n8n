@@ -1,5 +1,5 @@
 /**
- * Template usage telemetry for the builder agent.
+ * Template usage telemetry for runtime workspace sessions.
  *
  * Pattern-detects template-related shell commands (grep on `examples/index.txt`,
  * cat/head/sed on `examples/*.ts`) and emits three event types via the existing
@@ -7,7 +7,7 @@
  *
  *   - `Builder template search` — fired per index grep, with the search query
  *   - `Builder template read`   — fired per template file read, with the filename
- *   - `Builder template session`— fired once per builder run on flush(), with rollups
+ *   - `Builder template session`— fired once per runtime workspace session on flush(), with rollups
  *
  * Sessions are attached to a workspace via `attachTemplateTelemetrySession`
  * (a per-Workspace WeakMap binding). `runInSandbox` looks the session up and

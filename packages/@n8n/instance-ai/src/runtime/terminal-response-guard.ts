@@ -20,6 +20,7 @@ export interface TerminalResponseGuardOptions {
 	rootAgentId: string;
 	messageGroupId?: string;
 	correlationId?: string;
+	suppressCompletedFallback?: boolean;
 }
 
 export interface TerminalResponseDecision {
@@ -30,6 +31,7 @@ export interface TerminalResponseDecision {
 		| 'already-visible'
 		| 'already-emitted'
 		| 'completed-silent'
+		| 'completed-silent-suppressed'
 		| 'cancelled-silent'
 		| 'errored-silent'
 		| 'errored-after-text'
@@ -94,6 +96,14 @@ export class InstanceAiTerminalResponseGuard {
 					visibilitySource: 'root-text',
 					action: 'none',
 					reason: 'already-visible',
+				};
+			}
+			if (this.options.suppressCompletedFallback) {
+				return {
+					status,
+					visibilitySource: 'none',
+					action: 'none',
+					reason: 'completed-silent-suppressed',
 				};
 			}
 			return this.emitText(

@@ -1,7 +1,7 @@
 // Covers the eval node-service stub: real metadata coercion from
 // `nodes.json` and discovery of `dist/node-definitions/` dirs. Both
-// behaviors are critical to the pairwise eval producing scores against
-// production-faithful node descriptions rather than stripped-down stubs.
+// behaviors keep orchestrator evals close to production node descriptions
+// rather than stripped-down stubs.
 
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';

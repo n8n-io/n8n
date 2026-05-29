@@ -1,22 +1,11 @@
 // ---------------------------------------------------------------------------
-// Workflow discovery: snapshot IDs, build agent outcome, extract IDs from messages
+// Workflow discovery: snapshot IDs, build outcomes, extract IDs from messages
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
-
-// ---------------------------------------------------------------------------
-// Tool names whose results contain workflow IDs
-// ---------------------------------------------------------------------------
-
-const WORKFLOW_TOOLS = new Set([
-	'build-workflow',
-	'submit-workflow',
-	'patch-workflow',
-	'build-workflow-with-agent',
-]);
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior
@@ -138,7 +127,7 @@ export async function buildAgentOutcome(
 // extractWorkflowIdsFromMessages
 //
 // Extracts workflow IDs from agent tree targetResource fields AND from
-// tool call results (build-workflow, submit-workflow, etc.).
+// workflow mutation tool results.
 // Thread-scoped -- avoids cross-run workflow attribution.
 // ---------------------------------------------------------------------------
 
@@ -165,7 +154,7 @@ function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
 
 	// Extract workflow IDs from tool call results
 	for (const tc of node.toolCalls) {
-		if (WORKFLOW_TOOLS.has(tc.toolName)) {
+		if (isWorkflowMutation(tc.toolName, tc.args)) {
 			const id = extractIdFromResult(tc.result);
 			if (id) ids.add(id);
 		}
@@ -174,6 +163,13 @@ function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
 	for (const child of node.children) {
 		collectWorkflowIds(child, ids);
 	}
+}
+
+function isWorkflowMutation(toolName: string, args: Record<string, unknown>): boolean {
+	return (
+		toolName === 'build-workflow' ||
+		(toolName === 'workflows' && (args.action === 'create' || args.action === 'update'))
+	);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

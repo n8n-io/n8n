@@ -81,10 +81,12 @@ describe('TraceReplayState', () => {
 		it('should remove events for the slug', () => {
 			const state = new TraceReplayState();
 			state.loadEvents('test-slug', [{ kind: 'header' }]);
+			state.registerRun('test-slug', 'thread-1', 'run-1');
 
 			state.clearEvents('test-slug');
 
 			expect(state.getEvents('test-slug')).toEqual([]);
+			expect(state.getRegisteredRuns('test-slug')).toEqual([]);
 		});
 
 		it('should clear active slug if it matches', () => {
@@ -104,6 +106,22 @@ describe('TraceReplayState', () => {
 			state.clearEvents('slug-a');
 
 			expect(state.getActiveSlug()).toBe('slug-b');
+		});
+	});
+
+	describe('registered runs', () => {
+		it('should keep run IDs grouped by slug and thread', () => {
+			const state = new TraceReplayState();
+
+			state.registerRun('slug-1', 'thread-1', 'run-1');
+			state.registerRun('slug-1', 'thread-1', 'run-2');
+			state.registerRun('slug-1', 'thread-2', 'run-3');
+			state.registerRun('slug-2', 'thread-1', 'run-other');
+
+			expect(state.getRegisteredRuns('slug-1')).toEqual([
+				{ threadId: 'thread-1', runIds: ['run-1', 'run-2'] },
+				{ threadId: 'thread-2', runIds: ['run-3'] },
+			]);
 		});
 	});
 
@@ -143,6 +161,45 @@ describe('TraceReplayState', () => {
 			);
 
 			expect(result).toEqual(writerEvents);
+		});
+
+		it('should append active writer events after preserved events for the same slug', () => {
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }, { kind: 'tool-call', stepId: 1 }]);
+			const writerEvents = [{ kind: 'tool-suspend', stepId: 2 }];
+			const entries = [
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => writerEvents } },
+				},
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([
+				{ kind: 'header' },
+				{ kind: 'tool-call', stepId: 1 },
+				{ kind: 'tool-suspend', stepId: 2 },
+			]);
+		});
+
+		it('should read shared active trace writers only once', () => {
+			const state = new TraceReplayState();
+			const writer = { getEvents: () => [{ kind: 'tool-call', stepId: 1 }] };
+			const entries = [
+				{ traceSlug: 'my-slug', tracing: { traceWriter: writer } },
+				{ traceSlug: 'my-slug', tracing: { traceWriter: writer } },
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([{ kind: 'tool-call', stepId: 1 }]);
 		});
 
 		it('should fall back to preserved events when no writers match', () => {

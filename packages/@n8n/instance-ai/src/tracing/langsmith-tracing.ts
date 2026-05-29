@@ -119,6 +119,10 @@ interface OTelTracer {
 	): OtelApiSpan;
 }
 
+interface BuildableNativeTool {
+	build(): BuiltTool;
+}
+
 function isOtelTracer(value: unknown): value is OTelTracer {
 	return (
 		value !== null &&
@@ -1156,6 +1160,22 @@ function isTraceableNativeTool(value: unknown): value is TraceableNativeTool {
 	);
 }
 
+function isBuildableNativeTool(value: unknown): value is BuildableNativeTool {
+	return isRecord(value) && typeof value.build === 'function';
+}
+
+function wrapBuildableNativeTool(
+	tool: BuildableNativeTool,
+	wrapBuiltTool: (builtTool: TraceableNativeTool) => TraceableNativeTool,
+): BuiltTool {
+	return {
+		build: () => {
+			const builtTool = tool.build();
+			return isTraceableNativeTool(builtTool) ? wrapBuiltTool(builtTool) : builtTool;
+		},
+	} as unknown as BuiltTool;
+}
+
 function wrapToolHandler(tool: TraceableNativeTool): TraceableNativeTool {
 	return {
 		...tool,
@@ -1178,7 +1198,11 @@ function wrapTools(
 			name,
 			isTraceableNativeTool(tool) && shouldTraceLocalToolExecution(tool)
 				? wrapToolHandler(tool)
-				: tool,
+				: isBuildableNativeTool(tool)
+					? wrapBuildableNativeTool(tool, (builtTool) =>
+							shouldTraceLocalToolExecution(builtTool) ? wrapToolHandler(builtTool) : builtTool,
+						)
+					: tool,
 		);
 	}
 
@@ -1186,6 +1210,30 @@ function wrapTools(
 }
 
 // ── Replay wrappers ─────────────────────────────────────────────────────────
+
+function syncRemappedRecordInput(input: unknown, remappedInput: unknown): void {
+	if (input === remappedInput) return;
+	if (!isRecord(input) || !isRecord(remappedInput)) return;
+
+	for (const key of Object.keys(input)) {
+		delete input[key];
+	}
+	Object.assign(input, remappedInput);
+}
+
+function addRemappedWorkflowIdToSuspendPayload(
+	suspendPayload: unknown,
+	remappedInput: unknown,
+): unknown {
+	if (!isRecord(suspendPayload) || !isRecord(remappedInput)) return suspendPayload;
+	if (typeof suspendPayload.workflowId === 'string') return suspendPayload;
+	if (typeof remappedInput.workflowId !== 'string') return suspendPayload;
+
+	return {
+		...suspendPayload,
+		workflowId: remappedInput.workflowId,
+	};
+}
 
 /**
  * Tier 1: Real execution + ID remapping.
@@ -1201,8 +1249,27 @@ function replayWrapTool(
 	return {
 		...tool,
 		handler: async (input, context) => {
-			const event = traceIndex.nextMatching(agentRole, tool.name);
+			const shouldReplayRecordedSuspend =
+				isInterruptibleToolContext(context) &&
+				(context.resumeData === undefined || context.resumeData === null);
+			const event = traceIndex.nextMatchingForReplay(agentRole, tool.name, {
+				preferSuspend: shouldReplayRecordedSuspend,
+			});
 			const remappedInput: unknown = idRemapper.remapInput(input);
+			syncRemappedRecordInput(input, remappedInput);
+			if (event?.kind === 'tool-suspend') {
+				if (!isInterruptibleToolContext(context)) {
+					throw new Error(
+						`Recorded suspension for replay tool "${tool.name}" requires an interruptible context`,
+					);
+				}
+				return await context.suspend(
+					addRemappedWorkflowIdToSuspendPayload(
+						idRemapper.remapOutput(event.suspendPayload),
+						remappedInput,
+					),
+				);
+			}
 			const realOutput = await tool.handler(remappedInput, context);
 			if (event) {
 				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
@@ -1246,6 +1313,18 @@ function replayWrapTools(
 	const wrapped = createToolRegistry();
 
 	for (const [name, tool] of tools) {
+		if (isBuildableNativeTool(tool)) {
+			wrapped.set(
+				name,
+				wrapBuildableNativeTool(tool, (builtTool) =>
+					PURE_REPLAY_TOOLS.has(builtTool.name)
+						? pureReplayWrapTool(builtTool, traceIndex, idRemapper, agentRole)
+						: replayWrapTool(builtTool, traceIndex, idRemapper, agentRole),
+				),
+			);
+			continue;
+		}
+
 		if (!isTraceableNativeTool(tool)) {
 			wrapped.set(name, tool);
 			continue;
@@ -1277,12 +1356,20 @@ function recordWrapTool(
 		handler: async (input, context) => {
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
-			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
-							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							const suspendPayloadRecord = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								suspendPayloadRecord,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1299,15 +1386,7 @@ function recordWrapTool(
 					outputRecord,
 					resumeData as Record<string, unknown>,
 				);
-			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
-			} else {
+			} else if (!recordedSuspend) {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}
 
@@ -1325,6 +1404,16 @@ function recordWrapTools(
 	const wrapped = createToolRegistry();
 
 	for (const [name, tool] of tools) {
+		if (isBuildableNativeTool(tool)) {
+			wrapped.set(
+				name,
+				wrapBuildableNativeTool(tool, (builtTool) =>
+					recordWrapTool(builtTool, traceWriter, agentRole),
+				),
+			);
+			continue;
+		}
+
 		if (!isTraceableNativeTool(tool)) {
 			wrapped.set(name, tool);
 			continue;

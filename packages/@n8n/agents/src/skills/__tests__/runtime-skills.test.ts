@@ -451,7 +451,7 @@ Use the workflow SDK.`,
 		expect(prepare).toHaveBeenCalledTimes(2);
 	});
 
-	it('prepares the runtime skill source before injecting the agent skill catalog', async () => {
+	it('injects the agent skill catalog without preparing the runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
@@ -479,11 +479,11 @@ Use the workflow SDK.`,
 		const runtime = await (agent as unknown as { build(): Promise<unknown> }).build();
 		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
 
-		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(prepare).not.toHaveBeenCalled();
 		expect(instructions).toContain('name: "Summarize notes"');
 		expect(instructions).toContain('id: "summarize_notes"');
-		expect(instructions).toContain('description: "Use for materialized meeting notes."');
-		expect(instructions).not.toContain('description: "Use for meeting notes."');
+		expect(instructions).toContain('description: "Use for meeting notes."');
+		expect(instructions).not.toContain('description: "Use for materialized meeting notes."');
 		expect(instructions).not.toContain('Full private skill body');
 	});
 

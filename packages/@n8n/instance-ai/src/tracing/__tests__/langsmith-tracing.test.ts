@@ -1,11 +1,18 @@
-import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
+import { createRuntimeSkillRegistry, Tool, type BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
 import { jsonParse } from 'n8n-workflow';
 import type * as AsyncHooks from 'node:async_hooks';
+import { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
-import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
+import {
+	IdRemapper,
+	TraceIndex,
+	TraceWriter,
+	type TraceToolCall,
+	type TraceToolSuspend,
+} from '../trace-replay';
 
 jest.mock('@n8n/agents', () => {
 	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
@@ -819,7 +826,7 @@ describe('createInstanceAiTraceContext', () => {
 			name: 'ai.streamText.doStream',
 			attributes: {
 				'ai.operationId': 'ai.streamText.doStream',
-				'ai.telemetry.metadata.agent_role': 'workflow-builder',
+				'ai.telemetry.metadata.agent_role': 'research',
 			},
 		};
 
@@ -828,15 +835,15 @@ describe('createInstanceAiTraceContext', () => {
 			attributes: Record<string, unknown>;
 		};
 
-		expect(redacted.name).toBe('llm: workflow-builder');
-		expect(redacted.attributes['langsmith.trace.name']).toBe('llm: workflow-builder');
+		expect(redacted.name).toBe('llm: research');
+		expect(redacted.attributes['langsmith.trace.name']).toBe('llm: research');
 		expect(redacted.attributes['langsmith.span.kind']).toBe('llm');
 		expect(redacted.attributes['gen_ai.operation.name']).toBe('chat');
 		expect(redacted.attributes['ai_sdk.operation']).toBe('ai.streamText.doStream');
 		expect(redacted.attributes['ai.operationId']).toBeUndefined();
 		expect(redacted.attributes['instance_ai.canonical_name']).toBe('ai.streamText.doStream');
 		expect(redacted.attributes.display_kind).toBe('llm');
-		expect(redacted.attributes.display_group).toBe('workflow-builder');
+		expect(redacted.attributes.display_group).toBe('research');
 	});
 
 	it('normalizes AI SDK tool messages for LangSmith chat rendering', () => {
@@ -1141,17 +1148,17 @@ describe('createInstanceAiTraceContext', () => {
 			messageId: 'message-1',
 			runId: 'run-1',
 			userId: 'user-1',
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			taskId: 'build-1',
+			agentId: 'agent-research-1',
+			role: 'research',
+			kind: 'research',
+			taskId: 'research-1',
 			spawnedByTraceId: 'trace-parent-1',
 			spawnedBySpanId: 'span-parent-1',
 			spawnedByRunId: 'run-parent-1',
 			spawnedByAgentId: 'agent-001',
 			spawnedByAgentRole: 'orchestrator',
 			spawnedByToolCallId: 'toolu-1',
-			input: { task: 'Build a workflow' },
+			input: { task: 'Research workflow options' },
 			metadata: { n8n_version: '2.19.0' },
 		});
 
@@ -1159,16 +1166,16 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.traceKind).toBe('background_subagent');
 		expect(tracing?.rootRun.id).not.toBe(tracing?.actorRun.id);
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
-		expect(tracing?.rootRun.name).toBe('background task: workflow-builder');
-		expect(tracing?.actorRun.name).toBe('agent: workflow-builder');
+		expect(tracing?.rootRun.name).toBe('background task: research');
+		expect(tracing?.actorRun.name).toBe('agent: research');
 		expect(tracing?.actorRun.parentRunId).toBe(tracing?.rootRun.id);
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
 				message_group_id: 'group-1',
-				task_id: 'build-1',
-				task_kind: 'builder',
-				agent_id: 'agent-builder-1',
+				task_id: 'research-1',
+				task_kind: 'research',
+				agent_id: 'agent-research-1',
 				n8n_version: '2.19.0',
 				trace_kind: 'background_subagent',
 				execution_mode: 'background_subagent',
@@ -1185,13 +1192,13 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
 		expect(tracing?.actorRun.metadata).toEqual(
 			expect.objectContaining({
-				'instance_ai.canonical_name': 'instance-ai.agent.workflow-builder',
+				'instance_ai.canonical_name': 'instance-ai.agent.research',
 			}),
 		);
 
 		const telemetryOrBuilder = tracing!.getTelemetry!({
-			agentRole: 'workflow-builder',
-			functionId: 'instance-ai.subagent.workflow-builder',
+			agentRole: 'research',
+			functionId: 'instance-ai.subagent.research',
 			executionMode: 'background_subagent',
 		});
 		const telemetry =
@@ -1209,7 +1216,7 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
+			role: 'research',
 			kind: 'builder',
 			taskId: 'build-1',
 			input: { task: 'Build a workflow' },
@@ -1223,9 +1230,9 @@ describe('createInstanceAiTraceContext', () => {
 				systemPrompt: ['line 1', 'line 2', 'line 3', 'line 4'].join('\n').repeat(700),
 				tools: createToolRegistry([
 					[
-						'build-workflow',
+						'workflows',
 						{
-							description: 'Build or patch a workflow from SDK code.',
+							description: 'Manage workflows.',
 							inputSchema: {
 								type: 'object',
 								properties: {
@@ -1233,12 +1240,6 @@ describe('createInstanceAiTraceContext', () => {
 								},
 								required: ['task'],
 							},
-						} as never,
-					],
-					[
-						'submit-workflow',
-						{
-							description: 'Submit a workflow to n8n.',
 						} as never,
 					],
 				]),
@@ -1260,8 +1261,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(actorInputs.task).toBe('Build a workflow');
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
-		expect(actorInputs.assigned_tool_count).toBe(2);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(actorInputs.assigned_tool_count).toBe(1);
+		expect(actorInputs.assigned_tool_names).toEqual(['workflows']);
 		expect(actorInputs.assigned_tool_schema_hash).toEqual(expect.any(String));
 		expect(actorInputs.runtime_tool_count).toBe(1);
 		expect(actorInputs.runtime_tool_names).toEqual(['workspace_read_file']);
@@ -1278,7 +1279,7 @@ describe('createInstanceAiTraceContext', () => {
 		const spanInputs = jsonParse<Record<string, unknown>>(
 			actorSpan?.attributes['gen_ai.prompt'] as string,
 		);
-		expect(spanInputs.assigned_tool_names).toEqual(['build-workflow', 'submit-workflow']);
+		expect(spanInputs.assigned_tool_names).toEqual(['workflows']);
 		expect(spanInputs.runtime_tool_names).toEqual(['workspace_read_file']);
 		expect(spanInputs.loaded_tool_manifest).toBeUndefined();
 		expect(spanInputs.loaded_tools).toBeUndefined();
@@ -1295,7 +1296,7 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
+			role: 'research',
 			kind: 'builder',
 			taskId: 'build-1',
 			input: { task: 'Build a workflow' },
@@ -1310,9 +1311,9 @@ describe('createInstanceAiTraceContext', () => {
 					systemPrompt: 'system prompt',
 					tools: createToolRegistry([
 						[
-							'build-workflow',
+							'workflows',
 							{
-								description: 'Build or patch a workflow from SDK code.',
+								description: 'Manage workflows.',
 							} as never,
 						],
 					]),
@@ -1326,7 +1327,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
 		expect(actorInputs.system_prompt).toBe('system prompt');
 		expect(actorInputs.assigned_tool_count).toBe(1);
-		expect(actorInputs.assigned_tool_names).toEqual(['build-workflow']);
+		expect(actorInputs.assigned_tool_names).toEqual(['workflows']);
 	});
 
 	it('redacts model secrets from agent trace inputs', () => {
@@ -1488,7 +1489,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		const wrappedTools = tracing.wrapTools(
 			createToolRegistry([['approval-tool', interruptibleTool]]),
-			{ agentRole: 'workflow-builder' },
+			{ agentRole: 'research' },
 		);
 		const wrappedTool = wrappedTools.get('approval-tool');
 		if (!isExecutableTool(wrappedTool)) {
@@ -1497,7 +1498,7 @@ describe('createInstanceAiTraceContext', () => {
 
 		const result = await executeTool(
 			wrappedTool,
-			{ operation: 'write-file' },
+			{ operation: 'workspace-write' },
 			{
 				resumeData: undefined,
 				suspend: async (payload: unknown): Promise<never> =>
@@ -1510,9 +1511,295 @@ describe('createInstanceAiTraceContext', () => {
 		expect(suspend).toEqual({
 			kind: 'tool-suspend',
 			stepId: 1,
-			agentRole: 'workflow-builder',
+			agentRole: 'research',
 			toolName: 'approval-tool',
-			input: { operation: 'write-file' },
+			input: { operation: 'workspace-write' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('replays recorded suspensions before executing auto-allowed tools', async () => {
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'replay';
+		tracing.traceIndex = new TraceIndex([
+			{ kind: 'header', version: 1, testName: 'replay-suspend', recordedAt: '' },
+			{
+				kind: 'tool-call',
+				stepId: 1,
+				agentRole: 'orchestrator',
+				toolName: 'workflows',
+				input: { action: 'list' },
+				output: { workflowId: 'recorded-workflow-id' },
+			},
+			{
+				kind: 'tool-suspend',
+				stepId: 2,
+				agentRole: 'orchestrator',
+				toolName: 'workflows',
+				input: { action: 'update', workflowId: 'recorded-workflow-id' },
+				output: {},
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'workflow',
+					message: 'Update workflow Target (ID: recorded-workflow-id)',
+				},
+			},
+		]);
+		tracing.idRemapper = new IdRemapper();
+
+		const toolCalls: unknown[] = [];
+		const workflowsTool: BuiltTool = {
+			name: 'workflows',
+			description: 'Manages workflows.',
+			suspendSchema: {},
+			handler: async (input) => {
+				toolCalls.push(input);
+				if (
+					typeof input === 'object' &&
+					input !== null &&
+					(input as { action?: unknown }).action === 'list'
+				) {
+					return await Promise.resolve({ workflowId: 'current-workflow-id' });
+				}
+
+				return await Promise.resolve({ success: true });
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['workflows', workflowsTool]]), {
+			agentRole: 'orchestrator',
+		});
+		const wrappedTool = wrappedTools.get('workflows');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped workflows tool is not executable');
+		}
+
+		await executeTool(wrappedTool, { action: 'list' });
+
+		const updateInput = {
+			action: 'update',
+			workflowId: 'recorded-workflow-id',
+		};
+		const result = await executeTool(wrappedTool, updateInput, {
+			resumeData: undefined,
+			suspend: async (payload: unknown): Promise<never> =>
+				await Promise.resolve({ pending: true, payload } as never),
+		});
+
+		expect(result).toEqual({
+			pending: true,
+			payload: {
+				requestId: 'request-1',
+				inputType: 'workflow',
+				message: 'Update workflow Target (ID: current-workflow-id)',
+				workflowId: 'current-workflow-id',
+			},
+		});
+		expect(updateInput).toEqual({
+			action: 'update',
+			workflowId: 'current-workflow-id',
+		});
+		expect(toolCalls).toEqual([{ action: 'list' }]);
+	});
+
+	it('executes a tool on resume after replaying an adjacent recorded suspension', async () => {
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'replay';
+		tracing.traceIndex = new TraceIndex([
+			{ kind: 'header', version: 1, testName: 'replay-adjacent-suspend', recordedAt: '' },
+			{
+				kind: 'tool-call',
+				stepId: 1,
+				agentRole: 'orchestrator',
+				toolName: 'workflows',
+				toolCallId: 'toolu-workflow-save',
+				input: { action: 'create', name: 'Recorded workflow' },
+				output: { success: true, workflowId: 'recorded-workflow-id' },
+			},
+			{
+				kind: 'tool-suspend',
+				stepId: 2,
+				agentRole: 'orchestrator',
+				toolName: 'workflows',
+				toolCallId: 'toolu-workflow-save',
+				input: { action: 'create', name: 'Recorded workflow' },
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'workflow',
+					message: 'Create workflow Recorded workflow',
+				},
+			},
+		]);
+		tracing.idRemapper = new IdRemapper();
+
+		const toolCalls: unknown[] = [];
+		const workflowsTool: BuiltTool = {
+			name: 'workflows',
+			description: 'Manages workflows.',
+			suspendSchema: {},
+			handler: async (input, context) => {
+				toolCalls.push(input);
+				const inputRecord = input as Record<string, unknown>;
+				if (inputRecord.action === 'create') {
+					if (!('resumeData' in context) || context.resumeData === undefined) {
+						throw new Error('Expected recorded suspension to be replayed before live execution');
+					}
+
+					return await Promise.resolve({
+						success: true,
+						workflowId: 'current-workflow-id',
+					});
+				}
+
+				return await Promise.resolve({ workflowId: inputRecord.workflowId });
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['workflows', workflowsTool]]), {
+			agentRole: 'orchestrator',
+		});
+		const wrappedTool = wrappedTools.get('workflows');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped workflows tool is not executable');
+		}
+
+		const createInput = { action: 'create', name: 'Recorded workflow' };
+		const suspendedResult = await executeTool(wrappedTool, createInput, {
+			resumeData: undefined,
+			suspend: async (payload: unknown): Promise<never> =>
+				await Promise.resolve({ pending: true, payload } as never),
+		});
+
+		expect(suspendedResult).toEqual({
+			pending: true,
+			payload: {
+				requestId: 'request-1',
+				inputType: 'workflow',
+				message: 'Create workflow Recorded workflow',
+			},
+		});
+		expect(toolCalls).toEqual([]);
+
+		const resumedResult = await executeTool(wrappedTool, createInput, {
+			resumeData: { approved: true },
+			suspend: async (): Promise<never> => await Promise.reject(new Error('unexpected suspend')),
+		});
+
+		expect(resumedResult).toEqual({
+			success: true,
+			workflowId: 'current-workflow-id',
+		});
+
+		const followUpInput = { action: 'get', workflowId: 'recorded-workflow-id' };
+		await executeTool(wrappedTool, followUpInput);
+
+		expect(followUpInput).toEqual({ action: 'get', workflowId: 'current-workflow-id' });
+		expect(toolCalls).toEqual([
+			{ action: 'create', name: 'Recorded workflow' },
+			{ action: 'get', workflowId: 'current-workflow-id' },
+		]);
+	});
+
+	it('records tool builders once the agent builds them', async () => {
+		const writer = new TraceWriter('record-built-tool');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'approval',
+			message: 'Confirm workflow creation',
+		};
+		const approvalTool = new Tool('approval-tool')
+			.description('Requests approval.')
+			.input(z.object({ operation: z.string() }))
+			.suspend(z.object({ requestId: z.string(), inputType: z.string(), message: z.string() }))
+			.resume(z.object({ approved: z.boolean() }))
+			.handler(async (_input, context) => await context.suspend(suspendPayload));
+
+		const wrappedTools = tracing.wrapTools(
+			createToolRegistry([['approval-tool', approvalTool as unknown as BuiltTool]]),
+			{ agentRole: 'orchestrator' },
+		);
+		const wrappedToolBuilder = wrappedTools.get('approval-tool') as unknown as {
+			build(): BuiltTool;
+		};
+		const wrappedTool = wrappedToolBuilder.build();
+
+		const result = await executeTool(
+			wrappedTool,
+			{ operation: 'workflow-create' },
+			{
+				resumeData: undefined,
+				suspend: async (payload: unknown): Promise<never> =>
+					await Promise.resolve({ pending: true, payload } as never),
+			},
+		);
+
+		expect(result).toEqual({ pending: true, payload: suspendPayload });
+		expect(writer.getEvents()[1]).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'orchestrator',
+			toolName: 'approval-tool',
+			input: { operation: 'workflow-create' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('records suspend payload before the runtime interruption unwinds the tool call', async () => {
+		const writer = new TraceWriter('record-suspend-interruption');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'approval',
+			message: 'Confirm workflow creation',
+		};
+		const interruptibleTool: BuiltTool = {
+			name: 'approval-tool',
+			description: 'Requests approval.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend(suspendPayload);
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(
+			createToolRegistry([['approval-tool', interruptibleTool]]),
+			{ agentRole: 'orchestrator' },
+		);
+		const wrappedTool = wrappedTools.get('approval-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped approval-tool is not executable');
+		}
+
+		await expect(
+			executeTool(
+				wrappedTool,
+				{ operation: 'workflow-create' },
+				{
+					resumeData: undefined,
+					suspend: async (): Promise<never> => await Promise.reject(new Error('stream suspended')),
+				},
+			),
+		).rejects.toThrow('stream suspended');
+
+		const suspend = writer.getEvents()[1] as TraceToolSuspend;
+		expect(suspend).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'orchestrator',
+			toolName: 'approval-tool',
+			input: { operation: 'workflow-create' },
 			output: {},
 			suspendPayload,
 		});
@@ -1606,10 +1893,10 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const subAgentRun = await tracing!.startChildRun(tracing!.orchestratorRun, {
-			name: 'agent: workflow-builder',
-			canonicalName: 'instance-ai.subagent.workflow-builder.stream',
+			name: 'agent: research',
+			canonicalName: 'instance-ai.subagent.research.stream',
 			tags: ['sub-agent'],
-			metadata: { agent_role: 'workflow-builder' },
+			metadata: { agent_role: 'research' },
 			inputs: { task: 'Build a workflow' },
 		});
 
@@ -1932,7 +2219,7 @@ describe('createInstanceAiTraceContext', () => {
 					} as never,
 				],
 			]),
-			{ agentRole: 'workflow-builder' },
+			{ agentRole: 'research' },
 		);
 		const workspaceWriteFile = wrappedTools.get('workspace_write_file');
 		if (!isExecutableTool(workspaceWriteFile)) {
@@ -1977,13 +2264,13 @@ describe('createInstanceAiTraceContext', () => {
 						'ai.operationId': 'ai.toolCall',
 						'langsmith.span.kind': 'tool',
 						'ai.toolCall.name': 'workspace_write_file',
-						'ai.toolCall.id': 'toolu-write-file',
+						'ai.toolCall.id': 'toolu-workspace-write',
 					},
 				},
 				async (span) => {
 					await workspaceWriteFile.handler(
 						{ path: 'workflow.json', content: '{}' },
-						{ toolCallId: 'toolu-write-file' },
+						{ toolCallId: 'toolu-workspace-write' },
 					);
 					span.end();
 				},
@@ -2011,7 +2298,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(orchestratorSpan?.parentSpanId).toBe(rootSpan?.id);
 		expect(providerSpan?.parentSpanId).toBe(orchestratorSpan?.id);
 		expect(localToolSpan?.parentSpanId).toBe(orchestratorSpan?.id);
-		expect(localToolSpan?.attributes['ai.toolCall.id']).toBe('toolu-write-file');
+		expect(localToolSpan?.attributes['ai.toolCall.id']).toBe('toolu-workspace-write');
 		expect(localToolSpan?.attributes['ai.toolCall.name']).toBe('workspace_write_file');
 		expect(spans.some((span) => span.name.startsWith('instance-ai.tool.'))).toBe(false);
 	});

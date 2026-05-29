@@ -66,6 +66,17 @@ export class WorkflowLoopStorage {
 		return null;
 	}
 
+	async getBuildOutcomeByTask(
+		threadId: string,
+		taskId: string,
+	): Promise<WorkflowBuildOutcome | undefined> {
+		const all = await this.loadAll(threadId);
+		for (const record of Object.values(all)) {
+			if (record.lastBuildOutcome?.taskId === taskId) return record.lastBuildOutcome;
+		}
+		return undefined;
+	}
+
 	private async loadAll(threadId: string): Promise<Record<string, WorkflowLoopWorkItemRecord>> {
 		const thread = await getThread(this.memory, threadId);
 		if (!thread?.metadata?.[METADATA_KEY]) return {};
