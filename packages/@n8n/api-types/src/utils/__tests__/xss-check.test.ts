@@ -11,6 +11,13 @@ describe('xssCheck', () => {
 		'name-with-dashes_and.dots',
 		'name/with/slashes',
 		'name (with) (parens)',
+		// Standalone `>` is not tag markup and must be accepted
+		'7 > 3 is true',
+		'price > 100',
+		// `->` arrows are common in workflow names and must be accepted
+		'Webhook -> Process -> Send Email',
+		'a -> b',
+		'foo --> bar',
 	])('returns true for plain string %p', (value) => {
 		expect(xssCheck(value)).toBe(true);
 	});
@@ -25,7 +32,6 @@ describe('xssCheck', () => {
 		'<style>body{}</style>',
 		'<SCRIPT>alert(1)</SCRIPT>',
 		'<script src=//evil.com></script>',
-		'7 > 3 is true',
 		'< not really a tag',
 	])('returns false for value containing HTML-significant characters %p', (value) => {
 		expect(xssCheck(value)).toBe(false);
