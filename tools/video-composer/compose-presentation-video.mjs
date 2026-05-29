@@ -75,6 +75,58 @@ export function buildSegmentFfmpegArgs({
 	];
 }
 
+export function buildPauseSegmentFfmpegArgs({
+	pageImage,
+	outputPath,
+	duration,
+	width = 1920,
+	height = 1080,
+	fps = 30,
+}) {
+	const filter = scalePageFilter('[0:v]', width, height, '[vout]');
+
+	return [
+		'-y',
+		'-loop',
+		'1',
+		'-i',
+		pageImage,
+		'-f',
+		'lavfi',
+		'-i',
+		'anullsrc=channel_layout=stereo:sample_rate=24000',
+		'-filter_complex',
+		filter,
+		'-map',
+		'[vout]',
+		'-map',
+		'1:a',
+		'-t',
+		String(duration),
+		'-r',
+		String(fps),
+		'-c:v',
+		'libx264',
+		'-pix_fmt',
+		'yuv420p',
+		'-c:a',
+		'aac',
+		outputPath,
+	];
+}
+
+function buildExtractAudioArgs({ inputVideoPath, outputAudioPath }) {
+	return [
+		'-y',
+		'-i',
+		inputVideoPath,
+		'-vn',
+		'-c:a',
+		'libmp3lame',
+		outputAudioPath,
+	];
+}
+
 function runFfmpeg(args, logPath) {
 	const result = spawnSync('ffmpeg', args, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 20 });
 	fs.appendFileSync(logPath, `$ ffmpeg ${args.join(' ')}\n${result.stdout}\n${result.stderr}\n`, 'utf8');
@@ -128,12 +180,31 @@ function render() {
 			fps: job.fps ?? 30,
 		}), job.ffmpegLogPath);
 		concatLines.push(quoteConcatPath(segmentPath));
+		if (page.pageNumber < timing.pages.length && timing.pagePauseSeconds > 0) {
+			const pausePath = path.join(job.renderDir, `pause-${String(page.pageNumber).padStart(3, '0')}.mp4`);
+			runFfmpeg(buildPauseSegmentFfmpegArgs({
+				pageImage: page.pageImage,
+				outputPath: pausePath,
+				duration: timing.pagePauseSeconds,
+				width: job.width ?? 1920,
+				height: job.height ?? 1080,
+				fps: job.fps ?? 30,
+			}), job.ffmpegLogPath);
+			concatLines.push(quoteConcatPath(pausePath));
+		}
 	}
 	fs.writeFileSync(concatListPath, concatLines.join('\n'), 'utf8');
 	runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', job.outputVideoPath], job.ffmpegLogPath);
+	if (job.outputAudioPath) {
+		runFfmpeg(buildExtractAudioArgs({
+			inputVideoPath: job.outputVideoPath,
+			outputAudioPath: job.outputAudioPath,
+		}), job.ffmpegLogPath);
+	}
 	console.log(JSON.stringify({
 		ok: true,
 		outputVideoPath: job.outputVideoPath,
+		outputAudioPath: job.outputAudioPath || '',
 		pageTimingPath: job.pageTimingPath,
 	}));
 }

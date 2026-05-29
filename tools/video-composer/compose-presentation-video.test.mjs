@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	buildPauseSegmentFfmpegArgs,
 	buildSegmentFfmpegArgs,
 	createAssSubtitle,
 	scalePageFilter,
@@ -39,4 +40,20 @@ test('buildSegmentFfmpegArgs maps page image and audio into one segment', () => 
 	assert.equal(args.includes('/tmp/page-001.mp3'), true);
 	assert.equal(args.includes('/tmp/segment-001.mp4'), true);
 	assert.equal(args.includes('-shortest'), true);
+});
+
+test('buildPauseSegmentFfmpegArgs renders silent hold frame for page pause', () => {
+	const args = buildPauseSegmentFfmpegArgs({
+		pageImage: '/tmp/page-001.png',
+		outputPath: '/tmp/pause-001.mp4',
+		duration: 0.3,
+		width: 1920,
+		height: 1080,
+		fps: 30,
+	});
+
+	assert.equal(args.includes('anullsrc=channel_layout=stereo:sample_rate=24000'), true);
+	assert.equal(args.includes('/tmp/pause-001.mp4'), true);
+	assert.equal(args.includes('-t'), true);
+	assert.equal(args[args.indexOf('-t') + 1], '0.3');
 });
