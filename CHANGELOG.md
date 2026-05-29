@@ -1,3 +1,11 @@
+## [2.22.6](https://github.com/n8n-io/n8n/compare/n8n@2.22.5...n8n@2.22.6) (2026-05-29)
+
+
+### Bug Fixes
+
+* **core:** Preserve code-builder thread suffix when parsing session ([#31309](https://github.com/n8n-io/n8n/issues/31309)) ([e062c20](https://github.com/n8n-io/n8n/commit/e062c2064f936cd8af300c510e35da937d02d078))
+
+
 ## [2.22.5](https://github.com/n8n-io/n8n/compare/n8n@2.22.4...n8n@2.22.5) (2026-05-28)
 
 
