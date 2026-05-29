@@ -60,7 +60,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSendButton(): Locator {
-		return this.page.getByTitle('Send');
+		return this.page.getByTestId('send-message-button');
 	}
 
 	getChatMessages(): Locator {

@@ -694,7 +694,7 @@ defineExpose({
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
-				data-test-id="prompt-input"
+				data-test-id="chat-input"
 				autofocus
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
