@@ -5,35 +5,40 @@ on:
     # 03:30 UTC daily — outside CI rush, before EU morning.
     - cron: '30 3 * * *'
   workflow_dispatch:
-    inputs:
-      package:
-        description: 'Workspace package to mutate'
-        type: choice
-        options:
-          - n8n-workflow
-        default: n8n-workflow
 
 permissions:
   contents: read
 
-# Prevent overlapping scheduled + manual runs from racing on the same
-# ledger row. The writer MERGE is idempotent, but two concurrent runs
-# would emit duplicate event rows for the same picked file.
-concurrency:
-  group: mutation-health-${{ github.event.inputs.package || 'n8n-workflow' }}
-  cancel-in-progress: false
-
 env:
-  PACKAGE_NAME: ${{ github.event.inputs.package || 'n8n-workflow' }}
-  PKG_DIR: packages/workflow # 1-to-1 mapping today; generalise when more packages are wired up
-  REPORTS_DIR: packages/workflow/reports/mutation
   READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
 
 jobs:
-  run:
-    name: Mutate one file, ledger writeback
+  mutate:
+    name: ${{ matrix.name }} — mutate one file, ledger writeback
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 60
+    strategy:
+      fail-fast: false # one package's failure must not skip the others
+      matrix:
+        include:
+          # vitest packages only. A package with its own stryker.config.mjs
+          # overrides the shared default (scripts/mutation-health/stryker.default.mjs)
+          # — n8n-workflow does this to run the legacy expression engine and
+          # avoid the isolated-vm dry-run crash (see its config + DEVP-257).
+          # Jest packages and @n8n/expression-runtime are intentionally absent
+          # (different runner / blocked on DEVP-257). Append a line to onboard.
+          - { name: n8n-workflow, dir: packages/workflow, slug: workflow }
+          - { name: '@n8n/crdt', dir: packages/@n8n/crdt, slug: crdt }
+          - { name: '@n8n/decorators', dir: packages/@n8n/decorators, slug: decorators }
+    # Per-package: a scheduled run and a manual run won't double-write the same
+    # package's ledger row, but different packages still run in parallel.
+    concurrency:
+      group: mutation-health-${{ matrix.slug }}
+      cancel-in-progress: false
+    env:
+      PACKAGE_NAME: ${{ matrix.name }}
+      PKG_DIR: ${{ matrix.dir }}
+      REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -46,7 +51,8 @@ jobs:
       - name: Fetch live ledger from BigQuery
         run: |
           mkdir -p "$REPORTS_DIR"
-          curl --fail -sS "$READER_URL?package=$PACKAGE_NAME" -o "$REPORTS_DIR/live-ledger.json"
+          curl --fail -sS --get --data-urlencode "package=$PACKAGE_NAME" \
+            "$READER_URL" -o "$REPORTS_DIR/live-ledger.json"
 
       - name: Pick next source file
         id: pick
@@ -76,7 +82,7 @@ jobs:
         # "Stryker crashed." continue-on-error: true would collapse them.
         run: |
           set +e
-          pnpm --filter "$PACKAGE_NAME" mutate "${{ steps.pick.outputs.source-rel }}"
+          node scripts/mutation-health/mutate.mjs "${{ steps.pick.outputs.source-rel }}" --package-dir "$PKG_DIR"
           rc=$?
           set -e
           if [ "$rc" -gt 1 ]; then
@@ -107,7 +113,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: mutation-health-${{ env.PACKAGE_NAME }}-${{ github.run_id }}
+          name: mutation-health-${{ matrix.slug }}-${{ github.run_id }}
           path: |
             ${{ env.REPORTS_DIR }}/raw.json
             ${{ env.REPORTS_DIR }}/raw.html

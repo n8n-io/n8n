@@ -33,7 +33,7 @@
     "test:unit": "vitest run",
     "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --watch",
-    "mutate": "node scripts/mutate.mjs"
+    "mutate": "node ../../scripts/mutation-health/mutate.mjs --package-dir packages/workflow"
   },
   "files": [
     "dist/**/*"

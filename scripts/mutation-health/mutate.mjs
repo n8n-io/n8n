@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 /**
- * Run Stryker on a single source file and emit an actionable summary.
+ * Run Stryker on a single source file of a workspace package and emit an
+ * actionable summary. Package-agnostic: the nightly matrix and the per-package
+ * `mutate` npm scripts both call this one script.
  *
- * Usage:  pnpm --filter=n8n-workflow mutate <relative-path-under-src>
- * Example: pnpm --filter=n8n-workflow mutate src/cron.ts
+ * Usage:
+ *   node scripts/mutation-health/mutate.mjs <src-rel> --package-dir <repo-rel-path> [--config <path>]
  *
- * Outputs (under packages/workflow/reports/mutation/):
+ * Example:
+ *   node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
+ *
+ * Stryker config resolution (first match wins):
+ *   1. --config <path>                         explicit override
+ *   2. <package-dir>/stryker.config.mjs        package-local (e.g. workflow's vm carve-out)
+ *   3. scripts/mutation-health/stryker.default.mjs   shared default (points at the
+ *                                              package's own vitest.config.* — no
+ *                                              bespoke vitest config required)
+ *
+ * Outputs (under <package-dir>/reports/mutation/):
  *   raw.json      — full Stryker Mutation Testing Elements report
  *   raw.html      — Stryker's HTML report (browse for human review)
  *   summary.json  — compact actionable summary (this script)
@@ -18,13 +30,15 @@
  */
 
 import { spawn } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkgRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(__dirname, '../..');
 
 const THRESHOLD = Number(process.env.STRYKER_THRESHOLD ?? 80);
 
@@ -33,31 +47,62 @@ function die(code, msg) {
 	process.exit(code);
 }
 
-const targetArg = process.argv[2];
-if (!targetArg) {
-	die(
-		2,
-		'Usage: pnpm --filter=n8n-workflow mutate <relative-path-under-src>\n' +
-			'Example: pnpm --filter=n8n-workflow mutate src/cron.ts',
-	);
+// --- args: one positional target + --package-dir (required) + --config (optional)
+const argv = process.argv.slice(2);
+let packageDirArg;
+let configArg;
+let targetArg;
+for (let i = 0; i < argv.length; i++) {
+	const a = argv[i];
+	if (a === '--package-dir') packageDirArg = argv[++i];
+	else if (a === '--config') configArg = argv[++i];
+	else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
 }
+
+const usage =
+	'Usage: node scripts/mutation-health/mutate.mjs <src-rel> --package-dir <repo-rel-path> [--config <path>]\n' +
+	'Example: node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+
+if (!packageDirArg) die(2, `Missing --package-dir.\n${usage}`);
+if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
+
+const pkgRoot = path.resolve(repoRoot, packageDirArg);
+if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
 
 const target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
 if (!target.startsWith('src/') || target.includes('..')) {
-	die(2, `Target must be under src/ within this package. Got: ${target}`);
+	die(2, `Target must be under src/ within the package. Got: ${target}`);
 }
 if (!existsSync(path.join(pkgRoot, target))) {
 	die(2, `Target not found: ${path.join(pkgRoot, target)}`);
 }
 
+// --- resolve the Stryker config: override → package-local → shared default
+const localConfig = path.join(pkgRoot, 'stryker.config.mjs');
+const defaultConfig = path.join(__dirname, 'stryker.default.mjs');
+const configPath = configArg
+	? path.resolve(repoRoot, configArg)
+	: existsSync(localConfig)
+		? localConfig
+		: defaultConfig;
+
+// --- resolve the Stryker binary from the hoisted store (works for any package)
+const strykerBin = path.join(
+	path.dirname(require.resolve('@stryker-mutator/core/package.json')),
+	'bin/stryker.js',
+);
+
 const reportDir = path.join(pkgRoot, 'reports/mutation');
 const rawJsonPath = path.join(reportDir, 'raw.json');
 const summaryJsonPath = path.join(reportDir, 'summary.json');
+await mkdir(reportDir, { recursive: true });
 
-process.stderr.write(`Running Stryker on ${target} (threshold: ${THRESHOLD}%)\n`);
+process.stderr.write(
+	`Running Stryker on ${packageDirArg}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
+);
 
 await new Promise((resolve) => {
-	const child = spawn('node_modules/.bin/stryker', ['run', '--mutate', target], {
+	const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
 		cwd: pkgRoot,
 		stdio: 'inherit',
 	});
