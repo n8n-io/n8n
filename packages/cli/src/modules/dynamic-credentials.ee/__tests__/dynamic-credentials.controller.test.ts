@@ -31,7 +31,7 @@ describe('DynamicCredentialsController', () => {
 	const resolverRegistry = mockInstance(DynamicCredentialResolverRegistry);
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
-	mockInstance(CredentialsFinderService);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	mockInstance(CredentialConnectionStatusService);
 	mockInstance(EventService);
 
@@ -51,6 +51,27 @@ describe('DynamicCredentialsController', () => {
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
+		});
+
+		// Default: an authenticated caller can access the credential (gate is a no-op
+		// for the existing cases; deny-path is covered by its own test below).
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
+	});
+
+	describe('in-app access control', () => {
+		it('returns 404 when an authenticated user cannot access the credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const req = mock<Request>({
+				params: { id: 'foreign-credential' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+
+			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
+				'Credential not found',
+			);
+			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
 		});
 	});
 

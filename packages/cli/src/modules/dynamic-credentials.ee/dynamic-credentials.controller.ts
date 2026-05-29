@@ -37,7 +37,25 @@ export class DynamicCredentialsController {
 		private readonly eventService: EventService,
 	) {}
 
-	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
+	private async findCredentialToUse(
+		credentialId: string,
+		req: Request,
+	): Promise<CredentialsEntity> {
+		// External resolver callers authenticate via the endpoint token and carry no
+		// user. In-app callers carry a session user, so verify they actually have
+		// access to this credential rather than letting them target any id.
+		const user = (req as AuthenticatedRequest).user;
+		if (user) {
+			const accessible = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!accessible) {
+				throw new NotFoundError('Credential not found');
+			}
+		}
+
 		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 
 		if (!credential) {
@@ -96,7 +114,7 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const credential = await this.findCredentialToUse(req.params.id, req);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -137,7 +155,7 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const credential = await this.findCredentialToUse(req.params.id, req);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
