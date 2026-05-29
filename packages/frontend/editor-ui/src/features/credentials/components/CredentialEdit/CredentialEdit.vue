@@ -1334,6 +1334,10 @@ async function oAuthCredentialAuthorize() {
 
 			void refreshConnectedByMe(credential.id);
 
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
+
 			// Close the window
 			if (oauthPopup) {
 				oauthPopup.close();

@@ -21,6 +21,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
@@ -183,6 +184,10 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionState = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -266,7 +271,6 @@ const readOnlyNotification = ref<null | { visible: boolean }>(null);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const workflowId = useInjectWorkflowId();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
@@ -426,7 +430,8 @@ const selectableTriggerNodes = computed(() =>
 );
 const isRunButtonSplit = computed(() => {
 	return (
-		selectableTriggerNodes.value.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined
+		selectableTriggerNodes.value.length > 1 &&
+		workflowExecutionState.value.selectedTriggerNodeName !== undefined
 	);
 });
 
@@ -1060,8 +1065,10 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isWorkflowRunning = computed(() => workflowExecutionState.value.isWorkflowRunning);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionState.value.executionWaitingForWebhook,
+);
 
 const isExecutionDisabled = computed(() => {
 	if (
@@ -1734,15 +1741,17 @@ watch(
 	[selectableTriggerNodes, workflowExecutionTriggerNodeName],
 	([newSelectable, currentTrigger], [oldSelectable]) => {
 		if (currentTrigger !== undefined) {
-			workflowsStore.setSelectedTriggerNodeName(currentTrigger);
+			workflowExecutionState.value.setSelectedTriggerNodeName(currentTrigger);
 			return;
 		}
 
 		if (
-			workflowsStore.selectedTriggerNodeName === undefined ||
-			newSelectable.every((node) => node.name !== workflowsStore.selectedTriggerNodeName)
+			workflowExecutionState.value.selectedTriggerNodeName === undefined ||
+			newSelectable.every(
+				(node) => node.name !== workflowExecutionState.value.selectedTriggerNodeName,
+			)
 		) {
-			workflowsStore.setSelectedTriggerNodeName(
+			workflowExecutionState.value.setSelectedTriggerNodeName(
 				findTriggerNodeToAutoSelect(selectableTriggerNodes.value, nodeTypesStore.getNodeType)?.name,
 			);
 			return;
@@ -1754,7 +1763,7 @@ watch(
 
 		if (newTrigger !== undefined) {
 			// Select newly added node
-			workflowsStore.setSelectedTriggerNodeName(newTrigger.name);
+			workflowExecutionState.value.setSelectedTriggerNodeName(newTrigger.name);
 		}
 	},
 	{ immediate: true },
@@ -1946,12 +1955,12 @@ onBeforeUnmount(() => {
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
 					:embedded="isDemoRoute"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton

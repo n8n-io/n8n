@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { shallowRef, computed } from 'vue';
 import { setActivePinia } from 'pinia';
 import type {
 	ExecutionStatus,
@@ -18,8 +18,20 @@ import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	IUsedCredential,
+	ICredentialsResponse,
+} from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+
+vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
+	useDynamicCredentials: vi.fn(),
+}));
+
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+
+const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -50,6 +62,12 @@ describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
+	});
+
+	beforeEach(() => {
+		mockedUseDynamicCredentials.mockReturnValue({
+			isEnabled: computed(() => true),
+		} as ReturnType<typeof useDynamicCredentials>);
 	});
 
 	afterEach(() => {
@@ -782,6 +800,170 @@ describe('useNodeHelpers()', () => {
 			expect(issues).toBeNull();
 
 			getNodeParametersIssuesSpy.mockRestore();
+		});
+	});
+
+	describe('credential issues for private credentials', () => {
+		const notionNodeType: INodeTypeDescription = {
+			displayName: 'Notion',
+			name: 'n8n-nodes-base.notion',
+			group: ['transform'],
+			version: 1,
+			description: 'Notion node',
+			defaults: { name: 'Notion' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [{ name: 'notionApi', required: true }],
+			properties: [],
+		};
+
+		const httpRequestNodeType: INodeTypeDescription = {
+			displayName: 'HTTP Request',
+			name: 'n8n-nodes-base.httpRequest',
+			group: ['transform'],
+			version: 3,
+			description: 'HTTP Request node',
+			defaults: { name: 'HTTP Request' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [],
+			properties: [],
+		};
+
+		const makePrivateCred = (overrides: Partial<ICredentialsResponse> = {}): ICredentialsResponse =>
+			({
+				id: 'cred-123',
+				name: 'My Notion',
+				type: 'notionApi',
+				isResolvable: true,
+				connectedByMe: false,
+				...overrides,
+			}) as ICredentialsResponse;
+
+		beforeEach(() => {
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(notionNodeType);
+		});
+
+		it('emits privateNotConnected when declared-credential node has private cred not connected', () => {
+			const cred = makePrivateCred({ connectedByMe: false });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { notionApi: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials?.notionApi).toBeDefined();
+			expect(result?.credentials?.notionApi[0]).toContain('My Notion');
+		});
+
+		it('emits no issue when declared-credential node has private cred connected', () => {
+			const cred = makePrivateCred({ connectedByMe: true });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { notionApi: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials).toBeUndefined();
+		});
+
+		it('emits privateNotConnected for predefined-OAuth credential (HTTP Request, not in node type credentials array)', () => {
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(httpRequestNodeType);
+
+			const cred = makePrivateCred({ type: 'slackOAuth2Api', connectedByMe: false });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackOAuth2Api',
+				},
+				credentials: { slackOAuth2Api: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(httpRequestNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials?.slackOAuth2Api).toBeDefined();
+			expect(result?.credentials?.slackOAuth2Api[0]).toContain('My Notion');
+		});
+
+		it('emits no issue for static (non-resolvable) credential regardless of connectedByMe', () => {
+			const cred = makePrivateCred({ isResolvable: false, connectedByMe: false });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { notionApi: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials).toBeUndefined();
+		});
+
+		it('emits no issue for AI-gateway managed private credential', () => {
+			const cred = makePrivateCred({ connectedByMe: false });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { notionApi: { id: 'cred-123', name: 'My Notion', __aiGatewayManaged: true } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials).toBeUndefined();
+		});
+
+		it('preserves declared-loop notSet issue and does not overwrite with private check', () => {
+			// Credential not set (undefined id) — declared loop fires notSet, private scan must skip
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: {},
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+			expect(result?.credentials?.notionApi).toBeDefined();
+			expect(result?.credentials?.notionApi[0]).toContain('Notion');
+		});
+
+		it('emits no issue when dynamic credentials feature is disabled', () => {
+			mockedUseDynamicCredentials.mockReturnValue({
+				isEnabled: computed(() => false),
+			} as ReturnType<typeof useDynamicCredentials>);
+
+			const cred = makePrivateCred({ connectedByMe: false });
+			mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+			mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+			const node: INodeUi = createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { notionApi: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+			expect(result?.credentials?.notionApi).toBeUndefined();
 		});
 	});
 });
