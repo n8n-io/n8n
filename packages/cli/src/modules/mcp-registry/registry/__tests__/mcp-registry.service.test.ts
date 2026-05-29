@@ -59,7 +59,7 @@ function createService(options: CreateServiceOptions = {}) {
 	}
 
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
-	apiClient.fetchServersByIds.mockResolvedValue([]);
+	apiClient.fetchServersBySlugs.mockResolvedValue([]);
 	apiClient.fetchAllServers.mockResolvedValue([notionMockServer, linearMockServer]);
 	repository.upsert.mockResolvedValue({} as never);
 
@@ -164,12 +164,12 @@ describe('McpRegistryService', () => {
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 			const metadata: McpRegistryServerMetadata[] = [
 				{
-					id: notionMockServer.id,
+					slug: notionMockServer.slug,
 					version: notionMockServer.version,
 					updatedAt: notionMockServer.updatedAt,
 				},
 				{
-					id: linearMockServer.id,
+					slug: linearMockServer.slug,
 					version: linearMockServer.version,
 					updatedAt: linearMockServer.updatedAt,
 				},
@@ -179,11 +179,45 @@ describe('McpRegistryService', () => {
 
 			await service.onLeaderTakeover();
 
-			expect(apiClient.fetchServersByIds).not.toHaveBeenCalled();
+			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
 			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.shutdown();
+		});
+
+		it('onLeaderTakeover deprecates servers missing from metadata', async () => {
+			const metadata: McpRegistryServerMetadata[] = [
+				{
+					slug: notionMockServer.slug,
+					version: notionMockServer.version,
+					updatedAt: notionMockServer.updatedAt,
+				},
+			];
+			const { service, apiClient, repository, push, publisher } = createService({
+				storedServers: [notionMockServer, linearMockServer],
+			});
+			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
+
+			await service.onLeaderTakeover();
+
+			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
+			expect(repository.upsert).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(upsertEntities).toEqual([
+				{
+					...toEntity({
+						...linearMockServer,
+						status: 'deprecated',
+					}),
+					registryUpdatedAt: expect.any(Date),
+				},
+			]);
+			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
+			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 
 			service.shutdown();
 		});
@@ -196,12 +230,12 @@ describe('McpRegistryService', () => {
 			};
 			const metadata: McpRegistryServerMetadata[] = [
 				{
-					id: notionMockServer.id,
+					slug: notionMockServer.slug,
 					version: notionMockServer.version,
 					updatedAt: notionMockServer.updatedAt,
 				},
 				{
-					id: linearMockServer.id,
+					slug: linearMockServer.slug,
 					version: linearMockServer.version,
 					updatedAt: linearMockServer.updatedAt,
 				},
@@ -210,12 +244,12 @@ describe('McpRegistryService', () => {
 				storedServers: [staleNotion, linearMockServer],
 			});
 			apiClient.fetchServersMetadata.mockResolvedValue(metadata);
-			apiClient.fetchServersByIds.mockResolvedValue([notionMockServer]);
+			apiClient.fetchServersBySlugs.mockResolvedValue([notionMockServer]);
 
 			await service.onLeaderTakeover();
 
 			expect(apiClient.fetchAllServers).not.toHaveBeenCalled();
-			expect(apiClient.fetchServersByIds).toHaveBeenCalledWith([notionMockServer.id]);
+			expect(apiClient.fetchServersBySlugs).toHaveBeenCalledWith([notionMockServer.slug]);
 			expect(repository.upsert).toHaveBeenCalledTimes(1);
 			const upsertEntities = repository.upsert.mock.calls[0][0];
 			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
