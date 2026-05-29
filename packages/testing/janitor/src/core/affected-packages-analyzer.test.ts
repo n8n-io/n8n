@@ -106,6 +106,23 @@ describe('affectedPackages', () => {
 		expect(affectedPackages({ rootDir, changedFiles: ['package.json'] })).toEqual(['a', 'b']);
 	});
 
+	it('expands all packages when packages/@n8n/db/** changes (runtime-coupled schema)', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*', 'packages/@n8n/*'],
+			packages: {
+				'packages/@n8n/db': { name: '@n8n/db' },
+				'packages/cli': { name: 'n8n' },
+				'packages/unrelated': { name: 'unrelated' },
+			},
+		});
+		expect(
+			affectedPackages({
+				rootDir,
+				changedFiles: ['packages/@n8n/db/src/entities/user.entity.ts'],
+			}),
+		).toEqual(['@n8n/db', 'n8n', 'unrelated']);
+	});
+
 	it('handles turbo extra-inputs pointing at another package', () => {
 		const rootDir = makeFixture({
 			patterns: ['packages/*'],
