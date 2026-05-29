@@ -10,6 +10,20 @@ This workflow is an automated video editing workflow for n8n. It is not an AI vi
 - Composer script: `tools/video-composer/compose-video.mjs`
 - Default job output: `/Users/stephenqiu/Desktop/Repository/n8n/tmp/n8n-video-jobs/{jobId}/`
 
+## AI Podcast Sibling Workflow
+
+The stable workflow remains `workflows/video-clip-tts-workflow.json`.
+
+The AI podcast version is `workflows/video-clip-ai-podcast-workflow.json`. It uses the Volcengine speech console service `10028` with AppID `2152902662` through `DOUBAO_AI_PODCAST_*` env vars. Live validation for this AppID uses WebSocket resource `volc.service_type.10050`. It keeps the same cover, screenshot, background video, and composer behavior, but replaces segmented TTS with AI podcast audio.
+
+For the new console, fill `DOUBAO_AI_PODCAST_API_KEY`. If the podcast WebSocket endpoint returns `401`, use the old-console compatibility fields as shown in Volcengine's podcast documentation: `DOUBAO_AI_PODCAST_APP_ID`, `DOUBAO_AI_PODCAST_ACCESS_KEY`, and, when shown by the console, `DOUBAO_AI_PODCAST_APP_KEY`.
+
+The AI podcast workflow prefers native timestamps from the service. If the service does not return usable timing, `VIDEO_CLIP_SUBTITLE_FALLBACK=estimated` creates a duration-based subtitle timeline from the generated podcast prompt so the MVP can still render a video. Set `VIDEO_CLIP_SUBTITLE_FALLBACK=none` when you want strict native timestamps only.
+
+Each AI podcast run also writes `tts/cost.json` and returns `cost` plus `costPath` in the workflow response. The cost estimate sums every `usage.total_tokens` frame returned by the podcast service and multiplies it by `DOUBAO_AI_PODCAST_PRICE_PER_MILLION_TOKENS`. The default value is `70`, matching the 10亿 token resource package baseline of 70000元.
+
+The workflow response includes `reviewDir`, which points to the project-local `tmp/n8n-video-jobs/{jobId}` folder. Use this folder to inspect the final video, generated audio, subtitle ASS file, subtitle timing JSON, spoken transcript, cost estimate, metadata, and FFmpeg log.
+
 ## Prerequisites
 
 Install and verify local tools:
@@ -63,9 +77,11 @@ DOUBAO_TTS_API_KEY=
 DOUBAO_TTS_APP_ID=
 DOUBAO_TTS_CLUSTER=volcano_tts
 DOUBAO_TTS_RESOURCE_ID=seed-tts-2.0
+DOUBAO_TTS_CLONE_RESOURCE_ID=
 ```
 
 `DOUBAO_TTS_V2_RESOURCE_ID` is also accepted as a compatibility alias for existing local env files. Official `*_V2_streaming` voice presets use `seed-tts-2.0` explicitly so older local resource-id values do not override the required resource.
+Voice-clone presets whose speaker ID starts with `S_` require `DOUBAO_TTS_CLONE_RESOURCE_ID`; if it is empty, the workflow stops with a clear configuration error instead of sending the request with the wrong resource ID.
 
 ## Import
 
@@ -109,6 +125,7 @@ The exposed voice fields are restricted to the MVP podcast voice set verified ag
 | 男主持 - 刘飞 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | Mature male host |
 | 男主持 - 渊博小叔 | `host_male_yuanboxiaoshu` | `zh_male_yuanboxiaoshu_uranus_bigtts` | Knowledgeable male host |
 | 女主持 - Tina 老师 | `host_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | Female host |
+| 复刻音色 - S_H3coZls22 | `clone_voice_s_h3cozls22` | `S_H3coZls22` | Voice clone; requires `DOUBAO_TTS_CLONE_RESOURCE_ID` |
 | 女嘉宾 - 小何 | `guest_female_xiaohe` | `zh_female_xiaohe_uranus_bigtts` | Default guest |
 | 女嘉宾 - Tina 老师 | `guest_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | Female guest |
 | 男嘉宾 - 刘飞 | `guest_male_liufei` | `zh_male_liufei_uranus_bigtts` | Male guest |

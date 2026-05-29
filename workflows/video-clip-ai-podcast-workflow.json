@@ -1,0 +1,324 @@
+{
+  "name": "MVP - AI Podcast Video Clip Composer",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "video-clip-ai-podcast-upload",
+        "formTitle": "AI Podcast Video Clip Composer",
+        "formDescription": "Upload cover, proof screenshot, and background video, then generate a two-speaker AI podcast clip.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "cover_image",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "proof_screenshot",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "background_video",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "viewpoint",
+              "fieldType": "textarea",
+              "requiredField": true,
+              "placeholder": "输入你对这件事情的观点、角度或想表达的核心判断"
+            },
+            {
+              "fieldLabel": "podcast_speaker_a",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "男主持 - 大艺｜zh_male_dayi_v2_saturn_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 大艺｜zh_male_dayi_v2_saturn_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_speaker_b",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "女嘉宾 - 米仔｜zh_female_mizai_v2_saturn_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "女嘉宾 - 米仔｜zh_female_mizai_v2_saturn_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_style",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "podcast_interview",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "podcast_interview"
+                  },
+                  {
+                    "option": "short_video_podcast"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "use_head_music",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "false",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "false"
+                  },
+                  {
+                    "option": "true"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "0f3d4c1a-17c9-4fa0-8f8a-a913adbcf4a1",
+      "name": "Upload Assets And Viewpoint",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "video-clip-tts-upload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst now = new Date();\nconst iso = now.toISOString();\nconst stamp = iso.slice(0, 19).split('-').join('').split(':').join('').split('T').join('-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = stamp + '-' + random;\nfunction trimTrailingSlash(value) {\n  let text = String(value || '');\n  while (text.endsWith('/')) text = text.slice(0, -1);\n  return text;\n}\nconst repoDir = trimTrailingSlash($env.VIDEO_CLIP_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n');\nconst baseDir = trimTrailingSlash($env.VIDEO_CLIP_JOBS_DIR || repoDir + '/tmp/n8n-video-jobs');\nconst jobDir = baseDir + '/' + jobId;\nreturn [{ json: { ...item.json, jobId, baseDir, repoDir, jobDir, inputsDir: jobDir + '/inputs', ttsDir: jobDir + '/tts', ttsSegmentsDir: jobDir + '/tts/segments', renderDir: jobDir + '/render' }, binary: item.binary }];"
+      },
+      "id": "be754c0e-5a12-49df-8cb9-d0e37f77c4c7",
+      "name": "Prepare Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first();\nconst binary = item.binary || {};\nconst keyAliases = {\n  coverImage: ['cover_image', 'coverImage'],\n  screenshotImage: ['proof_screenshot', 'proofScreenshot'],\n  backgroundVideo: ['background_video', 'backgroundVideo']\n};\nfunction firstBinaryKey(keys) { return keys.find((key) => binary[key]); }\nfunction cleanText(value) {\n  const lf = String.fromCharCode(10);\n  const cr = String.fromCharCode(13);\n  let text = String(value || '').split(String.fromCharCode(0)).join('').split(cr + lf).join(lf).split(cr).join(lf);\n  while (text.includes(lf + lf + lf)) text = text.split(lf + lf + lf).join(lf + lf);\n  return text.trim();\n}\nconst uploadKeys = {\n  coverImage: firstBinaryKey(keyAliases.coverImage),\n  screenshotImage: firstBinaryKey(keyAliases.screenshotImage),\n  backgroundVideo: firstBinaryKey(keyAliases.backgroundVideo)\n};\nfor (const [name, key] of Object.entries(uploadKeys)) {\n  if (!key) throw new Error('Missing uploaded file: ' + name + '. Accepted field names: ' + keyAliases[name].join(', '));\n}\nconst viewpoint = cleanText(item.json.viewpoint);\nif (!viewpoint) throw new Error('viewpoint is required');\nconst scriptMode = 'ai_podcast';\nconst scriptStyle = item.json.podcast_style || 'podcast_interview';\nconst selectedVoices = {\n  voiceSingle: item.json.voice_single || '男主持 - 温柔阿虎｜host_male_wennuanahu',\n  voiceA: item.json.voice_a || '男主持 - 温柔阿虎｜host_male_wennuanahu',\n  voiceB: item.json.voice_b || '女嘉宾 - 小何｜guest_female_xiaohe'\n};\nfs.mkdirSync(item.json.inputsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsDir, { recursive: true });\nfs.mkdirSync(item.json.ttsSegmentsDir, { recursive: true });\nfs.mkdirSync(item.json.renderDir, { recursive: true });\nconst files = {\n  coverImage: item.json.inputsDir + '/cover.png',\n  screenshotImage: item.json.inputsDir + '/screenshot.png',\n  backgroundVideo: item.json.inputsDir + '/background.mp4',\n  scriptText: item.json.inputsDir + '/script.txt',\n  generatedScript: item.json.inputsDir + '/generated-script.json',\n  llmPrompt: item.json.inputsDir + '/script-prompt.txt',\n  llmResponse: item.json.inputsDir + '/script-response.json'\n};\nfor (const [inputName, target] of [['coverImage', files.coverImage], ['screenshotImage', files.screenshotImage], ['backgroundVideo', files.backgroundVideo]]) {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, uploadKeys[inputName]);\n  fs.writeFileSync(target, buffer);\n}\nreturn [{ json: { ...item.json, files, viewpoint, scriptMode, scriptStyle, selectedVoices } }];"
+      },
+      "id": "f2a77f74-f84b-43d9-8057-7ca810f8610f",
+      "name": "Save Uploaded Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.files.coverImage,\n    screenshotImage: item.files.screenshotImage,\n    backgroundVideo: item.files.backgroundVideo,\n    scriptText: item.files.scriptText,\n    ttsAudio: item.audioPath,\n    subtitleTiming: item.ttsTimingPath\n  },\n  output: {\n    video: item.renderDir + '/final.mp4',\n    subtitles: item.renderDir + '/subtitles.ass',\n    ffmpegLog: item.renderDir + '/ffmpeg.log'\n  },\n  video: { width: 1920, height: 1080, fps: 30, coverDuration: 3, screenshotDuration: 4 },\n  layout: {\n    coverTop: { x: 80, y: 60, width: 560 },\n    screenshotTop: { x: 1280, y: 60, width: 560 },\n    cornerImageTreatment: { enabled: true, blur: 2, opacity: 0.82, borderColor: 'white', borderWidth: 6 },\n    subtitleBottomMargin: 90\n  }\n};\nconst jobPath = item.jobDir + '/job.json';\nfs.writeFileSync(jobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, jobPath, outputVideo: job.output.video, subtitlePath: job.output.subtitles, ffmpegLog: job.output.ffmpegLog } }];"
+      },
+      "id": "f3511981-d156-4783-ad12-11a74c29a33b",
+      "name": "Build Job Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = item.repoDir + '/tools/video-composer/compose-video.mjs';\nfunction runComposer() {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, item.jobPath], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = '';\n    let stderr = '';\n    const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Video composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runComposer();\nreturn [{ json: { ...item, composerStdout: result.stdout || '', composerStderr: result.stderr || '' } }];"
+      },
+      "id": "2b37a207-0a84-44b4-99e9-c9d08bd1f50d",
+      "name": "Run Composer Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $('Build Job Config').first().json;\nif (!fs.existsSync(item.outputVideo)) throw new Error('Final video was not created: ' + item.outputVideo);\nconst video = fs.readFileSync(item.outputVideo);\nconst size = video.length;\nif (size === 0) throw new Error('Final video is empty: ' + item.outputVideo);\nconst binary = { finalVideo: await this.helpers.prepareBinaryData(video, 'final.mp4', 'video/mp4') };\nif (item.audioPath && fs.existsSync(item.audioPath)) {\n  const audio = fs.readFileSync(item.audioPath);\n  binary.ttsAudio = await this.helpers.prepareBinaryData(audio, 'tts-audio.mp3', 'audio/mpeg');\n}\nreturn [{ json: { jobId: item.jobId, jobDir: item.jobDir, reviewDir: item.jobDir, videoPath: item.outputVideo, audioPath: item.audioPath, subtitlePath: item.subtitlePath, subtitleTimingPath: item.ttsTimingPath, transcriptPath: item.transcriptPath, costPath: item.costPath, podcastMetadataPath: item.podcastMetadataPath, podcastRawResponsePath: item.podcastRawResponsePath, ffmpegLog: item.ffmpegLog, size, generatedScriptText: item.generatedScriptText, generatedScriptTitle: item.generatedScriptTitle, generatedScriptSummary: item.generatedScriptSummary, scriptMode: item.scriptMode, selectedVoices: item.selectedVoices, ttsDuration: item.ttsDuration, ttsPauseSeconds: item.ttsPauseSeconds, cost: item.cost }, binary }];"
+      },
+      "id": "db4a22de-a8cc-4724-a426-d767b67f8887",
+      "name": "Verify Final Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, jobId: $json.jobId, reviewDir: $json.reviewDir, videoPath: $json.videoPath, audioPath: $json.audioPath, subtitlePath: $json.subtitlePath, subtitleTimingPath: $json.subtitleTimingPath, transcriptPath: $json.transcriptPath, costPath: $json.costPath, podcastMetadataPath: $json.podcastMetadataPath, podcastRawResponsePath: $json.podcastRawResponsePath, ffmpegLog: $json.ffmpegLog, size: $json.size, generatedScriptTitle: $json.generatedScriptTitle, generatedScriptSummary: $json.generatedScriptSummary, generatedScriptText: $json.generatedScriptText, scriptMode: $json.scriptMode, selectedVoices: $json.selectedVoices, ttsDuration: $json.ttsDuration, cost: $json.cost } }}"
+      },
+      "id": "0c4f9831-a1b2-4c30-a08e-b7d1660a750a",
+      "name": "Respond With Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nfunction normalizeChoice(value, fallback) {\n  const text = String(value || '').trim();\n  if (!text) return fallback;\n  const separatorIndex = text.lastIndexOf('｜');\n  return separatorIndex >= 0 ? text.slice(separatorIndex + 1).trim() : text;\n}\nconst podcastSpeakerA = normalizeChoice(item.podcast_speaker_a, $env.DOUBAO_AI_PODCAST_SPEAKER_A || 'zh_male_dayi_v2_saturn_bigtts');\nconst podcastSpeakerB = normalizeChoice(item.podcast_speaker_b, $env.DOUBAO_AI_PODCAST_SPEAKER_B || 'zh_female_mizai_v2_saturn_bigtts');\nconst useHeadMusic = String(item.use_head_music || 'false').toLowerCase() === 'true';\nconst style = item.podcast_style || 'podcast_interview';\nconst podcastInputText = [\n  '请把下面观点制作成一个自然的双人中文 AI 播客。',\n  '开场要有播客感，可以使用“今天我们要聊的话题是...”这类自然引子，但不要机械朗读。',\n  '整体要适合短视频，表达紧凑，主持人负责提出主题和追问，嘉宾负责解释、举例和回应。',\n  '不要输出字幕文件，不要输出 Markdown，只生成适合服务合成的播客内容。',\n  '',\n  '播客风格：' + style,\n  '用户观点：' + item.viewpoint,\n].join(String.fromCharCode(10));\nfs.writeFileSync(item.files.scriptText, podcastInputText, 'utf8');\nconst aiPodcastJobPath = item.jobDir + '/ai-podcast-job.json';\nconst aiPodcastJob = {\n  jobId: item.jobId,\n  podcastInputText,\n  podcastSpeakerA,\n  podcastSpeakerB,\n  useHeadMusic,\n  ttsDir: item.ttsDir,\n  audioPath: item.ttsDir + '/audio.mp3',\n  ttsTimingPath: item.ttsDir + '/timing.json',\n  podcastMetadataPath: item.ttsDir + '/ai-podcast-metadata.json',\n  podcastRawResponsePath: item.ttsDir + '/ai-podcast-response.binlog',\n  costPath: item.ttsDir + '/cost.json',\n  transcriptPath: item.ttsDir + '/transcript.txt'\n};\nfs.writeFileSync(aiPodcastJobPath, JSON.stringify(aiPodcastJob, null, 2), 'utf8');\nreturn [{ json: { ...item, podcastInputText, podcastSpeakerA, podcastSpeakerB, useHeadMusic, aiPodcastJobPath, audioPath: aiPodcastJob.audioPath, ttsTimingPath: aiPodcastJob.ttsTimingPath, costPath: aiPodcastJob.costPath, transcriptPath: aiPodcastJob.transcriptPath, podcastMetadataPath: aiPodcastJob.podcastMetadataPath, podcastRawResponsePath: aiPodcastJob.podcastRawResponsePath, generatedScriptText: podcastInputText, generatedScriptTitle: 'AI Podcast', generatedScriptSummary: item.viewpoint, scriptMode: 'ai_podcast', selectedVoices: { podcastSpeakerA, podcastSpeakerB } } }];"
+      },
+      "id": "19abd7a5-6d6b-4727-9173-32dd0e8b638b",
+      "name": "Prepare AI Podcast Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst { spawnSync } = require('child_process');\nconst item = $input.first().json;\nconst scriptPath = item.repoDir + '/tools/video-composer/ai-podcast-client.mjs';\nconst result = spawnSync('node', [scriptPath, item.aiPodcastJobPath], {\n  cwd: item.repoDir,\n  encoding: 'utf8',\n  maxBuffer: 1024 * 1024 * 20,\n});\nif (result.error) throw result.error;\nif (result.status !== 0) {\n  throw new Error('AI podcast client failed with exit code ' + result.status + ': ' + (result.stderr || result.stdout));\n}\nconst audio = fs.readFileSync(item.audioPath);\nconst podcastAudio = await this.helpers.prepareBinaryData(audio, 'ai-podcast-audio.mp3', 'audio/mpeg');\nconst cost = item.costPath && fs.existsSync(item.costPath) ? JSON.parse(fs.readFileSync(item.costPath, 'utf8')) : null;\nconst transcriptText = item.transcriptPath && fs.existsSync(item.transcriptPath) ? fs.readFileSync(item.transcriptPath, 'utf8').trim() : '';\nlet aiPodcastResult = null;\ntry {\n  const lines = String(result.stdout || '').trim().split(/\\n/).filter(Boolean);\n  aiPodcastResult = lines.length ? JSON.parse(lines[lines.length - 1]) : null;\n} catch {}\nreturn [{ json: { ...item, aiPodcastStdout: result.stdout, aiPodcastResult, cost, transcriptText, generatedScriptText: transcriptText || item.generatedScriptText }, binary: { podcastAudio } }];"
+      },
+      "id": "219ab3fb-e4c1-4fe3-b96a-0d981dfe947e",
+      "name": "Run AI Podcast Client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Upload Assets And Viewpoint": {
+      "main": [
+        [
+          {
+            "node": "Prepare Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Job": {
+      "main": [
+        [
+          {
+            "node": "Save Uploaded Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Uploaded Files": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Podcast Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Podcast Input": {
+      "main": [
+        [
+          {
+            "node": "Run AI Podcast Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run AI Podcast Client": {
+      "main": [
+        [
+          {
+            "node": "Build Job Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Job Config": {
+      "main": [
+        [
+          {
+            "node": "Run Composer Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Composer Script": {
+      "main": [
+        [
+          {
+            "node": "Verify Final Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Final Video": {
+      "main": [
+        [
+          {
+            "node": "Respond With Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false,
+  "versionId": "video-clip-tts-workflow-v2",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "id": "video-clip-ai-podcast-workflow"
+}
