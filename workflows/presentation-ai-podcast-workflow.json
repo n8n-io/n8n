@@ -82,6 +82,7 @@
       "name": "Upload Presentation",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2,
+      "webhookId": "presentation-ai-podcast-upload",
       "position": [
         0,
         0
