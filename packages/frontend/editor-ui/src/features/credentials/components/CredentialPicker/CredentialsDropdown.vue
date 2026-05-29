@@ -50,14 +50,19 @@ const onFilter = (newFilter = '') => {
 	filter.value = newFilter;
 };
 
+const closeSelect = () => {
+	isSelectVisible.value = false;
+	selectRefs.value?.innerSelect?.handleClose();
+	selectRefs.value?.blur();
+};
+
 const onCredentialSelected = (credentialId: string) => {
+	closeSelect();
 	emit('credentialSelected', credentialId);
 };
 
 const onCreateNewCredential = async () => {
-	isSelectVisible.value = false;
-	selectRefs.value?.innerSelect?.handleClose();
-	selectRefs.value?.blur();
+	closeSelect();
 	await nextTick();
 	emit('newCredential');
 };
