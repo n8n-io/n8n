@@ -978,14 +978,6 @@ function onSwitchAgent(nextAgentId: string) {
 					@config-updated="onConfigUpdated"
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
-					@update:streaming="onBuildChatStreamingChange"
-					@update:tools="onQuickActionAddTool"
-					@update:mcp-servers="onQuickActionAddMcpServers"
-					@update:connected-triggers="onConnectedTriggersUpdate"
-					@update:full-width="isChatFullWidth = $event"
-					@trigger-added="onTriggerAdded"
-					@agent-published="onPublished"
-					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
 				<N8nResizeWrapper
 					v-else
