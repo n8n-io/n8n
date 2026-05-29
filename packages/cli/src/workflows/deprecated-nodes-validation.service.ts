@@ -22,7 +22,7 @@ import { NodeTypes } from '@/node-types';
  * validator is a no-op so operators can disable enforcement if needed.
  */
 @Service()
-export class DeprecatedNodesValidator {
+export class DeprecatedNodesValidationService {
 	constructor(
 		private readonly nodesConfig: NodesConfig,
 		private readonly nodeTypes: NodeTypes,

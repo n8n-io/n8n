@@ -144,7 +144,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 		});
 
@@ -563,7 +563,7 @@ describe('WorkflowService', () => {
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 
 			vi.clearAllMocks();
@@ -1601,7 +1601,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 
 			// Bypass validation internals

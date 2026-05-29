@@ -137,7 +137,7 @@ beforeAll(async () => {
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
-		mock(), // deprecatedNodesValidator
+		mock(), // deprecatedNodesValidationService
 	);
 });
 

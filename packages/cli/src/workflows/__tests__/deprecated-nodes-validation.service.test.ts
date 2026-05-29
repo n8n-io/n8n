@@ -4,10 +4,10 @@ import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
-import { DeprecatedNodesValidator } from '@/workflows/deprecated-nodes.validator';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
-describe('DeprecatedNodesValidator', () => {
-	let validator: DeprecatedNodesValidator;
+describe('DeprecatedNodesValidationService', () => {
+	let validator: DeprecatedNodesValidationService;
 	let nodesConfig: NodesConfig;
 	let nodeTypes: ReturnType<typeof mock<NodeTypes>>;
 
@@ -31,7 +31,7 @@ describe('DeprecatedNodesValidator', () => {
 			return nodeTypeFor(type, false);
 		});
 
-		validator = new DeprecatedNodesValidator(nodesConfig, nodeTypes);
+		validator = new DeprecatedNodesValidationService(nodesConfig, nodeTypes);
 	});
 
 	const makeNode = (overrides: Partial<INode> & Pick<INode, 'id' | 'type'>): INode => ({

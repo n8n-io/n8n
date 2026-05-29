@@ -51,7 +51,7 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
-import { DeprecatedNodesValidator } from './deprecated-nodes.validator';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -186,7 +186,7 @@ export class WorkflowService {
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
-		private readonly deprecatedNodesValidator: DeprecatedNodesValidator,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	/**
@@ -671,7 +671,10 @@ export class WorkflowService {
 		}
 
 		if (hasNodesKey && nodesChanged) {
-			this.deprecatedNodesValidator.validateOnUpdate(workflowUpdateData.nodes, workflow.nodes);
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				workflowUpdateData.nodes,
+				workflow.nodes,
+			);
 		}
 
 		// Strip redactionPolicy if instance lacks data-redaction license
