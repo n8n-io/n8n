@@ -130,6 +130,10 @@ export function useCanvasMapping({
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
 				placeholder: node.placeholder,
+				deprecated: Boolean(nodeType?.deprecated),
+				deprecatedReplacementName: nodeType?.replacedByNodeType
+					? nodeTypesStore.getNodeType(nodeType.replacedByNodeType)?.displayName
+					: undefined,
 			},
 		};
 	}

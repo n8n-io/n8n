@@ -457,6 +457,7 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
+	| 'deprecated'
 > & {
 	tag?: NodeCreatorTag;
 	isNew?: boolean;

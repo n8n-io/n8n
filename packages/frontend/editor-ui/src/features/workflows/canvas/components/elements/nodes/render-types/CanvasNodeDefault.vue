@@ -46,6 +46,7 @@ const {
 	executionRunning,
 	hasRunData,
 	render,
+	isDeprecated,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
@@ -82,6 +83,7 @@ const classes = computed(() => {
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 		[$style.placeholder]: renderOptions.value.placeholder,
+		[$style.deprecated]: isDeprecated.value,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
 		running: executionRunning.value || executionWaitingForNext.value,
 	};
@@ -197,7 +199,7 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="isDisabled || isDeprecated"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
@@ -219,7 +221,7 @@ function onActivate(event: MouseEvent) {
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons v-if="!isDisabled || isDeprecated" :class="$style.statusIcons" />
 	</div>
 </template>
 
@@ -346,6 +348,11 @@ function onActivate(event: MouseEvent) {
 	&.warning {
 		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(--color--warning);
+	}
+
+	&.deprecated {
+		--canvas-node--border-width: 2px;
+		--canvas-node--border-color: var(--color--danger);
 	}
 
 	&.error {
