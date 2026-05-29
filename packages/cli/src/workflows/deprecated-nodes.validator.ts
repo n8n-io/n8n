@@ -3,12 +3,11 @@ import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import type { INode } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import {
+	DeprecatedNodesError,
+	type DeprecatedNodeViolation,
+} from '@/errors/response-errors/deprecated-nodes.error';
 import { NodeTypes } from '@/node-types';
-
-type Violation =
-	| { kind: 'added'; nodeName: string; nodeType: string }
-	| { kind: 'edited'; nodeName: string; nodeType: string };
 
 /**
  * Refuses workflow create/update operations that add new instances of a
@@ -36,7 +35,7 @@ export class DeprecatedNodesValidator {
 	validateOnCreate(nodes: INode[]): void {
 		if (!this.nodesConfig.blockDeprecated) return;
 
-		const violations: Violation[] = [];
+		const violations: DeprecatedNodeViolation[] = [];
 		for (const node of nodes) {
 			if (this.isDeprecated(node)) {
 				violations.push({ kind: 'added', nodeName: node.name, nodeType: node.type });
@@ -44,7 +43,7 @@ export class DeprecatedNodesValidator {
 		}
 
 		if (violations.length > 0) {
-			throw new BadRequestError(this.formatError(violations));
+			throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
 		}
 	}
 
@@ -68,7 +67,7 @@ export class DeprecatedNodesValidator {
 		if (!this.nodesConfig.blockDeprecated) return;
 
 		const existingById = new Map(existingNodes.map((n) => [n.id, n]));
-		const violations: Violation[] = [];
+		const violations: DeprecatedNodeViolation[] = [];
 
 		for (const incoming of incomingNodes) {
 			if (!this.isDeprecated(incoming)) continue;
@@ -87,7 +86,7 @@ export class DeprecatedNodesValidator {
 		}
 
 		if (violations.length > 0) {
-			throw new BadRequestError(this.formatError(violations));
+			throw new DeprecatedNodesError(this.formatMessage(violations), { violations });
 		}
 	}
 
@@ -101,7 +100,7 @@ export class DeprecatedNodesValidator {
 		}
 	}
 
-	private formatError(violations: Violation[]): string {
+	private formatMessage(violations: DeprecatedNodeViolation[]): string {
 		const lines = violations.map((v) => {
 			const verb = v.kind === 'added' ? 'add a new' : 'modify a';
 			return `Cannot ${verb} "${v.nodeType}" node ("${v.nodeName}"): this node type is deprecated.`;
