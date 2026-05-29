@@ -223,10 +223,22 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 	void thread.confirmAction(requestId, { kind: 'planDeny' });
 }
 
-/** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
- *  Prefers pending (isLoading) over resolved — handles revision loops where
- *  multiple submit-plan calls exist. */
+/** Find the plan-review confirmation for this turn. Two shapes coexist:
+ *
+ *  1. Cascade flow (this feature): the planner sub-agent's submit-plan
+ *     confirmation is captured-not-published, so it cascades up onto the
+ *     orchestrator's own `plan` tool call.
+ *  2. Direct flow: the planner child's submit-plan tool call carries it.
+ *
+ *  Check the orchestrator's own tool calls first (the cascade case), then fall
+ *  back to the planner child. Prefers pending (isLoading) over resolved to
+ *  handle revision loops where multiple submit-plan calls exist. */
 const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => {
+	const onOrchestrator = props.agentNode.toolCalls.find(
+		(tc) => tc.confirmation?.inputType === 'plan-review',
+	);
+	if (onOrchestrator) return onOrchestrator;
+
 	let latest: InstanceAiToolCallState | undefined;
 	for (const child of props.agentNode.children) {
 		if (child.role !== 'planner') continue;
@@ -239,6 +251,17 @@ const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => 
 	}
 	return latest;
 });
+
+/** True when a planner sub-agent was spawned for this orchestrator turn. The
+ *  cascade flow leaves the plan-review confirmation on the orchestrator's own
+ *  `plan` tool call AND the planner child renders its own card, so without
+ *  this guard the tool-call slot and the post-AgentSection slot both draw a
+ *  plan card (one interactive, one loading). Suppress the tool-call slot when
+ *  a planner child exists — the post-AgentSection slot is the canonical render
+ *  and shows the planner's step list above the card. */
+const hasPlannerChild = computed<boolean>(() =>
+	props.agentNode.children.some((c) => c.role === 'planner'),
+);
 
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
 function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
@@ -291,9 +314,14 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
 				<!-- Plan review must match before the planner renderHint suppression:
 				     when the plan tool attaches the confirmation to its own tool call
-				     (no planner child agent), that suppression would otherwise hide it. -->
+				     (no planner child agent), that suppression would otherwise hide it.
+				     When a planner child IS present, defer to the post-AgentSection
+				     slot so the card isn't drawn twice. -->
 				<PlanReviewPanel
-					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review' &&
+						!hasPlannerChild
+					"
 					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
 					:planned-tasks="getPlanTasks(toolCallsById[entry.toolCallId])"
 					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
