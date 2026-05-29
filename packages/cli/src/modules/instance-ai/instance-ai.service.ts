@@ -10,7 +10,6 @@ import {
 	type InstanceAiGatewayCapabilities,
 	type McpToolCallResult,
 	type ToolCategory,
-	type TaskList,
 } from '@n8n/api-types';
 import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
@@ -49,7 +48,6 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	TerminalOutcomeStorage,
-	deriveWorkflowVerificationObligation,
 	isWorkflowVerificationObligationUnsettled,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
@@ -63,8 +61,6 @@ import {
 	truncateToTitle,
 	generateTitleForRun,
 	patchThread,
-	workflowBuildOutcomeSchema,
-	workflowVerificationEvidenceSchema,
 	type ConfirmationData,
 	type BuiltMemory,
 	type DomainAccessTracker,
@@ -88,7 +84,6 @@ import {
 	type WorkflowBuildOutcome,
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
-	type WorkflowVerificationObligationSource,
 	type WorkSummary,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
@@ -124,6 +119,10 @@ import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from './run-trace-metadata';
+import {
+	WorkflowVerificationTaskProjector,
+	parseWorkflowBuildOutcome,
+} from './workflow-verification-task-projector';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -560,6 +559,8 @@ export class InstanceAiService {
 
 	private readonly logger: Logger;
 
+	private readonly taskProjector: WorkflowVerificationTaskProjector;
+
 	private checkpointPruneTimer: NodeJS.Timeout | undefined;
 
 	private checkpointPruningStopped = true;
@@ -589,6 +590,11 @@ export class InstanceAiService {
 		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
+		this.taskProjector = new WorkflowVerificationTaskProjector(
+			this.agentMemory,
+			this.eventBus,
+			this.logger,
+		);
 		this.instanceAiConfig = globalConfig.instanceAi;
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
@@ -2024,526 +2030,31 @@ export class InstanceAiService {
 		});
 	}
 
-	private async projectPlannedTaskList(
-		threadId: string,
-		graph: PlannedTaskGraph,
-	): Promise<TaskList> {
-		const tasks: TaskList['tasks'] = [];
-		for (const task of graph.tasks) {
-			tasks.push({
-				id: task.id,
-				description: task.title,
-				detail: await this.getPlannedTaskDetail(threadId, task),
-				status: this.getProjectedTaskStatus(task.status),
-			});
-
-			if (task.kind === 'build-workflow') {
-				tasks.push(await this.getPlannedWorkflowVerificationTask(threadId, task));
-			}
-		}
-
-		return {
-			tasks,
-		};
-	}
-
-	private getProjectedTaskStatus(
-		status: PlannedTaskRecord['status'],
-	): TaskList['tasks'][number]['status'] {
-		switch (status) {
-			case 'planned':
-				return 'todo';
-			case 'running':
-				return 'in_progress';
-			case 'succeeded':
-				return 'done';
-			case 'failed':
-				return 'failed';
-			case 'cancelled':
-				return 'cancelled';
-		}
-	}
-
-	private async getPlannedTaskDetail(
-		threadId: string,
-		task: PlannedTaskRecord,
-	): Promise<string | undefined> {
-		if (task.kind !== 'build-workflow') return undefined;
-		if (task.status === 'running') return 'Building workflow';
-		if (task.status === 'failed') return task.error ?? 'Blocked';
-		if (task.status === 'cancelled') return task.error ?? 'Cancelled';
-
-		const outcome = this.parseWorkflowBuildOutcome(task.outcome);
-		if (!outcome) return task.status === 'succeeded' ? 'Submitted' : undefined;
-		return outcome.submitted || outcome.workflowId ? 'Submitted' : undefined;
-	}
-
-	private getPlannedWorkflowVerificationTaskId(taskId: string): string {
-		return `${taskId}:verify`;
-	}
-
-	private async getPlannedWorkflowVerificationTask(
-		threadId: string,
-		task: PlannedTaskRecord,
-	): Promise<TaskList['tasks'][number]> {
-		const base = {
-			id: this.getPlannedWorkflowVerificationTaskId(task.id),
-			description: 'Verify workflow',
-		};
-
-		if (task.status === 'planned' || task.status === 'running') {
-			return {
-				...base,
-				detail: 'Waiting for build',
-				status: 'todo',
-			};
-		}
-
-		if (task.status === 'failed' || task.status === 'cancelled') {
-			return {
-				...base,
-				detail: 'Build did not complete',
-				status: 'cancelled',
-			};
-		}
-
-		const outcome = this.parseWorkflowBuildOutcome(task.outcome);
-		if (!outcome) {
-			return {
-				...base,
-				detail: 'Verification pending',
-				status: 'in_progress',
-			};
-		}
-
-		const obligation = outcome.workItemId
-			? await this.getWorkflowVerificationObligation(threadId, outcome.workItemId, {
-					source: 'planned',
-					plannedTaskId: task.id,
-				})
-			: undefined;
-		if (obligation) {
-			return {
-				...base,
-				detail: this.getWorkflowVerificationDetail(obligation),
-				status:
-					obligation.status === 'pending_build'
-						? 'todo'
-						: this.getDirectWorkflowTaskStatus(obligation),
-			};
-		}
-
-		switch (outcome.verificationReadiness?.status) {
-			case 'already_verified':
-				return {
-					...base,
-					detail: this.formatWorkflowVerificationDetail(outcome.verification),
-					status: 'done',
-				};
-			case 'ready':
-				return {
-					...base,
-					detail: 'Verification pending',
-					status: 'in_progress',
-				};
-			case 'needs_setup':
-				return {
-					...base,
-					detail: 'Needs setup',
-					status: 'done',
-				};
-			case 'not_verifiable':
-				return {
-					...base,
-					detail: 'Could not verify automatically',
-					status: 'done',
-				};
-			default:
-				return {
-					...base,
-					detail: outcome.workflowId ? 'Verification pending' : 'No workflow to verify',
-					status: outcome.workflowId ? 'in_progress' : 'cancelled',
-				};
-		}
-	}
-
-	private formatWorkflowVerificationDetail(evidence: unknown): string {
-		const parsed = workflowVerificationEvidenceSchema.safeParse(evidence);
-		if (!parsed.success) return 'Verified';
-		const verifiedEvidence = parsed.data;
-		if (!verifiedEvidence.attempted || !verifiedEvidence.success) return 'Verified';
-
-		const details = [
-			verifiedEvidence.executionId ? `execution ${verifiedEvidence.executionId}` : '',
-			typeof verifiedEvidence.evidence?.producedOutputRows === 'number'
-				? `${verifiedEvidence.evidence.producedOutputRows} output rows`
-				: '',
-		].filter((detail) => detail.length > 0);
-		return details.length > 0 ? `Verified - ${details.join(', ')}` : 'Verified';
-	}
-
-	private getWorkflowVerificationDetail(obligation: WorkflowVerificationObligation): string {
-		switch (obligation.status) {
-			case 'pending_build':
-				return 'Building workflow';
-			case 'ready_to_verify':
-				return 'Verification pending';
-			case 'verifying':
-				return 'Verifying workflow';
-			case 'verified':
-				return this.formatWorkflowVerificationDetail(obligation.evidence);
-			case 'needs_setup':
-				return 'Needs setup';
-			case 'not_verifiable':
-				return 'Could not verify automatically';
-			case 'blocked': {
-				if (typeof obligation.blockingReason !== 'string') return 'Blocked';
-				return String(obligation.blockingReason);
-			}
-		}
-	}
-
-	private getDirectWorkflowTaskStatus(
-		obligation: WorkflowVerificationObligation,
-	): TaskList['tasks'][number]['status'] {
-		switch (obligation.status) {
-			case 'pending_build':
-			case 'ready_to_verify':
-			case 'verifying':
-				return 'in_progress';
-			case 'verified':
-			case 'needs_setup':
-			case 'not_verifiable':
-				return 'done';
-			case 'blocked':
-				return 'failed';
-		}
-	}
-
-	private getDirectWorkflowVerificationTaskId(taskId: string): string {
-		return `${taskId}:verify`;
-	}
-
-	private taskItemsEqual(
-		first: TaskList['tasks'][number],
-		second: TaskList['tasks'][number],
-	): boolean {
-		return (
-			first.id === second.id &&
-			first.description === second.description &&
-			first.detail === second.detail &&
-			first.status === second.status
-		);
-	}
-
-	private upsertTaskItemsInOrder(
-		existingTasks: TaskList['tasks'],
-		items: TaskList['tasks'],
-	): { tasks: TaskList['tasks']; changed: boolean } {
-		const tasks = [...existingTasks];
-		let changed = false;
-
-		for (const [itemIndex, item] of items.entries()) {
-			const existingIndex = tasks.findIndex((task) => task.id === item.id);
-			if (existingIndex >= 0) {
-				if (this.taskItemsEqual(tasks[existingIndex], item)) continue;
-				tasks[existingIndex] = item;
-				changed = true;
-				continue;
-			}
-
-			const previousItem = items[itemIndex - 1];
-			const previousIndex = previousItem
-				? tasks.findIndex((task) => task.id === previousItem.id)
-				: -1;
-			tasks.splice(previousIndex >= 0 ? previousIndex + 1 : tasks.length, 0, item);
-			changed = true;
-		}
-
-		return { tasks, changed };
-	}
-
-	private getDirectWorkflowBuildTaskItem(input: {
-		taskId: string;
-		outcome: WorkflowBuildOutcome | undefined;
-		obligation: WorkflowVerificationObligation;
-	}): TaskList['tasks'][number] {
-		const submitted = input.outcome?.submitted === true || !!input.obligation.workflowId;
-		const blockedBeforeSubmit = input.obligation.status === 'blocked' && !submitted;
-
-		return {
-			id: input.taskId,
-			description: 'Build workflow',
-			detail: submitted ? 'Submitted' : this.getWorkflowVerificationDetail(input.obligation),
-			status: blockedBeforeSubmit ? 'failed' : submitted ? 'done' : 'in_progress',
-		};
-	}
-
-	private getDirectWorkflowVerificationTaskItem(input: {
-		taskId: string;
-		obligation: WorkflowVerificationObligation;
-	}): TaskList['tasks'][number] {
-		const status =
-			input.obligation.status === 'pending_build'
-				? 'todo'
-				: this.getDirectWorkflowTaskStatus(input.obligation);
-		const detail =
-			input.obligation.status === 'pending_build'
-				? 'Waiting for build'
-				: this.getWorkflowVerificationDetail(input.obligation);
-
-		return {
-			id: this.getDirectWorkflowVerificationTaskId(input.taskId),
-			description: 'Verify workflow',
-			detail,
-			status,
-		};
-	}
-
-	private getDirectWorkflowTaskItems(input: {
-		taskId: string;
-		outcome: WorkflowBuildOutcome | undefined;
-		obligation: WorkflowVerificationObligation;
-	}): TaskList['tasks'] {
-		return [
-			this.getDirectWorkflowBuildTaskItem(input),
-			this.getDirectWorkflowVerificationTaskItem(input),
-		];
-	}
-
-	private async upsertDirectWorkflowTaskItems(input: {
-		threadId: string;
-		runId: string;
-		items: TaskList['tasks'];
-	}): Promise<void> {
-		const memory = this.agentMemory;
-		if (!memory) return;
-
-		try {
-			const taskStorage = new ThreadTaskStorage(memory);
-			const existing = (await taskStorage.get(input.threadId)) ?? { tasks: [] };
-			const { tasks, changed } = this.upsertTaskItemsInOrder(existing.tasks, input.items);
-			if (!changed) return;
-
-			const taskList = { tasks };
-			await taskStorage.save(input.threadId, taskList);
-			this.eventBus.publish(input.threadId, {
-				type: 'tasks-update',
-				runId: input.runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { tasks: taskList },
-			});
-		} catch (error) {
-			this.logger.warn('Failed to update direct workflow builder task checklist item', {
-				threadId: input.threadId,
-				taskIds: input.items.map((item) => item.id),
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async syncDirectWorkflowBuilderTaskFromBackgroundTask(
-		task: ManagedBackgroundTask,
-	): Promise<void> {
-		if (task.plannedTaskId || task.parentCheckpointId || task.role !== 'workflow-builder') return;
-
-		if (task.status === 'running') {
-			await this.upsertDirectWorkflowTaskItems({
-				threadId: task.threadId,
-				runId: task.runId,
-				items: [
-					{
-						id: task.taskId,
-						description: 'Build workflow',
-						detail: 'Building workflow',
-						status: 'in_progress',
-					},
-					{
-						id: this.getDirectWorkflowVerificationTaskId(task.taskId),
-						description: 'Verify workflow',
-						detail: 'Waiting for build',
-						status: 'todo',
-					},
-				],
-			});
-			return;
-		}
-
-		if (task.status === 'failed') {
-			await this.upsertDirectWorkflowTaskItems({
-				threadId: task.threadId,
-				runId: task.runId,
-				items: [
-					{
-						id: task.taskId,
-						description: 'Build workflow',
-						detail: task.error ?? 'Blocked',
-						status: 'failed',
-					},
-					{
-						id: this.getDirectWorkflowVerificationTaskId(task.taskId),
-						description: 'Verify workflow',
-						detail: 'Build did not complete',
-						status: 'cancelled',
-					},
-				],
-			});
-			return;
-		}
-
-		if (task.status === 'cancelled') {
-			await this.upsertDirectWorkflowTaskItems({
-				threadId: task.threadId,
-				runId: task.runId,
-				items: [
-					{
-						id: task.taskId,
-						description: 'Build workflow',
-						detail: task.error ?? 'Cancelled',
-						status: 'cancelled',
-					},
-					{
-						id: this.getDirectWorkflowVerificationTaskId(task.taskId),
-						description: 'Verify workflow',
-						detail: 'Build did not complete',
-						status: 'cancelled',
-					},
-				],
-			});
-			return;
-		}
-
-		const outcome = this.parseWorkflowBuildOutcome(task.outcome);
-		const workItemId = task.workItemId ?? outcome?.workItemId;
-		if (!workItemId) {
-			await this.upsertDirectWorkflowTaskItems({
-				threadId: task.threadId,
-				runId: task.runId,
-				items: [
-					{
-						id: task.taskId,
-						description: 'Build workflow',
-						detail: task.status === 'completed' ? 'Submitted' : (task.error ?? 'Blocked'),
-						status: task.status === 'completed' ? 'done' : 'failed',
-					},
-					{
-						id: this.getDirectWorkflowVerificationTaskId(task.taskId),
-						description: 'Verify workflow',
-						detail:
-							task.status === 'completed' ? 'No workflow to verify' : 'Build did not complete',
-						status: 'cancelled',
-					},
-				],
-			});
-			return;
-		}
-
-		const obligation = await this.getWorkflowVerificationObligation(task.threadId, workItemId, {
-			source: 'direct',
-		});
-		if (!obligation) return;
-
-		await this.upsertDirectWorkflowTaskItems({
-			threadId: task.threadId,
-			runId: task.runId,
-			items: this.getDirectWorkflowTaskItems({
-				taskId: task.taskId,
-				outcome,
-				obligation,
-			}),
-		});
-	}
-
-	private async syncDirectWorkflowBuilderTasksFromWorkflowLoop(
-		threadId: string,
-		runId: string,
-	): Promise<void> {
-		const memory = this.agentMemory;
-		if (!memory) return;
-
-		try {
-			const taskStorage = new ThreadTaskStorage(memory);
-			const existing = await taskStorage.get(threadId);
-			if (!existing?.tasks.length) return;
-
-			const workflowLoopStorage = new WorkflowLoopStorage(memory);
-			const records = await workflowLoopStorage.listWorkItems(threadId);
-			const obligationsByTaskId = new Map<string, WorkflowVerificationObligation>();
-			for (const record of records) {
-				const obligation = deriveWorkflowVerificationObligation(threadId, record, {
-					source: 'direct',
-				});
-				if (obligation.taskId) {
-					obligationsByTaskId.set(obligation.taskId, obligation);
-				}
-			}
-
-			let tasks = existing.tasks;
-			let changed = false;
-			for (const task of existing.tasks) {
-				const obligation = obligationsByTaskId.get(task.id);
-				if (!obligation) continue;
-
-				const record = records.find(
-					(candidate) => candidate.state.workItemId === obligation.workItemId,
-				);
-				const update = this.upsertTaskItemsInOrder(
-					tasks,
-					this.getDirectWorkflowTaskItems({
-						taskId: task.id,
-						outcome: record?.lastBuildOutcome,
-						obligation,
-					}),
-				);
-				if (update.changed) changed = true;
-				tasks = update.tasks;
-			}
-
-			if (!changed) return;
-
-			const taskList = { tasks };
-			await taskStorage.save(threadId, taskList);
-			this.eventBus.publish(threadId, {
-				type: 'tasks-update',
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { tasks: taskList },
-			});
-		} catch (error) {
-			this.logger.warn('Failed to sync direct workflow builder task checklist items', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
 	private createWorkflowTaskServiceWithUiSync(
 		threadId: string,
 		runId: string,
 		workflowTasks: WorkflowTaskCoordinator,
 	): WorkflowTaskService {
-		const syncDirectTasks = async () => {
-			await this.syncDirectWorkflowBuilderTasksFromWorkflowLoop(threadId, runId);
-		};
+		const sync = async () => await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 
 		return {
 			reportBuildOutcome: async (outcome) => {
 				const action = await workflowTasks.reportBuildOutcome(outcome);
-				await syncDirectTasks();
+				await sync();
 				return action;
 			},
 			reportVerificationVerdict: async (verdict) => {
 				const action = await workflowTasks.reportVerificationVerdict(verdict);
-				await syncDirectTasks();
+				await sync();
 				return action;
+			},
+			updateBuildOutcome: async (workItemId, update) => {
+				await workflowTasks.updateBuildOutcome(workItemId, update);
+				await sync();
 			},
 			getBuildOutcome: async (workItemId) => await workflowTasks.getBuildOutcome(workItemId),
 			getWorkflowLoopState: async (workItemId) =>
 				await workflowTasks.getWorkflowLoopState(workItemId),
-			updateBuildOutcome: async (workItemId, update) => {
-				await workflowTasks.updateBuildOutcome(workItemId, update);
-				await syncDirectTasks();
-			},
 		};
 	}
 
@@ -2646,24 +2157,6 @@ export class InstanceAiService {
 		return `<workflow-verification-follow-up>\n${JSON.stringify(payload, null, 2)}\n</workflow-verification-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private parseWorkflowBuildOutcome(
-		outcome: Record<string, unknown> | undefined,
-	): WorkflowBuildOutcome | undefined {
-		const parsed = workflowBuildOutcomeSchema.safeParse(outcome);
-		return parsed.success ? parsed.data : undefined;
-	}
-
-	private async getWorkflowVerificationObligation(
-		threadId: string,
-		workItemId: string,
-		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
-	): Promise<WorkflowVerificationObligation | undefined> {
-		const storage = new WorkflowLoopStorage(this.agentMemory);
-		const record = await storage.getWorkItem(threadId, workItemId);
-		if (!record) return undefined;
-		return deriveWorkflowVerificationObligation(threadId, record, options);
-	}
-
 	private async findUnsettledPlannedWorkflowVerification(
 		threadId: string,
 		graph: PlannedTaskGraph,
@@ -2678,11 +2171,11 @@ export class InstanceAiService {
 		for (const task of graph.tasks) {
 			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
 
-			const outcome = this.parseWorkflowBuildOutcome(task.outcome);
+			const outcome = parseWorkflowBuildOutcome(task.outcome);
 			const workItemId = outcome?.workItemId;
 			if (!workItemId) continue;
 
-			const obligation = await this.getWorkflowVerificationObligation(threadId, workItemId, {
+			const obligation = await this.taskProjector.getObligation(threadId, workItemId, {
 				source: 'planned',
 				plannedTaskId: task.id,
 			});
@@ -3070,7 +2563,7 @@ export class InstanceAiService {
 
 	private async syncPlannedTasksToUi(threadId: string, graph: PlannedTaskGraph): Promise<void> {
 		const { taskStorage } = await this.createPlannedTaskState();
-		const tasks = await this.projectPlannedTaskList(threadId, graph);
+		const tasks = await this.taskProjector.projectPlannedTaskList(threadId, graph);
 		await taskStorage.save(threadId, tasks);
 		this.eventBus.publish(threadId, {
 			type: 'tasks-update',
@@ -3479,19 +2972,15 @@ export class InstanceAiService {
 	): Promise<boolean> {
 		if (task.role !== 'workflow-builder' || !task.workItemId) return false;
 
-		const obligation = await this.getWorkflowVerificationObligation(
-			task.threadId,
-			task.workItemId,
-			{
-				source: task.plannedTaskId ? 'planned' : 'direct',
-				plannedTaskId: task.plannedTaskId,
-			},
-		);
+		const obligation = await this.taskProjector.getObligation(task.threadId, task.workItemId, {
+			source: task.plannedTaskId ? 'planned' : 'direct',
+			plannedTaskId: task.plannedTaskId,
+		});
 		if (!obligation) return false;
 		this.trackWorkflowVerificationObligation(obligation, 'background_task_settled');
 		if (obligation.status === 'verified' || obligation.status === 'blocked') return false;
 
-		const outcome = this.parseWorkflowBuildOutcome(task.outcome);
+		const outcome = parseWorkflowBuildOutcome(task.outcome);
 		const startedRunId = await this.startInternalFollowUpRun(
 			user,
 			task.threadId,
@@ -3670,9 +3159,8 @@ export class InstanceAiService {
 						follow_up_started: startedRunId.length > 0,
 					},
 				);
-				if (!startedRunId) {
-					await plannedTaskService.revertToActive(threadId);
-				}
+				// The graph was already reverted to `active` above so the verification
+				// follow-up can run; nothing more to roll back here.
 				return;
 			}
 
@@ -4349,7 +3837,7 @@ export class InstanceAiService {
 					await this.schedulePlannedTasks(user, threadId);
 				}
 				await this.drainPendingCheckpointReentries(user, threadId);
-				await this.syncDirectWorkflowBuilderTasksFromWorkflowLoop(threadId, runId);
+				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 			}
 		}
 	}
@@ -5015,7 +4503,7 @@ export class InstanceAiService {
 					await this.schedulePlannedTasks(opts.user, opts.threadId);
 				}
 				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
-				await this.syncDirectWorkflowBuilderTasksFromWorkflowLoop(opts.threadId, opts.runId);
+				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 			}
 		}
 	}
@@ -5111,7 +4599,7 @@ export class InstanceAiService {
 				// schedulePlannedTasks(); this covers direct build-workflow-with-agent calls.
 				if (task.plannedTaskId) return;
 
-				await this.syncDirectWorkflowBuilderTaskFromBackgroundTask(task);
+				await this.taskProjector.syncFromBackgroundTask(task);
 
 				// Parent-tagged children (patch-builder etc. spawned inside a
 				// checkpoint follow-up) must NEVER emit a generic
@@ -5177,7 +4665,7 @@ export class InstanceAiService {
 		});
 
 		if (outcome.status === 'started') {
-			void this.syncDirectWorkflowBuilderTaskFromBackgroundTask(outcome.task);
+			void this.taskProjector.syncFromBackgroundTask(outcome.task);
 			return { status: 'started', taskId: outcome.task.taskId, agentId: outcome.task.agentId };
 		}
 		if (outcome.status === 'duplicate') {

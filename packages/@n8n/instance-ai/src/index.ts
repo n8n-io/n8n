@@ -352,6 +352,7 @@ export {
 	formatAttemptHistory,
 	WorkflowTaskCoordinator,
 	deriveWorkflowVerificationObligation,
+	deriveWorkflowVerificationObligationFromOutcome,
 	isWorkflowVerificationObligationUnsettled,
 	workflowBuildOutcomeSchema,
 	workflowVerificationEvidenceSchema,

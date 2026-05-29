@@ -8,8 +8,6 @@ const props = defineProps<{
 	tasks?: TaskList;
 }>();
 
-type TaskItemWithDetail = TaskList['tasks'][number] & { detail?: string };
-
 type StatusConfig = {
 	icon: IconName;
 	spin?: boolean;
@@ -40,11 +38,10 @@ function getConfig(status: string) {
 
 const taskList = computed(() =>
 	(props.tasks?.tasks ?? []).map((task) => {
-		const taskWithDetail: TaskItemWithDetail = task;
 		const config = getConfig(task.status);
 
 		return {
-			...taskWithDetail,
+			...task,
 			...config,
 		};
 	}),

@@ -127,3 +127,32 @@ export function isWorkflowVerificationObligationUnsettled(
 ): boolean {
 	return UNSETTLED_OBLIGATION_STATUSES.has(obligation.status);
 }
+
+/**
+ * Derive an obligation from a build outcome alone, for callers that have a
+ * settled build outcome (e.g. a planned task's recorded outcome) but no live
+ * workflow-loop record to read. Backs the obligation with a minimal synthetic
+ * state so the same derivation rules apply.
+ */
+export function deriveWorkflowVerificationObligationFromOutcome(
+	threadId: string,
+	outcome: WorkflowBuildOutcome,
+	options: DeriveWorkflowVerificationObligationOptions = {},
+): WorkflowVerificationObligation {
+	const state: WorkflowLoopState = {
+		workItemId: outcome.workItemId,
+		threadId,
+		runId: outcome.runId,
+		workflowId: outcome.workflowId,
+		lastTaskId: outcome.taskId,
+		phase: 'verifying',
+		status: 'active',
+		source: 'create',
+		rebuildAttempts: 0,
+	};
+	return deriveWorkflowVerificationObligation(
+		threadId,
+		{ state, attempts: [], lastBuildOutcome: outcome },
+		options,
+	);
+}

@@ -548,7 +548,9 @@ export function determineVerificationReadiness(
 		};
 	}
 
-	if (hasMockedCredentials(outcome) && !hasCredentialVerificationData(outcome)) {
+	if (hasMockedCredentials(outcome)) {
+		// hasCredentialVerificationData() returned false above, so mocked
+		// credentials here have no pin data to exercise them.
 		return {
 			status: 'needs_setup',
 			reason: 'missing-mocked-credential-pin-data',

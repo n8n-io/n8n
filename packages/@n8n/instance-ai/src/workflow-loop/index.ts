@@ -56,6 +56,7 @@ export { formatWorkflowLoopGuidance } from './guidance';
 export { WorkflowTaskCoordinator } from './workflow-task-service';
 export {
 	deriveWorkflowVerificationObligation,
+	deriveWorkflowVerificationObligationFromOutcome,
 	isWorkflowVerificationObligationUnsettled,
 	type DeriveWorkflowVerificationObligationOptions,
 	type WorkflowVerificationObligationRecord,

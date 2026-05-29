@@ -241,6 +241,7 @@ type BackgroundTaskFollowUpServiceInternals = {
 	maybeReenterParentCheckpoint: jest.MockedFunction<
 		(user: User, threadId: string, task: ManagedBackgroundTask) => Promise<boolean>
 	>;
+	taskProjector: { syncFromBackgroundTask: jest.Mock };
 	logger: { warn: jest.Mock; debug: jest.Mock };
 };
 
@@ -289,6 +290,7 @@ function createBackgroundTaskFollowUpService({
 		),
 	};
 	service.eventBus = { publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}) };
+	service.taskProjector = { syncFromBackgroundTask: jest.fn(async () => {}) };
 	service.finalizeBackgroundTaskTracing = jest.fn(
 		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
 	);

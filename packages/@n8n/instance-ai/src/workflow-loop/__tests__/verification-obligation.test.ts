@@ -1,4 +1,7 @@
-import { deriveWorkflowVerificationObligation } from '../verification-obligation';
+import {
+	deriveWorkflowVerificationObligation,
+	deriveWorkflowVerificationObligationFromOutcome,
+} from '../verification-obligation';
 import type {
 	AttemptRecord,
 	WorkflowBuildOutcome,
@@ -145,5 +148,39 @@ describe('deriveWorkflowVerificationObligation', () => {
 
 		expect(obligation.status).toBe('blocked');
 		expect(obligation.blockingReason).toBe('submit failed');
+	});
+});
+
+describe('deriveWorkflowVerificationObligationFromOutcome', () => {
+	it('derives the same obligation as a synthetic loop record', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({ verificationReadiness: { status: 'ready' } }),
+			{ source: 'planned', plannedTaskId: 'task-1' },
+		);
+
+		expect(obligation).toEqual(
+			expect.objectContaining({
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				source: 'planned',
+				plannedTaskId: 'task-1',
+				status: 'ready_to_verify',
+				policy: 'required',
+			}),
+		);
+	});
+
+	it('marks already-verified outcomes as verified', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({
+				verificationReadiness: { status: 'already_verified' },
+				verification: { attempted: true, success: true, executionId: 'exec-1', status: 'success' },
+			}),
+		);
+
+		expect(obligation.status).toBe('verified');
+		expect(obligation.evidence?.executionId).toBe('exec-1');
 	});
 });
