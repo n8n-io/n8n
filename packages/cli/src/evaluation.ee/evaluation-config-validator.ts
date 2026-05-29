@@ -38,10 +38,31 @@ export class EvaluationConfigValidator {
 		this.checkReachability(args, errors);
 		this.checkMetricUniqueness(args, errors);
 		this.checkBooleanCoercion(args, errors);
+		this.checkMetricInputsNonEmpty(args, errors);
 		this.checkDatasetSource(args, errors);
 		await this.checkDataTableAccess(args, errors);
 		await this.checkLlmJudgeProvidersAndCredentials(args, errors);
 		return errors;
+	}
+
+	// z.string().min(1) accepts whitespace but the runtime checks don't.
+	private checkMetricInputsNonEmpty(args: ValidateArgs, errors: EvaluationApiError[]): void {
+		for (const metric of args.config.metrics) {
+			const inputs = collectMetricInputStrings(metric);
+			for (const [field, value] of Object.entries(inputs)) {
+				if (typeof value !== 'string' || value.trim().length === 0) {
+					errors.push({
+						code: EvaluationErrorCode.METRIC_INPUT_EMPTY,
+						message: `Metric "${metric.name}" input "${field}" must not be empty`,
+						details: {
+							metricId: metric.id,
+							metricName: metric.name,
+							field: `config.inputs.${field}`,
+						},
+					});
+				}
+			}
+		}
 	}
 
 	private getNodeByName(workflow: IWorkflowBase, name: string): INode | undefined {
@@ -244,6 +265,32 @@ export class EvaluationConfigValidator {
 			}
 		}
 	}
+}
+
+function collectMetricInputStrings(metric: EvaluationMetric): Record<string, unknown> {
+	if (metric.type === 'expression') {
+		return { expression: metric.config.expression };
+	}
+	if (metric.type === 'llm_judge') {
+		const { actualAnswer, expectedAnswer, userQuery } = metric.config.inputs;
+		const out: Record<string, unknown> = { actualAnswer };
+		if (expectedAnswer !== undefined) out.expectedAnswer = expectedAnswer;
+		if (userQuery !== undefined) out.userQuery = userQuery;
+		return out;
+	}
+	if (metric.type === 'string_similarity' || metric.type === 'categorization') {
+		return {
+			actualAnswer: metric.config.inputs.actualAnswer,
+			expectedAnswer: metric.config.inputs.expectedAnswer,
+		};
+	}
+	if (metric.type === 'tools_used') {
+		return {
+			expectedTools: metric.config.inputs.expectedTools,
+			intermediateSteps: metric.config.inputs.intermediateSteps,
+		};
+	}
+	return {};
 }
 
 /**
