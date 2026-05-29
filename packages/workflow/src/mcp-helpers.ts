@@ -1,5 +1,8 @@
 /** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
-export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
+export type McpOAuth2CredentialType =
+	| 'mcpOAuth2Api'
+	| `${string}McpOAuth2Api`
+	| `${string}OAuth2${string}`;
 
 /**
  * Returns `true` for `mcpOAuth2Api` and any credential type ending in
@@ -8,5 +11,5 @@ export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
 export function isMcpOAuth2Authentication(
 	authentication: string,
 ): authentication is McpOAuth2CredentialType {
-	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
+	return authentication === 'mcpOAuth2Api' || authentication.includes('OAuth2');
 }

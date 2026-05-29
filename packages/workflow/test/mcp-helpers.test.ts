@@ -11,11 +11,23 @@ describe('isMcpOAuth2Authentication', () => {
 		expect(isMcpOAuth2Authentication('slackMcpOAuth2Api')).toBe(true);
 	});
 
+	it('returns true for existing n8n OAuth2 credential names', () => {
+		expect(isMcpOAuth2Authentication('googleCalendarOAuth2Api')).toBe(true);
+		expect(isMcpOAuth2Authentication('googleDriveOAuth2Api')).toBe(true);
+		expect(isMcpOAuth2Authentication('gmailOAuth2')).toBe(true);
+		expect(isMcpOAuth2Authentication('jiraSoftwareCloudOAuth2Api')).toBe(true);
+	});
+
 	it('returns false for static auth types', () => {
 		expect(isMcpOAuth2Authentication('bearerAuth')).toBe(false);
 		expect(isMcpOAuth2Authentication('headerAuth')).toBe(false);
 		expect(isMcpOAuth2Authentication('multipleHeadersAuth')).toBe(false);
 		expect(isMcpOAuth2Authentication('none')).toBe(false);
+	});
+
+	it('returns false for unrelated credential names that do not contain OAuth2', () => {
+		expect(isMcpOAuth2Authentication('slackApi')).toBe(false);
+		expect(isMcpOAuth2Authentication('githubApi')).toBe(false);
 	});
 
 	it('returns false for an empty string', () => {
