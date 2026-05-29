@@ -113,6 +113,7 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(), // redactionEnforcementService
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 
