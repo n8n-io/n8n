@@ -44,6 +44,14 @@ vi.mock('@/app/constants', () => ({
 
 import { useAgentVersionHistory } from '../composables/useAgentVersionHistory';
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
 function makeVersion(versionId: string, overrides: Partial<AgentVersionListItemDto> = {}) {
 	return {
 		versionId,
@@ -101,6 +109,31 @@ describe('useAgentVersionHistory', () => {
 				'agents.versionHistory.error.load',
 			);
 			expect(history.items.value).toEqual([]);
+		});
+
+		it('keeps the newest result when an older refresh resolves out of order', async () => {
+			const stale = deferred<AgentVersionListItemDto[]>();
+			const fresh = deferred<AgentVersionListItemDto[]>();
+			mocks.listAgentVersions.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+
+			const staleRows = [makeVersion('old')];
+			const freshRows = [makeVersion('new')];
+
+			const history = useAgentVersionHistory();
+
+			// Two overlapping loads, e.g. the panel's prop watcher firing on an
+			// agent switch before the first request has returned.
+			const first = history.refresh('project-1', 'agent-1');
+			const second = history.refresh('project-1', 'agent-2');
+
+			// Newer request settles first, then the older one resolves late.
+			fresh.resolve(freshRows);
+			await second;
+			stale.resolve(staleRows);
+			await first;
+
+			expect(history.items.value).toEqual(freshRows);
+			expect(history.isLoading.value).toBe(false);
 		});
 	});
 
