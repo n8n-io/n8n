@@ -49,4 +49,12 @@ export class NodesConfig {
 	/** Memory limit in MB for the Merge node's SQL sandbox. */
 	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
 	mergeSqlSandboxMemoryLimitMb: number = 64;
+	/**
+	 * When enabled, the backend refuses to create or modify workflows that
+	 * introduce new instances of deprecated nodes (or edit existing ones).
+	 * Existing workflows that already contain deprecated nodes continue to run
+	 * unchanged. Set to `false` to disable enforcement (e.g. for rollback).
+	 */
+	@Env('N8N_DEPRECATED_NODES_BLOCK')
+	blockDeprecated: boolean = true;
 }

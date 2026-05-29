@@ -33,6 +33,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
+import { DeprecatedNodesValidator } from './deprecated-nodes.validator';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -74,6 +75,7 @@ export class WorkflowCreationService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly deprecatedNodesValidator: DeprecatedNodesValidator,
 	) {}
 
 	async prepareBatchContext(
@@ -228,6 +230,7 @@ export class WorkflowCreationService {
 				await this.findParentFolderInProjectOrFail(parentFolderId, effectiveProjectId);
 			}
 		}
+		this.deprecatedNodesValidator.validateOnCreate(newWorkflow.nodes);
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);
