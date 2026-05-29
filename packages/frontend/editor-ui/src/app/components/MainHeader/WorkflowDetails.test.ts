@@ -232,6 +232,44 @@ describe('WorkflowDetails', () => {
 		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
+	describe('workflow rename', () => {
+		it('rejects names with HTML-significant characters and shows an error toast', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
+			const setNameSpy = vi.spyOn(workflowDocumentStoreRef.value!, 'setName');
+
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			const input = getByTestId('inline-edit-input');
+			await userEvent.click(input);
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Bad <name>{Enter}');
+
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', title: 'Invalid name' }),
+			);
+			expect(setNameSpy).not.toHaveBeenCalled();
+		});
+
+		it('accepts valid names and updates the workflow', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
+			const setNameSpy = vi.spyOn(workflowDocumentStoreRef.value!, 'setName');
+
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			const input = getByTestId('inline-edit-input');
+			await userEvent.click(input);
+			await userEvent.clear(input);
+			await userEvent.type(input, 'API to CSV{Enter}');
+
+			expect(toast.showMessage).not.toHaveBeenCalled();
+			expect(setNameSpy).toHaveBeenCalledWith('API to CSV');
+		});
+	});
+
 	it('opens share modal on share button click', async () => {
 		const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 

@@ -17,6 +17,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
+import { workflowNameSchema } from '@n8n/api-types';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -208,6 +209,18 @@ function onNameSubmit(name: string) {
 	}
 
 	if (newName === props.name) {
+		renameInput.value?.forceCancel();
+		return;
+	}
+
+	const validation = workflowNameSchema.safeParse(newName);
+	if (!validation.success) {
+		toast.showMessage({
+			title: locale.baseText('renameAction.invalidName.title'),
+			message: locale.baseText('renameAction.invalidName.message'),
+			type: 'error',
+		});
+
 		renameInput.value?.forceCancel();
 		return;
 	}
