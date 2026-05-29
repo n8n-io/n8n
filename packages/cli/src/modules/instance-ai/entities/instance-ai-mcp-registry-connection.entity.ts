@@ -13,6 +13,6 @@ export class InstanceAiMcpRegistryConnection extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255 })
 	serverSlug: string;
 
-	@Column({ type: 'varchar', length: 16 })
+	@Column({ type: 'varchar', length: 36 })
 	credentialId: string;
 }
