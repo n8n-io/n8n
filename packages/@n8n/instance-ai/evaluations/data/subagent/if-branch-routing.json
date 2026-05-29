@@ -1,0 +1,4 @@
+{
+	"id": "if-branch-routing",
+	"prompt": "Build a workflow that receives messages on a Webhook, then uses an IF node to separate human messages from bot messages: route items where bot_id is empty AND text is not empty down the true branch to a Set node that keeps the text, author, and timestamp; route everything else down the false branch to a No Operation node. Make sure both IF outputs are connected. Configure all nodes completely and don't ask me for credentials — I'll set them up later."
+}
