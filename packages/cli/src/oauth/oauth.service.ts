@@ -26,6 +26,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
+	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
@@ -415,6 +416,77 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
+	 * and return the new auth headers to inject into outbound requests.
+	 */
+	async refreshOAuth2CredentialById(
+		credentialId: string,
+		projectId: string,
+	): Promise<Record<string, string> | null> {
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: credentialId },
+			relations: { shared: true },
+		});
+		if (!credential) return null;
+
+		const isAccessible =
+			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+		if (!isAccessible) return null;
+
+		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		if (!oauthTokenData) return null;
+
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		const oAuthClient = new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			clientSecret: oauthCredentials.clientSecret,
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+
+		const token = oAuthClient.createToken(
+			{
+				...oauthTokenData,
+				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
+				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			},
+			oauthTokenData.token_type,
+		);
+
+		let refreshed;
+		try {
+			refreshed =
+				oauthCredentials.grantType === 'clientCredentials'
+					? await token.client.credentials.getToken()
+					: await token.refresh();
+		} catch (error) {
+			this.logger.warn('Failed to refresh OAuth2 token for credential', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
+		try {
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+		} catch (error) {
+			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { Authorization: `Bearer ${refreshed.accessToken}` };
 	}
 
 	/**
