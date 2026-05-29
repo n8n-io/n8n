@@ -86,6 +86,9 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const disconnect = async (keepKeyPair: boolean) => {
 		await vcApi.disconnect(rootStore.restApiContext, keepKeyPair);
+
+		// Connection related preferences are intentionally ommited here.
+		// This allows users to disconnect and reconnect when troubleshooting issues.
 		setPreferences({
 			connected: false,
 			branches: [],
