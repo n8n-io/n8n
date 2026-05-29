@@ -24,6 +24,7 @@ import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
+	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
 		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
