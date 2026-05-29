@@ -91,6 +91,12 @@ describe('serverToNodeDescription', () => {
 		expect(serverToNodeDescription(unsupportedServer, baseDescription)).toBeNull();
 	});
 
+	it('returns null when the auth type is neither "oauth2" nor a supported existing credential', () => {
+		const server: McpRegistryServer = { ...notionMockServer, authType: 'foo' as never };
+
+		expect(serverToNodeDescription(server, baseDescription)).toBeNull();
+	});
+
 	it('marks deprecated servers as hidden so the node creator skips them', () => {
 		const deprecatedServer: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
 
