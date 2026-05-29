@@ -1,10 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	contactLookupPreSendAction,
-	splitTagsPreSendAction,
-	validEmailAndPhonePreSendAction,
-} from '../GenericFunctions';
+import { splitTagsPreSendAction, validEmailAndPhonePreSendAction } from '../GenericFunctions';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -105,9 +101,6 @@ export const contactOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '/contacts/lookup',
-					},
-					send: {
-						preSend: [contactLookupPreSendAction],
 					},
 					output: {
 						postReceive: [
@@ -837,6 +830,12 @@ const lookupProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			send: {
+				type: 'query',
+				property: 'email',
+			},
+		},
 	},
 	{
 		displayName: 'Phone',
@@ -851,6 +850,12 @@ const lookupProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			send: {
+				type: 'query',
+				property: 'phone',
+			},
+		},
 	},
 ];
 

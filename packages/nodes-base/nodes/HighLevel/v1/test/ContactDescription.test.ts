@@ -1,57 +1,36 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
-import { contactOperations } from '../description/ContactDescription';
-
-type PreSendFn = (
-	this: IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
-) => Promise<IHttpRequestOptions>;
+import { contactFields, contactOperations } from '../description/ContactDescription';
 
 // Reach into the actual routing config so the test breaks if the lookup
-// operation stops building its query through the preSend action.
-const lookupOption = (contactOperations[0].options as INodePropertyOptions[]).find(
+// operation stops sending its inputs as discrete query parameters.
+const lookupOperation = (contactOperations[0].options as INodePropertyOptions[]).find(
 	(option) => option.value === 'lookup',
-)!;
-const lookupPreSend = lookupOption.routing!.send!.preSend![0] as unknown as PreSendFn;
+);
+
+const findLookupField = (name: string): INodeProperties => {
+	const field = contactFields.find(
+		(candidate) =>
+			candidate.name === name &&
+			((candidate.displayOptions?.show?.operation as string[] | undefined) ?? []).includes(
+				'lookup',
+			),
+	);
+
+	if (!field) {
+		throw new Error(`Expected to find lookup field "${name}"`);
+	}
+
+	return field;
+};
 
 describe('HighLevel V1 - Contact Lookup query parameters', () => {
-	let ctx: MockProxy<IExecuteSingleFunctions>;
-
-	const baseOptions: IHttpRequestOptions = {
-		method: 'GET',
-		url: '/contacts/lookup',
-		baseURL: 'https://rest.gohighlevel.com/v1',
-	};
-
-	beforeEach(() => {
-		ctx = mock<IExecuteSingleFunctions>();
+	it('builds the request from a static path, not by interpolating user input into the URL', () => {
+		expect(lookupOperation?.routing?.request?.url).toBe('/contacts/lookup');
 	});
 
-	it('sends email and phone as discrete query parameters', async () => {
-		ctx.getNodeParameter
-			.mockReturnValueOnce('jane@example.com') // email
-			.mockReturnValueOnce('+15551234567'); // phone
-
-		const result = await lookupPreSend.call(ctx, { ...baseOptions });
-
-		expect(result.qs).toEqual({ email: 'jane@example.com', phone: '+15551234567' });
-	});
-
-	it('keeps separator characters contained within a single email parameter', async () => {
-		// A value carrying its own query separators must stay within one parameter, not spill into others.
-		const email = 'user@example.com&a=b';
-		ctx.getNodeParameter
-			.mockReturnValueOnce(email) // email
-			.mockReturnValueOnce(''); // phone
-
-		const result = await lookupPreSend.call(ctx, { ...baseOptions });
-
-		expect(result.qs).toEqual({ email, phone: '' });
+	it('sends email and phone as discrete query parameters', () => {
+		expect(findLookupField('email').routing?.send).toEqual({ type: 'query', property: 'email' });
+		expect(findLookupField('phone').routing?.send).toEqual({ type: 'query', property: 'phone' });
 	});
 });

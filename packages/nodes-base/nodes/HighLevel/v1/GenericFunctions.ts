@@ -108,16 +108,6 @@ export async function validEmailAndPhonePreSendAction(
 	return requestOptions;
 }
 
-export async function contactLookupPreSendAction(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const email = this.getNodeParameter('email', '') as string;
-	const phone = this.getNodeParameter('phone', '') as string;
-	requestOptions.qs = { ...requestOptions.qs, email, phone };
-	return requestOptions;
-}
-
 export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
