@@ -30,7 +30,7 @@ describe('NoXss', () => {
 				expect(errors).toHaveLength(1);
 				const [error] = errors;
 				expect(error.property).toEqual('name');
-				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
+				expect(error.constraints).toEqual({ NoXss: 'Cannot contain "<" or ">"' });
 			});
 		}
 	});
@@ -111,7 +111,7 @@ describe('NoXss', () => {
 				expect(errors).toHaveLength(1);
 				const [error] = errors;
 				expect(error.property).toEqual('categories');
-				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
+				expect(error.constraints).toEqual({ NoXss: 'Cannot contain "<" or ">"' });
 			});
 		}
 	});
