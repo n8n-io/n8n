@@ -199,8 +199,11 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			...config,
 			n8nNode: context.getNode(),
 		});
-		await vectorStore.addDocuments(filterChatHubInsertDocuments(documents));
-		vectorStore.client?.release();
+		try {
+			await vectorStore.addDocuments(filterChatHubInsertDocuments(documents));
+		} finally {
+			vectorStore.client?.release();
+		}
 	},
 
 	releaseVectorStoreClient(vectorStore) {
