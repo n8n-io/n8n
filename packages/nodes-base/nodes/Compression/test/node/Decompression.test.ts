@@ -3,23 +3,25 @@ import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { Compression } from '../../Compression.node';
-import * as utils from '../../utils';
+import { boundedGunzip } from '../../decompress/BoundedGunzip';
+import { boundedUnzip } from '../../decompress/BoundedUnzip';
 
-jest.mock('../../utils');
+jest.mock('../../decompress/BoundedGunzip');
+jest.mock('../../decompress/BoundedUnzip');
 
 const mockBoundedUnzip = (data: Record<string, Buffer>, error?: Error) => {
 	if (error) {
-		jest.mocked(utils.boundedUnzip).mockRejectedValue(error);
+		jest.mocked(boundedUnzip).mockRejectedValue(error);
 	} else {
-		jest.mocked(utils.boundedUnzip).mockResolvedValue(data);
+		jest.mocked(boundedUnzip).mockResolvedValue(data);
 	}
 };
 
 const mockBoundedGunzip = (data: Buffer, error?: Error) => {
 	if (error) {
-		jest.mocked(utils.boundedGunzip).mockRejectedValue(error);
+		jest.mocked(boundedGunzip).mockRejectedValue(error);
 	} else {
-		jest.mocked(utils.boundedGunzip).mockResolvedValue(data);
+		jest.mocked(boundedGunzip).mockResolvedValue(data);
 	}
 };
 
@@ -96,7 +98,7 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].binary?.file_0).toBeDefined();
 			expect(result[0][0].binary?.file_1).toBeDefined();
 			expect(result[0][0].pairedItem).toEqual({ item: 0 });
-			expect(utils.boundedUnzip).toHaveBeenCalledTimes(1);
+			expect(boundedUnzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should skip __MACOSX files when decompressing zip', async () => {
@@ -175,7 +177,7 @@ describe('Compression Node - Decompress Operation', () => {
 
 			await compression.execute.call(mockExecuteFunctions);
 
-			expect(utils.boundedUnzip).toHaveBeenCalledTimes(2);
+			expect(boundedUnzip).toHaveBeenCalledTimes(2);
 			expect(jest.mocked(mockExecuteFunctions.helpers.assertBinaryData)).toHaveBeenCalledWith(
 				0,
 				'data1',
@@ -219,7 +221,7 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].binary?.file_0?.fileName).toBe('test.txt');
 			expect(result[0][0].binary?.file_0?.fileExtension).toBe('txt');
 			expect(result[0][0].binary?.file_0?.mimeType).toBe('text/plain');
-			expect(utils.boundedGunzip).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle gzip file with .gzip extension', async () => {
@@ -248,7 +250,7 @@ describe('Compression Node - Decompress Operation', () => {
 			const result = await compression.execute.call(mockExecuteFunctions);
 
 			expect(result[0][0].binary?.file_0).toBeDefined();
-			expect(utils.boundedGunzip).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).toHaveBeenCalledTimes(1);
 		});
 
 		it('should determine mime type and file extension for gzip file', async () => {
@@ -331,7 +333,7 @@ describe('Compression Node - Decompress Operation', () => {
 
 			expect(result[0][0].binary?.file_0).toBeDefined();
 			expect(result[0][0].binary?.file_1).toBeDefined();
-			expect(utils.boundedGunzip).toHaveBeenCalledTimes(2);
+			expect(boundedGunzip).toHaveBeenCalledTimes(2);
 		});
 	});
 
