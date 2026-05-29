@@ -89,7 +89,10 @@ export class ImportService {
 	) {
 		await this.initRecords();
 
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 
 		const { manager: dbManager } = this.credentialsRepository;
 
