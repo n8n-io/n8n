@@ -49,15 +49,20 @@ export class DeprecatedNodesValidator {
 	}
 
 	/**
-	 * Throws if the incoming workflow adds a new deprecated node, or modifies
-	 * the configuration of an existing one. Identity is matched by node `id`.
+	 * Throws if the incoming workflow adds a new deprecated node, or changes
+	 * an existing one in any way. Identity is matched by node `id`.
 	 *
 	 * Allowed:
-	 *  - keeping a deprecated node untouched (same content)
-	 *  - moving a deprecated node on the canvas (position-only change)
+	 *  - keeping a deprecated node fully untouched
 	 *  - replacing a deprecated node with a non-deprecated one at the same id
 	 *    (the migration path for version-level deprecation)
 	 *  - deleting a deprecated node entirely
+	 *
+	 * Blocked:
+	 *  - adding a deprecated node
+	 *  - any in-place change to a deprecated node (parameters, name, position,
+	 *    typeVersion downgrade, etc.). The only way to "change" a deprecated
+	 *    node is to remove it or upgrade it off the deprecated version.
 	 */
 	validateOnUpdate(incomingNodes: INode[], existingNodes: INode[]): void {
 		if (!this.nodesConfig.blockDeprecated) return;
@@ -76,7 +81,7 @@ export class DeprecatedNodesValidator {
 				continue;
 			}
 
-			if (this.hasMeaningfulChange(before, incoming)) {
+			if (!isEqual(before, incoming)) {
 				violations.push({ kind: 'edited', nodeName: incoming.name, nodeType: incoming.type });
 			}
 		}
@@ -94,17 +99,6 @@ export class DeprecatedNodesValidator {
 			// Unknown node types can't be deprecated by us — they're handled elsewhere.
 			return false;
 		}
-	}
-
-	private hasMeaningfulChange(before: INode, after: INode): boolean {
-		// Position is purely visual — allow users to rearrange the canvas while
-		// they're working towards removing the deprecated node.
-		return !isEqual(this.stripIgnored(before), this.stripIgnored(after));
-	}
-
-	private stripIgnored(node: INode): Omit<INode, 'position'> {
-		const { position: _position, ...rest } = node;
-		return rest;
 	}
 
 	private formatError(violations: Violation[]): string {
