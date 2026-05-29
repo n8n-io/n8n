@@ -37,7 +37,11 @@ export class ScheduledTaskManager {
 		private readonly logger: Logger,
 		{ activeInterval }: CronLoggingConfig,
 		private readonly errorReporter: ErrorReporter,
-		private readonly globalConfig: GlobalConfig,
+		// `globalConfig` carries `N8N_MIN_SCHEDULE_INTERVAL_SECONDS`. It's
+		// optional only so upstream test fixtures (and any non-DI caller) can
+		// construct a manager without wiring it. In production, DI always
+		// injects it; an absent value is treated as "no minimum" downstream.
+		private readonly globalConfig?: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('cron');
 
@@ -163,9 +167,14 @@ export class ScheduledTaskManager {
 	 * works uniformly for cron strings and for any of the Schedule Trigger's
 	 * higher-level rule shapes, since they are all canonicalised to a cron
 	 * expression before reaching this point. Set the env var to 0 to disable.
+	 *
+	 * Optional chaining and the `?? 0` fallback let upstream test fixtures
+	 * (and any caller that hasn't wired `globalConfig` through DI) reach this
+	 * method without crashing — an absent config means "no minimum", which is
+	 * the same opt-in default the env var produces.
 	 */
 	private assertMinScheduleInterval(cronTime: CronTime, ctx: CronContext) {
-		const minSeconds = this.globalConfig.workflows.minScheduleIntervalSeconds;
+		const minSeconds = this.globalConfig?.workflows?.minScheduleIntervalSeconds ?? 0;
 		if (!Number.isFinite(minSeconds) || minSeconds <= 0) return;
 
 		const next = cronTime.sendAt().toMillis();
