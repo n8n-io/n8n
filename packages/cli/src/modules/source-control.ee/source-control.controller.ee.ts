@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
@@ -35,10 +36,22 @@ export class SourceControlController {
 	) {}
 
 	@Get('/preferences')
-	async getPreferences(): Promise<SourceControlPreferences> {
+	async getPreferences(req: AuthenticatedRequest): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+		const preferences = { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+
+		// The repository URL can embed credentials, so only managers may read it
+		if (!hasGlobalScope(req.user, 'sourceControl:manage')) {
+			return {
+				...preferences,
+				repositoryUrl: '',
+				httpsUsername: undefined,
+				httpsPassword: undefined,
+			};
+		}
+
+		return preferences;
 	}
 
 	@Post('/preferences')
@@ -162,6 +175,7 @@ export class SourceControlController {
 	}
 
 	@Get('/get-branches')
+	@GlobalScope('sourceControl:manage')
 	async getBranches() {
 		try {
 			return await this.sourceControlService.getBranches();
@@ -233,6 +247,7 @@ export class SourceControlController {
 
 	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			const result = await this.sourceControlService.getStatus(
 				req.user,
@@ -240,18 +255,25 @@ export class SourceControlController {
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
 
 	@Get('/status')
 	async status(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			return await this.sourceControlService.getStatus(
 				req.user,
 				new SourceControlGetStatus(req.query),
 			);
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

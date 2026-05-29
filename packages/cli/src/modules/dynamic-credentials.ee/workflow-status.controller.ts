@@ -1,12 +1,15 @@
 import { WorkflowExecutionStatus } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Options, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
@@ -24,6 +27,7 @@ export class WorkflowStatusController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
 		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -60,6 +64,19 @@ export class WorkflowStatusController {
 
 		if (!workflowId) {
 			throw new BadRequestError('Workflow ID is missing');
+		}
+
+		// External resolver callers authenticate via the endpoint token and carry no
+		// user. In-app callers carry a session user, so verify they can access the
+		// workflow rather than letting them read any workflow's credential metadata.
+		const user = (req as AuthenticatedRequest).user;
+		if (user) {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:read',
+			]);
+			if (!workflow) {
+				throw new NotFoundError('Workflow not found');
+			}
 		}
 
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(

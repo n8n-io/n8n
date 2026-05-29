@@ -99,8 +99,9 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Check test run exist. Deleting a run mutates state, so require
+		// `workflow:update` — a read-only viewer must not be able to delete runs.
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:update']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -113,8 +114,12 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Check test definition and test run exist. Cancelling mutates execution
+		// state, so require `workflow:execute` (matching cancelCase) — a read-only
+		// viewer must not be able to cancel a run.
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -162,7 +167,9 @@ export class TestRunsController {
 	) {
 		const { workflowId } = req.params;
 
-		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+		// Starting a run triggers real workflow executions, so require
+		// `workflow:execute` — a read-only viewer must not be able to launch runs.
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
 		const concurrency = payload.concurrency ?? 1;
 
