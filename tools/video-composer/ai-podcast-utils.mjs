@@ -293,12 +293,53 @@ function pickRoundTextFrame(frame) {
 }
 
 function pickRoundTimeFrame(frame) {
-	const start = normalizeNumberTimestamp(frame?.start_time ?? frame?.startTime);
-	const end = normalizeNumberTimestamp(frame?.end_time ?? frame?.endTime);
 	const duration = normalizeNumberTimestamp(frame?.audio_duration ?? frame?.audioDuration);
+	const start = rawNumberTimestamp(frame?.start_time ?? frame?.startTime);
+	const end = rawNumberTimestamp(frame?.end_time ?? frame?.endTime);
 	if (start === null || end === null || end <= start) return null;
 
-	return { start, end, duration: duration ?? end - start };
+	return { rawStart: start, rawEnd: end, duration };
+}
+
+function rawNumberTimestamp(value) {
+	const number = Number(value);
+	return Number.isFinite(number) ? number : null;
+}
+
+function timestampCandidates(value) {
+	return [
+		{ value, scale: 1 },
+		{ value: value / 1000, scale: 1000 },
+		{ value: value / 1_000_000, scale: 1_000_000 },
+	].filter((candidate) => Number.isFinite(candidate.value) && candidate.value >= 0);
+}
+
+function normalizeRoundTime(time, previousEnd) {
+	const pairs = [];
+	for (const startCandidate of timestampCandidates(time.rawStart)) {
+		for (const endCandidate of timestampCandidates(time.rawEnd)) {
+			if (startCandidate.scale !== endCandidate.scale) continue;
+			const start = startCandidate.value;
+			const end = endCandidate.value;
+			if (end <= start) continue;
+			const duration = end - start;
+			const backwardPenalty = start < previousEnd - 0.35 ? (previousEnd - start) * 1000 : 0;
+			const gapPenalty = start >= previousEnd ? Math.min(start - previousEnd, 60) : 0;
+			const durationPenalty = duration > 180 ? duration - 180 : 0;
+			const shortDurationPenalty = duration < 0.35 ? (0.35 - duration) * 1000 : 0;
+			pairs.push({
+				start,
+				end,
+				duration: time.duration ?? duration,
+				score: backwardPenalty + gapPenalty + durationPenalty + shortDurationPenalty,
+			});
+		}
+	}
+
+	if (pairs.length === 0) return null;
+	pairs.sort((a, b) => a.score - b.score || Math.abs(a.start - previousEnd) - Math.abs(b.start - previousEnd));
+	const best = pairs[0];
+	return { start: best.start, end: best.end, duration: best.duration };
 }
 
 function distributeTextAcrossTime(text, start, end) {
@@ -326,6 +367,7 @@ function distributeTextAcrossTime(text, start, end) {
 export function normalizePodcastRoundTiming(frames) {
 	const rounds = [];
 	const pendingRounds = [];
+	let previousEnd = 0;
 	for (const frame of Array.isArray(frames) ? frames : []) {
 		const round = pickRoundTextFrame(frame);
 		if (round) {
@@ -335,8 +377,11 @@ export function normalizePodcastRoundTiming(frames) {
 
 		const time = pickRoundTimeFrame(frame);
 		if (!time || pendingRounds.length === 0) continue;
+		const normalizedTime = normalizeRoundTime(time, previousEnd);
+		if (!normalizedTime) continue;
 		const nextRound = pendingRounds.shift();
-		rounds.push({ ...nextRound, ...time });
+		rounds.push({ ...nextRound, ...normalizedTime });
+		previousEnd = normalizedTime.end;
 	}
 
 	return {
