@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -12,6 +13,7 @@ import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
+jest.unmock('node:fs');
 jest.unmock('node:fs/promises');
 
 const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
@@ -69,7 +71,9 @@ describe('AgentKnowledgeService', () => {
 					...file,
 				}) as never,
 		);
-		binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('stored text'));
+		binaryDataService.getAsStream.mockImplementation(async () =>
+			Readable.from(Buffer.from('stored text')),
+		);
 		jest.mocked(generateNanoId).mockReset().mockReturnValue('file-1');
 		mockGetText.mockReset();
 		mockDestroy.mockReset().mockResolvedValue(undefined);
@@ -373,7 +377,9 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('stored PDF text'));
+		binaryDataService.getAsStream.mockImplementation(async () =>
+			Readable.from(Buffer.from('stored PDF text')),
+		);
 		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
 		try {
 			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot);
@@ -414,7 +420,9 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('name,age\nAlice,30\n'));
+		binaryDataService.getAsStream.mockImplementation(async () =>
+			Readable.from(Buffer.from('name,age\nAlice,30\n')),
+		);
 		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
 		try {
 			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot, {
@@ -422,10 +430,8 @@ describe('AgentKnowledgeService', () => {
 			});
 
 			expect(files).toEqual([expect.objectContaining({ id: 'file-1' })]);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'binary-1' }),
-			);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
 		} finally {
 			await rm(workspaceRoot, { recursive: true, force: true });
 		}
@@ -453,7 +459,9 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('name,age\nAlice,30\n'));
+		binaryDataService.getAsStream.mockImplementation(async () =>
+			Readable.from(Buffer.from('name,age\nAlice,30\n')),
+		);
 		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
 		try {
 			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot, {
@@ -461,10 +469,8 @@ describe('AgentKnowledgeService', () => {
 			});
 
 			expect(files).toEqual([expect.objectContaining({ id: 'file-1', fileName: 'data.csv' })]);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
-			expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'binary-1' }),
-			);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
 		} finally {
 			await rm(workspaceRoot, { recursive: true, force: true });
 		}

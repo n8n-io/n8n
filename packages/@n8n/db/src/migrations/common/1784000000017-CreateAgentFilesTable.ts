@@ -13,10 +13,10 @@ export class CreateAgentFilesTable1784000000017 implements ReversibleMigration {
 			.withColumns(
 				column('id')
 					.varchar(36)
-					.primary.notNull.comment('Application-generated n8n string ID, not a database UUID'),
+					.primary.comment('Application-generated n8n string ID, not a database UUID'),
 				column('agentId').varchar(36).notNull.comment('Agent that owns this uploaded file'),
 				column('binaryDataId').text.notNull.comment(
-					'BinaryDataService ID for the uploaded file contents',
+					'Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:<uuid>"); not an FK to binary_data, which only has rows in DB storage mode',
 				),
 				column('fileName').varchar(255).notNull,
 				column('mimeType').varchar(255).notNull,

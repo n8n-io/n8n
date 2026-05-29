@@ -368,6 +368,19 @@ export class ExecutionRecorder {
 	}
 
 	/**
+	 * Find the still-open flat tool-call entry to attach a result to. Prefers
+	 * an exact match on `toolCallId`; when the stream omits the id (empty
+	 * string), falls back to the most recent open entry (`output === undefined`)
+	 * with the same tool name.
+	 */
+	private findOpenToolCall(toolCallId: string, name: string): PendingRecordedToolCall | undefined {
+		if (toolCallId !== '') {
+			return this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined);
+		}
+		return [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
+	}
+
+	/**
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
@@ -385,10 +398,7 @@ export class ExecutionRecorder {
 	): void {
 		const recordedOutput = isError ? normaliseToolErrorOutput(output) : output;
 
-		const pendingFlat =
-			toolCallId !== ''
-				? this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined)
-				: [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
+		const pendingFlat = this.findOpenToolCall(toolCallId, name);
 		if (pendingFlat) {
 			pendingFlat.output = recordedOutput;
 		} else {

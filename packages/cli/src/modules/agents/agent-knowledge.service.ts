@@ -3,8 +3,10 @@ import { Service } from '@n8n/di';
 import { generateNanoId, sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { mkdir, readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,6 +15,13 @@ import { AgentFile } from './entities/agent-file.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
+/**
+ * A knowledge file as seen by the agent runtime's `search_knowledge` tool.
+ * Carries the stored metadata plus `relativePath`, the path the file is
+ * written to inside the materialized workspace (see {@link
+ * AgentKnowledgeService.materializeWorkspace}). This is distinct from the
+ * API-facing `AgentFileDto`, which instead exposes `createdAt` for the UI.
+ */
 export interface KnowledgeWorkspaceFile {
 	id: string;
 	fileName: string;
@@ -54,18 +63,26 @@ export class AgentKnowledgeService {
 		const storedFiles: StoredAgentFile[] = [];
 
 		try {
+			// Process sequentially to bound peak memory: each file is read into
+			// a buffer and PDFs are parsed in-process, so storing the whole
+			// batch in parallel could spike RSS for large uploads.
 			for (const file of files) {
 				storedFiles.push(await this.storeFile(agentId, file));
 			}
 		} catch (error) {
 			await this.cleanupStoredFiles(storedFiles).catch(() => {});
-			await this.cleanupUploadTempFiles(files);
 			throw error;
+		} finally {
+			await this.cleanupUploadTempFiles(files);
 		}
 
 		return storedFiles.map((file) => this.toDto(file));
 	}
 
+	/**
+	 * List files for the UI/API. Returns `AgentFileDto`s (with `createdAt`,
+	 * no workspace path) for the Agent Builder and REST responses.
+	 */
 	async listFiles(agentId: string, projectId: string): Promise<AgentFileDto[]> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
@@ -73,6 +90,12 @@ export class AgentKnowledgeService {
 		return files.map((file) => this.toDto(file));
 	}
 
+	/**
+	 * List files for the agent runtime's `search_knowledge` tool. Returns
+	 * `KnowledgeWorkspaceFile`s, which add the on-disk `relativePath` used
+	 * inside the materialized workspace and omit API-only fields like
+	 * `createdAt`.
+	 */
 	async listWorkspaceFiles(agentId: string, projectId: string) {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
@@ -119,12 +142,11 @@ export class AgentKnowledgeService {
 			const relativePath = this.getWorkspaceRelativePath(file);
 			const targetPath = path.join(workspaceRoot, relativePath);
 
-			const buffer = await this.binaryDataService.getAsBuffer({
-				id: file.binaryDataId,
-				data: '',
-				mimeType: file.mimeType,
-			});
-			await writeFile(targetPath, buffer);
+			// Stream the stored content straight to the workspace file rather
+			// than buffering the whole file in memory — knowledge files can be
+			// up to the upload size limit.
+			const contentStream = await this.binaryDataService.getAsStream(file.binaryDataId);
+			await pipeline(contentStream, createWriteStream(targetPath));
 
 			materializedFiles.push(this.toWorkspaceFile(file));
 		}
@@ -231,8 +253,8 @@ export class AgentKnowledgeService {
 	}
 
 	private getWorkspaceRelativePath(file: AgentFile) {
-		const extension = file.fileName.split('.').pop()?.toLowerCase();
-		if (extension === 'pdf' && file.mimeType === 'text/plain') {
+		const extension = path.extname(file.fileName).toLowerCase();
+		if (extension === '.pdf' && file.mimeType === 'text/plain') {
 			return `${file.id}.pdf.txt`;
 		}
 		return `${file.id}${path.extname(file.fileName)}`;

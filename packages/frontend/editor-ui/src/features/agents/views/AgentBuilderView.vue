@@ -211,15 +211,20 @@ const projectName = computed<string | null>(() => {
 	return match?.name ?? null;
 });
 
+// A fetch/mutation captures its target agent + project at call time. By the
+// time an awaited call resolves the user may have switched to a different agent
+// or project, and applying the result would clobber the new selection's state.
+// Callers use this guard to drop such stale results.
+function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
+	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+}
+
 async function fetchAgent(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
 ) {
-	// Capture the target at call-time so a fetch that resolves after the
-	// user has switched to a different agent is dropped instead of clobbering
-	// the new agent's resource state.
 	const data = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
-	if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
 	agentName.value = data.name;
 }
@@ -231,12 +236,12 @@ async function fetchAgentFiles(
 	agentFilesLoading.value = true;
 	try {
 		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
-		if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		agentFiles.value = files;
 	} catch (error) {
 		showError(error, locale.baseText('agents.builder.files.loadError'));
 	} finally {
-		if (agentId.value === targetAgentId && projectId.value === targetProjectId) {
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
 			agentFilesLoading.value = false;
 		}
 	}
@@ -268,7 +273,7 @@ async function onUploadAgentFiles(files: File[]) {
 			targetAgentId,
 			filesWithinLimit,
 		);
-		if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		const existingById = new Map(agentFiles.value.map((file) => [file.id, file]));
 		for (const file of uploadedFiles) {
 			existingById.set(file.id, file);
@@ -283,7 +288,7 @@ async function onUploadAgentFiles(files: File[]) {
 	} catch (error) {
 		showError(error, locale.baseText('agents.builder.files.uploadError'));
 	} finally {
-		if (agentId.value === targetAgentId && projectId.value === targetProjectId) {
+		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
 			agentFilesUploading.value = false;
 		}
 	}
@@ -304,12 +309,9 @@ async function onDeleteAgentFile(file: AgentFileDto) {
 	});
 	if (confirmed !== MODAL_CONFIRM) return;
 
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
 	deletingAgentFileId.value = file.id;
 	try {
-		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
-		if (agentId.value !== targetAgentId || projectId.value !== targetProjectId) return;
+		await deleteAgentFile(rootStore.restApiContext, projectId.value, agentId.value, file.id);
 		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
 		showMessage({
 			title: locale.baseText('agents.builder.files.deleted'),
@@ -328,7 +330,7 @@ async function refreshAgentAfterIntegrationChange(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
 ) {
-	if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	await Promise.all([
 		fetchAgent(targetProjectId, targetAgentId),
 		fetchConfig(targetProjectId, targetAgentId),

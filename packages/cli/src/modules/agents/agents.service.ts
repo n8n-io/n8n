@@ -673,6 +673,11 @@ export class AgentsService {
 			return false;
 		}
 
+		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
+		// binary blobs from the filesystem/object store, which a DB transaction
+		// can't roll back. The agent_files rows are removed via the agentId FK's
+		// ON DELETE CASCADE when the agent is removed below, so a failure here
+		// only risks orphaned blobs (logged) and must not block agent deletion.
 		try {
 			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
 		} catch (error) {
@@ -861,6 +866,10 @@ export class AgentsService {
 		// per request don't bust system-prompt prompt caching.
 		agent.tool(createGetEnvironmentTool());
 
+		// search_knowledge is an optional capability. If wiring it up fails
+		// (e.g. dynamic import or service construction error), degrade
+		// gracefully and keep the rest of the runtime usable rather than
+		// failing the whole agent. The failure is logged so it stays observable.
 		try {
 			const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
 			agent.tool(
