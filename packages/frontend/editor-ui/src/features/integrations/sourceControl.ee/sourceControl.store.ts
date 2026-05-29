@@ -4,7 +4,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as vcApi from './sourceControl.api';
-import { type SourceControlPreferences, type SshKeyTypes } from './sourceControl.types';
+import type { SourceControlPreferences, SshKeyTypes } from './sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { AutoPublishMode } from 'n8n-workflow';
@@ -91,9 +91,10 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		await vcApi.generateKeyPair(rootStore.restApiContext, keyGeneratorType);
 		const data = await vcApi.getPreferences(rootStore.restApiContext); // To be removed once the API is updated
 
-		preferences.publicKey = data.publicKey;
+		const publicKey = 'publicKey' in data ? data.publicKey : undefined;
+		preferences.publicKey = publicKey;
 
-		return { publicKey: data.publicKey };
+		return { publicKey };
 	};
 
 	const getStatus = async () => {
