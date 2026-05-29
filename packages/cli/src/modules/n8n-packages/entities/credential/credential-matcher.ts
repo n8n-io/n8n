@@ -5,7 +5,6 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 
 import {
 	createFailure,
-	getBindingSourceId,
 	type CredentialBinding,
 	type CredentialResolution,
 	type CredentialResolutionFailure,
@@ -31,7 +30,7 @@ export abstract class CredentialMatcher {
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
 
 		const successes = await this.resolve(known, context);
-		const matchedSourceIds = new Set(successes.map((binding) => getBindingSourceId(binding)));
+		const matchedSourceIds = new Set(successes.map((binding) => binding.sourceId));
 
 		const notFoundFailures = known
 			.filter((reference) => !matchedSourceIds.has(reference.id))

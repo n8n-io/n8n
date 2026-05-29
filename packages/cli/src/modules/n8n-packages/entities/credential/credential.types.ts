@@ -15,7 +15,10 @@ export type CredentialResolutionFailure = {
 
 export type CredentialId = string;
 
-export type CredentialBinding = Map<CredentialId, CredentialId>;
+export interface CredentialBinding {
+	sourceId: CredentialId;
+	targetId: CredentialId;
+}
 
 export interface CredentialResolution {
 	successes: CredentialBinding[];
@@ -34,7 +37,7 @@ export function createSuccessBinding(
 	sourceId: CredentialId,
 	targetId: CredentialId,
 ): CredentialBinding {
-	return new Map([[sourceId, targetId]]);
+	return { sourceId, targetId };
 }
 
 export function createFailure(
@@ -48,23 +51,8 @@ export function createFailure(
 	};
 }
 
-export function getBindingSourceId(binding: CredentialBinding): CredentialId {
-	const sourceId = binding.keys().next().value;
-	if (sourceId === undefined) {
-		throw new Error('Credential binding is empty');
-	}
-	return sourceId;
-}
-
 export function resolvedBindingsToSummaries(
 	bindings: CredentialBinding[],
 ): Array<{ sourceId: string; targetId: string }> {
-	return bindings.map((binding) => {
-		const sourceId = getBindingSourceId(binding);
-		const targetId = binding.get(sourceId);
-		if (targetId === undefined || typeof targetId !== 'string') {
-			throw new Error('Expected resolved credential binding');
-		}
-		return { sourceId, targetId };
-	});
+	return bindings.map(({ sourceId, targetId }) => ({ sourceId, targetId }));
 }
