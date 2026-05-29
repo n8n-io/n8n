@@ -196,15 +196,23 @@ export function toAssTime(seconds) {
 
 export function buildTimeline(audioDuration, options = {}) {
 	const coverDuration = Number(options.coverDuration ?? 3);
+	const chapterTwoDuration = Number(options.chapterTwoDuration ?? 4);
 	const screenshotDuration = Number(options.screenshotDuration ?? 4);
-	const introDuration = coverDuration + screenshotDuration;
+	const introDuration = coverDuration + chapterTwoDuration + screenshotDuration;
 	const totalDuration = Math.max(Number(audioDuration) || 0, introDuration);
+	const chapterTwoStart = coverDuration;
+	const screenshotStart = coverDuration + chapterTwoDuration;
 
 	return {
 		totalDuration,
 		cover: { start: 0, end: coverDuration, duration: coverDuration },
+		chapterTwo: {
+			start: chapterTwoStart,
+			end: screenshotStart,
+			duration: chapterTwoDuration,
+		},
 		screenshot: {
-			start: coverDuration,
+			start: screenshotStart,
 			end: introDuration,
 			duration: screenshotDuration,
 		},
@@ -228,6 +236,7 @@ export function normalizeJob(rawJob) {
 			height: 1080,
 			fps: 30,
 			coverDuration: 3,
+			chapterTwoDuration: 4,
 			screenshotDuration: 4,
 			...(rawJob.video ?? {}),
 		},
@@ -244,6 +253,11 @@ export function normalizeJob(rawJob) {
 				width: 560,
 				...(rawJob.layout?.screenshotTop ?? {}),
 			},
+			chapterTwoMain: {
+				width: 1500,
+				height: 780,
+				...(rawJob.layout?.chapterTwoMain ?? {}),
+			},
 			cornerImageTreatment: {
 				enabled: rawJob.layout?.cornerImageTreatment?.enabled ?? true,
 				blur: rawJob.layout?.cornerImageTreatment?.blur ?? 0,
@@ -259,7 +273,7 @@ export function normalizeJob(rawJob) {
 		job.inputs.subtitleTiming = rawJob.inputs.subtitleTiming;
 	}
 
-	for (const field of ['coverImage', 'screenshotImage', 'backgroundVideo', 'scriptText', 'ttsAudio']) {
+	for (const field of ['coverImage', 'chapterTwoImage', 'screenshotImage', 'backgroundVideo', 'scriptText', 'ttsAudio']) {
 		if (!job.inputs?.[field]) throw new Error(`Missing inputs.${field}`);
 	}
 
@@ -576,7 +590,8 @@ export function buildFfmpegArgs(
 	const softSubtitles = subtitleMode === 'soft' && !imageSubtitles;
 	const hasBodyStage = timeline.body.duration > 0;
 	const coverMainInput = hasBodyStage ? '[covermainsrc]' : '[1:v]';
-	const screenshotMainInput = hasBodyStage ? '[screenmainsrc]' : '[2:v]';
+	const chapterTwoMainInput = '[2:v]';
+	const screenshotMainInput = hasBodyStage ? '[screenmainsrc]' : '[3:v]';
 
 	const bodyFilters =
 		hasBodyStage
@@ -616,12 +631,27 @@ export function buildFfmpegArgs(
 		...(hasBodyStage
 			? [
 					'[1:v]split=2[covermainsrc][covertopsrc]',
-					'[2:v]split=2[screenmainsrc][screentopsrc]',
+					'[3:v]split=2[screenmainsrc][screentopsrc]',
 				]
 			: []),
 		backgroundSegment('[0:v]', timeline.cover.start, timeline.cover.duration, width, height, '[coverbg]'),
 		scaleAndCrop(coverMainInput, width, height, '[covermain]'),
 		'[coverbg][covermain]overlay=0:0:shortest=1[cover]',
+		backgroundSegment(
+			'[0:v]',
+			timeline.chapterTwo.start,
+			timeline.chapterTwo.duration,
+			width,
+			height,
+			'[chaptertwobg]',
+		),
+		scaleAndPad(
+			chapterTwoMainInput,
+			job.layout.chapterTwoMain.width,
+			job.layout.chapterTwoMain.height,
+			'[chaptertwomain]',
+		),
+		'[chaptertwobg][chaptertwomain]overlay=(W-w)/2:(H-h)/2:shortest=1[chaptertwo]',
 		backgroundSegment(
 			'[0:v]',
 			timeline.screenshot.start,
@@ -633,12 +663,12 @@ export function buildFfmpegArgs(
 		scaleAndPad(screenshotMainInput, 1600, 780, '[screenmain]'),
 		'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2:shortest=1[screen]',
 		...bodyFilters,
-		`[cover][screen][body]concat=n=3:v=1:a=0${burnSubtitles ? `,subtitles=filename=${escapedSubtitlePath}` : ''}[basev]`,
+		`[cover][chaptertwo][screen][body]concat=n=4:v=1:a=0${burnSubtitles ? `,subtitles=filename=${escapedSubtitlePath}` : ''}[basev]`,
 	];
 
 	if (imageSubtitles) {
 		visualFilters.push(
-			'[4:v]format=rgba[subtitles]',
+			'[5:v]format=rgba[subtitles]',
 			`[basev][subtitles]overlay=0:H-h-${job.layout.subtitleBottomMargin}:eof_action=pass:format=auto[vout]`,
 		);
 	} else {
@@ -647,7 +677,7 @@ export function buildFfmpegArgs(
 
 	const filter = [
 		...visualFilters,
-		`[3:a]apad,atrim=0:${timeline.totalDuration},asetpts=PTS-STARTPTS[aout]`,
+		`[4:a]apad,atrim=0:${timeline.totalDuration},asetpts=PTS-STARTPTS[aout]`,
 	].join(';');
 
 	const args = [
@@ -660,6 +690,10 @@ export function buildFfmpegArgs(
 		'1',
 		'-i',
 		job.inputs.coverImage,
+		'-loop',
+		'1',
+		'-i',
+		job.inputs.chapterTwoImage,
 		'-loop',
 		'1',
 		'-i',
@@ -693,7 +727,7 @@ export function buildFfmpegArgs(
 	);
 
 	if (softSubtitles) {
-		args.push('-map', '4:0');
+		args.push('-map', '5:0');
 	}
 
 	args.push(
