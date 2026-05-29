@@ -41,6 +41,7 @@ import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
 import { WorkflowCreationService } from './workflow-creation.service';
+import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
@@ -99,19 +100,7 @@ export class WorkflowsController {
 			}
 		}
 
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, {
-			...(body.id !== undefined ? { id: body.id } : {}),
-			name: body.name,
-			nodes: body.nodes,
-			connections: body.connections,
-			...(body.description !== undefined ? { description: body.description } : {}),
-			...(body.settings !== undefined ? { settings: body.settings } : {}),
-			...(body.staticData !== undefined ? { staticData: body.staticData } : {}),
-			...(body.meta !== undefined ? { meta: body.meta } : {}),
-			...(body.pinData !== undefined ? { pinData: body.pinData } : {}),
-			...(body.nodeGroups !== undefined ? { nodeGroups: body.nodeGroups } : {}),
-		});
+		const newWorkflow = createWorkflowEntityFromPayload(body);
 
 		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 			tagIds: body.tags,
@@ -311,7 +300,6 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
 		// Validate timeSavedMode if present
@@ -322,17 +310,7 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		Object.assign(updateData, {
-			...(rest.name !== undefined ? { name: rest.name } : {}),
-			...(rest.description !== undefined ? { description: rest.description } : {}),
-			...(rest.nodes !== undefined ? { nodes: rest.nodes } : {}),
-			...(rest.connections !== undefined ? { connections: rest.connections } : {}),
-			...(rest.settings !== undefined ? { settings: rest.settings } : {}),
-			...(rest.staticData !== undefined ? { staticData: rest.staticData } : {}),
-			...(rest.meta !== undefined ? { meta: rest.meta } : {}),
-			...(rest.pinData !== undefined ? { pinData: rest.pinData } : {}),
-			...(rest.nodeGroups !== undefined ? { nodeGroups: rest.nodeGroups } : {}),
-		});
+		let updateData = createWorkflowEntityFromPayload(rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
 		if (isSharingEnabled) {

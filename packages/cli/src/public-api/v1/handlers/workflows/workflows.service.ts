@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import {
-	WorkflowEntity,
 	WorkflowTagMapping,
 	TagRepository,
 	SharedWorkflowRepository,
@@ -12,6 +11,7 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -64,18 +64,7 @@ export async function createWorkflow(
 	body: WorkflowEntity & { projectId?: string },
 ): Promise<WorkflowEntity> {
 	const { projectId, ...rest } = body;
-	const workflow = Object.assign(new WorkflowEntity(), {
-		...(rest.id !== undefined ? { id: rest.id } : {}),
-		name: rest.name,
-		nodes: rest.nodes,
-		connections: rest.connections,
-		...(rest.description !== undefined ? { description: rest.description } : {}),
-		...(rest.settings !== undefined ? { settings: rest.settings } : {}),
-		...(rest.staticData !== undefined ? { staticData: rest.staticData } : {}),
-		...(rest.meta !== undefined ? { meta: rest.meta } : {}),
-		...(rest.pinData !== undefined ? { pinData: rest.pinData } : {}),
-		...(rest.nodeGroups !== undefined ? { nodeGroups: rest.nodeGroups } : {}),
-	});
+	const workflow = createWorkflowEntityFromPayload(rest);
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
 		publicApi: true,
