@@ -1,5 +1,4 @@
 ---
-name: community-pr-readiness-check
 description: >-
   Checks if a community pull request is ready for human review. Verifies CLA
   signature, PR title format, description completeness, test coverage, and
