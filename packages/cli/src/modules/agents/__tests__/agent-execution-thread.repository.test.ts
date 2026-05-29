@@ -53,7 +53,8 @@ describe('AgentExecutionThreadRepository', () => {
 				projectId: 'project-1',
 				sessionNumber: 8,
 				origin: 'direct',
-				parentRunId: null,
+				parentThreadId: null,
+				parentAgentId: null,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
 		});
@@ -68,7 +69,8 @@ describe('AgentExecutionThreadRepository', () => {
 
 			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
 				origin: 'subagent',
-				parentRunId: 'parent-run-1',
+				parentThreadId: 'parent-thread-1',
+				parentAgentId: 'parent-agent-1',
 			});
 
 			expect(scopedRepository.create).toHaveBeenCalledWith({
@@ -78,7 +80,8 @@ describe('AgentExecutionThreadRepository', () => {
 				projectId: 'project-1',
 				sessionNumber: 8,
 				origin: 'subagent',
-				parentRunId: 'parent-run-1',
+				parentThreadId: 'parent-thread-1',
+				parentAgentId: 'parent-agent-1',
 			});
 		});
 

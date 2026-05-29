@@ -57,6 +57,7 @@ export const SubAgentSpawnRequestSchema = z.object({
 	executionMode: SubAgentExecutionModeSchema.optional(),
 	policy: SubAgentRunPolicySchema.optional(),
 	parentRunId: z.string().min(1).optional(),
+	parentThreadId: z.string().min(1).optional(),
 	parentToolCallId: z.string().min(1).optional(),
 	parentTaskPath: SubAgentTaskPathSchema.optional(),
 });

@@ -63,6 +63,33 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('forwards the parent persistence thread id as parentThreadId', async () => {
+		const runSubAgent = jest
+			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ parentThreadId: 'parent-thread-1' }),
+		);
+	});
+
+	it('omits parentThreadId when the parent run has no persistence scope', async () => {
+		const runSubAgent = jest
+			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+
+		await tool.handler?.(input, { runId: 'parent-run-1' });
+
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentThreadId');
+	});
+
 	it('emits lifecycle events around runner callback execution', async () => {
 		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({

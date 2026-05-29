@@ -28,6 +28,8 @@ import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;
+	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
+	parentAgentId?: string;
 	childCount?: number;
 	credentialProvider: CredentialProvider;
 	createToolExecutor(toolCodeByName: Record<string, string>): ToolExecutor;
@@ -127,7 +129,8 @@ export class SubAgentForegroundRunner {
 			await this.recordSubAgentExecution({
 				runtimeSource: runtimeSource.source,
 				projectId: context.projectId,
-				parentRunId: request.parentRunId,
+				parentThreadId: request.parentThreadId,
+				parentAgentId: context.parentAgentId,
 				taskPath,
 				prompt,
 				record: messageRecord,
@@ -156,12 +159,14 @@ export class SubAgentForegroundRunner {
 	private async recordSubAgentExecution(params: {
 		runtimeSource: ResolvedSubAgentSource;
 		projectId: string;
-		parentRunId?: string;
+		parentThreadId?: string;
+		parentAgentId?: string;
 		taskPath: SubAgentTaskPath;
 		prompt: string;
 		record: MessageRecord;
 	}): Promise<void> {
-		const { runtimeSource, projectId, parentRunId, taskPath, prompt, record } = params;
+		const { runtimeSource, projectId, parentThreadId, parentAgentId, taskPath, prompt, record } =
+			params;
 		if (runtimeSource.type !== 'n8n-agent' || !runtimeSource.sourceId) return;
 
 		try {
@@ -175,7 +180,8 @@ export class SubAgentForegroundRunner {
 				source: 'subagent',
 				threadMetadata: {
 					origin: 'subagent',
-					...(parentRunId !== undefined ? { parentRunId } : {}),
+					...(parentThreadId !== undefined ? { parentThreadId } : {}),
+					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 			});
 		} catch (error) {

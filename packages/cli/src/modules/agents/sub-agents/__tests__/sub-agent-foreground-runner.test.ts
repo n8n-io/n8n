@@ -31,6 +31,8 @@ jest.mock('../../json-config/from-json-config', () => ({
 
 const projectId = 'project-1';
 const parentRunId = 'parent-run-1';
+const parentThreadId = 'parent-thread-1';
+const parentAgentId = 'parent-agent-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
 	name: 'Helper Agent',
@@ -89,6 +91,7 @@ const spawnRequest: SubAgentSpawnRequest = {
 	contextMode: 'fresh',
 	executionMode: 'foreground',
 	parentRunId,
+	parentThreadId,
 	parentTaskPath: '/root',
 };
 
@@ -201,6 +204,7 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
+				parentAgentId,
 				credentialProvider,
 				createToolExecutor,
 				createMemoryFactory,
@@ -225,7 +229,8 @@ describe('SubAgentForegroundRunner', () => {
 				source: 'subagent',
 				threadMetadata: {
 					origin: 'subagent',
-					parentRunId,
+					parentThreadId,
+					parentAgentId,
 				},
 			}),
 		);

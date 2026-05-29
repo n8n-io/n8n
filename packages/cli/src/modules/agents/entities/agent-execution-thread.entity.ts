@@ -44,9 +44,13 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, default: 'direct' })
 	origin: AgentExecutionThreadOrigin;
 
-	/** Parent SDK run ID for sessions started through delegate_subagent. */
+	/** Parent session thread id that delegated this run, for navigating back to it. */
 	@Column({ type: 'varchar', length: 128, nullable: true })
-	parentRunId: string | null;
+	parentThreadId: string | null;
+
+	/** Saved agent id of the parent that delegated this run. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentAgentId: string | null;
 
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })

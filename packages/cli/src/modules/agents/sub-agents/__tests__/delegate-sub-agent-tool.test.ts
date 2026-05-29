@@ -133,6 +133,30 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('forwards the parent persistence thread id to the runner', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+
+		await tool.handler?.(
+			{ taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+			},
+		);
+
+		expect(runner.runForeground).toHaveBeenCalledWith(
+			expect.objectContaining({ parentThreadId: 'parent-thread-1' }),
+			expect.any(Object),
+		);
+	});
+
 	it('passes incrementing child counts from the SDK tool to the runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,

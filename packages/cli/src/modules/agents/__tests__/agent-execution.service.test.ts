@@ -20,7 +20,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		title: null,
 		emoji: null,
 		origin: 'direct',
-		parentRunId: null,
+		parentThreadId: null,
+		parentAgentId: null,
 		sessionNumber: 1,
 		totalPromptTokens: 0,
 		totalCompletionTokens: 0,
@@ -85,7 +86,8 @@ describe('AgentExecutionService', () => {
 				source: 'subagent',
 				threadMetadata: {
 					origin: 'subagent',
-					parentRunId: 'parent-run-1',
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
 				},
 			});
 
@@ -96,7 +98,8 @@ describe('AgentExecutionService', () => {
 				'project-1',
 				{
 					origin: 'subagent',
-					parentRunId: 'parent-run-1',
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
 				},
 			);
 		});

@@ -66,6 +66,7 @@ export interface DelegateSubAgentPolicy extends SubAgentTaskPathPolicy {
 export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	taskPath: SubAgentTaskPath;
 	parentRunId?: string;
+	parentThreadId?: string;
 	parentToolCallId?: string;
 	parentTaskPath?: SubAgentTaskPath;
 	childCount: number;
@@ -180,6 +181,9 @@ async function handleDelegateSubAgent(
 			taskPath,
 			childCount,
 			...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
+			...(ctx.persistence?.threadId !== undefined
+				? { parentThreadId: ctx.persistence.threadId }
+				: {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
 			...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),

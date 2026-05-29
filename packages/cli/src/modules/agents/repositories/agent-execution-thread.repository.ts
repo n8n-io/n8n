@@ -8,7 +8,8 @@ const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
 export interface AgentExecutionThreadMetadata {
 	origin?: AgentExecutionThreadOrigin;
-	parentRunId?: string;
+	parentThreadId?: string;
+	parentAgentId?: string;
 }
 
 export interface AgentExecutionThreadPage {
@@ -79,7 +80,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				projectId,
 				sessionNumber,
 				origin: metadata?.origin ?? 'direct',
-				parentRunId: metadata?.parentRunId ?? null,
+				parentThreadId: metadata?.parentThreadId ?? null,
+				parentAgentId: metadata?.parentAgentId ?? null,
 			});
 			const saved = await repository.save(thread);
 			return { thread: saved, created: true };

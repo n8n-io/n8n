@@ -54,6 +54,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 						: {}),
 					...(policy !== undefined ? { policy } : {}),
 					...(request.parentRunId !== undefined ? { parentRunId: request.parentRunId } : {}),
+					...(request.parentThreadId !== undefined
+						? { parentThreadId: request.parentThreadId }
+						: {}),
 					...(request.parentToolCallId !== undefined
 						? { parentToolCallId: request.parentToolCallId }
 						: {}),

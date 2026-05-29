@@ -1003,6 +1003,7 @@ export class AgentsService {
 				runner: Container.get(SubAgentForegroundRunner),
 				...delegation,
 				projectId,
+				parentAgentId: agentId,
 				credentialProvider,
 				createToolExecutor: (toolCodeByName) =>
 					this.secureRuntime.createToolExecutor(toolCodeByName),

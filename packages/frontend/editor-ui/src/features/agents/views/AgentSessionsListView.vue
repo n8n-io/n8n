@@ -7,11 +7,20 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nBadge, N8nButton, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nBadge,
+	N8nButton,
+	N8nIcon,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -66,9 +75,26 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
-const deleteActions = [
-	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash-2' as const },
-];
+function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
+	const actions: Array<ActionDropdownItem<string>> = [];
+
+	if (thread.origin === 'subagent' && thread.parentThreadId && thread.parentAgentId) {
+		actions.push({
+			id: 'goToParentRun',
+			label: i18n.baseText('agentSessions.goToParentRun'),
+			icon: 'arrow-up-right',
+		});
+	}
+
+	actions.push({
+		id: 'delete',
+		label: i18n.baseText('generic.delete'),
+		icon: 'trash-2',
+		divided: actions.length > 0,
+	});
+
+	return actions;
+}
 
 function onRowClick(threadId: string) {
 	void router.push({
@@ -77,7 +103,20 @@ function onRowClick(threadId: string) {
 	});
 }
 
-async function onAction(actionId: string, threadId: string) {
+async function onAction(actionId: string, thread: AgentExecutionThread) {
+	if (actionId === 'goToParentRun') {
+		if (!thread.parentAgentId || !thread.parentThreadId) return;
+		void router.push({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: {
+				projectId: projectId.value,
+				agentId: thread.parentAgentId,
+				threadId: thread.parentThreadId,
+			},
+		});
+		return;
+	}
+
 	if (actionId !== 'delete') return;
 
 	const confirmed = await message.confirm(
@@ -93,7 +132,7 @@ async function onAction(actionId: string, threadId: string) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await sessionsStore.deleteThread(projectId.value, threadId);
+		await sessionsStore.deleteThread(projectId.value, thread.id);
 		toast.showMessage({
 			title: i18n.baseText('agentSessions.showMessage.deleted'),
 			type: 'success',
@@ -137,15 +176,21 @@ async function loadMore() {
 						<td>
 							<div :class="$style.sessionCell">
 								<span>{{ truncate(threadTitleOf(thread), 24) }}</span>
-								<N8nBadge
+								<N8nTooltip
 									v-if="thread.origin === 'subagent'"
-									theme="tertiary"
-									size="xsmall"
-									:show-border="false"
-									data-test-id="agent-session-subagent-badge"
+									:content="i18n.baseText('agentSessions.subagentRun.tooltip')"
+									placement="top"
 								>
-									{{ i18n.baseText('agentSessions.subagentRun') }}
-								</N8nBadge>
+									<N8nBadge
+										theme="secondary"
+										size="xsmall"
+										:class="$style.subagentBadge"
+										data-test-id="agent-session-subagent-badge"
+									>
+										<N8nIcon icon="bot" :size="12" />
+										{{ i18n.baseText('agentSessions.subagentRun') }}
+									</N8nBadge>
+								</N8nTooltip>
 							</div>
 						</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
@@ -154,10 +199,10 @@ async function loadMore() {
 						<td>{{ thread.sessionNumber }}</td>
 						<td @click.stop>
 							<N8nActionDropdown
-								:items="deleteActions"
+								:items="rowActions(thread)"
 								activator-icon="ellipsis"
 								data-test-id="agent-session-actions"
-								@select="onAction($event, thread.id)"
+								@select="onAction($event, thread)"
 							/>
 						</td>
 					</tr>
@@ -231,6 +276,12 @@ async function loadMore() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.subagentBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .lastRow {

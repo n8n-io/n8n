@@ -8,11 +8,16 @@ export class AddSubAgentOriginToAgentExecutionThreads1784000000018 implements Re
 				.notNull.default("'direct'")
 				.withEnumCheck(['direct', 'subagent'])
 				.comment('How this agent session was started.'),
-			column('parentRunId').varchar(128).comment('Parent SDK run ID for subagent sessions.'),
+			column('parentThreadId')
+				.varchar(128)
+				.comment('Parent session thread id that delegated this subagent run.'),
+			column('parentAgentId')
+				.varchar(36)
+				.comment('Saved agent id of the parent that delegated this subagent run.'),
 		]);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('agent_execution_threads', ['origin', 'parentRunId']);
+		await dropColumns('agent_execution_threads', ['origin', 'parentThreadId', 'parentAgentId']);
 	}
 }
