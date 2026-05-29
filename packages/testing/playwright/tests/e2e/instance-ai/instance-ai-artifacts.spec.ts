@@ -15,10 +15,10 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact display test"',
 			);
 
-			// New builds route through the planner and pause for user approval.
+			// New builds pause for direct workflow-create approval before saving.
 			await n8n.instanceAi.approveBuildPlan();
 
-			// Wait for build to complete (no confirmation for simple builds)
+			// Wait for build to complete.
 			await n8n.instanceAi.waitForAssistantResponse(120_000);
 
 			// An artifact card should appear in the timeline

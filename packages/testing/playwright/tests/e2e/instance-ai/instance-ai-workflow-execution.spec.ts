@@ -15,7 +15,7 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "run button visibility test"',
 			);
 
-			// New builds route through the planner and pause for user approval.
+			// New builds pause for direct workflow-create approval before saving.
 			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes

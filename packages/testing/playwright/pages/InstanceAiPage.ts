@@ -128,6 +128,18 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-panel-confirm-deny');
 	}
 
+	private getWorkflowCreateConfirmationPanel(): Locator {
+		return this.container
+			.getByTestId('instance-ai-confirmation-panel')
+			.filter({ hasText: /Create workflow/i });
+	}
+
+	private getWorkflowCreateApproveButton(): Locator {
+		return this.getWorkflowCreateConfirmationPanel().getByTestId(
+			'instance-ai-panel-confirm-approve',
+		);
+	}
+
 	getDomainAccessApprove(): Locator {
 		return this.container.getByTestId('domain-access-primary');
 	}
@@ -267,12 +279,37 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	/**
-	 * Wait for the plan-review panel to appear and approve it. New workflow
-	 * builds now route through the planner and pause at `awaiting_approval`
-	 * until the user approves — without this step the build never starts.
+	 * Wait for the workflow build approval and approve it. Builder runs can pause
+	 * first on the plan-review panel and then again on the direct workflow-create
+	 * approval before the artifact exists.
 	 */
 	async approveBuildPlan(timeout = 120_000): Promise<void> {
-		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
-		await this.getPlanApproveButton().click();
+		const deadline = Date.now() + timeout;
+		const remaining = () => Math.max(1, deadline - Date.now());
+		const planApproveButton = this.getPlanApproveButton();
+		const createApproveButton = this.getWorkflowCreateApproveButton();
+		const planVisible = planApproveButton
+			.waitFor({ state: 'visible', timeout })
+			.then(() => 'plan' as const)
+			.catch(() => undefined);
+		const createVisible = createApproveButton
+			.waitFor({ state: 'visible', timeout })
+			.then(() => 'create' as const)
+			.catch(() => undefined);
+		const visibleSurface = await Promise.race([planVisible, createVisible]);
+
+		if (!visibleSurface) {
+			await Promise.all([planVisible, createVisible]);
+			throw new Error('No Instance AI build approval button became visible');
+		}
+
+		if (visibleSurface === 'plan') {
+			await planApproveButton.click();
+		}
+
+		const createConfirmationPanel = this.getWorkflowCreateConfirmationPanel();
+		await createApproveButton.waitFor({ state: 'visible', timeout: remaining() });
+		await createApproveButton.click();
+		await createConfirmationPanel.waitFor({ state: 'hidden', timeout: remaining() });
 	}
 }

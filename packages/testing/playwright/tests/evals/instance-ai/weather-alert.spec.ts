@@ -11,11 +11,13 @@ type Scenario = {
 };
 
 type EvalFixture = {
-	prompt: string;
+	prompt?: string;
+	conversation?: Array<{ text: string }>;
 	complexity: string;
 	tags: string[];
 	triggerType: string;
-	scenarios: Scenario[];
+	scenarios?: Scenario[];
+	executionScenarios?: Scenario[];
 };
 
 type StubWorkflowNode = { type: string; name: string };
@@ -47,13 +49,15 @@ function stubBuildWorkflow(_prompt: string): Promise<StubBuildResult> {
 }
 
 const fixture = loadFixture();
+const prompt = fixture.prompt ?? fixture.conversation?.map(({ text }) => text).join('\n') ?? '';
+const scenarios = fixture.scenarios ?? fixture.executionScenarios ?? [];
 
 test.describe('eval: weather-alert', () => {
-	for (const scenario of fixture.scenarios) {
+	for (const scenario of scenarios) {
 		// eslint-disable-next-line playwright/valid-title
 		test(scenario.name, async ({ traced }) => {
 			const result = await traced(`weather-alert/${scenario.name}`, () =>
-				stubBuildWorkflow(fixture.prompt),
+				stubBuildWorkflow(prompt),
 			);
 
 			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.scheduleTrigger');

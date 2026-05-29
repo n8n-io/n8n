@@ -16,7 +16,7 @@ test.describe(
 			);
 			await n8n.instanceAi.approveBuildPlan();
 
-			// Preview should auto-open with canvas nodes visible (no confirmation for simple builds)
+			// Preview should auto-open with canvas nodes visible after build approval.
 			const firstNode = n8n.instanceAi.getPreviewCanvasNodes().first();
 			await expect(firstNode).toBeVisible({ timeout: 120_000 });
 

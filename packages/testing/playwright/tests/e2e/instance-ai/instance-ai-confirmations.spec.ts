@@ -141,7 +141,7 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "approval test" and run it',
 			);
 
-			// Approve the build plan so the orchestrator proceeds to the run step.
+			// Approve the direct workflow create so the orchestrator proceeds to the run step.
 			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
@@ -172,7 +172,7 @@ test.describe(
 		});
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build-workflow-with-agent with a workflowId before the builder spawns.
+		// converge on workflows(action="update") with a workflowId before the workflow is updated.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			n8n,
 		}) => {
@@ -188,8 +188,12 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit ${APPROVE_EDIT_WORKFLOW_NAME}`),
-			).toBeVisible({ timeout: 120_000 });
+				n8n.instanceAi.getConfirmationText(
+					`Update workflow ${APPROVE_EDIT_WORKFLOW_NAME} (ID: ${workflow.id})`,
+				),
+			).toBeVisible({
+				timeout: 120_000,
+			});
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			const whileAwaitingApproval = await n8n.api.workflows.getWorkflow(workflow.id);
 			expect(workflowSignature(whileAwaitingApproval)).toBe(beforeEditSignature);
@@ -222,8 +226,12 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit ${DENY_EDIT_WORKFLOW_NAME}`),
-			).toBeVisible({ timeout: 120_000 });
+				n8n.instanceAi.getConfirmationText(
+					`Update workflow ${DENY_EDIT_WORKFLOW_NAME} (ID: ${workflow.id})`,
+				),
+			).toBeVisible({
+				timeout: 120_000,
+			});
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();
 			await n8n.instanceAi.waitForResponseComplete();
