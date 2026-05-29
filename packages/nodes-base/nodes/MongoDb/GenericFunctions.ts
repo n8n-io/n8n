@@ -80,6 +80,25 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
+function isScalarUpdateKeyValue(
+	value: unknown,
+): value is string | number | boolean | bigint | Date | ObjectId | null {
+	if (value === null) return true;
+	const type = typeof value;
+	if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint') {
+		return true;
+	}
+	return value instanceof Date || value instanceof ObjectId;
+}
+
+function describeUpdateKeyValueType(value: unknown): string {
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	if (value instanceof Date) return 'date';
+	if (value instanceof ObjectId) return 'ObjectId';
+	return typeof value;
+}
+
 export function prepareItems({
 	items,
 	fields,
@@ -87,6 +106,7 @@ export function prepareItems({
 	useDotNotation = false,
 	dateFields = [],
 	isUpdate = false,
+	node,
 }: {
 	items: INodeExecutionData[];
 	fields: string[];
@@ -94,6 +114,7 @@ export function prepareItems({
 	useDotNotation?: boolean;
 	dateFields?: string[];
 	isUpdate?: boolean;
+	node: INode;
 }) {
 	let data = items;
 
@@ -104,7 +125,7 @@ export function prepareItems({
 		data = items.filter((item) => item.json[updateKey] !== undefined);
 	}
 
-	const preparedItems = data.map(({ json }) => {
+	const preparedItems = data.map(({ json }, itemIndex) => {
 		const updateItem: IDataObject = {};
 
 		for (const field of fields) {
@@ -118,6 +139,17 @@ export function prepareItems({
 
 			if (fieldData && dateFields.includes(field)) {
 				fieldData = new Date(fieldData as string);
+			}
+
+			if (field === updateKey && !isScalarUpdateKeyValue(fieldData)) {
+				throw new NodeOperationError(
+					node,
+					`The value of "${updateKey}" must be a string, number, boolean, or date`,
+					{
+						itemIndex,
+						description: `Got ${describeUpdateKeyValueType(fieldData)} instead. Objects and arrays are not allowed as the match value.`,
+					},
+				);
 			}
 
 			if (useDotNotation && !isUpdate) {
