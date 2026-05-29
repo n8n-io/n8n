@@ -103,7 +103,14 @@ Single narration mode can remain available, but this upgrade focuses on dialogue
 
 ## Voice Design
 
-The form voice dropdowns should use podcast-oriented labels and mature speaker presets.
+The form voice dropdowns should use Chinese display names and mature speaker presets. Users should not need to read internal speaker IDs or English keys when selecting a voice.
+
+Implementation requirement:
+
+- `VOICE_PRESETS` keeps stable internal keys for workflow logic.
+- Each preset also has a Chinese `label`.
+- The n8n form dropdown should display Chinese options such as `男主持 - 温柔阿虎` and `男嘉宾 - 刘飞`.
+- If n8n dropdown values cannot separate display label from stored value, use a parseable combined value such as `男主持 - 温柔阿虎｜host_male_wennuanahu`, then normalize it back to the internal key in `Save Uploaded Files`.
 
 Recommended host voices:
 
@@ -137,6 +144,8 @@ Defaults:
 - `voice_a`: `host_male_wennuanahu`
 - `voice_b`: `guest_female_xiaohe`
 - `voice_single`: `host_male_wennuanahu` or `guest_female_xiaohe`; the implementation can choose one, but it must be a mature verified voice.
+
+`zh_male_liufei_uranus_bigtts` should remain a top podcast option for both host and guest roles because it was confirmed usable and fits the podcast tone.
 
 The previous cute/youthful voices should not be default options for the podcast flow.
 
