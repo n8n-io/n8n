@@ -6,7 +6,6 @@ jest.mock('@n8n/instance-ai', () => {
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
-			getBrowserTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
@@ -1026,7 +1025,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
-			instanceAiConfig: { subAgentMaxSteps: number; browserMcp: boolean };
+			instanceAiConfig: { subAgentMaxSteps: number };
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: unknown;
@@ -1065,7 +1064,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
-		service.instanceAiConfig = { subAgentMaxSteps: 10, browserMcp: false };
+		service.instanceAiConfig = { subAgentMaxSteps: 10 };
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = {};
@@ -2151,11 +2150,9 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 });
 
 describe('InstanceAiService — OAuth callback URL', () => {
-	// Regression: the OAuth callback URL handed to the browser-credential-setup
-	// sub-agent must come from urlService.getInstanceBaseUrl() (which honors
-	// WEBHOOK_URL on cloud), not from globalConfig.editorBaseUrl with a
-	// localhost fallback. With the old fallback the agent pasted
-	// http://localhost:5678/... into the user's Slack app on a cloud instance.
+	// Regression: the OAuth callback URL exposed to browser-assisted credential
+	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
+	// on cloud), not from globalConfig.editorBaseUrl with a localhost fallback.
 	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
 		const source = InstanceAiService.toString();
 
