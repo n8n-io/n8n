@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const scriptPath = new URL('./presentation-script-client.mjs', import.meta.url).pathname;
+const skillPath = new URL('./pdf-to-podcast-script/SKILL.md', import.meta.url).pathname;
 
 test('presentation-script-client writes normalized page-script from fixture response', () => {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-script-'));
@@ -50,4 +51,17 @@ test('presentation-script-client writes normalized page-script from fixture resp
 	assert.equal(script.pages.length, 2);
 	assert.match(script.pages[0].speakerPrompt, /今天我们要聊/);
 	assert.equal(fs.existsSync(llmPromptPath), true);
+	const prompt = fs.readFileSync(llmPromptPath, 'utf8');
+	assert.match(prompt, /pdf-to-podcast-script/);
+	assert.match(prompt, /PDF 页面是唯一事实来源/);
+});
+
+test('pdf-to-podcast-script skill documents page-grounded podcast rules', () => {
+	const skill = fs.readFileSync(skillPath, 'utf8');
+
+	assert.match(skill, /name: pdf-to-podcast-script/);
+	assert.match(skill, /The PDF page is the source of truth/);
+	assert.match(skill, /speakerPrompt/);
+	assert.match(skill, /spokenSummary/);
+	assert.match(skill, /Subtitles must come from the actual TTS or AI Podcast transcript/);
 });

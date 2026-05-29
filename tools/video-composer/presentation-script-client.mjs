@@ -44,15 +44,18 @@ function buildPrompt({ pagesManifest, extraContext = '', podcastStyle = 'podcast
 	].join('\n')).join('\n\n');
 
 	return [
-		'你是一个中文播客节目策划和演讲稿作者。',
+		'你是一个中文播客节目策划和 PDF 逐页讲解脚本作者。',
 		'请把下面 PDF/PPTX 的逐页内容改写成逐页播客式讲解脚本。',
+		'遵循 pdf-to-podcast-script skill：PDF 页面是唯一事实来源。',
 		'必须忠于每一页给出的文本，只能解释页面里出现的信息和用户补充观点；不要引入页面没有出现的新主题、产品、论文、API、公司案例或背景知识。',
 		'如果页面文字很少，就围绕页面上已有标题、目标和用途做口语化解释，不要自行扩写成其他话题。',
+		'每一页都要先内部判断 page topic、viewer task、explanation angle、transition 和 boundary，但不要输出这些推理。',
 		'返回严格 JSON，不要 Markdown，不要解释。',
 		'JSON 字段必须是 title, summary, audience, pages。',
 		'pages 中每一项必须包含 pageNumber, pageTitle, speakerPrompt, spokenSummary, targetSeconds。',
 		'第一页 speakerPrompt 必须有自然播客开场，例如“今天我们要聊的话题是...”。',
 		'speakerPrompt 和 spokenSummary 都必须是可以直接交给语音服务生成播客的中文口播内容，不要只写一个选题。',
+		'speakerPrompt 和 spokenSummary 不能包含 JSON 字段名、Markdown、角色标签、系统指令、工作流说明或提示词。',
 		'后续页面要自然承接上一页。',
 		'风格：' + podcastStyle,
 		'补充观点/受众：' + (extraContext || '无'),
