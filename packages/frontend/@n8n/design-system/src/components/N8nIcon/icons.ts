@@ -56,6 +56,7 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
+import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
@@ -135,6 +136,7 @@ import IconLucideFunnel from '~icons/lucide/funnel';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGift from '~icons/lucide/gift';
 import IconLucideGitBranch from '~icons/lucide/git-branch';
+import IconLucideGauge from '~icons/lucide/gauge';
 import IconLucideGlobe from '~icons/lucide/globe';
 import IconLucideGraduationCap from '~icons/lucide/graduation-cap';
 import IconLucideGrid2x2 from '~icons/lucide/grid-2x2';
@@ -549,6 +551,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
+	blocks: IconLucideBlocks,
 	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
@@ -622,6 +625,7 @@ export const updatedIconSet = {
 	'folder-open': IconLucideFolderOpen,
 	'folder-plus': IconLucideFolderPlus,
 	funnel: IconLucideFunnel,
+	gauge: IconLucideGauge,
 	gem: IconLucideGem,
 	gift: IconLucideGift,
 	'git-branch': IconLucideGitBranch,
