@@ -85,6 +85,7 @@ describe('ImportService', () => {
 			mockPolicyEnforcementService,
 			sharedWorkflowRepository,
 			Container.get(WorkflowRepository),
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 

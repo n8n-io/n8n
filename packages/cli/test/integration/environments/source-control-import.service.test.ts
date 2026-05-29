@@ -148,6 +148,7 @@ describe('SourceControlImportService', () => {
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
 			Container.get(WorkflowFinderService),
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 
