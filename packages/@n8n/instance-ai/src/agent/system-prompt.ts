@@ -109,7 +109,7 @@ Use \`task-control(action="update-checklist")\` only for lightweight visible che
 
 Use \`delegate\` when a task benefits from focused context. Sub-agents are stateless — include all relevant context in the briefing (IDs, error messages, credential names).
 
-When \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, call \`browser-credential-setup\` directly (not \`delegate\`). After the browser agent completes, call \`credentials(action="setup")\` again.
+When \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load the \`credential-setup-with-computer-use\` skill and use Computer Use \`browser_*\` tools directly (not \`delegate\`). After the credential is created or captured, call \`credentials(action="setup")\` again.
 
 ## Workflow Building
 
