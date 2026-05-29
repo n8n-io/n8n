@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -10,6 +9,8 @@ import type {
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { LookupAddress, LookupOptions } from 'node:dns';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -26,10 +27,9 @@ type SsrfProtectionServiceCtor = new (
 	logger: Logger,
 ) => SsrfBridge;
 
-const { SsrfProtectionService } =
-	require('../../../../../../cli/src/services/ssrf/ssrf-protection.service') as {
-		SsrfProtectionService: SsrfProtectionServiceCtor;
-	};
+// Lazy import via `await` inside `beforeAll` since require() can't resolve cross-package TS.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let SsrfProtectionService: SsrfProtectionServiceCtor = null as any;
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
@@ -39,18 +39,18 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 
 function createMockDnsResolver(
 	entries: Record<string, LookupAddress[]> = {},
-): jest.Mocked<DnsResolverLike> {
+): Mocked<DnsResolverLike> {
 	return {
-		lookup: jest.fn(async (hostname) => entries[hostname] ?? []),
+		lookup: vi.fn(async (hostname) => entries[hostname] ?? []),
 	};
 }
 
 function createSsrfBridge(
 	configOverrides: Partial<SsrfProtectionConfig> = {},
 	dnsResolver = createMockDnsResolver(),
-): { ssrfBridge: SsrfBridge; dnsResolver: jest.Mocked<DnsResolverLike> } {
+): { ssrfBridge: SsrfBridge; dnsResolver: Mocked<DnsResolverLike> } {
 	const scopedLogger = mock<Logger>();
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const config = createConfig(configOverrides);
 
 	const ssrfBridge = new SsrfProtectionService(config, dnsResolver, logger);
@@ -71,9 +71,16 @@ function createRequestHelpers(ssrfBridge?: SsrfBridge) {
 }
 
 describe('SSRF end-to-end integration', () => {
+	beforeAll(async () => {
+		const mod = (await import(
+			'../../../../../../cli/src/services/ssrf/ssrf-protection.service'
+		)) as unknown as { SsrfProtectionService: SsrfProtectionServiceCtor };
+		SsrfProtectionService = mod.SsrfProtectionService;
+	});
+
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	test('blocks request to a private IP', async () => {

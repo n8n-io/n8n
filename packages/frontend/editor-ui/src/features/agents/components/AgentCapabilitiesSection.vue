@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import type { ToolMenuItem, ToolRow } from './AgentCapabilitiesSection.types';
+import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 
@@ -31,7 +32,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'open-tool': [index: number];
+	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'open-trigger': [triggerType: string];
 	'add-tool': [];
@@ -74,10 +75,57 @@ const triggerRows = computed<Array<{ type: string; label: string; icon: IconName
 );
 
 const hasTriggers = computed(() => triggerRows.value.length > 0);
-const hasTools = computed(() => props.tools.length > 0);
+const mcpServers = computed(() => props.config?.mcpServers ?? []);
+const hasTools = computed(() => props.tools.length + mcpServers.value.length > 0);
 const hasSkills = computed(() => props.skills.length > 0);
 
-function toolLabel(tool: AgentJsonToolRef, index: number) {
+type CapabilityToolEntry =
+	| {
+			kind: 'tool';
+			index: number;
+			tool: AgentJsonToolRef;
+			openTarget: ToolOpenTarget;
+	  }
+	| {
+			kind: 'mcpServer';
+			index: number;
+			server: AgentJsonMcpServerConfig;
+			openTarget: ToolOpenTarget;
+	  };
+
+function toToolOpenTarget(tool: AgentJsonToolRef): ToolOpenTarget {
+	if (tool.type === 'custom') {
+		return { kind: 'tool', toolType: 'custom', id: tool.id };
+	}
+
+	if (tool.type === 'workflow') {
+		return { kind: 'tool', toolType: 'workflow', id: tool.workflow };
+	}
+
+	return { kind: 'tool', toolType: 'node', id: tool.name };
+}
+
+const capabilityTools = computed<CapabilityToolEntry[]>(() => [
+	...props.tools.map((tool, index) => ({
+		kind: 'tool' as const,
+		index,
+		tool,
+		openTarget: toToolOpenTarget(tool),
+	})),
+	...mcpServers.value.map((server, index) => ({
+		kind: 'mcpServer' as const,
+		index: props.tools.length + index,
+		server,
+		openTarget: { kind: 'mcpServer' as const, serverName: server.name },
+	})),
+]);
+
+function toolLabel(entry: CapabilityToolEntry) {
+	if (entry.kind === 'mcpServer') {
+		return formatToolNameForDisplay(entry.server.name);
+	}
+
+	const { tool, index } = entry;
 	if (tool.type === 'custom') {
 		return formatToolNameForDisplay(
 			(tool.id ? props.customTools?.[tool.id]?.descriptor.name : undefined) ??
@@ -93,50 +141,100 @@ function toolLabel(tool: AgentJsonToolRef, index: number) {
 	return formatToolNameForDisplay(tool.name ?? `${tool.type}-${index + 1}`);
 }
 
-function toolIcon(tool: AgentJsonToolRef): IconName {
+function toolIcon(entry: CapabilityToolEntry): IconName {
+	if (entry.kind === 'mcpServer') return 'globe';
+	const { tool } = entry;
 	if (tool.type === 'workflow') return 'workflow';
 	if (tool.type === 'custom') return 'code';
 	return 'globe';
 }
 
-function toolNodeType(tool: AgentJsonToolRef) {
+function toolNodeType(entry: CapabilityToolEntry) {
+	if (entry.kind === 'mcpServer') {
+		const preferredTypeName = entry.server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+		return (
+			nodeTypesStore.getNodeType(preferredTypeName) ??
+			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE) ??
+			null
+		);
+	}
+
+	const { tool } = entry;
 	const node = toolRefToNode(tool);
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion) ?? null;
 }
 
-function toolTypeLabel(tool: AgentJsonToolRef, index: number, nodeType = toolNodeType(tool)) {
+function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry)) {
+	if (entry.kind === 'mcpServer') {
+		return nodeType?.displayName ?? toolLabel(entry);
+	}
+
+	const { tool } = entry;
 	if (tool.type === 'node') {
-		return nodeType?.displayName.replace(/ Tool$/, '') ?? toolLabel(tool, index);
+		return nodeType?.displayName.replace(/ Tool$/, '') ?? toolLabel(entry);
 	}
 
 	if (tool.type === 'workflow') return i18n.baseText('agents.builder.tools.type.workflow');
 	if (tool.type === 'custom') return i18n.baseText('agents.builder.tools.type.custom');
-	return toolLabel(tool, index);
+	return toolLabel(entry);
 }
 
 const toolRows = computed<ToolRow[]>(() => {
 	return buildToolRows(
-		props.tools.map((tool, index) => {
-			const nodeType = toolNodeType(tool);
+		capabilityTools.value.map((entry) => {
+			const nodeType = toolNodeType(entry);
 			return {
-				index,
-				label: toolLabel(tool, index),
-				typeLabel: toolTypeLabel(tool, index, nodeType),
+				index: entry.index,
+				label: toolLabel(entry),
+				typeLabel: toolTypeLabel(entry, nodeType),
 				nodeType,
-				fallbackIcon: toolIcon(tool),
-				toolType: tool.type,
+				fallbackIcon: toolIcon(entry),
+				toolType: entry.kind === 'tool' ? entry.tool.type : 'mcpServer',
+				openTarget: entry.openTarget,
 			};
 		}),
 	);
 });
 
+function toTargetKey(target: ToolOpenTarget): string {
+	if (target.kind === 'mcpServer') return `mcpServer:${encodeURIComponent(target.serverName)}`;
+	return `tool:${target.toolType}:${encodeURIComponent(target.id)}`;
+}
+
+function fromTargetKey(key: string): ToolOpenTarget | null {
+	const [scope, toolType, ...rest] = key.split(':');
+	if (scope === 'mcpServer') {
+		const encodedServerName = toolType;
+		if (!encodedServerName) return null;
+		return { kind: 'mcpServer', serverName: decodeURIComponent(encodedServerName) };
+	}
+
+	if (scope !== 'tool') return null;
+	if (toolType !== 'node' && toolType !== 'workflow' && toolType !== 'custom') return null;
+	const encodedId = rest.join(':');
+	if (!encodedId) return null;
+	return {
+		kind: 'tool',
+		toolType,
+		id: decodeURIComponent(encodedId),
+	};
+}
+
 function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
-	return tool.items.map((item) => ({
-		id: item.index,
+	if (!tool.isGrouped) return [];
+
+	return tool.tools.map((item) => ({
+		id: toTargetKey(item.openTarget),
 		label: item.label,
-		data: { nodeType: item.nodeType },
+		data: { nodeType: item.nodeType, openTarget: item.openTarget },
 	}));
+}
+
+function onToolMenuSelect(key: string) {
+	const target = fromTargetKey(key);
+	if (!target) return;
+	emit('open-tool', target);
 }
 </script>
 
@@ -196,7 +294,7 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 						:items="toolMenuItems(tool)"
 						placement="bottom-start"
 						data-testid="agent-capabilities-tool-group"
-						@select="emit('open-tool', $event)"
+						@select="onToolMenuSelect"
 					>
 						<template #trigger>
 							<AgentChipButton data-testid="agent-capabilities-tool-row">
@@ -221,7 +319,7 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 					<AgentChipButton
 						v-else-if="tool.nodeType"
 						data-testid="agent-capabilities-tool-row"
-						@click="emit('open-tool', tool.index)"
+						@click="emit('open-tool', tool.tool.openTarget)"
 					>
 						<template #icon>
 							<NodeIcon :node-type="tool.nodeType" :size="16" />
@@ -232,7 +330,7 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 						v-else
 						:icon="tool.fallbackIcon"
 						data-testid="agent-capabilities-tool-row"
-						@click="emit('open-tool', tool.index)"
+						@click="emit('open-tool', tool.tool.openTarget)"
 					>
 						{{ tool.label }}
 					</AgentChipButton>

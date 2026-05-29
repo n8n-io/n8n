@@ -63,16 +63,13 @@ describe('CredentialsController', () => {
 	// Spy on methods that need to be mocked in tests
 	// This allows us to mock specific behavior while keeping real implementations
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
-	const decryptSpy = jest.spyOn(credentialsService, 'decrypt');
-	const createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
-	const getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
-	const updateSpy = jest.spyOn(credentialsService, 'update');
-	const createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
-	const findCredentialOwningProjectSpy = jest.spyOn(
-		sharedCredentialsRepository,
-		'findCredentialOwningProject',
-	);
-	const emitSpy = jest.spyOn(eventService, 'emit');
+	let decryptSpy: jest.SpyInstance;
+	let createEncryptedDataSpy: jest.SpyInstance;
+	let getCredentialScopesSpy: jest.SpyInstance;
+	let updateSpy: jest.SpyInstance;
+	let createUnmanagedCredentialSpy: jest.SpyInstance;
+	let findCredentialOwningProjectSpy: jest.SpyInstance;
+	let emitSpy: jest.SpyInstance;
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -96,6 +93,16 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		decryptSpy = jest.spyOn(credentialsService, 'decrypt');
+		createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
+		getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
+		updateSpy = jest.spyOn(credentialsService, 'update');
+		createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
+		findCredentialOwningProjectSpy = jest.spyOn(
+			sharedCredentialsRepository,
+			'findCredentialOwningProject',
+		);
+		emitSpy = jest.spyOn(eventService, 'emit');
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
@@ -142,10 +149,31 @@ describe('CredentialsController', () => {
 				publicApi: false,
 				uiContext: newCredentialsPayload.uiContext,
 				isDynamic: false,
+				jweEnabled: false,
 			});
 			expect((eventPayload as { user: { id: string } }).user.id).toBe('123');
 
 			expect(newApiKey).toEqual(createdCredentials);
+		});
+
+		it('should emit "credentials-created" with jweEnabled true when payload enables JWE', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload({
+				data: { clientId: 'cid', jweEnabled: true },
+			});
+
+			req.body = newCredentialsPayload;
+
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(mock<Project>());
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			const [eventName, eventPayload] = emitSpy.mock.calls[0];
+			expect(eventName).toBe('credentials-created');
+			expect(eventPayload).toMatchObject({ jweEnabled: true });
 		});
 	});
 
@@ -251,7 +279,36 @@ describe('CredentialsController', () => {
 				credentialId: existingCredential.id,
 				isDynamic: false,
 				usesExternalSecrets: false,
+				jweEnabled: false,
 			});
+		});
+
+		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'oAuth2Api',
+					data: { clientId: 'cid', jweEnabled: true },
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			updateSpy.mockResolvedValue({
+				...existingCredential,
+				name: 'Updated Credential',
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(emitSpy).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ jweEnabled: true }),
+			);
 		});
 
 		it('should allow owner to set isGlobal to false if licensed', async () => {

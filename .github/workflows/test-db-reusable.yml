@@ -15,13 +15,13 @@ jobs:
   test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: SQLite Pooled
-            runner: blacksmith-2vcpu-ubuntu-2204
+            runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
@@ -35,7 +35,7 @@ jobs:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 

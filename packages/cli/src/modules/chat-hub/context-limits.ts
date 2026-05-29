@@ -100,6 +100,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'o4-mini-deep-research-2025-06-26': 0,
 	},
 	anthropic: {
+		'claude-opus-4-7': 1000000,
 		'claude-opus-4-6': 1000000,
 		'claude-sonnet-4-6': 1000000,
 		'claude-opus-4-5-20251101': 200000,
