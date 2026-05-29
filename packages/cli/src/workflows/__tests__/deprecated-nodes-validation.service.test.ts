@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { NodesConfig } from '@n8n/config';
-import type { INode, INodeType } from 'n8n-workflow';
+import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { fail } from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
@@ -102,6 +102,29 @@ describe('DeprecatedNodesValidationService', () => {
 			});
 			const nodes = [makeNode({ id: 'a', type: 'community.unknown' })];
 			expect(() => validator.validateOnCreate(nodes)).not.toThrow();
+		});
+
+		it('names the configured replacement node in the error message', () => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				if (type === 'n8n-nodes-base.function') {
+					return mock<INodeType>({
+						description: mock<INodeTypeDescription>({
+							name: type,
+							deprecated: true,
+							replacedByNodeType: 'n8n-nodes-base.code',
+						}),
+					});
+				}
+				if (type === 'n8n-nodes-base.code') {
+					return mock<INodeType>({
+						description: mock<INodeTypeDescription>({ name: type, displayName: 'Code' }),
+					});
+				}
+				return nodeTypeFor(type, false);
+			});
+
+			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.function' })];
+			expect(() => validator.validateOnCreate(nodes)).toThrow(/Replace it with the Code node/);
 		});
 
 		it('is a no-op when the config flag is off', () => {
