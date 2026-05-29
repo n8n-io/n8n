@@ -119,6 +119,48 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime4);
 		});
 
+		test('should count Instance AI source buckets alongside existing mode buckets', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: true,
+				success: true,
+				error_node_type: 'custom-nodes-base.node-type',
+				execution_source: 'user',
+			};
+
+			const userManualExecTime = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.execution_source = 'instance_ai';
+			payload.mock_data_sources = 'trigger_input';
+
+			const instanceAiMockManualExecTime = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.is_manual = false;
+			delete payload.mock_data_sources;
+
+			const instanceAiRealProdExecTime = fakeJestSystemTime('2022-01-01 14:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_success?.count).toBe(2);
+			expect(execBuffer['1'].manual_success?.first).toEqual(userManualExecTime);
+			expect(execBuffer['1'].prod_success?.count).toBe(1);
+			expect(execBuffer['1'].prod_success?.first).toEqual(instanceAiRealProdExecTime);
+
+			expect(execBuffer['1']).not.toHaveProperty('user_manual_success');
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.first).toEqual(
+				instanceAiMockManualExecTime,
+			);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.first).toEqual(
+				instanceAiRealProdExecTime,
+			);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',

@@ -144,6 +144,7 @@ export type RelayEventMap = {
 		runData?: IRun;
 		projectId?: string;
 		projectName?: string;
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	};
 
 	'workflow-sharing-updated': {
