@@ -44,9 +44,9 @@ export interface SubAgentTestCase {
 export interface CapturedWorkflow {
 	/** The WorkflowJSON the agent produced (parsed from TypeScript SDK code) */
 	json: WorkflowJSON;
-	/** Whether the build-workflow tool reported success */
+	/** Whether the submit-workflow tool reported success */
 	success: boolean;
-	/** Errors reported by the build-workflow tool */
+	/** Errors reported by the submit-workflow tool */
 	errors?: string[];
 }
 
@@ -58,7 +58,7 @@ export interface SubAgentResult {
 	testCase: SubAgentTestCase;
 	/** The agent's final text output */
 	text: string;
-	/** Workflows captured from build-workflow tool calls */
+	/** Workflows captured from submit-workflow tool calls */
 	capturedWorkflows: CapturedWorkflow[];
 	/** Evaluation feedback (binary checks on captured workflows, etc.) */
 	feedback: Feedback[];

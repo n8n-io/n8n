@@ -997,6 +997,10 @@ export function applyBranchReadOnlyOverrides(
 export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
 export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
 
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;

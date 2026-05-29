@@ -6,7 +6,6 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
-	InstanceAiSandboxProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -24,6 +23,11 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import { UserService } from '@/services/user.service';
+
+import {
+	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
+	normalizeSandboxProvider,
+} from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
@@ -61,15 +65,6 @@ const URL_FIELD_MAP: Record<string, string> = {
 const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'];
 const SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'];
 const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENTIAL_TYPES];
-const DEFAULT_SANDBOX_PROVIDER: InstanceAiSandboxProvider = 'n8n-sandbox';
-
-function isSupportedSandboxProvider(value: string): value is InstanceAiSandboxProvider {
-	return value === 'n8n-sandbox' || value === 'daytona';
-}
-
-function normalizeSandboxProvider(value: string | undefined): InstanceAiSandboxProvider {
-	return value && isSupportedSandboxProvider(value) ? value : DEFAULT_SANDBOX_PROVIDER;
-}
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
@@ -538,25 +533,17 @@ export class InstanceAiSettingsService {
 
 	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
 		const c = this.config;
-		const sandboxProvider: string =
-			update.sandboxProvider !== undefined
-				? update.sandboxProvider
-				: normalizeSandboxProvider(c.sandboxProvider);
-		if (!isSupportedSandboxProvider(sandboxProvider)) {
-			throw new UnprocessableRequestError(
-				`Unsupported sandbox provider "${sandboxProvider}". Supported providers: n8n-sandbox, daytona.`,
-			);
-		}
-
+		// `update.sandboxProvider` is already enum-validated by the request DTO; we only
+		// need the resolved provider here to enforce the cross-field service-URL rule,
+		// which spans the request body and env-backed config and can't live in the schema.
+		const sandboxProvider = update.sandboxProvider ?? normalizeSandboxProvider(c.sandboxProvider);
 		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
 		if (
 			sandboxEnabled &&
 			sandboxProvider === 'n8n-sandbox' &&
 			c.n8nSandboxServiceUrl.trim().length === 0
 		) {
-			throw new UnprocessableRequestError(
-				'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
-			);
+			throw new UnprocessableRequestError(N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE);
 		}
 	}
 

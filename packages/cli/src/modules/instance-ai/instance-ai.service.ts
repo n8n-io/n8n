@@ -2,6 +2,8 @@ import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	isInstanceAiSandboxProvider,
+	type InstanceAiSandboxProvider,
 	type InstanceAiAttachment,
 	type InstanceAiAgentNode,
 	type InstanceAiConfirmRequest,
@@ -104,6 +106,10 @@ import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
+import {
+	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
+	unsupportedSandboxProviderMessage,
+} from './sandbox-provider';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
@@ -161,21 +167,15 @@ const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
-type SupportedSandboxProvider = 'daytona' | 'n8n-sandbox';
-
-function resolveSupportedSandboxProvider(provider: string): SupportedSandboxProvider {
-	if (provider === 'daytona' || provider === 'n8n-sandbox') return provider;
-	throw new OperationalError(
-		`Unsupported Instance AI sandbox provider "${provider}". Supported providers: n8n-sandbox, daytona.`,
-	);
+function resolveSupportedSandboxProvider(provider: string): InstanceAiSandboxProvider {
+	if (isInstanceAiSandboxProvider(provider)) return provider;
+	throw new OperationalError(unsupportedSandboxProviderMessage(provider));
 }
 
 function requireN8nSandboxServiceUrl(value: string): string {
 	const serviceUrl = value.trim();
 	if (serviceUrl.length === 0) {
-		throw new OperationalError(
-			'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
-		);
+		throw new OperationalError(N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE);
 	}
 	return serviceUrl;
 }

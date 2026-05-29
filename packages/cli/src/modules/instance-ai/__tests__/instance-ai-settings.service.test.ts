@@ -106,14 +106,6 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
 		});
 
-		it('should reject unsupported sandbox providers', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(
-				service.updateAdminSettings({ sandboxProvider: 'local' } as never),
-			).rejects.toThrow(/Unsupported sandbox provider/);
-		});
-
 		it('should require a service URL when enabling n8n sandbox', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
