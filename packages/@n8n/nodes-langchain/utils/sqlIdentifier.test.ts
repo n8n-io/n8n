@@ -1,6 +1,7 @@
 import {
 	escapeQualifiedSqlIdentifier,
 	escapeSqlIdentifier,
+	findUnsafeMetadataFilterKey,
 	isSafeQualifiedSqlIdentifier,
 	isSafeSqlIdentifier,
 } from './sqlIdentifier';
@@ -35,9 +36,14 @@ describe('sqlIdentifier', () => {
 			expect(escapeQualifiedSqlIdentifier('my_schema.my_table')).toBe('"my_schema"."my_table"');
 		});
 
+		it('folds mixed-case parts to lower case before quoting', () => {
+			expect(escapeQualifiedSqlIdentifier('MyTable')).toBe('"mytable"');
+			expect(escapeQualifiedSqlIdentifier('MySchema.MyTable')).toBe('"myschema"."mytable"');
+		});
+
 		it('quotes each segment of a value that contains a dot', () => {
 			expect(escapeQualifiedSqlIdentifier('foo"; DROP TABLE victim; --.bar')).toBe(
-				'"foo""; DROP TABLE victim; --"."bar"',
+				'"foo""; drop table victim; --"."bar"',
 			);
 		});
 	});
@@ -75,6 +81,19 @@ describe('sqlIdentifier', () => {
 			expect(isSafeQualifiedSqlIdentifier(undefined)).toBe(false);
 			expect(isSafeQualifiedSqlIdentifier(null)).toBe(false);
 			expect(isSafeQualifiedSqlIdentifier(123)).toBe(false);
+		});
+	});
+
+	describe('findUnsafeMetadataFilterKey', () => {
+		it('returns undefined for safe keys (including spaces and dashes)', () => {
+			expect(findUnsafeMetadataFilterKey(undefined)).toBeUndefined();
+			expect(findUnsafeMetadataFilterKey({})).toBeUndefined();
+			expect(findUnsafeMetadataFilterKey({ source: 'docs', 'my key-1': 'x' })).toBeUndefined();
+		});
+
+		it('returns the offending key when it contains a quote or backslash', () => {
+			expect(findUnsafeMetadataFilterKey({ "x'); DROP": '1' })).toBe("x'); DROP");
+			expect(findUnsafeMetadataFilterKey({ ok: '1', 'a\\b': '2' })).toBe('a\\b');
 		});
 	});
 });

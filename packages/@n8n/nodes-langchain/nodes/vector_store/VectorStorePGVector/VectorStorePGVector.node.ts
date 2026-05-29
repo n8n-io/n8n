@@ -7,13 +7,14 @@ import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
-import type { IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type pg from 'pg';
 
 import {
 	escapeQualifiedSqlIdentifier,
 	escapeSqlIdentifier,
+	findUnsafeMetadataFilterKey,
 	isSafeQualifiedSqlIdentifier,
 	isSafeSqlIdentifier,
 } from '@utils/sqlIdentifier';
@@ -228,26 +229,6 @@ function validateColumnNames(
 }
 
 /**
- * Validates metadata filter keys. The underlying store interpolates each key
- * into a single-quoted SQL literal, so reject keys that could break out of it.
- */
-function validateFilterKeys(
-	context: IExecuteFunctions | ISupplyDataFunctions,
-	filter: Record<string, unknown> | undefined,
-): void {
-	if (!filter) return;
-
-	for (const key of Object.keys(filter)) {
-		if (key.includes("'") || key.includes('\\')) {
-			throw new NodeOperationError(context.getNode(), `Invalid metadata filter key "${key}"`, {
-				description:
-					"Metadata filter keys must not contain quote (') or backslash (\\) characters.",
-			});
-		}
-	}
-}
-
-/**
  * Extended PGVectorStore class to handle custom filtering.
  * This wrapper is necessary because when used as a retriever,
  * similaritySearchVectorWithScore should use this.filter instead of
@@ -258,6 +239,9 @@ function validateFilterKeys(
  * SQL by the base class.
  */
 export class ExtendedPGVectorStore extends PGVectorStore {
+	/** Node reference used to attribute validation errors; set by `initialize`. */
+	n8nNode!: INode;
+
 	get computedTableName(): string {
 		return this.schemaName === null
 			? escapeQualifiedSqlIdentifier(this.tableName)
@@ -310,10 +294,11 @@ export class ExtendedPGVectorStore extends PGVectorStore {
 
 	static async initialize(
 		embeddings: EmbeddingsInterface,
-		args: PGVectorStoreArgs & { dimensions?: number },
+		args: PGVectorStoreArgs & { dimensions?: number; n8nNode: INode },
 	): Promise<ExtendedPGVectorStore> {
-		const { dimensions, ...rest } = args;
+		const { dimensions, n8nNode, ...rest } = args;
 		const postgresqlVectorStore = new this(embeddings, rest);
+		postgresqlVectorStore.n8nNode = n8nNode;
 
 		await postgresqlVectorStore._initializeClient();
 		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
@@ -330,6 +315,15 @@ export class ExtendedPGVectorStore extends PGVectorStore {
 		filter?: PGVectorStore['FilterType'],
 	) {
 		const mergedFilter = { ...this.filter, ...filter };
+		// Validate here (not only at construction) because load and
+		// retrieve-as-tool modes pass the filter at search time.
+		const unsafeKey = findUnsafeMetadataFilterKey(mergedFilter);
+		if (unsafeKey !== undefined) {
+			throw new NodeOperationError(this.n8nNode, `Invalid metadata filter key "${unsafeKey}"`, {
+				description:
+					"Metadata filter keys must not contain quote (') or backslash (\\) characters.",
+			});
+		}
 		return await super.similaritySearchVectorWithScore(query, k, mergedFilter);
 	}
 }
@@ -356,7 +350,6 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		validateFilterKeys(context, filter);
 		// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
 		const tableName =
 			(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
@@ -401,7 +394,10 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'cosine',
 		) as DistanceStrategy;
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		return await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
@@ -447,7 +443,10 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 		// Use ExtendedPGVectorStore (not PGVectorStore.fromDocuments, whose static
 		// helpers construct a plain PGVectorStore) so the identifier-quoting
 		// overrides apply on the insert path too.
-		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, config);
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
 		await vectorStore.addDocuments(documents);
 		vectorStore.client?.release();
 	},

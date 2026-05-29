@@ -19,9 +19,17 @@ export function escapeSqlIdentifier(name: string): string {
  * Quotes a possibly schema-qualified identifier (`schema.table`) by escaping
  * each dot-separated part independently. This preserves schema qualification
  * while ensuring every segment is safely quoted.
+ *
+ * Each part is lower-cased first to mirror PostgreSQL's folding of unquoted
+ * identifiers: these names were historically interpolated unquoted, so an
+ * existing mixed-case config like `MyTable` keeps resolving to `mytable`
+ * rather than a new, case-sensitive `"MyTable"`.
  */
 export function escapeQualifiedSqlIdentifier(name: string): string {
-	return name.split('.').map(escapeSqlIdentifier).join('.');
+	return name
+		.split('.')
+		.map((part) => escapeSqlIdentifier(part.toLowerCase()))
+		.join('.');
 }
 
 /**
@@ -39,4 +47,16 @@ export function isSafeSqlIdentifier(name: string): boolean {
  */
 export function isSafeQualifiedSqlIdentifier(name: unknown): boolean {
 	return typeof name === 'string' && name.split('.').every(isSafeSqlIdentifier);
+}
+
+/**
+ * Returns the first metadata-filter key that could break out of the
+ * single-quoted SQL literal the store interpolates it into, or undefined when
+ * every key is safe.
+ */
+export function findUnsafeMetadataFilterKey(
+	filter: Record<string, unknown> | undefined,
+): string | undefined {
+	if (!filter) return undefined;
+	return Object.keys(filter).find((key) => key.includes("'") || key.includes('\\'));
 }

@@ -63,6 +63,16 @@ describe('MemoryPostgresChat', () => {
 		expect(args.tableName).toBe('"n8n_chat_histories"');
 	});
 
+	it('folds a mixed-case table name so it keeps targeting the same table', async () => {
+		const node = new MemoryPostgresChat();
+		const context = createContext('MyHistories');
+
+		await node.supplyData.call(context, 0);
+
+		const args = postgresChatHistoryConstructor.mock.calls[0]?.[0] as { tableName: string };
+		expect(args.tableName).toBe('"myhistories"');
+	});
+
 	it('quotes each part of a schema-qualified table name', async () => {
 		const node = new MemoryPostgresChat();
 		const context = createContext('my_schema.histories');

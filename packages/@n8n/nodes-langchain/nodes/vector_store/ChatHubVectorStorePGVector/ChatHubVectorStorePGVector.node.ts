@@ -162,7 +162,10 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			filter,
 		};
 
-		const store = await ExtendedPGVectorStore.initialize(embeddings, config);
+		const store = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
 
 		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
 		store.similaritySearchVectorWithScore = async (...args) => {
@@ -192,7 +195,10 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 		// Use ExtendedPGVectorStore (not PGVectorStore.fromDocuments, whose static
 		// helpers construct a plain PGVectorStore) so the identifier-quoting
 		// overrides apply on the insert path too.
-		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, config);
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			n8nNode: context.getNode(),
+		});
 		await vectorStore.addDocuments(filterChatHubInsertDocuments(documents));
 		vectorStore.client?.release();
 	},
