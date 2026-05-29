@@ -23,6 +23,8 @@ import type { ToolContext } from '../types/sdk/tool';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 
+// Model-facing input: the arguments the LLM fills in when it calls the tool.
+// The `.describe(...)` text is what the model reads, so keep it task-oriented.
 const delegateSubAgentInputSchema = z.object({
 	subAgentId: z
 		.string()
@@ -38,6 +40,9 @@ const delegateSubAgentInputSchema = z.object({
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
 });
 
+// Documents the tool result shape for typing/introspection. Note: the handler's
+// returned object (not this schema) is what is actually sent back to the model,
+// so this is kept in sync with DelegateSubAgentToolOutput by hand.
 const delegateSubAgentOutputSchema = z.object({
 	status: z.enum(['completed', 'failed']),
 	taskPath: z.string().optional(),
@@ -56,48 +61,109 @@ const delegateSubAgentOutputSchema = z.object({
 	error: z.string().optional(),
 });
 
+/** The arguments the LLM provides when calling delegate_subagent. */
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
 
+/**
+ * Limits enforced for a delegation. Extends the task-path policy (max depth /
+ * max children / canSpawnSubAgents) with per-child run constraints.
+ */
 export interface DelegateSubAgentPolicy extends SubAgentTaskPathPolicy {
+	/** Abort the child run after this many milliseconds. */
 	timeoutMs?: number;
+	/** Restrict the child to this allow-list of tool names. */
 	allowedToolNames?: string[];
 }
 
+/**
+ * What a host's `runSubAgent` / `createAgent` callback receives: the model's
+ * {@link DelegateSubAgentInput} plus runtime-derived context the host needs to
+ * run and link the child. All `parent*` fields come from the parent's tool
+ * execution context and are used for tracing/linkage, not required to run.
+ */
 export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
+	/** Hierarchical id assigned to this delegation (e.g. `/root/research_api`). */
 	taskPath: SubAgentTaskPath;
+	/** Parent run id (`ctx.runId`), e.g. for memory scoping / correlation. */
 	parentRunId?: string;
+	/** Parent's persisted memory thread id (`ctx.persistence.threadId`). */
 	parentThreadId?: string;
+	/** Parent's tool-call id that triggered this delegation. */
 	parentToolCallId?: string;
+	/** Parent's own task path (this child's path is derived from it). */
 	parentTaskPath?: SubAgentTaskPath;
+	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
+	/** Effective policy for this delegation. */
 	policy?: DelegateSubAgentPolicy;
 }
 
+/** The result a delegation returns to the parent model and to lifecycle events. */
 export interface DelegateSubAgentToolOutput {
 	status: 'completed' | 'failed';
+	/** Echoed back so consumers can correlate the result with the delegation. */
 	taskPath?: SubAgentTaskPath;
+	/** The child run's id, when the executor produced one. */
 	runId?: string;
+	/** The child's answer — the main payload the parent acts on. */
 	answer: string;
 	structuredOutput?: unknown;
+	/** Child token usage + cost, surfaced so the parent can account for it. */
 	usage?: Pick<TokenUsage, 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost'>;
 	finishReason?: FinishReason;
+	/** Present when status is 'failed'. */
 	error?: string;
 }
 
 type DelegateSubAgentGenerateOptions = RunOptions & ExecutionOptions;
 
+/** Options shared by all three execution modes. */
 interface CreateDelegateSubAgentToolBaseOptions {
+	/**
+	 * Sub-agents the model may choose between. Listed in the system prompt; the
+	 * model selects one by passing its id as `subAgentId`.
+	 */
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
+	/**
+	 * This (parent) agent's own task path; child paths are derived from it. Omit
+	 * for a top-level agent — children then hang off `/root`.
+	 */
 	parentTaskPath?: SubAgentTaskPath;
+	/** Depth / fan-out / tool limits enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
+	/**
+	 * Override the run options passed to the child's `generate(...)` — static or
+	 * computed per request. Only used by the `agent` / `createAgent` modes (a
+	 * `runSubAgent` override controls its own execution).
+	 */
 	generateOptions?:
 		| DelegateSubAgentGenerateOptions
 		| ((
 				request: DelegateSubAgentRequest,
 		  ) => DelegateSubAgentGenerateOptions | Promise<DelegateSubAgentGenerateOptions>);
+	/**
+	 * Override how a request becomes the child's prompt (defaults to
+	 * {@link renderDelegateSubAgentPrompt}). Only used by the `agent` /
+	 * `createAgent` modes.
+	 */
 	renderPrompt?: (request: DelegateSubAgentRequest) => string;
 }
 
+/**
+ * Base options PLUS exactly one execution mode — pick the one matching how much
+ * control you need over running the child:
+ *
+ *  - `agent`: a single, prebuilt child agent reused for every delegation.
+ *    Simplest; every delegation runs the same fixed agent.
+ *  - `createAgent(request)`: build a fresh child per delegation from the request
+ *    (e.g. select by `request.subAgentId`, choose a model, apply
+ *    `request.policy.allowedToolNames`). The tool still renders the prompt, calls
+ *    `agent.generate(...)`, and maps the result for you.
+ *  - `runSubAgent(request)`: full override — you run the child however you want
+ *    and return the output. Use when execution needs host concerns the SDK can't
+ *    know about (credential/source resolution, memory, persistence). This is what
+ *    the n8n CLI uses.
+ */
 export type CreateDelegateSubAgentToolOptions = CreateDelegateSubAgentToolBaseOptions &
 	(
 		| {
@@ -117,7 +183,29 @@ export type CreateDelegateSubAgentToolOptions = CreateDelegateSubAgentToolBaseOp
 		  }
 	);
 
+/**
+ * Build the generic `delegate_subagent` tool — lets a parent agent hand a
+ * bounded subtask to a child agent and get back a concise result.
+ *
+ * The tool owns the cross-cutting concerns: the model-facing input/output
+ * schema, the description + system instruction that teach the LLM when/how to
+ * delegate, task-path bookkeeping, policy enforcement (depth / fan-out /
+ * canSpawnSubAgents), and the `subagent-started` / `-progress` / `-completed`
+ * lifecycle events. You only supply HOW to run the child, via one of the three
+ * modes on {@link CreateDelegateSubAgentToolOptions}.
+ *
+ * @example Fixed child agent:
+ *   agent.tool(createDelegateSubAgentTool({ agent: researcher }));
+ *
+ * @example Host-controlled execution (what the n8n CLI does):
+ *   agent.tool(createDelegateSubAgentTool({
+ *     runSubAgent: (request) => runner.run(request),
+ *     availableSubAgents,
+ *     policy: { maxDepth: 2, maxChildren: 5 },
+ *   }));
+ */
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions) {
+	// Per-parent fan-out counter keyed by run/thread/task — drives maxChildren.
 	const childCounts = new Map<string, number>();
 
 	return new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
@@ -157,6 +245,14 @@ function formatAvailableSubAgents(
 	];
 }
 
+/**
+ * Tool handler: enforce policy (depth + fan-out), assign the child's task path,
+ * assemble the {@link DelegateSubAgentRequest} from the model input plus the
+ * parent tool context, then run the child via {@link runSubAgent} while emitting
+ * started/progress/completed lifecycle events. Any error is converted into a
+ * `status: 'failed'` output (never thrown) so one failed delegation can't abort
+ * the parent's run.
+ */
 async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
 	ctx: ToolContext,
@@ -272,6 +368,12 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 	};
 }
 
+/**
+ * Dispatch to the configured execution mode: use the host `runSubAgent` override
+ * if present; otherwise run the SDK default — resolve the child (`agent` or
+ * `createAgent(request)`), render its prompt, call `generate(...)`, and map the
+ * result to {@link DelegateSubAgentToolOutput}.
+ */
 async function runSubAgent(
 	request: DelegateSubAgentRequest,
 	options: CreateDelegateSubAgentToolOptions,

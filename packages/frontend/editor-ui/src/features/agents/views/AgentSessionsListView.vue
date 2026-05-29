@@ -12,14 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nBadge,
-	N8nButton,
-	N8nIcon,
-	N8nTableBase,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -73,6 +66,12 @@ function formatTokens(count: number): string {
 function formatDuration(ms: number): string {
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function originLabel(thread: AgentExecutionThread): string {
+	return i18n.baseText(
+		thread.origin === 'subagent' ? 'agentSessions.origin.subAgent' : 'agentSessions.origin.agent',
+	);
 }
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
@@ -162,6 +161,7 @@ async function loadMore() {
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
+						<th>{{ i18n.baseText('agentSessions.origin') }}</th>
 						<th style="width: 50px"></th>
 					</tr>
 				</thead>
@@ -173,30 +173,12 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>
-							<div :class="$style.sessionCell">
-								<span>{{ truncate(threadTitleOf(thread), 24) }}</span>
-								<N8nTooltip
-									v-if="thread.origin === 'subagent'"
-									:content="i18n.baseText('agentSessions.subagentRun.tooltip')"
-									placement="top"
-								>
-									<N8nBadge
-										theme="secondary"
-										size="xsmall"
-										:class="$style.subagentBadge"
-										data-test-id="agent-session-subagent-badge"
-									>
-										<N8nIcon icon="bot" :size="12" />
-										{{ i18n.baseText('agentSessions.subagentRun') }}
-									</N8nBadge>
-								</N8nTooltip>
-							</div>
-						</td>
+						<td>{{ truncate(threadTitleOf(thread), 24) }}</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
 						<td>{{ thread.sessionNumber }}</td>
+						<td data-test-id="agent-session-origin">{{ originLabel(thread) }}</td>
 						<td @click.stop>
 							<N8nActionDropdown
 								:items="rowActions(thread)"
@@ -208,7 +190,7 @@ async function loadMore() {
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 6" :key="col">
+							<td v-for="col in 7" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -217,7 +199,7 @@ async function loadMore() {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
+						<td :colspan="7" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -226,7 +208,7 @@ async function loadMore() {
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td colspan="6">
+						<td colspan="7">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"
@@ -270,18 +252,6 @@ async function loadMore() {
 	&:hover {
 		background-color: var(--background--hover);
 	}
-}
-
-.sessionCell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.subagentBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 
 .lastRow {

@@ -336,6 +336,45 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
+	it('emits a single item for a delegation with both a tool-call and a subagent entry', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'delegate_subagent',
+					toolCallId: 'tc-1',
+					input: { taskName: 'Research API', goal: 'Find it' },
+					output: { status: 'completed', answer: 'done' },
+					startTime: 1000,
+					endTime: 1500,
+					success: true,
+				},
+				{
+					type: 'subagent',
+					taskName: 'Research API',
+					taskPath: '/root/research_api',
+					parentToolCallId: 'tc-1',
+					status: 'completed',
+					startTime: 1000,
+					endTime: 1500,
+					durationMs: 500,
+					runId: 'child-run-1',
+					finishReason: 'stop',
+				},
+			]),
+		]);
+
+		const delegateItems = items.filter((i) => i.toolName === 'delegate_subagent');
+		expect(delegateItems).toHaveLength(1);
+		// The surviving item is the richer tool-call entry (carries the goal + answer).
+		expect(delegateItems[0]).toMatchObject({
+			toolCallId: 'tc-1',
+			toolInput: { goal: 'Find it' },
+			toolOutput: { answer: 'done' },
+		});
+	});
+
 	it('treats tool-call events without a kind field as kind:tool (defensive)', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([

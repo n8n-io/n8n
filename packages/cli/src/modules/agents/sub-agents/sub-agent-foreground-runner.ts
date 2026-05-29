@@ -60,6 +60,9 @@ export class SubAgentForegroundRunner {
 		request: SubAgentSpawnRequest,
 		context: SubAgentForegroundRunContext,
 	): Promise<SubAgentForegroundResult> {
+		// Background execution (dispatch, return a receipt, reconcile the result
+		// later) is not yet implemented. Tracked in AGENT-186:
+		// https://linear.app/n8n/issue/AGENT-186
 		if (request.executionMode !== undefined && request.executionMode !== 'foreground') {
 			throw new UserError('Foreground sub-agent runner only supports foreground execution mode');
 		}

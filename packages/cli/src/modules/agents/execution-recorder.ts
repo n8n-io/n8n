@@ -266,6 +266,12 @@ export class ExecutionRecorder {
 			case 'tool-call':
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
+			case 'tool-execution-start':
+				this.recordToolExecutionStart(chunk.toolCallId);
+				break;
+			case 'tool-execution-end':
+				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError);
+				break;
 			case 'tool-result':
 				this.recordToolResult(
 					chunk.toolCallId,
@@ -397,6 +403,44 @@ export class ExecutionRecorder {
 	}
 
 	/**
+	 * Real per-tool execution start, bridged from the runtime event bus. The
+	 * `tool-call` chunk only marks when the model emitted the call; this marks
+	 * when the handler actually started, matching the live chat's timer.
+	 */
+	private recordToolExecutionStart(toolCallId: string): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) entry.startTime = Date.now();
+	}
+
+	/**
+	 * Real per-tool execution end, bridged from the runtime event bus. Closes
+	 * the timeline entry with the actual finish time so concurrently-executed
+	 * tools keep distinct durations — the batched `tool-result` chunks all
+	 * arrive together and would otherwise share a single end timestamp.
+	 */
+	private recordToolExecutionEnd(toolCallId: string, isError: boolean): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) {
+			entry.endTime = Date.now();
+			entry.success = !isError;
+		}
+	}
+
+	/** Most recent not-yet-closed timeline tool-call entry for a tool call id. */
+	private findOpenTimelineToolCall(
+		toolCallId: string,
+	): (TimelineEvent & { type: 'tool-call' }) | undefined {
+		return [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'tool-call' } =>
+					e.type === 'tool-call' && e.toolCallId === toolCallId && e.endTime === 0,
+			);
+	}
+
+	/**
 	 * Find the still-open flat tool-call entry to attach a result to. Prefers
 	 * an exact match on `toolCallId`; when the stream omits the id (empty
 	 * string), falls back to the most recent open entry (`output === undefined`)
@@ -439,13 +483,16 @@ export class ExecutionRecorder {
 			.find(
 				(e): e is TimelineEvent & { type: 'tool-call' } =>
 					e.type === 'tool-call' &&
-					(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
-					e.endTime === 0,
+					(toolCallId ? e.toolCallId === toolCallId : e.name === name && e.endTime === 0),
 			);
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
-			pendingTimeline.endTime = Date.now();
 			pendingTimeline.success = !isError;
+			// `tool-execution-end` (real per-tool finish) normally closed this entry
+			// already; only fall back to the batched result time if it never fired.
+			if (pendingTimeline.endTime === 0) {
+				pendingTimeline.endTime = Date.now();
+			}
 
 			if (pendingTimeline.kind === 'workflow' && isRecord(recordedOutput)) {
 				const execId = recordedOutput.executionId;

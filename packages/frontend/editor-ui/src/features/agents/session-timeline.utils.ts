@@ -248,7 +248,19 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			});
 		}
 
-		for (const event of timelineEvents(exec)) {
+		const events = timelineEvents(exec);
+		// A delegate_subagent call is recorded as BOTH a `tool-call` entry and a
+		// `subagent` lifecycle entry that share one toolCallId. Track the tool-call
+		// ids so the subagent branch can skip the duplicate — the tool-call entry is
+		// the richer one (it carries the goal/context input and the full answer).
+		const delegateToolCallIds = new Set<string>();
+		for (const e of events) {
+			if (e.type === 'tool-call' && e.name === 'delegate_subagent' && e.toolCallId) {
+				delegateToolCallIds.add(e.toolCallId);
+			}
+		}
+
+		for (const event of events) {
 			if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
@@ -294,6 +306,14 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					timestamp: event.timestamp ?? 0,
 				});
 			} else if (event.type === 'subagent') {
+				// Skip the lifecycle-derived duplicate when the matching delegate_subagent
+				// tool-call entry is present (same toolCallId); keep the richer tool item.
+				if (
+					event.parentToolCallId !== undefined &&
+					delegateToolCallIds.has(event.parentToolCallId)
+				) {
+					continue;
+				}
 				items.push({
 					kind: 'tool',
 					executionId: exec.id,

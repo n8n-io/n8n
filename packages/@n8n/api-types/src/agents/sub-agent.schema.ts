@@ -12,6 +12,13 @@ export const SubAgentTaskPathSchema = z.string().regex(/^\/root(?:\/[a-z0-9_]+)*
 
 export const SubAgentContextModeSchema = z.enum(['fresh', 'fork-filtered', 'selected-summary']);
 
+/**
+ * 'foreground' blocks the parent turn until the subagent completes — the only
+ * mode implemented today. 'background' (dispatch, return a receipt, reconcile
+ * the result later) is not yet implemented and is a consumer/product concern,
+ * not an SDK one. Tracked in AGENT-186:
+ * https://linear.app/n8n/issue/AGENT-186
+ */
 export const SubAgentExecutionModeSchema = z.enum(['foreground', 'background']);
 
 export const SubAgentSourceSchema = z.discriminatedUnion('type', [
