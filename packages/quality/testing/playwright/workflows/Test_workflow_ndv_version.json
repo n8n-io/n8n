@@ -9,13 +9,6 @@
 			"position": [460, 460]
 		},
 		{
-			"id": "1ea0a87c-3395-4bd9-84fb-cf8b0f769cc4",
-			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
-			"position": [960, 460]
-		},
-		{
 			"id": "30bb9fab-bc89-4309-b42b-0fc586519c76",
 			"name": "Edit Fields (old)",
 			"type": "n8n-nodes-base.set",
