@@ -2600,11 +2600,10 @@ describe('createExecutionAdapter run()', () => {
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
 
 		expect(runData.telemetryMetadata).toEqual({
-			executionInitiator: 'instance_ai',
-			instanceAiMockDataUsed: true,
-			instanceAiMockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
-			instanceAiPinnedNodeCount: 3,
-			instanceAiVerificationRun: true,
+			source: 'instance_ai',
+			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
+			pinnedNodeCount: 3,
+			verificationRun: true,
 		});
 	});
 

@@ -496,11 +496,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 		it('should include execution telemetry metadata in workflow-post-execute events', async () => {
 			const telemetryMetadata = {
-				executionInitiator: 'instance_ai' as const,
-				instanceAiMockDataUsed: true,
-				instanceAiMockDataSources: ['trigger_input' as const],
-				instanceAiPinnedNodeCount: 1,
-				instanceAiVerificationRun: true,
+				source: 'instance_ai' as const,
+				mockDataSources: ['trigger_input' as const],
+				pinnedNodeCount: 1,
+				verificationRun: true,
 			};
 			const lifecycleHooks = getLifecycleHooksForRegularMain(
 				{ executionMode: 'manual', workflowData, pushRef, retryOf, userId, telemetryMetadata },

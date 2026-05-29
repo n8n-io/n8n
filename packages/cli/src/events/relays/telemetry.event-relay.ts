@@ -52,23 +52,17 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 function getExecutionTelemetryProperties(
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
-	const executionInitiator = telemetryMetadata?.executionInitiator ?? 'user';
-	const instanceAiExecution = executionInitiator === 'instance_ai';
-	const mockDataSources = telemetryMetadata?.instanceAiMockDataSources?.join(',') || null;
+	const executionSource = telemetryMetadata?.source ?? 'user';
+
+	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
+
+	const { mockDataSources, pinnedNodeCount, verificationRun } = telemetryMetadata ?? {};
 
 	return {
-		execution_initiator: executionInitiator,
-		instance_ai_execution: instanceAiExecution,
-		instance_ai_mock_data_used: instanceAiExecution
-			? (telemetryMetadata?.instanceAiMockDataUsed ?? false)
-			: false,
-		instance_ai_mock_data_sources: instanceAiExecution ? mockDataSources : null,
-		instance_ai_pinned_node_count: instanceAiExecution
-			? (telemetryMetadata?.instanceAiPinnedNodeCount ?? 0)
-			: 0,
-		instance_ai_verification_run: instanceAiExecution
-			? (telemetryMetadata?.instanceAiVerificationRun ?? false)
-			: false,
+		execution_source: executionSource,
+		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+		pinned_node_count: pinnedNodeCount ?? 0,
+		verification_run: verificationRun ?? false,
 	};
 }
 

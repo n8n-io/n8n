@@ -1372,13 +1372,8 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith({
-				execution_initiator: 'user',
+				execution_source: 'user',
 				is_manual: false,
-				instance_ai_execution: false,
-				instance_ai_mock_data_sources: null,
-				instance_ai_mock_data_used: false,
-				instance_ai_pinned_node_count: 0,
-				instance_ai_verification_run: false,
 				success: false,
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
@@ -2068,11 +2063,10 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				runData,
 				telemetryMetadata: {
-					executionInitiator: 'instance_ai',
-					instanceAiMockDataUsed: true,
-					instanceAiMockDataSources: ['trigger_input', 'verification_pin_data'],
-					instanceAiPinnedNodeCount: 2,
-					instanceAiVerificationRun: true,
+					source: 'instance_ai',
+					mockDataSources: ['trigger_input', 'verification_pin_data'],
+					pinnedNodeCount: 2,
+					verificationRun: true,
 				},
 			};
 
@@ -2081,12 +2075,10 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const expectedProperties = expect.objectContaining({
-				execution_initiator: 'instance_ai',
-				instance_ai_execution: true,
-				instance_ai_mock_data_used: true,
-				instance_ai_mock_data_sources: 'trigger_input,verification_pin_data',
-				instance_ai_pinned_node_count: 2,
-				instance_ai_verification_run: true,
+				execution_source: 'instance_ai',
+				mock_data_sources: 'trigger_input,verification_pin_data',
+				pinned_node_count: 2,
+				verification_run: true,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(

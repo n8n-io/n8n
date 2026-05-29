@@ -963,11 +963,10 @@ export class InstanceAiAdapterService {
 				}
 
 				runData.telemetryMetadata = {
-					executionInitiator: 'instance_ai',
-					instanceAiMockDataUsed: mockDataSources.length > 0,
-					instanceAiMockDataSources: mockDataSources,
-					instanceAiPinnedNodeCount: Object.keys(runData.pinData ?? {}).length,
-					instanceAiVerificationRun: options?.isVerificationRun ?? false,
+					source: 'instance_ai',
+					mockDataSources,
+					pinnedNodeCount: Object.keys(runData.pinData ?? {}).length,
+					verificationRun: options?.isVerificationRun ?? false,
 				};
 
 				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {

@@ -27,7 +27,6 @@ type ExecutionTrackDataKey =
 	| 'prod_success'
 	| 'manual_crashed'
 	| 'prod_crashed'
-	| `${'user'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`
 	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
 
 interface IExecutionTrackData {
@@ -300,13 +299,12 @@ export class Telemetry {
 					? 'success'
 					: 'error';
 			const executionMode = properties.is_manual ? 'manual' : 'prod';
-			const instanceAiDataType = properties.instance_ai_mock_data_used === true ? 'mock' : 'real';
-			const sourceKey: ExecutionTrackDataKey =
-				properties.instance_ai_execution || properties.execution_initiator === 'instance_ai'
-					? `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`
-					: `user_${executionMode}_${executionStatus}`;
 
-			this.addExecutionTrackData(workflowId, sourceKey, execTime);
+			if (properties.execution_source === 'instance_ai') {
+				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
+				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
+				this.addExecutionTrackData(workflowId, sourceKey, execTime);
+			}
 
 			if (properties.used_dynamic_credentials) {
 				this.track('Workflow execution with dynamic credentials', properties);

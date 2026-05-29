@@ -3091,7 +3091,7 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
-export type WorkflowExecutionInitiator = 'user' | 'instance_ai';
+export type WorkflowExecutionSource = 'user' | 'instance_ai';
 
 export type WorkflowExecutionMockDataSource =
 	| 'trigger_input'
@@ -3099,11 +3099,10 @@ export type WorkflowExecutionMockDataSource =
 	| 'workflow_pin_data';
 
 export interface IWorkflowExecutionTelemetryMetadata {
-	executionInitiator: WorkflowExecutionInitiator;
-	instanceAiMockDataUsed?: boolean;
-	instanceAiMockDataSources?: WorkflowExecutionMockDataSource[];
-	instanceAiPinnedNodeCount?: number;
-	instanceAiVerificationRun?: boolean;
+	source: WorkflowExecutionSource;
+	mockDataSources?: WorkflowExecutionMockDataSource[];
+	pinnedNodeCount?: number;
+	verificationRun?: boolean;
 }
 
 export interface IWorkflowExecutionDataProcess {
