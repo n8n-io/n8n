@@ -36,7 +36,8 @@ Confirmed usable for the current API key and resource:
 
 | Speaker | Suggested label | Use |
 | --- | --- | --- |
-| `zh_male_m191_uranus_bigtts` | 云舟 | Default mature male host |
+| `zh_male_wennuanahu_uranus_bigtts` | 温柔阿虎 | Default warm mature male host |
+| `zh_male_m191_uranus_bigtts` | 云舟 | Mature male host backup |
 | `zh_male_liufei_uranus_bigtts` | 刘飞 | Mature male guest or host |
 | `zh_male_sophie_uranus_bigtts` | 魅力苏菲 | Mature/general male host |
 | `zh_male_dayi_uranus_bigtts` | 大壹 | Video narration male backup |
@@ -75,14 +76,17 @@ Dialogue mode becomes a podcast interview format:
 - Role `A` means `Host`.
 - Role `B` means `Guest`.
 - The JSON schema remains unchanged so downstream nodes do not need a structural rewrite.
-- The first host segment must introduce the topic naturally, for example: `今天我们要聊的话题是...`.
+- The first host segment must be a podcast-style opening that quickly gives listeners a reason to keep listening. It should not be locked to one fixed sentence.
+- Valid opening patterns include topic setup, listener pain, a concrete scene, or a mild counterintuitive hook. Phrases such as `今天咱们来聊...` are allowed, but not required.
+- The script writer should adapt the style of `/Users/stephenqiu/Desktop/Repository/ShotFlow/workspace/workspace-planF-canvas/skills/opinion-to-podcast-script/SKILL.md` without changing the existing workflow JSON shape. In practice, it should internally transform `viewpoint -> thesis -> audience pain -> argument map -> objection -> takeaway`.
 - The conversation should include a clear arc:
-  1. Host opens with the topic.
-  2. Host frames the conflict or question.
-  3. Guest responds with a grounded viewpoint.
-  4. Host asks follow-up questions.
-  5. Guest gives examples or explains the point.
-  6. Host or guest closes with a concise takeaway.
+  1. Host opens with a podcast-style hook or topic setup.
+  2. Host states the core claim in one clear thesis.
+  3. Guest reacts as a listener proxy and confirms why the topic matters.
+  4. Host and guest expand 2-3 argument points with examples or analogies.
+  5. Guest raises at least one concrete objection or listener concern.
+  6. Host acknowledges the reasonable part of the objection and explains the boundary.
+  7. Host or guest closes with a concise takeaway.
 
 Dialogue constraints:
 
@@ -91,7 +95,8 @@ Dialogue constraints:
 - Avoid stage directions, sound effects, bracketed actions, and role descriptions inside spoken text.
 - Avoid over-polished essay language.
 - Use natural host/guest phrasing, but keep the text clean enough for TTS and subtitles.
-- The host should ask at least two follow-up questions.
+- The host should guide the structure and ask follow-up questions.
+- The guest should work as a listener proxy: confirming value, asking for examples, raising practical concerns, and adding grounded reactions.
 - No role should speak more than two consecutive turns.
 
 Single narration mode can remain available, but this upgrade focuses on dialogue mode.
@@ -104,6 +109,7 @@ Recommended host voices:
 
 | Key | Speaker | Label |
 | --- | --- | --- |
+| `host_male_wennuanahu` | `zh_male_wennuanahu_uranus_bigtts` | 男主持 - 温柔阿虎 |
 | `host_male_yunzhou` | `zh_male_m191_uranus_bigtts` | 男主持 - 云舟 |
 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男主持 - 刘飞 |
 | `host_male_sophie` | `zh_male_sophie_uranus_bigtts` | 男主持 - 魅力苏菲 |
@@ -128,9 +134,9 @@ Backup expressive voices:
 
 Defaults:
 
-- `voice_a`: `host_male_yunzhou`
+- `voice_a`: `host_male_wennuanahu`
 - `voice_b`: `guest_female_xiaohe`
-- `voice_single`: `host_male_yunzhou` or `guest_female_xiaohe`; the implementation can choose one, but it must be a mature verified voice.
+- `voice_single`: `host_male_wennuanahu` or `guest_female_xiaohe`; the implementation can choose one, but it must be a mature verified voice.
 
 The previous cute/youthful voices should not be default options for the podcast flow.
 
@@ -151,7 +157,7 @@ The workflow should not add voice cloning yet.
 If TTS returns a resource mismatch or no audio for a selected voice, the workflow should produce a readable error that tells the user:
 
 - The selected voice is not available for the current `seed-tts-2.0` resource or account.
-- Switch back to a recommended verified voice such as `host_male_yunzhou` or `guest_female_xiaohe`.
+- Switch back to a recommended verified voice such as `host_male_wennuanahu` or `guest_female_xiaohe`.
 
 ## Testing
 
@@ -166,7 +172,7 @@ Runtime acceptance:
 
 - Run one dialogue-mode form submission using the new default host and guest voices.
 - Confirm execution succeeds.
-- Confirm generated script starts with a host topic intro.
+- Confirm generated script starts with a natural podcast-style opening, not a rigid template sentence.
 - Confirm generated TTS has multiple A/B segment MP3 files.
 - Confirm final video duration matches merged TTS duration.
 - Confirm final video contains white subtitles and the existing three-stage visual layout.
