@@ -12,6 +12,8 @@ import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.er
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { channelsToPolicy } from '../redaction-channels';
+
 import type {
 	IExecutionRedactionStrategy,
 	RedactionContext,
@@ -268,18 +270,22 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Resolves the effective redaction policy for an execution.
 	 *
-	 * Prefers the policy captured in `runtimeData.redaction` at execution time,
-	 * falls back to `workflowData.settings` for older executions, and defaults to 'none'.
-	 * Returns 'none' when the data-redaction license is not active, so that
-	 * user-configured policies are not applied without the license.
+	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
+	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
+	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
+	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 * Returns 'none' when the data-redaction license is not active, so that user-configured
+	 * policies are not applied without the license.
 	 */
 	private resolvePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		if (!this.licenseState.isDataRedactionLicensed()) return 'none';
 
-		return (
-			execution.data.executionData?.runtimeData?.redaction?.policy ??
-			execution.workflowData.settings?.redactionPolicy ??
-			'none'
-		);
+		const redaction = execution.data.executionData?.runtimeData?.redaction;
+
+		if (redaction?.version === 2) {
+			return channelsToPolicy({ production: redaction.production, manual: redaction.manual });
+		}
+
+		return redaction?.policy ?? execution.workflowData.settings?.redactionPolicy ?? 'none';
 	}
 }
