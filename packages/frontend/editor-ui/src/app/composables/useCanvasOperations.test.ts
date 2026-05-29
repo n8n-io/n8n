@@ -18,6 +18,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -367,7 +368,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should open NDV when specified', async () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeTypeDescription = mockNodeTypeDescription({ name: 'type' });
 
 			const { addNode } = useCanvasOperations();
@@ -387,7 +388,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not set sticky node type as active node', async () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeTypeDescription = mockNodeTypeDescription({ name: STICKY_NODE_TYPE });
 
 			const { addNode } = useCanvasOperations();
@@ -1638,7 +1639,7 @@ describe('useCanvasOperations', () => {
 
 	describe('renameNode', () => {
 		it('should rename node and return the actual new name on success', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const oldName = 'Old Node';
 			const newName = 'New Node';
 
@@ -1662,7 +1663,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should return false when new name is same as old name', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const oldName = 'Old Node';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
@@ -1677,7 +1678,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should show error toast and return false when renameNode throws an error', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
@@ -1708,7 +1709,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not show error toast when showErrorToast is false', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
@@ -1734,7 +1735,7 @@ describe('useCanvasOperations', () => {
 
 	describe('revertRenameNode', () => {
 		it('should revert node renaming', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const oldName = 'Old Node';
 			const currentName = 'New Node';
 
@@ -1753,7 +1754,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not revert node renaming when old name is same as new name', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const oldName = 'Old Node';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
@@ -1769,7 +1770,7 @@ describe('useCanvasOperations', () => {
 
 	describe('setNodeActive', () => {
 		it('should set active node name when node exists', () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const nodeId = 'node1';
 			const nodeName = 'Node 1';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue({
@@ -1784,7 +1785,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not change active node name when node does not exist', () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const nodeId = 'node1';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(undefined);
 			ndvStore.activeNodeName = 'Existing Node';
@@ -1809,7 +1810,7 @@ describe('useCanvasOperations', () => {
 
 	describe('setNodeActiveByName', () => {
 		it('should set active node name', () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeName = 'Node 1';
 			ndvStore.activeNodeName = '';
 
@@ -3673,6 +3674,50 @@ describe('useCanvasOperations', () => {
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
 		});
+
+		it('should include nodeGroups when all group members are copied', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'group-1', name: 'My Group', nodeIds: ['1', '2'] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave(nodes);
+
+			expect(copiedData.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'My Group', nodeIds: ['1', '2'] },
+			]);
+		});
+
+		it('should omit nodeGroups when only part of a group is copied', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'group-1', name: 'My Group', nodeIds: ['1', '2'] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([nodes[0]]);
+
+			expect(copiedData.nodeGroups).toBeUndefined();
+		});
 	});
 
 	describe('cutNodes', () => {
@@ -4007,8 +4052,13 @@ describe('useCanvasOperations', () => {
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
 
-			workflowsStore.executionWaitingForWebhook = true;
 			workflowsStore.workflowId = 'workflow-id';
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('workflow-id'),
+			);
+			// Spy on the getter — readonly wrapping prevents direct assignment, and
+			// createTestingPinia stubs setExecutionWaitingForWebhook so the action is a no-op.
+			vi.spyOn(executionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(true);
 			workflowsStore.lastSuccessfulExecution = {} as IExecutionResponse;
 			workflowsStore.currentWorkflowExecutions = [
 				{
@@ -4060,8 +4110,8 @@ describe('useCanvasOperations', () => {
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
-
-			workflowsStore.executionWaitingForWebhook = false;
+			workflowsStore.workflowId = 'workflow-id';
+			// Default state-store value is false; no override needed.
 
 			const { resetWorkspace } = useCanvasOperations();
 
@@ -4261,7 +4311,7 @@ describe('useCanvasOperations', () => {
 		});
 		it('should set active node when nodeId is provided and node exists', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflowId));
 			const { openExecution } = useCanvasOperations();
 
 			const executionId = '123';
@@ -5034,14 +5084,6 @@ describe('useCanvasOperations', () => {
 		);
 
 		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
-			// This mock is needed for addImportedNodesToWorkflow to work
-			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
-				nodes: {},
-				connections: {},
-				connectionsBySourceNode: {},
-				renameNode: vi.fn(),
-			} as unknown as Workflow);
-
 			const oldId1 = 'old-node-id-1';
 			const oldId2 = 'old-node-id-2';
 
@@ -5068,6 +5110,24 @@ describe('useCanvasOperations', () => {
 				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
 			};
 
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockImplementation(
+				(name) => name,
+			);
+			const createGroupSpy = vi
+				.mocked(workflowDocumentStoreInstance.createGroup)
+				.mockImplementation((nodeIds, name) => ({
+					id: 'imported-group-id',
+					nodeIds,
+					name,
+				}));
+
 			const canvasOperations = useCanvasOperations();
 			const result = await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
 				regenerateIds: true,
@@ -5083,6 +5143,121 @@ describe('useCanvasOperations', () => {
 			expect(result.nodeGroups).toEqual([
 				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
 			]);
+
+			expect(createGroupSpy).toHaveBeenCalledWith([newId1, newId2], 'My Group', {
+				markDirty: true,
+			});
+			expect(workflowDocumentStoreInstance.getNextDefaultName).not.toHaveBeenCalled();
+		});
+
+		it('should deduplicate imported group names only when they already exist', async () => {
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			vi.spyOn(workflowDocumentStoreInstance, 'allGroups', 'get').mockReturnValue([
+				{ id: 'existing-group', name: 'My Group', nodeIds: ['other-1'] },
+			]);
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockReturnValue('My Group 2');
+			const createGroupSpy = vi
+				.mocked(workflowDocumentStoreInstance.createGroup)
+				.mockImplementation((nodeIds, name) => ({
+					id: 'imported-group-id',
+					nodeIds,
+					name,
+				}));
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+			});
+
+			expect(workflowDocumentStoreInstance.getNextDefaultName).toHaveBeenCalledWith('My Group');
+			expect(createGroupSpy).toHaveBeenCalledWith(expect.any(Array), 'My Group 2', {
+				markDirty: true,
+			});
+		});
+
+		it('should keep imported node groups pristine when requested', async () => {
+			const oldId1 = 'old-node-id-1';
+			const oldId2 = 'old-node-id-2';
+
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes,
+						connections,
+					}),
+			);
+			const createGroupSpy = vi
+				.mocked(workflowDocumentStoreInstance.createGroup)
+				.mockImplementation((nodeIds, name) => ({
+					id: 'imported-group-id',
+					nodeIds,
+					name,
+				}));
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+				setStateDirty: false,
+			});
+
+			expect(createGroupSpy).toHaveBeenCalledWith(result.nodeGroups?.[0].nodeIds, 'My Group', {
+				markDirty: false,
+			});
 		});
 	});
 

@@ -566,7 +566,7 @@ onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	ndvStore.$subscribe(() => {
+	ndvStore.value.$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -627,7 +627,7 @@ function getPropertyArgument<T extends keyof INodePropertyModeTypeOptions>(
 }
 
 function openCredential(): void {
-	const node = ndvStore.activeNode;
+	const node = ndvStore.value.activeNode;
 	if (!node?.credentials) {
 		return;
 	}

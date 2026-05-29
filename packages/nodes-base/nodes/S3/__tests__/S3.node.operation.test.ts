@@ -6,11 +6,12 @@ import { S3 } from '../S3.node';
 
 describe('S3 Node - Bucket Delete', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const s3ApiRequestSOAPSpy = jest.spyOn(GenericFunctions, 's3ApiRequestSOAP');
+	let s3ApiRequestSOAPSpy: jest.SpyInstance;
 	let node: S3;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		s3ApiRequestSOAPSpy = jest.spyOn(GenericFunctions, 's3ApiRequestSOAP');
 		node = new S3();
 
 		executeFunctionsMock.getCredentials.mockResolvedValue({

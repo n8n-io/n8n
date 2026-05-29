@@ -56,11 +56,11 @@ const renderNodeSettings = (runData?: IRunData) => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = useWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 
 	workflowDocumentStore.hydrate(workflow);
-	workflowsStore.setWorkflowId(workflow.id);
 	nodeTypesStore.setNodeTypes([httpNodeType]);
 	ndvStore.activeNodeName = httpNode.name;
 

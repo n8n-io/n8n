@@ -1,11 +1,14 @@
 {
   "name": "workflow-scripts",
   "scripts": {
-    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs",
-    "generate-sbom": "cdxgen -t pnpm --no-install-deps -o ../../sbom-source.cdx.json ../../compiled/"
+    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs ../../scripts/licenses/*.test.mjs",
+    "generate-sbom": "FETCH_LICENSE=true cdxgen -t pnpm --no-install-deps --profile license-compliance -o ../../sbom-source.cdx.json ../../compiled/",
+    "render-licenses-md": "node ../../scripts/licenses/render-licenses-md.mjs ../../sbom-source.cdx.json ../../packages/cli/THIRD_PARTY_LICENSES.md ../../compiled/node_modules",
+    "generate-licenses": "pnpm generate-sbom && pnpm render-licenses-md"
   },
   "dependencies": {
     "@actions/github": "9.0.0",
+    "@cyclonedx/cdxgen": "12.4.0",
     "@octokit/core": "7.0.6",
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
@@ -16,7 +19,6 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@cyclonedx/cdxgen": "12.4.0",
     "conventional-changelog-angular": "8.3.0"
   }
 }

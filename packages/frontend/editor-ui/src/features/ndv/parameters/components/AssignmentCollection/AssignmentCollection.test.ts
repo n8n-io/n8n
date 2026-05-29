@@ -1,5 +1,6 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
@@ -57,7 +58,7 @@ async function dropAssignment({
 	value: unknown;
 	dropArea: HTMLElement;
 }): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	useNDVStore(createWorkflowDocumentId('')).draggableStartDragging({
 		type: 'mapping',
 		data: `{{ $json.${key} }}`,
 		dimensions: null,

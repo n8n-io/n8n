@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -7,12 +7,24 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
+}));
+
+const planEditSubmitState = vi.hoisted(() => ({
+	message: 'Make the plan simpler',
+}));
+
+const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -39,20 +51,50 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 	useWindowSize: () => ({ width: mockWindowSizeState.width }),
 }));
 
+const inputFocusSpy = vi.fn();
+
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
+		isPlanEditMode: { type: Boolean, required: false },
 	},
-	setup(props, { expose }) {
-		expose({ focus: vi.fn() });
+	emits: ['submit', 'cancel-plan-edit'],
+	setup(props, { emit, expose }) {
+		expose({ focus: inputFocusSpy });
 		return () =>
-			h(
-				'div',
-				{ 'data-test-id': 'instance-ai-input-stub' },
+			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
-			);
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-mode' },
+					props.isPlanEditMode ? 'plan-edit' : 'normal',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-submit',
+						onClick: () =>
+							emit(
+								'submit',
+								props.isPlanEditMode ? planEditSubmitState.message : 'Normal message',
+								undefined,
+							),
+					},
+					'Submit',
+				),
+				props.isPlanEditMode
+					? h(
+							'button',
+							{
+								'data-test-id': 'instance-ai-input-cancel-plan-edit',
+								onClick: () => emit('cancel-plan-edit'),
+							},
+							'Cancel',
+						)
+					: null,
+			]);
 	},
 });
 
@@ -62,10 +104,10 @@ let workflowPreviewEmit:
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
-	emits: ['iframe-ready', 'workflow-loaded', 'workflow-failures'],
+	emits: ['workflow-failures'],
 	setup(_, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
-		expose({ relayPushEvent: vi.fn(), requestFitView: vi.fn() });
+		expose({ requestFitView: vi.fn() });
 		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
 	},
 });
@@ -89,9 +131,68 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
+			AgentSection: { template: '<div data-test-id="agent-section-stub" />' },
+			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
+			InstanceAiArtifactsPanel: { template: '<div data-test-id="artifacts-panel-stub" />' },
 		},
 	},
 });
+
+function makePlanReviewMessage(): InstanceAiMessage {
+	const planner: InstanceAiAgentNode = {
+		agentId: 'planner-1',
+		role: 'planner',
+		status: 'completed',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [
+			{
+				toolCallId: 'tc-plan',
+				toolName: 'submit-plan',
+				args: {},
+				isLoading: true,
+				confirmationStatus: 'pending',
+				confirmation: {
+					requestId: 'req-plan',
+					inputThreadId: 'input-thread-1',
+					severity: 'info',
+					message: 'Review the plan',
+					inputType: 'plan-review',
+					planItems: [
+						{
+							id: 'workflow',
+							title: "Build 'Lead routing' workflow",
+							kind: 'build-workflow',
+							spec: 'Route qualified leads to sales.',
+							deps: [],
+						},
+					],
+				},
+			},
+		],
+		children: [],
+		timeline: [],
+	};
+
+	return {
+		id: 'msg-plan',
+		role: 'assistant',
+		content: '',
+		reasoning: '',
+		isStreaming: true,
+		createdAt: '2026-04-01T00:00:00.000Z',
+		agentTree: {
+			agentId: 'root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [planner],
+			timeline: [{ type: 'child', agentId: 'planner-1' }],
+		},
+	};
+}
 
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
@@ -104,7 +205,7 @@ describe('InstanceAiThreadView', () => {
 
 		workflowPreviewEmit = null;
 
-		thread = {
+		thread = reactive({
 			id: 'thread-1',
 			messages: [],
 			hasMessages: false,
@@ -113,6 +214,8 @@ describe('InstanceAiThreadView', () => {
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
 			amendContext: null,
+			activePlanEdit: null,
+			updatingPlanRequestIds: new Set<string>(),
 			contextualSuggestion: null,
 			currentTasks: null,
 			producedArtifacts: new Map(),
@@ -120,6 +223,7 @@ describe('InstanceAiThreadView', () => {
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],
+			resolvedConfirmationIds: new Map(),
 			debugEvents: [],
 			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
@@ -127,9 +231,21 @@ describe('InstanceAiThreadView', () => {
 			closeSSE: vi.fn(),
 			sendMessage: vi.fn().mockResolvedValue(undefined),
 			cancelRun: vi.fn().mockResolvedValue(undefined),
+			resolveConfirmation: vi.fn(),
+			confirmAction: vi.fn().mockResolvedValue(true),
+			markPlanUpdatePending: vi.fn(),
+			clearPlanUpdatePending: vi.fn(),
 			copyFullTrace: vi.fn(),
 			submitFeedback: vi.fn(),
-		} as unknown as ThreadRuntime;
+		}) as unknown as ThreadRuntime;
+		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
+		// chat-input submission path can read activePlanEdit back out.
+		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
+			thread.activePlanEdit = context;
+		});
+		thread.cancelPlanEdit = vi.fn(() => {
+			thread.activePlanEdit = null;
+		});
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
@@ -143,12 +259,13 @@ describe('InstanceAiThreadView', () => {
 		] as typeof store.threads;
 		mockWindowSizeState.width.value = 1200;
 
-		// `useExecutionPushEvents` (consumed by ThreadView) registers a push
-		// listener and stores the returned removeListener; it gets invoked on
-		// component unmount. Auto-stubbed actions return undefined by default,
-		// so return a no-op function to keep cleanup well-typed.
+		// Auto-stubbed push-store actions return undefined by default; addEventListener's
+		// caller expects a removeListener function, so return a no-op.
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
+		inputFocusSpy.mockClear();
+		telemetryTrackSpy.mockClear();
+		planEditSubmitState.message = 'Make the plan simpler';
 	});
 
 	afterEach(() => {
@@ -296,6 +413,38 @@ describe('InstanceAiThreadView', () => {
 			]) as typeof thread.producedArtifacts;
 		}
 
+		// Drives useCanvasPreview's auto-open watcher so the preview tab is
+		// selected and the WorkflowPreview stub mounts (otherwise `v-if`
+		// keeps it unrendered and `workflowPreviewEmit` is never captured).
+		function openPreviewForBuild(workflowId = 'wf-1') {
+			thread.messages.push({
+				id: 'msg-build',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId: 'tc-build',
+							toolName: 'build-workflow',
+							args: {},
+							isLoading: false,
+							result: { success: true, workflowId },
+						},
+					],
+				},
+			} as never);
+		}
+
 		async function emitFailure(report: WorkflowFailuresReport = failureReport) {
 			await vi.waitFor(() => {
 				expect(workflowPreviewEmit).not.toBeNull();
@@ -306,6 +455,7 @@ describe('InstanceAiThreadView', () => {
 		it('renders the card when the iframe reports a workflow failure', async () => {
 			seedThreadArtifact();
 			const { getByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
 
 			await emitFailure();
 
@@ -318,6 +468,7 @@ describe('InstanceAiThreadView', () => {
 			seedThreadArtifact();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
 
 			await emitFailure();
 			await user.click(await findByTestId('instance-ai-fix-with-ai-dismiss'));
@@ -331,6 +482,7 @@ describe('InstanceAiThreadView', () => {
 			seedThreadArtifact('wf-1', 'My Workflow');
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
 
 			await emitFailure();
 			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
@@ -347,10 +499,106 @@ describe('InstanceAiThreadView', () => {
 			thread.isStreaming = true;
 
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
 
 			await emitFailure();
 
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
+	});
+
+	it('focuses the main composer when asking for plan edits', async () => {
+		thread.messages = [makePlanReviewMessage()];
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+
+		await vi.waitFor(() => {
+			expect(inputFocusSpy).toHaveBeenCalled();
+			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-edit');
+		});
+	});
+
+	it('scrubs credential patterns from plan-edit feedback before sending to telemetry, but keeps the raw text in the backend confirmation', async () => {
+		thread.messages = [makePlanReviewMessage()];
+		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(telemetryTrackSpy).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+		);
+		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'use sk-proj-abcdef1234567890XYZ to call the API',
+		});
+	});
+
+	it('submits plan edit feedback through confirmation instead of a new chat message', async () => {
+		thread.messages = [makePlanReviewMessage()];
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'Make the plan simpler',
+		});
+		// resolveConfirmation only fires after the backend call succeeds, so it
+		// happens on the next tick once the confirmAction promise resolves.
+		await vi.waitFor(() => {
+			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
+		});
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('does not resolve the plan when the backend confirmAction fails', async () => {
+		thread.messages = [makePlanReviewMessage()];
+		vi.mocked(thread.confirmAction).mockResolvedValueOnce(false);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-plan-ask-for-edits').click();
+		await getByTestId('instance-ai-input-submit').click();
+
+		await vi.waitFor(() => {
+			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
+		});
+		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('keeps normal composer submissions as chat messages', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			undefined,
+			expect.any(String),
+		);
+		expect(thread.confirmAction).not.toHaveBeenCalled();
 	});
 });

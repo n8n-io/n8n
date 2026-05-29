@@ -1,7 +1,10 @@
+import type * as AiImport from 'ai';
+
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory-store';
 import {
 	buildObservationLogReflectorPrompt,
+	createObservationLogReflectFn,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 } from '../observation-log-defaults';
@@ -11,6 +14,20 @@ import {
 	renderObservationLogForReflection,
 	runObservationLogReflector,
 } from '../observation-log-reflector';
+
+type GenerateTextCall = Record<string, unknown>;
+type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+
+const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+
+jest.mock('ai', () => {
+	const actual = jest.requireActual<typeof AiImport>('ai');
+	return {
+		...actual,
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
+			await mockGenerateText(call),
+	};
+});
 
 function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
 	return {
@@ -27,6 +44,10 @@ function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationL
 }
 
 describe('observation-log reflector defaults', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
 	it('keeps default policy and threshold configuration in the SDK', () => {
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
@@ -51,6 +72,33 @@ describe('observation-log reflector defaults', () => {
 		expect(prompt).toContain('Active observation log tokens: 42');
 		expect(prompt).toContain('Token budget: 8000');
 		expect(prompt).toContain('[obs-1] CRITICAL');
+	});
+
+	it('counts reflector generation tokens when usage is available', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"drop":[],"merge":[]}',
+			usage: { totalTokens: 19 },
+		});
+		const counter = {
+			incrementMessageCount: jest.fn(),
+			incrementToolCallCount: jest.fn(),
+			incrementTokenCount: jest.fn(),
+		};
+
+		const result = await createObservationLogReflectFn('openai/gpt-4o-mini')({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '* [obs-1] INFO 2026-05-12T14:30:00.000Z Small detail',
+			tokenCount: 10,
+			tokenBudget: 4_000,
+			executionCounter: counter,
+		});
+
+		expect(result).toBe('{"drop":[],"merge":[]}');
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(19);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 });
 
