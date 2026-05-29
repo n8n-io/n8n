@@ -1085,7 +1085,7 @@ describe('useNodeHelpers()', () => {
 				const httpRequestWithSslAuth: INodeTypeDescription = {
 					displayName: 'HTTP Request',
 					name: 'httpRequest',
-					group: ['core'],
+					group: ['transform'],
 					version: 4.4,
 					description: 'HTTP Request node',
 					defaults: { name: 'HTTP Request' },
@@ -1137,7 +1137,9 @@ describe('useNodeHelpers()', () => {
 						.mockReturnValue({ name: OAUTH2_API, displayName: 'OAuth2 API' });
 					credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([cred as never]);
 					credentialsStore.getCredentialById = vi.fn().mockReturnValue(cred as never);
-					mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(httpRequestWithSslAuth);
+					mockedStore(useNodeTypesStore).getNodeType = vi
+						.fn()
+						.mockReturnValue(httpRequestWithSslAuth);
 				};
 
 				it('warns when a private credential is bound via genericCredentialType under a non-manual trigger', () => {
@@ -1208,9 +1210,7 @@ describe('useNodeHelpers()', () => {
 
 				expect(result?.credentials?.[NOTION_API]).toHaveLength(1);
 				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
-				expect(result?.credentials?.[NOTION_API][0]).not.toContain(
-					'manually triggered workflows',
-				);
+				expect(result?.credentials?.[NOTION_API][0]).not.toContain('manually triggered workflows');
 			});
 		});
 	});
