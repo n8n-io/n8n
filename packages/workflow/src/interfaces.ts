@@ -3101,8 +3101,6 @@ export type WorkflowExecutionMockDataSource =
 export interface IWorkflowExecutionTelemetryMetadata {
 	source: WorkflowExecutionSource;
 	mockDataSources?: WorkflowExecutionMockDataSource[];
-	pinnedNodeCount?: number;
-	verificationRun?: boolean;
 }
 
 export interface IWorkflowExecutionDataProcess {

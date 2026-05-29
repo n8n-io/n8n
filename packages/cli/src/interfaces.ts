@@ -188,8 +188,6 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	used_dynamic_credentials?: boolean;
 	execution_source?: WorkflowExecutionSource;
 	mock_data_sources?: string;
-	pinned_node_count?: number;
-	verification_run?: boolean;
 }
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {

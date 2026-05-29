@@ -56,13 +56,11 @@ function getExecutionTelemetryProperties(
 
 	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
 
-	const { mockDataSources, pinnedNodeCount, verificationRun } = telemetryMetadata ?? {};
+	const { mockDataSources } = telemetryMetadata ?? {};
 
 	return {
 		execution_source: executionSource,
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
-		pinned_node_count: pinnedNodeCount ?? 0,
-		verification_run: verificationRun ?? false,
 	};
 }
 

@@ -2065,8 +2065,6 @@ describe('TelemetryEventRelay', () => {
 				telemetryMetadata: {
 					source: 'instance_ai',
 					mockDataSources: ['trigger_input', 'verification_pin_data'],
-					pinnedNodeCount: 2,
-					verificationRun: true,
 				},
 			};
 
@@ -2077,8 +2075,6 @@ describe('TelemetryEventRelay', () => {
 			const expectedProperties = expect.objectContaining({
 				execution_source: 'instance_ai',
 				mock_data_sources: 'trigger_input,verification_pin_data',
-				pinned_node_count: 2,
-				verification_run: true,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(

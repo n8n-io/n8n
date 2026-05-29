@@ -498,8 +498,6 @@ describe('Execution Lifecycle Hooks', () => {
 			const telemetryMetadata = {
 				source: 'instance_ai' as const,
 				mockDataSources: ['trigger_input' as const],
-				pinnedNodeCount: 1,
-				verificationRun: true,
 			};
 			const lifecycleHooks = getLifecycleHooksForRegularMain(
 				{ executionMode: 'manual', workflowData, pushRef, retryOf, userId, telemetryMetadata },

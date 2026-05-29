@@ -2593,7 +2593,6 @@ describe('createExecutionAdapter run()', () => {
 				pinData: {
 					Mocked: [{ id: 'mocked' }],
 				},
-				isVerificationRun: true,
 			},
 		);
 
@@ -2602,8 +2601,6 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.telemetryMetadata).toEqual({
 			source: 'instance_ai',
 			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
-			pinnedNodeCount: 3,
-			verificationRun: true,
 		});
 	});
 
