@@ -97,20 +97,22 @@ The n8n form accepts:
 - `voice_single`: narration voice preset
 - `voice_a`: dialogue role A voice preset
 - `voice_b`: dialogue role B voice preset
-- `script_style`: short-video script style
+- `script_style`: script style, defaulting to `podcast_interview`
 
-The exposed voice fields are restricted to common official Doubao/Volcengine presets to avoid free-form speaker-id mistakes:
+Dialogue mode generates a host/guest podcast-style script. The first host turn should open like a podcast with a topic setup, listener pain, concrete scene, or light counterintuitive hook. It is not forced to use one fixed opening sentence.
 
-| Preset | Speaker ID | Use |
-| --- | --- | --- |
-| 小何 | `zh_female_xiaohe_uranus_bigtts` | Default single narration / dialogue role B |
-| Vivi | `zh_female_vv_uranus_bigtts` | Female narration |
-| 云舟 | `zh_male_m191_uranus_bigtts` | Dialogue role A |
-| 小天 | `zh_male_taocheng_uranus_bigtts` | Male narration |
-| 可爱女生 | `saturn_zh_female_keainvsheng_tob` | Bright female narration |
-| 爽朗少年 | `saturn_zh_male_shuanglangshaonian_tob` | Bright male narration |
+The exposed voice fields are restricted to the MVP podcast voice set verified against the local `DOUBAO_TTS_V2_RESOURCE_ID=seed-tts-2.0` configuration:
 
-These presets were verified against the local `DOUBAO_TTS_V2_RESOURCE_ID=seed-tts-2.0` configuration.
+| Display name | Internal key | Speaker ID | Use |
+| --- | --- | --- | --- |
+| 男主持 - 温柔阿虎 | `host_male_wennuanahu` | `zh_male_wennuanahu_uranus_bigtts` | Default host |
+| 男主持 - 刘飞 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | Mature male host |
+| 男主持 - 渊博小叔 | `host_male_yuanboxiaoshu` | `zh_male_yuanboxiaoshu_uranus_bigtts` | Knowledgeable male host |
+| 女主持 - Tina 老师 | `host_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | Female host |
+| 女嘉宾 - 小何 | `guest_female_xiaohe` | `zh_female_xiaohe_uranus_bigtts` | Default guest |
+| 女嘉宾 - Tina 老师 | `guest_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | Female guest |
+| 男嘉宾 - 刘飞 | `guest_male_liufei` | `zh_male_liufei_uranus_bigtts` | Male guest |
+| 男嘉宾 - 渊博小叔 | `guest_male_yuanboxiaoshu` | `zh_male_yuanboxiaoshu_uranus_bigtts` | Male guest |
 
 ## Processing Flow
 
