@@ -24,6 +24,15 @@ Each AI podcast run also writes `tts/cost.json` and returns `cost` plus `costPat
 
 The workflow response includes `reviewDir`, which points to the project-local `tmp/n8n-video-jobs/{jobId}` folder. Use this folder to inspect the final video, generated audio, subtitle ASS file, subtitle timing JSON, spoken transcript, cost estimate, metadata, and FFmpeg log.
 
+## Presentation AI Podcast Workflow
+
+The presentation version is `workflows/presentation-ai-podcast-workflow.json`.
+It accepts one `PDF` or `PPTX` file plus optional audience/context text, extracts each page, generates page-bound podcast prompts, calls AI Podcast once per page, and renders a full-screen page explanation video.
+
+Review artifacts are written to `tmp/n8n-video-jobs/{jobId}`. The most useful files are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`, `timing/page-timing.json`, `render/segment-*.mp4`, `render/final.mp4`, and `cost.json`.
+
+For PPTX input, install LibreOffice. For PDF page rendering and text extraction, install Poppler tools.
+
 ## Prerequisites
 
 Install and verify local tools:
