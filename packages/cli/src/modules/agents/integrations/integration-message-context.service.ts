@@ -1,9 +1,12 @@
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import type {
 	IntegrationMessageContext,
+	IntegrationMessageSubject,
+	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
 } from './integration-tools';
@@ -13,13 +16,13 @@ const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
 	constructor(
-		private readonly resourceRepository: AgentResourceRepository,
 		private readonly threadRepository: AgentThreadRepository,
+		private readonly resourceRepository: AgentResourceRepository,
 	) {}
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
-		const value = this.parseMetadata(thread?.metadata)?.[MESSAGE_CONTEXT_METADATA_KEY];
+		const value = this.parseMetadata(thread?.metadata)[MESSAGE_CONTEXT_METADATA_KEY];
 		return isIntegrationMessageContext(value) ? value : null;
 	}
 
@@ -63,11 +66,16 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	private parseMetadata(value: string | null | undefined): Record<string, unknown> {
 		if (!value) return {};
 		try {
-			return JSON.parse(value) as Record<string, unknown>;
+			const parsed = jsonParse<unknown>(value);
+			return isRecord(parsed) ? parsed : {};
 		} catch {
 			return {};
 		}
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
@@ -79,8 +87,34 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		isIntegrationMessageTarget(context.target) &&
 		(context.messageId === undefined || typeof context.messageId === 'string') &&
 		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
+		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
+		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		typeof context.updatedAt === 'string'
 	);
+}
+
+function isIntegrationMessageSubject(value: unknown): value is IntegrationMessageSubject {
+	if (!value || typeof value !== 'object') return false;
+	const subject = value as Record<string, unknown>;
+	return (
+		typeof subject.type === 'string' &&
+		typeof subject.id === 'string' &&
+		(subject.title === undefined || typeof subject.title === 'string') &&
+		(subject.description === undefined || typeof subject.description === 'string') &&
+		(subject.url === undefined || typeof subject.url === 'string') &&
+		(subject.status === undefined || typeof subject.status === 'string') &&
+		(subject.labels === undefined ||
+			(Array.isArray(subject.labels) &&
+				subject.labels.every((label) => typeof label === 'string'))) &&
+		(subject.assignee === undefined || isIntegrationSubjectPerson(subject.assignee)) &&
+		(subject.author === undefined || isIntegrationSubjectPerson(subject.author))
+	);
+}
+
+function isIntegrationSubjectPerson(value: unknown): value is IntegrationSubjectPerson {
+	if (!value || typeof value !== 'object') return false;
+	const person = value as Record<string, unknown>;
+	return typeof person.id === 'string' && typeof person.name === 'string';
 }
 
 function isIntegrationMessageTarget(value: unknown): value is IntegrationMessageTarget {

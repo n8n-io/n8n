@@ -550,7 +550,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				undefined,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -581,6 +581,19 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
+				undefined,
+			);
+		});
+
+		it('should request code-builder threads when isCodeBuilder is true', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, true);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
 				'code-builder',
 			);
 		});
@@ -597,7 +610,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -621,7 +634,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -645,7 +658,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 
@@ -658,11 +671,7 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
-				workflowId,
-				undefined,
-				'code-builder',
-			);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined, undefined);
 		});
 	});
 
@@ -709,7 +718,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				'code-builder',
+				undefined,
 			);
 		});
 	});
