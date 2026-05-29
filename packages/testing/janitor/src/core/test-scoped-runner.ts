@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 
-import { computeScope, type Runner, type ScopeResult } from './scope-analyzer.js';
+import { computeScope, type JestVariant, type Runner, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
 	runner: Runner;
@@ -11,6 +11,7 @@ export interface TestScopedOptions {
 	rootDir: string;
 	changedFiles: string[] | null;
 	passthroughArgs: string[];
+	jestVariant?: JestVariant;
 }
 
 /**
@@ -43,6 +44,7 @@ export function runTestScoped(options: TestScopedOptions): number {
 		packageDir: options.packageDir,
 		rootDir: options.rootDir,
 		changedFiles: options.changedFiles,
+		jestVariant: options.jestVariant,
 	});
 
 	if (scope.kind === 'skip') {

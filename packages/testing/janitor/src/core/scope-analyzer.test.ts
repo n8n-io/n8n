@@ -143,4 +143,113 @@ describe('computeScope', () => {
 		});
 		expect(result.kind).toBe('full');
 	});
+
+	describe('jest integration variant', () => {
+		it('does NOT bail on entity changes for the unit variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/modules/foo/foo.entity.ts'],
+			});
+			expect(result.kind).toBe('scoped');
+		});
+
+		it('bails to full on entity changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/modules/foo/foo.entity.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('bails to full on repository changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/databases/repositories/user.repository.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('bails to full on migration changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/modules/foo/database/AddFoo.migration.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('bails to full on shared integration test fixture changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/test/integration/shared/workflow.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('bails to full on test/migration changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/test/migration/some-helper.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('bails to full on src/modules/<m>/database changes for the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/modules/insights/database/repositories/insights.ts'],
+			});
+			expect(result.kind).toBe('full');
+		});
+
+		it('still scopes when only an ordinary src file changes under the integration variant', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				runner: 'jest',
+				jestVariant: 'integration',
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/cli/src/controllers/auth.controller.ts'],
+			});
+			expect(result.kind).toBe('scoped');
+		});
+
+		it('jest-variant=integration has no effect on the vitest runner', () => {
+			const rootDir = makePackageDir('packages/frontend/editor-ui');
+			const result = computeScope({
+				runner: 'vitest',
+				jestVariant: 'integration',
+				packageDir: 'packages/frontend/editor-ui',
+				rootDir,
+				changedFiles: ['packages/frontend/editor-ui/src/foo.entity.ts'],
+			});
+			expect(result.kind).toBe('scoped');
+		});
+	});
 });
