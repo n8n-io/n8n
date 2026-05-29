@@ -263,6 +263,10 @@ describe('GlobalConfig', () => {
 		chatTrigger: {
 			disablePublicChat: false,
 		},
+		compressionNode: {
+			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
+			maxZipEntries: 5000,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
