@@ -16,6 +16,16 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
+function withoutTelemetryMetadata(
+	event: RelayEventMap['workflow-post-execute'],
+): Omit<RelayEventMap['workflow-post-execute'], 'telemetryMetadata'> {
+	const eventWithoutTelemetryMetadata = { ...event };
+
+	delete eventWithoutTelemetryMetadata.telemetryMetadata;
+
+	return eventWithoutTelemetryMetadata;
+}
+
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
 	constructor(
@@ -262,7 +272,8 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, projectId, projectName, ...rest } = event;
+		const { runData, workflow, executionId, projectId, projectName, ...rest } =
+			withoutTelemetryMetadata(event);
 
 		const payload = {
 			...rest,
