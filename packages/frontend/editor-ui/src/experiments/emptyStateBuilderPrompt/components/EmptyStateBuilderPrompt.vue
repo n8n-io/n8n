@@ -119,7 +119,7 @@ function handleFileImport() {
 				ref="promptInputRef"
 				v-model="textInputValue"
 				:placeholder="placeholder"
-				:min-lines="4"
+				:autosize="true"
 				:button-label="i18n.baseText('emptyStateBuilderPrompt.buildWorkflow')"
 				data-test-id="empty-state-builder-chat-input"
 				autofocus
