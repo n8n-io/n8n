@@ -4,12 +4,19 @@ import {
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
+import {
+	escapeQualifiedSqlIdentifier,
+	escapeSqlIdentifier,
+	isSafeQualifiedSqlIdentifier,
+	isSafeSqlIdentifier,
+} from '@utils/sqlIdentifier';
 
 type CollectionOptions = {
 	useCollection?: boolean;
@@ -179,12 +186,128 @@ const retrieveFields: INodeProperties[] = [
 ];
 
 /**
+ * Validates a table/collection-table name. It is interpolated into SQL (and into
+ * constraint/index names) by the underlying store, so reject anything that is not
+ * a plain, optionally schema-qualified identifier. The value is also quoted before
+ * use, so this rejection is a defence-in-depth layer with a clear error.
+ */
+function validateTableName(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	value: string,
+	label: string,
+): void {
+	if (!isSafeQualifiedSqlIdentifier(value)) {
+		throw new NodeOperationError(context.getNode(), `Invalid ${label} "${value}"`, {
+			description:
+				'It may only contain letters, numbers and underscores, with an optional "schema." prefix.',
+		});
+	}
+}
+
+/**
+ * Validates the configured column names. They are interpolated into SQL by the
+ * underlying store in both quoted and unquoted positions, so restrict them to
+ * plain identifiers to keep them inert.
+ */
+function validateColumnNames(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	columns: ColumnOptions,
+): void {
+	for (const [field, value] of Object.entries(columns)) {
+		if (typeof value === 'string' && !isSafeSqlIdentifier(value)) {
+			throw new NodeOperationError(
+				context.getNode(),
+				`Invalid column name "${value}" configured for "${field}"`,
+				{
+					description:
+						'Column names may only contain letters, numbers and underscores, and must not start with a number.',
+				},
+			);
+		}
+	}
+}
+
+/**
+ * Validates metadata filter keys. The underlying store interpolates each key
+ * into a single-quoted SQL literal, so reject keys that could break out of it.
+ */
+function validateFilterKeys(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	filter: Record<string, unknown> | undefined,
+): void {
+	if (!filter) return;
+
+	for (const key of Object.keys(filter)) {
+		if (key.includes("'") || key.includes('\\')) {
+			throw new NodeOperationError(context.getNode(), `Invalid metadata filter key "${key}"`, {
+				description:
+					"Metadata filter keys must not contain quote (') or backslash (\\) characters.",
+			});
+		}
+	}
+}
+
+/**
  * Extended PGVectorStore class to handle custom filtering.
  * This wrapper is necessary because when used as a retriever,
  * similaritySearchVectorWithScore should use this.filter instead of
  * expecting it from the parameter
+ *
+ * The identifier getters and collection-table setup are overridden so the
+ * table and collection table names are quoted before being interpolated into
+ * SQL by the base class.
  */
 export class ExtendedPGVectorStore extends PGVectorStore {
+	get computedTableName(): string {
+		return this.schemaName === null
+			? escapeQualifiedSqlIdentifier(this.tableName)
+			: `${escapeSqlIdentifier(this.schemaName)}.${escapeSqlIdentifier(this.tableName)}`;
+	}
+
+	get computedCollectionTableName(): string {
+		if (!this.collectionTableName) return '';
+		return this.schemaName === null
+			? escapeQualifiedSqlIdentifier(this.collectionTableName)
+			: `${escapeSqlIdentifier(this.schemaName)}.${escapeSqlIdentifier(this.collectionTableName)}`;
+	}
+
+	async ensureCollectionTableInDatabase(): Promise<void> {
+		try {
+			if (this.skipInitializationCheck) return;
+
+			// The constraint and index names embed the table/collection name as
+			// plain identifier fragments, so escape the composed names too.
+			const indexName = escapeSqlIdentifier(`idx_${this.collectionTableName}_name`);
+			const constraintName = escapeSqlIdentifier(`${this.tableName}_collection_id_fkey`);
+
+			const queryString = `
+        CREATE TABLE IF NOT EXISTS ${this.computedCollectionTableName} (
+          uuid uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+          name character varying,
+          cmetadata jsonb
+        );
+
+        CREATE INDEX IF NOT EXISTS ${indexName} ON ${this.computedCollectionTableName}(name);
+
+        ALTER TABLE ${this.computedTableName}
+          ADD COLUMN collection_id uuid;
+
+        ALTER TABLE ${this.computedTableName}
+          ADD CONSTRAINT ${constraintName}
+          FOREIGN KEY (collection_id)
+          REFERENCES ${this.computedCollectionTableName}(uuid)
+          ON DELETE CASCADE;
+      `;
+			await this.pool.query(queryString);
+		} catch (e) {
+			// Mirror the base class: ignore "already exists" races, surface anything else.
+			if (e instanceof Error && e.message.includes('already exists')) {
+				return;
+			}
+			throw e;
+		}
+	}
+
 	static async initialize(
 		embeddings: EmbeddingsInterface,
 		args: PGVectorStoreArgs & { dimensions?: number },
@@ -233,9 +356,12 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+		validateFilterKeys(context, filter);
+		// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
+		const tableName =
+			(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
+			'n8n_vectors';
+		validateTableName(context, tableName, 'table name');
 		const credentials = await context.getCredentials('postgres');
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
@@ -253,16 +379,21 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 		) as CollectionOptions;
 
 		if (collectionOptions?.useCollection) {
+			if (collectionOptions.collectionTableName) {
+				validateTableName(context, collectionOptions.collectionTableName, 'collection table name');
+			}
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}
 
-		config.columns = context.getNodeParameter('options.columnNames.values', 0, {
+		const columns = context.getNodeParameter('options.columnNames.values', 0, {
 			idColumnName: 'id',
 			vectorColumnName: 'embedding',
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
+		validateColumnNames(context, columns);
+		config.columns = columns;
 
 		config.distanceStrategy = context.getNodeParameter(
 			'options.distanceStrategy',
@@ -276,9 +407,11 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
 		// shared fields, because you need that strategy when creating the index.
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+		// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
+		const tableName =
+			(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
+			'n8n_vectors';
+		validateTableName(context, tableName, 'table name');
 		const credentials = await context.getCredentials('postgres');
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
@@ -295,18 +428,27 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 		) as CollectionOptions;
 
 		if (collectionOptions?.useCollection) {
+			if (collectionOptions.collectionTableName) {
+				validateTableName(context, collectionOptions.collectionTableName, 'collection table name');
+			}
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}
 
-		config.columns = context.getNodeParameter('options.columnNames.values', 0, {
+		const columns = context.getNodeParameter('options.columnNames.values', 0, {
 			idColumnName: 'id',
 			vectorColumnName: 'embedding',
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
+		validateColumnNames(context, columns);
+		config.columns = columns;
 
-		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		// Use ExtendedPGVectorStore (not PGVectorStore.fromDocuments, whose static
+		// helpers construct a plain PGVectorStore) so the identifier-quoting
+		// overrides apply on the insert path too.
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, config);
+		await vectorStore.addDocuments(documents);
 		vectorStore.client?.release();
 	},
 
