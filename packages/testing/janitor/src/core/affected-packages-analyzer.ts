@@ -134,7 +134,8 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 	if (
 		options.changedFiles.some(
 			(f) =>
-				GLOBAL_TRIGGER_FILES.has(f) || GLOBAL_TRIGGER_PREFIXES.some((prefix) => f.startsWith(prefix)),
+				GLOBAL_TRIGGER_FILES.has(f) ||
+				GLOBAL_TRIGGER_PREFIXES.some((prefix) => f.startsWith(prefix)),
 		)
 	)
 		return allNames;

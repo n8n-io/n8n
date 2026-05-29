@@ -3,12 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { isAbsolute, resolve } from 'node:path';
 
-import {
-	computeScope,
-	type JestVariant,
-	type Runner,
-	type ScopeResult,
-} from './scope-analyzer.js';
+import { computeScope, type JestVariant, type Runner, type ScopeResult } from './scope-analyzer.js';
 
 export interface TestScopedOptions {
 	runner: Runner;
