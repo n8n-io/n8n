@@ -1,11 +1,19 @@
 import { CredentialsHelper } from '@nodes-testing/credentials-helper';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
+import { convertN8nRequestToAxios } from 'n8n-core/dist/execution-engine/node-execution-context/utils/request-helper-functions';
+import type {
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	WorkflowTestData,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
+import { ignoreHttpStatusErrorsConfig } from '../descriptions/common';
+import { handleErrorPostReceive } from '../GenericFunctions';
 
 describe('Microsoft Entra Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -100,6 +108,39 @@ describe('Microsoft Entra Node', () => {
 		for (const testData of tests) {
 			testHarness.setupTest(testData, { credentials });
 		}
+	});
+
+	describe('HTTP status handling', () => {
+		it('handles non-authentication errors in the node error handler', async () => {
+			const axiosRequest = convertN8nRequestToAxios({
+				method: 'DELETE',
+				url: 'https://graph.microsoft.com/v1.0/users/missing-user-id',
+				ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
+			});
+			const response: IN8nHttpFullResponse = {
+				statusCode: 404,
+				headers: {},
+				body: {
+					error: {
+						code: 'Request_ResourceNotFound',
+						message: 'Resource could not be found.',
+					},
+				},
+			};
+			const context = {
+				getNode: jest.fn().mockReturnValue({ name: 'Microsoft Entra ID' }),
+				getNodeParameter: jest.fn((parameterName: string) => {
+					if (parameterName === 'resource') return 'user';
+					if (parameterName === 'operation') return 'delete';
+					return '';
+				}),
+			} as unknown as IExecuteSingleFunctions;
+
+			expect(axiosRequest.validateStatus?.(response.statusCode)).toBe(true);
+			await expect(handleErrorPostReceive.call(context, [], response)).rejects.toThrow(
+				"The required user doesn't match any existing one",
+			);
+		});
 	});
 
 	describe('Load options', () => {
@@ -250,11 +291,9 @@ describe('Microsoft Entra Node', () => {
 
 		let updateCredentialsSpy: jest.SpyInstance;
 
-		beforeAll(() => {
-			jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
-		});
-
 		beforeEach(() => {
+			jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
+
 			updateCredentialsSpy = jest
 				.spyOn(CredentialsHelper.prototype, 'updateCredentialsOauthTokenData')
 				.mockResolvedValue();
