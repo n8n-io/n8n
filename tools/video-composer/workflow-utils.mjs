@@ -1,14 +1,47 @@
 export const VOICE_PRESETS = {
-	xiaohe: { speaker: 'zh_female_xiaohe_uranus_bigtts', label: '小何' },
-	vivi: { speaker: 'zh_female_vv_uranus_bigtts', label: 'Vivi' },
-	yunzhou: { speaker: 'zh_male_m191_uranus_bigtts', label: '云舟' },
-	xiaotian: { speaker: 'zh_male_taocheng_uranus_bigtts', label: '小天' },
-	cute_girl: { speaker: 'saturn_zh_female_keainvsheng_tob', label: '可爱女生' },
-	cheerful_boy: { speaker: 'saturn_zh_male_shuanglangshaonian_tob', label: '爽朗少年' },
+	host_male_wennuanahu: {
+		speaker: 'zh_male_wennuanahu_uranus_bigtts',
+		label: '男主持 - 温柔阿虎',
+	},
+	host_male_liufei: {
+		speaker: 'zh_male_liufei_uranus_bigtts',
+		label: '男主持 - 刘飞',
+	},
+	host_male_yuanboxiaoshu: {
+		speaker: 'zh_male_yuanboxiaoshu_uranus_bigtts',
+		label: '男主持 - 渊博小叔',
+	},
+	host_female_tina: {
+		speaker: 'zh_female_yingyujiaoxue_uranus_bigtts',
+		label: '女主持 - Tina 老师',
+	},
+	guest_female_xiaohe: {
+		speaker: 'zh_female_xiaohe_uranus_bigtts',
+		label: '女嘉宾 - 小何',
+	},
+	guest_female_tina: {
+		speaker: 'zh_female_yingyujiaoxue_uranus_bigtts',
+		label: '女嘉宾 - Tina 老师',
+	},
+	guest_male_liufei: {
+		speaker: 'zh_male_liufei_uranus_bigtts',
+		label: '男嘉宾 - 刘飞',
+	},
+	guest_male_yuanboxiaoshu: {
+		speaker: 'zh_male_yuanboxiaoshu_uranus_bigtts',
+		label: '男嘉宾 - 渊博小叔',
+	},
 };
 
+export function normalizeVoicePresetKey(value) {
+	const text = String(value ?? '').trim();
+	if (!text) return '';
+	const separatorIndex = text.lastIndexOf('｜');
+	return separatorIndex >= 0 ? text.slice(separatorIndex + 1).trim() : text;
+}
+
 export function resolveVoicePreset(key, fallbackSpeaker = '') {
-	const normalized = String(key ?? '').trim();
+	const normalized = normalizeVoicePresetKey(key);
 	if (!normalized && fallbackSpeaker) {
 		return { speaker: fallbackSpeaker, label: 'fallback' };
 	}

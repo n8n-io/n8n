@@ -14,10 +14,34 @@ import {
 } from './workflow-utils.mjs';
 
 test('resolveVoicePreset returns official speaker ids', () => {
-	assert.equal(VOICE_PRESETS.xiaohe.speaker, 'zh_female_xiaohe_uranus_bigtts');
-	assert.equal(resolveVoicePreset('xiaohe').speaker, 'zh_female_xiaohe_uranus_bigtts');
+	assert.equal(VOICE_PRESETS.guest_female_xiaohe.speaker, 'zh_female_xiaohe_uranus_bigtts');
+	assert.equal(resolveVoicePreset('guest_female_xiaohe').speaker, 'zh_female_xiaohe_uranus_bigtts');
 	assert.equal(resolveVoicePreset('', 'fallback_speaker').speaker, 'fallback_speaker');
 	assert.throws(() => resolveVoicePreset('unknown_voice'), /Unknown voice preset/);
+});
+
+test('resolveVoicePreset supports MVP podcast voices and Chinese dropdown labels', () => {
+	assert.equal(
+		VOICE_PRESETS.host_male_wennuanahu.speaker,
+		'zh_male_wennuanahu_uranus_bigtts',
+	);
+	assert.equal(resolveVoicePreset('host_male_liufei').speaker, 'zh_male_liufei_uranus_bigtts');
+	assert.equal(
+		resolveVoicePreset('guest_male_yuanboxiaoshu').speaker,
+		'zh_male_yuanboxiaoshu_uranus_bigtts',
+	);
+	assert.equal(
+		resolveVoicePreset('guest_female_tina').speaker,
+		'zh_female_yingyujiaoxue_uranus_bigtts',
+	);
+	assert.equal(
+		resolveVoicePreset('男主持 - 温柔阿虎｜host_male_wennuanahu').speaker,
+		'zh_male_wennuanahu_uranus_bigtts',
+	);
+	assert.equal(
+		resolveVoicePreset('女嘉宾 - Tina 老师｜guest_female_tina').speaker,
+		'zh_female_yingyujiaoxue_uranus_bigtts',
+	);
 });
 
 test('extractJsonObject extracts the first balanced JSON object', () => {
@@ -111,7 +135,7 @@ test('buildTtsSegments merges single narration into one request', () => {
 				{ role: 'narrator', text: '第二段。' },
 			],
 		},
-		{ voiceSingle: 'xiaohe' },
+		{ voiceSingle: 'host_male_wennuanahu' },
 		{ segmentsDir: '/tmp/job/tts/segments', fallbackSpeaker: 'fallback' },
 	);
 
@@ -119,7 +143,7 @@ test('buildTtsSegments merges single narration into one request', () => {
 		{
 			segmentIndex: 1,
 			role: 'narrator',
-			speaker: 'zh_female_xiaohe_uranus_bigtts',
+			speaker: 'zh_male_wennuanahu_uranus_bigtts',
 			text: '第一段。\n第二段。',
 			audioPath: '/tmp/job/tts/segments/001-narrator.mp3',
 			timingPath: '/tmp/job/tts/segments/001-narrator-timing.json',
@@ -137,12 +161,12 @@ test('buildTtsSegments keeps dialogue turns with role-specific speakers', () => 
 				{ role: 'B', text: '第二句。' },
 			],
 		},
-		{ voiceA: 'yunzhou', voiceB: 'xiaohe' },
+		{ voiceA: 'host_male_wennuanahu', voiceB: 'guest_female_tina' },
 		{ segmentsDir: '/tmp/job/tts/segments' },
 	);
 
-	assert.equal(segments[0].speaker, 'zh_male_m191_uranus_bigtts');
-	assert.equal(segments[1].speaker, 'zh_female_xiaohe_uranus_bigtts');
+	assert.equal(segments[0].speaker, 'zh_male_wennuanahu_uranus_bigtts');
+	assert.equal(segments[1].speaker, 'zh_female_yingyujiaoxue_uranus_bigtts');
 	assert.equal(segments[1].audioPath, '/tmp/job/tts/segments/002-B.mp3');
 });
 
