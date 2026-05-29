@@ -145,21 +145,23 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows-filtered' },
+			workflows: { id: 'workflows' },
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
-			nodes: { id: 'nodes-orchestrator' },
+			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		const { createNodesTool } = jest.requireMock('../nodes.tool');
 		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
+		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 

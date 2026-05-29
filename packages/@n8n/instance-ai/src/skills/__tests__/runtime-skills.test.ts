@@ -83,14 +83,29 @@ describe('Instance AI runtime skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toEqual(['daytona']);
-		for (const tool of ['build-workflow', 'verify-built-workflow', 'nodes']) {
+		for (const tool of [
+			'build-workflow',
+			'verify-built-workflow',
+			'nodes',
+			'workflows',
+			'credentials',
+			'workspace',
+			'complete-checkpoint',
+			'evals',
+		]) {
 			expect(skill?.recommendedTools).toContain(tool);
 		}
+		expect(skill?.description).toContain('former workflow-builder agent guidance');
 
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('Tool Surface');
 		expect(loaded?.instructions).toContain('build-workflow');
+		expect(loaded?.instructions).toContain('nodes(action="suggested")');
+		expect(loaded?.instructions).toContain('nodes(action="search")');
+		expect(loaded?.instructions).toContain('workflows(action="get-as-code")');
+		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
-		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
+		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toContain('Do not call `delegate`');
 	});
 });

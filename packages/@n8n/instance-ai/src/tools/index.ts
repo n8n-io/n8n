@@ -107,20 +107,20 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 }
 
 /**
- * Creates orchestrator-scoped domain tools. Workflow and node tools keep
- * orchestrator-specific surfaces; data tables stay writable so the
- * data-table-manager skill can act directly without delegating.
+ * Creates orchestrator domain tools. Skills run in the orchestrator now, so
+ * domain tools must keep their full action surface rather than the old
+ * orchestration-only subset.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context)],
 		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
