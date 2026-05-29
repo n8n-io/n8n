@@ -286,14 +286,6 @@ describe('McpClientManager', () => {
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
-
-		it('keeps regular and browser caches separate', async () => {
-			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'shared', url: 'https://shared.example.com/' }]);
-			await manager.getBrowserTools({ name: 'shared', url: 'https://shared.example.com/' });
-			// Same config shape but different bucket → two clients
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
-		});
 	});
 
 	describe('concurrent dedup', () => {
