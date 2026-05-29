@@ -53,6 +53,12 @@
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED"]
 		},
+		"test:unit:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"cache": false
+		},
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],

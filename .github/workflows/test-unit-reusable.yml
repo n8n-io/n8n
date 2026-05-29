@@ -55,8 +55,16 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Test Unit
-        run: pnpm test:ci:backend:unit --summarize
+      # cli is the only backend package wired into janitor scoping today, so
+      # the workspace bulk run excludes it and a dedicated step invokes the
+      # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
+      # for every backend package that hasn't yet added the script.
+      - name: Test Unit (backend, except cli)
+        run: pnpm turbo test:unit --continue --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+
+      - name: Test Unit (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
