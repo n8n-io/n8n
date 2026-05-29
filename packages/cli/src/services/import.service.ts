@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -7,6 +7,7 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	UserRepository,
 	WorkflowHistory,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -33,7 +34,6 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
@@ -72,7 +72,7 @@ export class ImportService {
 		private readonly cipher: Cipher,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly dataTableDDLService: DataTableDDLService,
-		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
 	) {}
 
@@ -84,9 +84,12 @@ export class ImportService {
 	async importWorkflows(
 		workflows: IWorkflowWithVersionMetadata[],
 		projectId: string,
-		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' } = {},
+		userId: string,
+		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
 	) {
 		await this.initRecords();
+
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
 
 		const { manager: dbManager } = this.credentialsRepository;
 
@@ -124,10 +127,7 @@ export class ImportService {
 			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
 			// Only applies to workflows that are currently active in the database.
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
-				const instanceOwner = await this.ownershipService.getInstanceOwner();
-				await this.workflowService.deactivateWorkflow(instanceOwner, workflow.id, {
-					source: 'import',
-				});
+				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
 		}
 
@@ -210,7 +210,7 @@ export class ImportService {
 			workflowsToActivate,
 		);
 		for (const { workflowId, versionId } of orderedWorkflowsToActivate) {
-			await this.activateWorkflow(workflowId, versionId);
+			await this.activateWorkflow(workflowId, versionId, user);
 		}
 
 		// Directly update the index for the important workflows, since they don't generate
@@ -289,10 +289,13 @@ export class ImportService {
 		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
 	}
 
-	private async activateWorkflow(workflowId: string, versionIdToActivate: string): Promise<void> {
+	private async activateWorkflow(
+		workflowId: string,
+		versionIdToActivate: string,
+		user: User,
+	): Promise<void> {
 		try {
-			const instanceOwner = await this.ownershipService.getInstanceOwner();
-			await this.workflowService.activateWorkflow(instanceOwner, workflowId, {
+			await this.workflowService.activateWorkflow(user, workflowId, {
 				versionId: versionIdToActivate,
 				source: 'import',
 			});
