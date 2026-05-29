@@ -2,13 +2,45 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 import { safePageName, validatePagesManifest } from './presentation-utils.mjs';
 
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
 	'base64',
 );
+
+function parseEnvFile(envFile) {
+	const lines = fs.readFileSync(envFile, 'utf8').split(/\r?\n/);
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith('#')) continue;
+		const separator = trimmed.indexOf('=');
+		if (separator <= 0) continue;
+		const key = trimmed.slice(0, separator).trim();
+		let value = trimmed.slice(separator + 1).trim();
+		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+			value = value.slice(1, -1);
+		}
+		if (process.env[key] === undefined) process.env[key] = value;
+	}
+}
+
+function loadLocalEnv() {
+	const envFile = process.env.VIDEO_CLIP_ENV_FILE
+		|| path.resolve(__dirname, '..', '..', '.env.video-clip');
+	if (!fs.existsSync(envFile)) return;
+	try {
+		const dotenv = require('dotenv');
+		dotenv.config({ path: envFile, quiet: true });
+	} catch {
+		parseEnvFile(envFile);
+	}
+}
 
 function usage() {
 	console.error('Usage: node tools/video-composer/extract-presentation.mjs JOB_JSON_PATH');
@@ -22,6 +54,12 @@ function run(command, args, options = {}) {
 	}
 
 	return result.stdout;
+}
+
+function runTool(envName, fallbackCommand, args, options = {}) {
+	const command = process.env[envName] || fallbackCommand;
+
+	return run(command, args, options);
 }
 
 function extensionOf(filePath) {
@@ -47,7 +85,7 @@ function writeFixturePages(job, fixturePath, sourceType) {
 
 function convertPptxToPdf(job) {
 	fs.mkdirSync(job.presentationDir, { recursive: true });
-	run('soffice', [
+	runTool('PRESENTATION_SOFFICE_BIN', 'soffice', [
 		'--headless',
 		'--convert-to',
 		'pdf',
@@ -67,8 +105,8 @@ function convertPptxToPdf(job) {
 function extractPdf(job, pdfPath, sourceType) {
 	fs.mkdirSync(job.pagesDir, { recursive: true });
 	const prefix = path.join(job.pagesDir, 'page');
-	run('pdftoppm', ['-png', '-r', '180', pdfPath, prefix]);
-	run('pdftotext', ['-layout', pdfPath, path.join(job.pagesDir, 'all-pages.txt')]);
+	runTool('PRESENTATION_PDFTOPPM_BIN', 'pdftoppm', ['-png', '-r', '180', pdfPath, prefix]);
+	runTool('PRESENTATION_PDFTOTEXT_BIN', 'pdftotext', ['-layout', pdfPath, path.join(job.pagesDir, 'all-pages.txt')]);
 	const images = fs.readdirSync(job.pagesDir)
 		.filter((file) => /^page-\d+\.png$/.test(file))
 		.sort();
@@ -92,6 +130,7 @@ function extractPdf(job, pdfPath, sourceType) {
 }
 
 function main() {
+	loadLocalEnv();
 	const jobPath = process.argv[2];
 	if (!jobPath) usage();
 	const job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));

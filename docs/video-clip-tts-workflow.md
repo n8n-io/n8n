@@ -32,6 +32,7 @@ It accepts one `PDF` or `PPTX` file plus optional audience/context text, extract
 Review artifacts are written to `tmp/n8n-video-jobs/{jobId}`. The most useful files are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`, `timing/page-timing.json`, `render/segment-*.mp4`, `render/final.mp4`, and `cost.json`.
 
 For PPTX input, install LibreOffice. For PDF page rendering and text extraction, install Poppler tools.
+If these tools run through Docker, point `PRESENTATION_PDFTOPPM_BIN`, `PRESENTATION_PDFTOTEXT_BIN`, and `PRESENTATION_SOFFICE_BIN` to wrapper scripts in `.env.video-clip` so the workflow can call them without installing the tools on the host.
 
 ## Prerequisites
 
