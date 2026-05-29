@@ -422,6 +422,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			);
 		}
 
+		if (target === null || target === undefined) {
+			this._currentNode = sourceKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
 		this._currentNode = sourceKey;
 		this._currentOutput = outputIndex;
 		this.to(target as NodeInstance<string, string, unknown>);

@@ -43,6 +43,18 @@ export default workflow('w', 'W')
 		expect(json.connections.Head.main[0]![0].node).toBe('Tail');
 	});
 
+	it('skips null IF branch targets while keeping sibling branches anchored', () => {
+		const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		const ifNode = ifElse({ version: 2.3, config: { name: 'My IF' } });
+		const no = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'No' } });
+
+		const json = workflow('id', 'Test').add(t).to(ifNode).onTrue(null).onFalse(no).toJSON();
+
+		const ifConns = json.connections['My IF'];
+		expect(ifConns.main[0]).toEqual([]);
+		expect(ifConns.main[1]![0].node).toBe('No');
+	});
+
 	it('wires Switch outputs when branching off the cursor', () => {
 		const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 		const sw = switchCase({ version: 3.2, config: { name: 'Route' } });
@@ -53,6 +65,18 @@ export default workflow('w', 'W')
 
 		const swConns = json.connections.Route;
 		expect(swConns.main[0]![0].node).toBe('A');
+		expect(swConns.main[1]![0].node).toBe('B');
+	});
+
+	it('skips null Switch case targets while keeping sibling cases anchored', () => {
+		const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+		const sw = switchCase({ version: 3.2, config: { name: 'Route' } });
+		const b = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
+
+		const json = workflow('id', 'Test').add(t).to(sw).onCase(0, null).onCase(1, b).toJSON();
+
+		const swConns = json.connections.Route;
+		expect(swConns.main[0]).toEqual([]);
 		expect(swConns.main[1]![0].node).toBe('B');
 	});
 
