@@ -18,7 +18,7 @@ const nameSchema = () =>
 		.min(1)
 		.max(32)
 		.refine(xssCheck, {
-			message: 'Name cannot contain "<" or ">"',
+			message: 'Name can only contain letters, numbers, spaces and punctuation',
 		})
 		.refine(urlCheck, {
 			message: 'Name cannot contain a URL',

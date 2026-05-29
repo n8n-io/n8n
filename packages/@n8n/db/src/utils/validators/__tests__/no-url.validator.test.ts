@@ -20,7 +20,7 @@ describe('NoUrl', () => {
 				expect(errors).toHaveLength(1);
 				const [error] = errors;
 				expect(error.property).toEqual('name');
-				expect(error.constraints).toEqual({ NoUrl: 'Cannot contain a URL' });
+				expect(error.constraints).toEqual({ NoUrl: 'URLs are not allowed' });
 			});
 		}
 	});

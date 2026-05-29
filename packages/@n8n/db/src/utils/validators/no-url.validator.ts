@@ -10,7 +10,7 @@ class NoUrlConstraint implements ValidatorConstraintInterface {
 	}
 
 	defaultMessage() {
-		return 'Cannot contain a URL';
+		return 'URLs are not allowed';
 	}
 }
 
