@@ -10,6 +10,7 @@ export const BUILDER_TOOLS = {
 	CREATE_SKILL: 'create_skill',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	RESOLVE_LLM: 'resolve_llm',
+	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;
 
