@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { N8nPromptInput, N8nIconButton, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
+import { N8nChatInput, N8nIconButton, N8nIcon, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
@@ -60,7 +60,7 @@ const {
 	handleRemove,
 } = useFocusedNodesChipUI();
 
-const inputRef = ref<InstanceType<typeof N8nPromptInput> | null>(null);
+const inputRef = ref<InstanceType<typeof N8nChatInput> | null>(null);
 const textValue = ref(props.modelValue);
 
 watch(
@@ -175,7 +175,7 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper">
-		<N8nPromptInput
+		<N8nChatInput
 			ref="inputRef"
 			v-model="textValue"
 			:placeholder="placeholder"
@@ -330,7 +330,7 @@ defineExpose({
 					</N8nTooltip>
 				</template>
 			</template>
-		</N8nPromptInput>
+		</N8nChatInput>
 
 		<NodeMentionDropdown
 			v-if="isFeatureEnabled && showDropdown"

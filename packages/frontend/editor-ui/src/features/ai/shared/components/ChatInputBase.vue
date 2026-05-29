@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, useTemplateRef, watch } from 'vue';
-import { N8nIconButton, N8nPromptInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const inputRef = useTemplateRef<InstanceType<typeof N8nPromptInput>>('inputRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 
 // Voice input
@@ -130,7 +130,7 @@ defineExpose({
 			@change="handleFileSelect"
 		/>
 
-		<N8nPromptInput
+		<N8nChatInput
 			ref="inputRef"
 			:model-value="modelValue"
 			:placeholder="placeholder"
@@ -182,7 +182,7 @@ defineExpose({
 					/>
 				</N8nTooltip>
 			</template>
-		</N8nPromptInput>
+		</N8nChatInput>
 	</div>
 </template>
 

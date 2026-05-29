@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nPromptInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const inputRef = useTemplateRef<InstanceType<typeof N8nPromptInput>>('inputRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 
 defineExpose({
@@ -51,7 +51,7 @@ defineExpose({
 				@change="emit('fileSelect', $event)"
 			/>
 
-			<N8nPromptInput
+			<N8nChatInput
 				ref="inputRef"
 				:model-value="props.message"
 				:placeholder="placeholder"
@@ -109,7 +109,7 @@ defineExpose({
 						/>
 					</N8nTooltip>
 				</template>
-			</N8nPromptInput>
+			</N8nChatInput>
 		</div>
 	</form>
 </template>

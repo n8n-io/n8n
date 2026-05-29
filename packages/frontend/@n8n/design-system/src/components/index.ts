@@ -73,11 +73,11 @@ export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export {
-	default as N8nPromptInput,
-	usePromptInputAutoFocus,
-	type PromptInputAutoFocusOptions,
-	type PromptInputAutoFocusTarget,
-} from './N8nPromptInput';
+	default as N8nChatInput,
+	useChatInputAutoFocus,
+	type ChatInputAutoFocusOptions,
+	type ChatInputAutoFocusTarget,
+} from './N8nChatInput';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';

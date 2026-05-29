@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nPromptInput, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { useI18n } from '@n8n/i18n';
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const inputRef = useTemplateRef<InstanceType<typeof N8nPromptInput>>('inputRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 
 defineExpose({
@@ -57,7 +57,7 @@ defineExpose({
 
 		<slot name="callouts" />
 
-		<N8nPromptInput
+		<N8nChatInput
 			ref="inputRef"
 			:model-value="props.message"
 			:placeholder="placeholder"
@@ -131,7 +131,7 @@ defineExpose({
 					/>
 				</N8nTooltip>
 			</template>
-		</N8nPromptInput>
+		</N8nChatInput>
 	</form>
 </template>
 

@@ -17,7 +17,7 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIconButton from '../N8nIconButton';
-import N8nPromptInput from '../N8nPromptInput';
+import N8nChatInput from '../N8nChatInput';
 import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import { getSupportedMessageComponent } from './messages/helpers';
@@ -294,7 +294,7 @@ const lastMessageQuickReplies = computed(() => {
 });
 
 const textInputValue = ref<string>('');
-const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
+const promptInputRef = ref<InstanceType<typeof N8nChatInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const suggestionsInputFocusFn = ref<(() => void) | null>(null);
 
@@ -613,7 +613,7 @@ defineExpose({
 								:on-upgrade-click="() => emit('upgrade-click')"
 								:register-focus="(fn: () => void) => (suggestionsInputFocusFn = fn)"
 							/>
-							<N8nPromptInput
+							<N8nChatInput
 								v-else
 								ref="promptInputRef"
 								v-model="textInputValue"
@@ -634,7 +634,7 @@ defineExpose({
 								<template v-if="$slots['extra-actions']" #left-actions>
 									<slot name="extra-actions" />
 								</template>
-							</N8nPromptInput>
+							</N8nChatInput>
 						</template>
 					</N8nPromptInputSuggestions>
 				</div>
@@ -681,7 +681,7 @@ defineExpose({
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
 				<slot name="inputPlaceholder" />
 			</div>
-			<N8nPromptInput
+			<N8nChatInput
 				v-else
 				ref="promptInputRef"
 				v-model="textInputValue"
@@ -694,7 +694,7 @@ defineExpose({
 				:show-ask-owner-tooltip="showAskOwnerTooltip"
 				:max-length="maxCharacterLength"
 				:refocus-after-send="true"
-				data-test-id="chat-input"
+				data-test-id="prompt-input"
 				autofocus
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
@@ -703,7 +703,7 @@ defineExpose({
 				<template v-if="$slots['extra-actions']" #left-actions>
 					<slot name="extra-actions" />
 				</template>
-			</N8nPromptInput>
+			</N8nChatInput>
 		</div>
 	</div>
 </template>

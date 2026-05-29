@@ -28,13 +28,13 @@ vi.mock('./NodeMentionDropdown.vue', () => ({
 	}),
 }));
 
-// Mock N8nPromptInput
+// Mock N8nChatInput
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<Record<string, unknown>>();
 	return {
 		...actual,
-		N8nPromptInput: defineComponent({
-			name: 'N8nPromptInput',
+		N8nChatInput: defineComponent({
+			name: 'N8nChatInput',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -54,7 +54,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					focusInput: vi.fn(),
 				});
 				return () =>
-					h('div', { 'data-test-id': 'prompt-input' }, [
+					h('div', { 'data-test-id': 'chat-input' }, [
 						slots.leading?.(),
 						slots.actions?.(),
 						slots.trailing?.(),

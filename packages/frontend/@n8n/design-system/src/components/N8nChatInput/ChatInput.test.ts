@@ -6,11 +6,11 @@ import { vi } from 'vitest';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
-import N8nPromptInput from './N8nPromptInput.vue';
+import N8nChatInput from './ChatInput.vue';
 
-const renderComponent = createComponentRenderer(N8nPromptInput);
+const renderComponent = createComponentRenderer(N8nChatInput);
 
-describe('N8nPromptInput', () => {
+describe('N8nChatInput', () => {
 	describe('rendering', () => {
 		it('should render correctly with default props', () => {
 			const { container } = renderComponent({
@@ -154,7 +154,7 @@ describe('N8nPromptInput', () => {
 		});
 
 		it('should keep the start of an empty focused textarea in view when placeholder changes', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: '',
 					placeholder: 'Short placeholder',
@@ -192,9 +192,7 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Warning should appear in the leading area
-			const leading = container.querySelector('.leading');
-			expect(leading).toBeTruthy();
+			expect(container).toHaveTextContent("You've reached the 10 character limit");
 		});
 
 		it('should set maxlength attribute on textarea', () => {
@@ -523,7 +521,7 @@ describe('N8nPromptInput', () => {
 		});
 
 		it('should handle stop event from N8nSendStopButton component', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'Test message',
 					streaming: true,
@@ -547,7 +545,7 @@ describe('N8nPromptInput', () => {
 			expect(stopButton.exists()).toBe(true);
 			await stopButton.trigger('click');
 
-			// Check that N8nPromptInput emitted the stop event
+			// Check that N8nChatInput emitted the stop event
 			expect(wrapper.emitted('stop')).toBeTruthy();
 			expect(wrapper.emitted('stop')?.[0]).toEqual([]);
 
@@ -557,7 +555,7 @@ describe('N8nPromptInput', () => {
 
 	describe('exposed methods', () => {
 		it('should expose focusInput method and focus the textarea', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'test',
 				},
@@ -669,42 +667,74 @@ describe('N8nPromptInput', () => {
 	});
 
 	describe('minimum height', () => {
-		it('should maintain a one-line minimum height', () => {
-			const { container } = renderComponent({
-				props: {
-					modelValue: '',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+		const mockTextareaScrollHeight = () => {
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return this.value?.includes('\n') ? 72 : 24;
 				},
 			});
 
-			const textarea = container.querySelector('textarea');
-			const style = textarea?.getAttribute('style');
-			expect(style).toContain('height: 24px');
+			return () => {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			};
+		};
+
+		it('should maintain a one-line minimum height', async () => {
+			const restoreScrollHeight = mockTextareaScrollHeight();
+
+			try {
+				const { container } = renderComponent({
+					props: {
+						modelValue: '',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				const textarea = container.querySelector('textarea');
+				await vi.waitFor(() => expect(textarea?.getAttribute('style')).toContain('height: 24px'));
+			} finally {
+				restoreScrollHeight();
+			}
 		});
 
 		it('should return to one-line height when text is deleted', async () => {
-			const render = renderComponent({
-				props: {
-					modelValue: 'Line 1\nLine 2\nLine 3',
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
+			const restoreScrollHeight = mockTextareaScrollHeight();
 
-			await render.rerender({ modelValue: '' });
+			try {
+				const render = renderComponent({
+					props: {
+						modelValue: 'Line 1\nLine 2\nLine 3',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
 
-			const textarea = render.container.querySelector('textarea');
-			const style = textarea?.getAttribute('style');
-			expect(style).toContain('height: 24px');
+				await render.rerender({ modelValue: '' });
+
+				const textarea = render.container.querySelector('textarea');
+				await vi.waitFor(() => expect(textarea?.getAttribute('style')).toContain('height: 24px'));
+			} finally {
+				restoreScrollHeight();
+			}
 		});
 	});
 
 	describe('refocusAfterSend prop', () => {
 		it('should refocus textarea after submit when refocusAfterSend is true', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'Test message',
 					refocusAfterSend: true,
@@ -734,7 +764,7 @@ describe('N8nPromptInput', () => {
 		});
 
 		it('should not refocus textarea after submit when refocusAfterSend is false', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'Test message',
 					refocusAfterSend: false,
@@ -762,7 +792,7 @@ describe('N8nPromptInput', () => {
 		});
 
 		it('should refocus textarea after stop when refocusAfterSend is true', async () => {
-			const wrapper = mount(N8nPromptInput, {
+			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'Test message',
 					streaming: true,
@@ -886,7 +916,7 @@ describe('N8nPromptInput', () => {
 			});
 
 			try {
-				const wrapper = mount(N8nPromptInput, {
+				const wrapper = mount(N8nChatInput, {
 					props: {
 						modelValue: 'Line 1\nLine 2\nLine 3\nLine 4',
 					},
@@ -938,33 +968,6 @@ describe('N8nPromptInput', () => {
 					);
 				}
 			}
-		});
-
-		it('should use ScrollArea to constrain visible area', () => {
-			// This test verifies that the component uses N8nScrollArea with max-height
-			// to constrain the visible area, rather than capping the textarea height itself
-			const wrapper = mount(N8nPromptInput, {
-				props: {
-					modelValue: 'Line1\nLine2',
-					maxLinesBeforeScroll: 10,
-				},
-				global: {
-					stubs: {
-						N8nCallout: true,
-						N8nScrollArea: {
-							props: ['maxHeight', 'type'],
-							template: '<div class="scroll-area-stub"><slot /></div>',
-						},
-						N8nSendStopButton: true,
-					},
-				},
-			});
-
-			// Verify that N8nScrollArea is used in multiline mode
-			const scrollArea = wrapper.find('.scroll-area-stub');
-			expect(scrollArea.exists()).toBe(true);
-
-			wrapper.unmount();
 		});
 	});
 

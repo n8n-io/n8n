@@ -1,12 +1,12 @@
 import { computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 
-export interface PromptInputAutoFocusTarget {
+export interface ChatInputAutoFocusTarget {
 	focus: () => void;
 	appendText?: (text: string) => void;
 }
 
-export interface PromptInputAutoFocusOptions {
+export interface ChatInputAutoFocusOptions {
 	disabled?: MaybeRefOrGetter<boolean>;
 	reservedKeys?: MaybeRefOrGetter<readonly string[]>;
 }
@@ -33,9 +33,9 @@ function isPrintableKey(event: KeyboardEvent) {
 	return event.key.length === 1;
 }
 
-export function usePromptInputAutoFocus(
-	inputRef: Ref<PromptInputAutoFocusTarget | null | undefined>,
-	options: PromptInputAutoFocusOptions = {},
+export function useChatInputAutoFocus(
+	inputRef: Ref<ChatInputAutoFocusTarget | null | undefined>,
+	options: ChatInputAutoFocusOptions = {},
 ) {
 	const activeElement = useActiveElement();
 

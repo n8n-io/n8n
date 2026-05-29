@@ -12,7 +12,7 @@ defineOptions({
 	inheritAttrs: false,
 });
 
-export interface N8nPromptInputProps {
+export interface N8nChatInputProps {
 	modelValue?: string;
 	placeholder?: string;
 	maxLength?: number;
@@ -38,7 +38,7 @@ export interface N8nPromptInputProps {
 
 const INFINITE_CREDITS = -1;
 
-const props = withDefaults(defineProps<N8nPromptInputProps>(), {
+const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	modelValue: '',
 	placeholder: '',
 	maxLength: 5000,
