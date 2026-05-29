@@ -50,6 +50,8 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 0,
 				failedCount: 0,
 			});
@@ -72,6 +74,8 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 0,
 				failedCount: 0,
 			});
@@ -85,6 +89,8 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-current'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 0,
 				failedCount: 0,
 			});
@@ -108,6 +114,8 @@ describe('mcp.store', () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
 				updatedIds: [],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 1,
 				failedCount: 0,
 			});
@@ -140,7 +148,7 @@ describe('mcp.store', () => {
 	});
 
 	describe('toggleWorkflowsMcpAccess (bulk)', () => {
-		it('applies the new value only to workflows the backend confirmed were updated', async () => {
+		it('applies the new value only to workflows the backend confirmed', async () => {
 			workflowsListStore.workflowsById = {
 				'wf-1': {
 					id: 'wf-1',
@@ -152,31 +160,42 @@ describe('mcp.store', () => {
 					name: 'wf-2',
 					settings: { availableInMCP: false, executionOrder: 'v1' },
 				},
+				'wf-3': {
+					id: 'wf-3',
+					name: 'wf-3',
+					settings: { availableInMCP: false, executionOrder: 'v1' },
+				},
 			} as unknown as typeof workflowsListStore.workflowsById;
 
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
+				unchangedCount: 1,
+				unchangedIds: ['wf-2'],
 				skippedCount: 1,
 				failedCount: 0,
 			});
 
 			const response = await store.toggleWorkflowsMcpAccess(
-				{ workflowIds: ['wf-1', 'wf-2'] },
+				{ workflowIds: ['wf-1', 'wf-2', 'wf-3'] },
 				true,
 			);
 
 			expect(response.updatedIds).toEqual(['wf-1']);
+			expect(response.unchangedIds).toEqual(['wf-2']);
 			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
+			expect(workflowsListStore.workflowsById['wf-2'].settings?.availableInMCP).toBe(true);
 			// Skipped workflow remains untouched.
-			expect(workflowsListStore.workflowsById['wf-2'].settings?.availableInMCP).toBe(false);
+			expect(workflowsListStore.workflowsById['wf-3'].settings?.availableInMCP).toBe(false);
 		});
 
 		it('does not throw when none of the targeted workflows were updated', async () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
 				updatedIds: [],
-				skippedCount: 2,
+				unchangedCount: 2,
+				unchangedIds: ['wf-1', 'wf-2'],
+				skippedCount: 0,
 				failedCount: 0,
 			});
 
@@ -185,7 +204,9 @@ describe('mcp.store', () => {
 			).resolves.toEqual({
 				updatedCount: 0,
 				updatedIds: [],
-				skippedCount: 2,
+				unchangedCount: 2,
+				unchangedIds: ['wf-1', 'wf-2'],
+				skippedCount: 0,
 				failedCount: 0,
 			});
 		});
@@ -194,6 +215,7 @@ describe('mcp.store', () => {
 			// Project-scoped responses from the backend omit `updatedIds`.
 			const spy = vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 			});
@@ -207,6 +229,7 @@ describe('mcp.store', () => {
 			// Folder-scoped responses from the backend omit `updatedIds`.
 			const spy = vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 			});
@@ -227,13 +250,14 @@ describe('mcp.store', () => {
 
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 5,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 			});
 
 			await expect(
 				store.toggleWorkflowsMcpAccess({ projectId: 'project-1' }, true),
-			).resolves.toEqual({ updatedCount: 5, skippedCount: 0, failedCount: 0 });
+			).resolves.toEqual({ updatedCount: 5, unchangedCount: 0, skippedCount: 0, failedCount: 0 });
 
 			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
 		});
@@ -241,13 +265,19 @@ describe('mcp.store', () => {
 		it('surfaces partial failures from the backend via failedCount', async () => {
 			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 500,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 100,
 			});
 
 			await expect(
 				store.toggleWorkflowsMcpAccess({ projectId: 'big-project' }, true),
-			).resolves.toEqual({ updatedCount: 500, skippedCount: 0, failedCount: 100 });
+			).resolves.toEqual({
+				updatedCount: 500,
+				unchangedCount: 0,
+				skippedCount: 0,
+				failedCount: 100,
+			});
 		});
 	});
 });

@@ -14,6 +14,7 @@ import {
 	renderSkillCatalogPrompt,
 } from '..';
 import { Agent } from '../../sdk/agent';
+import { isZodSchema } from '../../utils/zod';
 
 describe('runtime skills', () => {
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
@@ -195,6 +196,53 @@ description: Has no instructions.
 		}
 	});
 
+	it('hashes skill content independently of load locations', () => {
+		const linkedFiles = {
+			references: [{ path: 'references/guide.md', bytes: 5, sha256: 'abc123' }],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		};
+		const baseSkill = {
+			id: 'same-skill',
+			name: 'same-skill',
+			description: 'Same skill',
+			instructions: 'Use the same instructions.',
+			sourceName: 'same-skill',
+			path: '/ci/workspace/skills/same-skill/SKILL.md',
+			sourcePath: '/ci/workspace/skills/same-skill/SKILL.md',
+			directory: '/ci/workspace/skills/same-skill',
+			sourceDirectory: 'ci-category/same-skill',
+			category: 'ci-category',
+			linkedFiles,
+		};
+		const movedSkill = {
+			...baseSkill,
+			sourceName: 'renamed-folder',
+			path: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			sourcePath: '/usr/local/lib/node_modules/n8n/skills/renamed-folder/SKILL.md',
+			directory: '/usr/local/lib/node_modules/n8n/skills/renamed-folder',
+			sourceDirectory: 'prod-category/renamed-folder',
+			category: 'prod-category',
+		};
+
+		const baseRegistry = createRuntimeSkillRegistry([baseSkill]);
+		const movedRegistry = createRuntimeSkillRegistry([movedSkill]);
+		const changedRegistry = createRuntimeSkillRegistry([
+			{ ...movedSkill, instructions: 'Use different instructions.' },
+		]);
+
+		expect(baseRegistry.skills[0].path).not.toBe(movedRegistry.skills[0].path);
+		expect(baseRegistry.skills[0].sourceDirectory).not.toBe(
+			movedRegistry.skills[0].sourceDirectory,
+		);
+		expect(baseRegistry.skills[0].hash).toBe(movedRegistry.skills[0].hash);
+		expect(baseRegistry.skillsHash).toBe(movedRegistry.skillsHash);
+		expect(baseRegistry.skillsHash).not.toBe(changedRegistry.skillsHash);
+	});
+
 	it('rejects duplicate skill ids and names', () => {
 		expect(() =>
 			createRuntimeSkillRegistry([
@@ -322,8 +370,23 @@ Use the workflow SDK.`,
 		const listedSkill = (listOutput as { skills: Array<Record<string, unknown>> }).skills[0];
 		expect(listedSkill).not.toHaveProperty('content');
 		expect(listedSkill).not.toHaveProperty('instructions');
-
+		expect(loadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '/' }).data,
+		).toEqual({ skillId: 'summarize_notes' });
 		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'SKILL.md' }, {}),
+		).resolves.toMatchObject({
 			ok: true,
 			success: true,
 			skillId: 'summarize_notes',
@@ -502,24 +565,43 @@ Use the workflow SDK.`,
 		]);
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
+		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(unsupportedLoadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(unsupportedLoadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			unsupportedLoadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes' });
 		await expect(
 			unsupportedLoadTool.handler?.(
 				{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
 				{},
 			),
 		).resolves.toMatchObject({
-			ok: false,
-			success: false,
-			error: 'This skill source does not support loading linked files.',
+			ok: true,
+			success: true,
+			content: 'Extract decisions.',
 		});
 
 		const loadTool = createSkillLoadTool(fileBackedSource);
+		expect(loadTool.description).toContain('use filePath only for a linked file path');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
 			ok: false,
 			success: false,
-			error: 'File is not registered for skill Summarize notes: references/missing.md',
+			error:
+				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
 

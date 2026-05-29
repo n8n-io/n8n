@@ -33,9 +33,13 @@ vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const useNDVStore = vi.fn();
+	return {
+		useNDVStore,
+		injectNDVStore: vi.fn(() => ({ value: useNDVStore() })),
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),

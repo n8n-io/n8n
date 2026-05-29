@@ -1347,7 +1347,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	validateCookieAuth(cookieValue: string): Promise<void>;
+	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -3091,6 +3091,18 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
+export type WorkflowExecutionSource = 'user' | 'instance_ai';
+
+export type WorkflowExecutionMockDataSource =
+	| 'trigger_input'
+	| 'verification_pin_data'
+	| 'workflow_pin_data';
+
+export interface IWorkflowExecutionTelemetryMetadata {
+	source: WorkflowExecutionSource;
+	mockDataSources?: WorkflowExecutionMockDataSource[];
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
@@ -3114,6 +3126,7 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3263,7 +3276,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
-	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.
