@@ -76,7 +76,8 @@ export class WebhookService {
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
 	private async findStaticWebhook(method: Method, path: string) {
-		return await this.webhookRepository.findOneBy({ webhookPath: path, method });
+		const webhooks = await this.webhookRepository.find({ where: { webhookPath: path, method } });
+		return webhooks[0] ?? null;
 	}
 
 	/**
