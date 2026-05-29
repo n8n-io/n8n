@@ -21,10 +21,9 @@ describe('InstanceAiSettingsService', () => {
 			model: 'openai/gpt-4',
 			modelUrl: '',
 			modelApiKey: '',
-			embedderModel: '',
-			semanticRecallTopK: 5,
+			observerMessageTokens: 30_000,
+			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 10,
-			browserMcp: false,
 			mcpServers: '',
 			sandboxEnabled: false,
 			sandboxProvider: '',
@@ -101,7 +100,6 @@ describe('InstanceAiSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 			globalConfig.instanceAi.mcpServers = '';
-			globalConfig.instanceAi.browserMcp = false;
 		});
 
 		it('emits on every successful update', async () => {
@@ -115,14 +113,6 @@ describe('InstanceAiSettingsService', () => {
 
 		it('flags mcpSettingsChanged when mcpServers changes', async () => {
 			await service.updateAdminSettings({ mcpServers: '[{"name":"a","url":"https://a/"}]' });
-
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: true,
-			});
-		});
-
-		it('flags mcpSettingsChanged when browserMcp toggles', async () => {
-			await service.updateAdminSettings({ browserMcp: true });
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
 				mcpSettingsChanged: true,

@@ -6,7 +6,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher'] as const;
+export const AGENTS_MODULE_NAMES = ['node-tools-searcher', 'mcp'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -33,8 +33,12 @@ export class AgentsConfig {
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Currently known: `node-tools-searcher` (surfaces the "Built-in node tools"
-	 * toggle in the agent editor).
+	 * Currently known:
+	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
+	 *   the agent editor.
+	 * - `mcp` — enables the "MCP servers" section in the agent editor and
+	 *   the runtime wiring that builds `McpClient` instances from
+	 *   `config.mcpServers[]`.
 	 *
 	 * Gates the UI surface only — existing agents persisted with a given
 	 * capability turned on continue to run even if its token is removed here.

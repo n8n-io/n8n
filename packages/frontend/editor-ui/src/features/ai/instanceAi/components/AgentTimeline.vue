@@ -18,7 +18,7 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import DelegateCard from './DelegateCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -105,44 +105,35 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
-/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
-const childrenById = computed(() => {
-	const map: Record<string, InstanceAiAgentNode> = {};
-	for (const child of props.agentNode.children) {
-		map[child.agentId] = child;
-	}
-	return map;
-});
+function getPlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
+	return (
+		tc.confirmation?.planItems ??
+		(tc.args?.tasks as PlannedTaskArg[] | undefined) ??
+		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
+		[]
+	);
+}
 
-function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
+function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 	const requestId = tc.confirmation?.requestId;
-	if (!requestId) return;
+	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
 
-	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
-	const eventProps = {
-		thread_id: thread.id,
-		input_thread_id: tc.confirmation?.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'plan-review',
-		provided_inputs: [
-			{
-				label: 'plan',
-				options: ['approve', 'request-changes', 'deny'],
-				option_chosen: approved ? 'approve' : 'request-changes',
-			},
-		],
-		skipped_inputs: [],
-		num_tasks: numTasks,
-		...(feedback ? { feedback } : {}),
-	};
-	telemetry.track('User finished providing input', eventProps);
+	if (localStatus === 'approved' || tc.confirmationStatus === 'approved') return 'approved';
+	if (localStatus === 'denied') return 'denied';
+	// `confirmationStatus === 'denied'` covers re-renders where the local action
+	// was lost (e.g. page reload): default to changes-requested since the planner
+	// emits a new plan card on top of the old one in that flow.
+	if (localStatus === 'changes-requested' || tc.confirmationStatus === 'denied') {
+		return 'changes-requested';
+	}
 
-	thread.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void thread.confirmAction(requestId, {
-		kind: 'approval',
-		approved,
-		...(feedback ? { userInput: feedback } : {}),
-	});
+	return 'pending';
+}
+
+function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId || getPlanReviewStatus(tc) !== 'changes-requested') return false;
+	return thread.updatingPlanRequestIds.has(requestId);
 }
 
 /** PlanReviewPanel is read-only when its tool call has settled OR when the
@@ -157,11 +148,19 @@ function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	return false;
 }
 
-function handlePlanDeny(tc: InstanceAiToolCallState) {
+/** Index children by agentId for O(1) lookup and proper reactivity tracking. */
+const childrenById = computed(() => {
+	const map: Record<string, InstanceAiAgentNode> = {};
+	for (const child of props.agentNode.children) {
+		map[child.agentId] = child;
+	}
+	return map;
+});
+
+function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
 
-	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
 	telemetry.track('User finished providing input', {
 		thread_id: thread.id,
 		input_thread_id: tc.confirmation?.inputThreadId ?? '',
@@ -170,7 +169,46 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 		provided_inputs: [
 			{
 				label: 'plan',
-				options: ['approve', 'request-changes', 'deny'],
+				options: ['approve', 'ask-for-edits', 'deny'],
+				option_chosen: 'approve',
+			},
+		],
+		skipped_inputs: [],
+		num_tasks: getPlanTasks(tc).length,
+	});
+
+	thread.resolveConfirmation(requestId, 'approved');
+	if (thread.activePlanEdit?.requestId === requestId) {
+		thread.cancelPlanEdit();
+	}
+	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
+}
+
+function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId || isPlanCardReadOnly(tc)) return;
+
+	thread.startPlanEdit({
+		requestId,
+		inputThreadId: tc.confirmation?.inputThreadId,
+		taskCount: getPlanTasks(tc).length,
+	});
+}
+
+function handlePlanDeny(tc: InstanceAiToolCallState) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+
+	const numTasks = getPlanTasks(tc).length;
+	telemetry.track('User finished providing input', {
+		thread_id: thread.id,
+		input_thread_id: tc.confirmation?.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: 'plan-review',
+		provided_inputs: [
+			{
+				label: 'plan',
+				options: ['approve', 'ask-for-edits', 'deny'],
 				option_chosen: 'deny',
 			},
 		],
@@ -178,6 +216,9 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 		num_tasks: numTasks,
 	});
 
+	if (thread.activePlanEdit?.requestId === requestId) {
+		thread.cancelPlanEdit();
+	}
 	thread.resolveConfirmation(requestId, 'denied');
 	void thread.confirmAction(requestId, { kind: 'planDeny' });
 }
@@ -244,10 +285,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher/eval-setup handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
 				<!-- Plan review must match before the planner renderHint suppression:
 				     when the plan tool attaches the confirmation to its own tool call
@@ -255,15 +295,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"
-					:planned-tasks="
-						toolCallsById[entry.toolCallId].confirmation?.planItems ??
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
-						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
-						[]
-					"
+					:planned-tasks="getPlanTasks(toolCallsById[entry.toolCallId])"
+					:status="getPlanReviewStatus(toolCallsById[entry.toolCallId])"
+					:updating="isPlanReviewUpdating(toolCallsById[entry.toolCallId])"
 					:read-only="isPlanCardReadOnly(toolCallsById[entry.toolCallId])"
-					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
-					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+					@approve="handlePlanApprove(toolCallsById[entry.toolCallId])"
+					@ask-for-edits="handlePlanAskForEdits(toolCallsById[entry.toolCallId])"
 					@deny="handlePlanDeny(toolCallsById[entry.toolCallId])"
 				/>
 				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
@@ -312,16 +349,16 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:key="plannerConfirmation?.confirmation?.requestId ?? 'plan-loading'"
 					:planned-tasks="
 						plannerConfirmation?.confirmation?.planItems ??
-						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						props.agentNode.planItems ??
 						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
 						[]
 					"
 					:loading="!plannerConfirmation"
-					:read-only="!!plannerConfirmation && !plannerConfirmation.isLoading"
-					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
-					@request-changes="
-						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
-					"
+					:status="plannerConfirmation ? getPlanReviewStatus(plannerConfirmation) : 'pending'"
+					:updating="!!plannerConfirmation && isPlanReviewUpdating(plannerConfirmation)"
+					:read-only="!!plannerConfirmation && isPlanCardReadOnly(plannerConfirmation)"
+					@approve="plannerConfirmation && handlePlanApprove(plannerConfirmation)"
+					@ask-for-edits="plannerConfirmation && handlePlanAskForEdits(plannerConfirmation)"
 					@deny="plannerConfirmation && handlePlanDeny(plannerConfirmation)"
 				/>
 

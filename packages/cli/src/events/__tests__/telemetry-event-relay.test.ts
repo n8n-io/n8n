@@ -911,6 +911,7 @@ describe('TelemetryEventRelay', () => {
 				project_type: 'personal',
 				is_dynamic: false,
 				uses_external_secrets: false,
+				jwe_enabled: false,
 			});
 		});
 
@@ -966,6 +967,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				is_dynamic: true,
 				uses_external_secrets: false,
+				jwe_enabled: false,
 			});
 		});
 

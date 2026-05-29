@@ -360,6 +360,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						args.pinAiRoots,
 					),
 				{
 					name: 'scenario_execution',
@@ -940,6 +941,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
 								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
+								pinAiRoots: args.pinAiRoots,
 							}),
 						MAX_CONCURRENT_BUILDS,
 					);

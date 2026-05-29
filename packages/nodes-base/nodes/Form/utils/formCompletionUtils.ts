@@ -2,6 +2,7 @@ import { type Response } from 'express';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import {
 	type NodeTypeAndVersion,
+	type IUser,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	type IBinaryData,
@@ -9,7 +10,13 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
+import {
+	generateFormUserAuthToken,
+	handleNewlines,
+	sanitizeCustomCss,
+	sanitizeHtml,
+	validateSafeRedirectUrl,
+} from './utils';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
@@ -45,6 +52,7 @@ export const renderFormCompletion = async (
 	context: IWebhookFunctions,
 	res: Response,
 	trigger: NodeTypeAndVersion,
+	authedUser?: IUser,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = handleNewlines(
@@ -75,6 +83,13 @@ export const renderFormCompletion = async (
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 	}
 
+	// Embed the form auth token so the completion page's auto-POST (which
+	// resumes the paused workflow) can re-authenticate the user — cookies
+	// aren't sent on fetch from the sandboxed completion page.
+	const authToken = authedUser
+		? generateFormUserAuthToken(context.getNode(), authedUser)
+		: undefined;
+
 	res.render('form-trigger-completion', {
 		title: completionTitle,
 		message: completionMessage,
@@ -84,6 +99,7 @@ export const renderFormCompletion = async (
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
+		authToken,
 	});
 
 	return { noWebhookResponse: true };
