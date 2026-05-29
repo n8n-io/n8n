@@ -10,9 +10,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
-	NodeOperationError,
-	isSafeObjectProperty,
-	setSafeObjectProperty,
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
@@ -386,26 +383,13 @@ export class MicrosoftSql implements INodeType {
 			if (operation === 'delete') {
 				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
-					if (!isSafeObjectProperty(table)) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The value "${table}" is not allowed as a table name`,
-						);
-					}
-
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (!isSafeObjectProperty(deleteKey)) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The value "${deleteKey}" is not allowed as a delete key`,
-						);
-					}
 
 					if (!Object.hasOwn(acc, table)) {
-						setSafeObjectProperty(acc, table, Object.create(null));
+						acc[table] = Object.create(null);
 					}
 					if (!Object.hasOwn(acc[table], deleteKey)) {
-						setSafeObjectProperty(acc[table], deleteKey, []);
+						acc[table][deleteKey] = [];
 					}
 					(acc[table][deleteKey] as INodeExecutionData[]).push(item);
 					return acc;

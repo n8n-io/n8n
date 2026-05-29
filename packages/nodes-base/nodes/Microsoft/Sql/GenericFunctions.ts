@@ -1,7 +1,7 @@
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy, isSafeObjectProperty, setSafeObjectProperty } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { chunk, flatten } from '@utils/utilities';
 
@@ -18,7 +18,6 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
 	// Prepare the data to insert and copy it to be returned
 	const newItem: IDataObject = Object.create(null);
 	for (const property of properties) {
-		if (!isSafeObjectProperty(property)) continue;
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
 		} else {
@@ -43,25 +42,16 @@ export function createTableStruct(
 ): ITables {
 	return items.reduce((tables, item, index) => {
 		const table = getNodeParam('table', index) as string;
-		if (!isSafeObjectProperty(table)) {
-			throw new Error(`The value "${table}" is not allowed as a table name`);
-		}
-
 		const columnString = getNodeParam('columns', index) as string;
 		const columns = columnString.split(',').map((column) => column.trim());
-		for (const column of columns) {
-			if (!isSafeObjectProperty(column)) {
-				throw new Error(`The value "${column}" is not allowed as a column name`);
-			}
-		}
 
 		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
 		const keyParam = keyName ? (getNodeParam(keyName, index) as string) : undefined;
 		if (!Object.hasOwn(tables, table)) {
-			setSafeObjectProperty(tables, table, Object.create(null));
+			tables[table] = Object.create(null);
 		}
 		if (!Object.hasOwn(tables[table], columnString)) {
-			setSafeObjectProperty(tables[table], columnString, []);
+			tables[table][columnString] = [];
 		}
 		if (keyName) {
 			itemCopy[keyName] = keyParam;
