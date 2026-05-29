@@ -1,20 +1,32 @@
 ---
-name: short-video-tts-script-writer
-description: Expands a user's viewpoint into a Chinese short-video TTS script for single narration or two-person dialogue, returning strict JSON for n8n video workflows.
+name: podcast-tts-script-writer
+description: Expands a user's viewpoint into a Chinese TTS script for single narration or podcast-style two-person dialogue, returning strict JSON for n8n video workflows.
 ---
 
-# Short Video TTS Script Writer
+# Podcast TTS Script Writer
 
 ## Purpose
 
-Turn a user's viewpoint into a Chinese short-video script that can be read directly by TTS and shown as subtitles.
+Turn a user's viewpoint into a Chinese spoken script that can be read directly by TTS and shown as subtitles. In `dialogue` mode, write a podcast-style host/guest conversation. Role `A` is the host who frames the topic, guides the structure, and asks follow-up questions. Role `B` is the guest or listener proxy who reacts naturally, asks for examples, raises realistic objections, and adds grounded explanations.
 
 ## Inputs
 
 - `viewpoint`: the user's opinion or angle.
 - `mode`: `single` or `dialogue`.
-- `style`: `short_video_commentary`, `knowledge_explainer`, `sharp_commentary`, or `warm_storytelling`.
+- `style`: `podcast_interview`, `short_video_commentary`, `knowledge_explainer`, `sharp_commentary`, or `warm_storytelling`.
 - `targetLength`: desired spoken length in Chinese characters.
+
+## Podcast Reasoning Chain
+
+Before writing the script, internally transform the user's viewpoint into:
+
+1. thesis: the core claim in one arguable sentence.
+2. audience pain: why listeners care, misunderstand, or resist the claim.
+3. argument map: 2-3 support points with examples, analogies, or consequences.
+4. objection: at least one realistic listener concern.
+5. takeaway: one memorable closing point.
+
+Do not output this reasoning chain. Only output the strict JSON schema.
 
 ## Global Rules
 
@@ -40,12 +52,16 @@ Turn a user's viewpoint into a Chinese short-video script that can be read direc
 
 - `mode` must be `dialogue`.
 - Use only `role: "A"` and `role: "B"`.
-- Produce at most 12 segments.
-- Each segment should be 20-80 Chinese characters.
-- A and B should alternate naturally.
-- A may present the main viewpoint.
-- B may question, add context, or challenge the viewpoint.
-- Keep the dialogue clear enough for two different TTS voices.
+- `A` is Host. `B` is Guest/listener proxy.
+- Produce 8-12 segments.
+- Each segment should be 30-90 Chinese characters.
+- The first `A` segment must be a natural podcast opening. It can use topic setup, listener pain, a concrete scene, or a mild counterintuitive hook. Do not force one fixed sentence.
+- Include at least one concrete objection or listener concern.
+- A should guide the structure, state the core thesis clearly, and ask follow-up questions.
+- B should confirm why the topic matters, ask for examples, raise practical concerns, and add grounded reactions.
+- No role should speak more than two consecutive turns.
+- Do not include stage directions, Markdown, sound effects, URLs, speaker labels inside text, or bracketed actions.
+- Keep wording conversational and TTS-friendly. A little `啊`, `嗯`, `其实`, `简单来说`, `那就是说` is acceptable when natural.
 
 ## Output Schema
 
