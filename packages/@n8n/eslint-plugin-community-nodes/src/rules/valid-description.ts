@@ -40,12 +40,12 @@ export const ValidDescriptionRule = createRule({
 					return;
 				}
 
-				if (descriptionProp.value.type !== AST_NODE_TYPES.Literal) {
-					return;
-				}
+				const value =
+					descriptionProp.value.type === AST_NODE_TYPES.Literal
+						? descriptionProp.value.value
+						: undefined;
 
-				const value = descriptionProp.value.value;
-				if (typeof value !== 'string' || value === '') {
+				if (typeof value !== 'string' || value.trim() === '') {
 					context.report({
 						node: descriptionProp,
 						messageId: 'emptyDescription',

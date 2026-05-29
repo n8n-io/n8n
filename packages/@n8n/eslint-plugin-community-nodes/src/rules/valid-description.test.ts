@@ -47,6 +47,30 @@ ruleTester.run('valid-description', ValidDescriptionRule, {
 			errors: [{ messageId: 'emptyDescription' }],
 		},
 		{
+			name: 'description is whitespace only',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "description": "   \\t\\n" }',
+			errors: [{ messageId: 'emptyDescription' }],
+		},
+		{
+			name: 'description is null',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "description": null }',
+			errors: [{ messageId: 'emptyDescription' }],
+		},
+		{
+			name: 'description is a non-string literal (number)',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "description": 42 }',
+			errors: [{ messageId: 'emptyDescription' }],
+		},
+		{
+			name: 'description is an object',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "description": { "en": "Real description" } }',
+			errors: [{ messageId: 'emptyDescription' }],
+		},
+		{
 			name: 'empty package.json object',
 			filename: 'package.json',
 			code: '{}',
