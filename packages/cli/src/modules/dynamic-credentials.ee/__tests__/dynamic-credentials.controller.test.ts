@@ -53,7 +53,7 @@ describe('DynamicCredentialsController', () => {
 			metadata: {},
 		});
 
-		// Default when a test supplies req.user: the caller can access the credential.
+		// Default: caller can access the credential
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 	});
 

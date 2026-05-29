@@ -54,8 +54,7 @@ describe('WorkflowStatusController', () => {
 		});
 
 		mockWorkflowFinderService = mock<WorkflowFinderService>();
-		// Default: the caller can access the workflow (gate is a no-op for the
-		// existing cases; deny-path is covered by its own test below).
+		// Default: caller can access the workflow
 		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
 		controller = new WorkflowStatusController(

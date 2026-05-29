@@ -66,9 +66,7 @@ export class WorkflowStatusController {
 			throw new BadRequestError('Workflow ID is missing');
 		}
 
-		// External resolver callers authenticate via the endpoint token and carry no
-		// user. In-app callers carry a session user, so verify they can access the
-		// workflow rather than letting them read any workflow's credential metadata.
+		// In-app callers carry a user and must have access; token-auth resolver callers don't
 		const user = (req as AuthenticatedRequest).user;
 		if (user) {
 			const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [

@@ -1,17 +1,5 @@
-/**
- * Access-control coverage for the Source Control read endpoints.
- *
- * Drives the real server stack — the actual auth + RBAC middleware and the real
- * SourceControlScopedService context resolution (backed by the test DB). Only the
- * git-touching service methods are stubbed, so what is exercised here is the
- * authorization decision, not git.
- *
- * Three identities are used:
- *  - owner             — global owner (all source control scopes)
- *  - member            — global member with no source control scopes
- *  - projectAdminMember — global member who is admin of a team project, and so
- *                        holds project-level `sourceControl:push`
- */
+// Access-control coverage for Source Control read endpoints. Runs the real auth +
+// RBAC stack and scoped-service context resolution; only git-touching methods are stubbed.
 import { mockInstance, createTeamProject } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -50,8 +38,7 @@ beforeAll(async () => {
 	member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	projectAdminMember = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
-	// A member who is admin of a team project gains project-level
-	// `sourceControl:push`, the legitimate non-global path into get-status.
+	// Project admin gains project-level sourceControl:push — the non-global path into get-status
 	await createTeamProject('Access Control Team Project', projectAdminMember);
 
 	authOwnerAgent = testServer.authAgentFor(owner);

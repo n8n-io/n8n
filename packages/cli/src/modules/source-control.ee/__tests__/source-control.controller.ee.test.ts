@@ -286,16 +286,8 @@ describe('SourceControlController', () => {
 			});
 		});
 
-		/**
-		 * Exhaustive authorization audit (CAT-3235 regression guard).
-		 *
-		 * Every route on this controller must be authorized in one of two ways:
-		 *  1. a static `@GlobalScope`/`@ProjectScope` decorator (`accessScope` set), or
-		 *  2. an explicit in-handler authorization check, listed below with its mechanism.
-		 *
-		 * Adding a new route without doing one of these will fail this test, so a
-		 * route can never silently ship without an authorization decision.
-		 */
+		// Routes authorized in-handler rather than by a decorator, with their mechanism.
+		// A route missing from both this map and a decorator fails the audit below.
 		const IN_HANDLER_AUTHZ: Record<string, string> = {
 			getPreferences: 'redacts repositoryUrl/HTTPS creds unless sourceControl:manage',
 			getStatus: 'sourceControlScopedService.ensureIsAllowedToGetStatus',
@@ -331,8 +323,7 @@ describe('SourceControlController', () => {
 				SourceControlController as Controller,
 			);
 
-			// guards against stale allowlist entries hiding a future regression:
-			// every allowlisted handler must (a) still exist and (b) still be decorator-less
+			// Every allowlisted handler must still exist and still be decorator-less
 			for (const handlerName of Object.keys(IN_HANDLER_AUTHZ)) {
 				const route = controllerMetadata.routes.get(handlerName);
 				expect(route).toBeDefined();

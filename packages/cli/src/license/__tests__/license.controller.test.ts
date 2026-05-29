@@ -8,8 +8,6 @@ describe('LicenseController route access scopes', () => {
 		LicenseController as Controller,
 	);
 
-	// Community-edition registration triggers an external call on behalf of the
-	// instance, so it must require license:manage like the other /license mutations.
 	it('gates registerCommunityEdition behind license:manage', () => {
 		expect(metadata.routes.get('registerCommunityEdition')?.accessScope).toEqual({
 			scope: 'license:manage',
@@ -17,7 +15,6 @@ describe('LicenseController route access scopes', () => {
 		});
 	});
 
-	// Guard the existing siblings so the asymmetry cannot reappear.
 	it.each(['requestEnterpriseTrial', 'activateLicense', 'renewLicense'])(
 		'%s is gated behind license:manage',
 		(handler) => {

@@ -41,9 +41,7 @@ export class DynamicCredentialsController {
 		credentialId: string,
 		req: Request,
 	): Promise<CredentialsEntity> {
-		// External resolver callers authenticate via the endpoint token and carry no
-		// user. In-app callers carry a session user, so verify they actually have
-		// access to this credential rather than letting them target any id.
+		// In-app callers carry a user and must have access; token-auth resolver callers don't
 		const user = (req as AuthenticatedRequest).user;
 		if (user) {
 			const accessible = await this.credentialsFinderService.findCredentialForUser(
