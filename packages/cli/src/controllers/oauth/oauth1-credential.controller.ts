@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { OAuthRequest } from '@/requests';
 
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
@@ -13,6 +14,7 @@ export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	/** Get Authorization url */
@@ -89,6 +91,15 @@ export class OAuth1CredentialController {
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},
 				);
+
+				if (typeof state.userId === 'string') {
+					this.eventService.emit('private-credential-user-connected', {
+						user: { id: state.userId },
+						credentialType: credential.type,
+						credentialId: credential.id,
+					});
+				}
+
 				return res.render('oauth-callback');
 			}
 		} catch (e) {

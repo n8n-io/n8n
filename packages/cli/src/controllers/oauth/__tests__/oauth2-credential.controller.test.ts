@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import { EventService } from '@/events/event.service';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -19,6 +20,7 @@ describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
+	const eventService = mockInstance(EventService);
 
 	mockInstance(Logger);
 
@@ -158,7 +160,7 @@ describe('OAuth2CredentialController', () => {
 					}) as any,
 			);
 
-			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret', existing: 'data' };
 			const mockState = {
 				token: 'token',
@@ -209,6 +211,11 @@ describe('OAuth2CredentialController', () => {
 				'resolver-id',
 				{},
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('private-credential-user-connected', {
+				user: { id: '123' },
+				credentialType: 'genericOAuth2',
+				credentialId: '1',
+			});
 			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
@@ -830,7 +837,7 @@ describe('OAuth2CredentialController', () => {
 				jest
 					.mocked(ClientOAuth2)
 					.mockImplementation(() => ({ code: { getToken: mockGetToken } }) as any);
-				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
 				oauthService.resolveCredential.mockResolvedValueOnce([
 					mockResolvedCredential,
 					{ csrfSecret: 'csrf-secret' },
@@ -872,6 +879,11 @@ describe('OAuth2CredentialController', () => {
 					'resolver-1',
 					{ tenant: 'acme' },
 				);
+				expect(eventService.emit).toHaveBeenCalledWith('private-credential-user-connected', {
+					user: { id: '123' },
+					credentialType: 'genericOAuth2',
+					credentialId: '1',
+				});
 				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			});
 		});
