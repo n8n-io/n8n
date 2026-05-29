@@ -37,7 +37,7 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@deedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
@@ -175,7 +175,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@deedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -198,7 +198,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@deedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -368,7 +368,7 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@deedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
@@ -377,7 +377,7 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
-          
+
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
   post-qa-metrics-comment:
