@@ -82,20 +82,19 @@ export function validateAndResolveMongoCredentials(
 
 function isScalarUpdateKeyValue(
 	value: unknown,
-): value is string | number | boolean | bigint | Date | ObjectId | null {
+): value is string | number | boolean | bigint | Date | null {
 	if (value === null) return true;
 	const type = typeof value;
 	if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint') {
 		return true;
 	}
-	return value instanceof Date || value instanceof ObjectId;
+	return value instanceof Date;
 }
 
 function describeUpdateKeyValueType(value: unknown): string {
 	if (value === null) return 'null';
 	if (Array.isArray(value)) return 'array';
 	if (value instanceof Date) return 'date';
-	if (value instanceof ObjectId) return 'ObjectId';
 	return typeof value;
 }
 

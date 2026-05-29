@@ -1,4 +1,3 @@
-import { ObjectId } from 'mongodb';
 import type { INode } from 'n8n-workflow';
 
 import { prepareItems } from './GenericFunctions';
@@ -122,11 +121,8 @@ describe('MongoDB Node: Generic Functions', () => {
 				expect(() => prepareItems(args)).not.toThrow();
 			});
 
-			it('accepts Date and ObjectId updateKey values', () => {
-				const items = [
-					{ json: { id: new Date('2024-01-01'), value: 'a' } },
-					{ json: { id: new ObjectId(), value: 'b' } },
-				];
+			it('accepts Date updateKey values', () => {
+				const items = [{ json: { id: new Date('2024-01-01'), value: 'a' } }];
 				const args = { items, fields: ['value'], updateKey: 'id', node: mockNode };
 
 				expect(() => prepareItems(args)).not.toThrow();
