@@ -38,6 +38,7 @@ Confirmed usable for the current API key and resource, and included in the MVP v
 | --- | --- | --- |
 | `zh_male_wennuanahu_uranus_bigtts` | 温柔阿虎 | Default warm mature male host |
 | `zh_male_liufei_uranus_bigtts` | 刘飞 | Mature male guest or host |
+| `zh_male_yuanboxiaoshu_uranus_bigtts` | 渊博小叔 | Mature knowledgeable male host or guest |
 | `zh_female_xiaohe_uranus_bigtts` | 小何 | Default mature female guest |
 | `zh_female_yingyujiaoxue_uranus_bigtts` | Tina 老师 | Mature female teaching/podcast candidate |
 
@@ -119,6 +120,7 @@ Recommended host voices:
 | --- | --- | --- |
 | `host_male_wennuanahu` | `zh_male_wennuanahu_uranus_bigtts` | 男主持 - 温柔阿虎 |
 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男主持 - 刘飞 |
+| `host_male_yuanboxiaoshu` | `zh_male_yuanboxiaoshu_uranus_bigtts` | 男主持 - 渊博小叔 |
 | `host_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女主持 - Tina 老师 |
 
 Recommended guest voices:
@@ -128,6 +130,7 @@ Recommended guest voices:
 | `guest_female_xiaohe` | `zh_female_xiaohe_uranus_bigtts` | 女嘉宾 - 小何 |
 | `guest_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女嘉宾 - Tina 老师 |
 | `guest_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男嘉宾 - 刘飞 |
+| `guest_male_yuanboxiaoshu` | `zh_male_yuanboxiaoshu_uranus_bigtts` | 男嘉宾 - 渊博小叔 |
 
 Defaults:
 
