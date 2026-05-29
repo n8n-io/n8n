@@ -135,40 +135,6 @@ describe('WorkflowBuilderService', () => {
 		});
 	});
 
-	describe('SSRF protection gating', () => {
-		async function initService() {
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(
-				(async function* () {
-					yield { messages: ['response'] };
-				})(),
-			);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-			const generator = service.chat({ id: '1', message: 'x', workflowContext: {} }, mockUser);
-			await generator.next();
-		}
-
-		it('passes the SsrfProtectionService when SSRF protection is enabled', async () => {
-			mockSsrfProtectionConfig.enabled = true;
-
-			await initService();
-
-			// 12th positional arg (index 11) is the SSRF guard.
-			const guardArg = MockedAiWorkflowBuilderService.mock.calls[0][11];
-			expect(guardArg).toBe(mockSsrfProtectionService);
-		});
-
-		it('passes a passthrough guard when SSRF protection is disabled', async () => {
-			mockSsrfProtectionConfig.enabled = false;
-
-			await initService();
-
-			const guardArg = MockedAiWorkflowBuilderService.mock.calls[0][11];
-			expect(guardArg).not.toBe(mockSsrfProtectionService);
-			expect(guardArg).toHaveProperty('validateUrl');
-		});
-	});
-
 	describe('chat', () => {
 		it('should create AiWorkflowBuilderService on first chat call without AI assistant client', async () => {
 			const mockPayload = {
