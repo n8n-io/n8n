@@ -157,6 +157,7 @@ export class JsTaskRunner extends TaskRunner {
 		// Prevent sandbox escape via process.getBuiltinModule (available in Node.js v22+).
 		// User code inside the VM can reach the outer process through outer-realm objects
 		// (e.g. Buffer.global.process) and use getBuiltinModule to load child_process etc.
+		// See: https://nodejs.org/api/process.html#processgetbuiltinmoduleid
 		if ('getBuiltinModule' in process) {
 			Object.defineProperty(process, 'getBuiltinModule', {
 				value: () => {

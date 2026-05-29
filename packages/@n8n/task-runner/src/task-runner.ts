@@ -103,6 +103,8 @@ export abstract class TaskRunner extends EventEmitter {
 		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
 
+		// Match WebSocket protocol to task broker protocol to prevent downgrade attacks.
+		// HTTPS brokers must use wss:// to maintain TLS encryption.
 		const { host: taskBrokerHost, protocol: taskBrokerProtocol } = new URL(opts.taskBrokerUri);
 		const wsScheme = taskBrokerProtocol === 'https:' ? 'wss' : 'ws';
 		const wsUrl = `${wsScheme}://${taskBrokerHost}/runners/_ws?id=${this.id}`;
