@@ -11,6 +11,7 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -1132,6 +1133,91 @@ describe('useWorkflowSaving', () => {
 				expect(saveStore.pendingSave).toBeNull();
 				expect(saveStore.retryCount).toBe(initialRetryCount + 1);
 				expect(saveStore.lastError).toBe(errorMessage);
+				expect(saveStore.isRetrying).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should not retry autosave on permanent 4xx and should block further autosaves', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-autosave-4xx',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			const errorMessage = 'Potentially malicious string';
+			const responseError = new ResponseError(errorMessage, { httpStatusCode: 400 });
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(responseError);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.setWorkflowId(workflow.id);
+
+			const uiStore = useUIStore();
+			uiStore.markStateDirty();
+			const dirtyCountAtBlock = uiStore.dirtyStateSetCount;
+
+			const saveStore = useWorkflowSaveStore();
+
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.blockedOnInput).toBe(true);
+			expect(saveStore.blockedAtDirtyCount).toBe(dirtyCountAtBlock);
+			expect(saveStore.lastError).toBe(errorMessage);
+
+			// Subsequent scheduleAutoSave calls without a new edit should be ignored.
+			autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			// User edits the workflow: dirty count advances → block clears, autosave resumes.
+			uiStore.markStateDirty();
+			autoSaveWorkflow();
+			expect(saveStore.blockedOnInput).toBe(false);
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+
+		it('should retry autosave on 409 conflict (still treated as retryable)', async () => {
+			vi.useFakeTimers();
+
+			try {
+				const workflow = createTestWorkflow({
+					id: 'w-autosave-409',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+					active: true,
+				});
+
+				vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+				const errorMessage = 'Conflict';
+				const responseError = new ResponseError(errorMessage, {
+					errorCode: 409,
+					httpStatusCode: 409,
+				});
+				vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(responseError);
+
+				workflowsStore.setWorkflowId(workflow.id);
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+				workflowsListStore.workflowsById = { [workflow.id]: workflow };
+				workflowsStore.setWorkflowId(workflow.id);
+
+				modalConfirmSpy.mockResolvedValue(MODAL_CANCEL);
+
+				const saveStore = useWorkflowSaveStore();
+
+				const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+				const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+				expect(result).toBe(false);
+				expect(saveStore.blockedOnInput).toBe(false);
+				expect(saveStore.retryCount).toBe(1);
 				expect(saveStore.isRetrying).toBe(true);
 			} finally {
 				vi.useRealTimers();

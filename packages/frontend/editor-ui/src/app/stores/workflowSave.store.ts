@@ -23,6 +23,11 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 	const lastError = ref<string | null>(null);
 	const conflictModalShown = ref(false);
 
+	// Permanent client-error state: when a 4xx (other than 409) blocks autosave,
+	// we stop retrying until the user makes a new edit (tracked by dirtyStateSetCount).
+	const blockedOnInput = ref(false);
+	const blockedAtDirtyCount = ref<number | null>(null);
+
 	function setAutoSaveState(state: AutoSaveState) {
 		autoSaveState.value = state;
 	}
@@ -52,12 +57,19 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		conflictModalShown.value = value;
 	}
 
+	function setBlockedOnInput(value: boolean, atDirtyCount: number | null = null) {
+		blockedOnInput.value = value;
+		blockedAtDirtyCount.value = value ? atDirtyCount : null;
+	}
+
 	function resetRetry() {
 		retryCount.value = 0;
 		retryDelay.value = RETRY_START_DELAY;
 		isRetrying.value = false;
 		lastError.value = null;
 		conflictModalShown.value = false;
+		blockedOnInput.value = false;
+		blockedAtDirtyCount.value = null;
 	}
 
 	function reset() {
@@ -74,6 +86,8 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		isRetrying,
 		lastError,
 		conflictModalShown,
+		blockedOnInput,
+		blockedAtDirtyCount,
 		setAutoSaveState,
 		setPendingSave,
 		incrementRetry,
@@ -81,6 +95,7 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		setRetrying,
 		setLastError,
 		setConflictModalShown,
+		setBlockedOnInput,
 		resetRetry,
 		reset,
 	};

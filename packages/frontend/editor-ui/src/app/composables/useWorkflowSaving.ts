@@ -40,6 +40,16 @@ import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { ResponseError } from '@n8n/rest-api-client';
+
+function isPermanentClientError(error: unknown): boolean {
+	if (!(error instanceof ResponseError)) return false;
+	const status = error.httpStatusCode;
+	if (typeof status !== 'number') return false;
+	// 409 has its own conflict-resolution flow; all other 4xx are treated as
+	// permanent (the same payload will keep failing until the user edits it).
+	return status >= 400 && status < 500 && status !== 409;
+}
 
 export function useWorkflowSaving({
 	router,
@@ -304,6 +314,25 @@ export function useWorkflowSaving({
 
 				// Handle autosave failures with exponential backoff
 				if (autosaved) {
+					// Permanent client errors (4xx other than 409, which has its own conflict
+					// flow) will not be fixed by retrying — keep retrying just spams the server
+					// with the same invalid payload. Stop the loop and wait for the user to
+					// change the input (detected via dirtyStateSetCount in scheduleAutoSave).
+					if (isPermanentClientError(error)) {
+						saveStore.resetRetry();
+						saveStore.setLastError(error.message);
+						saveStore.setBlockedOnInput(true, uiStore.dirtyStateSetCount);
+
+						toast.showMessage({
+							title: i18n.baseText('workflowHelpers.showMessage.title'),
+							message: error.message,
+							type: 'error',
+							duration: 0,
+						});
+
+						return false;
+					}
+
 					saveStore.incrementRetry();
 					saveStore.setLastError(error.message);
 
@@ -574,7 +603,7 @@ export function useWorkflowSaving({
 						saveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
 					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty && !saveStore.isRetrying) {
+					if (uiStore.stateIsDirty && !saveStore.isRetrying && !saveStore.blockedOnInput) {
 						saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -605,6 +634,17 @@ export function useWorkflowSaving({
 		// Don't schedule if we're offline
 		if (!backendConnectionStore.isOnline) {
 			return;
+		}
+
+		// A previous save hit a permanent 4xx. Stay blocked until the user makes
+		// a new edit — detected by dirtyStateSetCount advancing past the value at
+		// the time the block was set.
+		if (saveStore.blockedOnInput) {
+			const blockedAt = saveStore.blockedAtDirtyCount;
+			if (blockedAt === null || uiStore.dirtyStateSetCount <= blockedAt) {
+				return;
+			}
+			saveStore.setBlockedOnInput(false);
 		}
 
 		saveStore.setAutoSaveState(AutoSaveState.Scheduled);
