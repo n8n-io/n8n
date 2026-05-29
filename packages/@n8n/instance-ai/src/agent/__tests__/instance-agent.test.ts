@@ -60,6 +60,7 @@ jest.mock('../../tools', () => ({
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
+				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: jest.fn(
@@ -67,7 +68,6 @@ jest.mock('../../tools', () => ({
 			new Map([
 				['plan', mockBuiltTool(`plan-${context.runId}`)],
 				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['build-workflow-with-agent', mockBuiltTool(`build-${context.runId}`)],
 				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
 				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
 			]),
@@ -183,7 +183,9 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-run-1']).toMatchObject({ name: 'build-run-1' });
+		expect(attachedTools['build-workflow-run-1']).toMatchObject({
+			name: 'build-workflow-run-1',
+		});
 		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',

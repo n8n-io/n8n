@@ -76,4 +76,21 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('`resolveData`');
 		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
 	});
+
+	it('loads the bundled workflow-builder skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
+
+		expect(skill?.name).toBe('workflow-builder');
+		expect(skill?.platforms).toEqual(['daytona']);
+		for (const tool of ['build-workflow', 'verify-built-workflow', 'nodes']) {
+			expect(skill?.recommendedTools).toContain(tool);
+		}
+
+		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toContain('Tool Surface');
+		expect(loaded?.instructions).toContain('build-workflow');
+		expect(loaded?.instructions).toContain('Verification');
+		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
+	});
 });

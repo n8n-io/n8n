@@ -309,6 +309,21 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		threadId: string,
 		taskId: string,
 	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'checkpoint');
+	}
+
+	async revertBuildWorkflowToPlanned(
+		threadId: string,
+		taskId: string,
+	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'build-workflow');
+	}
+
+	private async revertRunningTaskToPlanned(
+		threadId: string,
+		taskId: string,
+		expectedKind: PlannedTaskRecord['kind'],
+	): Promise<CheckpointSettleResult> {
 		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 
 		await this.storage.update(threadId, (graph) => {
@@ -317,7 +332,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 				result = { ok: false, reason: 'not-found' };
 				return graph;
 			}
-			if (task.kind !== 'checkpoint') {
+			if (task.kind !== expectedKind) {
 				result = { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } };
 				return graph;
 			}
@@ -475,6 +490,12 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			const readyCheckpoint = readyTasks.find((t) => t.kind === 'checkpoint');
 			if (readyCheckpoint) {
 				action = { type: 'orchestrate-checkpoint', graph, tasks: [readyCheckpoint] };
+				return graph;
+			}
+
+			const readyBuildWorkflow = readyTasks.find((t) => t.kind === 'build-workflow');
+			if (readyBuildWorkflow) {
+				action = { type: 'orchestrate-build-workflow', graph, tasks: [readyBuildWorkflow] };
 				return graph;
 			}
 

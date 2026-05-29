@@ -27,12 +27,13 @@ type TraceEvent = {
 };
 
 type RemediationTraceSummary = {
-	submitted: boolean;
+	built: boolean;
 	workflowId?: string;
 	needsUserInput: boolean;
 	mockedSlackCredential: boolean;
-	postSubmitRemediationSubmitsUsed?: number;
-	submitCallsAfterTerminalSetup: number;
+	postBuildRemediationSubmitsUsed?: number;
+	buildCallsAfterTerminalSetup: number;
+	loadedWorkflowBuilderSkill: boolean;
 };
 
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
@@ -52,11 +53,11 @@ function includesMockedSlackSetup(value: unknown): boolean {
 }
 
 function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummary {
-	const submitCalls = getToolCalls(events, 'submit-workflow');
-	const firstSuccessfulSubmitIndex = submitCalls.findIndex(
+	const buildCalls = getToolCalls(events, 'build-workflow');
+	const firstSuccessfulBuildIndex = buildCalls.findIndex(
 		(event) => event.output?.success === true && typeof event.output.workflowId === 'string',
 	);
-	const firstSuccessfulSubmit = submitCalls[firstSuccessfulSubmitIndex]?.output;
+	const firstSuccessfulBuild = buildCalls[firstSuccessfulBuildIndex]?.output;
 	const terminalSetupVerifyIndex = events.findIndex((event) => {
 		const remediation = event.output?.remediation as Record<string, unknown> | undefined;
 		return (
@@ -83,7 +84,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			event.kind === 'tool-call' &&
 			event.toolName === 'workflows' &&
 			event.input?.action === 'setup' &&
-			event.input.workflowId === firstSuccessfulSubmit?.workflowId
+			event.input.workflowId === firstSuccessfulBuild?.workflowId
 		);
 	});
 	const terminalSetupIndex =
@@ -96,19 +97,22 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 		terminalSetupVerifyIndex >= 0
 			? (events[terminalSetupVerifyIndex].output?.remediation as Record<string, unknown>)
 			: undefined;
-	const submitCallsAfterTerminalSetup =
+	const buildCallsAfterTerminalSetup =
 		terminalSetupIndex >= 0
 			? events
 					.slice(terminalSetupIndex + 1)
-					.filter((event) => event.kind === 'tool-call' && event.toolName === 'submit-workflow')
+					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build-workflow')
 					.length
 			: 0;
+	const loadedWorkflowBuilderSkill = getToolCalls(events, 'load_skill').some(
+		(event) => event.input?.skillId === 'workflow-builder',
+	);
 
 	return {
-		submitted: firstSuccessfulSubmitIndex >= 0,
+		built: firstSuccessfulBuildIndex >= 0,
 		workflowId:
-			typeof firstSuccessfulSubmit?.workflowId === 'string'
-				? firstSuccessfulSubmit.workflowId
+			typeof firstSuccessfulBuild?.workflowId === 'string'
+				? firstSuccessfulBuild.workflowId
 				: undefined,
 		needsUserInput:
 			(remediation?.category === 'needs_setup' &&
@@ -116,14 +120,15 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 				remediation.reason === 'mocked_credentials_or_placeholders') ||
 			terminalSetupReportIndex >= 0 ||
 			terminalWorkflowSetupIndex >= 0,
-		mockedSlackCredential: getStringArray(firstSuccessfulSubmit?.mockedCredentialTypes).includes(
+		mockedSlackCredential: getStringArray(firstSuccessfulBuild?.mockedCredentialTypes).includes(
 			'slackApi',
 		),
-		postSubmitRemediationSubmitsUsed:
-			firstSuccessfulSubmitIndex >= 0
-				? submitCalls.length - firstSuccessfulSubmitIndex - 1
+		postBuildRemediationSubmitsUsed:
+			firstSuccessfulBuildIndex >= 0
+				? buildCalls.length - firstSuccessfulBuildIndex - 1
 				: undefined,
-		submitCallsAfterTerminalSetup,
+		buildCallsAfterTerminalSetup,
+		loadedWorkflowBuilderSkill,
 	};
 }
 
@@ -157,7 +162,7 @@ test.describe(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'The builder agent must submit it and verify it with verify-built-workflow. ' +
+						'Use the workflow-builder skill, save it with build-workflow, and verify it with verify-built-workflow. ' +
 						'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
 
@@ -165,23 +170,24 @@ test.describe(
 
 				const events = await getTraceEvents(api, testInfo);
 				const summary = summarizeRemediationTrace(events);
-				const submitCalls = getToolCalls(events, 'submit-workflow');
+				const buildCalls = getToolCalls(events, 'build-workflow');
 				const verifyCalls = getToolCalls(events, 'verify-built-workflow');
 
 				expect(summary).toMatchObject({
-					submitted: true,
+					built: true,
 					workflowId: expect.any(String),
 					needsUserInput: true,
 					mockedSlackCredential: true,
-					submitCallsAfterTerminalSetup: 0,
+					buildCallsAfterTerminalSetup: 0,
+					loadedWorkflowBuilderSkill: true,
 				});
-				expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
-				expect(submitCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-					agentRole: 'workflow-builder',
+				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
+				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
+					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
 				});
-				expect(verifyCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-					agentRole: 'workflow-builder',
+				expect(verifyCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
+					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
 				});
 			},

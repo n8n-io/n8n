@@ -768,6 +768,20 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * reports build outcomes here so planned build follow-ups and verification
+	 * tools can share the same work item without a detached builder sub-agent.
+	 */
+	workflowBuildContext?: {
+		threadId: string;
+		runId: string;
+		taskId: string;
+		workItemId: string;
+		plannedTaskService?: PlannedTaskService;
+		workflowTaskService?: WorkflowTaskService;
+		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
+	};
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -824,6 +838,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
@@ -875,6 +890,9 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
+	/** Rewind a running build-workflow task after a scheduling race prevented
+	 *  its orchestrator follow-up from starting. */
+	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },

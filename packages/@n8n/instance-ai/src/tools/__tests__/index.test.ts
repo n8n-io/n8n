@@ -32,10 +32,6 @@ jest.mock('../nodes.tool', () => ({
 	})),
 }));
 
-jest.mock('../orchestration/build-workflow-agent.tool', () => ({
-	createBuildWorkflowAgentTool: jest.fn(() => ({ id: 'build-workflow-with-agent' })),
-}));
-
 jest.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: jest.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -158,6 +154,7 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
 			'ask-user': { id: 'ask-user' },
+			'build-workflow': { id: 'build-workflow' },
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');

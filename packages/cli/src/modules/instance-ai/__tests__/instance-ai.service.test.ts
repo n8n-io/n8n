@@ -1557,6 +1557,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.Mock;
 		revertToActive: jest.Mock;
 		revertCheckpointToPlanned: jest.Mock;
+		revertBuildWorkflowToPlanned: jest.Mock;
 		markRunning: jest.Mock;
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
@@ -1570,6 +1571,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.fn(async () => ({ type: 'none' })),
 		revertToActive: jest.fn(async () => {}),
 		revertCheckpointToPlanned: jest.fn(async () => {}),
+		revertBuildWorkflowToPlanned: jest.fn(async () => {}),
 		markRunning: jest.fn(async () => {}),
 	};
 
@@ -1858,6 +1860,48 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'follow-up message',
 			'group-1',
 			true,
+		);
+	});
+
+	it('runs planned workflow builds as orchestrator follow-up turns', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		const buildTask = {
+			id: 'wf-1',
+			title: 'Build workflow',
+			kind: 'build-workflow',
+			spec: 'Build the workflow',
+			deps: [],
+			workflowId: 'existing-wf',
+		};
+		graph.tasks = [buildTask];
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'orchestrate-build-workflow',
+			graph,
+			tasks: [buildTask],
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
+			agentId: 'agent-001',
+		});
+		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
+			buildTask,
+		});
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			false,
+			undefined,
+			expect.objectContaining({
+				isPlannedBuildFollowUp: true,
+				buildTaskId: 'wf-1',
+				workItemId: 'plan-run-1:default',
+			}),
 		);
 	});
 });

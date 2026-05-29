@@ -172,7 +172,7 @@ test.describe(
 		});
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build-workflow-with-agent with a workflowId before the builder spawns.
+		// converge on build-workflow with a workflowId before the update is saved.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			n8n,
 		}) => {
