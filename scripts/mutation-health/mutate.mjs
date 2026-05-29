@@ -4,10 +4,12 @@
  * actionable summary. Package-agnostic: the nightly matrix and the per-package
  * `mutate` npm scripts both call this one script.
  *
- * Usage:
- *   node scripts/mutation-health/mutate.mjs <src-rel> --package-dir <repo-rel-path> [--config <path>]
+ * Usage (also exposed as `pnpm mutate <file>` from the repo root):
+ *   node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]
  *
- * Example:
+ * The package is inferred from a repo-relative file path; pass --package-dir when
+ * the target is package-relative (the nightly does this).
+ *   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts   # inferred
  *   node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
  *
  * Stryker config resolution (first match wins):
@@ -60,22 +62,50 @@ for (let i = 0; i < argv.length; i++) {
 }
 
 const usage =
-	'Usage: node scripts/mutation-health/mutate.mjs <src-rel> --package-dir <repo-rel-path> [--config <path>]\n' +
-	'Example: node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+	'Usage: node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]\n' +
+	'  - repo-relative file → package is inferred: node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts\n' +
+	'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
 
-if (!packageDirArg) die(2, `Missing --package-dir.\n${usage}`);
 if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
 
-const pkgRoot = path.resolve(repoRoot, packageDirArg);
-if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
+// Walk up from a path to the nearest enclosing package.json (bounded by repoRoot).
+function findPackageRoot(fromAbs) {
+	let dir = path.dirname(fromAbs);
+	while (dir.startsWith(repoRoot)) {
+		if (existsSync(path.join(dir, 'package.json'))) return dir;
+		const parent = path.dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	return null;
+}
 
-const target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
+// Resolve pkgRoot + the src-relative target, supporting two call styles:
+//   1. --package-dir given → target is package-relative (or absolute). (the nightly's style)
+//   2. no --package-dir → target is a repo-relative file; infer the package from it.
+let pkgRoot;
+let target;
+if (packageDirArg) {
+	pkgRoot = path.resolve(repoRoot, packageDirArg);
+	if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
+	target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
+} else {
+	const abs = path.resolve(repoRoot, targetArg);
+	if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
+	const found = findPackageRoot(abs);
+	if (!found)
+		die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
+	pkgRoot = found;
+	target = path.relative(pkgRoot, abs);
+}
+
 if (!target.startsWith('src/') || target.includes('..')) {
-	die(2, `Target must be under src/ within the package. Got: ${target}`);
+	die(2, `Target must be under the package's src/. Got: ${target}`);
 }
 if (!existsSync(path.join(pkgRoot, target))) {
 	die(2, `Target not found: ${path.join(pkgRoot, target)}`);
 }
+const packageDir = path.relative(repoRoot, pkgRoot);
 
 // --- resolve the Stryker config: override → package-local → shared default
 const localConfig = path.join(pkgRoot, 'stryker.config.mjs');
@@ -98,7 +128,7 @@ const summaryJsonPath = path.join(reportDir, 'summary.json');
 await mkdir(reportDir, { recursive: true });
 
 process.stderr.write(
-	`Running Stryker on ${packageDirArg}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
+	`Running Stryker on ${packageDir}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 );
 
 await new Promise((resolve) => {

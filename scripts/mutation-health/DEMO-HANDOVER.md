@@ -65,7 +65,7 @@ Use this prompt to drive the mutant-fix loop end-to-end and open a stacked PR th
 > 2. ...
 >
 > ## Test plan
-> - [ ] `pnpm --filter=n8n-workflow mutate src/<file>` reproduces the post-score locally
+> - [ ] `pnpm mutate packages/workflow/src/<file>` reproduces the post-score locally
 > - [ ] `pnpm --filter=n8n-workflow test test/<file>.test.ts` passes
 > - [ ] Each new assertion has a clear "this would have caught X bug" justification
 > ```

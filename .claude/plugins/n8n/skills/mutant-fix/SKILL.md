@@ -20,8 +20,8 @@ The other half of the local mutation-testing loop. `n8n:mutant-score` reports wh
 
 Accepts **either** a source file or an existing summary — whichever you have:
 
-- **A source file** (e.g. `src/workflow-checksum.ts --package-dir packages/workflow`, or just a repo-relative path): self-bootstrapping — there's no summary yet, so step 1 runs `n8n:mutant-score` to produce one, then proceeds. This is the entry point for unattended callers (e.g. cat-bot acting on a ledger gap).
-- **An existing summary**: `--summary <path>`, or omitted to read the default `packages/workflow/reports/mutation/summary.json` (the last `n8n:mutant-score` run's output). Skips the bootstrap.
+- **A source file** (a repo-relative path, e.g. `packages/workflow/src/workflow-checksum.ts` — package inferred): self-bootstrapping — there's no summary yet, so step 1 runs `n8n:mutant-score` to produce one, then proceeds. This is the entry point for unattended callers (e.g. cat-bot acting on a ledger gap).
+- **An existing summary**: `--summary <path>`. A prior `n8n:mutant-score` run wrote it to that package's `reports/mutation/summary.json` (e.g. `packages/workflow/reports/mutation/summary.json`). Skips the bootstrap.
 
 ## Steps
 
@@ -39,7 +39,7 @@ If the verdict is already `green`, stop — nothing to strengthen.
 
 ### 2. Read the source under test, sparingly
 
-Read the source file referenced in `summary.json`. Read **once**, the whole file (typical n8n-workflow source files are 50-500 lines; the cost is bounded). This is the only file read; don't load test files yet.
+Read the source file referenced in `summary.json`. Read **once**, the whole file (typical source files are 50-500 lines; the cost is bounded). This is the only file read; don't load test files yet.
 
 ### 3. Triage the survivors
 

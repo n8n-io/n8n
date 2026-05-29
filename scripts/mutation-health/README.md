@@ -58,7 +58,7 @@ That divergence is exactly why this project exists.
 | `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
 
-`mutate.mjs` is package-agnostic — pass `--package-dir <repo-rel-path>`. It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`. Per-package `mutate` npm scripts (`pnpm --filter=<pkg> mutate <src-file>`) are thin wrappers around it.
+`mutate.mjs` is package-agnostic — run `pnpm mutate <repo-relative-file>` from the repo root and the package is inferred from the path (or pass `--package-dir <pkg>` for a package-relative target, as the nightly does). It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`.
 
 The reader and writer webhooks are plain HTTP — the GHA hits them with `curl`. There is no fetch/post wrapper script; if you want to call them locally, see [Local usage](#local-usage).
 
@@ -218,10 +218,10 @@ Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidenc
 ## Local usage
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill)
-pnpm --filter=n8n-workflow mutate src/cron.ts
-# …or directly, for any package:
-node scripts/mutation-health/mutate.mjs src/utils.ts --package-dir packages/@n8n/crdt
+# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill).
+# Package is inferred from the repo-relative path; works for any vitest package.
+pnpm mutate packages/workflow/src/cron.ts
+pnpm mutate packages/@n8n/crdt/src/utils.ts
 
 # Pull current ledger from BQ
 curl --fail -sS \
