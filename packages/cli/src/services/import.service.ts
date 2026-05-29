@@ -8,14 +8,13 @@ import {
 	CredentialsRepository,
 	TagRepository,
 	WorkflowHistory,
-	WorkflowPublishHistory,
-	WorkflowPublishHistoryRepository,
-	WorkflowRepository,
 } from '@n8n/db';
+import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { Service } from '@n8n/di';
+import { readdir, readFile } from 'fs/promises';
+import { Cipher } from 'n8n-core';
 import {
 	ensureError,
 	type INode,
@@ -23,23 +22,22 @@ import {
 	type IWorkflowBase,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { readdir, readFile } from 'fs/promises';
-
-import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
-import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
-import { Cipher } from 'n8n-core';
-import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import {
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { decompressFolder } from '@/utils/compression.util';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
@@ -72,11 +70,10 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly dataTableDDLService: DataTableDDLService,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly ownershipService: OwnershipService,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async initRecords() {
@@ -124,18 +121,19 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
 
-			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			// Only remove if the workflow already exists in the database and is active
+			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
+			// Only applies to workflows that are currently active in the database.
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
-				await this.activeWorkflowManager.remove(workflow.id);
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				await this.workflowService.deactivateWorkflow(instanceOwner, workflow.id, {
+					source: 'import',
+				});
 			}
 		}
 
 		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
 		await dbManager.transaction(async (tx) => {
-			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
-
 			// Upsert all workflows
 			for (const workflow of workflows) {
 				// Always generate a new versionId on import to ensure proper history ordering
@@ -162,11 +160,6 @@ export class ImportService {
 				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
-
-				// Only add publish history if workflow was previously active
-				if (oldActiveVersionId) {
-					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
-				}
 
 				if (shouldActivate) {
 					workflowsToActivate.push({ workflowId, versionId: versionIdToActivate });
@@ -208,16 +201,6 @@ export class ImportService {
 					authors: 'import',
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
-				});
-			}
-
-			// Add publish history records for workflows that were deactivated
-			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
-				await tx.insert(WorkflowPublishHistory, {
-					workflowId,
-					versionId,
-					event: 'deactivated',
-					userId: null,
 				});
 			}
 		});
@@ -307,27 +290,14 @@ export class ImportService {
 	}
 
 	private async activateWorkflow(workflowId: string, versionIdToActivate: string): Promise<void> {
-		let didActivate = false;
 		try {
-			await this.workflowRepository.update(
-				{ id: workflowId },
-				{ activeVersionId: versionIdToActivate },
-			);
-			await this.workflowRepository.updateActiveState(workflowId, true);
-			await this.activeWorkflowManager.add(workflowId, 'activate');
-			didActivate = true;
+			const instanceOwner = await this.ownershipService.getInstanceOwner();
+			await this.workflowService.activateWorkflow(instanceOwner, workflowId, {
+				versionId: versionIdToActivate,
+				source: 'import',
+			});
 		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${workflowId}`, { error });
-		} finally {
-			if (didActivate) {
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: versionIdToActivate,
-					event: 'activated',
-					userId: null,
-				});
-			}
+			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
 		}
 	}
 

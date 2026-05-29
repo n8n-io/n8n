@@ -1,18 +1,14 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type {
-	CredentialsRepository,
-	TagRepository,
-	WorkflowPublishHistoryRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
 
@@ -35,10 +31,6 @@ jest.mock('@n8n/db', () => ({
 	WithTimestampsAndStringId: class {},
 }));
 
-jest.mock('@/active-workflow-manager', () => ({
-	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
-}));
-
 describe('ImportService', () => {
 	let importService: ImportService;
 	let mockLogger: Logger;
@@ -47,11 +39,10 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDataTableDDLService: DataTableDDLService;
-	let mockWorkflowRepository: WorkflowRepository;
-	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+	let mockOwnershipService: OwnershipService;
+	let mockWorkflowService: WorkflowService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -62,11 +53,10 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDataTableDDLService = mock<DataTableDDLService>();
-		mockWorkflowRepository = mock<WorkflowRepository>();
-		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
+		mockOwnershipService = mock<OwnershipService>();
+		mockWorkflowService = mock<WorkflowService>();
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = jest.fn(async (data: string) =>
@@ -116,11 +106,10 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
-			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			mockDataTableDDLService,
-			mockWorkflowRepository,
-			mockWorkflowPublishHistoryRepository,
+			mockOwnershipService,
+			mockWorkflowService,
 		);
 	});
 
