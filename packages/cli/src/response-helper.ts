@@ -95,14 +95,21 @@ export function sendErrorResponse(res: Response, error: Error) {
 export const isUniqueConstraintError = (error: Error): boolean => {
 	if (!(error instanceof QueryFailedError)) return false;
 
-	const driverError = error.driverError as { code?: string; errno?: number } | undefined;
-	const code = driverError?.code;
+	// TypeORM types `driverError` as `any`; narrow it via `unknown` so the
+	// property checks below stay type-safe without an `as` cast.
+	const driverError: unknown = error.driverError;
+	if (typeof driverError !== 'object' || driverError === null) return false;
+
+	const code =
+		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
+	const errno =
+		'errno' in driverError && typeof driverError.errno === 'number' ? driverError.errno : undefined;
 
 	// PostgreSQL: 23505 = unique_violation
 	if (code === '23505') return true;
 
 	// MySQL / MariaDB: ER_DUP_ENTRY (errno 1062)
-	if (code === 'ER_DUP_ENTRY' || driverError?.errno === 1062) return true;
+	if (code === 'ER_DUP_ENTRY' || errno === 1062) return true;
 
 	// SQLite: extended code is unambiguous; the base code covers all constraint
 	// kinds (NOT NULL, FK, CHECK, UNIQUE), so disambiguate via the message.
