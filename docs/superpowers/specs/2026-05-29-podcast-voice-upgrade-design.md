@@ -32,26 +32,26 @@ The current voice list includes some voices that are technically valid but not i
 
 The current local `.env.video-clip` credentials and `seed-tts-2.0` resource were tested with short TTS requests.
 
-Confirmed usable for the current API key and resource:
+Confirmed usable for the current API key and resource, and included in the MVP voice list:
 
 | Speaker | Suggested label | Use |
 | --- | --- | --- |
 | `zh_male_wennuanahu_uranus_bigtts` | 温柔阿虎 | Default warm mature male host |
-| `zh_male_m191_uranus_bigtts` | 云舟 | Mature male host backup |
 | `zh_male_liufei_uranus_bigtts` | 刘飞 | Mature male guest or host |
-| `zh_male_sophie_uranus_bigtts` | 魅力苏菲 | Mature/general male host |
-| `zh_male_dayi_uranus_bigtts` | 大壹 | Video narration male backup |
 | `zh_female_xiaohe_uranus_bigtts` | 小何 | Default mature female guest |
-| `zh_female_vv_uranus_bigtts` | Vivi | Mature/general female host or guest |
 | `zh_female_yingyujiaoxue_uranus_bigtts` | Tina 老师 | Mature female teaching/podcast candidate |
-| `zh_female_shuangkuaisisi_uranus_bigtts` | 爽快思思 | Energetic female backup |
-| `zh_female_cancan_uranus_bigtts` | 知性灿灿 | Knowledgeable female backup |
-| `zh_female_kefunvsheng_uranus_bigtts` | 暖阳女声 | Warm female backup |
 
-Confirmed usable but not recommended as mature podcast defaults:
+Confirmed usable during research, but intentionally excluded from the MVP dropdown to keep voice selection focused:
 
 | Speaker | Reason |
 | --- | --- |
+| `zh_male_m191_uranus_bigtts` | Usable, but not part of the initial focused podcast set |
+| `zh_male_sophie_uranus_bigtts` | Usable, but not requested for MVP |
+| `zh_male_dayi_uranus_bigtts` | Usable, but not requested for MVP |
+| `zh_female_vv_uranus_bigtts` | Usable, but not requested for MVP |
+| `zh_female_shuangkuaisisi_uranus_bigtts` | Usable, but more energetic than the current mature podcast target |
+| `zh_female_cancan_uranus_bigtts` | Usable, but not requested for MVP |
+| `zh_female_kefunvsheng_uranus_bigtts` | Usable, but not requested for MVP |
 | `zh_male_taocheng_uranus_bigtts` | Younger male tone |
 | `zh_male_sunwukong_uranus_bigtts` | Character-like |
 | `zh_female_tianmeixiaoyuan_uranus_bigtts` | Sweet/young tone |
@@ -118,10 +118,7 @@ Recommended host voices:
 | Key | Speaker | Label |
 | --- | --- | --- |
 | `host_male_wennuanahu` | `zh_male_wennuanahu_uranus_bigtts` | 男主持 - 温柔阿虎 |
-| `host_male_yunzhou` | `zh_male_m191_uranus_bigtts` | 男主持 - 云舟 |
 | `host_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男主持 - 刘飞 |
-| `host_male_sophie` | `zh_male_sophie_uranus_bigtts` | 男主持 - 魅力苏菲 |
-| `host_female_vivi` | `zh_female_vv_uranus_bigtts` | 女主持 - Vivi |
 | `host_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女主持 - Tina 老师 |
 
 Recommended guest voices:
@@ -129,18 +126,8 @@ Recommended guest voices:
 | Key | Speaker | Label |
 | --- | --- | --- |
 | `guest_female_xiaohe` | `zh_female_xiaohe_uranus_bigtts` | 女嘉宾 - 小何 |
-| `guest_female_vivi` | `zh_female_vv_uranus_bigtts` | 女嘉宾 - Vivi |
 | `guest_female_tina` | `zh_female_yingyujiaoxue_uranus_bigtts` | 女嘉宾 - Tina 老师 |
-| `guest_female_cancan` | `zh_female_cancan_uranus_bigtts` | 女嘉宾 - 知性灿灿 |
 | `guest_male_liufei` | `zh_male_liufei_uranus_bigtts` | 男嘉宾 - 刘飞 |
-| `guest_male_dayi` | `zh_male_dayi_uranus_bigtts` | 男嘉宾 - 大壹 |
-
-Backup expressive voices:
-
-| Key | Speaker | Label |
-| --- | --- | --- |
-| `female_shuangkuaisisi` | `zh_female_shuangkuaisisi_uranus_bigtts` | 女声 - 爽快思思 |
-| `female_kefunvsheng` | `zh_female_kefunvsheng_uranus_bigtts` | 女声 - 暖阳女声 |
 
 Defaults:
 
@@ -150,7 +137,7 @@ Defaults:
 
 `zh_male_liufei_uranus_bigtts` should remain a top podcast option for both host and guest roles because it was confirmed usable and fits the podcast tone.
 
-The previous cute/youthful voices should not be default options for the podcast flow.
+The previous cute, youthful, character, energetic, or broad backup voices should not be in the MVP dropdown. They can be reconsidered after the core podcast workflow is accepted.
 
 ## Workflow Changes
 
