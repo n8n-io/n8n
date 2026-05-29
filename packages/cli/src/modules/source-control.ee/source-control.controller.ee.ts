@@ -184,6 +184,7 @@ export class SourceControlController {
 	}
 
 	@Get('/get-branches')
+	@GlobalScope('sourceControl:manage')
 	async getBranches() {
 		try {
 			return await this.sourceControlService.getBranches();
