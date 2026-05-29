@@ -1,4 +1,4 @@
-import countryCodes from 'currency-codes';
+import { currencies as listCurrencies } from 'fresh-currency-codes';
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 import {
@@ -12,12 +12,10 @@ import {
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
-const currencies = countryCodes.data.map(
-	({ code, currency }: { code: string; currency: string }) => ({
-		name: `${code} - ${currency}`,
-		value: code,
-	}),
-);
+const currencies = listCurrencies().map(({ code, currency }) => ({
+	name: `${code} - ${currency}`,
+	value: code,
+}));
 
 export const messageFields: INodeProperties[] = [
 	{
