@@ -70,7 +70,7 @@ import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCredit
 import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -179,8 +179,27 @@ const hasForeignCredential = computed(() => props.foreignCredentials.length > 0)
 const isHomeProjectTeam = computed(
 	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
+const isDeprecated = computed(() => Boolean(nodeType.value?.deprecated));
+
+const replacementNodeType = computed(() =>
+	nodeType.value?.replacedByNodeType
+		? nodeTypesStore.getNodeType(nodeType.value.replacedByNodeType)
+		: null,
+);
+
+const deprecatedNotice = computed(() =>
+	replacementNodeType.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: replacementNodeType.value.displayName },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+	() =>
+		props.readOnly ||
+		isDeprecated.value ||
+		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
 /**
@@ -190,7 +209,7 @@ const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
  * account would let the owner later publish changed logic as themselves.
  */
 const isCredentialPickerReadOnly = computed(() =>
-	isCredentialSharingEnabled.value ? props.readOnly : isReadOnly.value,
+	isCredentialSharingEnabled.value ? props.readOnly || isDeprecated.value : isReadOnly.value,
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
@@ -240,7 +259,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value.hidden) {
+	if (!nodeType.value || nodeType.value.hidden || nodeType.value.deprecated) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -757,6 +776,9 @@ function handleSelectAction(params: INodeParameters) {
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
+			<N8nCallout v-if="isDeprecated" theme="danger" data-test-id="node-deprecated-notice">
+				{{ deprecatedNotice }}
+			</N8nCallout>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="

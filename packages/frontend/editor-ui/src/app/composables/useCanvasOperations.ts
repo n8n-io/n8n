@@ -1185,6 +1185,55 @@ export function useCanvasOperations() {
 		}
 	}
 
+	function getDeprecationReplacementType(
+		type: INodeUi['type'],
+		version?: INodeUi['typeVersion'],
+	): string | undefined {
+		const nodeType =
+			nodeTypesStore.getNodeType(type, version) ??
+			nodeTypesStore.communityNodeType(type)?.nodeDescription;
+		if (!nodeType?.deprecated) {
+			return undefined;
+		}
+		return nodeType.replacedByNodeType ?? NO_OP_NODE_TYPE;
+	}
+
+	/**
+	 * Replace deprecated nodes with their configured successor (or the No Operation
+	 * node when none is configured) before they are added. This prevents deprecated
+	 * nodes from being added via the node creator, pasting, importing or duplicating,
+	 * while keeping the rest of the workflow (including connections) intact.
+	 */
+	function replaceDeprecatedNodes(
+		nodes: AddedNodesAndConnections['nodes'],
+	): AddedNodesAndConnections['nodes'] {
+		const replacedNodeNames: string[] = [];
+
+		const result = nodes.map((node) => {
+			const replacementType = getDeprecationReplacementType(node.type, node.typeVersion);
+			if (!replacementType) {
+				return node;
+			}
+
+			const deprecatedNodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			replacedNodeNames.push(deprecatedNodeType?.displayName ?? node.type);
+
+			return { ...node, type: replacementType, typeVersion: undefined, parameters: {} };
+		});
+
+		if (replacedNodeNames.length > 0) {
+			toast.showMessage({
+				type: 'warning',
+				title: i18n.baseText('nodeView.showMessage.deprecatedNodesReplaced.title'),
+				message: i18n.baseText('nodeView.showMessage.deprecatedNodesReplaced.message', {
+					interpolate: { nodeNames: [...new Set(replacedNodeNames)].join(', ') },
+				}),
+			});
+		}
+
+		return result;
+	}
+
 	async function addNodes(
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
@@ -1193,7 +1242,9 @@ export function useCanvasOperations() {
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
 
-		const nodesWithTypeVersion = nodes.map((node) => {
+		const nodesToAdd = replaceDeprecatedNodes(nodes);
+
+		const nodesWithTypeVersion = nodesToAdd.map((node) => {
 			const typeVersion =
 				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
 			return {

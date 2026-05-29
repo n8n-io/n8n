@@ -39,8 +39,19 @@ const {
 	isNotInstalledCommunityNode,
 	isRestricted,
 	restrictionScope,
+	isDeprecated,
+	deprecatedReplacementName,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
+
+const deprecatedTooltip = computed(() =>
+	deprecatedReplacementName.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: deprecatedReplacementName.value },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const needsCredentialSetup = computed(() => {
@@ -123,6 +134,16 @@ const groupedExecutionErrors = computed(() => {
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>{{ restrictionTitle }}</template>
 			<N8nIcon icon="lock" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
@@ -240,6 +261,10 @@ const groupedExecutionErrors = computed(() => {
 		background-color: rgba(255, 255, 255, 0.82);
 		border-radius: var(--radius--lg);
 	}
+}
+
+.deprecated {
+	color: var(--color--danger);
 }
 
 .issues {

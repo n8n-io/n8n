@@ -213,7 +213,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
-			.filter((nodeType) => !nodeType.hidden && !isNodeTypeModuleDisabled(nodeType.name));
+			.filter(
+				(nodeType) =>
+					!nodeType.hidden && !nodeType.deprecated && !isNodeTypeModuleDisabled(nodeType.name),
+			);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
