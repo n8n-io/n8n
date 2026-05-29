@@ -5,6 +5,11 @@ import { spawnSync } from 'node:child_process';
 
 import { safePageName, validatePagesManifest } from './presentation-utils.mjs';
 
+const FIXTURE_PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/luzPygAAAABJRU5ErkJggg==',
+	'base64',
+);
+
 function usage() {
 	console.error('Usage: node tools/video-composer/extract-presentation.mjs JOB_JSON_PATH');
 	process.exit(1);
@@ -30,7 +35,7 @@ function writeFixturePages(job, fixturePath, sourceType) {
 		const name = safePageName(pageNumber);
 		const imagePath = path.join(job.pagesDir, `${name}.png`);
 		const textPath = path.join(job.pagesDir, `${name}.txt`);
-		fs.writeFileSync(imagePath, Buffer.from('89504e470d0a1a0a', 'hex'));
+		fs.writeFileSync(imagePath, FIXTURE_PNG);
 		const text = String(page.text || '').trim();
 		fs.writeFileSync(textPath, text, 'utf8');
 
