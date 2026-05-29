@@ -43,6 +43,7 @@ test('presentation-podcast-client builds page audio manifest from fixture page o
 		timingDir,
 		transcriptDir,
 		pageAudioManifestPath: path.join(root, 'page-audio.json'),
+		costPath: path.join(root, 'cost.json'),
 		podcastSpeakerA: 'speaker-a',
 		podcastSpeakerB: 'speaker-b',
 	}));
@@ -55,4 +56,7 @@ test('presentation-podcast-client builds page audio manifest from fixture page o
 	assert.equal(manifest.pages.length, 2);
 	assert.equal(manifest.pages[1].duration, 20);
 	assert.equal(manifest.pages[0].transcript, '第1页 transcript');
+	const cost = JSON.parse(fs.readFileSync(path.join(root, 'cost.json'), 'utf8'));
+	assert.equal(cost.pageCount, 2);
+	assert.equal(cost.totalAudioDuration, 30);
 });

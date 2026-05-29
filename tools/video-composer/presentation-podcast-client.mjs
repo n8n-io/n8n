@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { cleanSpokenTranscript, safePageName } from './presentation-utils.mjs';
+import { aggregatePresentationCost, cleanSpokenTranscript, safePageName } from './presentation-utils.mjs';
 
 function ffprobeDuration(audioPath) {
 	const result = spawnSync('ffprobe', [
@@ -103,6 +103,19 @@ function main() {
 		};
 	});
 	fs.writeFileSync(job.pageAudioManifestPath, JSON.stringify({ pages }, null, 2), 'utf8');
+	if (job.costPath) {
+		const pageCosts = pages.map((page) => (
+			page.costPath && fs.existsSync(page.costPath)
+				? JSON.parse(fs.readFileSync(page.costPath, 'utf8'))
+				: { aiPodcast: { usageUnavailable: true } }
+		));
+		fs.writeFileSync(job.costPath, JSON.stringify(aggregatePresentationCost({
+			jobId: job.jobId,
+			pageCosts,
+			pageCount: pages.length,
+			totalAudioDuration: pages.reduce((sum, page) => sum + Number(page.duration || 0), 0),
+		}), null, 2), 'utf8');
+	}
 	console.log(JSON.stringify({
 		ok: true,
 		pageAudioManifestPath: job.pageAudioManifestPath,
