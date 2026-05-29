@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+#
+# Spike: prove that running the n8n build inside the Dockerfile (BuildKit
+# + Turbo cache mount) yields Turbo cache hits across builds, in an
+# alpine/musl environment that is provably partitioned from the host
+# ubuntu/glibc Blacksmith runner cache.
+#
+# See Linear DEVP-262 for context. Not for production use.
+ARG NODE_VERSION=24.15.0
+FROM node:${NODE_VERSION}-alpine3.22 AS builder
+
+RUN apk add --no-cache python3 make g++ git
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
+ENV CI=true
+ENV TURBO_TELEMETRY_DISABLED=1
+ENV TURBO_CACHE_DIR=/turbo-cache
+
+WORKDIR /n8n
+COPY . .
+
+RUN --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store
+
+# The thing we're proving: this cache mount survives across builds, even
+# when the Docker layer cache is disabled with --no-cache.
+RUN --mount=type=cache,id=n8n-turbo-cache,target=/turbo-cache \
+    --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+    pnpm build --summarize

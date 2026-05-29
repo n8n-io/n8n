@@ -1,0 +1,154 @@
+# Spike: prove that running `pnpm build` inside a BuildKit Dockerfile,
+# with a Turbo cache mount, yields cache hits on a warm rebuild — even
+# when the Docker layer cache is disabled with --no-cache.
+#
+# Why this matters (Linear DEVP-262):
+#   * If the warm build still prints `FULL TURBO`, the hit came from the
+#     BuildKit `type=cache` mount (which survives --no-cache), not from
+#     the Docker layer cache. That isolates the mechanism we care about.
+#   * The Turbo cache mount lives inside the alpine/musl builder, so it
+#     is naturally partitioned from the host (ubuntu/glibc) Blacksmith
+#     runner cache. No native-addon cross-contamination.
+#   * Blacksmith's sticky-disk buildx setup extends mount persistence
+#     across separate workflow runs — re-running this workflow should
+#     also come up warm on build #1.
+#
+# This is a timeboxed feasibility probe. Not wired into CI. Run on demand.
+
+name: 'Spike: Docker in-build Turbo cache'
+
+on:
+  workflow_dispatch:
+    inputs:
+      builder_cache_reset:
+        description: 'Wipe the BuildKit cache mounts before running (force a true cold build)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: spike-docker-inbuild-cache
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Two-build Turbo cache probe
+    runs-on: blacksmith-8vcpu-ubuntu-2204
+    timeout-minutes: 60
+    env:
+      DOCKERFILE: docker/images/n8n/Dockerfile.buildkit-spike
+      IMAGE_TAG: n8n-buildkit-spike:probe
+      COLD_LOG: /tmp/cold-build.log
+      WARM_LOG: /tmp/warm-build.log
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Blacksmith sticky-disk buildx: this is what persists the
+      # BuildKit cache mounts across separate workflow runs (not just
+      # within one job). Re-running this workflow should hit warm on
+      # build #1 from the prior run's mount state.
+      - name: Setup Blacksmith Buildx
+        uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+
+      - name: Optionally reset BuildKit cache mounts
+        if: ${{ inputs.builder_cache_reset == true }}
+        run: |
+          echo "Pruning all BuildKit cache (mounts + layer cache)…"
+          docker buildx prune --all --force
+
+      # ---------------------------------------------------------------
+      # Build #1 (cold): populates the pnpm store and Turbo cache mounts.
+      # Layer cache is allowed here so we don't pay it twice.
+      # ---------------------------------------------------------------
+      - name: Build #1 (cold)
+        id: cold
+        env:
+          BUILDKIT_PROGRESS: plain
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          docker buildx build \
+            --file "$DOCKERFILE" \
+            --tag "$IMAGE_TAG" \
+            --progress=plain \
+            --load \
+            . 2>&1 | tee "$COLD_LOG"
+          end=$(date +%s)
+          echo "cold_seconds=$((end - start))" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------
+      # Build #2 (warm): --no-cache disables Docker layer caching, so
+      # every RUN re-executes. A BuildKit `type=cache` mount survives
+      # --no-cache, so if Turbo still reports FULL TURBO / cache hits,
+      # the hit came from the Turbo cache mount specifically.
+      # ---------------------------------------------------------------
+      - name: Build #2 (warm, layer cache disabled)
+        id: warm
+        env:
+          BUILDKIT_PROGRESS: plain
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          docker buildx build \
+            --file "$DOCKERFILE" \
+            --tag "$IMAGE_TAG" \
+            --progress=plain \
+            --no-cache \
+            --load \
+            . 2>&1 | tee "$WARM_LOG"
+          end=$(date +%s)
+          echo "warm_seconds=$((end - start))" >> "$GITHUB_OUTPUT"
+
+      # Fail the job unless the warm build shows real Turbo cache hits.
+      # Grep for the markers Turbo prints when work is restored from
+      # cache: FULL TURBO, "cache hit", or per-task "Cached: …".
+      - name: Assert Turbo cache hits on warm build
+        id: assert
+        run: |
+          set -euo pipefail
+          if grep -E "FULL TURBO|cache hit|Cached: " "$WARM_LOG" > /tmp/hits.txt; then
+            echo "✅ Turbo cache hits detected on warm build:"
+            head -20 /tmp/hits.txt
+            echo "hit_count=$(wc -l < /tmp/hits.txt)" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ No Turbo cache hits in warm build log. Mount partitioning or persistence is broken."
+            echo "Last 80 lines of warm build log:"
+            tail -80 "$WARM_LOG"
+            exit 1
+          fi
+
+      - name: Summarise build-time delta
+        if: always()
+        env:
+          COLD: ${{ steps.cold.outputs.cold_seconds }}
+          WARM: ${{ steps.warm.outputs.warm_seconds }}
+          HITS: ${{ steps.assert.outputs.hit_count }}
+        run: |
+          {
+            echo "## Spike: in-Docker Turbo cache probe"
+            echo
+            echo "| Build | Seconds |"
+            echo "| --- | --- |"
+            echo "| Cold (#1)            | ${COLD:-n/a} |"
+            echo "| Warm (#2, --no-cache)| ${WARM:-n/a} |"
+            echo
+            echo "Turbo cache-hit markers in warm log: ${HITS:-0}"
+            echo
+            echo "Cache mount persistence relies on Blacksmith sticky disk."
+            echo "Re-run the workflow to validate persistence across separate runs."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: spike-docker-inbuild-logs
+          path: |
+            /tmp/cold-build.log
+            /tmp/warm-build.log
+          if-no-files-found: warn
+          retention-days: 7

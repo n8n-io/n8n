@@ -1,0 +1,36 @@
+# Sibling dockerignore for Dockerfile.buildkit-spike.
+#
+# The repo-root .dockerignore is a whitelist that strips all source —
+# fine for the production image (which COPYs ./compiled) but wrong here:
+# the spike runs `pnpm install` and `pnpm build` *inside* the image, so
+# it needs the full source tree as build context.
+#
+# BuildKit prefers <Dockerfile>.dockerignore over the root .dockerignore
+# when both exist, so this file scopes the context for the spike only.
+# Keep it tight to keep the context small.
+
+node_modules
+**/node_modules
+
+.git
+.github/workflows/*.log
+
+compiled
+dist
+**/dist
+**/.turbo
+**/.next
+**/coverage
+
+*.log
+build.log
+turbo.log
+
+.env
+.env.*
+!.env.example
+
+.vscode
+.idea
+*.swp
+.DS_Store
