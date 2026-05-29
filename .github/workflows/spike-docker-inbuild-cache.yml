@@ -1,22 +1,32 @@
 name: 'Spike: Docker in-build Turbo cache probe'
 
-# DEVP-262 spike: prove that a BuildKit `type=cache` mount lets Turbo cache
-# survive across `docker buildx build` invocations from inside the
-# alpine/musl image, without leaking into the host (ubuntu/glibc) Turbo
-# cache.
+# DEVP-262 spike v2: prove that a Turbo *remote* cache lets Turbo reuse build
+# output across separate `docker buildx build` invocations from inside the
+# alpine/musl image.
+#
+# Why v2: v1 relied on a BuildKit `type=cache` mount for the Turbo cache and
+# got zero reuse on Blacksmith — the warm build reported `Cached: 0 cached,
+# 59 total` (the v1 assertion was buggy and matched the literal `Cached:`
+# label, so it falsely reported success). The mount did not persist between
+# builds. v2 points Turbo at a remote cache server instead.
 #
 # How the probe works:
-#   * Build #1 (cold) populates the cache mounts.
-#   * Build #2 (warm) is the same build invoked with --no-cache to disable
-#     Docker's layer cache. BuildKit `type=cache` mounts survive --no-cache,
-#     so any `FULL TURBO` / `cache hit` in the warm log can only be coming
-#     from the Turbo cache mount.
+#   * A Turbo remote cache server (rharkor/caching-for-turbo) runs on the
+#     runner, backed by the GitHub Actions cache (Blacksmith-routed). Its
+#     coordinates are exported as TURBO_API / TURBO_TOKEN / TURBO_TEAM.
+#   * Build #1 (cold) populates the remote cache.
+#   * Build #2 (warm) runs with --no-cache to disable Docker's layer cache, so
+#     any Turbo cache hit can only come from the remote cache read back over
+#     the host network.
 #
-# Within one job the buildkitd daemon stays up between the two builds, so
-# the mounts persist regardless. The cross-run survival question (the
-# bigger CI win) is covered by Blacksmith's sticky-disk buildx: re-running
-# the workflow should come up warm. Trigger this manually a second time to
-# verify.
+# Cache separation: `cache-prefix` namespaces this in-image (musl) build's
+# Turbo cache away from the outside/host (glibc) build, and the pnpm store
+# cache mount is keyed `-musl` in the Dockerfile. musl and glibc artefacts can
+# never collide.
+#
+# Network: the build reaches the localhost cache server via `--network=host`
+# (entitlement granted per-build with `--allow network.host`). The token is
+# passed as a BuildKit secret, never a build arg, so it never lands in a layer.
 #
 # This is a timeboxed feasibility spike. Delete once DEVP-262 is closed.
 
@@ -53,41 +63,51 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Sticky-disk buildx — also what persists the BuildKit cache mounts
-      # *across* workflow runs. Within one job the daemon stays up anyway,
-      # so persistence between Build #1 and Build #2 below is guaranteed.
       - name: Setup Blacksmith Docker Builder
         uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+
+      # Turbo remote cache server on the runner. `cache-prefix` namespaces the
+      # cache keys for this in-image (musl) build, separate from the host
+      # (glibc) build. Exports TURBO_API / TURBO_TOKEN / TURBO_TEAM into the
+      # job env for the build steps below.
+      - name: Configure Turborepo Remote Cache (docker/musl namespace)
+        uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+        with:
+          cache-prefix: turbogha-n8n-musl_
 
       - name: Inspect builder
         run: docker buildx inspect --bootstrap
 
-      - name: Build #1 (cold) — populate cache mounts
+      - name: Build #1 (cold) — populate remote cache
         run: |
           set -o pipefail
-          docker buildx build \
+          TURBO_TOKEN="$TURBO_TOKEN" docker buildx build \
             -f "$DOCKERFILE" \
             --progress=plain \
+            --network=host \
+            --allow network.host \
+            --build-arg TURBO_API="$TURBO_API" \
+            --build-arg TURBO_TEAM="$TURBO_TEAM" \
+            --secret id=TURBO_TOKEN,env=TURBO_TOKEN \
             --output=type=cacheonly \
             . 2>&1 | tee "$COLD_LOG"
 
-      - name: Build #2 (warm) — Docker layer cache OFF, BuildKit cache mounts survive
+      - name: Build #2 (warm) — Docker layer cache OFF, remote Turbo cache survives
         run: |
           set -o pipefail
-          docker buildx build \
+          TURBO_TOKEN="$TURBO_TOKEN" docker buildx build \
             -f "$DOCKERFILE" \
             --progress=plain \
             --no-cache \
+            --network=host \
+            --allow network.host \
+            --build-arg TURBO_API="$TURBO_API" \
+            --build-arg TURBO_TEAM="$TURBO_TEAM" \
+            --secret id=TURBO_TOKEN,env=TURBO_TOKEN \
             --output=type=cacheonly \
             . 2>&1 | tee "$WARM_LOG"
 
       - name: Assert Turbo cache hits on warm build
-        env:
-          # Phrases Turbo prints when it reuses cached task output.
-          # `FULL TURBO`  — every task in the run hit the cache.
-          # `cache hit`   — per-task hit line.
-          # `Cached:`     — summary line in --summarize output.
-          TURBO_HIT_PATTERNS: 'FULL TURBO|cache hit|Cached:'
         run: |
           set -euo pipefail
 
@@ -103,10 +123,19 @@ jobs:
           grep -E "Tasks:|Cached:|Time:|cache hit|FULL TURBO" "$WARM_LOG" || true
           echo "::endgroup::"
 
-          if grep -E "$TURBO_HIT_PATTERNS" "$WARM_LOG" > /dev/null; then
-            echo "::notice::Warm build shows Turbo cache hits — BuildKit cache mount survives --no-cache."
+          # Parse the actual cached COUNT from Turbo's summary line, e.g.
+          #   Cached:    42 cached, 59 total
+          # The v1 assertion matched the literal label `Cached:`, which is
+          # printed even when 0 tasks are cached — a false green. Parse the
+          # number instead.
+          cached="$(grep -oE 'Cached:[[:space:]]+[0-9]+ cached' "$WARM_LOG" | grep -oE '[0-9]+' | head -1 || true)"
+          cached="${cached:-0}"
+          echo "Turbo cached tasks on warm build: ${cached}"
+
+          if [ "${cached}" -gt 0 ]; then
+            echo "::notice::Warm build reused ${cached} Turbo tasks from the remote cache — in-image remote caching works."
           else
-            echo "::error::Warm build shows no Turbo cache hits. BuildKit cache mount is not persisting between builds, or Turbo is not finding its cache at \$TURBO_CACHE_DIR. Spike inconclusive."
+            echo "::error::Warm build reused 0 Turbo tasks. Remote cache not reachable from the build, not populated, or the cache-prefix/namespace is wrong. Spike inconclusive."
             exit 1
           fi
 

@@ -1,19 +1,27 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1
 #
-# Spike: prove BuildKit `type=cache` mounts let pnpm + Turbo cache the n8n
-# build across separate `docker buildx build` invocations from inside the
-# alpine/musl image. Tracked in DEVP-262.
+# Spike v2 (DEVP-262): prove a Turbo *remote* cache lets pnpm + Turbo reuse
+# the n8n build across separate `docker buildx build` invocations from inside
+# the alpine/musl image.
 #
-# The probe is paired with .github/workflows/spike-docker-inbuild-cache.yml:
-# it builds this Dockerfile twice in one job — second build with --no-cache
-# to disable Docker's layer cache — and asserts Turbo prints `FULL TURBO`
-# or `cache hit` on the warm run. Layer cache off + Turbo cache hit
-# isolates the BuildKit cache mount as the source of the speedup.
+# v1 used a BuildKit `type=cache` mount for the Turbo cache and got zero reuse
+# on Blacksmith (warm build: `Cached: 0 cached, 59 total`). The mount did not
+# persist between builds, so the in-image build never came up warm. v2 drops
+# the local Turbo mount entirely and points Turbo at the remote cache server
+# (rharkor/caching-for-turbo) running on the runner, reached over the host
+# network. Remote caching survives across builds, jobs, and runs without any
+# mount-persistence assumption.
 #
-# This is intentionally NOT a runtime image: it stops at the builder stage
-# so the probe focuses purely on the build + caching question. The eventual
-# in-image build (if the spike pans out) will add a runtime stage that
-# COPYs the compiled artefacts into the runtime base.
+# Cache separation (musl vs glibc):
+#   * The pnpm store IS platform-specific (native prebuilds per libc), so its
+#     cache mount is keyed `-musl` — it must never collide with the host
+#     (glibc) store.
+#   * The Turbo artifact cache is namespaced separately for this in-image
+#     (musl) build via the workflow's `cache-prefix`, keeping it distinct from
+#     the outside/host (glibc) build's Turbo cache.
+#
+# Paired with .github/workflows/spike-docker-inbuild-cache.yml.
+# Timeboxed feasibility spike — delete once DEVP-262 is closed.
 
 ARG NODE_VERSION=24.15.0
 FROM node:${NODE_VERSION}-alpine3.22 AS builder
@@ -25,18 +33,25 @@ RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
 ENV CI=true
 ENV TURBO_TELEMETRY_DISABLED=1
-# Pin Turbo's cache dir to a path we can mount as a BuildKit cache.
-ENV TURBO_CACHE_DIR=/turbo-cache
+
+# Remote Turbo cache coordinates. TURBO_API (server URL) and TURBO_TEAM (slug)
+# are not secret and arrive as build args. TURBO_TOKEN is mounted as a build
+# secret on the RUN below so it never lands in an image layer.
+ARG TURBO_API
+ARG TURBO_TEAM
+ENV TURBO_API=${TURBO_API}
+ENV TURBO_TEAM=${TURBO_TEAM}
 
 WORKDIR /n8n
 COPY . .
 
-RUN --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+RUN --mount=type=cache,id=n8n-pnpm-store-musl,target=/pnpm-store \
     pnpm install --frozen-lockfile --store-dir /pnpm-store
 
-# The thing we're proving: this cache mount survives across separate
-# `docker buildx build` invocations, so the warm build hits Turbo cache
-# even when --no-cache disables Docker's own layer cache.
-RUN --mount=type=cache,id=n8n-turbo-cache,target=/turbo-cache \
-    --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+# The thing v2 proves: with the remote cache configured, the warm build reads
+# Turbo task output back over the network even when --no-cache disables
+# Docker's own layer cache. The token is exposed only for this RUN via the
+# secret env mount.
+RUN --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
+    --mount=type=cache,id=n8n-pnpm-store-musl,target=/pnpm-store \
     pnpm build --summarize
