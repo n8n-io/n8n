@@ -12,11 +12,28 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.14.1
+        default: 24.15.0
       collectCoverage:
         required: false
         default: false
         type: boolean
+      affectedPackages:
+        description: |
+          Space-separated list of workspace packages affected by the PR, as
+          computed by `janitor affected-packages` in install-and-build. Empty
+          string means "no scoping data, run everything".
+        required: false
+        default: ''
+        type: string
+      changedFiles:
+        description: |
+          Newline-separated list of CHANGED_FILES from ci-filter. Passed to
+          per-package `janitor scope` invocations so test runners can filter
+          to actually-changed source files via jest --findRelatedTests or
+          vitest related.
+        required: false
+        default: ''
+        type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -26,6 +43,8 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -36,8 +55,16 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Test Unit
-        run: pnpm test:ci:backend:unit --summarize
+      # cli is the only backend package wired into janitor scoping today, so
+      # the workspace bulk run excludes it and a dedicated step invokes the
+      # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
+      # for every backend package that hasn't yet added the script.
+      - name: Test Unit (backend, except cli)
+        run: pnpm turbo test:unit --continue --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+
+      - name: Test Unit (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -53,7 +80,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-unit
+          name: backend-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -69,6 +96,8 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -96,7 +125,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: backend-integration
+          name: backend-integration-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -112,6 +141,8 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -123,7 +154,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm turbo test --filter=n8n-nodes-base --summarize
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -139,7 +170,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: nodes-unit
+          name: nodes-unit-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'
@@ -159,6 +190,8 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -170,7 +203,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
 
@@ -188,7 +221,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          name: frontend-shard-${{ matrix.shard }}
+          name: frontend-shard-${{ matrix.shard }}-tests
 
       - name: Upload coverage to Codecov
         if: env.COVERAGE_ENABLED == 'true'

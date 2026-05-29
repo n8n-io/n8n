@@ -189,7 +189,7 @@ export function serverToNodeDescription(
 	description.displayName = displayName;
 	description.name = camelCase(server.slug);
 	description.iconUrl = pickIconUrl(server.icons);
-	description.description = server.description;
+	description.description = server.tagline;
 	description.defaults = { name: displayName };
 	description.credentials = getNodeDescriptionCredentials(server);
 	if (description.codex) {

@@ -1,4 +1,5 @@
 import { createAllTools, createOrchestratorDomainTools } from '..';
+import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
@@ -10,10 +11,12 @@ jest.mock('../attachments/parse-file.tool', () => ({
 }));
 
 jest.mock('../credentials.tool', () => ({
+	CREDENTIALS_TOOL_ID: 'credentials',
 	createCredentialsTool: jest.fn(() => ({ id: 'credentials' })),
 }));
 
 jest.mock('../data-tables.tool', () => ({
+	DATA_TABLES_TOOL_ID: 'data-tables',
 	createDataTablesTool: jest.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `data-tables-${scope}` : 'data-tables',
 	})),
@@ -29,10 +32,6 @@ jest.mock('../nodes.tool', () => ({
 	})),
 }));
 
-jest.mock('../orchestration/browser-credential-setup.tool', () => ({
-	createBrowserCredentialSetupTool: jest.fn(() => ({ id: 'browser-credential-setup' })),
-}));
-
 jest.mock('../orchestration/build-workflow-agent.tool', () => ({
 	createBuildWorkflowAgentTool: jest.fn(() => ({ id: 'build-workflow-with-agent' })),
 }));
@@ -43,6 +42,18 @@ jest.mock('../orchestration/complete-checkpoint.tool', () => ({
 
 jest.mock('../orchestration/delegate.tool', () => ({
 	createDelegateTool: jest.fn(() => ({ id: 'delegate' })),
+}));
+
+jest.mock('../evals/evals.tool', () => ({
+	createEvalsTool: jest.fn(() => ({ id: 'evals' })),
+}));
+
+jest.mock('../orchestration/eval-setup-agent.tool', () => ({
+	createEvalSetupAgentTool: jest.fn(() => ({ id: 'eval-setup-with-agent' })),
+}));
+
+jest.mock('../orchestration/eval-data-agent.tool', () => ({
+	createEvalDataAgentTool: jest.fn(() => ({ id: 'eval-data' })),
 }));
 
 jest.mock('../orchestration/plan-with-agent.tool', () => ({
@@ -66,6 +77,7 @@ jest.mock('../research.tool', () => ({
 }));
 
 jest.mock('../shared/ask-user.tool', () => ({
+	ASK_USER_TOOL_ID: 'ask-user',
 	createAskUserTool: jest.fn(() => ({ id: 'ask-user' })),
 }));
 
@@ -109,6 +121,7 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 describe('domain tool construction', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
 	it('creates the native full domain tool map', () => {
@@ -116,8 +129,9 @@ describe('domain tool construction', () => {
 
 		const domainTools = createAllTools(context);
 
-		expect(domainTools).toMatchObject({
+		expect(Object.fromEntries(domainTools)).toMatchObject({
 			workflows: { id: 'workflows' },
+			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
@@ -134,11 +148,12 @@ describe('domain tool construction', () => {
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools).toMatchObject({
+		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflows: { id: 'workflows-filtered' },
+			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
-			'data-tables': { id: 'data-tables-orchestrator' },
+			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
@@ -146,39 +161,31 @@ describe('domain tool construction', () => {
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context, {
-			allowedActions: [
-				'list',
-				'get',
-				'delete',
-				'unarchive',
-				'setup',
-				'publish',
-				'unpublish',
-				'list-versions',
-				'get-version',
-				'restore-version',
-				'update-version',
-			],
-		});
-		expect(createWorkflowsTool).toHaveBeenCalledWith(
-			context,
-			expect.objectContaining({
-				allowedActions: expect.not.arrayContaining(['get-as-code']),
-			}),
-		);
+		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 
-	it('includes local MCP server tools in orchestrator domain tools', () => {
+	it('does not include local MCP server tools in orchestrator domain tools', () => {
 		const context = makeContext({
 			localMcpServer: {} as InstanceAiContext['localMcpServer'],
 		});
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools).toMatchObject({
-			browser_connect: { id: 'browser_connect' },
-			browser_navigate: { id: 'browser_navigate' },
+		expect(orchestratorTools.has('browser_connect')).toBe(false);
+		expect(orchestratorTools.has('browser_navigate')).toBe(false);
+	});
+
+	it('includes parse-file tools when attachments are parseable', () => {
+		jest.mocked(isParseableAttachment).mockReturnValue(true);
+		const context = makeContext({
+			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
+		});
+
+		expect(createAllTools(context).get('parse-file')).toMatchObject({ id: 'parse-file' });
+		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
+			id: 'parse-file',
 		});
 	});
 });

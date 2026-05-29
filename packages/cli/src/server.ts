@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -61,6 +61,8 @@ import '@/node-execution/ephemeral-node-executor';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/evaluation.ee/evaluation-config.controller';
+import '@/evaluation.ee/evaluation-collections.controller.ee';
+import '@/evaluation.ee/insights/eval-insights.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
@@ -490,12 +492,10 @@ export class Server extends AbstractServer {
 	}
 
 	private async initializeWorkflowIndexing() {
-		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			const { WorkflowIndexService } = await import(
-				'@/modules/workflow-index/workflow-index.service'
-			);
-			Container.get(WorkflowIndexService).init();
-		}
+		const { WorkflowIndexService } = await import(
+			'@/modules/workflow-index/workflow-index.service'
+		);
+		Container.get(WorkflowIndexService).init();
 	}
 
 	protected setupPushServer(): void {

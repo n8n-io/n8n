@@ -1,19 +1,21 @@
 import { Time } from '@n8n/constants';
-import { CredentialsEntity } from '@n8n/db';
-import { Delete, Options, Post, RestController } from '@n8n/decorators';
+import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
+import { Delete, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
-import { DynamicCredentialResolverRegistry } from './services';
+import { CredentialConnectionStatusService, DynamicCredentialResolverRegistry } from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
 import { getDynamicCredentialMiddlewares } from './utils';
@@ -30,6 +32,9 @@ export class DynamicCredentialsController {
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
 		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialConnectionStatusService: CredentialConnectionStatusService,
+		private readonly eventService: EventService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -169,5 +174,47 @@ export class DynamicCredentialsController {
 		}
 
 		throw new BadRequestError('Credential type not supported');
+	}
+
+	/**
+	 * DELETE /credentials/:credentialId/my-connection
+	 *
+	 * Deletes the running user's per-user connection row(s) for the given
+	 * credential. Users can only disconnect their own connection — the absence
+	 * of a `:userId` route segment is intentional.
+	 *
+	 * Not gated by `credential:read`: a user who has since lost access to the
+	 * project (or to the credential) must still be able to clear their own
+	 * stored OAuth tokens. The delete is keyed on the caller's userId server
+	 * side, so the worst a user can do is clear their own row.
+	 */
+	@Delete('/:credentialId/my-connection')
+	async deleteMyConnection(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<void> {
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+
+		if (!credential) {
+			throw new NotFoundError('Credential not found');
+		}
+
+		const affected = await this.credentialConnectionStatusService.deleteMyConnection(
+			req.user.id,
+			credentialId,
+		);
+
+		if (affected === 0) {
+			throw new NotFoundError('No connection to disconnect');
+		}
+
+		this.eventService.emit('credentials-user-disconnected', {
+			user: req.user,
+			credentialId,
+			credentialType: credential.type,
+		});
+
+		res.status(204).send();
 	}
 }

@@ -10,7 +10,7 @@ import {
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowGroup } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
@@ -70,6 +70,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	meta?: WorkflowFEMeta;
 
+	@JsonColumn({ default: '[]' })
+	nodeGroups: IWorkflowGroup[];
+
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
@@ -124,4 +127,13 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('TestRun', 'workflow')
 	testRuns: TestRun[];
+
+	/**
+	 * Workflow id from the source package when this workflow was imported.
+	 * Null for workflows created directly. Used by import to detect re-imports
+	 * of the same source workflow on the target instance.
+	 */
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	sourceWorkflowId: string | null;
 }

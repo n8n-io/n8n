@@ -10,9 +10,10 @@ export const vectorStoreHasEmbeddings: BinaryCheck = {
 	name: 'vector_store_has_embeddings',
 	description: 'Vector store nodes have an embeddings model connected',
 	kind: 'deterministic',
+	dimension: 'ai_nodes',
 	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => isVectorStoreNode(n.type));
-		if (nodes.length === 0) return { pass: true };
+		if (nodes.length === 0) return { pass: true, applicable: false };
 
 		const embeddingTargets = collectTargetsByConnectionType(
 			workflow.connections ?? {},

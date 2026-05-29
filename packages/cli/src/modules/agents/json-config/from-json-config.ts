@@ -3,22 +3,39 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CredentialProvider,
+	McpClient,
 	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
+	RuntimeSkill,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
-import type { AgentSkill } from '@n8n/api-types';
-import { z } from 'zod';
-
+import { wrapToolForApproval } from '@n8n/agents/tool';
 import type {
+	AgentSkill,
 	AgentJsonConfig,
-	AgentJsonConfigRef,
+	AgentJsonMcpServerConfig,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
-} from './agent-json-config';
+	AgentJsonSkillConfig,
+} from '@n8n/api-types';
+import { z } from 'zod';
+
 import { mapCredentialForProvider } from './credential-field-mapping';
+import {
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+	isNativeWebSearchRequested,
+} from './native-web-search-provider-tools';
 import { resolveProviderToolName } from './provider-tool-aliases';
+
+const WEB_SEARCH_TOOL_NAME = 'web_search';
+const WEB_SEARCH_INPUT_SCHEMA = z.object({
+	query: z.string().min(1).describe('Search query'),
+	maxResults: z.number().int().min(1).max(10).optional().describe('Maximum number of results'),
+	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
+	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
+});
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -32,25 +49,18 @@ export interface ToolExecutor {
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
-const DEFAULT_WORKING_MEMORY_TEMPLATE = `# Thread memory
-- User facts:
-- User preferences/instructions:
-- Current goal/task:
-- Current state:
-- Key active items:
-- Decisions made:
-- Open follow-ups:
-- Resolved or superseded:`;
+/**
+ * Build an SDK `McpClient` from a single JSON-config MCP server entry. The
+ * platform layer owns this factory because it needs access to the credential
+ * store and OAuth2 refresh infrastructure, both of which are out of scope for
+ * `buildFromJson`.
+ */
+export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
 
-const DEFAULT_WORKING_MEMORY_INSTRUCTION = [
-	'Thread working memory is maintained automatically after turns by an out-of-band observer.',
-	'Thread working memory applies only to this same session/thread.',
-	'Do not claim it is available in a different session, new thread, or cross-thread profile unless the product explicitly provides that context.',
-	'Use it silently as private read-only context for this session.',
-	'Treat working memory as internal context; do not reveal, quote, append, or reproduce the raw working-memory document in user-visible replies.',
-	'If the user asks what you remember, answer conversationally from relevant memory instead of dumping the document.',
-	'Do not try to edit, summarize, refresh, or maintain working memory directly.',
-].join(' ');
+type MemoryWorkerModelConfig = {
+	model: string;
+	credential: string;
+};
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -62,6 +72,14 @@ export interface BuildFromJsonOptions {
 	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
+	/**
+	 * When provided, each entry in `config.mcpServers` is built into an
+	 * `McpClient` and attached to the agent via `agent.mcp(client)`. The
+	 * platform layer is responsible for tracking returned clients for
+	 * teardown when the runtime is evicted.
+	 *
+	 */
+	buildMcpClient?: McpClientBuilder;
 }
 
 /**
@@ -75,25 +93,15 @@ export async function buildFromJson(
 	config: AgentJsonConfig,
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
-): Promise<Agent> {
+): Promise<RuntimeAgent> {
+	const { Agent } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
-	// Derive the provider prefix for credential field remapping.
-	const slashIdx = config.model.indexOf('/');
-	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
-
-	// Resolve credentials upfront and embed them directly in the model config
-	// object so createModel() receives the full set of fields it needs.
-	if (config.credential) {
-		const raw = await options.credentialProvider.resolve(config.credential);
-		const mapped = mapCredentialForProvider(providerPrefix, raw);
-		agent.model({ id: config.model, ...mapped } as ModelConfig);
-	} else {
-		agent.model(config.model);
-	}
+	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
+	agent.model(resolvedModelConfig);
 
 	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
+	agent.instructions(config.instructions);
 
 	// Tools
 	if (config.tools) {
@@ -104,21 +112,37 @@ export async function buildFromJson(
 			}
 		}
 	}
-	if (configuredSkills.length > 0) {
-		agent.tool(createLoadSkillTool(configuredSkills));
+
+	if (config.mcpServers?.length && options.buildMcpClient) {
+		for (const server of config.mcpServers) {
+			const client = await options.buildMcpClient(server);
+			agent.mcp(client);
+		}
 	}
 
+	agent.skills(configuredSkills);
+
 	// Provider tools
-	if (config.providerTools) {
-		for (const [name, args] of Object.entries(config.providerTools)) {
+	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
+	if (providerTools) {
+		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
+	const fallbackWebSearchTool = buildFallbackWebSearchTool(config, options.credentialProvider);
+	if (fallbackWebSearchTool) {
+		agent.tool(fallbackWebSearchTool);
+	}
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
+		await applyMemoryFromConfig(
+			agent,
+			config.memory,
+			options.memoryFactory,
+			options.credentialProvider,
+		);
 	}
 
 	// Config options
@@ -130,89 +154,85 @@ export async function buildFromJson(
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
+		if (config.config.maxIterations) {
+			agent.configuration({ maxIterations: config.config.maxIterations });
+		}
 	}
 
 	return agent;
 }
 
-type ConfiguredSkill = { id: string; skill: AgentSkill };
+function buildFallbackWebSearchTool(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): BuiltTool | null {
+	const webSearchConfig = config.config?.webSearch;
+
+	if (!webSearchConfig?.enabled) return null;
+	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
+		throw new Error('Web search is enabled but no fallback search provider is configured.');
+	}
+	if (!webSearchConfig.credential) {
+		throw new Error('Web search is enabled but no search credential is configured.');
+	}
+	const credentialId = webSearchConfig.credential;
+
+	return {
+		name: WEB_SEARCH_TOOL_NAME,
+		description: 'Search the web for current information.',
+		systemInstruction:
+			'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',
+		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
+		handler: async (input) => {
+			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
+			const credential = await credentialProvider.resolve(credentialId);
+			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
+
+			if (webSearchConfig.provider === 'brave') {
+				if (typeof credential.apiKey !== 'string') {
+					throw new Error('Brave Search credential is missing an API key.');
+				}
+				return await braveSearch(credential.apiKey, args.query, {
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				});
+			}
+
+			if (typeof credential.apiUrl !== 'string') {
+				throw new Error('SearXNG credential is missing an API URL.');
+			}
+			return await searxngSearch(credential.apiUrl, args.query, {
+				maxResults: args.maxResults,
+				includeDomains: args.includeDomains,
+				excludeDomains: args.excludeDomains,
+			});
+		},
+	};
+}
 
 function getConfiguredSkills(
-	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
+	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): ConfiguredSkill[] {
+): RuntimeSkill[] {
 	const seen = new Set<string>();
-	const configured: ConfiguredSkill[] = [];
+	const configured: RuntimeSkill[] = [];
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
-		configured.push({ id: ref.id, skill });
+		configured.push({
+			id: ref.id,
+			name: skill.name,
+			description: skill.description,
+			instructions: skill.instructions,
+		});
 	}
 
 	return configured;
-}
-
-function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
-	if (skills.length === 0) return instructions;
-
-	const catalog = formatSkillCatalog(skills);
-	const baseInstructions = instructions.trimEnd();
-
-	return `Skill loading protocol:
-Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
-
-Available skills:
-${catalog}
-
-When deciding whether to load a skill:
-- Match the user's request against the skill name and description.
-- If one skill clearly matches, call load_skill once with that skill's id, then follow the returned instructions.
-- If the relevant skill was already loaded for this request, do not call load_skill again.
-- If no skill clearly matches, do not call load_skill.
-- Do not load a skill just because it is listed here.${baseInstructions ? `\n\n${baseInstructions}` : ''}`;
-}
-
-function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
-	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
-
-	return new Tool('load_skill')
-		.description(
-			'Load the full instructions for an attached skill. Use the skill id listed in the system instructions.',
-		)
-		.input(
-			z.object({
-				skillId: z.string().describe('The skill id from the Available skills list'),
-			}),
-		)
-		.handler(async ({ skillId }: { skillId: string }) => {
-			const skill = skillsById.get(skillId);
-			if (!skill) {
-				return {
-					ok: false,
-					error: `Skill "${skillId}" is not attached to this agent.`,
-				};
-			}
-
-			return {
-				ok: true,
-				skillId,
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			};
-		})
-		.build();
-}
-
-function formatSkillCatalog(skills: ConfiguredSkill[]): string {
-	return skills
-		.map(
-			({ id, skill }) => `- name: ${skill.name}\n  description: ${skill.description}\n  id: ${id}`,
-		)
-		.join('\n');
 }
 
 async function resolveToolRef(
@@ -285,15 +305,13 @@ async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
+	credentialProvider: CredentialProvider,
 ) {
+	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
 
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
-	memory
-		.freeform(DEFAULT_WORKING_MEMORY_TEMPLATE)
-		.scope('thread')
-		.instruction(DEFAULT_WORKING_MEMORY_INSTRUCTION);
 
 	if (memoryConfig.lastMessages) {
 		memory.lastMessages(memoryConfig.lastMessages);
@@ -303,7 +321,129 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	if (memoryConfig.episodicMemory?.enabled === true) {
+		memory.episodicMemory(
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
+		);
+	}
+
+	if (memoryConfig.observationalMemory?.enabled !== false) {
+		const observationalMemory = memoryConfig.observationalMemory;
+
+		const { createObservationLogObserveFn, createObservationLogReflectFn } = await import(
+			'@n8n/agents'
+		);
+
+		memory.observationalMemory({
+			...(observationalMemory?.observerModel !== undefined && {
+				observe: createObservationLogObserveFn(
+					await resolveMemoryWorkerModelConfig(
+						observationalMemory.observerModel,
+						credentialProvider,
+					),
+				),
+			}),
+			...(observationalMemory?.reflectorModel !== undefined && {
+				reflect: createObservationLogReflectFn(
+					await resolveMemoryWorkerModelConfig(
+						observationalMemory.reflectorModel,
+						credentialProvider,
+					),
+				),
+			}),
+			...(observationalMemory?.observerThresholdTokens !== undefined && {
+				observerThresholdTokens: observationalMemory.observerThresholdTokens,
+			}),
+			...(observationalMemory?.reflectorThresholdTokens !== undefined && {
+				reflectorThresholdTokens: observationalMemory.reflectorThresholdTokens,
+			}),
+			...(observationalMemory?.renderTokenBudget !== undefined && {
+				renderTokenBudget: observationalMemory.renderTokenBudget,
+			}),
+			...(observationalMemory?.observationLogTailLimit !== undefined && {
+				observationLogTailLimit: observationalMemory.observationLogTailLimit,
+			}),
+			...(observationalMemory?.lockTtlMs !== undefined && {
+				lockTtlMs: observationalMemory.lockTtlMs,
+			}),
+		});
+	}
+
 	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
+}
+
+async function resolveEpisodicMemoryJsonConfig(
+	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
+	credentialProvider: CredentialProvider,
+) {
+	const {
+		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+		createEpisodicMemoryExtractFn,
+		createEpisodicMemoryReflectFn,
+	} = await import('@n8n/agents');
+	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
+	const raw = await credentialProvider.resolve(config.credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	const embeddingProviderOptions = {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
+	};
+
+	return {
+		enabled: true,
+		...(config.extractorModel !== undefined && {
+			extract: createEpisodicMemoryExtractFn(
+				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
+			),
+		}),
+		...(config.reflectorModel !== undefined && {
+			reflect: createEpisodicMemoryReflectFn(
+				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
+			),
+		}),
+		...(config.topK !== undefined && { topK: config.topK }),
+		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		embeddingProviderOptions,
+	};
+}
+
+async function resolveModelConfig(
+	config: AgentJsonConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	if (!config.credential) return config.model;
+
+	return await resolveCredentialAwareModelConfig(
+		config.model,
+		config.credential,
+		credentialProvider,
+	);
+}
+
+async function resolveMemoryWorkerModelConfig(
+	config: MemoryWorkerModelConfig,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	return await resolveCredentialAwareModelConfig(
+		config.model,
+		config.credential,
+		credentialProvider,
+	);
+}
+
+async function resolveCredentialAwareModelConfig(
+	model: string,
+	credential: string,
+	credentialProvider: CredentialProvider,
+): Promise<ModelConfig> {
+	const raw = await credentialProvider.resolve(credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
+	return { id: model, ...mapped } as ModelConfig;
+}
+
+function getProviderPrefix(modelId: string): string {
+	const slashIdx = modelId.indexOf('/');
+	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

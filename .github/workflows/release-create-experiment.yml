@@ -1,0 +1,82 @@
+name: 'Release: Create Experiment PR'
+run-name: 'Release: Create Experiment Release PR'
+
+on:
+  workflow_dispatch:
+    inputs:
+      commits:
+        description: 'Space-separated list of commit SHAs to cherry-pick onto the new experimental branch.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-experiment-branch:
+    name: Prepare experiment branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      experiment-branch: ${{ steps.cherry-pick.outputs.experiment-branch }}
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Branch off stable, cherry-pick, and push
+        id: cherry-pick
+        env:
+          COMMITS: ${{ inputs.commits }}
+        run: |
+          set -euo pipefail
+
+          # The `stable` ref is a moving git tag pointing at the latest stable release commit.
+          STABLE_COMMIT="$(git rev-parse 'stable^{}')"
+          STABLE_TAG="$(git tag --points-at "$STABLE_COMMIT" | grep '^n8n@' | sort -V | tail -n1)"
+
+          if [ -z "$STABLE_TAG" ]; then
+            echo "Could not resolve stable n8n@... tag at commit $STABLE_COMMIT" >&2
+            exit 1
+          fi
+
+          STABLE_VERSION="${STABLE_TAG#n8n@}"
+          EXP_BRANCH="exp/${STABLE_VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          echo "Stable tag: $STABLE_TAG"
+          echo "Experiment branch: $EXP_BRANCH"
+
+          git config user.email "n8n-assistant-bot@users.noreply.github.com"
+          git config user.name "n8n-assistant"
+
+          git switch --detach "$STABLE_TAG"
+          git switch --create "$EXP_BRANCH"
+
+          for sha in $COMMITS; do
+            echo "::group::Cherry-picking $sha"
+            git cherry-pick -X theirs "$sha"
+            echo "::endgroup::"
+          done
+
+          git push origin "$EXP_BRANCH"
+
+          echo "experiment-branch=$EXP_BRANCH" >> "$GITHUB_OUTPUT"
+
+  create-release-pr:
+    name: Create release PR
+    needs: [prepare-experiment-branch]
+    uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
+    with:
+      base-branch: ${{ needs.prepare-experiment-branch.outputs.experiment-branch }}
+      release-type: experimental

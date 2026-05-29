@@ -9,7 +9,7 @@
  * progress even if the orchestrator forgets.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -36,16 +36,16 @@ const outputSchema = z.object({
 });
 
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'complete-checkpoint',
-		description:
+	return new Tool('complete-checkpoint')
+		.description(
 			'Report the outcome of a planned-task checkpoint you just executed. ' +
-			'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
-			'Only valid for tasks of kind "checkpoint" that are currently running; ' +
-			'calling with any other taskId returns an error and does not modify the graph.',
-		inputSchema,
-		outputSchema,
-		execute: async (input: z.infer<typeof inputSchema>) => {
+				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
+				'Only valid for tasks of kind "checkpoint" that are currently running; ' +
+				'calling with any other taskId returns an error and does not modify the graph.',
+		)
+		.input(inputSchema)
+		.output(outputSchema)
+		.handler(async (input: z.infer<typeof inputSchema>) => {
 			if (!context.plannedTaskService) {
 				return { ok: false, result: 'Error: planned task service not available.' };
 			}
@@ -97,6 +97,6 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 					`Error: checkpoint "${input.taskId}" is not in running state ` +
 					`(actual status: ${settleResult.actual?.status ?? 'unknown'}).`,
 			};
-		},
-	});
+		})
+		.build();
 }

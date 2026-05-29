@@ -78,9 +78,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, nullable: true })
 	hitlStatus: AgentExecutionHitlStatus | null;
 
-	@Column({ type: 'text', nullable: true })
-	workingMemory: string | null;
-
 	/** Where the run originated, e.g. 'chat', 'slack'. */
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;

@@ -6,7 +6,7 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
-import type { MultiRunEvaluation, WorkflowTestCase, ScenarioResult } from '../types';
+import type { MultiRunEvaluation, WorkflowTestCase, ExecutionScenarioResult } from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
 	return { kind: 'ok', result };
@@ -32,7 +32,7 @@ function evaluation(
 	opts: {
 		totalRuns?: number;
 		testCases?: Array<{
-			prompt?: string;
+			userText?: string;
 			buildSuccessCount?: number;
 			scenarios?: Array<{
 				name: string;
@@ -49,10 +49,10 @@ function evaluation(
 		totalRuns,
 		testCases: (opts.testCases ?? []).map((tc) => {
 			const testCase = {
-				prompt: tc.prompt ?? 'Test workflow prompt',
+				conversation: [{ role: 'user', text: tc.userText ?? 'Test workflow prompt' }],
 				complexity: 'medium' as const,
 				tags: [],
-				scenarios: (tc.scenarios ?? []).map((sa) => ({
+				executionScenarios: (tc.scenarios ?? []).map((sa) => ({
 					name: sa.name,
 					description: '',
 					dataSetup: '',
@@ -61,14 +61,14 @@ function evaluation(
 			} as WorkflowTestCase;
 			const buildSuccessCount = tc.buildSuccessCount ?? totalRuns;
 			const scenarios = (tc.scenarios ?? []).map((sa) => ({
-				scenario: testCase.scenarios.find((sc) => sc.name === sa.name)!,
+				scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
 				passCount: sa.passCount,
 				passRate: totalRuns > 0 ? sa.passCount / totalRuns : 0,
 				passAtK: new Array(totalRuns).fill(sa.passCount > 0 ? 1 : 0) as number[],
 				passHatK: new Array(totalRuns).fill(sa.passCount === totalRuns ? 1 : 0) as number[],
 				runs: sa.passes.map(
-					(passed): ScenarioResult => ({
-						scenario: testCase.scenarios.find((sc) => sc.name === sa.name)!,
+					(passed): ExecutionScenarioResult => ({
+						scenario: testCase.executionScenarios.find((sc) => sc.name === sa.name)!,
 						success: passed,
 						score: passed ? 1 : 0,
 						reasoning: sa.reasoning ?? '',
@@ -79,12 +79,12 @@ function evaluation(
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
-				scenarioResults: [],
-				scenarios,
+				executionScenarioResults: [],
+				executionScenarios: scenarios,
 				runs: new Array(totalRuns).fill(null).map(() => ({
 					testCase,
 					workflowBuildSuccess: buildSuccessCount > 0,
-					scenarioResults: [],
+					executionScenarioResults: [],
 				})),
 				buildSuccessCount,
 			};
@@ -97,7 +97,7 @@ describe('formatComparisonMarkdown', () => {
 		totalRuns: 3,
 		testCases: [
 			{
-				prompt: 'a',
+				userText: 'a',
 				scenarios: [{ name: 'happy', passCount: 0, passes: [false, false, false] }],
 			},
 		],
@@ -190,6 +190,89 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/### Instance AI Workflow Eval — `abc12345`/);
 	});
 
+	it('renders the Workflow checks table when at least one run has outcomes', () => {
+		const withChecks = evaluation({
+			totalRuns: 2,
+			testCases: [
+				{
+					userText: 'workflow with checks',
+					scenarios: [{ name: 'happy', passCount: 2, passes: [true, true] }],
+				},
+			],
+		});
+		withChecks.testCases[0].runs[0].workflowChecks = [
+			{
+				name: 'has_trigger',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'structure',
+				status: 'pass',
+			},
+			{
+				name: 'valid_field_references',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'parameter_correctness',
+				status: 'pass',
+			},
+			{
+				name: 'agent_has_language_model',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'ai_nodes',
+				status: 'n_a',
+			},
+		];
+		withChecks.testCases[0].runs[1].workflowChecks = [
+			{
+				name: 'has_trigger',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'structure',
+				status: 'pass',
+			},
+			{
+				name: 'valid_field_references',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'parameter_correctness',
+				status: 'fail',
+			},
+			{
+				name: 'agent_has_language_model',
+				description: 'd',
+				kind: 'deterministic',
+				dimension: 'ai_nodes',
+				status: 'n_a',
+			},
+		];
+
+		const md = formatComparisonMarkdown(withChecks, { kind: 'no_baseline' });
+
+		expect(md).toMatch(/#### Workflow checks/);
+		expect(md).toMatch(/Scored over 2 successful build/);
+		expect(md).toMatch(/`has_trigger`/);
+		expect(md).toMatch(/`valid_field_references`/);
+		expect(md).toMatch(/`agent_has_language_model`/);
+		// has_trigger → 2 pass, 0 fail, 0 N/A
+		expect(md).toMatch(
+			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 100% \|/,
+		);
+		// valid_field_references → 1 pass, 1 fail, 0 N/A → 50%
+		expect(md).toMatch(
+			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 50% \|/,
+		);
+		// agent_has_language_model → 0/0 scored, 2 N/A
+		expect(md).toMatch(
+			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| — \|/,
+		);
+	});
+
+	it('omits the Workflow checks section when no run has outcomes', () => {
+		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(md).not.toMatch(/#### Workflow checks/);
+	});
+
 	it('marks new failure categories with 🆕', () => {
 		const pr: ExperimentBucket = {
 			experimentName: 'pr',
@@ -239,7 +322,7 @@ describe('formatComparisonMarkdown', () => {
 			totalRuns: 3,
 			testCases: [
 				{
-					prompt: 'a',
+					userText: 'a',
 					scenarios: [
 						{
 							name: 'happy',
@@ -275,7 +358,7 @@ describe('formatComparisonMarkdown', () => {
 			totalRuns: 3,
 			testCases: [
 				{
-					prompt: 'Build a cross-team Linear report digest',
+					userText: 'Build a cross-team Linear report digest',
 					scenarios: [
 						{
 							name: 'no-cross-team-issues',
@@ -307,7 +390,7 @@ describe('formatComparisonMarkdown', () => {
 			totalRuns: 3,
 			testCases: [
 				{
-					prompt: 'cross-team prompt',
+					userText: 'cross-team prompt',
 					scenarios: [
 						{
 							name: 'happy-path',
@@ -319,7 +402,7 @@ describe('formatComparisonMarkdown', () => {
 					],
 				},
 				{
-					prompt: 'weather prompt',
+					userText: 'weather prompt',
 					scenarios: [
 						{
 							name: 'happy-path',
@@ -365,7 +448,7 @@ describe('formatComparisonMarkdown', () => {
 			totalRuns: 3,
 			testCases: [
 				{
-					prompt: 'Build a cross-team Linear report digest from open issues',
+					userText: 'Build a cross-team Linear report digest from open issues',
 					scenarios: [{ name: 'happy', passCount: 0, passes: [false, false, false] }],
 				},
 			],
@@ -389,7 +472,7 @@ describe('formatComparisonMarkdown', () => {
 			totalRuns: 3,
 			testCases: [
 				{
-					prompt: 'a',
+					userText: 'a',
 					scenarios: [
 						{
 							name: 'happy',
@@ -441,7 +524,7 @@ describe('formatComparisonTerminal', () => {
 		totalRuns: 3,
 		testCases: [
 			{
-				prompt: 'a',
+				userText: 'a',
 				scenarios: [{ name: 'happy', passCount: 0, passes: [false, false, false] }],
 			},
 		],

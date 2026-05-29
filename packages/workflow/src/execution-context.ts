@@ -27,13 +27,13 @@ const SecureArtifactsSchemaV1 = z.object({
 	 * Artifacts produced by context-establishment hooks (e.g. a trigger
 	 * stripper) and consumed by node backends later in the execution.
 	 *
-	 * - Outer key: source node name.
-	 * - Inner array is parallel to the trigger items array — index `i`
-	 *   corresponds to `triggerItems[i]`.
-	 * - Each per-item map is keyed by the extraction path; values are the
-	 *   leaf data extracted from that item.
+	 * Keyed by the logical alias an operator assigned in the
+	 * `N8N_SECURITY_SENSITIVE_FIELD_RULES` configuration. The value is an
+	 * array of leaves extracted from the trigger items that matched the
+	 * rule — one entry per item that produced a value. Aliases with no
+	 * matching items are omitted entirely.
 	 */
-	artifacts: z.record(z.string(), z.array(z.record(z.string(), JsonValueSchema))),
+	artifacts: z.record(z.string(), JsonValueSchema),
 
 	/**
 	 * Optional metadata produced by the hook (e.g. provenance, hook id).

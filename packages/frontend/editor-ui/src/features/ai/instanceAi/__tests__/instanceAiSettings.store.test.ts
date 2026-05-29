@@ -275,10 +275,7 @@ describe('useInstanceAiSettingsStore', () => {
 			const adminResponse = {
 				enabled: true,
 				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,

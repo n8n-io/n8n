@@ -652,6 +652,11 @@ export class ActiveWorkflowManager {
 			});
 		}
 
+		if (dbWorkflow.isArchived) {
+			this.logger.debug('Cannot publish archived Workflow', { workflowId: dbWorkflow.id });
+			return added;
+		}
+
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			if (!dbWorkflow?.activeVersionId) {
 				throw new UnexpectedError('Active version ID not found for workflow', {

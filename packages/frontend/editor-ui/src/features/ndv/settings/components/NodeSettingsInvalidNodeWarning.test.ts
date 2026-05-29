@@ -4,6 +4,8 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -22,6 +24,16 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 		track: vi.fn(),
 	}),
 }));
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRoute: () => ({
+			name: 'NodeView',
+			params: { workflowId: 'test-workflow-id' },
+		}),
+	};
+});
 
 const mockInstallNode = vi.fn();
 const mockUseInstallNode = useInstallNode as MockedFunction<typeof useInstallNode>;
@@ -46,7 +58,9 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		mockUseUsersStore = mockedStore(useUsersStore);
 		mockUseNodeCreatorStore = mockedStore(useNodeCreatorStore);
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		mockUseNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		mockUseUIStore = mockedStore(useUIStore);
 		mockUseInstallNode.mockReturnValue({
 			installNode: mockInstallNode,
@@ -110,7 +124,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 			const viewDetailsButton = getByRole('button', { name: 'View details' });
 			viewDetailsButton.click();
 
-			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('Test Node');
+			expect(mockOpenNodeCreatorWithNode).toHaveBeenCalledWith('test-workflow-id', 'Test Node');
 		});
 
 		it('should open NPM page when node is not verified community node', async () => {

@@ -9,8 +9,10 @@ import { makeRestApiRequest } from '../utils';
 
 export async function getCredentialResolvers(
 	context: IRestApiContext,
+	options: { includeSystem?: boolean } = {},
 ): Promise<CredentialResolver[]> {
-	return await makeRestApiRequest(context, 'GET', '/credential-resolvers');
+	const query = options.includeSystem ? { includeSystem: 'true' } : undefined;
+	return await makeRestApiRequest(context, 'GET', '/credential-resolvers', query);
 }
 
 export async function getCredentialResolverTypes(

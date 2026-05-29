@@ -8,6 +8,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -181,6 +182,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 			currentNDVStore.value = useNDVStore(workflowDocumentId);
+			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
 		}
 
 		return true;
@@ -195,11 +197,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.setIsInDebugMode(true);
+				executionStateStore.setIsInDebugMode(true);
 			}
 		}
 	}
@@ -324,6 +329,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			parentFolderId,
 		);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
+		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 

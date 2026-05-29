@@ -187,6 +187,78 @@ describe('AgentChatPanel — read-only build chat input', () => {
 		expect(chatInput.props('placeholder')).toBe('agents.builder.readonly.placeholder');
 	});
 
+	it('does not auto-send a seeded initialMessage when the build chat is read-only', async () => {
+		const sendMessage = vi.fn();
+		const loadHistory = vi.fn();
+		// Reset module cache so the doMock below replaces the stream mock set up
+		// by the earlier test in this describe block — without this, the cached
+		// AgentChatPanel.vue would keep using the previous mock and our
+		// `loadHistory` assertion would observe zero calls on the wrong fn.
+		vi.resetModules();
+		vi.doMock('../composables/useAgentChatStream', () => ({
+			useAgentChatStream: () => ({
+				messages: ref([]),
+				isStreaming: ref(false),
+				messagingState: ref('idle'),
+				fatalError: ref(null),
+				loadHistory,
+				sendMessage,
+				stopGenerating: vi.fn(),
+				resume: vi.fn(),
+				dismissFatalError: vi.fn(),
+			}),
+		}));
+		vi.doMock('../composables/useAgentTelemetry', () => ({
+			useAgentTelemetry: () => ({ trackSubmittedMessage: vi.fn() }),
+		}));
+		vi.doMock('../composables/agentTelemetry.utils', () => ({
+			buildAgentConfigFingerprint: vi.fn().mockResolvedValue({}),
+		}));
+
+		const beforeSend = vi.fn();
+		const { default: AgentChatPanel } = await import('../components/AgentChatPanel.vue');
+
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'build',
+				agentConfig: null,
+				agentStatus: 'draft',
+				connectedTriggers: [],
+				canEditAgent: false,
+				initialMessage: 'seed build prompt',
+				beforeSend,
+			},
+			global: {
+				stubs: {
+					N8nButton: { template: '<button><slot /></button>' },
+					N8nCallout: { template: '<div><slot /></div>' },
+					N8nIconButton: { template: '<button />' },
+					AgentChatEmptyState: { template: '<div data-testid="stub-empty-state" />' },
+					AgentChatMessageList: { template: '<div />' },
+					ChatInputBase: {
+						name: 'ChatInputBase',
+						template: '<div data-testid="stub-chat-input" />',
+						props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+					},
+				},
+			},
+		});
+
+		await vi.waitFor(() => {
+			// Setup-time auto-send has run if it was going to.
+			expect(wrapper.exists()).toBe(true);
+		});
+
+		expect(sendMessage).not.toHaveBeenCalled();
+		expect(beforeSend).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+		// History is loaded instead of auto-sending — so any existing thread
+		// renders rather than showing a misleading "build your agent" empty state.
+		expect(loadHistory).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not disable ChatInputBase for endpoint=chat (test mode) regardless of canEditAgent', async () => {
 		const { default: AgentChatPanel } = await import('../components/AgentChatPanel.vue');
 

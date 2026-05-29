@@ -24,7 +24,7 @@ import type { BenchmarkDimensions } from '../../../../utils/benchmark';
 import type { WebhookHandle } from '../../../../utils/benchmark/webhook-driver';
 import { attachMetric } from '../../../../utils/performance-helper';
 
-const PIPELINING = 3;
+const DEFAULT_PIPELINING = 3;
 
 export interface WebhookThroughputOptions {
 	handle: WebhookHandle;
@@ -37,6 +37,20 @@ export interface WebhookThroughputOptions {
 	timeoutMs: number;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/**
+	 * Seconds of discarded load BEFORE the measurement window. Warms V8 JIT,
+	 * PG connection pool, webhook cache, and BullMQ worker hot paths so the
+	 * measured run doesn't average cold + hot together. Set to 0 to skip
+	 * (keeps the registration probe only). Defaults to 10s.
+	 */
+	warmupSeconds?: number;
+	/**
+	 * autocannon pipelining (in-flight requests per connection). Defaults to 3
+	 * for throughput tests. Set to 1 for latency-floor measurements where
+	 * pure round-trip is the target — pipelining hides per-request latency
+	 * by overlapping requests on the same socket.
+	 */
+	pipelining?: number;
 }
 
 /**
@@ -48,8 +62,18 @@ export interface WebhookThroughputOptions {
  * dispatch isn't a fit because autocannon owns its own load model.
  */
 export async function runWebhookThroughputTest(options: WebhookThroughputOptions): Promise<void> {
-	const { handle, api, services, testInfo, baseUrl, connections, durationSeconds, timeoutMs } =
-		options;
+	const {
+		handle,
+		api,
+		services,
+		testInfo,
+		baseUrl,
+		connections,
+		durationSeconds,
+		timeoutMs,
+		warmupSeconds = 10,
+		pipelining = DEFAULT_PIPELINING,
+	} = options;
 	const { nodeCount, nodeOutputSize } = handle.scenario;
 	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
 	testInfo.setTimeout(timeoutMs + 120_000);
@@ -73,19 +97,37 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		createOptions: { webhookPrefix: 'bench' },
 		warmUp: async ({ webhookPath }) => {
 			if (!webhookPath) throw new Error('Webhook path missing — workflow has no webhook node?');
+
+			// Registration probe: webhook activation is async, this confirms the
+			// route is live before we hammer it with autocannon.
 			await api.webhooks.trigger(`/webhook/${webhookPath}`, {
 				method: 'POST',
 				data: handle.payload,
 				maxNotFoundRetries: 10,
 				notFoundRetryDelayMs: 500,
 			});
-			console.log(`[WEBHOOK] Warm-up complete, webhook registered at /webhook/${webhookPath}`);
+			console.log(`[WEBHOOK] Registered at /webhook/${webhookPath}`);
+
+			if (warmupSeconds > 0) {
+				console.log(
+					`[WEBHOOK] Warm-up: ${connections} conns × ${pipelining} pipelining × ${warmupSeconds}s (discarded)`,
+				);
+				await autocannon({
+					url: `${baseUrl}/webhook/${webhookPath}`,
+					connections,
+					pipelining,
+					duration: warmupSeconds,
+					method: 'POST',
+					body: JSON.stringify(handle.payload),
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
 		},
 	});
 
 	const webhookUrl = `${baseUrl}/webhook/${setup.webhookPath}`;
 	console.log(
-		`[WEBHOOK] Starting ${connections} connections × ${PIPELINING} pipelining for ${durationSeconds}s → ${webhookUrl}\n` +
+		`[WEBHOOK] Starting ${connections} connections × ${pipelining} pipelining for ${durationSeconds}s → ${webhookUrl}\n` +
 			`  Workflow: ${nodeCount} nodes (${nodeOutputSize})`,
 	);
 
@@ -97,7 +139,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 			// concurrency (Little's Law: throughput = in_flight / latency) without
 			// multiplying sockets. Hides whether server saturation is real or just
 			// connection-starved on the load-gen side.
-			pipelining: PIPELINING,
+			pipelining,
 			duration: durationSeconds,
 			method: 'POST',
 			body: JSON.stringify(handle.payload),
@@ -127,6 +169,9 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 
 	await attachThroughputResults(testInfo, dimensions, throughputResult);
 	await attachMetric(testInfo, 'http-latency-p50', cannonResult.latency.p50, 'ms', dimensions);
+	// autocannon doesn't expose p95; p97.5 is the closest standard percentile
+	// and errs on the conservative side for SLO budgets.
+	await attachMetric(testInfo, 'http-latency-p97_5', cannonResult.latency.p97_5, 'ms', dimensions);
 	await attachMetric(testInfo, 'http-latency-p99', cannonResult.latency.p99, 'ms', dimensions);
 	await attachMetric(testInfo, 'http-requests-sent', requestsSent, 'count', dimensions);
 	await attachMetric(testInfo, 'http-requests-avg', httpReqPerSec, 'req/s', dimensions);
@@ -181,6 +226,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 			execPerSec: throughputResult.avgExecPerSec,
 			tailExecPerSec: throughputResult.tailExecPerSec,
 			p50Ms: cannonResult.latency.p50,
+			p97_5Ms: cannonResult.latency.p97_5,
 			p99Ms: cannonResult.latency.p99,
 			totalRequests: requestsSent,
 			totalCompleted: throughputResult.totalCompleted,

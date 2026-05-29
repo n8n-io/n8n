@@ -64,6 +64,7 @@ function makeContext(overrides: ContextOverrides = {}): WorkflowSetupContext {
 		credentialSelections: ref({}),
 		terminalState: ref(null),
 		isReady: ref(true),
+		workflowId: computed(() => undefined),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
 		isActionPending: ref(false),
