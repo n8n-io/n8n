@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.7
+#
+# Spike: prove BuildKit `type=cache` mounts let pnpm + Turbo cache the n8n
+# build across separate `docker buildx build` invocations from inside the
+# alpine/musl image. Tracked in DEVP-262.
+#
+# The probe is paired with .github/workflows/spike-docker-inbuild-cache.yml:
+# it builds this Dockerfile twice in one job — second build with --no-cache
+# to disable Docker's layer cache — and asserts Turbo prints `FULL TURBO`
+# or `cache hit` on the warm run. Layer cache off + Turbo cache hit
+# isolates the BuildKit cache mount as the source of the speedup.
+#
+# This is intentionally NOT a runtime image: it stops at the builder stage
+# so the probe focuses purely on the build + caching question. The eventual
+# in-image build (if the spike pans out) will add a runtime stage that
+# COPYs the compiled artefacts into the runtime base.
+
+ARG NODE_VERSION=24.15.0
+FROM node:${NODE_VERSION}-alpine3.22 AS builder
+
+# musl toolchain so native addons are compiled in-image, matching the
+# alpine-based runtime base (sqlite3, isolated-vm, etc.).
+RUN apk add --no-cache python3 make g++ git
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
+ENV CI=true
+ENV TURBO_TELEMETRY_DISABLED=1
+# Pin Turbo's cache dir to a path we can mount as a BuildKit cache.
+ENV TURBO_CACHE_DIR=/turbo-cache
+
+WORKDIR /n8n
+COPY . .
+
+RUN --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store
+
+# The thing we're proving: this cache mount survives across separate
+# `docker buildx build` invocations, so the warm build hits Turbo cache
+# even when --no-cache disables Docker's own layer cache.
+RUN --mount=type=cache,id=n8n-turbo-cache,target=/turbo-cache \
+    --mount=type=cache,id=n8n-pnpm-store,target=/pnpm-store \
+    pnpm build --summarize

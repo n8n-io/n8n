@@ -1,0 +1,27 @@
+# Sibling .dockerignore for Dockerfile.buildkit-spike (DEVP-262).
+#
+# BuildKit checks <dockerfile>.dockerignore before falling back to the root
+# .dockerignore. The root .dockerignore is a whitelist that excludes all
+# source — fine for the production image that ships a pre-built `compiled/`
+# tree, but the spike runs `pnpm build` *inside* the container, so it needs
+# source. This file is a normal blacklist: bring source in, drop only
+# things that would either bloat the context or poison the in-image
+# build with host-built artefacts.
+
+# Host-built artefacts — must not leak in or the in-image build would
+# reuse glibc-compiled outputs in the musl builder (the cross-contamination
+# the spike is meant to avoid).
+compiled
+dist
+**/dist
+.turbo
+**/.turbo
+
+# Native deps — let the in-image `pnpm install` rebuild against musl.
+node_modules
+**/node_modules
+
+# VCS + noise
+.git
+.github/.cache
+*.log

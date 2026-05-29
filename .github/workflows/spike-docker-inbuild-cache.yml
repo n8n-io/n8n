@@ -1,0 +1,119 @@
+name: 'Spike: Docker in-build Turbo cache probe'
+
+# DEVP-262 spike: prove that a BuildKit `type=cache` mount lets Turbo cache
+# survive across `docker buildx build` invocations from inside the
+# alpine/musl image, without leaking into the host (ubuntu/glibc) Turbo
+# cache.
+#
+# How the probe works:
+#   * Build #1 (cold) populates the cache mounts.
+#   * Build #2 (warm) is the same build invoked with --no-cache to disable
+#     Docker's layer cache. BuildKit `type=cache` mounts survive --no-cache,
+#     so any `FULL TURBO` / `cache hit` in the warm log can only be coming
+#     from the Turbo cache mount.
+#
+# Within one job the buildkitd daemon stays up between the two builds, so
+# the mounts persist regardless. The cross-run survival question (the
+# bigger CI win) is covered by Blacksmith's sticky-disk buildx: re-running
+# the workflow should come up warm. Trigger this manually a second time to
+# verify.
+#
+# This is a timeboxed feasibility spike. Delete once DEVP-262 is closed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner for the spike (default: blacksmith-8vcpu-ubuntu-2204).'
+        required: false
+        default: 'blacksmith-8vcpu-ubuntu-2204'
+        type: string
+
+concurrency:
+  group: spike-docker-inbuild-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: 'Two-build Turbo cache probe'
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    env:
+      DOCKERFILE: docker/images/n8n/Dockerfile.buildkit-spike
+      COLD_LOG: /tmp/spike-build-cold.log
+      WARM_LOG: /tmp/spike-build-warm.log
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      # Sticky-disk buildx — also what persists the BuildKit cache mounts
+      # *across* workflow runs. Within one job the daemon stays up anyway,
+      # so persistence between Build #1 and Build #2 below is guaranteed.
+      - name: Setup Blacksmith Docker Builder
+        uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+
+      - name: Inspect builder
+        run: docker buildx inspect --bootstrap
+
+      - name: Build #1 (cold) — populate cache mounts
+        run: |
+          set -o pipefail
+          docker buildx build \
+            -f "$DOCKERFILE" \
+            --progress=plain \
+            --output=type=cacheonly \
+            . 2>&1 | tee "$COLD_LOG"
+
+      - name: Build #2 (warm) — Docker layer cache OFF, BuildKit cache mounts survive
+        run: |
+          set -o pipefail
+          docker buildx build \
+            -f "$DOCKERFILE" \
+            --progress=plain \
+            --no-cache \
+            --output=type=cacheonly \
+            . 2>&1 | tee "$WARM_LOG"
+
+      - name: Assert Turbo cache hits on warm build
+        env:
+          # Phrases Turbo prints when it reuses cached task output.
+          # `FULL TURBO`  — every task in the run hit the cache.
+          # `cache hit`   — per-task hit line.
+          # `Cached:`     — summary line in --summarize output.
+          TURBO_HIT_PATTERNS: 'FULL TURBO|cache hit|Cached:'
+        run: |
+          set -euo pipefail
+
+          echo "::group::Cold build log tail"
+          tail -n 80 "$COLD_LOG" || true
+          echo "::endgroup::"
+
+          echo "::group::Warm build log tail"
+          tail -n 80 "$WARM_LOG" || true
+          echo "::endgroup::"
+
+          echo "::group::Turbo timing/cache lines (warm build)"
+          grep -E "Tasks:|Cached:|Time:|cache hit|FULL TURBO" "$WARM_LOG" || true
+          echo "::endgroup::"
+
+          if grep -E "$TURBO_HIT_PATTERNS" "$WARM_LOG" > /dev/null; then
+            echo "::notice::Warm build shows Turbo cache hits — BuildKit cache mount survives --no-cache."
+          else
+            echo "::error::Warm build shows no Turbo cache hits. BuildKit cache mount is not persisting between builds, or Turbo is not finding its cache at \$TURBO_CACHE_DIR. Spike inconclusive."
+            exit 1
+          fi
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-docker-inbuild-cache-logs
+          path: |
+            /tmp/spike-build-cold.log
+            /tmp/spike-build-warm.log
+          if-no-files-found: warn
+          retention-days: 7
