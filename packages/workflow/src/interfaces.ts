@@ -2339,6 +2339,14 @@ export interface INodeTypeBaseDescription {
 	deprecated?: true;
 
 	/**
+	 * The node type the editor suggests as the replacement for this deprecated
+	 * node. Used to label the deprecation notice ("replace with X") and to
+	 * substitute the node when it is added via paste/import (defaults to the
+	 * No Operation node when unset).
+	 */
+	replacedByNodeType?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
