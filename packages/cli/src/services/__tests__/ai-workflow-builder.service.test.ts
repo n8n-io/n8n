@@ -1,6 +1,6 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -14,11 +14,21 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
-jest.mock('@n8n/ai-workflow-builder');
+jest.mock('@n8n/ai-workflow-builder', () => ({
+	AiWorkflowBuilderService: jest.fn(),
+	// Plain function (not jest.fn) so the global `restoreMocks` doesn't wipe its
+	// implementation between tests; the disabled SSRF path relies on its return value.
+	createPassthroughSsrfGuard: () => ({
+		validateUrl: jest.fn(),
+		validateRedirectSync: jest.fn(),
+		createSecureLookup: jest.fn(),
+	}),
+}));
 jest.mock('@n8n_io/ai-assistant-sdk');
 
 const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as jest.MockedClass<
@@ -39,6 +49,8 @@ describe('WorkflowBuilderService', () => {
 	let mockInstanceSettings: InstanceSettings;
 	let mockDynamicNodeParametersService: DynamicNodeParametersService;
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
+	let mockSsrfProtectionConfig: SsrfProtectionConfig;
+	let mockSsrfProtectionService: SsrfProtectionService;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -82,6 +94,11 @@ describe('WorkflowBuilderService', () => {
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
 		mockSessionRepository = mock<WorkflowBuilderSessionRepository>();
+		mockSsrfProtectionConfig = mock<SsrfProtectionConfig>();
+		// Deterministic default: SSRF protection disabled (passthrough guard). Individual
+		// gating tests override this.
+		mockSsrfProtectionConfig.enabled = false;
+		mockSsrfProtectionService = mock<SsrfProtectionService>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -107,12 +124,48 @@ describe('WorkflowBuilderService', () => {
 			mockInstanceSettings,
 			mockDynamicNodeParametersService,
 			mockSessionRepository,
+			mockSsrfProtectionConfig,
+			mockSsrfProtectionService,
 		);
 	});
 
 	describe('constructor', () => {
 		it('should initialize without creating the service immediately', () => {
 			expect(MockedAiWorkflowBuilderService).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('SSRF protection gating', () => {
+		async function initService() {
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.chat as jest.Mock).mockReturnValue(
+				(async function* () {
+					yield { messages: ['response'] };
+				})(),
+			);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			const generator = service.chat({ id: '1', message: 'x', workflowContext: {} }, mockUser);
+			await generator.next();
+		}
+
+		it('passes the SsrfProtectionService when SSRF protection is enabled', async () => {
+			mockSsrfProtectionConfig.enabled = true;
+
+			await initService();
+
+			// 12th positional arg (index 11) is the SSRF guard.
+			const guardArg = MockedAiWorkflowBuilderService.mock.calls[0][11];
+			expect(guardArg).toBe(mockSsrfProtectionService);
+		});
+
+		it('passes a passthrough guard when SSRF protection is disabled', async () => {
+			mockSsrfProtectionConfig.enabled = false;
+
+			await initService();
+
+			const guardArg = MockedAiWorkflowBuilderService.mock.calls[0][11];
+			expect(guardArg).not.toBe(mockSsrfProtectionService);
+			expect(guardArg).toHaveProperty('validateUrl');
 		});
 	});
 
@@ -147,6 +200,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -192,6 +246,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 		});
 
@@ -830,6 +885,8 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock<InstanceSettings>({ instanceId: 'test' }),
 			mock(),
 			mock(),
+			mock<SsrfProtectionConfig>(),
+			mock<SsrfProtectionService>(),
 		);
 
 		const mockUser = mock<IUser>();
