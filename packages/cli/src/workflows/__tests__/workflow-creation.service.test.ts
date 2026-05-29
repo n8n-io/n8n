@@ -55,6 +55,7 @@ describe('WorkflowCreationService', () => {
 			mock(), // folderService
 			enterpriseWorkflowServiceMock,
 			mock<NodeTypes>(),
+			mock(), // deprecatedNodesValidator
 		);
 	});
 
