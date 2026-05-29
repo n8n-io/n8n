@@ -59,23 +59,42 @@ function buildPrompt({ pagesManifest, extraContext = '', podcastStyle = 'podcast
 }
 
 async function callLlm(prompt) {
-	const url = process.env.DOUBAO_LLM_URL || process.env.OPENAI_BASE_URL;
-	const apiKey = process.env.DOUBAO_LLM_API_KEY || process.env.OPENAI_API_KEY;
-	const model = process.env.DOUBAO_LLM_MODEL || process.env.OPENAI_MODEL || 'doubao-seed-1-6';
-	if (!url || !apiKey) throw new Error('Missing LLM config: set DOUBAO_LLM_URL and DOUBAO_LLM_API_KEY.');
+	let url = process.env.DOUBAO_LLM_URL || process.env.ARK_API_BASE_URL || process.env.OPENAI_BASE_URL;
+	const apiKey = process.env.DOUBAO_LLM_API_KEY || process.env.ARK_API_KEY || process.env.OPENAI_API_KEY;
+	const model = process.env.DOUBAO_LLM_MODEL || process.env.ARK_MODEL_NAME || process.env.OPENAI_MODEL;
+	if (!url || !apiKey || !model) {
+		throw new Error('Missing LLM config: set DOUBAO_LLM_* or ARK_API_KEY, ARK_MODEL_NAME, and ARK_API_BASE_URL.');
+	}
+	url = String(url).trim();
+	while (url.endsWith('/')) url = url.slice(0, -1);
+	const isResponsesApi = url.endsWith('/responses');
+	if (!isResponsesApi && !url.endsWith('/chat/completions')) url += '/chat/completions';
+	const body = isResponsesApi
+		? {
+				model,
+				input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }] }],
+				temperature: Number(process.env.DOUBAO_LLM_TEMPERATURE || 0.5),
+				max_output_tokens: 4000,
+				thinking: { type: 'disabled' },
+			}
+		: {
+				model,
+				messages: [{ role: 'user', content: prompt }],
+				temperature: Number(process.env.DOUBAO_LLM_TEMPERATURE || 0.5),
+				response_format: { type: 'json_object' },
+			};
 	const response = await fetch(url, {
 		method: 'POST',
 		headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-		body: JSON.stringify({
-			model,
-			messages: [{ role: 'user', content: prompt }],
-			temperature: 0.5,
-		}),
+		body: JSON.stringify(body),
 	});
 	if (!response.ok) throw new Error(`LLM request failed: ${response.status} ${await response.text()}`);
 	const payload = await response.json();
 
-	return payload.choices?.[0]?.message?.content || payload.output_text || JSON.stringify(payload);
+	return payload.choices?.[0]?.message?.content ||
+		payload.output_text ||
+		payload.output?.[0]?.content?.[0]?.text ||
+		JSON.stringify(payload);
 }
 
 async function main() {
