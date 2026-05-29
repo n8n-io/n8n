@@ -99,8 +99,8 @@ describe('AgentChatQuickActions', () => {
 		await wrapper.find('[data-testid="agent-quick-action-add-tool"]').trigger('click');
 		const { onConfirm } = openModalWithData.mock.calls[0][0].data;
 		const next = [{ type: 'node', name: 'y' } as unknown as AgentJsonToolRef];
-		onConfirm(next);
-		expect(wrapper.emitted('update:tools')?.[0]).toEqual([next]);
+		onConfirm({ tools: next });
+		expect(wrapper.emitted('update:tools')?.[0]).toEqual([{ tools: next }]);
 	});
 
 	it('Add trigger opens the AgentAddTriggerModal with correct data', async () => {
