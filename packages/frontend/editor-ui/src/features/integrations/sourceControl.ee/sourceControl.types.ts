@@ -3,6 +3,7 @@ import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 export type SshKeyTypes = ['ed25519', 'rsa'];
 
+// Only some may be modified, depending on user access level
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
