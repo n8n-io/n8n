@@ -218,7 +218,7 @@ Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidenc
 ## Local usage
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /n8n:mutation-test skill)
+# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill)
 pnpm --filter=n8n-workflow mutate src/cron.ts
 # …or directly, for any package:
 node scripts/mutation-health/mutate.mjs src/utils.ts --package-dir packages/@n8n/crdt

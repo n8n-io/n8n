@@ -1,5 +1,5 @@
 ---
-description: Run Stryker mutation testing on the source files changed in the current branch (vs origin/master). One command for "did my work hold up under mutation?" before pushing. Triages on the side which files dropped below threshold and offers to invoke n8n:strengthen-tests on them. Use when the user says /mutate-changed, "mutate what I changed", "check my changes", or has just finished writing a feature and wants pre-merge feedback. Scope: only packages/workflow/src/** changes are mutated today.
+description: Run Stryker mutation testing on the source files changed in the current branch (vs origin/master). One command for "did my work hold up under mutation?" before pushing. Triages on the side which files dropped below threshold and offers to invoke n8n:mutant-fix on them. Use when the user says /mutant-diff, "mutate what I changed", "check my changes", or has just finished writing a feature and wants pre-merge feedback. Scope: only packages/workflow/src/** changes are mutated today.
 ---
 
 # Mutate what I changed
@@ -8,14 +8,14 @@ Closes the local dev loop. Single command to run Stryker against every source fi
 
 ## When to use
 
-- User says `/mutate-changed`, "mutate the files I changed", "check my changes", "did my tests stick"
+- User says `/mutant-diff`, "mutate the files I changed", "check my changes", "did my tests stick"
 - Mid-feature: dev wants pre-merge feedback before pushing
 - Pre-PR: cheaper than waiting for the nightly cron
 
 **Don't** use:
-- For a single specific file (`/n8n:mutation-test <path>` is faster)
+- For a single specific file (`/n8n:mutant-score <path>` is faster)
 - For non-`packages/workflow` changes — Stryker is only wired up there today
-- After the user already ran `/n8n:strengthen-tests` (which calls mutation-test internally for verification — running both again is wasted compute)
+- After the user already ran `/n8n:mutant-fix` (which calls mutant-score internally for verification — running both again is wasted compute)
 
 ## Inputs
 
@@ -88,9 +88,9 @@ After all files have been mutated, print one compact table:
 
 If any file came back red:
 
-> The lowest-score red file is `src/bar.ts` (54.83%, 13 survivors). Run `/n8n:strengthen-tests` to triage them and write assertion changes? (suggesting; don't auto-invoke)
+> The lowest-score red file is `src/bar.ts` (54.83%, 13 survivors). Run `/n8n:mutant-fix` to triage them and write assertion changes? (suggesting; don't auto-invoke)
 
-Only suggest one file at a time — `n8n:strengthen-tests` caps at 5 survivors per invocation, and re-running this skill after edits is cheap.
+Only suggest one file at a time — `n8n:mutant-fix` caps at 5 survivors per invocation, and re-running this skill after edits is cheap.
 
 If everything is green: report it and stop. No follow-up needed.
 
@@ -108,17 +108,17 @@ Don't dump full `summary.json` payloads — the per-file mutate runs already wri
 
 - **Hardcoded to `packages/workflow`.** Generalise when Stryker is wired up to other packages.
 - **Max 8 files per invocation.** Above that, ask user to narrow.
-- **Don't auto-invoke `/n8n:strengthen-tests`.** Suggest, don't act. Same reasoning as the other skills: each pass should be a deliberate human-approved step.
+- **Don't auto-invoke `/n8n:mutant-fix`.** Suggest, don't act. Same reasoning as the other skills: each pass should be a deliberate human-approved step.
 - **No commits.** Edits land in working tree; user reviews.
 - **No fabricated scores.** If a Stryker run fails, mark FAILED in the table — never guess a value.
 
 ## Common follow-ups
 
-- "strengthen them all" → loop the user through `/n8n:strengthen-tests`, one file at a time
+- "strengthen them all" → loop the user through `/n8n:mutant-fix`, one file at a time
 - "what changed?" → `git diff origin/master...HEAD -- <file>` for the file in question
 - "ignore <pattern>" → re-run with the user's exclude added to the filter
 
 ## Related
 
-- `n8n:mutation-test` — single-file version of this skill
-- `n8n:strengthen-tests` — the natural next step when reds show up
+- `n8n:mutant-score` — single-file version of this skill
+- `n8n:mutant-fix` — the natural next step when reds show up

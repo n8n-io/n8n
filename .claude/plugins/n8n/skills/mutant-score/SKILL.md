@@ -1,5 +1,5 @@
 ---
-description: Run Stryker mutation testing on a single source file and return a structured, token-frugal report that's pipeable to a follow-up "strengthen tests" loop. Use when the user says /mutation-test, "mutation test this file", or has just edited tests and wants to verify they actually assert behaviour. Per-file only — full-package mutation runs are out of scope.
+description: Run Stryker mutation testing on a single source file and return a structured, token-frugal report that's pipeable to a follow-up "strengthen tests" loop. Use when the user says /mutant-score, "mutation test this file", or has just edited tests and wants to verify they actually assert behaviour. Per-file only — full-package mutation runs are out of scope.
 ---
 
 # Mutation testing — single file
@@ -8,7 +8,7 @@ Wraps `pnpm --filter=<pkg> mutate <file>` and parses `summary.json` into a compa
 
 ## When to use
 
-- User explicitly invokes: `/mutation-test <path>`, "mutation test this file", "check my test effectiveness on X"
+- User explicitly invokes: `/mutant-score <path>`, "mutation test this file", "check my test effectiveness on X"
 - User has just edited a test file and wants to know if their assertions are load-bearing
 - Follow-up loop after a `red` verdict — feed the structured output back to a "fix" iteration
 
@@ -100,7 +100,7 @@ Order the survivors array by `location` (ascending line number, then column) so 
 - **No raw.json** — never read or surface it. summary.json is the only input.
 - **No HTML report** — don't `open` raw.html or paste links to it. If the user wants visual exploration they'll ask.
 - **No automatic triage** — don't categorise survivors by "real bug" vs "refactor insurance." That's a separate analysis step that should happen on demand, not by default. Keeps token cost predictable.
-- **No "I'll regenerate tests for you now"** — this skill reports the gap. Use `n8n:strengthen-tests` if you want assertion edits.
+- **No "I'll regenerate tests for you now"** — this skill reports the gap. Use `n8n:mutant-fix` if you want assertion edits.
 
 ## Common follow-ups (don't do unless asked)
 
