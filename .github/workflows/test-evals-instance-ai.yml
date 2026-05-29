@@ -49,6 +49,22 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Validate branch input
+        env:
+          BRANCH: ${{ inputs.branch || github.ref_name }}
+        run: |
+          # Allowlist of refs permitted to run on this job. The job exposes
+          # secrets to code checked out from `BRANCH` (PR-source code is built
+          # into the n8n container and the eval CLI runs from the checkout),
+          # so anything outside the allowlist is rejected to prevent arbitrary
+          # refs from accessing them.
+          if [[ "$BRANCH" =~ ^(master|ai/.+|ai-.+)$ ]]; then
+            echo "Branch '$BRANCH' is allowed."
+          else
+            echo "::error::Branch '$BRANCH' is not in the allowlist. Permitted patterns: master, ai/*, ai-*"
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
