@@ -1,3 +1,11 @@
+## [2.23.2](https://github.com/n8n-io/n8n/compare/n8n@2.23.1...n8n@2.23.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* **core:** Use slugs instead of ids to identify MCP registry servers ([#31301](https://github.com/n8n-io/n8n/issues/31301)) ([05b5d76](https://github.com/n8n-io/n8n/commit/05b5d76eb7b2a27a44e98db655fde2cb3d26946c))
+
+
 ## [2.23.1](https://github.com/n8n-io/n8n/compare/n8n@2.23.0...n8n@2.23.1) (2026-05-28)
 
 
