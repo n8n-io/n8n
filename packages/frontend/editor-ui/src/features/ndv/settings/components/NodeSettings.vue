@@ -755,7 +755,12 @@ function handleSelectAction(params: INodeParameters) {
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
-			<N8nCallout v-if="isDeprecated" theme="danger" data-test-id="node-deprecated-notice">
+			<N8nCallout
+				v-if="isDeprecated"
+				theme="danger"
+				class="mt-xs"
+				data-test-id="node-deprecated-notice"
+			>
 				{{ deprecatedNotice }}
 			</N8nCallout>
 			<N8nNotice
