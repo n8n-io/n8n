@@ -72,6 +72,7 @@ describe('ImportService', () => {
 			mock(),
 			workflowRepository,
 			workflowPublishHistoryRepository,
+			mock(), // deprecatedNodesValidationService
 		);
 	});
 
