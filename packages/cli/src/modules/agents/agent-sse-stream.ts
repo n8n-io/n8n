@@ -113,6 +113,7 @@ function emitToolChunk(
 				| 'tool-input-delta'
 				| 'tool-call'
 				| 'tool-execution-start'
+				| 'tool-execution-end'
 				| 'tool-result'
 				| 'tool-call-suspended';
 		}
@@ -149,6 +150,14 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+			});
+			break;
+		case 'tool-execution-end':
+			send({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				isError: chunk.isError,
 			});
 			break;
 		case 'tool-result':
@@ -202,6 +211,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-input-delta':
 		case 'tool-call':
 		case 'tool-execution-start':
+		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);

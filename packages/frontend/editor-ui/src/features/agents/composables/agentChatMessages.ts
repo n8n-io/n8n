@@ -35,6 +35,10 @@ export interface ToolCall {
 	input?: unknown;
 	output?: unknown;
 	state: ToolCallState;
+	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
+	startTime?: number;
+	/** Epoch ms when the tool settled. Absent while still running. */
+	endTime?: number;
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
@@ -302,6 +306,8 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					input: part.input,
 					...(output !== undefined && { output }),
 					state,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
 			}

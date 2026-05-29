@@ -100,3 +100,47 @@ describe('agent-sse-stream — subagent lifecycle chunks', () => {
 		]);
 	});
 });
+
+describe('agent-sse-stream — tool execution lifecycle chunks', () => {
+	it('forwards tool-execution-end as an SSE event', async () => {
+		const events = await collectEvents([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+		]);
+	});
+});
+
+describe('agent-sse-stream — tool execution lifecycle chunks', () => {
+	it('forwards tool-execution-end as an SSE event', async () => {
+		const events = await collectEvents([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+		]);
+	});
+});

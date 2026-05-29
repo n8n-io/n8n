@@ -97,6 +97,18 @@ export type StreamChunk = ContentMetadata &
 				toolName: string;
 		  }
 		| {
+				/**
+				 * Emitted as soon as an individual tool handler settles, bridged from
+				 * the runtime event bus. Lets consumers flip a concurrent tool call to
+				 * its terminal state immediately, instead of waiting for the batched
+				 * `tool-result` chunks emitted only after the whole batch settles.
+				 */
+				type: 'tool-execution-end';
+				toolCallId: string;
+				toolName: string;
+				isError: boolean;
+		  }
+		| {
 				type: 'tool-result';
 				toolCallId: string;
 				toolName: string;

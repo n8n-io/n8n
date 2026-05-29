@@ -1,18 +1,52 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useTimestamp } from '@vueuse/core';
+import { computed, watch } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
+import { formatDuration } from '../session-timeline.utils';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 
-defineProps<{
+const props = defineProps<{
 	toolCalls: ToolCall[];
 }>();
 
 const i18n = useI18n();
 
+// Live clock for running tools. Ticks ~10x/s for a smooth stopwatch, and stays
+// paused whenever nothing is running so finished/historical groups don't re-render.
+const {
+	timestamp: now,
+	pause,
+	resume,
+} = useTimestamp({
+	interval: 100,
+	controls: true,
+	immediate: false,
+});
+
+const hasRunningTool = computed(() =>
+	props.toolCalls.some((tc) => tc.startTime !== undefined && tc.endTime === undefined),
+);
+
+watch(
+	hasRunningTool,
+	(running) => {
+		if (running) resume();
+		else pause();
+	},
+	{ immediate: true },
+);
+
 function getToolDisplayName(toolName: string): string {
 	const translationKey = getToolNameTranslationKey(toolName);
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
+}
+
+function toolDuration(tc: ToolCall): string {
+	if (tc.startTime === undefined) return '';
+	const end = tc.endTime ?? now.value;
+	return formatDuration(end - tc.startTime);
 }
 </script>
 
@@ -45,11 +79,11 @@ function getToolDisplayName(toolName: string): string {
 				{{ getToolDisplayName(tc.tool) }}
 			</span>
 			<span
-				v-if="tc.displaySummary"
-				:class="$style.toolStepSummary"
-				data-testid="tool-step-summary"
+				v-if="toolDuration(tc)"
+				:class="$style.toolStepDuration"
+				data-testid="tool-step-duration"
 			>
-				· {{ tc.displaySummary }}
+				{{ toolDuration(tc) }}
 			</span>
 		</li>
 	</ol>
@@ -118,14 +152,11 @@ function getToolDisplayName(toolName: string): string {
 	line-height: var(--line-height--sm);
 }
 
-.toolStepSummary {
+.toolStepDuration {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
+	font-variant-numeric: tabular-nums;
 }
 
 .shimmer {

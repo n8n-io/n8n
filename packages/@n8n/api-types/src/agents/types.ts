@@ -139,6 +139,10 @@ export interface AgentPersistedMessageContentPart {
 	state?: string;
 	output?: unknown;
 	error?: string;
+	/** Epoch ms when the tool handler started executing. */
+	startTime?: number;
+	/** Epoch ms when the tool handler settled. */
+	endTime?: number;
 }
 
 export interface AgentPersistedMessageDto {

@@ -86,6 +86,17 @@ export type AgentSseEvent =
 			toolName: string;
 	  }
 	| {
+			/**
+			 * Emitted as soon as an individual tool settles, so the FE can flip a
+			 * concurrent tool call to its terminal state immediately instead of
+			 * waiting for the batched `tool-result` events.
+			 */
+			type: 'tool-execution-end';
+			toolCallId: string;
+			toolName: string;
+			isError: boolean;
+	  }
+	| {
 			type: 'tool-result';
 			toolCallId: string;
 			toolName: string;

@@ -1218,6 +1218,15 @@ export class AgentRuntime {
 				toolName: data.toolName,
 			});
 		};
+		const onToolExecutionEnd = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionEnd) return;
+			writeEventChunk({
+				type: 'tool-execution-end',
+				toolCallId: data.toolCallId,
+				toolName: data.toolName,
+				isError: data.isError,
+			});
+		};
 		const onSubAgentStarted = (data: AgentEventData): void => {
 			if (data.type !== AgentEvent.SubAgentStarted) return;
 			const { type: _type, ...payload } = data;
@@ -1234,6 +1243,7 @@ export class AgentRuntime {
 			writeEventChunk({ type: 'subagent-completed', ...payload });
 		};
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+		this.eventBus.on(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 		this.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
 		this.eventBus.on(AgentEvent.SubAgentProgress, onSubAgentProgress);
 		this.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
@@ -1257,6 +1267,7 @@ export class AgentRuntime {
 			})
 			.finally(() => {
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
 				this.eventBus.off(AgentEvent.SubAgentProgress, onSubAgentProgress);
 				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);

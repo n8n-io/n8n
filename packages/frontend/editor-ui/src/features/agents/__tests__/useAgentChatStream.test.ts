@@ -396,4 +396,54 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
 	});
+
+	it('flips a ToolCall to done on tool-execution-end before the batched tool-result arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-call', toolCallId: 'tc-11', toolName: 'delegate_subagent', input: {} },
+			{ type: 'finish-step' },
+			{ type: 'tool-execution-start', toolCallId: 'tc-11', toolName: 'delegate_subagent' },
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-11',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('do thing');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls?.[0].state).toBe('done');
+	});
+
+	it('records start/end timestamps across the tool lifecycle for the timer', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-call', toolCallId: 'tc-12', toolName: 'delegate_subagent', input: {} },
+			{ type: 'finish-step' },
+			{ type: 'tool-execution-start', toolCallId: 'tc-12', toolName: 'delegate_subagent' },
+			{
+				type: 'tool-execution-end',
+				toolCallId: 'tc-12',
+				toolName: 'delegate_subagent',
+				isError: false,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('do thing');
+		await nextTick();
+
+		const tc = hook.messages.value[1].toolCalls?.[0];
+		expect(typeof tc?.startTime).toBe('number');
+		expect(typeof tc?.endTime).toBe('number');
+		expect(tc!.endTime!).toBeGreaterThanOrEqual(tc!.startTime!);
+	});
 });
