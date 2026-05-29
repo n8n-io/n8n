@@ -13,6 +13,7 @@ import type { PullResult } from 'simple-git';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
@@ -32,26 +33,34 @@ export class SourceControlController {
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly eventService: EventService,
 	) {}
 
 	@Get('/preferences')
-	async getPreferences(req: AuthenticatedRequest): Promise<SourceControlPreferences> {
-		// returns the settings with the privateKey property redacted
-		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		const preferences = { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+	async getPreferences(req: AuthenticatedRequest): Promise<Partial<SourceControlPreferences>> {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
 
-		// The repository URL can embed credentials, so only managers may read it
-		if (!hasGlobalScope(req.user, 'sourceControl:manage')) {
+		if (hasGlobalScope(req.user, 'sourceControl:manage')) {
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...preferences, publicKey };
+		}
+
+		const publicSubset = {
+			branchReadOnly: preferences.branchReadOnly,
+		};
+
+		const ctx = await this.sourceControlContextFactory.createContext(req.user);
+		if (ctx.authorizedProjects.length > 0) {
 			return {
-				...preferences,
-				repositoryUrl: '',
-				httpsUsername: undefined,
-				httpsPassword: undefined,
+				...publicSubset,
+				connected: preferences.connected,
+				branchName: preferences.branchName,
+				branchColor: preferences.branchColor,
 			};
 		}
 
-		return preferences;
+		return publicSubset;
 	}
 
 	@Post('/preferences')
