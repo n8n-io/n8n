@@ -6,9 +6,7 @@ import '../../css/_tokens.scss';
 
 import N8nPromptInput from './N8nPromptInput.vue';
 import type { WorkflowSuggestion } from '../../types/assistant';
-import N8nButton from '../N8nButton/Button.vue';
-import N8nCard from '../N8nCard/Card.vue';
-import N8nHeading from '../N8nHeading/Heading.vue';
+import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
@@ -146,61 +144,83 @@ const workflowSuggestions: WorkflowSuggestion[] = [
 	},
 ];
 
+interface PromptAttachment {
+	name: string;
+	type: string;
+}
+
+const promptAttachments: PromptAttachment[] = [
+	{
+		name: 'invoice-screenshot.png',
+		type: 'image/png',
+	},
+	{
+		name: 'workflow-notes.pdf',
+		type: 'application/pdf',
+	},
+];
+
 const LeadingTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		N8nButton,
-		N8nCard,
-		N8nHeading,
+		N8nIcon,
 		N8nPromptInput,
 	},
 	template: `
 		<div style="width: 500px; max-width: 100%;">
 			<n8n-prompt-input v-bind="args" @submit="onSubmit" @stop="onStop">
 				<template #leading>
-					<n8n-card
+					<div
 						style="
-							--card--padding: var(--spacing--sm);
-							background: var(--color--background--light);
-							border-color: var(--border-color);
-							box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+							display: flex;
+							flex-wrap: wrap;
+							gap: var(--spacing--2xs);
 						"
 					>
 						<div
+							v-for="attachment in args.attachments"
+							:key="attachment.name"
 							style="
+								position: relative;
 								display: flex;
-								flex-direction: column;
-								gap: var(--spacing--sm);
-								width: 100%;
+								align-items: center;
+								justify-content: center;
+								width: 80px;
+								height: 80px;
+								overflow: hidden;
+								border: var(--border);
+								border-radius: var(--radius--lg);
+								background: var(--color--foreground--tint-2);
+								color: var(--color--text--tint-1);
 							"
 						>
-							<n8n-heading tag="div" size="small" bold color="text-dark">
-								Allow AI Assistant to archive workflow?
-							</n8n-heading>
-							<div
+							<N8nIcon icon="file" size="large" />
+							<button
+								type="button"
+								:aria-label="'Remove ' + attachment.name"
 								style="
+									position: absolute;
+									top: var(--spacing--4xs);
+									right: var(--spacing--4xs);
 									display: flex;
-									justify-content: space-between;
 									align-items: center;
-									gap: var(--spacing--sm);
-									padding-top: var(--spacing--xs);
+									justify-content: center;
+									width: 20px;
+									height: 20px;
+									padding: 0;
+									color: white;
+									background: color-mix(in srgb, var(--color--foreground--shade-2) 70%, transparent);
+									border: none;
+									border-radius: 50%;
+									cursor: pointer;
 								"
+								@click.stop="onRemoveAttachment(attachment.name)"
 							>
-								<n8n-button type="button" variant="secondary" size="medium">
-									Deny
-								</n8n-button>
-								<div style="display: flex; gap: var(--spacing--xs);">
-									<n8n-button type="button" variant="secondary" size="medium">
-										Allow once
-									</n8n-button>
-									<n8n-button type="button" variant="solid" size="medium">
-										Always allow
-									</n8n-button>
-								</div>
-							</div>
+								<N8nIcon icon="x" size="small" />
+							</button>
 						</div>
-					</n8n-card>
+					</div>
 				</template>
 			</n8n-prompt-input>
 		</div>
@@ -208,6 +228,7 @@ const LeadingTemplate: StoryFn = (args, { argTypes }) => ({
 	methods: {
 		onSubmit: methods.onSubmit,
 		onStop: methods.onStop,
+		onRemoveAttachment: action('remove-attachment'),
 	},
 });
 
@@ -303,8 +324,9 @@ const ActionsTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const WithLeading = LeadingTemplate.bind({});
 WithLeading.args = {
-	placeholder: 'Type your message here...',
+	placeholder: 'Ask about the attached files...',
 	maxLength: 1000,
+	attachments: promptAttachments,
 };
 
 export const WithTrailing = TrailingTemplate.bind({});

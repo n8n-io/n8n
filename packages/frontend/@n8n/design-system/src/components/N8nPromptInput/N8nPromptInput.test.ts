@@ -152,6 +152,31 @@ describe('N8nPromptInput', () => {
 			// Should have empty value
 			expect(textarea).toHaveValue('');
 		});
+
+		it('should keep the start of an empty focused textarea in view when placeholder changes', async () => {
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: '',
+					placeholder: 'Short placeholder',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+				attachTo: document.body,
+			});
+
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			textarea.focus();
+			textarea.scrollTop = 100;
+
+			await wrapper.setProps({
+				placeholder: 'A long placeholder\nwith multiple lines\nthat can scroll',
+				autosize: { minRows: 2, maxRows: 2 },
+			});
+
+			await vi.waitFor(() => expect(textarea.scrollTop).toBe(0));
+			wrapper.unmount();
+		});
 	});
 
 	describe('character limit', () => {

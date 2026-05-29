@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
+import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
-import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
@@ -30,6 +30,10 @@ export interface N8nPromptInputProps {
 	autofocus?: boolean;
 	buttonLabel?: string;
 	layout?: 'multiline' | 'single-line';
+	autosize?: boolean | { minRows: number; maxRows: number };
+	submitDisabled?: boolean;
+	sendButtonTestId?: string;
+	stopButtonTestId?: string;
 }
 
 const INFINITE_CREDITS = -1;
@@ -49,6 +53,10 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	autofocus: false,
 	buttonLabel: undefined,
 	layout: 'multiline',
+	autosize: true,
+	submitDisabled: undefined,
+	sendButtonTestId: 'send-message-button',
+	stopButtonTestId: 'send-message-button',
 });
 
 const emit = defineEmits<{
@@ -63,15 +71,20 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
-const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
-const singleLineHeight = 24;
-const textareaHeight = ref<number>(singleLineHeight);
-const isMultiline = ref(false);
-
-const textAreaMaxHeight = computed(() => {
-	return props.maxLinesBeforeScroll * 18;
+const autosizeRows = computed(() =>
+	typeof props.autosize === 'object'
+		? props.autosize
+		: { minRows: 1, maxRows: props.maxLinesBeforeScroll },
+);
+const isAutosizeEnabled = computed(
+	() => props.layout !== 'single-line' && props.autosize !== false,
+);
+const { textareaStyles, calculateTextareaHeight, clearTextareaHeight } = useAutosizeTextarea({
+	textarea: textareaRef,
+	enabled: isAutosizeEnabled,
+	rows: autosizeRows,
 });
 
 const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
@@ -82,11 +95,12 @@ const { characterCount, isOverLimit, isAtLimit } = useCharacterLimit({
 const showWarningBanner = computed(() => isAtLimit.value);
 const sendDisabled = computed(
 	() =>
-		!textValue.value.trim() ||
-		props.streaming ||
-		props.disabled ||
-		isOverLimit.value ||
-		props.creditsRemaining === 0,
+		props.submitDisabled ??
+		(!textValue.value.trim() ||
+			props.streaming ||
+			props.disabled ||
+			isOverLimit.value ||
+			props.creditsRemaining === 0),
 );
 
 const containerStyle = computed(() => {
@@ -102,92 +116,15 @@ const hasNoCredits = computed(() => {
 	);
 });
 
-const textareaStyle = computed(() =>
-	props.layout === 'single-line'
-		? undefined
-		: {
-				height: `${textareaHeight.value}px`,
-				overflowY: 'hidden' as const,
-			},
-);
-
-function clearTextareaHeight() {
-	if (!textareaRef.value) return;
-	textareaRef.value.style.height = '';
-	textareaRef.value.style.overflowY = '';
-}
+const textareaStyle = computed(() => (isAutosizeEnabled.value ? textareaStyles.value : undefined));
 
 function adjustHeight() {
-	if (props.layout === 'single-line') {
+	if (!isAutosizeEnabled.value) {
 		clearTextareaHeight();
 		return;
 	}
 
-	// Store focus state and scroll position before potential mode change
-	const wasFocused = document.activeElement === textareaRef.value;
-	const wasMultiline = isMultiline.value;
-	const minHeight = singleLineHeight;
-
-	// If text is completely empty (not just whitespace), use minimum height
-	if (!textValue.value || textValue.value === '') {
-		isMultiline.value = false;
-		textareaHeight.value = singleLineHeight;
-		if (textareaRef.value) {
-			textareaRef.value.style.height = `${singleLineHeight}px`;
-		}
-		return;
-	}
-
-	if (!textareaRef.value) return;
-
-	// Save scroll position BEFORE any measurements or height changes
-	// Only save if we're in multiline mode and have a scroll area
-	let viewportEl: HTMLElement | null = null;
-	let savedScrollTop = 0;
-
-	if (wasMultiline && scrollAreaRef.value) {
-		const scrollAreaElement = scrollAreaRef.value.$el as HTMLElement | undefined;
-		viewportEl = scrollAreaElement?.querySelector(
-			'[data-reka-scroll-area-viewport]',
-		) as HTMLElement | null;
-		if (viewportEl) {
-			savedScrollTop = viewportEl.scrollTop;
-		}
-	}
-
-	// Measure required height using 'auto' instead of '0' to minimize visual disruption
-	const currentHeight = textareaRef.value.style.height;
-	textareaRef.value.style.height = 'auto';
-	const scrollHeight = textareaRef.value.scrollHeight;
-	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
-
-	// Check if we need multiline mode
-	const shouldBeMultiline = scrollHeight > singleLineHeight || textValue.value.includes('\n');
-
-	// Update height tracking
-	const newHeight = Math.max(scrollHeight, minHeight);
-	textareaHeight.value = newHeight;
-	isMultiline.value = shouldBeMultiline;
-
-	// Apply the appropriate height
-	if (!isMultiline.value) {
-		textareaRef.value.style.height = `${singleLineHeight}px`;
-	} else {
-		textareaRef.value.style.height = `${newHeight}px`;
-
-		// Restore scroll position immediately after setting height
-		// This needs to happen before browser recalculates layout
-		if (viewportEl && wasMultiline && savedScrollTop > 0) {
-			viewportEl.scrollTop = savedScrollTop;
-		}
-	}
-
-	// Restore focus if mode changed or if scrollbar appeared/disappeared
-	if (wasMultiline !== isMultiline.value || wasFocused) {
-		void nextTick(() => {
-			textareaRef.value?.focus();
-		});
-	}
+	calculateTextareaHeight();
 }
 
 watch(
@@ -195,7 +132,7 @@ watch(
 	async (newValue) => {
 		textValue.value = newValue || '';
 		await nextTick();
-		if (props.layout === 'single-line') return;
+		if (props.layout === 'single-line' || props.autosize === false) return;
 
 		// Wait for an additional animation frame to ensure DOM has fully updated
 		await new Promise(requestAnimationFrame);
@@ -203,22 +140,19 @@ watch(
 	},
 );
 
-watch(
-	() => props.layout,
-	(layout) => {
-		if (layout === 'single-line') {
-			clearTextareaHeight();
-			return;
-		}
+watch([() => props.layout, () => props.autosize], ([layout, autosize]) => {
+	if (layout === 'single-line' || autosize === false) {
+		clearTextareaHeight();
+		return;
+	}
 
-		void nextTick(() => adjustHeight());
-	},
-);
+	void nextTick(() => adjustHeight());
+});
 
 watch(textValue, (newValue, oldValue) => {
 	emit('update:modelValue', newValue);
 	// Single-line layout has fixed height; only multiline needs autosizing.
-	if (props.layout === 'single-line') return;
+	if (props.layout === 'single-line' || props.autosize === false) return;
 
 	// Only adjust height if value actually changed
 	if (newValue !== oldValue) {
@@ -247,7 +181,7 @@ async function handleStop() {
 }
 
 async function handleKeyDown(event: KeyboardEvent) {
-	if (props.layout === 'single-line' && event.key === 'Enter') {
+	if (props.layout === 'single-line' && event.key === 'Enter' && !event.isComposing) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
@@ -259,7 +193,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isSubmitKey = event.key === 'Enter' && !event.shiftKey;
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey && !event.isComposing;
 	const isNewlineKey = event.key === 'Enter' && event.shiftKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
@@ -333,12 +267,6 @@ defineExpose({
 	<N8nTooltip :disabled="!disabled || !disabledTooltip" :content="disabledTooltip" placement="top">
 		<div v-bind="$attrs" :class="$style.wrapper">
 			<div
-				v-if="(showWarningBanner || $slots.leading) && layout !== 'single-line'"
-				:class="$style.leading"
-			>
-				<slot name="leading" />
-			</div>
-			<div
 				:class="[
 					$style.container,
 					{
@@ -350,42 +278,31 @@ defineExpose({
 				:style="containerStyle"
 				@click.self="handleContainerClick"
 			>
+				<slot name="leading" />
 				<!-- Warning banner when character limit is reached -->
 				<N8nCallout v-if="showWarningBanner" slim icon="info" theme="warning">
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 
-				<!-- Use ScrollArea when content exceeds max height -->
-				<N8nScrollArea
-					ref="scrollAreaRef"
+				<textarea
+					ref="textareaRef"
+					v-model="textValue"
 					:class="[
-						$style.scrollAreaWrapper,
-						{ [$style.singleLineScrollArea]: layout === 'single-line' },
+						$style.textarea,
+						{ [$style.singleLineTextarea]: layout === 'single-line' },
+						'ignore-key-press-node-creator',
+						'ignore-key-press-canvas',
 					]"
-					:max-height="layout === 'single-line' ? undefined : `${textAreaMaxHeight}px`"
-					type="auto"
+					:style="textareaStyle"
+					:placeholder="hasNoCredits ? '' : placeholder"
+					:disabled="disabled || hasNoCredits"
+					:maxlength="maxLength"
+					@keydown="handleKeyDown"
+					@focus="handleFocus"
+					@blur="handleBlur"
+					@input="layout === 'single-line' || autosize === false ? undefined : adjustHeight"
 					@click="handleFocusableRegionClick"
-				>
-					<!-- Textarea -->
-					<textarea
-						ref="textareaRef"
-						v-model="textValue"
-						:class="[
-							$style.textarea,
-							{ [$style.singleLineTextarea]: layout === 'single-line' },
-							'ignore-key-press-node-creator',
-							'ignore-key-press-canvas',
-						]"
-						:style="textareaStyle"
-						:placeholder="hasNoCredits ? '' : placeholder"
-						:disabled="disabled || hasNoCredits"
-						:maxlength="maxLength"
-						@keydown="handleKeyDown"
-						@focus="handleFocus"
-						@blur="handleBlur"
-						@input="layout === 'single-line' ? undefined : adjustHeight"
-					/>
-				</N8nScrollArea>
+				/>
 				<div
 					:class="[$style.bottomActions, { [$style.singleLineActions]: layout === 'single-line' }]"
 					@click="handleFocusableRegionClick"
@@ -407,10 +324,11 @@ defineExpose({
 						</div>
 						<div :class="$style.actionsContent" @click.stop>
 							<N8nSendStopButton
-								data-test-id="send-message-button"
 								:streaming="streaming"
 								:disabled="sendDisabled"
 								:label="buttonLabel"
+								:send-button-test-id="sendButtonTestId"
+								:stop-button-test-id="stopButtonTestId"
 								@send="handleSubmit"
 								@stop="handleStop"
 							/>
@@ -467,29 +385,35 @@ defineExpose({
 	align-items: center;
 }
 
-.scrollAreaWrapper {
-	width: 100%;
-	margin-bottom: 0;
-}
-
 .textarea {
 	width: 100%;
 	border: none;
 	background: transparent;
 	resize: none;
 	outline: none;
-	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--sm);
-	line-height: 18px;
-	color: var(--color--text--shade-1);
+	font-family: var(--font-family);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xs);
+	color: var(--text-color);
 	padding: var(--spacing--3xs);
 	margin-bottom: 0;
 	box-sizing: border-box;
 	display: block;
 	overflow-y: hidden;
 
+	&:not(.singleLineTextarea) {
+		line-height: var(--line-height--xl);
+	}
+
+	scrollbar-width: none;
+	scrollbar-color: transparent transparent;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
 	&::placeholder {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 	}
 }
 
@@ -531,5 +455,12 @@ defineExpose({
 
 .singleLineActions {
 	padding: 0;
+}
+
+.leading {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	overflow-x: auto;
 }
 </style>
