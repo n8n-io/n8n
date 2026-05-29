@@ -57,4 +57,5 @@ export const STORES = {
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',
 	AI_GATEWAY: 'aiGateway',
+	EVALUATIONS_WIZARD_SIDEPANEL: 'evaluationsWizardSidepanel',
 } as const;
