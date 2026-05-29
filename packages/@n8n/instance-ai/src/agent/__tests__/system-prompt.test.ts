@@ -78,7 +78,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('Never ask the user to paste passwords, API keys');
 			expect(prompt).toContain(
-				'credential setup, browser credential setup, or existing credential selection',
+				'credential setup, Computer Use browser credential capture, or existing credential selection',
 			);
 		});
 	});
