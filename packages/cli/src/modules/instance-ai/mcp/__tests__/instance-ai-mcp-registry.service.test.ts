@@ -1,13 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsHelper } from '@/credentials-helper';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type { OauthService } from '@/oauth/oauth.service';
 
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
@@ -17,10 +16,6 @@ const proxyFetchMock = jest.fn();
 
 jest.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
-}));
-
-jest.mock('@n8n/client-oauth2', () => ({
-	ClientOAuth2: jest.fn(),
 }));
 
 function makeRegistryServer(
@@ -52,6 +47,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		id: 'cred-1',
 		name: 'MCP OAuth2',
 		type: 'mcpOAuth2Api',
+		shared: [{ role: 'credential:owner', projectId: 'project-1' }],
 	} as CredentialsEntity;
 
 	const oauthCredentialData = {
@@ -70,7 +66,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		const mcpRegistryService = mock<McpRegistryService>();
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		const credentialsService = mock<CredentialsService>();
-		const credentialsHelper = mock<CredentialsHelper>();
+		const oauthService = mock<OauthService>();
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -78,7 +74,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			mcpRegistryService,
 			credentialsFinderService,
 			credentialsService,
-			credentialsHelper,
+			oauthService,
 		);
 
 		return {
@@ -88,7 +84,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			mcpRegistryService,
 			credentialsFinderService,
 			credentialsService,
-			credentialsHelper,
+			oauthService,
 		};
 	}
 
@@ -246,7 +242,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			mcpRegistryService,
 			credentialsFinderService,
 			credentialsService,
-			credentialsHelper,
+			oauthService,
 		} = createService();
 		connectionRepository.findBy.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
@@ -257,20 +253,9 @@ describe('InstanceAiMcpRegistryService', () => {
 		proxyFetchMock
 			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
 			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
-		const tokenRefresh = jest.fn(async () => ({ data: { access_token: 'fresh-token' } }));
-		jest.mocked(ClientOAuth2).mockImplementation(
-			() =>
-				({
-					createToken: () => ({
-						refresh: tokenRefresh,
-						client: {
-							credentials: {
-								getToken: jest.fn(async () => ({ data: { access_token: 'fresh-token' } })),
-							},
-						},
-					}),
-				}) as unknown as ClientOAuth2,
-		);
+		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
+			Authorization: 'Bearer fresh-token',
+		});
 
 		const [server] = await service.getRegistryMcpServers(user);
 		const response = await server.fetch?.('https://linear.example.com/mcp');
@@ -281,10 +266,9 @@ describe('InstanceAiMcpRegistryService', () => {
 		const [, secondInit] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
 		expect(new Headers(firstInit.headers).get('Authorization')).toBe('Bearer stale-token');
 		expect(new Headers(secondInit.headers).get('Authorization')).toBe('Bearer fresh-token');
-		expect(credentialsHelper.updateCredentials).toHaveBeenCalledWith(
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			expect.objectContaining({ oauthTokenData: { access_token: 'fresh-token' } }),
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
+			credential.id,
+			'project-1',
 		);
 	});
 
@@ -295,7 +279,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			mcpRegistryService,
 			credentialsFinderService,
 			credentialsService,
-			credentialsHelper,
+			oauthService,
 		} = createService();
 		connectionRepository.findBy.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
@@ -303,25 +287,18 @@ describe('InstanceAiMcpRegistryService', () => {
 		mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 		credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
+		oauthService.refreshOAuth2CredentialById.mockResolvedValue(null);
 
 		proxyFetchMock.mockResolvedValue(new Response('unauthorized', { status: 401 }));
-
-		jest.mocked(ClientOAuth2).mockImplementation(
-			() =>
-				({
-					createToken: () => ({
-						refresh: jest.fn(async () => {
-							throw new Error('refresh failed');
-						}),
-					}),
-				}) as unknown as ClientOAuth2,
-		);
 
 		const [server] = await service.getRegistryMcpServers(user);
 		const response = await server.fetch?.('https://linear.example.com/mcp');
 
 		expect(response?.status).toBe(401);
 		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
-		expect(credentialsHelper.updateCredentials).not.toHaveBeenCalled();
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith(
+			credential.id,
+			'project-1',
+		);
 	});
 });

@@ -1,10 +1,5 @@
 import { proxyFetch } from '@n8n/ai-utilities';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
-import {
-	ClientOAuth2,
-	type ClientOAuth2TokenData,
-	type OAuth2AuthenticationMethod,
-} from '@n8n/client-oauth2';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -12,9 +7,9 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsHelper } from '@/credentials-helper';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import { OauthService } from '@/oauth/oauth.service';
 
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
@@ -31,6 +26,7 @@ interface ResolvedRegistryServer {
 interface OAuth2FetchContext {
 	credentialId: string;
 	accessToken: string;
+	projectId: string;
 }
 
 function readString(data: Record<string, unknown>, key: string): string | undefined {
@@ -38,61 +34,13 @@ function readString(data: Record<string, unknown>, key: string): string | undefi
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function readTokenValue(
-	tokenData: Record<string, unknown>,
-	camelCaseKey: string,
-	snakeCaseKey: string,
-): string | undefined {
-	return readString(tokenData, camelCaseKey) ?? readString(tokenData, snakeCaseKey);
-}
-
 function readAccessToken(tokenData: Record<string, unknown>): string | undefined {
-	return readTokenValue(tokenData, 'accessToken', 'access_token');
-}
-
-function readRefreshToken(tokenData: Record<string, unknown>): string | undefined {
-	return readTokenValue(tokenData, 'refreshToken', 'refresh_token');
+	return readString(tokenData, 'accessToken') ?? readString(tokenData, 'access_token');
 }
 
 function readOAuthTokenData(data: ICredentialDataDecryptedObject): Record<string, unknown> | null {
 	const tokenData = data.oauthTokenData;
 	return isObjectLiteral(tokenData) ? tokenData : null;
-}
-
-function toClientOAuth2TokenData(
-	data: ICredentialDataDecryptedObject,
-): ClientOAuth2TokenData | null {
-	const tokenData = readOAuthTokenData(data);
-	if (!tokenData) {
-		return null;
-	}
-
-	const normalizedTokenData: ClientOAuth2TokenData = {
-		access_token: '',
-		refresh_token: '',
-	};
-
-	for (const [key, value] of Object.entries(tokenData)) {
-		if (typeof value === 'string') {
-			normalizedTokenData[key] = value;
-		}
-	}
-
-	const accessToken = readAccessToken(tokenData);
-	if (accessToken) {
-		normalizedTokenData.access_token = accessToken;
-	}
-
-	const refreshToken = readRefreshToken(tokenData);
-	if (refreshToken) {
-		normalizedTokenData.refresh_token = refreshToken;
-	}
-
-	if (!normalizedTokenData.access_token) {
-		return null;
-	}
-
-	return normalizedTokenData;
 }
 
 function getPreferredRemote(remotes: McpRegistryRemote[]): {
@@ -127,49 +75,6 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
 }
 
-function createOAuth2Client(data: Record<string, unknown>): ClientOAuth2 | null {
-	const clientId = readString(data, 'clientId');
-	const accessTokenUrl = readString(data, 'accessTokenUrl');
-	if (!clientId || !accessTokenUrl) {
-		return null;
-	}
-
-	const scope = readString(data, 'scope');
-	const scopes = scope
-		?.split(' ')
-		.map((s) => s.trim())
-		.filter(Boolean);
-
-	const authenticationValue = readString(data, 'authentication');
-	const authentication: OAuth2AuthenticationMethod | undefined =
-		authenticationValue === 'body' || authenticationValue === 'header'
-			? authenticationValue
-			: undefined;
-
-	let additionalBodyProperties: Record<string, unknown> | undefined;
-	const rawAdditionalBodyProperties = readString(data, 'additionalBodyProperties');
-	if (rawAdditionalBodyProperties) {
-		try {
-			const parsed = JSON.parse(rawAdditionalBodyProperties) as unknown;
-			if (isObjectLiteral(parsed)) {
-				additionalBodyProperties = parsed;
-			}
-		} catch {
-			// Ignore malformed JSON
-		}
-	}
-
-	return new ClientOAuth2({
-		clientId,
-		clientSecret: readString(data, 'clientSecret'),
-		accessTokenUri: accessTokenUrl,
-		scopes: scopes && scopes.length > 0 ? scopes : undefined,
-		ignoreSSLIssues: data.ignoreSSLIssues === true,
-		authentication,
-		...(additionalBodyProperties ? { additionalBodyProperties } : {}),
-	});
-}
-
 @Service()
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
@@ -180,7 +85,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsHelper: CredentialsHelper,
+		private readonly oauthService: OauthService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -239,7 +144,7 @@ export class InstanceAiMcpRegistryService {
 					continue;
 				}
 
-				serverConfig.fetch = this.createCustomFetch(oauth2FetchContext, user);
+				serverConfig.fetch = this.createCustomFetch(oauth2FetchContext);
 			}
 
 			resolved.push(serverConfig);
@@ -310,32 +215,50 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
+		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
+		if (!projectId) {
+			this.logger.warn('Skipping OAuth2 token refresh for credential without project sharing', {
+				connectionId,
+				serverSlug: config.serverSlug,
+				credentialId: config.credentialId,
+			});
+		}
+
 		return {
 			credentialId: config.credentialId,
 			accessToken,
+			projectId,
 		};
 	}
 
-	private createCustomFetch(oauth2Config: OAuth2FetchContext, user: User): typeof fetch {
-		let accessToken = oauth2Config.accessToken;
+	private createCustomFetch(oauth2Config: OAuth2FetchContext): typeof fetch {
+		let authorizationHeader = `Bearer ${oauth2Config.accessToken}`;
 
 		return async (input: RequestInfo | URL, init?: RequestInit) => {
 			const initialHeaders = new Headers(init?.headers);
-			initialHeaders.set('Authorization', `Bearer ${accessToken}`);
+			initialHeaders.set('Authorization', authorizationHeader);
 
 			const response = await proxyFetch(input, { ...init, headers: initialHeaders });
 			if (response.status !== 401) {
 				return response;
 			}
 
-			const refreshedAccessToken = await this.refreshAccessToken(oauth2Config.credentialId, user);
-			if (!refreshedAccessToken) {
+			if (!oauth2Config.projectId) {
 				return response;
 			}
 
-			accessToken = refreshedAccessToken;
+			const refreshedHeaders = await this.oauthService.refreshOAuth2CredentialById(
+				oauth2Config.credentialId,
+				oauth2Config.projectId,
+			);
+			const refreshedAuthorizationHeader = refreshedHeaders?.Authorization;
+			if (!refreshedAuthorizationHeader) {
+				return response;
+			}
+
+			authorizationHeader = refreshedAuthorizationHeader;
 			const retryHeaders = new Headers(init?.headers);
-			retryHeaders.set('Authorization', `Bearer ${accessToken}`);
+			retryHeaders.set('Authorization', authorizationHeader);
 
 			return await proxyFetch(input, { ...init, headers: retryHeaders });
 		};
@@ -360,48 +283,5 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		return { credential, data };
-	}
-
-	private async refreshAccessToken(credentialId: string, user: User): Promise<string | null> {
-		const credentialWithData = await this.getCredentialWithData(credentialId, user);
-		if (!credentialWithData) {
-			return null;
-		}
-
-		const { credential, data } = credentialWithData;
-		const oauthTokenData = toClientOAuth2TokenData(data);
-		if (!oauthTokenData) {
-			return null;
-		}
-
-		const oAuthClient = createOAuth2Client(data);
-		if (!oAuthClient) {
-			return null;
-		}
-
-		const grantType = readString(data, 'grantType');
-		const token = oAuthClient.createToken(oauthTokenData);
-		let refreshedTokenData: ClientOAuth2TokenData;
-		try {
-			if (grantType === 'clientCredentials') {
-				refreshedTokenData = (await token.client.credentials.getToken()).data;
-			} else {
-				refreshedTokenData = (await token.refresh()).data;
-			}
-		} catch {
-			return null;
-		}
-
-		const refreshedAccessToken = readAccessToken(refreshedTokenData);
-		if (!refreshedAccessToken) {
-			return null;
-		}
-
-		await this.credentialsHelper.updateCredentials(
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			{ ...data, oauthTokenData: refreshedTokenData },
-		);
-		return refreshedAccessToken;
 	}
 }
