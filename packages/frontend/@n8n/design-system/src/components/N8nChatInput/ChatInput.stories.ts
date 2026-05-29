@@ -1,6 +1,5 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { ref } from 'vue';
 
 import '../../css/_tokens.scss';
 
@@ -510,66 +509,6 @@ const MultipleInstancesTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const DifferentSizes = MultipleInstancesTemplate.bind({});
 DifferentSizes.args = {};
-
-const CreditsTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: { N8nChatInput },
-	template: `
-		<div style="width: 500px; max-width: 100%;">
-			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
-			<div
-				style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs); color: var(--color--text--tint-1); font-size: var(--font-size--2xs);"
-			>
-				<span>{{ args.leadingMessage }}</span>
-				<button
-					v-if="args.leadingActionLabel"
-					type="button"
-					style="border: none; background: transparent; color: var(--color--primary); padding: 0; cursor: pointer;"
-					@click="onUpgradeClick"
-				>
-					{{ args.leadingActionLabel }}
-				</button>
-			</div>
-			<n8n-chat-input v-bind="args" @submit="onSubmit" @stop="onStop">
-				<template #trailing>
-					<div
-						style="
-							display: flex;
-							flex-wrap: wrap;
-							gap: var(--spacing--2xs);
-						"
-					>
-						<button
-							v-for="suggestion in args.suggestions"
-							:key="suggestion.id"
-							type="button"
-							style="
-								display: inline-flex;
-								align-items: center;
-								justify-content: center;
-								padding: var(--spacing--4xs) var(--spacing--2xs);
-								border-radius: 56px;
-								border: var(--border);
-								background: var(--color--background--light-3);
-								font-size: var(--font-size--2xs);
-								color: var(--color--text--shade-1);
-							"
-						>
-							{{ suggestion.summary }}
-						</button>
-					</div>
-				</template>
-			</n8n-chat-input>
-			</div>
-		</div>
-	`,
-	methods: {
-		onSubmit: methods.onSubmit,
-		onStop: methods.onStop,
-		onUpgradeClick: methods.onUpgradeClick,
-	},
-});
 
 const SuggestionsTemplate: StoryFn = (args) => ({
 	setup: () => ({ args }),

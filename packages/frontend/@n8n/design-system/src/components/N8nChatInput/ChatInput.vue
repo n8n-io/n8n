@@ -9,6 +9,7 @@ import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 defineOptions({
+	name: 'N8nChatInput',
 	inheritAttrs: false,
 });
 

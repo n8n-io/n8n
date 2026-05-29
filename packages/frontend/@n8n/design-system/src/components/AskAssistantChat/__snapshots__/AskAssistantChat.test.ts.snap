@@ -87,6 +87,7 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -95,7 +96,9 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -333,6 +336,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -341,7 +345,9 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -436,6 +442,7 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -444,7 +451,9 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -591,6 +600,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="true"
         layout="multiline"
@@ -599,7 +609,9 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -727,6 +739,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -735,7 +748,9 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -863,6 +878,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -871,7 +887,9 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -999,6 +1017,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
     >
       <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="prompt-input"
         disabled="false"
         layout="multiline"
@@ -1007,7 +1026,9 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="true"
       />
     </div>
