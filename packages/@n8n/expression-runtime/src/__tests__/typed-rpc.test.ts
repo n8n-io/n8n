@@ -599,3 +599,240 @@ describe('Typed RPC: $fromAI() routes via fromAi', () => {
 		expect(result).toBeUndefined();
 	});
 });
+
+describe("Typed RPC: $('Foo').pairedItem / .itemMatching / .item route via getNodePairedItem", () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('$("Foo").pairedItem(idx) calls data.$(name).pairedItem with the idx', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					calls.push(args);
+					return { json: { resolved: true } };
+				},
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').pairedItem(2) }}", data, caller);
+		expect(result).toEqual({ json: { resolved: true } });
+		expect(calls).toEqual([[2]]);
+	});
+
+	it('$("Foo").pairedItem() forwards undefined itemIndex (host applies its default)', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					calls.push(args);
+					return { json: {} };
+				},
+			}),
+		};
+
+		evaluator.evaluate("{{ $('Foo').pairedItem() }}", data, caller);
+		expect(calls).toEqual([[undefined]]);
+	});
+
+	it('$("Foo").itemMatching(idx) reads the literal `itemMatching` property', () => {
+		// Distinct discriminator from `.pairedItem` so the host's
+		// `property === 'itemMatching'` branch fires (e.g. for the
+		// "Missing item index" error path).
+		const pairedCalls: Array<unknown[]> = [];
+		const matchingCalls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					pairedCalls.push(args);
+					return { json: { src: 'pairedItem' } };
+				},
+				itemMatching: (...args: unknown[]) => {
+					matchingCalls.push(args);
+					return { json: { src: 'itemMatching' } };
+				},
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').itemMatching(3) }}", data, caller);
+		expect(result).toEqual({ json: { src: 'itemMatching' } });
+		expect(matchingCalls).toEqual([[3]]);
+		expect(pairedCalls).toEqual([]);
+	});
+
+	it('$("Foo").item reads the literal `item` getter (no args)', () => {
+		// `.item` is a host getter — accessing it invokes the resolver
+		// immediately. Distinct discriminator so the host's getter path
+		// fires (not the `.pairedItem` method path).
+		let pairedCalls = 0;
+		let itemAccessed = 0;
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) =>
+				Object.defineProperty(
+					{
+						pairedItem: () => {
+							pairedCalls += 1;
+							return undefined;
+						},
+					} as Record<string, unknown>,
+					'item',
+					{
+						get() {
+							itemAccessed += 1;
+							return { json: { fetched: true } };
+						},
+						enumerable: true,
+					},
+				),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').item }}", data, caller);
+		expect(result).toEqual({ json: { fetched: true } });
+		expect(itemAccessed).toBe(1);
+		expect(pairedCalls).toBe(0);
+	});
+
+	it("'pairedItem', 'itemMatching', 'item' are reported by the synthetic proxy `has` trap", () => {
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: () => undefined,
+			}),
+		};
+
+		expect(evaluator.evaluate("{{ 'pairedItem' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'itemMatching' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'item' in $('Foo') }}", data, caller)).toBe(true);
+	});
+});
+
+describe('Typed RPC: $evaluateExpression() routes via evaluateExpression', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$evaluateExpression(expression)', () => {
+		const data: Record<string, unknown> = {
+			$evaluateExpression: (expression: string) => `evaluated:${expression}`,
+		};
+
+		const result = evaluator.evaluate("{{ $evaluateExpression('1 + 1') }}", data, caller);
+		expect(result).toBe('evaluated:1 + 1');
+	});
+
+	it('forwards expression and itemIndex verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$evaluateExpression: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $evaluateExpression('a') }}", data, caller);
+		evaluator.evaluate("{{ $evaluateExpression('a', 3) }}", data, caller);
+
+		expect(calls).toEqual([
+			['a', undefined],
+			['a', 3],
+		]);
+	});
+
+	it('handles missing data.$evaluateExpression gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate("{{ $evaluateExpression('x') }}", data, caller);
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$getPairedItem(...)', () => {
+		const data: Record<string, unknown> = {
+			$getPairedItem: () => ({ json: { city: 'Prague' } }),
+		};
+
+		const result = evaluator.evaluate(
+			"{{ JSON.stringify($getPairedItem('source', { previousNode: 'source' }, { item: 0 })) }}",
+			data,
+			caller,
+		);
+		expect(result).toBe(JSON.stringify({ json: { city: 'Prague' } }));
+	});
+
+	it('forwards destinationNodeName, incomingSourceData, initialPairedItem verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$getPairedItem: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate(
+			"{{ $getPairedItem('dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }) }}",
+			data,
+			caller,
+		);
+		evaluator.evaluate("{{ $getPairedItem('dest', null, { item: 0 }) }}", data, caller);
+
+		expect(calls).toEqual([
+			['dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }],
+			['dest', null, { item: 0 }],
+		]);
+	});
+
+	it('handles missing data.$getPairedItem gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate(
+			"{{ $getPairedItem('dest', null, { item: 0 }) }}",
+			data,
+			caller,
+		);
+		expect(result).toBeUndefined();
+	});
+});

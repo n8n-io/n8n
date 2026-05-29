@@ -38,10 +38,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
 
-	/** Enable Chrome DevTools MCP for browser-assisted credential setup. */
-	@Env('N8N_INSTANCE_AI_BROWSER_MCP')
-	browserMcp: boolean = false;
-
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

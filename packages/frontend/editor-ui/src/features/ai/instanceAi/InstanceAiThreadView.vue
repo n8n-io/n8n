@@ -26,8 +26,10 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
+import { scrubSecretsInText } from './scrubSecrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
@@ -67,6 +69,7 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
+const telemetry = useTelemetry();
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -129,6 +132,17 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+
+// Focus the composer when plan-edit mode is entered. The thread runtime
+// owns the activePlanEdit state; this watcher just reacts to the transition.
+watch(
+	() => thread.activePlanEdit,
+	(next, prev) => {
+		if (next && !prev) {
+			void nextTick(() => chatInputRef.value?.focus());
+		}
+	},
+);
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
@@ -532,6 +546,43 @@ const workflowPreviewRef =
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
+
+	const planEdit = thread.activePlanEdit;
+	if (planEdit) {
+		thread.cancelPlanEdit();
+		telemetry.track('User finished providing input', {
+			thread_id: thread.id,
+			input_thread_id: planEdit.inputThreadId ?? '',
+			instance_id: rootStore.instanceId,
+			type: 'plan-review',
+			provided_inputs: [
+				{
+					label: 'plan',
+					options: ['approve', 'ask-for-edits', 'deny'],
+					option_chosen: 'ask-for-edits',
+				},
+			],
+			skipped_inputs: [],
+			num_tasks: planEdit.taskCount,
+			feedback: scrubSecretsInText(message),
+		});
+		thread.markPlanUpdatePending(planEdit.requestId);
+		void thread
+			.confirmAction(planEdit.requestId, {
+				kind: 'approval',
+				approved: false,
+				userInput: message,
+			})
+			.then((success) => {
+				if (success) {
+					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
+				} else {
+					thread.clearPlanUpdatePending(planEdit.requestId);
+				}
+			});
+		return;
+	}
+
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
@@ -722,11 +773,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:is-plan-edit-mode="thread.activePlanEdit !== null"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
 										@submit="handleSubmit"
 										@stop="handleStop"
+										@cancel-plan-edit="thread.cancelPlanEdit"
 									/>
 								</Transition>
 							</div>
@@ -860,14 +913,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
-	position: relative;
-	z-index: 0;
-
-	// Drop the stacking context while the workflow preview iframe NDV is
-	// fullscreen so its `z-index` can escape and paint above the sidebar.
-	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
-		z-index: auto;
-	}
 }
 
 .chatArea {

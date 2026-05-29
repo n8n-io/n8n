@@ -1,9 +1,9 @@
 /**
  * Sanitizes MCP tool Zod schemas for Anthropic compatibility.
  *
- * Problem: Chrome DevTools MCP (and potentially other MCP servers) return JSON
- * schemas with `type: ["string", "null"]`. Some tool adapters convert these
- * to `z.union([z.string(), z.null()])`, and Anthropic's API rejects `ZodNull`.
+ * Problem: Some MCP servers return JSON schemas with `type: ["string", "null"]`.
+ * Some tool adapters convert these to `z.union([z.string(), z.null()])`, and
+ * Anthropic's API rejects `ZodNull`.
  *
  * Solution: Walk the Zod schema tree and replace ZodNull unions with optional
  * non-null alternatives. For example:
