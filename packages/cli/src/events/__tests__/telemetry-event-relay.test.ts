@@ -12,6 +12,7 @@ import {
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
@@ -30,6 +31,7 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
+import { OtelConfig } from '@/modules/otel/otel.config';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -140,6 +142,9 @@ describe('TelemetryEventRelay', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
+		const otelConfig = Container.get(OtelConfig);
+		otelConfig.enabled = false;
+		otelConfig.includeNodeSpans = true;
 	});
 
 	describe('init', () => {
@@ -1942,6 +1947,11 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					otel: expect.anything(),
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
@@ -1954,6 +1964,38 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 					},
+					otel: {
+						enabled: false,
+						include_node_spans: true,
+					},
+				}),
+			);
+		});
+
+		it('should track OTEL startup configuration on `server-started` event', async () => {
+			const otelConfig = Container.get(OtelConfig);
+			otelConfig.enabled = true;
+			otelConfig.includeNodeSpans = false;
+			workflowRepository.findOne.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Instance started',
+				expect.objectContaining({
+					otel: {
+						enabled: true,
+						include_node_spans: false,
+					},
+				}),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.not.objectContaining({
+						otel: expect.anything(),
+					}),
 				}),
 			);
 		});

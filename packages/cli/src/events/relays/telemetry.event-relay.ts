@@ -7,7 +7,7 @@ import {
 	WorkflowRepository,
 	type IWorkflowDb,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -1186,6 +1186,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private async serverStarted() {
 		const cpus = os.cpus();
+		const otel = await this.getOtelTelemetryInfo();
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -1309,7 +1310,18 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Instance started', {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+			otel,
 		});
+	}
+
+	private async getOtelTelemetryInfo() {
+		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const otelConfig = Container.get(OtelConfig);
+
+		return {
+			enabled: otelConfig.enabled,
+			include_node_spans: otelConfig.includeNodeSpans,
+		};
 	}
 
 	private getLicenseFeatures() {
