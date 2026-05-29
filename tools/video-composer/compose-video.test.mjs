@@ -95,6 +95,21 @@ test('buildTimeline keeps visual intro duration when audio is shorter than the i
 	});
 });
 
+test('buildTimeline skips the optional chapter-two stage when absent', () => {
+	assert.deepEqual(buildTimeline(20, {
+		coverDuration: 3,
+		chapterTwoDuration: 4,
+		screenshotDuration: 4,
+		hasChapterTwo: false,
+	}), {
+		totalDuration: 20,
+		cover: { start: 0, end: 3, duration: 3 },
+		chapterTwo: { start: 3, end: 3, duration: 0 },
+		screenshot: { start: 3, end: 7, duration: 4 },
+		body: { start: 7, end: 20, duration: 13 },
+	});
+});
+
 test('normalizeJob applies defaults and preserves explicit paths', () => {
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-job-'));
 	const inputs = {
@@ -127,6 +142,28 @@ test('normalizeJob applies defaults and preserves explicit paths', () => {
 	assert.equal(job.layout.screenshotTop.x, 1280);
 	assert.deepEqual(job.inputs, inputs);
 	assert.deepEqual(job.output, output);
+});
+
+test('normalizeJob does not require an optional chapter-two image', () => {
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-job-no-chapter-'));
+	const job = normalizeJob({
+		jobId: 'unit-test-no-chapter',
+		inputs: {
+			coverImage: path.join(tmp, 'cover.png'),
+			screenshotImage: path.join(tmp, 'screenshot.png'),
+			backgroundVideo: path.join(tmp, 'background.mp4'),
+			scriptText: path.join(tmp, 'script.txt'),
+			ttsAudio: path.join(tmp, 'audio.mp3'),
+		},
+		output: {
+			video: path.join(tmp, 'final.mp4'),
+			subtitles: path.join(tmp, 'subtitles.ass'),
+			ffmpegLog: path.join(tmp, 'ffmpeg.log'),
+		},
+	});
+
+	assert.equal(job.inputs.chapterTwoImage, undefined);
+	assert.equal(job.layout.chapterTwoTop.x, 710);
 });
 
 test('createAssSubtitle writes readable subtitle events', () => {
@@ -402,6 +439,65 @@ test('buildFfmpegArgs starts audio immediately while the body stage continues th
 	assert.match(filter, /\[screenmainsrc\]scale=.*reset_sar=1/);
 });
 
+test('buildFfmpegArgs uses two-image body layout when optional chapter-two image is absent', () => {
+	const job = normalizeJob({
+		jobId: 'no-chapter-two',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 20 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.equal(args.includes('/tmp/job/inputs/chapter-two.png'), false);
+	assert.match(filter, /\[0:v\]trim=start=0:duration=3/);
+	assert.match(filter, /\[0:v\]trim=start=3:duration=4/);
+	assert.match(filter, /\[0:v\]trim=start=7:duration=13/);
+	assert.match(filter, /concat=n=3:v=1:a=0/);
+	assert.match(filter, /\[3:a\]apad,atrim=0:20,asetpts=PTS-STARTPTS\[aout\]/);
+	assert.match(filter, /\[2:v\]split=2\[screenmainsrc\]\[screentopsrc\]/);
+	assert.doesNotMatch(filter, /chaptertwo/);
+	assert.match(filter, /\[bodybg\]\[covertop\]overlay=80:60:eof_action=pass\[body1\]/);
+	assert.match(filter, /\[body1\]\[screentop\]overlay=1280:60:eof_action=pass\[body\]/);
+});
+
+test('buildFfmpegArgs uses three-image body layout when optional chapter-two image is present', () => {
+	const job = normalizeJob({
+		jobId: 'with-chapter-two-body',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			chapterTwoImage: '/tmp/job/inputs/chapter-two.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 20 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.match(filter, /\[2:v\]split=2\[chaptertwomainsrc\]\[chaptertwotopsrc\]/);
+	assert.match(filter, /\[body1\]\[chaptertwotop\]overlay=710:60:eof_action=pass\[body2\]/);
+	assert.match(filter, /\[body2\]\[screentop\]overlay=1280:60:eof_action=pass\[body\]/);
+	assert.match(filter, /concat=n=4:v=1:a=0/);
+});
+
 test('buildFfmpegArgs makes only body-stage corner images transparent when treatment is enabled', () => {
 	const job = normalizeJob({
 		jobId: 'corner-treatment',
@@ -542,6 +638,38 @@ test('buildFfmpegArgs can burn subtitles via one overlay frame sequence', () => 
 	assert.equal(args.includes('-c:s'), false);
 });
 
+test('buildFfmpegArgs adjusts image subtitle input index when optional chapter-two image is absent', () => {
+	const job = normalizeJob({
+		jobId: 'image-subtitle-no-chapter',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, {
+		audioDuration: 12,
+		subtitleMode: 'image',
+		subtitleOverlay: {
+			pattern: '/tmp/job/render/subtitle-frames/subtitle-frame-%05d.png',
+			frameRate: 3,
+			frameCount: 36,
+		},
+	});
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.match(filter, /\[4:v\]format=rgba\[subtitles\]/);
+	assert.match(filter, /\[3:a\]apad,atrim=0:12,asetpts=PTS-STARTPTS\[aout\]/);
+});
+
 test('render creates final video and render artifacts', (t) => {
 	if (process.env.RUN_VIDEO_COMPOSER_SMOKE !== '1') {
 		t.skip('Set RUN_VIDEO_COMPOSER_SMOKE=1 to run the ffmpeg render smoke test');
@@ -571,8 +699,11 @@ test('render creates final video and render artifacts', (t) => {
 	const scriptText = path.join(inputDir, 'script.txt');
 	const ttsAudio = path.join(inputDir, 'audio.wav');
 	const finalVideo = path.join(outputDir, 'final.mp4');
+	const finalVideoNoChapter = path.join(outputDir, 'final-no-chapter.mp4');
 	const subtitles = path.join(outputDir, 'subtitles.ass');
+	const subtitlesNoChapter = path.join(outputDir, 'subtitles-no-chapter.ass');
 	const ffmpegLog = path.join(outputDir, 'ffmpeg.log');
+	const ffmpegLogNoChapter = path.join(outputDir, 'ffmpeg-no-chapter.log');
 
 	runFfmpeg([
 		'-y',
@@ -670,4 +801,48 @@ test('render creates final video and render artifacts', (t) => {
 	assert.equal(fs.statSync(finalVideo).size > 0, true);
 	assert.equal(fs.existsSync(subtitles), true);
 	assert.equal(fs.existsSync(ffmpegLog), true);
+
+	render(
+		normalizeJob({
+			jobId: 'smoke-test-no-chapter',
+			inputs: {
+				coverImage,
+				screenshotImage,
+				backgroundVideo,
+				scriptText,
+				ttsAudio,
+			},
+			output: {
+				video: finalVideoNoChapter,
+				subtitles: subtitlesNoChapter,
+				ffmpegLog: ffmpegLogNoChapter,
+			},
+			video: {
+				width: 320,
+				height: 180,
+				fps: 12,
+				coverDuration: 1,
+				chapterTwoDuration: 1,
+				screenshotDuration: 1,
+			},
+			layout: {
+				coverTop: {
+					x: 12,
+					y: 12,
+					width: 80,
+				},
+				screenshotTop: {
+					x: 228,
+					y: 12,
+					width: 80,
+				},
+				subtitleBottomMargin: 18,
+			},
+		}),
+	);
+
+	assert.equal(fs.existsSync(finalVideoNoChapter), true);
+	assert.equal(fs.statSync(finalVideoNoChapter).size > 0, true);
+	assert.equal(fs.existsSync(subtitlesNoChapter), true);
+	assert.equal(fs.existsSync(ffmpegLogNoChapter), true);
 });
