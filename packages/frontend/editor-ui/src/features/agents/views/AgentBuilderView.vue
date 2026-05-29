@@ -12,6 +12,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -78,6 +79,11 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
+
+// Gates the entire knowledge base feature (files panel + fetching) behind the
+// `knowledge-base` token in the backend N8N_AGENTS_MODULES env var.
+const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
@@ -233,6 +239,7 @@ async function fetchAgentFiles(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
 ) {
+	if (!isKnowledgeBaseEnabled.value) return;
 	agentFilesLoading.value = true;
 	try {
 		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
@@ -1142,6 +1149,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:agent-files="agentFiles"
 				:agent-files-loading="agentFilesLoading"
 				:agent-files-uploading="agentFilesUploading"
+				:knowledge-base-enabled="isKnowledgeBaseEnabled"
 				:deleting-agent-file-id="deletingAgentFileId"
 				:applied-skills="appliedSkills"
 				:connected-triggers="connectedTriggers"

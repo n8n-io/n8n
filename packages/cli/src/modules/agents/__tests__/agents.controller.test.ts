@@ -67,6 +67,10 @@ function makeController({
 		);
 	}
 
+	// Default the knowledge-base module to enabled so file-endpoint tests pass;
+	// the disabled-gating test overrides this on the returned mock.
+	agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(true);
+
 	const controller = new AgentsController(
 		agentsService,
 		mock<AgentsBuilderService>(),
@@ -152,6 +156,36 @@ describe('AgentsController file uploads', () => {
 				'agent-1',
 			),
 		).rejects.toThrow(BadRequestError);
+	});
+});
+
+describe('AgentsController knowledge base gating', () => {
+	it('returns not found for file endpoints when the knowledge-base module is disabled', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(false);
+
+		await expect(
+			controller.listFiles(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.uploadFiles(
+				{ params: { projectId: 'project-1' }, files: [] } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.deleteFile(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+				'file-1',
+			),
+		).rejects.toThrow(NotFoundError);
 	});
 });
 

@@ -325,6 +325,15 @@ export class AgentsService {
 	}
 
 	/**
+	 * Whether the agent knowledge base sub-feature is enabled via
+	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
+	 * runtime tool. Public so the controller can guard its file endpoints.
+	 */
+	isKnowledgeBaseModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('knowledge-base');
+	}
+
+	/**
 	 * Best-effort close of an agent instance. Delegates to `agent.close()`
 	 * which disposes the runtime and disconnects any attached MCP clients.
 	 * Errors are logged but never thrown.
@@ -866,25 +875,28 @@ export class AgentsService {
 		// per request don't bust system-prompt prompt caching.
 		agent.tool(createGetEnvironmentTool());
 
-		// search_knowledge is an optional capability. If wiring it up fails
-		// (e.g. dynamic import or service construction error), degrade
-		// gracefully and keep the rest of the runtime usable rather than
-		// failing the whole agent. The failure is logged so it stays observable.
-		try {
-			const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-			agent.tool(
-				createSearchKnowledgeTool({
+		// search_knowledge is gated behind the `knowledge-base` agents module.
+		// It's also an optional capability: if wiring it up fails (e.g. dynamic
+		// import or service construction error), degrade gracefully and keep the
+		// rest of the runtime usable rather than failing the whole agent. The
+		// failure is logged so it stays observable.
+		if (this.isKnowledgeBaseModuleEnabled()) {
+			try {
+				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+				agent.tool(
+					createSearchKnowledgeTool({
+						agentId,
+						projectId,
+						knowledgeService: this.agentKnowledgeService,
+						commandService: this.agentKnowledgeCommandService,
+					}),
+				);
+			} catch (toolError) {
+				this.logger.warn('Failed to inject search_knowledge tool', {
 					agentId,
-					projectId,
-					knowledgeService: this.agentKnowledgeService,
-					commandService: this.agentKnowledgeCommandService,
-				}),
-			);
-		} catch (toolError) {
-			this.logger.warn('Failed to inject search_knowledge tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		// Inject the rich_interaction tool only for platforms that can actually

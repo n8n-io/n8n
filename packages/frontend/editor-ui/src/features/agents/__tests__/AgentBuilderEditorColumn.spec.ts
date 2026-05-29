@@ -50,6 +50,7 @@ async function mountColumn() {
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
+			knowledgeBaseEnabled: true,
 			appliedSkills: [],
 			connectedTriggers: [],
 			isBuildChatStreaming: false,
