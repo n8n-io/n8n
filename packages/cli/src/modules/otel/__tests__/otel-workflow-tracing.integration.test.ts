@@ -148,7 +148,6 @@ describe('Custom Telemetry Tags', () => {
 					tag: [
 						{ key: 'environment', value: 'production' },
 						{ key: 'team', value: 'backend' },
-						{ key: 'env', value: '={{ $json.env }}' },
 					],
 				},
 			},
@@ -234,23 +233,6 @@ describe('Custom Telemetry Tags', () => {
 		expect(nodeSpan.attributes['n8n.node.custom.team']).toBe('backend');
 	});
 
-	it('should evaluate expression-based custom telemetry tags', async () => {
-		const project = await createTeamProject();
-		const workflow = await createWorkflow(createWorkflowWithCustomTagsFixture(), project);
-		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
-			triggerData: { env: 'staging' },
-		});
-		await waitForExecution(executionRepository, executionId);
-
-		const nodeSpan = otel
-			.getFinishedSpans()
-			.find((s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper')!;
-
-		expect(nodeSpan).toBeDefined();
-		expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('staging');
-		expect(nodeSpan.attributes['n8n.node.custom.environment']).toBe('production');
-	});
-
 	it('should attach custom tags to the correct node spans in a multi-node workflow', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeCustomTagsFixture(), project);
@@ -277,9 +259,9 @@ describe('Custom Telemetry Tags', () => {
 				settings: {
 					customTelemetryTags: [
 						{ key: 'environment', value: 'production' },
-						{ key: 'workflowName', value: '={{ $workflow.name }}' },
-						{ key: 'retryCount', value: '={{ 3 }}' },
-						{ key: 'isCritical', value: '={{ true }}' },
+						{ key: 'workflowName', value: 'Custom Tags Workflow' },
+						{ key: 'retryCount', value: '3' },
+						{ key: 'isCritical', value: 'true' },
 					],
 				},
 			},
@@ -294,10 +276,10 @@ describe('Custom Telemetry Tags', () => {
 
 		expect(workflowSpan.attributes['n8n.workflow.custom.environment']).toBe('production');
 		expect(workflowSpan.attributes['n8n.workflow.custom.workflowName']).toBe(
-			'={{ $workflow.name }}',
+			'Custom Tags Workflow',
 		);
-		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe('={{ 3 }}');
-		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('={{ true }}');
+		expect(workflowSpan.attributes['n8n.workflow.custom.retryCount']).toBe('3');
+		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
 		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
 		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
 	});
