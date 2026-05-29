@@ -6,7 +6,7 @@
  */
 import { ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nText } from '@n8n/design-system';
+import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ChatHubProvider } from '@n8n/api-types';
 
@@ -19,7 +19,6 @@ import { CATALOG_TO_CHATHUB } from '../provider-mapping';
 import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import { parseModelString, modelToString } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
-import AgentMiniEditor from './AgentMiniEditor.vue';
 import AgentModelSelector from './AgentModelSelector.vue';
 import { useToast } from '@/app/composables/useToast';
 
@@ -106,13 +105,11 @@ function onInstructionsInput(value: string) {
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
-			<AgentMiniEditor
+			<N8nMarkdownEditor
 				:class="$style.instructionsEditor"
 				:model-value="instructions"
-				language="markdown"
 				:readonly="props.disabled"
 				max-height="640px"
-				min-height="160px"
 				@update:model-value="onInstructionsInput"
 			/>
 			<N8nText size="xsmall" color="text-light">{{
@@ -126,7 +123,6 @@ function onInstructionsInput(value: string) {
 
 <style module>
 .panel {
-	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 	height: 100%;
@@ -145,11 +141,12 @@ function onInstructionsInput(value: string) {
 	flex: 1;
 	min-height: 0;
 	display: flex;
+	width: 100%;
 }
 
-.instructionsEditor > :global(.cm-editor) {
-	flex: 1;
-	min-height: 0;
+.instructionsEditor :global(.n8n-markdown),
+.instructionsEditor :global(textarea) {
+	min-height: 160px;
 }
 
 .field {
