@@ -50,6 +50,12 @@ If `author.login` is one of n8n's internal bots — `n8n-cat-bot` / `app/n8n-cat
 
 When reviewing a batch, omit the skipped PR from the output. For a single PR, emit a one-line note (e.g. `Skipped & cleaned up #30591 (n8n-cat-bot): relabeled to n8n team, cancelled GHC-8398.`).
 
+### Collision guard
+
+If `triage:in-progress` is already on the PR, another reviewer is mid-triage — **bail out** to avoid double-processing. Emit a one-line note (e.g. `Skipped #30205: already has triage:in-progress`) and move on to the next PR. Do not run the checks, do not modify labels, do not touch Linear.
+
+If the user explicitly asks to re-process a PR that's stuck on `triage:in-progress` (e.g. a previous run crashed), they can clear the label manually and re-invoke.
+
 ### Otherwise — mark in-progress
 
 ```bash
@@ -223,5 +229,5 @@ If `linearTicket` is set, also cancel it: `mcp__linear-server__save_issue(id=lin
 
 - **Draft PRs** — report all findings but note the PR is a draft.
 - **Already merged or closed** — say so and skip the checks (don't apply triage labels).
-- **Re-reviewing a PR you've already commented on** — use `committedDate`, not `updatedAt`, to detect contributor activity. See `reference/re-review.md`.
+- **Re-reviewing a PR you've already commented on** — use the GitHub Timeline API to detect contributor activity since the last skill touch. See `reference/re-review.md`.
 - **Label state machine** — single `triage:<state>` label at any time; transitions documented in `reference/label-flow.md`.

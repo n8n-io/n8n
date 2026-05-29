@@ -16,6 +16,8 @@ A PR should carry **exactly one** `triage:<state>` label at any time. The skill 
 
 ### Skill entry (step 2)
 
+Before transitioning, **check for an existing `triage:in-progress` label**. If present, another reviewer is mid-triage — bail out without touching labels, Linear, or comments. This prevents two parallel runs from double-processing the same PR.
+
 ```bash
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:pending" \
