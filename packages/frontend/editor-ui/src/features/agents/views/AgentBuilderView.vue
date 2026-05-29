@@ -1014,6 +1014,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@config-updated="onConfigUpdated"
 						@update:streaming="onBuildChatStreamingChange"
 						@update:tools="onQuickActionAddTool"
+						@update:mcp-servers="onQuickActionAddMcpServers"
 						@update:connected-triggers="onConnectedTriggersUpdate"
 						@update:full-width="isChatFullWidth = $event"
 						@trigger-added="onTriggerAdded"
