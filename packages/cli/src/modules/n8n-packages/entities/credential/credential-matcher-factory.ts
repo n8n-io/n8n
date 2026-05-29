@@ -8,11 +8,11 @@ import { IdBasedCredentialMatcher } from './id-based-credential-matcher';
 import type { CredentialMatchingMode } from '../../n8n-packages.types';
 
 export function createCredentialMatcher(mode: CredentialMatchingMode): CredentialMatcher {
-	if (!(mode in credentialMatcherByMode)) {
+	if (!(mode in matcherByMode)) {
 		throw new BadRequestError(`Unsupported credential matching mode: ${mode as string}`);
 	}
 
-	const MatcherClass = credentialMatcherByMode[mode as CredentialMatcherMode];
+	const MatcherClass = matcherByMode[mode as ImplementedMatchingMode];
 	return Container.get(MatcherClass);
 }
 
@@ -25,9 +25,9 @@ export async function applyCredentialMatching(
 }
 
 /* eslint-disable @typescript-eslint/naming-convention -- API credential matching mode keys */
-const credentialMatcherByMode = {
+const matcherByMode = {
 	'id-only': IdBasedCredentialMatcher,
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
-type CredentialMatcherMode = keyof typeof credentialMatcherByMode;
+type ImplementedMatchingMode = keyof typeof matcherByMode;

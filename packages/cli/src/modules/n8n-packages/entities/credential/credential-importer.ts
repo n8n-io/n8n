@@ -12,6 +12,10 @@ export class CredentialImporter {
 			user: request.user,
 		});
 
-		return applyCredentialMissingMode(request.missingMode, matched);
+		return await applyCredentialMissingMode(request.missingMode, matched, {
+			requirements: request.requirements,
+			targetProject: request.targetProject,
+			user: request.user,
+		});
 	}
 }

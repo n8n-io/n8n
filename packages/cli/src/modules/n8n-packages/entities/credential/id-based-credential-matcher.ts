@@ -1,5 +1,7 @@
 import { SharedCredentialsRepository } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -10,7 +12,8 @@ import {
 	type WorkflowCredentialRequirement,
 } from './credential.types';
 import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
-import { resolveCredentialIdsById } from './utils/resolve-credential-ids';
+
+const READ_SCOPE = ['credential:read'] as const;
 
 @Service()
 export class IdBasedCredentialMatcher extends CredentialMatcher {
@@ -26,16 +29,59 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 		known: WorkflowCredentialRequirement[],
 		context: CredentialMatcherContext,
 	): Promise<CredentialBinding[]> {
-		const resolvedIds = await resolveCredentialIdsById(
+		const resolvableIds = await this.findResolvableCredentialIds(
 			known.map((reference) => reference.id),
 			context.targetProject,
 			context.user,
-			this.sharedCredentialsRepository,
-			this.credentialsFinderService,
 		);
 
-		return known
-			.filter((reference) => resolvedIds.has(reference.id))
-			.map((reference) => createSuccessBinding(reference.id, reference.id));
+		return (
+			known
+				.filter((reference) => resolvableIds.has(reference.id))
+				// id-only matching: the target credential id is the source id.
+				.map((reference) => createSuccessBinding(reference.id, reference.id))
+		);
+	}
+
+	/** A source id resolves when a credential with that id is owned by the target project, or is global, and the user can read it. */
+	private async findResolvableCredentialIds(
+		sourceIds: string[],
+		targetProject: Project,
+		user: User,
+	): Promise<Set<string>> {
+		const uniqueIds = [...new Set(sourceIds)];
+		if (uniqueIds.length === 0) {
+			return new Set();
+		}
+
+		const ownedByTargetProject = new Set(
+			(
+				await this.sharedCredentialsRepository.find({
+					where: {
+						credentialsId: In(uniqueIds),
+						role: 'credential:owner',
+						projectId: targetProject.id,
+					},
+					select: { credentialsId: true },
+				})
+			).map((row) => row.credentialsId),
+		);
+
+		const readableCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
+			user,
+			[...READ_SCOPE],
+			undefined,
+			{ includeGlobalCredentials: true },
+		);
+		const credentialById = new Map(
+			readableCredentials.map((credential) => [credential.id, credential]),
+		);
+
+		return new Set(
+			uniqueIds.filter((id) => {
+				const credential = credentialById.get(id);
+				return credential !== undefined && (ownedByTargetProject.has(id) || credential.isGlobal);
+			}),
+		);
 	}
 }

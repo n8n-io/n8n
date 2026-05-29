@@ -3,7 +3,7 @@ import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
-import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-missing-mode';
+import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnexpectedError, UserError } from 'n8n-workflow';

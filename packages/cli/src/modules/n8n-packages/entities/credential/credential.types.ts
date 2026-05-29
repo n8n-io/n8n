@@ -33,6 +33,16 @@ export interface CredentialBindingRequest {
 	user: User;
 }
 
+/**
+ * Context a missing-mode handler may need to act on unresolved credentials, e.g.
+ * `create-stubs` reads `requirements` for credential type/name and owns new stubs in `targetProject`.
+ */
+export interface CredentialMissingModeContext {
+	requirements: WorkflowCredentialRequirement[] | undefined;
+	targetProject: Project;
+	user: User;
+}
+
 export function createSuccessBinding(
 	sourceId: CredentialId,
 	targetId: CredentialId,
