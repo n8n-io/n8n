@@ -2,7 +2,7 @@ import type { NodesConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
 import { DeprecatedNodesValidator } from '@/workflows/deprecated-nodes.validator';
 
@@ -48,16 +48,16 @@ describe('DeprecatedNodesValidator', () => {
 			expect(() => validator.validateOnCreate(nodes)).not.toThrow();
 		});
 
-		it('throws when any node type is deprecated', () => {
+		it('throws DeprecatedNodesError when any node type is deprecated', () => {
 			const nodes = [
 				makeNode({ id: 'a', type: 'n8n-nodes-base.set' }),
 				makeNode({ id: 'b', type: 'n8n-nodes-base.function' }),
 			];
-			expect(() => validator.validateOnCreate(nodes)).toThrow(BadRequestError);
+			expect(() => validator.validateOnCreate(nodes)).toThrow(DeprecatedNodesError);
 			expect(() => validator.validateOnCreate(nodes)).toThrow(/deprecated/);
 		});
 
-		it('lists every deprecated node in the error message', () => {
+		it('exposes every deprecated node in error meta and message', () => {
 			const nodes = [
 				makeNode({ id: 'a', type: 'n8n-nodes-base.function', name: 'Func A' }),
 				makeNode({ id: 'b', type: 'n8n-nodes-base.functionItem', name: 'Func B' }),
@@ -66,11 +66,14 @@ describe('DeprecatedNodesValidator', () => {
 				validator.validateOnCreate(nodes);
 				fail('expected to throw');
 			} catch (error) {
-				const message = (error as Error).message;
-				expect(message).toContain('Func A');
-				expect(message).toContain('Func B');
-				expect(message).toContain('n8n-nodes-base.function');
-				expect(message).toContain('n8n-nodes-base.functionItem');
+				expect(error).toBeInstanceOf(DeprecatedNodesError);
+				const typed = error as DeprecatedNodesError;
+				expect(typed.meta.violations).toEqual([
+					{ kind: 'added', nodeName: 'Func A', nodeType: 'n8n-nodes-base.function' },
+					{ kind: 'added', nodeName: 'Func B', nodeType: 'n8n-nodes-base.functionItem' },
+				]);
+				expect(typed.message).toContain('Func A');
+				expect(typed.message).toContain('Func B');
 			}
 		});
 
