@@ -56,3 +56,26 @@ test('extract-presentation can run with fixture pages for offline tests', () => 
 	assert.equal(fs.existsSync(manifest.pages[0].imagePath), true);
 	assert.equal(fs.existsSync(manifest.pages[0].textPath), true);
 });
+
+test('extract-presentation extracts a real PDF with PyMuPDF', () => {
+	const { root, jobPath } = makeTmpJob('source.pdf');
+	const sourcePath = path.join(root, 'presentation', 'source.pdf');
+	const createPdf = spawnSync('python3', ['-c', `
+import fitz
+doc = fitz.open()
+page = doc.new_page(width=640, height=360)
+page.insert_text((72, 120), "Hello PDF page one")
+page = doc.new_page(width=640, height=360)
+page.insert_text((72, 120), "Hello PDF page two")
+doc.save("${sourcePath}")
+`], { encoding: 'utf8' });
+	if (createPdf.status !== 0) {
+		assert.fail(createPdf.stderr || createPdf.stdout);
+	}
+	const result = spawnSync('node', [scriptPath, jobPath], { encoding: 'utf8' });
+	assert.equal(result.status, 0, result.stderr);
+	const manifest = JSON.parse(fs.readFileSync(path.join(root, 'pages.json'), 'utf8'));
+	assert.equal(manifest.pageCount, 2);
+	assert.match(manifest.pages[0].text, /Hello PDF page one/);
+	assert.equal(fs.existsSync(manifest.pages[1].imagePath), true);
+});

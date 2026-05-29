@@ -27,12 +27,17 @@ The workflow response includes `reviewDir`, which points to the project-local `t
 ## Presentation AI Podcast Workflow
 
 The presentation version is `workflows/presentation-ai-podcast-workflow.json`.
-It accepts one `PDF` or `PPTX` file plus optional audience/context text, extracts each page, generates page-bound podcast prompts, calls AI Podcast once per page, and renders a full-screen page explanation video.
+The current MVP accepts one `PDF` file plus optional audience/context text, extracts each page with PyMuPDF, generates page-bound podcast prompts, calls AI Podcast once per page, and renders a full-screen page explanation video. PPTX upload is intentionally disabled in this MVP and returns a clear unsupported-file message.
 
 Review artifacts are written to `tmp/n8n-video-jobs/{jobId}`. The most useful files are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`, `timing/page-timing.json`, `render/segment-*.mp4`, `render/final.mp4`, and `cost.json`.
 
-For PPTX input, install LibreOffice. For PDF page rendering and text extraction, install Poppler tools.
-If these tools run through Docker, point `PRESENTATION_PDFTOPPM_BIN`, `PRESENTATION_PDFTOTEXT_BIN`, and `PRESENTATION_SOFFICE_BIN` to wrapper scripts in `.env.video-clip` so the workflow can call them without installing the tools on the host.
+Install PyMuPDF in the Python runtime used by n8n:
+
+```bash
+python3 -m pip install --user --break-system-packages --upgrade pymupdf
+```
+
+If n8n runs in Docker, install PyMuPDF in that container image or point `PRESENTATION_PYTHON_BIN` to a wrapper script that runs a Python environment with PyMuPDF available.
 
 ## Prerequisites
 

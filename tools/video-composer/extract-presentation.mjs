@@ -84,49 +84,18 @@ function writeFixturePages(job, fixturePath, sourceType) {
 }
 
 function convertPptxToPdf(job) {
-	fs.mkdirSync(job.presentationDir, { recursive: true });
-	runTool('PRESENTATION_SOFFICE_BIN', 'soffice', [
-		'--headless',
-		'--convert-to',
-		'pdf',
-		'--outdir',
-		job.presentationDir,
-		job.sourcePath,
-	]);
-	const baseName = path.basename(job.sourcePath, path.extname(job.sourcePath));
-	const convertedPath = path.join(job.presentationDir, `${baseName}.pdf`);
-	if (!fs.existsSync(convertedPath)) {
-		throw new Error(`LibreOffice did not create converted PDF: ${convertedPath}`);
-	}
-
-	return convertedPath;
+	throw new Error('PPTX input is not supported in the current MVP. Upload PDF for now.');
 }
 
 function extractPdf(job, pdfPath, sourceType) {
 	fs.mkdirSync(job.pagesDir, { recursive: true });
-	const prefix = path.join(job.pagesDir, 'page');
-	runTool('PRESENTATION_PDFTOPPM_BIN', 'pdftoppm', ['-png', '-r', '180', pdfPath, prefix]);
-	runTool('PRESENTATION_PDFTOTEXT_BIN', 'pdftotext', ['-layout', pdfPath, path.join(job.pagesDir, 'all-pages.txt')]);
-	const images = fs.readdirSync(job.pagesDir)
-		.filter((file) => /^page-\d+\.png$/.test(file))
-		.sort();
-	if (images.length === 0) throw new Error('PDF extraction produced no page images');
-	const allTextPath = path.join(job.pagesDir, 'all-pages.txt');
-	const allText = fs.existsSync(allTextPath) ? fs.readFileSync(allTextPath, 'utf8') : '';
-	const textPages = allText.split(/\f/g);
-	const pages = images.map((imageFile, index) => {
-		const pageNumber = index + 1;
-		const name = safePageName(pageNumber);
-		const imagePath = path.join(job.pagesDir, `${name}.png`);
-		fs.renameSync(path.join(job.pagesDir, imageFile), imagePath);
-		const text = String(textPages[index] || '').trim();
-		const textPath = path.join(job.pagesDir, `${name}.txt`);
-		fs.writeFileSync(textPath, text, 'utf8');
+	const helperPath = path.join(__dirname, 'extract-pdf-pymupdf.py');
+	const outputPath = path.join(job.pagesDir, 'pages-pymupdf.json');
+	runTool('PRESENTATION_PYTHON_BIN', 'python3', [helperPath, pdfPath, job.pagesDir, outputPath]);
+	if (!fs.existsSync(outputPath)) throw new Error(`PyMuPDF extraction did not create output JSON: ${outputPath}`);
+	const payload = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 
-		return { pageNumber, imagePath, textPath, text, isTextSparse: text.length < 20 };
-	});
-
-	return validatePagesManifest({ sourceType, pageCount: pages.length, pages });
+	return validatePagesManifest({ ...payload, sourceType });
 }
 
 function main() {
