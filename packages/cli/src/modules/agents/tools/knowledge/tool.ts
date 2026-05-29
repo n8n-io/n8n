@@ -118,7 +118,7 @@ function buildWorkspaceCacheKey(projectId: string, agentId: string, files: Works
  */
 function toToolErrorMessage(error: unknown): string {
 	const message = error instanceof Error ? error.message : String(error);
-	return message.replace(/(?<=^|\s)\/\S*\/\S*/g, '[path]');
+	return message.replace(/(^|[\s'"(])\/(?:[^\s'"()]+\/)*[^\s'"()]+/g, '$1[path]');
 }
 
 async function handleKnowledgeOperation(
