@@ -5,6 +5,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import {
 	applyCredentialMissingMode,
+	CredentialMissingModeHandler,
 	createCredentialMissingModeHandler,
 	MustPreexistCredentialMissingModeHandler,
 } from '../credential-missing-mode';
@@ -18,7 +19,7 @@ const context: CredentialMissingModeContext = {
 };
 
 describe('MustPreexistCredentialMissingModeHandler', () => {
-	const handler = new MustPreexistCredentialMissingModeHandler();
+	const handler: CredentialMissingModeHandler = new MustPreexistCredentialMissingModeHandler();
 
 	it('returns the result when there are no failures', async () => {
 		const result = { successes: [createSuccessBinding('a', 'b')], failures: [] };
