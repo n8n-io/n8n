@@ -354,7 +354,8 @@ test('buildFfmpegArgs pads short audio instead of stopping at audio length', () 
 	assert.match(filter, /\[0:v\]trim=start=0:duration=3/);
 	assert.match(filter, /\[0:v\]trim=start=3:duration=4/);
 	assert.doesNotMatch(filter, /\[0:v\]trim=start=7:duration=5/);
-	assert.match(filter, /\[1:v\]scale=.*reset_sar=1/);
+	assert.match(filter, /\[1:v\]scale=1920:1080:force_original_aspect_ratio=increase.*crop=1920:1080\[covermain\]/);
+	assert.match(filter, /\[coverbg\]\[covermain\]overlay=0:0:shortest=1\[cover\]/);
 	assert.match(filter, /\[2:v\]scale=.*reset_sar=1/);
 });
 
@@ -383,7 +384,10 @@ test('buildFfmpegArgs starts audio immediately while the body stage continues th
 	assert.match(filter, /\[0:v\]trim=start=7:duration=13/);
 	assert.match(filter, /\[3:a\]apad,atrim=0:20,asetpts=PTS-STARTPTS\[aout\]/);
 	assert.doesNotMatch(filter, /adelay=/);
-	assert.match(filter, /\[covermainsrc\]scale=.*reset_sar=1/);
+	assert.match(
+		filter,
+		/\[covermainsrc\]scale=1920:1080:force_original_aspect_ratio=increase.*crop=1920:1080\[covermain\]/,
+	);
 	assert.match(filter, /\[screenmainsrc\]scale=.*reset_sar=1/);
 });
 

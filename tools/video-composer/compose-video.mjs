@@ -529,6 +529,10 @@ function scaleAndPad(input, width, height, label) {
 	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
 
+function scaleAndCrop(input, width, height, label) {
+	return `${input}scale=${width}:${height}:force_original_aspect_ratio=increase:force_divisible_by=2:reset_sar=1,crop=${width}:${height}${label}`;
+}
+
 function scaleStaticOverlay(input, maxWidth, maxHeight, duration, fps, label, treatment = null) {
 	const filters = [
 		`scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1`,
@@ -616,8 +620,8 @@ export function buildFfmpegArgs(
 				]
 			: []),
 		backgroundSegment('[0:v]', timeline.cover.start, timeline.cover.duration, width, height, '[coverbg]'),
-		scaleAndPad(coverMainInput, 1500, 820, '[covermain]'),
-		'[coverbg][covermain]overlay=(W-w)/2:(H-h)/2:shortest=1[cover]',
+		scaleAndCrop(coverMainInput, width, height, '[covermain]'),
+		'[coverbg][covermain]overlay=0:0:shortest=1[cover]',
 		backgroundSegment(
 			'[0:v]',
 			timeline.screenshot.start,
