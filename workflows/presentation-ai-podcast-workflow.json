@@ -1,4 +1,5 @@
 {
+  "id": "presentation-ai-podcast-workflow",
   "name": "MVP - Presentation AI Podcast Video Composer",
   "nodes": [
     {
@@ -284,5 +285,8 @@
   },
   "settings": {
     "executionOrder": "v1"
-  }
+  },
+  "active": false,
+  "versionId": "presentation-ai-podcast-workflow-v1",
+  "tags": []
 }
