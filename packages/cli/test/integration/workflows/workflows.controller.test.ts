@@ -740,15 +740,6 @@ describe('POST /workflows', () => {
 			parameters: { functionCode: 'return items;' },
 		};
 
-		const cleanNode: INode = {
-			id: uuid(),
-			name: 'Manual Trigger',
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-
 		test('blocks creating a workflow that contains a deprecated node', async () => {
 			const response = await authOwnerAgent.post('/workflows').send({
 				name: 'has deprecated',
