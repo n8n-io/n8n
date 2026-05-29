@@ -152,6 +152,7 @@ export type RuntimeSkillFileLoader = (
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
 }

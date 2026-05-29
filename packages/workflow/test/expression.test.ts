@@ -227,15 +227,15 @@ describe('Expression', () => {
 
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
-				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.defineProperty}}')).toThrow();
 			});
 
 			it('should block Object.defineProperties', () => {
-				expect(evaluate('={{Object.defineProperties}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.defineProperties}}')).toThrow();
 			});
 
 			it('should block Object.setPrototypeOf', () => {
-				expect(evaluate('={{Object.setPrototypeOf}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.setPrototypeOf}}')).toThrow();
 			});
 
 			it('should block Object.getPrototypeOf', () => {
@@ -243,11 +243,11 @@ describe('Expression', () => {
 			});
 
 			it('should block Object.getOwnPropertyDescriptor', () => {
-				expect(evaluate('={{Object.getOwnPropertyDescriptor}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.getOwnPropertyDescriptor}}')).toThrow();
 			});
 
 			it('should block Object.getOwnPropertyDescriptors', () => {
-				expect(evaluate('={{Object.getOwnPropertyDescriptors}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.getOwnPropertyDescriptors}}')).toThrow();
 			});
 
 			it('should block __defineGetter__ on Object', () => {
@@ -290,12 +290,11 @@ describe('Expression', () => {
 			});
 
 			it('should prevent Object.defineProperty attack on Error.prepareStackTrace', () => {
-				// Object.defineProperty is undefined, so calling it returns undefined (no-op)
-				// The attack fails silently - prepareStackTrace is never set
-				const result = evaluate(
-					"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
-				);
-				expect(result).toBeUndefined();
+				expect(() =>
+					evaluate(
+						"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
+					),
+				).toThrow();
 			});
 		});
 
@@ -414,26 +413,22 @@ describe('Expression', () => {
 			});
 
 			it('should block getOwnPropertyDescriptor bypass attempt', () => {
-				// Attempt to read blocked properties via getOwnPropertyDescriptor
-				// getOwnPropertyDescriptor is undefined, calling it throws TypeError
 				const payload = `={{(() => {
 					const desc = Object.getOwnPropertyDescriptor(Error, 'prepareStackTrace');
 					return desc ? 'HAS_DESC' : 'NO_DESC';
 				})()}}`;
 
-				// getOwnPropertyDescriptor is undefined, calling undefined() throws
-				const result = evaluate(payload);
-				expect(result).toBeUndefined();
+				expect(() => evaluate(payload)).toThrow();
 			});
 
 			it('should block indirect access to defineProperty via bracket notation', () => {
-				expect(evaluate("={{Object['defineProperty']}}")).toBeUndefined();
+				expect(() => evaluate("={{Object['defineProperty']}}")).toThrow();
 			});
 
 			it('should block storing defineProperty in a variable', () => {
-				// Even if you try to store it, you get undefined
-				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
-				expect(result).toBeUndefined();
+				expect(() =>
+					evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}'),
+				).toThrow();
 			});
 
 			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
@@ -504,6 +499,35 @@ describe('Expression', () => {
 				expect(() => evaluate(payload)).toThrow(
 					'Cannot access "__lookupGetter__" due to security concerns',
 				);
+			});
+
+			it('should reject jmespath queries that reference restricted identifiers', () => {
+				expect(() => evaluate('={{ $jmespath({a:1}, "constructor") }}')).toThrow(
+					/due to security concerns/,
+				);
+				expect(() => evaluate('={{ $jmespath({a:1}, "__proto__") }}')).toThrow(
+					/due to security concerns/,
+				);
+				expect(() => evaluate('={{ $jmespath({a:1}, "prototype") }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should reject jmespath queries that reference restricted identifiers (alias)', () => {
+				expect(() => evaluate('={{ $jmesPath({a:1}, "getPrototypeOf") }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should reject computed-string jmespath queries built from restricted identifiers', () => {
+				const payload =
+					'={{ $jmespath({a:1}, String.fromCharCode(99,111,110,115,116,114,117,99,116,111,114)) }}';
+				expect(() => evaluate(payload)).toThrow(/due to security concerns/);
+			});
+
+			it('should still allow jmespath queries that contain restricted names as substrings', () => {
+				const payload = '={{ $jmespath({constructorName:"Widget"}, "constructorName") }}';
+				expect(evaluate(payload)).toBe('Widget');
 			});
 
 			it('should block TOCTOU bypass via custom toString()', () => {
@@ -1076,6 +1100,195 @@ describe('Expression', () => {
 			} finally {
 				await testWorkflow.expression.releaseIsolate();
 			}
+		});
+
+		it("should throw 'Missing item index' for $('source').itemMatching() (engine parity)", async () => {
+			// Both engines surface the host's `ExpressionError("Missing item
+			// index for .itemMatching()")`. The legacy engine throws directly
+			// from `pairedItemMethod` in `WorkflowDataProxy`. The VM engine
+			// sends the `getNodeItemMatching` typed-RPC with `itemIndex:
+			// undefined`; the host's `pairedItemMethod` closure throws because
+			// `property === PAIRED_ITEM_METHOD.ITEM_MATCHING`, and the bridge
+			// round-trips that error through the sentinel back into the
+			// isolate, where tournament's `E()` re-throws it.
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('source').itemMatching() }}",
+						runExecutionData,
+						0,
+						0,
+						'consumer',
+						[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+						'manual',
+						{},
+						{
+							node: testWorkflow.getNode('consumer')!,
+							data: {},
+							source: {
+								main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+						},
+					),
+				).toThrowError(/Missing item index for \.itemMatching\(\)/);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+	});
+
+	describe('$getPairedItem through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		const workflow = new Workflow({
+			id: 'test-get-paired-item',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'source-id',
+					name: 'source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'consumer-id',
+					name: 'consumer',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } },
+			active: false,
+			nodeTypes,
+		});
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string) =>
+			workflow.expression.getParameterValue(
+				expr,
+				runExecutionData,
+				0,
+				0,
+				'consumer',
+				[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+				'manual',
+				{},
+				{
+					node: workflow.getNode('consumer')!,
+					data: {},
+					source: {
+						main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+					},
+				},
+			);
+
+		it('resolves the upstream item via the ancestry chain (parity)', () => {
+			// Build the `incomingSourceData` literal inside the expression so the
+			// argument is constructed in-isolate under the VM engine. Both
+			// engines walk back from `consumer` to `source` and return the
+			// matching item.
+			const expr =
+				"={{ JSON.stringify($getPairedItem('source', { previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }, { item: 0 })) }}";
+			expect(evaluate(expr)).toBe(
+				JSON.stringify({ json: { city: 'Prague' }, pairedItem: { item: 0 } }),
+			);
+		});
+
+		it('throws when `incomingSourceData` is null (parity)', () => {
+			// Both engines surface the host's "paired item not found"
+			// ExpressionError. The legacy engine throws directly from
+			// `getPairedItem`. The VM engine sends the typed-RPC envelope with
+			// `incomingSourceData: null`; the host throws and the sentinel
+			// round-trips back into the isolate, where tournament's `E()`
+			// re-throws it.
+			const expr = "={{ $getPairedItem('source', null, { item: 0 }) }}";
+			expect(() => evaluate(expr)).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$evaluateExpression through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: 'test-evaluate',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-id',
+					name: 'node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string, data: INodeExecutionData[]) =>
+			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+		// The inner expression must be wrapped in `{{ ... }}` for the host to
+		// evaluate it (without those, the host strips `=` and the rest is
+		// treated as a literal string). Inside a parameter expression that
+		// would create nested `{{...}}` and trip the outer parser, so the
+		// inner braces are built via string concatenation.
+		const buildInnerTemplate = (inner: string) => `'{' + '{ ${inner} }' + '}'`;
+
+		it('resolves a nested $json reference (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}) }}`, [
+					{ json: { value: 42 } },
+				]),
+			).toBe(42);
+		});
+
+		it('forwards an itemIndex argument (parity)', () => {
+			expect(
+				evaluate(`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 1) }}`, [
+					{ json: { value: 'first' } },
+					{ json: { value: 'second' } },
+				]),
+			).toBe('second');
 		});
 	});
 
