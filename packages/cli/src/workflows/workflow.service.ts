@@ -41,6 +41,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { DeprecatedNodesValidator } from './deprecated-nodes.validator';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -100,6 +101,7 @@ export class WorkflowService {
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly deprecatedNodesValidator: DeprecatedNodesValidator,
 	) {}
 
 	async getMany(
@@ -398,6 +400,10 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
 		});
+
+		if (hasNodesKey && nodesChanged) {
+			this.deprecatedNodesValidator.validateOnUpdate(workflowUpdateData.nodes, workflow.nodes);
+		}
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

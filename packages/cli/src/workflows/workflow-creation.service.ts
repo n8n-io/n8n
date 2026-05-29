@@ -31,6 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { DeprecatedNodesValidator } from './deprecated-nodes.validator';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -58,6 +59,7 @@ export class WorkflowCreationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+		private readonly deprecatedNodesValidator: DeprecatedNodesValidator,
 	) {}
 
 	async createWorkflow(
@@ -123,6 +125,7 @@ export class WorkflowCreationService {
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
 		WorkflowHelpers.validateWorkflowNodeGroups(newWorkflow);
+		this.deprecatedNodesValidator.validateOnCreate(newWorkflow.nodes);
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);

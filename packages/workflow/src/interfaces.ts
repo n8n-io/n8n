@@ -2351,6 +2351,19 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
+	 * Marks the node (or a specific version of it) as deprecated. The backend
+	 * refuses to add new instances of a deprecated node to workflows, and refuses
+	 * to modify existing instances — but workflows that already contain such
+	 * nodes keep running unchanged. Set this only for nodes that pose an active
+	 * risk (e.g. legacy nodes using insecure sandboxing); use `hidden` for nodes
+	 * that are merely superseded.
+	 *
+	 * For versioned nodes, set this on the per-version description to mark only
+	 * that version as deprecated (e.g. an older version with a known vulnerability).
+	 */
+	deprecated?: true;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
