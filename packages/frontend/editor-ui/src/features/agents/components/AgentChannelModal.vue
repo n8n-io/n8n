@@ -152,18 +152,12 @@ function toIconName(icon: string): IconName {
 }
 
 const headerText = computed(() => {
-	if (currentView.value === 'list') return i18n.baseText('agents.channels.modal.title');
+	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
-	if (!channel) return '';
-	if (isSetupMode.value) {
+	if (channel && !isListMode) {
 		return channel;
 	}
-	if (isEditMode.value) {
-		return i18n.baseText('agents.channels.modal.editTitle', {
-			interpolate: { channel },
-		});
-	}
-	return '';
+	return i18n.baseText('agents.channels.modal.title');
 });
 
 function isConnected(channelType: string): boolean {
@@ -362,6 +356,11 @@ async function handleDisconnected(channelType: string) {
 	emit('agent-changed');
 }
 
+async function disconnectSlackApp() {
+	await handleDisconnected('slack');
+	closeModal();
+}
+
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
 	await Promise.all([
@@ -461,6 +460,7 @@ watch(
 				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
 					<AgentChannelSlackSetup
 						v-if="selectedChannelType === 'slack'"
+						mode="setup"
 						:connected="isConnected('slack')"
 						:setup-slack-app="setupSlackApp"
 					/>
@@ -515,8 +515,15 @@ watch(
 				</div>
 
 				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
+					<AgentChannelSlackSetup
+						v-if="currentIntegration?.type === 'slack'"
+						mode="edit"
+						:connected="isConnected('slack')"
+						:disabled="isLoading('slack')"
+						:disconnect-slack-app="disconnectSlackApp"
+					/>
 					<AgentChannelLinearSetup
-						v-if="currentIntegration?.type === 'linear'"
+						v-else-if="currentIntegration?.type === 'linear'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials[currentIntegration.type]"
 						mode="edit"

@@ -9,12 +9,16 @@ const props = withDefaults(
 	defineProps<{
 		connected?: boolean;
 		disabled?: boolean;
+		mode?: 'setup' | 'edit';
 		setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
+		disconnectSlackApp?: () => Promise<void>;
 	}>(),
 	{
 		connected: false,
 		disabled: false,
+		mode: 'setup',
 		setupSlackApp: undefined,
+		disconnectSlackApp: undefined,
 	},
 );
 
@@ -23,6 +27,7 @@ const i18n = useI18n();
 const appConfigurationToken = shallowRef('');
 const showAppConfigurationToken = shallowRef(false);
 const setupLoading = shallowRef(false);
+const disconnectLoading = shallowRef(false);
 const setupError = shallowRef<'invalidToken' | 'generic' | null>(null);
 
 const steps = computed(() => [
@@ -51,6 +56,8 @@ const canInstallApp = computed(
 		!props.connected &&
 		props.setupSlackApp !== undefined,
 );
+
+const visibleTokenPlaceholder = '••••••••••••••••';
 
 const appConfigurationTokenInputType = computed(() =>
 	showAppConfigurationToken.value ? 'text' : 'password',
@@ -85,11 +92,49 @@ async function installSlackApp() {
 		setupLoading.value = false;
 	}
 }
+
+async function disconnectSlackApp() {
+	if (!props.disconnectSlackApp || props.disabled || disconnectLoading.value) return;
+
+	disconnectLoading.value = true;
+	try {
+		await props.disconnectSlackApp();
+	} finally {
+		disconnectLoading.value = false;
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.slackSetup">
-		<N8nStepper :steps="steps">
+		<div v-if="mode === 'edit'" :class="$style.editTokenContainer">
+			<div :class="$style.tokenField">
+				<label for="slack-app-configuration-token" :class="$style.tokenLabel">
+					<N8nText bold size="medium">
+						{{ i18n.baseText('agents.channels.slack.setup.copyAccessToken.label') }}
+					</N8nText>
+				</label>
+				<N8nInput
+					id="slack-app-configuration-token"
+					:model-value="visibleTokenPlaceholder"
+					type="password"
+					size="large"
+					readonly
+					data-testid="slack-app-configuration-token"
+				/>
+			</div>
+			<N8nButton
+				variant="destructive"
+				size="medium"
+				:loading="disconnectLoading"
+				:disabled="disabled || disconnectLoading"
+				data-testid="slack-disconnect-app"
+				@click="disconnectSlackApp"
+			>
+				{{ i18n.baseText('generic.disconnect') }}
+			</N8nButton>
+		</div>
+		<N8nStepper v-else :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
@@ -202,11 +247,31 @@ async function installSlackApp() {
 	color: var(--color--danger);
 }
 
-.tokenInputContainer {
+.tokenInputContainer,
+.editTokenContainer {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
 }
+
+.editTokenContainer {
+	gap: var(--spacing--sm);
+	align-items: flex-start;
+}
+
+.tokenField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding-inline: var(--spacing--3xs);
+	margin-inline: calc(var(--spacing--3xs) * -1);
+}
+
+.tokenLabel {
+	display: inline-flex;
+}
+
 .tokenVisibilityButton {
 	margin-right: calc(var(--spacing--3xs) * -1);
 }

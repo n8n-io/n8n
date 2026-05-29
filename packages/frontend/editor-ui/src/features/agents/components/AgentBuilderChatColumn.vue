@@ -100,14 +100,11 @@ const sharedInputDraft = ref('');
 							:mcp-servers="localConfig?.mcpServers ?? []"
 							:project-id="projectId"
 							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="isPublished"
 							:connected-triggers="connectedTriggers"
 							@update:tools="emit('update:tools', $event)"
 							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
-							@agent-published="emit('agent-published', $event)"
 							@agent-changed="emit('agent-changed')"
 						/>
 					</div>
