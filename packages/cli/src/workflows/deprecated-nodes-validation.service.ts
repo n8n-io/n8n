@@ -10,16 +10,11 @@ import {
 import { NodeTypes } from '@/node-types';
 
 /**
- * Refuses workflow create/update operations that add new instances of a
- * deprecated node type, or that modify an existing deprecated node in place.
+ * A deprecated node can only be removed or migrated off the deprecated
+ * version — adding a new deprecated node, or modifying one in place, is
+ * refused. Edits to other nodes in the workflow are unaffected.
  *
- * Existing workflows continue to run unchanged — this validator only blocks
- * mutations. Deleting a deprecated node, moving it on the canvas, or replacing
- * it with a non-deprecated version are all allowed (the last case is the
- * intended migration path for version-level deprecation, e.g. Postgres v1 → v2).
- *
- * Gated by `N8N_DEPRECATED_NODES_BLOCK` (default on). When disabled the
- * validator is a no-op so operators can disable enforcement if needed.
+ * Gated by `N8N_DEPRECATED_NODES_BLOCK` (default on); a no-op when off.
  */
 @Service()
 export class DeprecatedNodesValidationService {
