@@ -91,14 +91,15 @@ describe('DeprecatedNodesValidator', () => {
 			expect(() => validator.validateOnUpdate([node], [node])).not.toThrow();
 		});
 
-		it('allows position-only changes to a deprecated node', () => {
+		it('blocks position-only changes to a deprecated node', () => {
 			const before = makeNode({
 				id: 'a',
 				type: 'n8n-nodes-base.function',
+				name: 'Func',
 				position: [0, 0],
 			});
 			const after = { ...before, position: [200, 100] as [number, number] };
-			expect(() => validator.validateOnUpdate([after], [before])).not.toThrow();
+			expect(() => validator.validateOnUpdate([after], [before])).toThrow(/Cannot modify.*Func/);
 		});
 
 		it('blocks adding a deprecated node that did not exist before', () => {
