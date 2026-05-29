@@ -208,6 +208,24 @@ describe('AgentsService', () => {
 
 			expect(result.valid).toBe(true);
 		});
+
+		it('allows MCP servers', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+
+			expect(result.valid).toBe(true);
+		});
 	});
 
 	describe('create', () => {

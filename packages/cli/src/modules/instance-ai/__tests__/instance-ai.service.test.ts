@@ -338,7 +338,12 @@ type StartRunServiceInternals = {
 		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
 	};
 	threadPushRef: Map<string, string>;
+	userMessagePersistenceByRun: Map<
+		string,
+		{ userId: string; message: { id: string; text: string } }
+	>;
 	executeRun: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -355,7 +360,9 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: jest.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.userMessagePersistenceByRun = new Map();
 	service.executeRun = jest.fn();
+	service.trackInFlightExecution = jest.fn();
 	return service;
 }
 
@@ -412,9 +419,10 @@ type CheckpointPruneServiceInternals = {
 	startCheckpointPruning: () => void;
 	stopCheckpointPruning: () => void;
 	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	pruneStalePendingConfirmations: jest.MockedFunction<(now: number) => Promise<void>>;
 	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
-		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+		markExpiredOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
 	};
 	checkpointPruneTimer?: NodeJS.Timeout;
 	checkpointPruningStopped: boolean;
@@ -430,8 +438,9 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		InstanceAiService.prototype,
 	) as unknown as CheckpointPruneServiceInternals;
 	service.scheduleCheckpointPrune = jest.fn();
+	service.pruneStalePendingConfirmations = jest.fn(async (_now: number) => undefined);
 	service.checkpointStore = {
-		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+		markExpiredOlderThan: jest.fn(async (_olderThan: Date) => 0),
 	};
 	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
@@ -562,6 +571,7 @@ type ShutdownServiceInternals = {
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: jest.Mock; warn: jest.Mock };
 };
 
@@ -1175,6 +1185,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.inFlightExecutions = new Set();
 		service.logger = { debug: jest.fn(), warn: jest.fn() };
 
 		await service.shutdown();
@@ -1357,15 +1368,16 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 });
 
 describe('InstanceAiService — checkpoint pruning', () => {
-	it('deletes checkpoints older than the retention window', async () => {
+	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
 		await service.pruneStaleCheckpoints(now);
 
-		expect(service.checkpointStore.deleteOlderThan).toHaveBeenCalledWith(
+		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
+		expect(service.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 	});
 
@@ -1483,7 +1495,15 @@ type ResolveConfirmationServiceInternals = {
 		findSuspendedByRequestId: jest.Mock;
 		rejectPendingConfirmation: jest.Mock;
 	};
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+	resumeSuspendedRun: jest.Mock;
+	dropPendingConfirmation: jest.Mock;
+	pendingConfirmationRepo: { claim: jest.Mock };
+	tryResumeFromOrphan: jest.Mock;
+	finalizeUnresumableOrphan: jest.Mock;
+	publishRunFinish: jest.Mock;
+	saveAgentTreeSnapshot: jest.Mock;
+	dbSnapshotStorage: unknown;
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock; info: jest.Mock };
 };
 
 function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
@@ -1497,7 +1517,20 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 		findSuspendedByRequestId: jest.fn(),
 		rejectPendingConfirmation: jest.fn(),
 	};
-	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	service.resumeSuspendedRun = jest.fn(async () => false);
+	service.dropPendingConfirmation = jest.fn(async () => {});
+	service.pendingConfirmationRepo = { claim: jest.fn(async () => undefined) };
+	service.tryResumeFromOrphan = jest.fn(async () => false);
+	service.finalizeUnresumableOrphan = jest.fn();
+	service.publishRunFinish = jest.fn();
+	service.saveAgentTreeSnapshot = jest.fn(async () => {});
+	service.dbSnapshotStorage = {};
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+	};
 	return service;
 }
 
@@ -1572,6 +1605,8 @@ type SuspendedRunResumeServiceInternals = {
 	dbSnapshotStorage: unknown;
 	createOrchestratorResumeTraceContext: jest.Mock;
 	processResumedStream: jest.Mock;
+	dropPendingConfirmation: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1580,6 +1615,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	) as unknown as SuspendedRunResumeServiceInternals;
 	service.revalidateActiveUser = jest.fn();
 	service.cancelRun = jest.fn();
+	service.dropPendingConfirmation = jest.fn(async () => {});
+	service.trackInFlightExecution = jest.fn();
 	service.runState = {
 		findSuspendedByRequestId: jest.fn(() => ({
 			agent: {},
@@ -1667,6 +1704,124 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		);
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
+		expect(service.dropPendingConfirmation).toHaveBeenCalledWith('req-1');
+	});
+
+	it('throws a UserError when an inline orphan is reclaimed after a restart (no checkpoint to resume)', async () => {
+		// Inline confirmations were held by an in-process Promise that died
+		// with the previous main; there's nothing to load from the checkpoint
+		// store, so the only honest answer is the terminal UserError.
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'inline',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'inline' }),
+		);
+	});
+
+	it('falls back to UserError when a suspended orphan lacks the fields needed to resume', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			// no agentRunId / toolCallId / checkpointKey -> can't resume
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'suspended' }),
+		);
+	});
+
+	it('reclaims and resumes a suspended orphan when the checkpoint is still loadable', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		const orphan = {
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		};
+		service.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
+		service.tryResumeFromOrphan.mockResolvedValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.tryResumeFromOrphan).toHaveBeenCalledWith(orphan, expect.anything());
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
+	});
+
+	it('falls back to UserError when the resume attempt itself fails', async () => {
+		// e.g. checkpoint expired between claim and load, or env build fails
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		});
+		service.tryResumeFromOrphan.mockResolvedValue(false);
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalled();
+	});
+
+	it('returns false silently when no DB row is claimable for an unknown confirmation', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue(undefined);
+
+		const result = await service.resolveConfirmation('user-1', 'req-missing', approval);
+
+		expect(result).toBe(false);
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
 	});
 });
 
