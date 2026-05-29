@@ -65,7 +65,9 @@ interface IApiInvocationsBuffer {
 }
 
 interface IAgentExecutionCountsBuffer {
-	[agentId: string]: {
+	[bufferKey: string]: {
+		agent_id: string;
+		user_id?: string;
 		message_count: number;
 		token_count: number;
 		tool_call_count: number;
@@ -249,17 +251,25 @@ export class Telemetry {
 		this.executionCountsBuffer = {};
 	}
 
+	private getAgentExecutionCountsBufferKey(agentId: string, userId?: string) {
+		return userId ? `${agentId}:${userId}` : agentId;
+	}
+
 	private flushAgentExecutionCounts() {
-		const agentIdsToReport = Object.keys(this.agentExecutionCountsBuffer).filter((agentId) => {
-			const data = this.agentExecutionCountsBuffer[agentId];
+		const keysToReport = Object.keys(this.agentExecutionCountsBuffer).filter((bufferKey) => {
+			const data = this.agentExecutionCountsBuffer[bufferKey];
 			return data.message_count + data.token_count + data.tool_call_count > 0;
 		});
 
-		for (const agentId of agentIdsToReport) {
+		for (const bufferKey of keysToReport) {
+			// Agent-level aggregate window keyed by persisted agent ID plus optional n8n user ID.
+			// A resume-only window may legitimately report tokens or tools with message_count = 0.
+			const { agent_id, user_id, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
 			this.track('Agent execution count', {
 				event_version: '1',
-				agent_id: agentId,
-				...this.agentExecutionCountsBuffer[agentId],
+				agent_id,
+				...(user_id ? { user_id } : {}),
+				...counts,
 			});
 		}
 
@@ -312,15 +322,24 @@ export class Telemetry {
 	trackAgentExecution(properties: IAgentExecutionTrackProperties) {
 		if (!this.rudderStack) return;
 
-		const { agent_id, message_count = 0, token_count = 0, tool_call_count = 0 } = properties;
+		const {
+			agent_id,
+			user_id,
+			message_count = 0,
+			token_count = 0,
+			tool_call_count = 0,
+		} = properties;
+		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, user_id);
 
-		this.agentExecutionCountsBuffer[agent_id] = this.agentExecutionCountsBuffer[agent_id] ?? {
+		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
+			agent_id,
+			...(user_id ? { user_id } : {}),
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
 		};
 
-		const agentExecutionCounts = this.agentExecutionCountsBuffer[agent_id];
+		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
 		agentExecutionCounts.message_count += message_count;
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;

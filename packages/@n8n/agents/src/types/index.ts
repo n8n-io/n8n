@@ -53,6 +53,7 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolExecutionContext,
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
