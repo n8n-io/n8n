@@ -1,4 +1,3 @@
-import { proxyFetch } from '@n8n/ai-utilities';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,6 +9,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
+import { createAuthFetch } from '@/utils/auth-fetch';
 
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
@@ -144,7 +144,19 @@ export class InstanceAiMcpRegistryService {
 					continue;
 				}
 
-				serverConfig.fetch = this.createCustomFetch(oauth2FetchContext);
+				serverConfig.fetch = createAuthFetch({
+					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
+					onUnauthorized: async () => {
+						if (!oauth2FetchContext.projectId) {
+							return null;
+						}
+
+						return await this.oauthService.refreshOAuth2CredentialById(
+							oauth2FetchContext.credentialId,
+							oauth2FetchContext.projectId,
+						);
+					},
+				});
 			}
 
 			resolved.push(serverConfig);
@@ -228,39 +240,6 @@ export class InstanceAiMcpRegistryService {
 			credentialId: config.credentialId,
 			accessToken,
 			projectId,
-		};
-	}
-
-	private createCustomFetch(oauth2Config: OAuth2FetchContext): typeof fetch {
-		let authorizationHeader = `Bearer ${oauth2Config.accessToken}`;
-
-		return async (input: RequestInfo | URL, init?: RequestInit) => {
-			const initialHeaders = new Headers(init?.headers);
-			initialHeaders.set('Authorization', authorizationHeader);
-
-			const response = await proxyFetch(input, { ...init, headers: initialHeaders });
-			if (response.status !== 401) {
-				return response;
-			}
-
-			if (!oauth2Config.projectId) {
-				return response;
-			}
-
-			const refreshedHeaders = await this.oauthService.refreshOAuth2CredentialById(
-				oauth2Config.credentialId,
-				oauth2Config.projectId,
-			);
-			const refreshedAuthorizationHeader = refreshedHeaders?.Authorization;
-			if (!refreshedAuthorizationHeader) {
-				return response;
-			}
-
-			authorizationHeader = refreshedAuthorizationHeader;
-			const retryHeaders = new Headers(init?.headers);
-			retryHeaders.set('Authorization', authorizationHeader);
-
-			return await proxyFetch(input, { ...init, headers: retryHeaders });
 		};
 	}
 
