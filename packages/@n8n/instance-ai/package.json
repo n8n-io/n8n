@@ -8,6 +8,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",

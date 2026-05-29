@@ -9,7 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -88,6 +88,22 @@ type GetManyCredentialsOptions = {
 	filters?: {
 		dependency?: CredentialDependencyFilter;
 	};
+};
+
+type WorkflowCredentialResult = {
+	id: string;
+	name: string;
+	type: string;
+	createdAt: string;
+	updatedAt: string;
+	scopes: Scope[];
+	isManaged: boolean;
+	isGlobal: boolean;
+	isResolvable: boolean;
+	homeProject: SlimProject | null;
+	sharedWithProjects: SlimProject[];
+	currentUserHasAccess: boolean;
+	connectedByMe?: boolean;
 };
 
 @Service()
@@ -546,7 +562,7 @@ export class CredentialsService {
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: { workflowId: string } | { projectId: string },
-	) {
+	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
@@ -567,26 +583,35 @@ export class CredentialsService {
 			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
 		);
 
-		const result: Array<{
-			id: string;
-			name: string;
-			type: string;
-			scopes: Scope[];
-			isManaged: boolean;
-			isGlobal: boolean;
-			isResolvable: boolean;
-			connectedByMe?: boolean;
-		}> = intersection
-			.map((c) => this.roleService.addScopes(c, user, projectRelations))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				scopes: c.scopes,
-				isManaged: c.isManaged,
-				isGlobal: c.isGlobal,
-				isResolvable: c.isResolvable,
-			}));
+		if (intersection.length > 0) {
+			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+				intersection.map((c) => c.id),
+			);
+			intersection.forEach((c) => {
+				c.shared = relations.filter((r) => r.credentialsId === c.id);
+			});
+		}
+
+		const enriched = intersection
+			.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
+			.map((c) => this.roleService.addScopes(c, user, projectRelations)) as Array<
+			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
+		>;
+
+		const result = enriched.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			createdAt: c.createdAt.toISOString(),
+			updatedAt: c.updatedAt.toISOString(),
+			scopes: c.scopes,
+			isManaged: c.isManaged,
+			isGlobal: c.isGlobal,
+			isResolvable: c.isResolvable,
+			homeProject: c.homeProject,
+			sharedWithProjects: c.sharedWithProjects,
+			currentUserHasAccess: true,
+		}));
 
 		await this.populateConnectedByMe(result, user);
 		return result;

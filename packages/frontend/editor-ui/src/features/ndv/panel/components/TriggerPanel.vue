@@ -16,6 +16,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -56,6 +57,9 @@ const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const ndvStore = injectNDVStore();
 
 const router = useRouter();
@@ -171,7 +175,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!workflowsStore.executionWaitingForWebhook) {
+	if (!workflowExecutionStateStore.value.executionWaitingForWebhook) {
 		return false;
 	}
 
@@ -184,7 +188,7 @@ const isListeningForEvents = computed(() => {
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = workflowsStore.executedNode;
@@ -361,7 +365,7 @@ const onLinkClick = (e: MouseEvent) => {
 				pane: 'input',
 				type: 'open-executions-log',
 			});
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 			void router.push({
 				name: VIEWS.EXECUTIONS,
 			});

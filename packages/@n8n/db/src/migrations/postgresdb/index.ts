@@ -191,7 +191,8 @@ import { CreateInstanceAiObservationTables1784000000012 } from '../common/178400
 import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
-import { AddCustomTelemetryTagsToProject1784000000016 } from '../common/1784000000016-AddCustomTelemetryTagsToProject';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddCustomTelemetryTagsToProject1784000000017 } from '../common/1784000000017-AddCustomTelemetryTagsToProject';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -388,5 +389,6 @@ export const postgresMigrations: Migration[] = [
 	SplitRedactionScopeInCustomRoles1784000000013,
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
-	AddCustomTelemetryTagsToProject1784000000016,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddCustomTelemetryTagsToProject1784000000017,
 ];
