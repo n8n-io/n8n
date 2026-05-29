@@ -1,3 +1,4 @@
+import { useResizeObserver } from '@vueuse/core';
 import {
 	computed,
 	nextTick,
@@ -7,7 +8,6 @@ import {
 	toValue,
 	watch,
 } from 'vue';
-import { useResizeObserver } from '@vueuse/core';
 
 export interface AutosizeTextareaRows {
 	minRows?: number;

@@ -1,5 +1,5 @@
-import { computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
 import { useActiveElement, useEventListener } from '@vueuse/core';
+import { computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
 
 export interface ChatInputAutoFocusTarget {
 	focus: () => void;

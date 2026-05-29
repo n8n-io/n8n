@@ -56,7 +56,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				return () =>
 					h('div', { 'data-test-id': 'chat-input' }, [
 						slots.leading?.(),
-						slots.actions?.(),
+						slots['left-actions']?.() ?? slots.actions?.(),
+						slots['right-actions']?.(),
 						slots.trailing?.(),
 						h('textarea', {
 							'data-test-id': 'chat-textarea',

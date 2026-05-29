@@ -3,8 +3,8 @@ import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } fro
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
+import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
