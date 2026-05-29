@@ -51,6 +51,7 @@ const emit = defineEmits<{
 	'update:view': [view: ChannelView];
 	'channel-connected': [channelType: string];
 	'channel-disconnected': [channelType: string];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -211,6 +212,7 @@ async function saveChannelConfig() {
 
 	await connect(channelType, credentialId, channelSetupRef.value?.currentSettings);
 	emit('channel-connected', channelType);
+	emit('agent-changed');
 	closeModal();
 }
 
@@ -346,6 +348,7 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 
 	await fetchStatus(['slack']);
 	emit('channel-connected', 'slack');
+	emit('agent-changed');
 	closeModal();
 	return true;
 }
@@ -356,6 +359,7 @@ async function handleDisconnected(channelType: string) {
 
 	await disconnect(channelType, credentialId);
 	emit('channel-disconnected', channelType);
+	emit('agent-changed');
 }
 
 async function loadChannelState() {

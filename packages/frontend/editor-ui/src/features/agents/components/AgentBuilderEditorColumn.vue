@@ -66,6 +66,7 @@ const emit = defineEmits<{
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -206,6 +207,7 @@ function onRemoveSubAgent(agentId: string) {
 							@trigger-added="emit('trigger-added', $event)"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
+							@agent-changed="emit('agent-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">

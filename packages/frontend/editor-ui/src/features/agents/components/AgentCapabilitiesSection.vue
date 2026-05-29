@@ -53,6 +53,7 @@ const emit = defineEmits<{
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -549,6 +550,7 @@ function handleChannelDisconnected(channelType: string) {
 			:connected-channels="connectedTriggers"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
+			@agent-changed="emit('agent-changed')"
 		/>
 	</div>
 </template>

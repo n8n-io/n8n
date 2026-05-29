@@ -595,21 +595,14 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(vm.isBuilt).toBe(true);
 	});
 
-	it('refreshes full config after trigger connection changes the agent', async () => {
+	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 
-		capabilities.vm.$emit('add-trigger');
-		await nextTick();
-
-		const modalData = openModalWithDataMock.mock.calls[0]?.[0]?.data as
-			| { onAgentChanged?: () => Promise<void> | void }
-			| undefined;
-		expect(modalData?.onAgentChanged).toBeTypeOf('function');
-
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		await modalData?.onAgentChanged?.();
+		capabilities.vm.$emit('agent-changed');
+		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
