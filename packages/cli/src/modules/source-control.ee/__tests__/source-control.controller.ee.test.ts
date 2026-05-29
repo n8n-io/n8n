@@ -235,7 +235,7 @@ describe('SourceControlController', () => {
 			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();
 		});
 
-		it('should return only connected and branchReadOnly for users with no source-control access', async () => {
+		it('should return only branchReadOnly for users with no source-control access', async () => {
 			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
 			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
@@ -245,7 +245,6 @@ describe('SourceControlController', () => {
 			const result = await controller.getPreferences(mock<AuthenticatedRequest>({ user }));
 
 			expect(result).toEqual({
-				connected: fullPreferences.connected,
 				branchReadOnly: fullPreferences.branchReadOnly,
 			});
 			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();

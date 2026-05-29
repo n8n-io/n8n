@@ -8,11 +8,11 @@ export type SshKeyTypes = ['ed25519', 'rsa'];
 // - Project admin (sourceControl:push on a team project): SourceControlProjectPreferences
 // - Global admin (sourceControl:manage): SourceControlPreferences (full)
 export type SourceControlPublicPreferences = {
-	connected: boolean;
 	branchReadOnly: boolean;
 };
 
 export type SourceControlProjectPreferences = SourceControlPublicPreferences & {
+	connected: boolean;
 	branchName: string;
 	branchColor: string;
 };

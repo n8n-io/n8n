@@ -47,7 +47,6 @@ export class SourceControlController {
 		}
 
 		const publicSubset = {
-			connected: preferences.connected,
 			branchReadOnly: preferences.branchReadOnly,
 		};
 
@@ -55,6 +54,7 @@ export class SourceControlController {
 		if (ctx.authorizedProjects.length > 0) {
 			return {
 				...publicSubset,
+				connected: preferences.connected,
 				branchName: preferences.branchName,
 				branchColor: preferences.branchColor,
 			};
