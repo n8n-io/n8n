@@ -1,10 +1,12 @@
 import { Request } from 'mssql';
 import type { IResult } from 'mssql';
 import type mssql from 'mssql';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import {
 	configurePool,
+	copyInputItem,
+	createTableStruct,
 	deleteOperation,
 	escapeIdentifier,
 	escapeTableName,
@@ -427,6 +429,96 @@ describe('MSSQL tests', () => {
 			);
 			expect(escapeTableName('schema.[table]')).toEqual('[schema.[table]]]');
 			expect(escapeTableName('[schema].table')).toEqual('[[schema]].table]');
+		});
+	});
+
+	describe('createTableStruct', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		const makeGetParam =
+			(table: string, columns: string) =>
+			(param: string, _index: number): string => {
+				if (param === 'table') return table;
+				if (param === 'columns') return columns;
+				return '';
+			};
+
+		it('should build the correct struct for standard inputs', () => {
+			const items = [makeItem({ id: 1, name: 'Alice' })];
+			const result = createTableStruct(makeGetParam('users', 'id, name'), items);
+
+			expect(result).toEqual({
+				users: {
+					'id, name': [{ id: 1, name: 'Alice' }],
+				},
+			});
+		});
+
+		it('should group multiple items with the same table and columns', () => {
+			const items = [makeItem({ id: 1 }), makeItem({ id: 2 })];
+			const result = createTableStruct(makeGetParam('orders', 'id'), items);
+
+			expect(result.orders['id']).toHaveLength(2);
+		});
+
+		it('should reject table identifiers that match reserved property tokens', () => {
+			const items = [makeItem({ id: 1 })];
+
+			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
+				expect(() => createTableStruct(makeGetParam(reserved, 'id'), items)).toThrow();
+			}
+		});
+
+		it('should reject column names that match reserved property tokens', () => {
+			const items = [makeItem({ id: 1 })];
+
+			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
+				expect(() => createTableStruct(makeGetParam('users', reserved), items)).toThrow();
+			}
+		});
+
+		it('should not alter shared object state when processing table parameters', () => {
+			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
+			const items = [makeItem({ id: 1 })];
+
+			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
+				try {
+					createTableStruct(makeGetParam(reserved, 'id'), items);
+				} catch {}
+				try {
+					createTableStruct(makeGetParam('users', reserved), items);
+				} catch {}
+			}
+
+			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
+		});
+	});
+
+	describe('copyInputItem', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		it('should copy specified properties from item json', () => {
+			const item = makeItem({ id: 1, name: 'Bob', age: 30 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: 'Bob' });
+		});
+
+		it('should set missing properties to null', () => {
+			const item = makeItem({ id: 1 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: null });
+		});
+
+		it('should omit reserved property tokens from the copied output', () => {
+			const item = makeItem({ id: 1 });
+			const result = copyInputItem(item, ['__proto__', 'constructor', 'id']);
+
+			expect(Object.getOwnPropertyNames(result)).toEqual(['id']);
+			expect(result.id).toBe(1);
 		});
 	});
 });
