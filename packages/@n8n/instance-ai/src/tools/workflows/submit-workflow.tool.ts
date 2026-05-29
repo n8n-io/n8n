@@ -168,8 +168,13 @@ export const submitWorkflowInputSchema = z.object({
 	filePath: z
 		.string()
 		.optional()
-		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
-	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+		.describe('Path to the TypeScript workflow file (defaults to the builder task main file)'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Existing n8n workflow id to update (a 16-character nanoid returned by a previous submit-workflow call or workflows tool). OMIT this argument when creating a new workflow. Do NOT pass the local id from workflow(id, name) in your SDK code — that string is a local handle, not an n8n workflow id.',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -209,6 +214,11 @@ export const submitWorkflowOutputSchema = z.object({
 
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+
+export interface SubmitWorkflowToolOptions {
+	root?: string;
+	defaultFilePath?: string;
+}
 
 /**
  * Resolve a raw `filePath` tool argument into an absolute path under the sandbox root.
@@ -252,6 +262,16 @@ export function classifySubmitFailure(
 				shouldEdit: true,
 				reason,
 				guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+			});
+		}
+
+		if (text.includes('workflow not found')) {
+			return createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason,
+				guidance:
+					'The workflowId passed to submit-workflow does not exist. Omit the workflowId argument to create a new workflow, or pass an existing workflow id. Do not reuse the local id from workflow(id, name) in your SDK code — that is a local handle, not an n8n workflow id.',
 			});
 		}
 
@@ -307,6 +327,7 @@ export function createSubmitWorkflowTool(
 	workspace: SandboxWorkspace,
 	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
+	options: SubmitWorkflowToolOptions = {},
 ) {
 	return new Tool('submit-workflow')
 		.description(
@@ -318,8 +339,11 @@ export function createSubmitWorkflowTool(
 		.output(submitWorkflowOutputSchema)
 		.handler(
 			async ({ filePath: rawFilePath, workflowId, projectId, name }: SubmitWorkflowInput) => {
-				const root = await getWorkspaceRoot(workspace);
-				const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
+				const root = options.root ?? (await getWorkspaceRoot(workspace));
+				const filePath =
+					rawFilePath || !options.defaultFilePath
+						? resolveSandboxWorkflowFilePath(rawFilePath, root)
+						: options.defaultFilePath;
 
 				const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
 				const reportAttempt = async (

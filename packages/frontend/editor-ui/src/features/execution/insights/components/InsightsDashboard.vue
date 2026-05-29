@@ -332,7 +332,7 @@ onBeforeMount(async () => {
 .insightsChartWrapper {
 	position: relative;
 	height: 292px;
-	padding: 0 var(--spacing--lg);
+	padding: 0 var(--spacing--lg) var(--spacing--lg);
 	z-index: 1;
 }
 

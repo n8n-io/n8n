@@ -20,7 +20,9 @@ function makePublishedAgent(
 		projectId: 'project-1',
 		name: 'Scheduled Agent',
 		integrations,
-		publishedVersion: {
+		activeVersionId: 'v1',
+		activeVersion: {
+			versionId: 'v1',
 			publishedById: 'user-1',
 			schema: null,
 		},
@@ -162,7 +164,7 @@ describe('AgentScheduleService', () => {
 					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
 				},
 			],
-			{ publishedVersion: null },
+			{ activeVersionId: null, activeVersion: null },
 		);
 
 		await expect(service.activate(agent)).rejects.toBeInstanceOf(ConflictError);
@@ -234,7 +236,7 @@ describe('AgentScheduleService', () => {
 		);
 	});
 
-	it('runScheduled appends the timestamp and uses a fresh thread/resource id', async () => {
+	it('runScheduled appends the timestamp and uses a fresh thread with stable schedule episodic memory', async () => {
 		const agent = makePublishedAgent([
 			{
 				type: 'schedule',
@@ -257,7 +259,7 @@ describe('AgentScheduleService', () => {
 				message: expect.stringContaining('Wake up and check the queue.'),
 				memory: {
 					threadId: expect.stringMatching(/^schedule-agent-1-/),
-					resourceId: expect.stringMatching(/^user-1/),
+					resourceId: 'schedule:user-1',
 				},
 			}),
 		);

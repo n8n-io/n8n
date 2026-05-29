@@ -10,10 +10,23 @@ jest.mock('@n8n/instance-ai', () => {
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
-		BuilderSandboxFactory: class {},
-		SnapshotManager: class {},
 		createSandbox: jest.fn(),
 		createWorkspace: jest.fn(),
+		createLazyRuntimeWorkspace: jest.fn(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		),
+		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
+		setupSandboxWorkspace: jest.fn(),
+		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		})),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: jest.fn(),
 		handleVerificationVerdict: jest.fn(),
@@ -33,6 +46,11 @@ jest.mock('@n8n/instance-ai', () => {
 		),
 		createInstanceAgent: jest.fn(),
 		createAllTools: jest.fn(),
+		WorkflowTaskCoordinator: class {},
+		WorkflowLoopStorage: class {},
+		ThreadTaskStorage: class {},
+		PlannedTaskStorage: class {},
+		PlannedTaskCoordinator: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -114,7 +132,16 @@ jest.mock('@n8n/instance-ai', () => {
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import {
+	createAllTools,
+	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
+	createSandbox,
+	createWorkspace,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
+	setupSandboxWorkspace,
+	type InstanceAiContext,
+	type SandboxConfig,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
@@ -461,6 +488,83 @@ function createTemporaryCleanupService({
 }
 
 const fakeUser = { id: 'user-1' } as User;
+const daytonaSandboxConfig = {
+	enabled: true,
+	provider: 'daytona',
+} satisfies SandboxConfig;
+
+type WorkspaceServiceInternals = {
+	sandboxes: Map<string, unknown>;
+	sandboxCreations: Map<string, Promise<unknown>>;
+	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
+	instanceAiConfig?: { builderSandboxTtlMs?: number };
+	sandboxTtlMs: number;
+	getOrCreateWorkspace: (
+		threadId: string,
+		user: User,
+		context: InstanceAiContext,
+		runId?: string,
+	) => Promise<unknown>;
+};
+
+type SandboxExpiryEntry = {
+	sandbox: unknown;
+	workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
+};
+
+type SandboxExpiryServiceInternals = {
+	sandboxes: Map<string, SandboxExpiryEntry>;
+	instanceAiConfig: { builderSandboxTtlMs?: number };
+	runState: {
+		getActiveRunId: jest.MockedFunction<(threadId: string) => string | undefined>;
+		hasSuspendedRun: jest.MockedFunction<(threadId: string) => boolean>;
+	};
+	backgroundTasks: {
+		getRunningTasks: jest.MockedFunction<(threadId: string) => ManagedBackgroundTask[]>;
+	};
+	scheduleSandboxExpiry: (threadId: string, entry: SandboxExpiryEntry) => void;
+};
+
+type ShutdownServiceInternals = {
+	shutdown: () => Promise<void>;
+	stopCheckpointPruning: jest.MockedFunction<() => void>;
+	liveness: { shutdown: jest.MockedFunction<() => void> };
+	runState: {
+		shutdown: jest.MockedFunction<
+			() => {
+				activeRuns: [];
+				suspendedRuns: [];
+			}
+		>;
+	};
+	backgroundTasks: { cancelAll: jest.MockedFunction<() => ManagedBackgroundTask[]> };
+	traceContextsByRunId: Map<string, { threadId: string }>;
+	finalizeRunTracing: jest.MockedFunction<
+		(runId: string, tracing: InstanceAiTraceContext | undefined, options: unknown) => Promise<void>
+	>;
+	finalizeBackgroundTaskTracing: jest.MockedFunction<
+		(task: ManagedBackgroundTask, status: 'cancelled') => Promise<void>
+	>;
+	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
+		(threadId: string, options: unknown) => Promise<void>
+	>;
+	gatewayRegistry: { disconnectAll: jest.MockedFunction<() => void> };
+	sandboxes: Map<
+		string,
+		{
+			sandbox: unknown;
+			workspace: { destroy: jest.MockedFunction<() => Promise<void>> };
+		}
+	>;
+	domainAccessTrackersByThread: Map<string, unknown>;
+	eventBus: { clear: jest.MockedFunction<() => void> };
+	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	logger: { debug: jest.Mock; warn: jest.Mock };
+};
 
 type TerminalOutcomeServiceInternals = {
 	replayUndeliveredTerminalOutcomes: (
@@ -684,6 +788,402 @@ function makeAgentTree(): InstanceAiAgentNode {
 		timeline: [{ type: 'text', content: 'Initial response' }],
 	};
 }
+
+describe('InstanceAiService — runtime workspace setup', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		(createSandbox as jest.Mock).mockReset();
+		(createWorkspace as jest.Mock).mockReset();
+		(setupSandboxWorkspace as jest.Mock).mockReset();
+		(createAllTools as jest.Mock).mockReset();
+		(createLazyRuntimeWorkspace as jest.Mock).mockImplementation(
+			(args: { id?: string; ensureWorkspace: () => Promise<unknown> }) => ({
+				id: args.id ?? 'lazy-runtime-workspace',
+				ensureWorkspace: args.ensureWorkspace,
+			}),
+		);
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+	});
+
+	it('serializes workspace creation for concurrent calls on the same thread', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		let resolveSandbox!: (sandbox: unknown) => void;
+		const sandboxPromise = new Promise((resolve) => {
+			resolveSandbox = resolve;
+		});
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockReturnValue(sandboxPromise);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		const first = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+		const second = service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+		resolveSandbox(sandbox);
+		const [firstEntry, secondEntry] = await Promise.all([first, second]);
+
+		expect(firstEntry).toBe(secondEntry);
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+		expect(service.sandboxCreations.size).toBe(0);
+	});
+
+	it('keeps the default runtime sandbox TTL aligned with provider auto-stop', () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.instanceAiConfig = {};
+
+		expect(service.sandboxTtlMs).toBe(15 * 60 * 1000);
+	});
+
+	it('evicts expired runtime sandbox entries without destroying the provider workspace', () => {
+		jest.useFakeTimers();
+		try {
+			const service = Object.create(
+				InstanceAiService.prototype,
+			) as unknown as SandboxExpiryServiceInternals;
+			const workspace = { destroy: jest.fn(async () => {}) };
+			const entry: SandboxExpiryEntry = {
+				sandbox: { id: 'sandbox-1' },
+				workspace,
+				setupComplete: true,
+				setupPromise: undefined,
+				expiresAt: Date.now() + 1000,
+			};
+			service.instanceAiConfig = { builderSandboxTtlMs: 1000 };
+			service.sandboxes = new Map([['thread-1', entry]]);
+			service.runState = {
+				getActiveRunId: jest.fn((_threadId: string) => undefined),
+				hasSuspendedRun: jest.fn((_threadId: string) => false),
+			};
+			service.backgroundTasks = {
+				getRunningTasks: jest.fn((_threadId: string) => []),
+			};
+
+			service.scheduleSandboxExpiry('thread-1', entry);
+			jest.advanceTimersByTime(1000);
+
+			expect(service.sandboxes.has('thread-1')).toBe(false);
+			expect(workspace.destroy).not.toHaveBeenCalled();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('threads Daytona name prefixes and labels through sandbox creation', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => ({
+			...daytonaSandboxConfig,
+			namePrefix: 'Acme Eval',
+		}));
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		await service.getOrCreateWorkspace(
+			'thread-1',
+			fakeUser,
+			{} as InstanceAiContext,
+			'run_123456789',
+		);
+
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					name_prefix: 'Acme-Eval',
+					run_id: 'run_123456789',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+	});
+
+	it('keeps the sandbox after setup failure and retries setup on the next use', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock)
+			.mockRejectedValueOnce(new Error('setup failed'))
+			.mockResolvedValueOnce(undefined);
+
+		await expect(
+			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+		).rejects.toThrow('setup failed');
+
+		expect(service.sandboxes.has('thread-1')).toBe(true);
+		expect(workspace.destroy).not.toHaveBeenCalled();
+
+		const entry = await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+		expect(entry).toBe(service.sandboxes.get('thread-1'));
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('destroys the workspace when sandbox startup fails', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as WorkspaceServiceInternals;
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {
+				throw new Error('init failed');
+			}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+
+		await expect(
+			service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+		).rejects.toThrow('init failed');
+
+		expect(workspace.destroy).toHaveBeenCalledTimes(1);
+		expect(service.sandboxes.has('thread-1')).toBe(false);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+	});
+
+	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			createExecutionEnvironment: (
+				user: User,
+				threadId: string,
+				runId: string,
+				abortSignal: AbortSignal,
+			) => Promise<{
+				orchestrationContext: {
+					workspace?: unknown;
+					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+				};
+			}>;
+			settingsService: {
+				getAdminSettings: jest.Mock;
+				isLocalGatewayDisabledForUser: jest.Mock;
+				getPermissions: jest.Mock;
+			};
+			gatewayRegistry: { findGateway: jest.Mock };
+			aiService: { isProxyEnabled: jest.Mock };
+			adapterService: {
+				createContext: jest.Mock;
+				getNodeDefinitionDirs: jest.Mock;
+			};
+			sourceControlPreferencesService: { getPreferences: jest.Mock };
+			resolveAgentModelConfig: jest.Mock;
+			ensureThreadExists: jest.Mock;
+			agentMemory: unknown;
+			dbIterationLogStorage: unknown;
+			dbSnapshotStorage: unknown;
+			checkpointStore: unknown;
+			instanceAiConfig: { subAgentMaxSteps: number; browserMcp: boolean };
+			defaultTimeZone: string;
+			eventBus: unknown;
+			logger: unknown;
+			telemetry: { track: jest.Mock };
+			oauth2CallbackUrl: string;
+			webhookBaseUrl: string;
+			formBaseUrl: string;
+			runState: { touchActiveRun: jest.Mock; registerPendingConfirmation: jest.Mock };
+			spawnBackgroundTask: jest.Mock;
+			cancelBackgroundTask: jest.Mock;
+			backgroundTasks: { touchTask: jest.Mock };
+			schedulePlannedTasks: jest.Mock;
+			sendCorrectionToTask: jest.Mock;
+			sandboxes: Map<string, unknown>;
+			sandboxCreations: Map<string, Promise<unknown>>;
+			domainAccessTrackersByThread: Map<string, unknown>;
+			resolveSandboxConfig: jest.Mock;
+		};
+		service.settingsService = {
+			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			isLocalGatewayDisabledForUser: jest.fn(async () => false),
+			getPermissions: jest.fn(() => ({})),
+		};
+		service.gatewayRegistry = { findGateway: jest.fn(() => undefined) };
+		service.aiService = { isProxyEnabled: jest.fn(() => false) };
+		service.adapterService = {
+			createContext: jest.fn(() => ({})),
+			getNodeDefinitionDirs: jest.fn(() => []),
+		};
+		service.sourceControlPreferencesService = {
+			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
+		};
+		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.ensureThreadExists = jest.fn(async () => {});
+		service.agentMemory = {};
+		service.dbIterationLogStorage = {};
+		service.dbSnapshotStorage = {};
+		service.checkpointStore = {};
+		service.instanceAiConfig = { subAgentMaxSteps: 10, browserMcp: false };
+		service.defaultTimeZone = 'UTC';
+		service.eventBus = {};
+		service.logger = {};
+		service.telemetry = { track: jest.fn() };
+		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
+		service.webhookBaseUrl = 'http://localhost/webhook';
+		service.formBaseUrl = 'http://localhost/form';
+		service.runState = {
+			touchActiveRun: jest.fn(),
+			registerPendingConfirmation: jest.fn(),
+		};
+		service.spawnBackgroundTask = jest.fn();
+		service.cancelBackgroundTask = jest.fn();
+		service.backgroundTasks = { touchTask: jest.fn() };
+		service.schedulePlannedTasks = jest.fn();
+		service.sendCorrectionToTask = jest.fn();
+		service.sandboxes = new Map();
+		service.sandboxCreations = new Map();
+		service.domainAccessTrackersByThread = new Map();
+		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		(createAllTools as jest.Mock).mockReturnValue(new Map());
+		const sandbox = { id: 'sandbox-1' };
+		const workspace = {
+			init: jest.fn(async () => {}),
+			destroy: jest.fn(async () => {}),
+		};
+		(createSandbox as jest.Mock).mockResolvedValue(sandbox);
+		(createWorkspace as jest.Mock).mockReturnValue(workspace);
+		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
+
+		const environment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
+		);
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createSandbox).not.toHaveBeenCalled();
+		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as jest.Mock).mock.calls[0]?.[0]
+			.workspace as { ensureWorkspace: () => Promise<unknown> };
+		const lazyWorkspace = environment.orchestrationContext.workspace as {
+			ensureWorkspace: () => Promise<unknown>;
+		};
+
+		await skillWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+
+		await lazyWorkspace.ensureWorkspace();
+
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'run-1-instance-ai-thread-thread-1',
+				name: 'run-1-instance-ai-thread-thread-1',
+				labels: expect.objectContaining({
+					'n8n-builder': 'instance-ai-thread-thread-1',
+					run_id: 'run-1',
+					thread_id: 'thread-1',
+				}),
+			}),
+			expect.objectContaining({ useSnapshotFallback: true }),
+		);
+		expect(createWorkspace).toHaveBeenCalledTimes(1);
+		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
+		expect(workspace.init).toHaveBeenCalledTimes(1);
+		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('InstanceAiService — shutdown', () => {
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as ShutdownServiceInternals;
+		const workspace = { destroy: jest.fn(async () => {}) };
+		service.stopCheckpointPruning = jest.fn();
+		service.liveness = { shutdown: jest.fn() };
+		service.runState = {
+			shutdown: jest.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
+		};
+		service.backgroundTasks = { cancelAll: jest.fn(() => []) };
+		service.traceContextsByRunId = new Map();
+		service.finalizeRunTracing = jest.fn(
+			async (_runId: string, _tracing: InstanceAiTraceContext | undefined, _options: unknown) => {},
+		);
+		service.finalizeBackgroundTaskTracing = jest.fn(
+			async (_task: ManagedBackgroundTask, _status: 'cancelled') => {},
+		);
+		service.finalizeRemainingMessageTraceRoots = jest.fn(
+			async (_threadId: string, _options: unknown) => {},
+		);
+		service.gatewayRegistry = { disconnectAll: jest.fn() };
+		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
+		service.domainAccessTrackersByThread = new Map();
+		service.eventBus = { clear: jest.fn() };
+		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.logger = { debug: jest.fn(), warn: jest.fn() };
+
+		await service.shutdown();
+
+		expect(workspace.destroy).not.toHaveBeenCalled();
+		expect(service.sandboxes.has('thread-a')).toBe(true);
+	});
+});
 
 describe('InstanceAiService — background task auto-follow-up', () => {
 	it('starts an internal follow-up when the last direct background task settles normally', async () => {

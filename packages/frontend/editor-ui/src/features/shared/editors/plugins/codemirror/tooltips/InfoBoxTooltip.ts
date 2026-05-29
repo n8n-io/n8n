@@ -1,4 +1,5 @@
 import {
+	closeCompletion,
 	CompletionContext,
 	completionStatus,
 	type Completion,
@@ -21,6 +22,7 @@ import {
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 const findNearestParentOfType =
 	(type: string) =>
@@ -397,6 +399,24 @@ export const closeCursorInfoBox: Command = (view) => {
 	return true;
 };
 
+const closeTooltipsOnCommandBarOpen = ViewPlugin.fromClass(
+	class {
+		private readonly listener: () => void;
+
+		constructor(view: EditorView) {
+			this.listener = () => {
+				closeCompletion(view);
+				closeCursorInfoBox(view);
+			};
+			commandBarEventBus.on('open', this.listener);
+		}
+
+		destroy() {
+			commandBarEventBus.off('open', this.listener);
+		}
+	},
+);
+
 export const infoBoxTooltips = (): Extension[] => {
 	return [
 		tooltips({
@@ -405,6 +425,7 @@ export const infoBoxTooltips = (): Extension[] => {
 		cursorInfoBoxTooltip,
 		asyncTooltipLoader,
 		hoverInfoBoxTooltip,
+		closeTooltipsOnCommandBarOpen,
 		keymap.of([
 			{
 				key: 'Escape',

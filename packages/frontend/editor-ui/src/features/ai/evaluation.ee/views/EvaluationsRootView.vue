@@ -14,12 +14,14 @@ import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
 const props = defineProps<{
 	workflowId: string;
 }>();
 
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
 const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 const toast = useToast();
@@ -108,9 +110,9 @@ watch(
 					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'setup',
-					trigger_set_up: evaluationStore.evaluationTriggerExists,
-					output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
-					metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
+					trigger_set_up: evaluationState.evaluationTriggerExists.value,
+					output_set_up: evaluationState.evaluationSetOutputsNodeExist.value,
+					metrics_set_up: evaluationState.evaluationSetMetricsNodeExist.value,
 					quota_reached: evaluationsQuotaExceeded.value,
 				});
 			} else {

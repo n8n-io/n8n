@@ -1,10 +1,11 @@
-import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RuntimeSkillSource,
+	ModelConfig as NativeModelConfig,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
@@ -32,7 +33,6 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
-import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -41,7 +41,7 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
+import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -88,12 +88,89 @@ export interface NodeOutputResult {
 	returned: { from: number; to: number };
 }
 
+export interface ResolvedExpressionFailure {
+	/** Dot-path into the parameters tree, e.g. "headers.parameters[0].value". */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** Error message from the expression engine. */
+	error: string;
+	/**
+	 * `unreconstructable-context` flags failures stemming from expression contexts that
+	 * only exist during a live execution (e.g. `$ai`, `$response`, `$request`,
+	 * `$pageCount`, `$secrets`). These are expected and not real expression bugs.
+	 */
+	reason?: 'expression-error' | 'unreconstructable-context';
+}
+
+export interface EmptyExpressionResolution {
+	/** Dot-path into the parameters tree. */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** The resolved value — one of `null`, `undefined`, or `""`. */
+	resolved: null | undefined | '';
+	/** Set when the expression references a non-reconstructed context var (`$vars`, `$secrets`, `$ai`, `$response`, `$request`, `$pageCount`) */
+	reason?: 'unreconstructable-context';
+}
+
+export interface ResolvedNodeParametersResult {
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	/**
+	 * The node's parameters straight from the execution's workflow snapshot, with
+	 * `{{ ... }}` expressions intact. Pair with `resolved` to see which value came
+	 * from which expression. `null` when resolution was refused — see `suppressed`.
+	 */
+	parameters: Record<string, unknown> | null;
+	/**
+	 * Mirror of `parameters` with each expression leaf replaced by its resolved
+	 * value (or `null` if it threw). Oversized leaves are replaced with a
+	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * Returned as a JSON-stringified blob inside `<untrusted_data>` markers —
+	 * resolved values can echo content from upstream nodes (webhook bodies,
+	 * HTTP responses, etc.) and must be treated as untrusted by the agent.
+	 *
+	 * `null` when resolution was refused — see `suppressed`.
+	 */
+	resolved: string | null;
+	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
+	failedExpressions: ResolvedExpressionFailure[];
+	/**
+	 * Expressions that resolved to `null`, `undefined`, or `""` — common cause of
+	 * "this node ran but a parameter looked empty". Often the root cause for missing
+	 * fields downstream when the runtime did not throw.
+	 */
+	emptyResolutions: EmptyExpressionResolution[];
+	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
+	suppressed?: 'parameter-values-disabled';
+}
+
+/**
+ * Resolved-parameter bundle attached to a debug failedNode.
+ * Same payload as `ResolvedNodeParametersResult` minus `nodeName` (redundant —
+ * `failedNode.name` already carries it).
+ */
+export type ResolvedParametersDebugBundle = Omit<
+	ResolvedNodeParametersResult,
+	'nodeName' | 'suppressed'
+>;
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
 		type: string;
 		error: string;
 		inputData?: Record<string, unknown> | string;
+		/**
+		 * Re-resolved parameters for the failed node (parameters tree with expressions
+		 * intact + the same tree with expressions substituted + failed/empty expression
+		 * lists). Omitted when parameter values are gated off, when resolution itself
+		 * errors (debug must not fail), or when the snapshot lacks node-type info.
+		 */
+		resolvedParameters?: ResolvedParametersDebugBundle;
 	};
 	nodeTrace: Array<{
 		name: string;
@@ -261,6 +338,17 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+	/**
+	 * Re-resolve a node's parameter expressions against a saved execution's data.
+	 * Server-side replay of the editor's resolved-parameter view, so the agent can
+	 * see exactly what each parameter resolved to (and which expressions failed)
+	 * for a given item in a past run.
+	 */
+	getResolvedNodeParameters(
+		executionId: string,
+		nodeName: string,
+		options?: { itemIndex?: number; runIndex?: number },
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -406,6 +494,12 @@ export interface DataTableSummary {
 	updatedAt: string;
 }
 
+export interface DataTableReference {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
 export interface DataTableColumnInfo {
 	id: string;
 	name: string;
@@ -436,6 +530,8 @@ export interface DataTableIdOptions {
 	projectId?: string;
 }
 
+export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -444,6 +540,10 @@ export interface InstanceAiDataTableService {
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	resolveTableReference?(
+		dataTableId: string,
+		options?: DataTableIdOptions & { permission?: DataTableReferencePermission },
+	): Promise<DataTableReference>;
 	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
@@ -613,6 +713,12 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
+	/**
+	 * Curated workflow-template provider for the sandbox setup. When absent or
+	 * when the service returns an empty bundle, the sandbox is created without
+	 * an `examples/` directory and the agent operates without template hints.
+	 */
+	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
@@ -673,12 +779,9 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
+export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
+export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -780,6 +883,9 @@ export interface PlannedTaskService {
 	/** Transition an `awaiting_approval` graph → `active` after the user
 	 *  approves the plan. No-op on any other status. */
 	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Transition an `awaiting_approval` graph → `cancelled` after the user
+	 *  denies the plan outright. No-op on any other status. */
+	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
 	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
 	 *  the service when a replan or synthesize follow-up couldn't start. */
 	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
@@ -811,26 +917,30 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	embedderModel?: string;
 	lastMessages?: number;
-	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
+type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
  *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
  *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
  *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
-	| LanguageModelV2;
+	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
@@ -1058,6 +1168,16 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: InstanceAiToolRegistry;
+	/**
+	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
+	 * replace this with a workspace-materialized source before attaching it.
+	 */
+	runtimeSkills?: RuntimeSkillSource;
+	/**
+	 * Raw bundled runtime skill source. Use this when materializing skills for a
+	 * concrete workspace target so already-materialized paths are not copied.
+	 */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
@@ -1072,12 +1192,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** Sandbox workspace — when present, enables sandbox-based workflow building */
+	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
-	builderSandboxFactory?: BuilderSandboxFactory;
-	/** Process-local registry for retaining recently finished builder sandboxes. */
-	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1139,13 +1255,6 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/**
-	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
-	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
-	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
-	 */
-	workspace?: Workspace;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

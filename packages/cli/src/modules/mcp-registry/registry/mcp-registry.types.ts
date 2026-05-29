@@ -2,7 +2,7 @@ import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
 
 type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
-	'id' | 'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
+	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
 >;
 
 const serverStatuses = ['active', 'deprecated'] as const;
@@ -24,7 +24,6 @@ export type McpRegistryServerAuthType =
  * The shape of an entry returned by the MCP server registry.
  */
 export type McpRegistryServer = {
-	id: number;
 	name: string;
 	slug: string;
 	title: string;
@@ -67,7 +66,7 @@ export type McpRegistryTool = {
 };
 
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
-	const { id, slug, status, version, updatedAt, ...rest } = server;
+	const { slug, status, version, updatedAt, ...rest } = server;
 	let mappedStatus = status;
 	// make sure that unknown statuses get mapped to a valid value
 	if (!serverStatuses.includes(status)) {
@@ -75,7 +74,6 @@ export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow 
 	}
 
 	return {
-		id,
 		slug,
 		status: mappedStatus,
 		version,
@@ -85,9 +83,8 @@ export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow 
 }
 
 export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
-	const { id, slug, status, version, registryUpdatedAt, data } = entity;
+	const { slug, status, version, registryUpdatedAt, data } = entity;
 	return {
-		id,
 		slug,
 		status,
 		version,

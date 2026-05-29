@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -44,6 +45,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	/**
@@ -63,8 +65,10 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+		// (explicit workflow override, or the seeded system resolver looked up via the proxy).
 		const resolverId =
-			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+			credentialsResolveMetadata.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {

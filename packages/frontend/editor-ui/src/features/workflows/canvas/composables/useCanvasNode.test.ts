@@ -27,8 +27,6 @@ describe('useCanvasNode', () => {
 		});
 		expect(result.isDisabled.value).toBe(false);
 		expect(result.isSelected.value).toBeUndefined();
-		expect(result.pinnedDataCount.value).toBe(0);
-		expect(result.hasPinnedData.value).toBe(false);
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(0);
 		expect(result.hasRunData.value).toBe(false);
@@ -58,7 +56,6 @@ describe('useCanvasNode', () => {
 				},
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { outputMap: {}, iterations: 1, visible: true },
-				pinnedData: { count: 1, visible: true },
 				render: {
 					type: CanvasNodeRenderType.Default,
 					options: {
@@ -85,8 +82,6 @@ describe('useCanvasNode', () => {
 		});
 		expect(result.isDisabled.value).toBe(true);
 		expect(result.isSelected.value).toBe(true);
-		expect(result.pinnedDataCount.value).toBe(1);
-		expect(result.hasPinnedData.value).toBe(true);
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(1);
 		expect(result.hasRunData.value).toBe(true);

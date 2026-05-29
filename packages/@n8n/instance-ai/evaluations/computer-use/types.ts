@@ -245,7 +245,7 @@ export interface GraderResult {
 	reason: string;
 }
 
-export interface ScenarioResult {
+export interface ExecutionScenarioResult {
 	scenario: Scenario;
 	pass: boolean;
 	graderResults: GraderResult[];
@@ -291,5 +291,5 @@ export interface RunReport {
 	finishedAt: string;
 	totalScenarios: number;
 	passCount: number;
-	results: ScenarioResult[];
+	results: ExecutionScenarioResult[];
 }
