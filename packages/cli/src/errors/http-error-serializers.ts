@@ -2,6 +2,21 @@ import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-cla
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 
+/** Allowed meta keys to be exposed to the public API. */
+const PUBLIC_RESPONSE_ERROR_META_KEYS = ['failures'] as const;
+
+function pickPublicResponseErrorMeta(meta: Record<string, unknown>): Record<string, unknown> {
+	const publicMeta: Record<string, unknown> = {};
+
+	for (const key of PUBLIC_RESPONSE_ERROR_META_KEYS) {
+		if (key in meta) {
+			publicMeta[key] = meta[key];
+		}
+	}
+
+	return publicMeta;
+}
+
 export type InternalRestErrorBody = {
 	code: number;
 	message: string;
@@ -20,7 +35,7 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 				message: descriptor.message,
 			};
 			if (descriptor.meta) {
-				Object.assign(body, descriptor.meta);
+				Object.assign(body, pickPublicResponseErrorMeta(descriptor.meta));
 			}
 			return {
 				status: descriptor.status,

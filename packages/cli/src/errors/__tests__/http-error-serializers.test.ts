@@ -4,6 +4,7 @@ import {
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
 import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-missing-mode';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -23,6 +24,26 @@ describe('http-error-serializers', () => {
 			body: {
 				code: 404,
 				message: 'x',
+			},
+		});
+	});
+
+	it('serializePublicApiError: does not expose internal-only response error meta', () => {
+		const descriptor = classifyHttpError(
+			new LicenseEulaRequiredError('License activation requires EULA acceptance', {
+				eulaUrl: 'https://n8n.io/legal/eula/',
+			}),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 400,
+			body: { message: 'License activation requires EULA acceptance' },
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 400,
+			body: {
+				code: 400,
+				message: 'License activation requires EULA acceptance',
+				meta: { eulaUrl: 'https://n8n.io/legal/eula/' },
 			},
 		});
 	});
