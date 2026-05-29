@@ -69,7 +69,15 @@ DOUBAO_TTS_RESOURCE_ID=seed-tts-2.0
 
 ## Import
 
-Start n8n from the repository root with the local env file:
+Start n8n from the repository root. The CLI automatically loads `.env.video-clip`
+before n8n initializes, so Code nodes can read the required `$env` values:
+
+```bash
+pnpm start
+```
+
+The helper script is still available when you want it to fail fast if the local
+env file is missing:
 
 ```bash
 scripts/start-video-clip-n8n.sh
