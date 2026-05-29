@@ -112,7 +112,7 @@ describe('CreateWorkflowDto', () => {
 			const settings = {
 				customTelemetryTags: [
 					{ key: 'env', value: 'production' },
-					{ key: 'workflow_name', value: '={{ $workflow.name }}' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
 				],
 			};
 

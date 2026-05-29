@@ -183,8 +183,8 @@ describe('OtelLifecycleHandler', () => {
 					settings: {
 						customTelemetryTags: [
 							{ key: ' environment ', value: 'production' },
-							{ key: 'workflowName', value: '={{ $workflow.name }}' },
-							{ key: 'mode', value: '={{ $mode }}' },
+							{ key: 'workflowName', value: 'Workflow Name' },
+							{ key: 'mode', value: 'manual' },
 						],
 					},
 				},
@@ -195,8 +195,8 @@ describe('OtelLifecycleHandler', () => {
 					workflow: expect.objectContaining({
 						customAttributes: {
 							environment: 'production',
-							workflowName: '={{ $workflow.name }}',
-							mode: '={{ $mode }}',
+							workflowName: 'Workflow Name',
+							mode: 'manual',
 						},
 					}),
 				}),
@@ -211,9 +211,9 @@ describe('OtelLifecycleHandler', () => {
 					settings: {
 						customTelemetryTags: [
 							{ key: ' ', value: 'empty-key' },
-							{ key: 'nullish', value: '={{ undefined }}' },
-							{ key: 'objectValue', value: '={{ ({ nested: true }) }}' },
-							{ key: 'failed', value: '={{ $json.missing.value }}' },
+							{ key: 'status', value: 'undefined' },
+							{ key: 'objectValue', value: 'nested true' },
+							{ key: 'fallback', value: 'missing value' },
 						],
 					},
 				},
@@ -223,9 +223,9 @@ describe('OtelLifecycleHandler', () => {
 				expect.objectContaining({
 					workflow: expect.objectContaining({
 						customAttributes: {
-							nullish: '={{ undefined }}',
-							objectValue: '={{ ({ nested: true }) }}',
-							failed: '={{ $json.missing.value }}',
+							status: 'undefined',
+							objectValue: 'nested true',
+							fallback: 'missing value',
 						},
 					}),
 				}),

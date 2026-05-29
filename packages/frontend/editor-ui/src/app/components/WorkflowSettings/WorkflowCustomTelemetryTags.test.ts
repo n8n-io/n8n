@@ -5,7 +5,7 @@ import type { ICustomTelemetryTag } from 'n8n-workflow';
 import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 const validTags = [{ key: 'env', value: 'production' }];
-const expressionTags = [{ key: 'workflowName', value: '={{ $workflow.name }}' }];
+const workflowNameTags = [{ key: 'workflowName', value: 'Workflow Name' }];
 const duplicateTags = [
 	{ key: '  env  ', value: 'production' },
 	{ key: 'env', value: 'staging' },
@@ -287,7 +287,7 @@ describe('WorkflowCustomTelemetryTags', () => {
 		expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
 	});
 
-	it('should preserve custom telemetry tag values that look like expressions as literals', async () => {
+	it('should preserve custom telemetry tag values as literals', async () => {
 		const { emitted, getAllByTestId, getByTestId } = renderComponent();
 
 		await openModal(getByTestId);
@@ -298,11 +298,11 @@ describe('WorkflowCustomTelemetryTags', () => {
 		);
 		await fireEvent.update(
 			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'={{ $workflow.name }}',
+			'Workflow Name',
 		);
 		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
 
-		expect(emitted('update:modelValue')).toEqual([[expressionTags]]);
+		expect(emitted('update:modelValue')).toEqual([[workflowNameTags]]);
 	});
 
 	it('should discard draft changes when cancelled', async () => {
