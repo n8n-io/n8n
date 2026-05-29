@@ -24,7 +24,7 @@ This skill is for document-grounded video workflows where each PDF page is shown
 
 The PDF page is the source of truth.
 
-The script is not a comprehensive paper review. Prefer a concise, credible, screenshot-style explanation that combines:
+The script is not a comprehensive paper review and must not summarize all text on every page. First read the page evidence, then extract the genuinely useful information for a concise, credible, screenshot-style explanation that combines:
 
 - The user's opinion, angle, or question from `extraContext`, when provided.
 - The current PDF page's directly relevant facts, terms, claims, figures, or section titles.
@@ -46,6 +46,8 @@ Do not introduce unrelated products, papers, APIs, companies, statistics, exampl
 If a page has little text, explain the page title, visual purpose, and viewing goal. Do not fill the gap with an unrelated educational topic.
 
 For academic papers, avoid phrases that imply exhaustive review, such as `全面解读整篇论文`, `把论文所有结论讲完`, or `完整复盘研究全过程`. The output should sound like a concise podcast commentary over selected evidence.
+
+For dense academic pages, choose 1-3 useful points from the page. Do not cover every paragraph, every table row, every author detail, every reference, or every statistical endpoint.
 
 ## Internal Reasoning
 

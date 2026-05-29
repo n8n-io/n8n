@@ -71,11 +71,31 @@ export function extractJsonObject(text) {
 	throw new Error('LLM response contained an incomplete JSON object');
 }
 
+export function compactSourceText(text, { maxChars = 1600 } = {}) {
+	const normalized = String(text || '')
+		.replace(/\r\n/g, '\n')
+		.replace(/\r/g, '\n')
+		.replace(/[ \t]+/g, ' ')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+	const limit = Number(maxChars);
+	if (!normalized || !Number.isFinite(limit) || limit <= 0 || normalized.length <= limit) {
+		return normalized;
+	}
+
+	const headLength = Math.max(200, Math.floor(limit * 0.7));
+	const tailLength = Math.max(120, limit - headLength);
+	const head = normalized.slice(0, headLength).trimEnd();
+	const tail = normalized.slice(-tailLength).trimStart();
+
+	return `${head}\n\n[中间内容已省略，脚本只应基于当前摘录和页面可见信息做克制讲解。]\n\n${tail}`;
+}
+
 function boundedTargetSeconds(value) {
 	const number = Number(value);
 	if (!Number.isFinite(number)) return 30;
 
-	return Math.min(60, Math.max(12, Math.round(number)));
+	return Math.min(45, Math.max(12, Math.round(number)));
 }
 
 export function normalizePageScript(rawText, expectedPageCount) {

@@ -5,6 +5,7 @@ import {
 	aggregatePresentationCost,
 	buildPageTiming,
 	cleanSpokenTranscript,
+	compactSourceText,
 	extractJsonObject,
 	normalizePageScript,
 	offsetSubtitleEvents,
@@ -50,6 +51,16 @@ test('extractJsonObject removes markdown fences around strict JSON', () => {
 	assert.equal(extractJsonObject(raw), '{"title":"测试","pages":[]}');
 });
 
+test('compactSourceText limits dense page text while preserving evidence from both ends', () => {
+	const text = `标题\n${'核心发现。'.repeat(300)}\n结论：需要克制解读。`;
+	const compact = compactSourceText(text, { maxChars: 300 });
+
+	assert.ok(compact.length < text.length);
+	assert.match(compact, /^标题/);
+	assert.match(compact, /中间内容已省略/);
+	assert.match(compact, /结论：需要克制解读。$/);
+});
+
 test('normalizePageScript validates one script entry per page', () => {
 	const script = normalizePageScript(JSON.stringify({
 		title: '测试课件',
@@ -63,6 +74,19 @@ test('normalizePageScript validates one script entry per page', () => {
 
 	assert.equal(script.pages.length, 2);
 	assert.match(script.pages[0].speakerPrompt, /今天我们要聊/);
+});
+
+test('normalizePageScript clamps overlong page targets for concise podcast reading', () => {
+	const script = normalizePageScript(JSON.stringify({
+		title: '讲解',
+		summary: '摘要',
+		audience: '普通听众',
+		pages: [
+			{ pageNumber: 1, pageTitle: '一', speakerPrompt: '今天我们要聊的话题是研究。', targetSeconds: 300 },
+		],
+	}), 1);
+
+	assert.equal(script.pages[0].targetSeconds, 45);
 });
 
 test('cleanSpokenTranscript removes prompt and JSON wrappers', () => {

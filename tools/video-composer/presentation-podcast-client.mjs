@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { aggregatePresentationCost, cleanSpokenTranscript, safePageName } from './presentation-utils.mjs';
+import { aggregatePresentationCost, cleanSpokenTranscript, compactSourceText, safePageName } from './presentation-utils.mjs';
 
 function ffprobeDuration(audioPath) {
 	const result = spawnSync('ffprobe', [
@@ -43,8 +43,8 @@ function buildPagePodcastInput(page) {
 		'如果页面信息较少，就解释页面本身的作用、目标和观看重点；不要扩写成其他选题。',
 		'输出应自然像播客，不要朗读这些规则。',
 		'',
-		'本页页面内容：',
-		String(page.sourceText || '').trim() || '(页面文字较少，请只围绕标题和上下文解释。)',
+		'本页页面证据摘录：',
+		compactSourceText(page.sourceText, { maxChars: 1200 }) || '(页面文字较少，请只围绕标题和上下文解释。)',
 		'',
 		'本页讲解稿：',
 		[String(page.speakerPrompt || '').trim(), String(page.spokenSummary || '').trim()]
