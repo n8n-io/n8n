@@ -10,6 +10,7 @@ google-generated-credentials.json
 _START_PACKAGE
 .env
 .env.local
+.env.video-clip
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -74,4 +75,6 @@ packages/cli/src/commands/export/outputs
 .n8n
 lefthook-local.yml
 .playwright-mcp
+.superpowers/
+tmp/n8n-video-jobs/
 stryker.log
