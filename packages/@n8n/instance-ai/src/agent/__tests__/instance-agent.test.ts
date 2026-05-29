@@ -107,11 +107,9 @@ const { createOrchestratorDomainTools } =
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
-	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 ) {
 	return {
 		getRegularTools: jest.fn().mockResolvedValue(regularTools),
-		getBrowserTools: jest.fn().mockResolvedValue(browserTools),
 		disconnect: jest.fn().mockResolvedValue(undefined),
 	};
 }
@@ -173,7 +171,6 @@ describe('createInstanceAgent', () => {
 				},
 				orchestrationContext: {
 					runId,
-					browserMcpConfig: undefined,
 				},
 				memoryConfig,
 				mcpManager,
@@ -212,7 +209,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'checkpoint-run',
-				browserMcpConfig: undefined,
 				isCheckpointFollowUp: true,
 			},
 			memoryConfig: { lastMessages: 20 },
@@ -246,7 +242,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'ws-test',
-				browserMcpConfig: undefined,
 				workspace: fakeWorkspace,
 			},
 			memoryConfig,
@@ -271,7 +266,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
-				browserMcpConfig: undefined,
 				tracing: {
 					getTelemetry: jest.fn().mockReturnValue(telemetry),
 					wrapTools: jest.fn((tools: unknown) => tools),
@@ -319,7 +313,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
-				browserMcpConfig: undefined,
 				runtimeSkills,
 			},
 			memoryConfig: { lastMessages: 20 },
@@ -331,11 +324,7 @@ describe('createInstanceAgent', () => {
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([
-				['workflows', { id: 'workflows' }],
-				['browser_connect', { id: 'browser_connect' }],
-				['browser_navigate', { id: 'browser_navigate' }],
-			]),
+			new Map([['workflows', { id: 'workflows' }]]),
 		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
@@ -359,7 +348,7 @@ describe('createInstanceAgent', () => {
 				licenseHints: undefined,
 				localMcpServer,
 			},
-			orchestrationContext: { runId: 'browser-test', browserMcpConfig: undefined },
+			orchestrationContext: { runId: 'browser-test' },
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
 			disableDeferredTools: true,
@@ -385,7 +374,6 @@ describe('createInstanceAgent', () => {
 		]);
 		const orchestrationContext: Record<string, unknown> = {
 			runId: 'local-priority',
-			browserMcpConfig: undefined,
 		};
 		createToolsFromLocalMcpServer.mockReturnValue(localTools);
 
@@ -428,7 +416,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'evals-test',
-				browserMcpConfig: undefined,
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
@@ -456,7 +443,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'memory-test',
-				browserMcpConfig: undefined,
 			},
 			memory: memoryStore,
 			memoryConfig: {

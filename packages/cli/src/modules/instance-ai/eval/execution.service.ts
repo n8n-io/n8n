@@ -10,15 +10,20 @@ import { Service } from '@n8n/di';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
+	BinaryDataService,
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	ExecutionLifecycleHooks,
 	WorkflowExecute,
+	synthesizeBinaryFixture,
 } from 'n8n-core';
 import {
+	type IBinaryData,
+	type IBinaryKeyData,
 	type IDataObject,
 	type IHttpRequestOptions,
 	type INode,
+	type INodeExecutionData,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
@@ -43,11 +48,13 @@ import { generatePinData } from './pin-data-generator';
 import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
 	buildVendorLlmRouting,
+	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
 	partitionAiRoots,
+	type TriggerBinaryRequirement,
 	type VendorLlmRouting,
 } from './workflow-analysis';
 
@@ -72,6 +79,7 @@ export class EvalExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
 
 	async executeWithLlmMock(
@@ -301,7 +309,12 @@ export class EvalExecutionService {
 			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 			additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
-			const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+			const binaryRequirement = detectBinaryDependencies(workflowEntity);
+			const triggerPinData = this.buildTriggerPinData(
+				startNode,
+				hints.triggerContent,
+				binaryRequirement,
+			);
 			const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 			const pinDataNodeNames = Object.keys(pinData);
 
@@ -318,7 +331,7 @@ export class EvalExecutionService {
 			}
 
 			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
+			return await this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
 		} catch (error: unknown) {
 			return this.buildPartialFailureResult(
 				executionId,
@@ -415,9 +428,48 @@ export class EvalExecutionService {
 	 * Pin data provides the trigger's output — the node doesn't execute,
 	 * since trigger nodes receive external events that don't fire in eval mode.
 	 */
-	private buildTriggerPinData(startNode: INode, triggerContent: Record<string, unknown>): IPinData {
-		if (Object.keys(triggerContent).length === 0) return {};
-		return { [startNode.name]: [{ json: triggerContent as IDataObject }] };
+	private buildTriggerPinData(
+		startNode: INode,
+		triggerContent: Record<string, unknown>,
+		binaryRequirement?: TriggerBinaryRequirement,
+	): IPinData {
+		const classifyBinaryFileType = (contentType: string): IBinaryData['fileType'] => {
+			const lc = contentType.toLowerCase();
+			if (lc.startsWith('image/')) return 'image';
+			if (lc.startsWith('audio/')) return 'audio';
+			if (lc.startsWith('video/')) return 'video';
+			if (lc === 'application/pdf') return 'pdf';
+			if (lc.startsWith('text/html')) return 'html';
+			if (lc === 'application/json' || lc.startsWith('text/json')) return 'json';
+			if (lc.startsWith('text/')) return 'text';
+			return undefined;
+		};
+
+		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
+
+		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+
+		if (binaryRequirement) {
+			const bytes = synthesizeBinaryFixture(
+				binaryRequirement.contentType,
+				binaryRequirement.filename,
+			);
+			const extension = binaryRequirement.filename.includes('.')
+				? binaryRequirement.filename.slice(binaryRequirement.filename.lastIndexOf('.') + 1)
+				: 'bin';
+			const binary: IBinaryKeyData = {
+				[binaryRequirement.propertyName]: {
+					mimeType: binaryRequirement.contentType,
+					fileName: binaryRequirement.filename,
+					fileExtension: extension,
+					fileType: classifyBinaryFileType(binaryRequirement.contentType),
+					data: bytes.toString('base64'),
+				},
+			};
+			item.binary = binary;
+		}
+
+		return { [startNode.name]: [item] };
 	}
 
 	/**
@@ -584,13 +636,43 @@ export class EvalExecutionService {
 
 	// ── Result extraction ─────────────────────────────────────────────────
 
-	private buildResult(
+	/**
+	 * When binary data storage is filesystem/s3/db, `binary.<key>.data` is the
+	 * mode marker (e.g. `'filesystem-v2'`) and the actual bytes live behind
+	 * `binary.<key>.id`. Verifiers compare against the base64 payload, so read
+	 * the stored bytes back and inline them on a shallow copy.
+	 */
+	private async hydrateBinaryData(items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+		return await Promise.all(
+			items.map(async (item) => {
+				if (!item.binary) return item;
+				const hydratedBinary: IBinaryKeyData = {};
+				for (const [key, entry] of Object.entries(item.binary)) {
+					if (entry.id) {
+						try {
+							const buffer = await this.binaryDataService.getAsBuffer(entry);
+							hydratedBinary[key] = { ...entry, data: buffer.toString('base64') };
+							continue;
+						} catch (error) {
+							this.logger.warn(
+								`[EvalMock] Failed to hydrate binary "${key}" (${entry.id}): ${error instanceof Error ? error.message : String(error)}`,
+							);
+						}
+					}
+					hydratedBinary[key] = entry;
+				}
+				return { ...item, binary: hydratedBinary };
+			}),
+		);
+	}
+
+	private async buildResult(
 		executionId: string,
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
 		credentialsHelper: EvalMockedCredentialsHelper,
-	): InstanceAiEvalExecutionResult {
+	): Promise<InstanceAiEvalExecutionResult> {
 		const errors: string[] = [];
 
 		const runData = result.data?.resultData?.runData ?? {};
@@ -622,15 +704,18 @@ export class EvalExecutionService {
 				const outputs: Record<string, unknown[][]> = {};
 				for (const [connectionType, branches] of Object.entries(lastRun.data)) {
 					if (!Array.isArray(branches)) continue;
-					outputs[connectionType] = branches.map((branch) => {
-						if (!Array.isArray(branch)) return [];
-						totalCount += branch.length;
-						if (branch.length > MAX_OUTPUT_ITEMS_PER_BRANCH) {
-							truncated = true;
-							return branch.slice(0, MAX_OUTPUT_ITEMS_PER_BRANCH);
-						}
-						return branch;
-					});
+					outputs[connectionType] = await Promise.all(
+						branches.map(async (branch) => {
+							if (!Array.isArray(branch)) return [];
+							totalCount += branch.length;
+							let kept = branch;
+							if (branch.length > MAX_OUTPUT_ITEMS_PER_BRANCH) {
+								truncated = true;
+								kept = branch.slice(0, MAX_OUTPUT_ITEMS_PER_BRANCH);
+							}
+							return await this.hydrateBinaryData(kept);
+						}),
+					);
 				}
 				entry.outputs = outputs;
 				entry.outputCount = totalCount;
