@@ -7,7 +7,7 @@ description: Use when converting parsed PDF page text, slide text, page screensh
 
 ## Purpose
 
-Turn parsed PDF pages into a page-by-page Chinese podcast script that can be sent directly to a TTS or AI Podcast service. The script must explain the uploaded document, not invent a new topic.
+Turn parsed PDF pages into a page-by-page Chinese podcast script that can be sent directly to a TTS or AI Podcast service. The script must use the uploaded document as grounded evidence and visual context, not invent a new topic.
 
 This skill is for document-grounded video workflows where each PDF page is shown on screen while the audio explains that page.
 
@@ -24,6 +24,16 @@ This skill is for document-grounded video workflows where each PDF page is shown
 
 The PDF page is the source of truth.
 
+The script is not a comprehensive paper review. Prefer a concise, credible, screenshot-style explanation that combines:
+
+- The user's opinion, angle, or question from `extraContext`, when provided.
+- The current PDF page's directly relevant facts, terms, claims, figures, or section titles.
+- A restrained interpretation of what this page supports or does not support.
+
+If the user provides a viewpoint, write around that viewpoint and use the PDF page to support, qualify, or correct it. Do not attempt to cover every detail in the paper.
+
+If the user does not provide a viewpoint, infer a modest page-by-page interpretation from the PDF itself and keep the tone careful: `这页更像是在说明...`, `从这页能看出的重点是...`, `这里不能直接推出...`.
+
 Only explain:
 
 - Text that appears on the current page.
@@ -35,6 +45,8 @@ Do not introduce unrelated products, papers, APIs, companies, statistics, exampl
 
 If a page has little text, explain the page title, visual purpose, and viewing goal. Do not fill the gap with an unrelated educational topic.
 
+For academic papers, avoid phrases that imply exhaustive review, such as `全面解读整篇论文`, `把论文所有结论讲完`, or `完整复盘研究全过程`. The output should sound like a concise podcast commentary over selected evidence.
+
 ## Internal Reasoning
 
 Before writing each page script, internally derive:
@@ -43,7 +55,8 @@ Before writing each page script, internally derive:
 2. viewer task: what the viewer should notice on this page.
 3. explanation angle: how to make the page understandable in spoken Chinese.
 4. transition: how this page connects to the previous and next page.
-5. boundary: what must not be added because it is not in the PDF.
+5. user angle: whether `extraContext` provides a viewpoint to guide this page.
+6. boundary: what must not be added because it is not in the PDF.
 
 Do not output this reasoning. Only output strict JSON.
 
@@ -57,6 +70,7 @@ Default to a two-person knowledge podcast rhythm:
 - Each page should sound conversational, not like OCR text being read aloud.
 - Use short sentences and natural Chinese connectors such as `其实`, `简单来说`, `那就是说`, `对`, `嗯`.
 - Keep page explanations compact. Prefer 20-60 seconds per page unless the user requests longer.
+- Make cautious claims. Use `可能`, `更像是`, `至少可以看到`, `还不能直接说明` when the PDF page is not enough to support a strong conclusion.
 
 ## Output Schema
 

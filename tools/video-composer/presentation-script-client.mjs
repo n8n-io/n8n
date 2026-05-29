@@ -42,14 +42,21 @@ function buildPrompt({ pagesManifest, extraContext = '', podcastStyle = 'podcast
 		`页码：${page.pageNumber}`,
 		`文本：${page.text || '这一页文字较少，请结合上下文用口语解释页面重点。'}`,
 	].join('\n')).join('\n\n');
+	const hasExtraContext = String(extraContext || '').trim().length > 0;
 
 	return [
 		'你是一个中文播客节目策划和 PDF 逐页讲解脚本作者。',
-		'请把下面 PDF/PPTX 的逐页内容改写成逐页播客式讲解脚本。',
+		'请把下面 PDF/PPTX 的逐页内容改写成逐页播客式讲解脚本，但不要写成论文全文综述或全面解读。',
 		'遵循 pdf-to-podcast-script skill：PDF 页面是唯一事实来源。',
+		'生成目标：写一段严谨、克制、可信的截图式讲解内容，让观众理解当前页面和观点之间的关系。',
+		hasExtraContext
+			? '用户已经提供补充观点/看法/受众，请优先围绕这些观点组织脚本，并用 PDF 页面中的信息作为支持、限定或纠偏。不要脱离用户观点去全面复述论文。'
+			: '用户没有提供明确观点，请由 AI 基于 PDF 页面自行提炼一个克制的解读角度，但仍不要试图覆盖论文的全部内容。',
 		'必须忠于每一页给出的文本，只能解释页面里出现的信息和用户补充观点；不要引入页面没有出现的新主题、产品、论文、API、公司案例或背景知识。',
+		'不要使用“全面解读整篇论文”“完整复盘研究全过程”“把所有结论讲完”这类表达。',
+		'学术内容必须保留不确定性：页面证据不足时，用“可能”“更像是”“至少可以看到”“还不能直接说明”等克制表达。',
 		'如果页面文字很少，就围绕页面上已有标题、目标和用途做口语化解释，不要自行扩写成其他话题。',
-		'每一页都要先内部判断 page topic、viewer task、explanation angle、transition 和 boundary，但不要输出这些推理。',
+		'每一页都要先内部判断 page topic、viewer task、explanation angle、user angle、transition 和 boundary，但不要输出这些推理。',
 		'返回严格 JSON，不要 Markdown，不要解释。',
 		'JSON 字段必须是 title, summary, audience, pages。',
 		'pages 中每一项必须包含 pageNumber, pageTitle, speakerPrompt, spokenSummary, targetSeconds。',

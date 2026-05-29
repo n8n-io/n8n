@@ -54,6 +54,55 @@ test('presentation-script-client writes normalized page-script from fixture resp
 	const prompt = fs.readFileSync(llmPromptPath, 'utf8');
 	assert.match(prompt, /pdf-to-podcast-script/);
 	assert.match(prompt, /PDF 页面是唯一事实来源/);
+	assert.match(prompt, /不要写成论文全文综述或全面解读/);
+	assert.match(prompt, /优先围绕这些观点组织脚本/);
+	assert.match(prompt, /作为支持、限定或纠偏/);
+	assert.match(prompt, /不要脱离用户观点去全面复述论文/);
+	assert.match(prompt, /可能.*更像是.*至少可以看到.*还不能直接说明/);
+});
+
+test('presentation-script-client allows AI interpretation only when no viewpoint is provided', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-script-no-context-'));
+	const pagesManifestPath = path.join(root, 'pages.json');
+	const pageScriptPath = path.join(root, 'page-script.json');
+	const llmPromptPath = path.join(root, 'prompt.txt');
+	const llmResponsePath = path.join(root, 'response.json');
+	fs.writeFileSync(pagesManifestPath, JSON.stringify({
+		sourceType: 'pdf',
+		pageCount: 1,
+		pages: [
+			{ pageNumber: 1, imagePath: '/tmp/page-001.png', textPath: '/tmp/page-001.txt', text: '研究问题和核心发现', isTextSparse: false },
+		],
+	}));
+	const fixtureResponse = path.join(root, 'fixture-response.txt');
+	fs.writeFileSync(fixtureResponse, JSON.stringify({
+		title: '论文解读',
+		summary: '克制讲解研究页面',
+		audience: '普通听众',
+		pages: [
+			{ pageNumber: 1, pageTitle: '研究问题', speakerPrompt: '今天我们要聊的话题是这篇研究到底在回答什么问题。', spokenSummary: '研究问题', targetSeconds: 30 },
+		],
+	}));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'script-no-context-test',
+		pagesManifestPath,
+		pageScriptPath,
+		llmPromptPath,
+		llmResponsePath,
+		extraContext: '',
+		podcastStyle: 'podcast_interview',
+	}));
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: { ...process.env, PRESENTATION_SCRIPT_FIXTURE_RESPONSE: fixtureResponse },
+	});
+	assert.equal(result.status, 0, result.stderr);
+	const prompt = fs.readFileSync(llmPromptPath, 'utf8');
+	assert.match(prompt, /用户没有提供明确观点/);
+	assert.match(prompt, /自行提炼一个克制的解读角度/);
+	assert.match(prompt, /不要试图覆盖论文的全部内容/);
+	assert.doesNotMatch(prompt, /优先围绕这些观点组织脚本/);
 });
 
 test('pdf-to-podcast-script skill documents page-grounded podcast rules', () => {
@@ -61,6 +110,10 @@ test('pdf-to-podcast-script skill documents page-grounded podcast rules', () => 
 
 	assert.match(skill, /name: pdf-to-podcast-script/);
 	assert.match(skill, /The PDF page is the source of truth/);
+	assert.match(skill, /not a comprehensive paper review/);
+	assert.match(skill, /If the user provides a viewpoint/);
+	assert.match(skill, /If the user does not provide a viewpoint/);
+	assert.match(skill, /concise podcast commentary over selected evidence/);
 	assert.match(skill, /speakerPrompt/);
 	assert.match(skill, /spokenSummary/);
 	assert.match(skill, /Subtitles must come from the actual TTS or AI Podcast transcript/);
