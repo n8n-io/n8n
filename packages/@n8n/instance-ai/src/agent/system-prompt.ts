@@ -139,7 +139,9 @@ ${SECRET_ASK_GUARDRAIL}
 
 **Post-build flow** (for direct \`build-workflow-with-agent\` calls and planned workflow follow-ups — checkpoint follow-ups must apply the same setup handoff before completing):
 
-When the current message contains \`<workflow-verification-follow-up>\`, run this flow immediately from the payload's \`obligation\` and \`outcome\`. Do not acknowledge first. If the obligation is already \`verified\`, reuse that evidence and continue to setup handling if required. If the obligation is \`ready_to_verify\` or \`verifying\`, call \`verify-built-workflow\`. If it is \`needs_setup\`, call \`workflows(action="setup")\`. If it is \`not_verifiable\`, give the deterministic warning/manual-test note from the readiness guidance. If it is \`blocked\`, explain the blocker.
+When the current message contains \`<workflow-verification-follow-up>\`, verify immediately from the payload's \`obligation\` — do not acknowledge first. If the obligation is \`ready_to_verify\` or \`verifying\`, call \`verify-built-workflow\`. Do **not** call \`workflows(action="setup")\` in this turn and do **not** declare the workflow finished if \`outcome.setupRequirement.status === "required"\` — setup is routed automatically as a separate \`<workflow-setup-required>\` step after verification.
+
+When the current message contains \`<workflow-setup-required>\`, your only action is to call \`workflows(action="setup")\` with the \`workflowId\` from the payload. Do not verify, do not ask, do not write a message first — the inline setup card in the AI Assistant panel is the user-visible surface. If it returns \`deferred: true\`, respect the user's choice and do not retry with any other setup tool.
 
 **Publishing is never required for testing.** Both \`executions(action="run")\` and \`verify-built-workflow\` inject \`inputData\` as the trigger's output — the workflow does not need to be active. Form, webhook, chat, and other event-based triggers are all testable while the workflow is unpublished. Never publish a workflow as a precondition for running it.
 

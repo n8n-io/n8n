@@ -10,6 +10,7 @@ import {
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
 	type WorkflowBuildOutcome,
+	type WorkflowLoopWorkItemRecord,
 	type WorkflowVerificationObligation,
 	type WorkflowVerificationObligationSource,
 } from '@n8n/instance-ai';
@@ -235,6 +236,15 @@ export class WorkflowVerificationTaskProjector {
 			workItemId,
 		);
 		if (!record) return undefined;
+		return deriveWorkflowVerificationObligation(threadId, record, options);
+	}
+
+	/** Derive an obligation from an already-loaded work-item record (no storage read). */
+	obligationFromRecord(
+		threadId: string,
+		record: WorkflowLoopWorkItemRecord,
+		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
+	): WorkflowVerificationObligation {
 		return deriveWorkflowVerificationObligation(threadId, record, options);
 	}
 

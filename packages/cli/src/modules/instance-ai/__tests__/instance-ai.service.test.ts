@@ -148,6 +148,7 @@ import {
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
 	type TerminalOutcome,
+	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
@@ -234,6 +235,9 @@ type BackgroundTaskFollowUpServiceInternals = {
 	>;
 	maybeStartWorkflowVerificationFollowUp: jest.MockedFunction<
 		(user: User, task: ManagedBackgroundTask) => Promise<boolean>
+	>;
+	maybeStartWorkflowSetupFollowUp: jest.MockedFunction<
+		(user: User, threadId: string) => Promise<boolean>
 	>;
 	queuePendingCheckpointReentry: jest.MockedFunction<
 		(threadId: string, checkpointTaskId: string) => void
@@ -324,6 +328,9 @@ function createBackgroundTaskFollowUpService({
 	);
 	service.maybeStartWorkflowVerificationFollowUp = jest.fn(
 		async (_user: User, _task: ManagedBackgroundTask) => false,
+	);
+	service.maybeStartWorkflowSetupFollowUp = jest.fn(
+		async (_user: User, _threadId: string) => false,
 	);
 	service.queuePendingCheckpointReentry = jest.fn();
 	service.maybeReenterParentCheckpoint = jest.fn(
@@ -2263,5 +2270,209 @@ describe('InstanceAiService — OAuth callback URL', () => {
 		const source = InstanceAiService.toString();
 
 		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
+	});
+});
+
+describe('InstanceAiService — workflow verification follow-up gate', () => {
+	type VerificationGateService = {
+		taskProjector: { getObligation: jest.Mock };
+		trackWorkflowVerificationObligation: jest.Mock;
+		buildWorkflowVerificationFollowUpMessage: jest.Mock;
+		startInternalFollowUpRun: jest.Mock;
+		maybeStartWorkflowVerificationFollowUp: (
+			user: User,
+			task: ManagedBackgroundTask,
+		) => Promise<boolean>;
+	};
+
+	function createVerificationGateService(
+		obligation: WorkflowVerificationObligation,
+	): VerificationGateService {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as VerificationGateService;
+		service.taskProjector = { getObligation: jest.fn(async () => obligation) };
+		service.trackWorkflowVerificationObligation = jest.fn();
+		service.buildWorkflowVerificationFollowUpMessage = jest.fn(() => 'verification message');
+		service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
+		return service;
+	}
+
+	const builderTask = {
+		taskId: 'task-1',
+		threadId: 'thread-a',
+		runId: 'run-1',
+		role: 'workflow-builder',
+		workItemId: 'wi-1',
+		status: 'completed',
+		messageGroupId: 'group-1',
+	} as ManagedBackgroundTask;
+
+	function makeObligation(
+		overrides: Partial<WorkflowVerificationObligation>,
+	): WorkflowVerificationObligation {
+		return {
+			workItemId: 'wi-1',
+			threadId: 'thread-a',
+			source: 'direct',
+			policy: 'required',
+			status: 'ready_to_verify',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			...overrides,
+		} as WorkflowVerificationObligation;
+	}
+
+	it('starts a verification follow-up when the build is ready to verify', async () => {
+		const service = createVerificationGateService(makeObligation({ status: 'ready_to_verify' }));
+
+		const started = await service.maybeStartWorkflowVerificationFollowUp(fakeUser, builderTask);
+
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalled();
+	});
+
+	it.each(['verified', 'needs_setup', 'blocked'] as const)(
+		'does not run a verification follow-up for a %s build (setup is routed separately)',
+		async (status) => {
+			const service = createVerificationGateService(makeObligation({ status }));
+
+			const started = await service.maybeStartWorkflowVerificationFollowUp(fakeUser, builderTask);
+
+			expect(started).toBe(false);
+			expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		},
+	);
+});
+
+describe('InstanceAiService — deterministic workflow setup follow-up', () => {
+	type SetupFollowUpService = {
+		listWorkflowLoopRecords: jest.Mock;
+		markWorkItemSetupRouted: jest.Mock;
+		getPlannedWorkItemIds: jest.Mock;
+		buildWorkflowSetupFollowUpMessage: jest.Mock;
+		taskProjector: { obligationFromRecord: jest.Mock };
+		runState: { getMessageGroupId: jest.Mock };
+		startInternalFollowUpRun: jest.Mock;
+		trackWorkflowVerificationObligation: jest.Mock;
+		maybeStartWorkflowSetupFollowUp: (user: User, threadId: string) => Promise<boolean>;
+	};
+
+	const verifiedNeedsSetupOutcome = {
+		workItemId: 'wi-1',
+		taskId: 't-1',
+		runId: 'run-1',
+		workflowId: 'wf-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Submitted.',
+		verificationReadiness: { status: 'already_verified' },
+		setupRequirement: { status: 'required', reason: 'mocked-credentials', guidance: 'Add creds.' },
+		verification: { attempted: true, success: true, executionId: 'exec-1', status: 'success' },
+	};
+
+	function makeRecord(overrides: { state?: object; outcome?: object } = {}) {
+		return {
+			state: {
+				workItemId: 'wi-1',
+				threadId: 'thread-a',
+				workflowId: 'wf-1',
+				setupRoutedAt: undefined as string | undefined,
+				...overrides.state,
+			},
+			attempts: [],
+			lastBuildOutcome: { ...verifiedNeedsSetupOutcome, ...overrides.outcome },
+		};
+	}
+
+	// The obligation a record maps to — mirrors what the projector would derive
+	// for these fixtures (verified build whose setup verdict comes from the outcome).
+	function obligationFor(record: ReturnType<typeof makeRecord>): WorkflowVerificationObligation {
+		return {
+			workItemId: record.state.workItemId,
+			threadId: 'thread-a',
+			workflowId: record.lastBuildOutcome.workflowId,
+			source: 'direct',
+			policy: 'required',
+			status: 'verified',
+			setupRequirement: record.lastBuildOutcome.setupRequirement,
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		} as WorkflowVerificationObligation;
+	}
+
+	// Backs the stubbed storage with an in-memory store so the persisted
+	// `setupRoutedAt` marker (loop-safety) behaves like the real storage.
+	function createSetupFollowUpService(
+		records: Record<string, ReturnType<typeof makeRecord>>,
+		plannedIds: string[] = [],
+	): SetupFollowUpService {
+		const service = Object.create(InstanceAiService.prototype) as unknown as SetupFollowUpService;
+		service.listWorkflowLoopRecords = jest.fn(async () => Object.values(records));
+		service.markWorkItemSetupRouted = jest.fn(
+			async (_threadId: string, record: ReturnType<typeof makeRecord>) => {
+				records[record.state.workItemId].state.setupRoutedAt = '2026-01-01T00:00:00.000Z';
+			},
+		);
+		service.getPlannedWorkItemIds = jest.fn(async () => new Set(plannedIds));
+		service.buildWorkflowSetupFollowUpMessage = jest.fn(
+			() => '<workflow-setup-required>\n{}\n</workflow-setup-required>',
+		);
+		service.taskProjector = {
+			obligationFromRecord: jest.fn((_threadId: string, record: ReturnType<typeof makeRecord>) =>
+				obligationFor(record),
+			),
+		};
+		service.runState = { getMessageGroupId: jest.fn(() => 'group-1') };
+		service.startInternalFollowUpRun = jest.fn(async () => 'setup-run');
+		service.trackWorkflowVerificationObligation = jest.fn();
+		return service;
+	}
+
+	it('routes a verified build that still needs setup and marks it once', async () => {
+		const service = createSetupFollowUpService({ 'wi-1': makeRecord() });
+
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(started).toBe(true);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			expect.stringContaining('<workflow-setup-required>'),
+			'group-1',
+			false,
+			undefined,
+			'workflow_setup',
+		);
+		expect(service.markWorkItemSetupRouted).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not route the same build twice (loop-safe)', async () => {
+		const service = createSetupFollowUpService({ 'wi-1': makeRecord() });
+
+		await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+		const secondPass = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(secondPass).toBe(false);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not route when setup is not required', async () => {
+		const service = createSetupFollowUpService({
+			'wi-1': makeRecord({ outcome: { setupRequirement: { status: 'not_required' } } }),
+		});
+
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(started).toBe(false);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+	});
+
+	it('does not route planned work items (handled by the plan flow)', async () => {
+		const service = createSetupFollowUpService({ 'wi-1': makeRecord() }, ['wi-1']);
+
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(started).toBe(false);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
 	});
 });

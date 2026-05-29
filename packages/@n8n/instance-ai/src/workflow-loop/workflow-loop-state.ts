@@ -50,6 +50,11 @@ export const workflowLoopStateSchema = z.object({
 	preSaveSubmitFailures: z.number().int().min(0).optional(),
 	postSubmitRemediationSubmitsUsed: z.number().int().min(0).optional(),
 	lastRemediation: remediationMetadataSchema.optional(),
+	/**
+	 * Set once the service has routed this work item to post-verification setup.
+	 * Guards the deterministic setup follow-up so it fires at most once per build.
+	 */
+	setupRoutedAt: z.string().optional(),
 });
 
 export type WorkflowLoopPhase = z.infer<typeof workflowLoopPhaseSchema>;

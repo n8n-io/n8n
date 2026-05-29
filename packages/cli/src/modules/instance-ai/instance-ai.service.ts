@@ -82,6 +82,7 @@ import {
 	type TerminalResponseDecision,
 	type TerminalResponseStatus,
 	type WorkflowBuildOutcome,
+	type WorkflowLoopWorkItemRecord,
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
@@ -429,6 +430,7 @@ type OrchestratorResumeReason =
 	| 'approval'
 	| 'background_task_completed'
 	| 'workflow_verification'
+	| 'workflow_setup'
 	| 'planned_checkpoint'
 	| 'replan'
 	| 'synthesize';
@@ -2978,7 +2980,13 @@ export class InstanceAiService {
 		});
 		if (!obligation) return false;
 		this.trackWorkflowVerificationObligation(obligation, 'background_task_settled');
-		if (obligation.status === 'verified' || obligation.status === 'blocked') return false;
+
+		// Only run a verification follow-up when there is something to verify.
+		// Setup (mocked credentials, unresolved placeholders) is handled separately
+		// and deterministically by `maybeStartWorkflowSetupFollowUp`.
+		if (obligation.status !== 'ready_to_verify' && obligation.status !== 'verifying') {
+			return false;
+		}
 
 		const outcome = parseWorkflowBuildOutcome(task.outcome);
 		const startedRunId = await this.startInternalFollowUpRun(
@@ -3008,6 +3016,97 @@ export class InstanceAiService {
 		});
 
 		return startedRunId.length > 0;
+	}
+
+	private buildWorkflowSetupFollowUpMessage(obligation: WorkflowVerificationObligation): string {
+		const payload = {
+			workflowId: obligation.workflowId,
+			workItemId: obligation.workItemId,
+			setupRequirement: obligation.setupRequirement,
+			verificationReadiness: obligation.readiness,
+		};
+		return `<workflow-setup-required>\n${JSON.stringify(payload, null, 2)}\n</workflow-setup-required>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
+	}
+
+	/** Work item ids owned by a planned-task graph; their setup is routed by the plan flow. */
+	private async getPlannedWorkItemIds(threadId: string): Promise<Set<string>> {
+		const ids = new Set<string>();
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			for (const task of graph?.tasks ?? []) {
+				if (task.kind !== 'build-workflow') continue;
+				const workItemId = parseWorkflowBuildOutcome(task.outcome)?.workItemId;
+				if (workItemId) ids.add(workItemId);
+			}
+		} catch (error) {
+			this.logger.warn('Failed to resolve planned work item ids for setup routing', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+		return ids;
+	}
+
+	/**
+	 * Deterministically route a settled direct build to setup when its saved
+	 * workflow still needs real credentials or values. Runs after verification so
+	 * setup does not depend on the orchestrator choosing to call it. The persisted
+	 * `setupRoutedAt` marker makes this fire at most once per build, so the
+	 * finalization re-entry that drives it cannot loop.
+	 */
+	private async maybeStartWorkflowSetupFollowUp(user: User, threadId: string): Promise<boolean> {
+		const records = await this.listWorkflowLoopRecords(threadId);
+		if (records.length === 0) return false;
+
+		const plannedWorkItemIds = await this.getPlannedWorkItemIds(threadId);
+
+		for (const record of records) {
+			if (record.state.setupRoutedAt) continue;
+			if (plannedWorkItemIds.has(record.state.workItemId)) continue;
+
+			const obligation = this.taskProjector.obligationFromRecord(threadId, record, {
+				source: 'direct',
+			});
+			const verificationConcluded =
+				obligation.status === 'verified' || obligation.status === 'needs_setup';
+			if (!verificationConcluded) continue;
+			if (obligation.setupRequirement?.status !== 'required' || !obligation.workflowId) continue;
+
+			const startedRunId = await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildWorkflowSetupFollowUpMessage(obligation),
+				this.runState.getMessageGroupId(threadId),
+				false,
+				undefined,
+				'workflow_setup',
+			);
+			if (startedRunId.length === 0) return false;
+
+			// Mark routed only after a successful start so a failed start retries later.
+			await this.markWorkItemSetupRouted(threadId, record);
+			this.trackWorkflowVerificationObligation(obligation, 'setup_follow_up_started');
+			return true;
+		}
+
+		return false;
+	}
+
+	private async listWorkflowLoopRecords(threadId: string): Promise<WorkflowLoopWorkItemRecord[]> {
+		return await new WorkflowLoopStorage(this.agentMemory).listWorkItems(threadId);
+	}
+
+	private async markWorkItemSetupRouted(
+		threadId: string,
+		record: WorkflowLoopWorkItemRecord,
+	): Promise<void> {
+		await new WorkflowLoopStorage(this.agentMemory).saveWorkItem(
+			threadId,
+			{ ...record.state, setupRoutedAt: new Date().toISOString() },
+			record.attempts,
+			record.lastBuildOutcome,
+		);
 	}
 
 	private async startInternalFollowUpRun(
@@ -3838,6 +3937,7 @@ export class InstanceAiService {
 				}
 				await this.drainPendingCheckpointReentries(user, threadId);
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
+				await this.maybeStartWorkflowSetupFollowUp(user, threadId);
 			}
 		}
 	}
@@ -4504,6 +4604,7 @@ export class InstanceAiService {
 				}
 				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
+				await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
 			}
 		}
 	}
@@ -4641,6 +4742,15 @@ export class InstanceAiService {
 							task,
 						);
 						if (verificationFollowUpStarted) return;
+
+						// Builder already verified (or setup is needed without a verify step):
+						// route directly to setup so an unrunnable workflow is never presented
+						// as done.
+						const setupFollowUpStarted = await this.maybeStartWorkflowSetupFollowUp(
+							user,
+							task.threadId,
+						);
+						if (setupFollowUpStarted) return;
 
 						const payload = JSON.stringify(
 							{
