@@ -46,10 +46,13 @@ function buildPrompt({ pagesManifest, extraContext = '', podcastStyle = 'podcast
 	return [
 		'你是一个中文播客节目策划和演讲稿作者。',
 		'请把下面 PDF/PPTX 的逐页内容改写成逐页播客式讲解脚本。',
+		'必须忠于每一页给出的文本，只能解释页面里出现的信息和用户补充观点；不要引入页面没有出现的新主题、产品、论文、API、公司案例或背景知识。',
+		'如果页面文字很少，就围绕页面上已有标题、目标和用途做口语化解释，不要自行扩写成其他话题。',
 		'返回严格 JSON，不要 Markdown，不要解释。',
 		'JSON 字段必须是 title, summary, audience, pages。',
 		'pages 中每一项必须包含 pageNumber, pageTitle, speakerPrompt, spokenSummary, targetSeconds。',
 		'第一页 speakerPrompt 必须有自然播客开场，例如“今天我们要聊的话题是...”。',
+		'speakerPrompt 和 spokenSummary 都必须是可以直接交给语音服务生成播客的中文口播内容，不要只写一个选题。',
 		'后续页面要自然承接上一页。',
 		'风格：' + podcastStyle,
 		'补充观点/受众：' + (extraContext || '无'),
@@ -114,6 +117,10 @@ async function main() {
 		: await callLlm(prompt);
 	fs.writeFileSync(job.llmResponsePath, rawResponse, 'utf8');
 	const script = normalizePageScript(rawResponse, pagesManifest.pageCount);
+	script.pages = script.pages.map((page, index) => ({
+		...page,
+		sourceText: String(pagesManifest.pages[index]?.text || '').trim(),
+	}));
 	fs.writeFileSync(job.pageScriptPath, JSON.stringify(script, null, 2), 'utf8');
 	console.log(JSON.stringify({
 		ok: true,

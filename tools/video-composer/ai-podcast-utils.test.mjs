@@ -214,6 +214,25 @@ test('normalizePodcastRoundTiming builds subtitles from spoken round text and na
 	assert.doesNotMatch(timing.subtitles.map((subtitle) => subtitle.text).join(''), /请把下面观点/);
 });
 
+test('normalizePodcastRoundTiming keeps long podcast second timestamps monotonic', () => {
+	const timing = normalizePodcastRoundTiming([
+		{ round_id: 0, text: '第一段正常毫秒时间。' },
+		{ start_time: 94202, end_time: 100580 },
+		{ round_id: 1, text: '第二段超过一百秒后仍然是秒，不应该回到开头。' },
+		{ start_time: 100.58, end_time: 116.977 },
+		{ round_id: 2, text: '第三段继续往后。' },
+		{ start_time: 116.977, end_time: 125.344 },
+	]);
+
+	assert.equal(timing.rounds.length, 3);
+	assert.equal(timing.rounds[0].start, 94.202);
+	assert.equal(timing.rounds[0].end, 100.58);
+	assert.equal(timing.rounds[1].start, 100.58);
+	assert.equal(timing.rounds[1].end, 116.977);
+	assert.equal(timing.rounds[2].start, 116.977);
+	assert.equal(timing.subtitles.at(-1).end, 125.344);
+});
+
 test('extractPodcastTranscript joins only spoken round text', () => {
 	const transcript = extractPodcastTranscript([
 		{ round_id: 0, text: '今天我们要聊真实文本。' },

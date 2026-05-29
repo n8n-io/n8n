@@ -60,3 +60,57 @@ test('presentation-podcast-client builds page audio manifest from fixture page o
 	assert.equal(cost.pageCount, 2);
 	assert.equal(cost.totalAudioDuration, 30);
 });
+
+test('presentation-podcast-client sends page source text and full script to AI podcast', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-podcast-input-'));
+	const audioDir = path.join(root, 'audio');
+	const timingDir = path.join(root, 'timing');
+	const transcriptDir = path.join(root, 'transcript');
+	fs.mkdirSync(audioDir);
+	fs.mkdirSync(timingDir);
+	fs.mkdirSync(transcriptDir);
+	const pageScriptPath = path.join(root, 'page-script.json');
+	fs.writeFileSync(pageScriptPath, JSON.stringify({
+		title: '测试',
+		pages: [
+			{
+				pageNumber: 1,
+				speakerPrompt: '今天我们要聊的话题是 PDF 冒烟测试。',
+				spokenSummary: '这一页验证 n8n 工作流能生成带字幕的视频。',
+				sourceText: 'AI Podcast PDF Smoke Test\nGoal: generate white subtitles.',
+			},
+		],
+	}));
+	const fixtureFramesPath = path.join(root, 'frames.json');
+	fs.writeFileSync(fixtureFramesPath, JSON.stringify([
+		{ round_id: 0, text: '今天我们要聊的话题是 PDF 冒烟测试。' },
+		{ start_time: 0, end_time: 2, audio_duration: 2 },
+		{ audio: Buffer.from('audio').toString('base64') },
+	]));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'podcast-input-test',
+		pageScriptPath,
+		audioDir,
+		timingDir,
+		transcriptDir,
+		pageAudioManifestPath: path.join(root, 'page-audio.json'),
+		podcastSpeakerA: 'speaker-a',
+		podcastSpeakerB: 'speaker-b',
+	}));
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: {
+			...process.env,
+			AI_PODCAST_FIXTURE_FRAMES: fixtureFramesPath,
+			DOUBAO_AI_PODCAST_API_KEY: 'test-key',
+		},
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	const pageJob = JSON.parse(fs.readFileSync(path.join(audioDir, 'page-001-ai-podcast-job.json'), 'utf8'));
+	assert.match(pageJob.podcastInputText, /本页页面内容/);
+	assert.match(pageJob.podcastInputText, /AI Podcast PDF Smoke Test/);
+	assert.match(pageJob.podcastInputText, /这一页验证 n8n 工作流能生成带字幕的视频/);
+	assert.match(pageJob.podcastInputText, /不要引入页面没有出现的新主题/);
+});

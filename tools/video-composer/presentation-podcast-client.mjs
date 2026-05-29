@@ -36,11 +36,30 @@ function copyFixturePage({ fixtureDir, name, audioPath, timingPath, transcriptPa
 	fs.copyFileSync(path.join(fixtureDir, `${name}.txt`), transcriptPath);
 }
 
+function buildPagePodcastInput(page) {
+	const lines = [
+		'请生成一段中文播客访谈式口播。',
+		'必须严格围绕“本页页面内容”和“本页讲解稿”展开，不要引入页面没有出现的新主题、产品、API、公司案例或背景知识。',
+		'如果页面信息较少，就解释页面本身的作用、目标和观看重点；不要扩写成其他选题。',
+		'输出应自然像播客，不要朗读这些规则。',
+		'',
+		'本页页面内容：',
+		String(page.sourceText || '').trim() || '(页面文字较少，请只围绕标题和上下文解释。)',
+		'',
+		'本页讲解稿：',
+		[String(page.speakerPrompt || '').trim(), String(page.spokenSummary || '').trim()]
+			.filter(Boolean)
+			.join('\n'),
+	];
+
+	return lines.join('\n').trim();
+}
+
 function runAiPodcastPage(job, page, paths) {
 	const pageJobPath = path.join(job.audioDir, `${paths.name}-ai-podcast-job.json`);
 	fs.writeFileSync(pageJobPath, JSON.stringify({
 		jobId: `${job.jobId}-${paths.name}`,
-		podcastInputText: page.speakerPrompt,
+		podcastInputText: buildPagePodcastInput(page),
 		podcastSpeakerA: job.podcastSpeakerA,
 		podcastSpeakerB: job.podcastSpeakerB,
 		useHeadMusic: false,
