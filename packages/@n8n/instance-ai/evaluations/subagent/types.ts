@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Types for the isolated sub-agent evaluation harness
+// Types for the eval:subagent compatibility harness
 // ---------------------------------------------------------------------------
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -17,32 +17,32 @@ export interface Feedback {
 
 /**
  * A single sub-agent test case.
- * Describes the prompt and configuration for an isolated sub-agent run.
+ * Describes a legacy subagent fixture now run through the orchestrator.
  */
 export interface SubAgentTestCase {
 	/** Unique test case identifier */
 	id: string;
-	/** The prompt / task description sent to the sub-agent */
+	/** The prompt / task description sent to Instance AI */
 	prompt: string;
-	/** Sub-agent type. Determines system prompt and default tools. Defaults to 'builder'. */
+	/** Legacy selector retained for fixture and LangSmith compatibility. */
 	subagent?: string;
-	/** Optional system prompt override. Defaults to the sub-agent type's built-in prompt. */
+	/** Legacy sub-agent override retained for dataset compatibility. */
 	systemPrompt?: string;
-	/** Tool names to give the sub-agent. Defaults to the sub-agent type's default set if omitted. */
+	/** Legacy sub-agent tool list retained for dataset compatibility. */
 	tools?: string[];
 	/** Model ID override for this test case. Overrides the runner config modelId. */
 	modelId?: string;
-	/** Max agent steps before timeout. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
+	/** Legacy step budget retained for dataset compatibility. */
 	maxSteps?: number;
 	/** Per-test-case annotations forwarded to binary checks. */
 	annotations?: Record<string, unknown>;
 }
 
 /**
- * Workflow captured from a stubbed workflowService.createFromWorkflowJSON call.
+ * Workflow produced by the orchestrator build path.
  */
 export interface CapturedWorkflow {
-	/** The WorkflowJSON the agent produced (parsed from TypeScript SDK code) */
+	/** The WorkflowJSON the agent produced */
 	json: WorkflowJSON;
 	/** Whether the build-workflow tool reported success */
 	success: boolean;
@@ -76,7 +76,7 @@ export interface SubAgentRunnerConfig {
 	modelId?: string;
 	/** Timeout per test case in milliseconds. Defaults to 120_000. */
 	timeoutMs?: number;
-	/** Max agent steps. Overridden by test case if set. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
+	/** Legacy step budget retained for CLI compatibility. */
 	maxSteps?: number;
 	/** Whether to print verbose output */
 	verbose?: boolean;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// CLI for isolated sub-agent evaluation
+// CLI for the eval:subagent compatibility corpus
 //
 // Usage:
 //   pnpm eval:subagent --verbose
@@ -255,7 +255,7 @@ async function runLangsmithMode(
 	console.log('Running LangSmith evaluation:');
 	console.log(`  Dataset: ${args.dataset!}`);
 	console.log(`  Experiment: ${args.experiment ?? '(auto-generated)'}`);
-	console.log(`  Sub-agent: ${args.subagent}`);
+	console.log(`  Runner: orchestrator (compat subagent=${args.subagent})`);
 	console.log(`  Concurrency: ${String(args.concurrency)}`);
 	console.log('');
 
@@ -312,7 +312,7 @@ async function runLocalMode(
 	}
 
 	console.log(
-		`Running ${String(testCases.length)} sub-agent test case(s) with model ${config.modelId ?? '<server default>'} (concurrency: ${String(args.concurrency)})\n`,
+		`Running ${String(testCases.length)} orchestrator-backed subagent fixture(s) with binary-check model ${config.modelId ?? '<default>'} (concurrency: ${String(args.concurrency)})\n`,
 	);
 
 	const results: SubAgentResult[] = [];
@@ -357,7 +357,12 @@ async function main(): Promise<void> {
 	const client = new N8nClient(args.baseUrl);
 	await client.login();
 
-	const deps: RunSubAgentDeps = { client, deleteAfterRun: !args.keepWorkflows };
+	const deps: RunSubAgentDeps = {
+		client,
+		deleteAfterRun: !args.keepWorkflows,
+		preRunWorkflowIds: new Set(await client.listWorkflowIds()),
+		claimedWorkflowIds: new Set(),
+	};
 
 	if (args.dataset) {
 		await runLangsmithMode(args, config, deps);

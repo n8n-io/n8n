@@ -5,7 +5,7 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:subagent`** — compatibility corpus that drives the live orchestrator build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
@@ -482,12 +482,11 @@ No real credentials or API connections are needed. ~95% of node types are covere
 ## How the sub-agent harness works
 
 1. The CLI logs in to n8n with `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`.
-2. For each test case it POSTs `/rest/instance-ai/eval/run-sub-agent`.
-3. The server builds a real `InstanceAiContext` via `InstanceAiAdapterService.createContext`, wraps the workflow service to record created IDs, resolves the `builder` (or other) role's system prompt, instantiates the sub-agent with the full `createAllTools(context)` tool surface, and runs it to completion.
-4. The server returns `{ text, toolCalls, toolResults, capturedWorkflowIds, ... }`.
-5. The CLI fetches each captured workflow via `GET /rest/workflows/:id` (this doubles as a round-trip check through the real importer), scores it with the binary-check suite, and archives+deletes it (unless `--keep-workflows`).
+2. For each test case it sends the prompt through the normal Instance AI orchestrator chat flow.
+3. The orchestrator loads the workflow-builder skill guidance, uses the live build tools, and saves the workflow through the real workflow service.
+4. The CLI reads the built workflow from the orchestrator outcome, scores it with the binary-check suite, and archives+deletes it (unless `--keep-workflows`).
 
-No tools, services, or workflow imports are mocked. The server path exercised here is the same one the orchestrator takes when it spawns a builder sub-agent.
+No tools, services, or workflow imports are mocked. The fixture shape and `eval:subagent` command name are retained for compatibility, but the runtime path is orchestrator-backed.
 
 ## LangSmith integration
 
@@ -580,7 +579,8 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/workflows/       # e2e/sub-agent test case JSON files
+├── data/workflows/       # e2e test case JSON files
+├── data/subagent/        # eval:subagent compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)
 ├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-process-builder (pairwise)
 ├── langsmith/            # Dataset sync + experiment setup
