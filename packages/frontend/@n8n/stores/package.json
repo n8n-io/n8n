@@ -1,7 +1,7 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "files": [
     "dist"
   ],
@@ -26,6 +26,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",

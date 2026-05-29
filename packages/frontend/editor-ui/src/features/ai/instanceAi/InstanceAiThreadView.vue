@@ -26,11 +26,11 @@ import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
+import { scrubSecretsInText } from './scrubSecrets';
 import { useCanvasPreview } from './useCanvasPreview';
-import { useEventRelay } from './useEventRelay';
-import { useExecutionPushEvents } from './useExecutionPushEvents';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
@@ -69,6 +69,7 @@ const creditBanner = useCreditWarningBanner(isLowCredits);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
+const telemetry = useTelemetry();
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -87,10 +88,7 @@ const hasFloatingConfirmation = computed(() =>
 	thread.pendingConfirmations.some(isPendingItemFloating),
 );
 
-// --- Execution tracking via push events (drives canvas relay) ---
-const executionTracking = useExecutionPushEvents();
-
-// --- Fix-with-AI offer (failure data sent by the iframe via postMessage) ---
+// --- Fix-with-AI offer (failure data emitted by the artifact host) ---
 const failedRun = ref<WorkflowFailuresReport | null>(null);
 const dismissedExecutionId = ref<string | null>(null);
 
@@ -134,6 +132,17 @@ const preview = useCanvasPreview({
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+
+// Focus the composer when plan-edit mode is entered. The thread runtime
+// owns the activePlanEdit state; this watcher just reacts to the transition.
+watch(
+	() => thread.activePlanEdit,
+	(next, prev) => {
+		if (next && !prev) {
+			void nextTick(() => chatInputRef.value?.focus());
+		}
+	},
+);
 
 // --- Side panels ---
 const showDebugPanel = ref(false);
@@ -406,10 +415,23 @@ watch(
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
+function focusChatInputIfFocusIsIdle() {
+	const activeElement = document.activeElement;
+	if (
+		activeElement instanceof HTMLElement &&
+		activeElement !== document.body &&
+		activeElement !== document.documentElement
+	) {
+		return;
+	}
+
+	chatInputRef.value?.focus();
+}
+
 // Focus input on initial render (ref rebinds when messages load)
 watch(chatInputRef, (el) => {
 	if (el) {
-		void nextTick(() => el.focus());
+		void nextTick(focusChatInputIfFocusIsIdle);
 	}
 });
 
@@ -419,9 +441,7 @@ watch(
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
 			userScrolledUp.value = false;
-			void nextTick(() => {
-				chatInputRef.value?.focus();
-			});
+			void nextTick(focusChatInputIfFocusIsIdle);
 		}
 	},
 );
@@ -509,7 +529,7 @@ async function syncRouteToStore() {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
-	void nextTick(() => chatInputRef.value?.focus());
+	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
@@ -517,25 +537,52 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	inputContainerResizeObserver?.disconnect();
 	inputSwapResizeObserver?.disconnect();
-	executionTracking.cleanup();
 });
 
-// --- Workflow preview ref for iframe relay ---
 const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
-
-const eventRelay = useEventRelay({
-	workflowExecutions: executionTracking.workflowExecutions,
-	activeWorkflowId: preview.activeWorkflowId,
-	getBufferedEvents: executionTracking.getBufferedEvents,
-	clearEventLog: executionTracking.clearEventLog,
-	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
-});
 
 // --- Message handlers ---
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
+
+	const planEdit = thread.activePlanEdit;
+	if (planEdit) {
+		thread.cancelPlanEdit();
+		telemetry.track('User finished providing input', {
+			thread_id: thread.id,
+			input_thread_id: planEdit.inputThreadId ?? '',
+			instance_id: rootStore.instanceId,
+			type: 'plan-review',
+			provided_inputs: [
+				{
+					label: 'plan',
+					options: ['approve', 'ask-for-edits', 'deny'],
+					option_chosen: 'ask-for-edits',
+				},
+			],
+			skipped_inputs: [],
+			num_tasks: planEdit.taskCount,
+			feedback: scrubSecretsInText(message),
+		});
+		thread.markPlanUpdatePending(planEdit.requestId);
+		void thread
+			.confirmAction(planEdit.requestId, {
+				kind: 'approval',
+				approved: false,
+				userInput: message,
+			})
+			.then((success) => {
+				if (success) {
+					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
+				} else {
+					thread.clearPlanUpdatePending(planEdit.requestId);
+				}
+			});
+		return;
+	}
+
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 }
 
@@ -726,11 +773,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										:is-streaming="thread.isStreaming"
 										:is-submitting="thread.isSendingMessage"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:is-plan-edit-mode="thread.activePlanEdit !== null"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:contextual-suggestion="thread.contextualSuggestion"
 										@submit="handleSubmit"
 										@stop="handleStop"
+										@cancel-plan-edit="thread.cancelPlanEdit"
 									/>
 								</Transition>
 							</div>
@@ -820,10 +869,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
-						<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
-     workflows via openWorkflow postMessage instead of remounting. -->
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
+								v-if="preview.activeWorkflowId.value"
+								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
 									$style.previewSlot,
@@ -831,8 +880,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
-								@iframe-ready="eventRelay.handleIframeReady"
-								@workflow-loaded="eventRelay.handleWorkflowLoaded"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
