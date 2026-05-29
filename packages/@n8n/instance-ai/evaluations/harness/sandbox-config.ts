@@ -80,8 +80,9 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 		};
 	}
 
+	const exhaustiveProvider: never = provider;
 	throw new Error(
-		`Invalid sandbox provider "${String(provider)}". Set N8N_INSTANCE_AI_SANDBOX_PROVIDER to one of: ${VALID_PROVIDERS.join(', ')}.`,
+		`Invalid sandbox provider "${String(exhaustiveProvider)}". Set N8N_INSTANCE_AI_SANDBOX_PROVIDER to one of: ${VALID_PROVIDERS.join(', ')}.`,
 	);
 }
 

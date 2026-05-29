@@ -2,8 +2,6 @@ import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
-	isInstanceAiSandboxProvider,
-	type InstanceAiSandboxProvider,
 	type InstanceAiAttachment,
 	type InstanceAiAgentNode,
 	type InstanceAiConfirmRequest,
@@ -106,10 +104,7 @@ import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import {
-	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
-	unsupportedSandboxProviderMessage,
-} from './sandbox-provider';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
@@ -166,19 +161,6 @@ const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
 const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
-
-function resolveSupportedSandboxProvider(provider: string): InstanceAiSandboxProvider {
-	if (isInstanceAiSandboxProvider(provider)) return provider;
-	throw new OperationalError(unsupportedSandboxProviderMessage(provider));
-}
-
-function requireN8nSandboxServiceUrl(value: string): string {
-	const serviceUrl = value.trim();
-	if (serviceUrl.length === 0) {
-		throw new OperationalError(N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE);
-	}
-	return serviceUrl;
-}
 
 function slugifySandboxName(value: string, maxLen: number): string {
 	const slug = value
@@ -655,7 +637,7 @@ export class InstanceAiService {
 			sandboxNamePrefix,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
-		const provider = resolveSupportedSandboxProvider(sandboxProvider);
+		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
@@ -719,15 +701,12 @@ export class InstanceAiService {
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		if (base.provider === 'n8n-sandbox') {
-			const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
-			return {
-				...base,
-				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
-				apiKey: sandbox.apiKey ?? base.apiKey,
-			};
-		}
-		return base;
+		const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
+		return {
+			...base,
+			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
+			apiKey: sandbox.apiKey ?? base.apiKey,
+		};
 	}
 
 	private async getOrCreateWorkspaceEntry(
