@@ -311,7 +311,7 @@ export class FacebookTrigger implements INodeType {
 				// if (webhookData.verifyToken !== query['hub.verify_token']) {
 				// 	return {};
 				// }
-				res.status(200).send(query['hub.challenge']).end();
+				res.status(200).type('text/plain').send(query['hub.challenge']).end();
 				return {
 					noWebhookResponse: true,
 				};
