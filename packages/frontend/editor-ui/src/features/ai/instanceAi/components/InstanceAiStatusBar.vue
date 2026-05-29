@@ -13,9 +13,13 @@ const { getToolLabel } = useToolLabel();
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 
-const ROLE_LABELS: Record<string, string> = {
-	'workflow-builder': 'Building workflow',
-};
+function getAgentRoleLabel(role: string): string {
+	if (role === 'workflow-builder') {
+		return i18n.baseText('instanceAi.statusBar.workflowBuilder');
+	}
+
+	return i18n.baseText('instanceAi.statusBar.thinking');
+}
 
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
 	const lastMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.isStreaming);
@@ -26,7 +30,7 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	// Check active children first (sub-agents)
 	const activeChild = tree.children.find((c) => c.status === 'active');
 	if (activeChild) {
-		const roleLabel = ROLE_LABELS[activeChild.role] ?? activeChild.role;
+		const roleLabel = getAgentRoleLabel(activeChild.role);
 		const activeTool = activeChild.toolCalls.find((tc) => tc.isLoading);
 		if (activeTool) {
 			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);

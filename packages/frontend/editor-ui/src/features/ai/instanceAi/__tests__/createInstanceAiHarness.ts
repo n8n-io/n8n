@@ -276,7 +276,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: tcId,
-							toolName: 'build-workflow',
+							toolName: 'workflows',
+							args: { action: 'create' },
 							result: { success: true, workflowId },
 						}),
 					],
@@ -292,7 +293,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		const existingIdx = store.messages.findIndex((m) =>
 			m.agentTree?.toolCalls?.some(
 				(tc) =>
-					tc.toolName === 'build-workflow' &&
+					tc.toolName === 'workflows' &&
+					(tc.args as Record<string, unknown> | undefined)?.action === 'create' &&
 					(tc.result as Record<string, unknown> | undefined)?.workflowId === workflowId,
 			),
 		);
@@ -348,7 +350,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: `tc-build-${++toolCallCounter}`,
-							toolName: 'build-workflow',
+							toolName: 'workflows',
+							args: { action: 'create' },
 							result: { success: true, workflowId },
 						}),
 						makeToolCall({

@@ -5,15 +5,31 @@ import type {
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { computed, type ComputedRef, type Ref } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from './agentTimeline.utils';
+import {
+	extractArtifacts,
+	extractArtifactsFromToolCall,
+	HIDDEN_TOOLS,
+	isLegacyBuilderToolCall,
+	type ArtifactInfo,
+} from './agentTimeline.utils';
 
 /** Render hints for tool calls that show as special UI — not as generic "tool call" steps. */
-const SPECIAL_RENDER_HINTS = new Set(['tasks', 'delegate', 'builder', 'data-table', 'eval-setup']);
+const SPECIAL_RENDER_HINTS = new Set([
+	'tasks',
+	'delegate',
+	'builder',
+	'data-table',
+	'eval-setup',
+	'skill',
+]);
 
 /** Returns true if a tool call renders as a generic ToolCallStep (not special UI). */
 function isGenericToolCall(tc: InstanceAiToolCallState): boolean {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return false;
-	if (tc.renderHint && SPECIAL_RENDER_HINTS.has(tc.renderHint)) return false;
+	if (isLegacyBuilderToolCall(tc)) return false;
+	if (tc.renderHint && tc.renderHint !== 'builder' && SPECIAL_RENDER_HINTS.has(tc.renderHint)) {
+		return false;
+	}
 	if (tc.confirmation?.inputType === 'questions' || tc.confirmation?.inputType === 'plan-review') {
 		return false;
 	}
@@ -26,13 +42,11 @@ export interface ResponseGroupSegment {
 	entries: InstanceAiTimelineEntry[];
 	/** Visible tool call count (excludes hidden and special-render tools). */
 	toolCallCount: number;
-	/** Number of text entries inside this group (intermediate thinking text). */
-	textCount: number;
 	/** Number of answered question forms in this group. */
 	questionCount: number;
 	/** Number of child agent entries in this group. */
 	childCount: number;
-	/** Artifacts produced by child agents in this group. */
+	/** Artifacts produced by tool calls and child agents in this group. */
 	artifacts: ArtifactInfo[];
 }
 
@@ -79,24 +93,24 @@ export function useTimelineGrouping(
 				responseId,
 				entries: [],
 				toolCallCount: 0,
-				textCount: 0,
 				questionCount: 0,
 				childCount: 0,
 				artifacts: [],
 			};
 		}
 
+		function appendArtifacts(group: ResponseGroupSegment, artifacts: ArtifactInfo[]): void {
+			for (const artifact of artifacts) {
+				if (!group.artifacts.some((existing) => existing.resourceId === artifact.resourceId)) {
+					group.artifacts.push(artifact);
+				}
+			}
+		}
+
 		for (const entry of timeline) {
 			if (entry.type === 'text') {
-				// Text from the same API response as the current group stays inside
-				// (intermediate "thinking" text). Otherwise it renders inline.
-				if (currentGroup && entry.responseId === currentGroup.responseId) {
-					currentGroup.entries.push(entry);
-					currentGroup.textCount++;
-				} else {
-					currentGroup = null;
-					segments.push({ kind: 'trailing-text', content: entry.content });
-				}
+				currentGroup = null;
+				segments.push({ kind: 'trailing-text', content: entry.content });
 			} else if (entry.type === 'tool-call') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -106,8 +120,14 @@ export function useTimelineGrouping(
 				const tc = agentNode.value.toolCalls.find((t) => t.toolCallId === entry.toolCallId);
 				if (tc && isGenericToolCall(tc)) {
 					currentGroup.toolCallCount++;
-				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
+				} else if (
+					(tc?.confirmation?.inputType === 'questions' && !tc.isLoading) ||
+					tc?.confirmation?.inputType === 'plan-review'
+				) {
 					currentGroup.questionCount++;
+				}
+				if (tc) {
+					appendArtifacts(currentGroup, extractArtifactsFromToolCall(tc));
 				}
 			} else if (entry.type === 'child') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
@@ -118,28 +138,20 @@ export function useTimelineGrouping(
 				currentGroup.childCount++;
 				const child = agentNode.value.children.find((c) => c.agentId === entry.agentId);
 				if (child) {
-					currentGroup.artifacts.push(...extractArtifacts(child));
+					appendArtifacts(currentGroup, extractArtifacts(child));
 				}
-			}
-		}
-
-		// Extract trailing text from each response group — the last text entry
-		// is usually the conclusion after tool calls and should be visible.
-		for (let i = segments.length - 1; i >= 0; i--) {
-			const seg = segments[i];
-			if (seg.kind !== 'response-group') continue;
-			const last = seg.entries.at(-1);
-			if (last?.type === 'text') {
-				seg.entries.pop();
-				seg.textCount--;
-				segments.splice(i + 1, 0, { kind: 'trailing-text', content: last.content });
 			}
 		}
 
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0;
+			return (
+				seg.toolCallCount > 0 ||
+				seg.questionCount > 0 ||
+				seg.childCount > 0 ||
+				seg.artifacts.length > 0
+			);
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.
@@ -160,7 +172,7 @@ export function getGroupToolIcons(
 	for (const entry of group.entries) {
 		if (entry.type === 'tool-call') {
 			const tc = toolCalls.find((t) => t.toolCallId === entry.toolCallId);
-			if (tc && !HIDDEN_TOOLS.has(tc.toolName)) {
+			if (tc && isGenericToolCall(tc)) {
 				icons.add(getIcon(tc.toolName));
 			}
 		}

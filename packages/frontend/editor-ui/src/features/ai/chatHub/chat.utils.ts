@@ -21,27 +21,9 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { getRelativeDate, RELATIVE_DATE_GROUPS } from '../shared/dateGroups';
 
-export function getRelativeDate(now: Date, dateString: string): string {
-	const date = new Date(dateString);
-	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const yesterday = new Date(today);
-	yesterday.setDate(yesterday.getDate() - 1);
-	const lastWeek = new Date(today);
-	lastWeek.setDate(lastWeek.getDate() - 7);
-
-	const conversationDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-	if (conversationDate.getTime() === today.getTime()) {
-		return 'Today';
-	} else if (conversationDate.getTime() === yesterday.getTime()) {
-		return 'Yesterday';
-	} else if (conversationDate >= lastWeek) {
-		return 'This week';
-	} else {
-		return 'Older';
-	}
-}
+export { getRelativeDate };
 
 export function groupConversationsByDate(sessions: ChatHubSessionDto[]): GroupedConversations[] {
 	const now = new Date();
@@ -50,25 +32,23 @@ export function groupConversationsByDate(sessions: ChatHubSessionDto[]): Grouped
 	// Group sessions by relative date
 	for (const session of sessions) {
 		const group = getRelativeDate(now, session.lastMessageAt ?? session.updatedAt);
-
-		if (!groups.has(group)) {
-			groups.set(group, []);
+		let groupSessions = groups.get(group);
+		if (!groupSessions) {
+			groupSessions = [];
+			groups.set(group, groupSessions);
 		}
-
-		groups.get(group)!.push(session);
+		groupSessions.push(session);
 	}
 
 	// Define order for groups
-	const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'];
+	return RELATIVE_DATE_GROUPS.flatMap((groupName) => {
+		const groupSessions = groups.get(groupName) ?? [];
 
-	return groupOrder.flatMap((groupName) => {
-		const sessions = groups.get(groupName) ?? [];
-
-		return sessions.length > 0
+		return groupSessions.length > 0
 			? [
 					{
 						group: groupName,
-						sessions: sessions.sort(
+						sessions: groupSessions.sort(
 							(a, b) =>
 								Date.parse(b.lastMessageAt ?? b.updatedAt) -
 								Date.parse(a.lastMessageAt ?? a.updatedAt),
@@ -415,7 +395,7 @@ export function createFakeAgent(
 ): ChatModelDto {
 	return {
 		model,
-		name: fallback?.name || '',
+		name: fallback?.name ?? '',
 		description: null,
 		icon: fallback?.icon ?? null,
 		createdAt: null,

@@ -19,6 +19,8 @@ export interface ResourceEntry {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
+	/** True when this workflow exists but should be configured in the setup card before previewing. */
+	needsSetup?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,8 +43,8 @@ function optionalString(val: unknown): string | undefined {
  * optional fields provided by the new call win; fields it omits are preserved
  * from the existing entry. Callers are responsible for resolving `name` using
  * the existing entry as a fallback so partial updates (e.g. a patch
- * `build-workflow` call that carries only a `workflowId`) don't regress a
- * known name to 'Untitled'.
+ * workflow mutation that carries only a `workflowId`) don't regress a known
+ * name to 'Untitled'.
  */
 function recordProduced(col: Collections, entry: ResourceEntry): void {
 	const existing = col.produced.get(entry.id);
@@ -54,6 +56,7 @@ function recordProduced(col: Collections, entry: ResourceEntry): void {
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				needsSetup: entry.needsSetup ?? existing.needsSetup,
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
@@ -84,22 +87,34 @@ function entryFromListItem(
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set([
-	'build-workflow',
-	'build-workflow-with-agent',
-	'submit-workflow',
 	'apply-workflow-credentials',
+	'build-workflow',
 	'workflows',
 	'credentials',
 	'data-tables',
 	'insert-data-table-rows',
+	'submit-workflow',
 	'update-data-table-rows',
 	'delete-data-table-rows',
 ]);
+
+function isWorkflowMutationToolCall(
+	tc: InstanceAiToolCallState,
+	action: string | undefined,
+): boolean {
+	return (
+		(tc.toolName === 'workflows' && (action === 'create' || action === 'update')) ||
+		tc.toolName === 'build-workflow' ||
+		tc.toolName === 'submit-workflow'
+	);
+}
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
+	const action = optionalString(tc.args?.action);
+	const isWorkflowMutation = isWorkflowMutationToolCall(tc, action);
 
 	// --- Workflows --------------------------------------------------------
 	// List result: { workflows: [{ id, name }, ...] } — index by name only.
@@ -110,17 +125,39 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
+	// Workflow create/update result:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
-	if (typeof result.workflowId === 'string') {
+	if (isWorkflowMutation && typeof result.workflowId === 'string') {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args?.name) ??
 			existing?.name ??
 			'Untitled';
-		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
+		recordProduced(col, {
+			type: 'workflow',
+			id: result.workflowId,
+			name,
+			needsSetup: workflowResultNeedsSetup(result),
+		});
+	}
+
+	if (
+		tc.toolName === 'workflows' &&
+		action === 'setup' &&
+		typeof tc.args?.workflowId === 'string'
+	) {
+		const existing = col.produced.get(tc.args.workflowId);
+		if (existing) {
+			recordProduced(col, {
+				...existing,
+				needsSetup:
+					result.success === true
+						? result.deferred === true || result.partial === true
+						: existing.needsSetup,
+			});
+		}
 	}
 
 	// Single workflow object: { workflow: { id, name, ... } } — produced.
@@ -200,12 +237,28 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
+function workflowResultNeedsSetup(result: Record<string, unknown>): boolean {
+	const setupRequirement = result.setupRequirement;
+	if (setupRequirement && typeof setupRequirement === 'object') {
+		const status = (setupRequirement as Record<string, unknown>).status;
+		if (status === 'required') return true;
+	}
+
+	const verificationReadiness = result.verificationReadiness;
+	if (verificationReadiness && typeof verificationReadiness === 'object') {
+		const status = (verificationReadiness as Record<string, unknown>).status;
+		if (status === 'needs_setup') return true;
+	}
+
+	return (
+		(Array.isArray(result.mockedNodeNames) && result.mockedNodeNames.length > 0) ||
+		(Array.isArray(result.mockedCredentialTypes) && result.mockedCredentialTypes.length > 0)
+	);
+}
+
 /**
- * Register the agent's `targetResource` as a produced artifact when it carries
- * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first build-workflow
- * tool result arrives — lets the artifacts panel show the workflow as soon as
- * the sub-agent starts, instead of waiting for the first edit.
+ * Register an agent's `targetResource` as a produced artifact when it carries
+ * a concrete resource id.
  */
 function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
 	const target = node.targetResource;

@@ -90,7 +90,7 @@ const steps = computed((): TimelineStep[] => {
 			});
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
+			if (!tc || HIDDEN_TOOLS.has(tc.toolName) || tc.renderHint === 'skill') continue;
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),

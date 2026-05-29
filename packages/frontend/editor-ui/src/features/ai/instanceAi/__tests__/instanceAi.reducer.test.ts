@@ -652,7 +652,11 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('delegate')).toBe('delegate');
 		});
 
-		test('returns builder for workflow builder tool', () => {
+		test('returns default for the direct workflows tool', () => {
+			expect(getRenderHint('workflows')).toBe('default');
+		});
+
+		test('keeps builder render hint for persisted legacy workflow builder tool calls', () => {
 			expect(getRenderHint('build-workflow-with-agent')).toBe('builder');
 		});
 

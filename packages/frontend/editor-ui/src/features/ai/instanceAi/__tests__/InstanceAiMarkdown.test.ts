@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/vue';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
@@ -5,12 +6,23 @@ import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
-// Stub ChatMarkdownChunk to expose the processed content as plain text
-vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
+vi.mock('../components/InstanceAiMarkdownChunk.vue', () => ({
 	default: {
-		template:
-			'<div data-test-id="markdown-output" :data-source-type="source.type">{{ source.type === "text" ? source.content : source.command?.title }}</div>',
 		props: ['source'],
+		computed: {
+			markdownLink(): { text: string; href: string } | undefined {
+				const source = (this as unknown as { source: { type: string; content?: string } }).source;
+				if (source.type !== 'text' || !source.content) return undefined;
+				const match = /\[([^\]]+)\]\(([^)]+)\)/.exec(source.content);
+				return match ? { text: match[1], href: match[2] } : undefined;
+			},
+		},
+		template: `
+			<div>
+				<div data-test-id="markdown-output" :data-source-type="source.type">{{ source.type === "text" ? source.content : source.command?.title }}</div>
+				<a v-if="markdownLink" :href="markdownLink.href">{{ markdownLink.text }}</a>
+			</div>
+		`,
 	},
 }));
 
@@ -47,6 +59,60 @@ describe('InstanceAiMarkdown', () => {
 	it('should return content unchanged when registry is empty', () => {
 		const result = getProcessedContent('Hello world');
 		expect(result).toBe('Hello world');
+	});
+
+	it('should parse artifact commands instead of exposing raw command markup', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				content: `Summary first.
+<command:artifact-create>
+<title>Workflow audit</title>
+<type>md</type>
+<content># Full audit</content>
+</command:artifact-create>`,
+			},
+		});
+		const chunks = getAllByTestId('markdown-output');
+
+		expect(chunks.map((chunk) => chunk.getAttribute('data-source-type'))).toEqual([
+			'text',
+			'artifact-create',
+		]);
+		expect(chunks[0]).toHaveTextContent('Summary first.');
+		expect(chunks[1]).toHaveTextContent('Workflow audit');
+		expect(chunks.map((chunk) => chunk.textContent).join('')).not.toContain(
+			'<command:artifact-create>',
+		);
+	});
+
+	it('should only decorate parsed text chunks, not artifact command content', () => {
+		thread.resourceNameIndex = makeRegistry([
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+		]);
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				content: `See My Workflow.
+<command:artifact-create>
+<title>My Workflow audit</title>
+<type>md</type>
+<content># My Workflow</content>
+</command:artifact-create>`,
+			},
+		});
+		const chunks = getAllByTestId('markdown-output');
+
+		expect(chunks[0]).toHaveTextContent('[My Workflow](n8n-resource://workflow/wf-1)');
+		expect(chunks[1]).toHaveTextContent('My Workflow audit');
+		expect(chunks[1]).not.toHaveTextContent('n8n-resource://workflow/wf-1');
+	});
+
+	it('should strip internal blocks before rendering markdown chunks', () => {
+		const result = getProcessedContent(
+			'Visible summary.\n<planning-blueprint>{"items":[]}</planning-blueprint>',
+		);
+
+		expect(result).toBe('Visible summary.');
 	});
 
 	it('should replace resource name with n8n-resource link', () => {
@@ -144,5 +210,69 @@ describe('InstanceAiMarkdown', () => {
 		);
 		expect(result).toContain('[the My Workflow docs](https://example.com)');
 		expect(result).not.toContain('n8n-resource://');
+	});
+
+	it('keeps resource preview click handlers after component updates', async () => {
+		thread.resourceNameIndex = makeRegistry([
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+		]);
+		const openWorkflowPreview = vi.fn(() => true);
+		const { container, rerender } = renderComponent({
+			props: { content: 'Open My Workflow' },
+			global: {
+				provide: { openWorkflowPreview },
+			},
+		});
+
+		const firstLink = container.querySelector('a');
+		expect(firstLink).not.toBeNull();
+		await fireEvent.click(firstLink as HTMLAnchorElement);
+
+		const removeListenerSpy = vi.spyOn(HTMLAnchorElement.prototype, 'removeEventListener');
+		await rerender({ content: 'Open My Workflow' });
+		const updatedLink = container.querySelector('a');
+		expect(updatedLink).not.toBeNull();
+		expect(updatedLink?.querySelectorAll('svg')).toHaveLength(1);
+		expect(removeListenerSpy).not.toHaveBeenCalled();
+		removeListenerSpy.mockRestore();
+		await fireEvent.click(updatedLink as HTMLAnchorElement);
+
+		expect(openWorkflowPreview).toHaveBeenCalledTimes(2);
+		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('opens inline workflow preview for standard workflow route links', async () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: { content: 'Open [workflow](/workflow/wf-1)' },
+			global: {
+				provide: { openWorkflowPreview },
+			},
+		});
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		await fireEvent.click(link as HTMLAnchorElement);
+
+		expect(link?.dataset.resourceId).toBe('wf-1');
+		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('opens inline data-table preview for standard project data-table route links', async () => {
+		const openDataTablePreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: { content: 'Open [table](/projects/project-1/datatables/table-1)' },
+			global: {
+				provide: { openDataTablePreview },
+			},
+		});
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		await fireEvent.click(link as HTMLAnchorElement);
+
+		expect(link?.dataset.resourceId).toBe('table-1');
+		expect(link?.dataset.resourceProjectId).toBe('project-1');
+		expect(openDataTablePreview).toHaveBeenCalledWith('table-1', 'project-1');
 	});
 });

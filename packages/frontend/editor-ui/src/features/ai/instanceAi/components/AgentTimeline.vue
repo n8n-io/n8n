@@ -8,11 +8,16 @@ import type {
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
+import {
+	extractArtifacts,
+	extractArtifactsFromToolCall,
+	HIDDEN_TOOLS,
+	isLegacyBuilderToolCall,
+	type ArtifactInfo,
+} from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
-import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -285,10 +290,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
+				<!-- Legacy builder agent calls render through their child agent/artifact UI. -->
+				<template v-else-if="isLegacyBuilderToolCall(toolCallsById[entry.toolCallId])" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'skill'" />
 				<!-- Plan review must match before the planner renderHint suppression:
 				     when the plan tool attaches the confirmation to its own tool call
 				     (no planner child agent), that suppression would otherwise hide it. -->
@@ -323,19 +329,25 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true">
 					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
 				</ToolCallStep>
+
+				<!-- Artifact produced by this tool call — shown as soon as it completes.
+				     Skipped in the grouped/completed view (artifacts render per response group). -->
+				<template v-if="!props.visibleEntries">
+					<ArtifactCard
+						v-for="artifact in extractArtifactsFromToolCall(toolCallsById[entry.toolCallId])"
+						:key="artifact.resourceId"
+						:type="artifact.type"
+						:name="resolveArtifactName(artifact)"
+						:resource-id="artifact.resourceId"
+						:project-id="artifact.projectId"
+						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+						:metadata="formatArtifactMetadata(artifact)"
+					/>
+				</template>
 			</template>
 
-			<!-- Child agent — flat section. Running builder sub-agents are
-				 extracted and rendered at the bottom of the conversation by
-				 InstanceAiView; once a builder finishes it reappears here in its
-				 chronological slot. -->
-			<template
-				v-else-if="
-					entry.type === 'child' &&
-					childrenById[entry.agentId] &&
-					!isActiveBuilderAgent(childrenById[entry.agentId])
-				"
-			>
+			<!-- Child agent — flat section in chronological order. -->
+			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->

@@ -19,19 +19,12 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const summaryText = computed(() => {
-	const { toolCallCount, textCount, questionCount, childCount } = props.group;
+	const { toolCallCount, questionCount, childCount } = props.group;
 	const parts: string[] = [];
 	if (toolCallCount > 0) {
 		parts.push(
 			i18n.baseText('instanceAi.activitySummary.toolCalls', {
 				interpolate: { count: `${toolCallCount}` },
-			}),
-		);
-	}
-	if (textCount > 0) {
-		parts.push(
-			i18n.baseText('instanceAi.activitySummary.messages', {
-				interpolate: { count: `${textCount}` },
 			}),
 		);
 	}

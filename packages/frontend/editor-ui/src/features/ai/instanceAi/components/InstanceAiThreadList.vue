@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -14,6 +13,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRelativeDate, RELATIVE_DATE_GROUPS } from '../../shared/dateGroups';
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -49,16 +49,13 @@ const dateGroupI18nMap: Record<string, string> = {
 	Older: i18n.baseText('instanceAi.sidebar.group.older'),
 };
 
-const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
-
 const groupedThreads = computed(() => {
 	const now = new Date();
 	const groups = new Map<string, typeof store.threads>();
 
 	// Group by last activity, not creation date — a thread created weeks ago
 	// but messaged today belongs under "Today", matching the backend ordering
-	// (memory.service returns threads sorted by updatedAt desc) and the
-	// chatHub sidebar's `groupConversationsByDate` behaviour.
+	// (memory.service returns threads sorted by updatedAt desc).
 	for (const thread of store.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
@@ -69,7 +66,7 @@ const groupedThreads = computed(() => {
 		threads.push(thread);
 	}
 
-	return groupOrder.flatMap((groupName) => {
+	return RELATIVE_DATE_GROUPS.flatMap((groupName) => {
 		const threads = groups.get(groupName) ?? [];
 		return threads.length > 0 ? [{ label: dateGroupI18nMap[groupName] ?? groupName, threads }] : [];
 	});

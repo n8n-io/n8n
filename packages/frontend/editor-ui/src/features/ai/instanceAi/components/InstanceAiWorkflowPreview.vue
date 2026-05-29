@@ -103,15 +103,12 @@ onBeforeUnmount(() => {
 // Lock interaction with the artifact's editor while the agent is actively
 // editing THIS workflow. Two signals trigger the lock; either is enough:
 //
-// 1. A workflow-builder sub-agent is running with `targetResource.id`
-//    matching ours. This is the primary signal — it covers the entire build
-//    window (read file → edit file → submit-workflow → verify). The
-//    orchestrator's `build-workflow-with-agent` tool call returns
-//    immediately with a taskId; the actual work happens in the sub-agent.
+// 1. A legacy workflow-builder sub-agent is running with `targetResource.id`
+//    matching ours. Kept for historical traces and resumed old runs.
 //
 // 2. A workflow-mutating tool call is in flight with `args.workflowId`
-//    matching ours. Fallback for direct orchestrator calls that don't
-//    spawn a sub-agent (e.g. apply-workflow-credentials, setup-workflow).
+//    matching ours. This covers the current `workflows(action="update"|"setup")`
+//    path as well as legacy setup/apply-credential tools.
 //
 // Without this, the user can drag nodes around concurrently with the
 // agent's mutations, producing mid-stream conflicts.
@@ -124,8 +121,25 @@ const WORKFLOW_EDITING_TOOLS = new Set([
 	'setup-workflow',
 ]);
 
+const WORKFLOW_EDITING_ACTIONS = new Set(['create', 'update', 'setup']);
+
+function toolCallIsEditingWorkflow(
+	tc: InstanceAiAgentNode['toolCalls'][number],
+	workflowId: string,
+): boolean {
+	if (!tc.isLoading) return false;
+
+	const args = tc.args as { action?: unknown; workflowId?: string } | undefined;
+	if (tc.toolName === 'workflows') {
+		return WORKFLOW_EDITING_ACTIONS.has(String(args?.action)) && args?.workflowId === workflowId;
+	}
+
+	if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) return false;
+	return args?.workflowId === workflowId;
+}
+
 function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
-	// Signal 1: workflow-builder sub-agent active with our workflow id
+	// Signal 1: legacy workflow-builder sub-agent active with our workflow id.
 	if (
 		node.role === 'workflow-builder' &&
 		node.status === 'active' &&
@@ -135,12 +149,9 @@ function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): b
 		return true;
 	}
 
-	// Signal 2: in-flight workflow-editing tool call targeting our workflow id
+	// Signal 2: in-flight workflow-editing tool call targeting our workflow id.
 	for (const tc of node.toolCalls) {
-		if (!tc.isLoading) continue;
-		if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
-		const args = tc.args as { workflowId?: string } | undefined;
-		if (args?.workflowId === workflowId) return true;
+		if (toolCallIsEditingWorkflow(tc, workflowId)) return true;
 	}
 
 	for (const child of node.children) {

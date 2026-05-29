@@ -94,12 +94,12 @@ describe('ToolCallStep', () => {
 			props: {
 				toolCall: makeToolCall({
 					toolName: 'delegate',
-					args: { role: 'workflow-builder' },
+					args: { role: 'researcher' },
 				}),
 			},
 		});
 
-		const label = getByText(/workflow-builder/);
+		const label = getByText(/researcher/);
 		expect(label).toBeInTheDocument();
 	});
 

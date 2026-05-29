@@ -435,8 +435,8 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
-							args: {},
+							toolName: 'workflows',
+							args: { action: 'create' },
 							isLoading: false,
 							result: { success: true, workflowId },
 						},

@@ -82,7 +82,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 				:is-last="idx === lastGroupIdx"
 			/>
 
-			<!-- Artifacts from child agents in this group, rendered in-place after the group -->
+			<!-- Artifacts from direct tool calls and child agents, rendered in-place after the group -->
 			<template v-if="segment.kind === 'response-group' && segment.artifacts.length > 0">
 				<ArtifactCard
 					v-for="artifact in segment.artifacts"

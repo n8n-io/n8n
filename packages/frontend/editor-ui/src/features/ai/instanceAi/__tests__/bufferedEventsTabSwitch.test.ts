@@ -21,13 +21,13 @@ describe('build-phase events survive tab activation', () => {
 
 	test('relays buffered events when the user opens the tab after the run finished', async () => {
 		// Two workflow tabs exist; the user is parked on a different one when
-		// the build agent runs the workflow we care about.
+		// the workflow-build follow-up runs the workflow we care about.
 		h.registerWorkflow('wf-other', 'Other');
 		h.registerWorkflow('wf-target', 'Target');
 		h.selectTab('wf-other');
 		await h.simulateIframeReady();
 
-		// Build agent kicks off and finishes a verification run on wf-target
+		// Workflow-build follow-up kicks off and finishes a verification run on wf-target
 		// while the active tab is still wf-other. None of these should reach
 		// the iframe yet — they buffer in workflowExecutions[wf-target].
 		h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-target'));

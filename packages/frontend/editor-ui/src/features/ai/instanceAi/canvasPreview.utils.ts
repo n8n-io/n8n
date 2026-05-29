@@ -11,12 +11,15 @@ export interface BuildResult {
 	workflowId: string;
 	/** Unique per build — changes even when the same workflow is rebuilt. */
 	toolCallId: string;
+	/** True when setup should be handled in chat before opening the full workflow preview. */
+	needsSetup?: boolean;
 }
 
-export interface BuilderTarget {
-	/** Unique per spawn — changes even when a new builder targets the same workflow. */
-	agentId: string;
+export interface WorkflowBuildTarget {
 	workflowId: string;
+	/** Unique per build target — changes even when a new edit targets the same workflow. */
+	toolCallId: string;
+	name?: string;
 }
 
 export interface WorkflowSetupResult {
@@ -33,7 +36,7 @@ export interface DataTableResult {
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
+ * and toolCallId from the latest successful workflow create/update tool result.
  */
 export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
@@ -43,40 +46,76 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
+			isWorkflowBuildToolCall(tc) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof result.workflowId === 'string') {
-				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
+				return {
+					workflowId: result.workflowId,
+					toolCallId: tc.toolCallId,
+					...(buildResultNeedsSetup(result) ? { needsSetup: true } : {}),
+				};
 			}
 		}
 	}
 	return undefined;
 }
 
+function buildResultNeedsSetup(result: Record<string, unknown>): boolean {
+	const setupRequirement = result.setupRequirement;
+	if (setupRequirement && typeof setupRequirement === 'object') {
+		const status = (setupRequirement as Record<string, unknown>).status;
+		if (status === 'required') return true;
+	}
+
+	const verificationReadiness = result.verificationReadiness;
+	if (verificationReadiness && typeof verificationReadiness === 'object') {
+		const status = (verificationReadiness as Record<string, unknown>).status;
+		if (status === 'needs_setup') return true;
+	}
+
+	return (
+		(Array.isArray(result.mockedNodeNames) && result.mockedNodeNames.length > 0) ||
+		(Array.isArray(result.mockedCredentialTypes) && result.mockedCredentialTypes.length > 0)
+	);
+}
+
+function isWorkflowBuildToolCall(tc: InstanceAiAgentNode['toolCalls'][number]): boolean {
+	const action = (tc.args as Record<string, unknown> | undefined)?.action;
+	return (
+		(tc.toolName === 'workflows' && (action === 'create' || action === 'update')) ||
+		tc.toolName === 'build-workflow' ||
+		tc.toolName === 'submit-workflow'
+	);
+}
+
 /**
- * Walks an agent tree depth-first (most recent last) and returns the agentId
- * and workflowId of the latest workflow-builder sub-agent that was spawned
- * with a concrete `targetResource.id` — i.e. an edit-mode builder that
- * already knows which existing workflow it is modifying. Used to open the
- * canvas preview at spawn time, before the first build-workflow tool call
- * returns a result.
+ * Walks an agent tree depth-first (most recent last) and returns the workflowId
+ * from the latest suspended workflow update confirmation. Confirmation payloads
+ * carry remapped IDs during trace replay, while raw loading tool-call args can
+ * still contain recorded IDs.
  */
-export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget | undefined {
+export function getLatestActiveBuildTarget(
+	node: InstanceAiAgentNode,
+): WorkflowBuildTarget | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const child = node.children[i];
-		const nested = getLatestBuilderTarget(child);
-		if (nested) return nested;
-		const isBuilder = child.kind === 'builder' || child.role === 'workflow-builder';
-		if (
-			isBuilder &&
-			child.targetResource?.type === 'workflow' &&
-			typeof child.targetResource.id === 'string'
-		) {
-			return { agentId: child.agentId, workflowId: child.targetResource.id };
+		const childResult = getLatestActiveBuildTarget(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		if (tc.toolName === 'workflows' && args?.action === 'update' && tc.isLoading) {
+			const workflowId = tc.confirmation?.workflowId;
+			if (typeof workflowId !== 'string') continue;
+			return {
+				workflowId,
+				toolCallId: tc.toolCallId,
+				...(typeof args.name === 'string' ? { name: args.name } : {}),
+			};
 		}
 	}
 	return undefined;
@@ -84,11 +123,16 @@ export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget
 
 const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
 
+function isWorkflowSetupToolCall(tc: InstanceAiAgentNode['toolCalls'][number]): boolean {
+	if (WORKFLOW_SETUP_TOOLS.has(tc.toolName)) return true;
+	const action = (tc.args as Record<string, unknown> | undefined)?.action;
+	return tc.toolName === 'workflows' && action === 'setup';
+}
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful setup-workflow /
- * apply-workflow-credentials tool result. These tools modify the workflow
- * (credentials, parameters) but don't return workflowId in the result.
+ * (from args) and toolCallId from the latest successful workflow setup result.
+ * Setup modifies credentials/parameters but doesn't return workflowId in the result.
  */
 export function getLatestWorkflowSetupResult(
 	node: InstanceAiAgentNode,
@@ -100,7 +144,7 @@ export function getLatestWorkflowSetupResult(
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			WORKFLOW_SETUP_TOOLS.has(tc.toolName) &&
+			isWorkflowSetupToolCall(tc) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -125,13 +169,13 @@ export interface LatestExecution {
  * and workflowId from the latest completed run-workflow tool result.
  *
  * The workflowId preference order is:
- *   1. The sibling build-workflow tool's result.workflowId (always the real
- *      current-run ID, since build-workflow hits the live backend).
+ *   1. The sibling workflow create/update result.workflowId (always the real
+ *      current-run ID, since the workflows tool hits the live backend).
  *   2. The run-workflow tool call's args.workflowId (falls back for flows that
  *      run a pre-existing workflow without building it first).
  *
  * This ordering matters for trace-replay: the cached LLM's args.workflowId
- * carries the ID from the original recording, but build-workflow's result
+ * carries the ID from the original recording, but the workflow mutation result
  * always reflects the real workflow created during replay.
  */
 export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution | undefined {

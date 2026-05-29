@@ -13,12 +13,16 @@ import type { ResourceEntry } from '../useResourceRegistry';
 // ---------------------------------------------------------------------------
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
+	const defaultArgs =
+		overrides.toolName === 'workflows'
+			? { action: 'create', ...(overrides.args ?? {}) }
+			: (overrides.args ?? {});
 	return {
 		toolCallId: 'tc-1',
 		toolName: 'some-tool',
-		args: {},
 		isLoading: false,
 		...overrides,
+		args: defaultArgs,
 	};
 }
 
@@ -69,7 +73,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								result: { workflowId: 'wf-1', workflowName: 'My Workflow' },
 							}),
 						],
@@ -84,6 +88,176 @@ describe('useResourceRegistry', () => {
 			expect(resourceNameIndex.value.get('my workflow')?.id).toBe('wf-1');
 		});
 
+		test('registers workflow artifacts from persisted legacy workflow builder results', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: {
+									success: true,
+									workflowId: 'wf-legacy-build',
+									workflowName: 'Legacy Build',
+								},
+							}),
+							makeToolCall({
+								toolName: 'submit-workflow',
+								result: {
+									success: true,
+									workflowId: 'wf-legacy-submit',
+									workflowName: 'Legacy Submit',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-legacy-build')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: 'wf-legacy-build', name: 'Legacy Build' }),
+			);
+			expect(producedArtifacts.value.get('wf-legacy-submit')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-legacy-submit',
+					name: 'Legacy Submit',
+				}),
+			);
+			expect(resourceNameIndex.value.get('legacy submit')?.id).toBe('wf-legacy-submit');
+		});
+
+		test('marks workflow artifacts that still need setup', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									success: true,
+									workflowId: 'wf-setup',
+									workflowName: 'Needs setup',
+									setupRequirement: { status: 'required' },
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-setup')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-setup',
+					name: 'Needs setup',
+					needsSetup: true,
+				}),
+			);
+		});
+
+		test('keeps setup-needed workflow marked when setup is deferred', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									success: true,
+									workflowId: 'wf-deferred',
+									workflowName: 'Deferred setup',
+									setupRequirement: { status: 'required' },
+								},
+							}),
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'setup', workflowId: 'wf-deferred' },
+								result: { success: true, deferred: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-deferred')).toEqual(
+				expect.objectContaining({ needsSetup: true }),
+			);
+		});
+
+		test('keeps setup-needed workflow marked when setup only partially completes', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									success: true,
+									workflowId: 'wf-partial',
+									workflowName: 'Partial setup',
+									setupRequirement: { status: 'required' },
+								},
+							}),
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'setup', workflowId: 'wf-partial' },
+								result: { success: true, partial: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-partial')).toEqual(
+				expect.objectContaining({ needsSetup: true }),
+			);
+		});
+
+		test('clears setup-needed state after setup completes', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									success: true,
+									workflowId: 'wf-configured',
+									workflowName: 'Configured',
+									setupRequirement: { status: 'required' },
+								},
+							}),
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'setup', workflowId: 'wf-configured' },
+								result: { success: true, deferred: false },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.get('wf-configured')).toEqual(
+				expect.objectContaining({ needsSetup: false }),
+			);
+		});
+
 		test('falls back to args.name when result has no workflowName', async () => {
 			const { messages, producedArtifacts } = setup();
 
@@ -92,7 +266,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { name: 'From Args' },
 								result: { workflowId: 'wf-2' },
 							}),
@@ -115,7 +289,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -138,12 +312,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-a' },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-b' },
 							}),
@@ -159,7 +333,7 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — targetResource registration', () => {
-		test('registers a builder sub-agent targetResource as a produced workflow', async () => {
+		test('registers a workflow targetResource as a produced workflow', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -167,7 +341,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						children: [
 							makeAgentNode({
-								agentId: 'agent-builder-1',
+								agentId: 'agent-setup-1',
 								role: 'workflow-builder',
 								kind: 'builder',
 								status: 'active',
@@ -192,7 +366,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						children: [
 							makeAgentNode({
-								agentId: 'agent-builder-1',
+								agentId: 'agent-setup-1',
 								role: 'workflow-builder',
 								kind: 'builder',
 								status: 'active',
@@ -238,7 +412,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						children: [
 							makeAgentNode({
-								agentId: 'agent-builder-1',
+								agentId: 'agent-setup-1',
 								role: 'workflow-builder',
 								kind: 'builder',
 								status: 'active',
@@ -253,7 +427,7 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.value.get('wf-edit')?.name).toBe('Untitled');
 		});
 
-		test('later build-workflow result overwrites the placeholder name', async () => {
+		test('later workflow mutation result overwrites the placeholder name', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -261,14 +435,14 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						children: [
 							makeAgentNode({
-								agentId: 'agent-builder-1',
+								agentId: 'agent-setup-1',
 								role: 'workflow-builder',
 								kind: 'builder',
 								status: 'completed',
 								targetResource: { type: 'workflow', id: 'wf-edit' },
 								toolCalls: [
 									makeToolCall({
-										toolName: 'submit-workflow',
+										toolName: 'workflows',
 										result: { workflowId: 'wf-edit', workflowName: 'Renamed' },
 									}),
 								],
@@ -294,13 +468,13 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { name: 'Initial' },
 								result: { workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'submit-workflow',
+								toolName: 'workflows',
 								result: { workflowId: 'wf-1', workflowName: 'Renamed' },
 							}),
 						],
@@ -322,13 +496,13 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create',
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { name: 'Keep Me' },
 								result: { workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-patch',
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -446,7 +620,7 @@ describe('useResourceRegistry', () => {
 								result: { workflows: [{ id: 'wf-1', name: 'Existing' }] },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { workflowId: 'wf-1' },
 							}),
@@ -475,7 +649,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -499,7 +673,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflows',
 								result: { workflowId: 'wf-4', workflowName: 'Original Name' },
 							}),
 						],

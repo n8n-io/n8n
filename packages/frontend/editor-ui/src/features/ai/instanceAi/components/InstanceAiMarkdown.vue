@@ -1,7 +1,10 @@
 <script lang="ts" setup>
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { stripInternalInstanceAiBlocks } from '../internalBlocks';
 import { useThread } from '../instanceAi.store';
+import { parseInstanceAiMarkdown, type InstanceAiMarkdownChunk } from '../markdownParser';
+import type { ResourceEntry } from '../useResourceRegistry';
+import InstanceAiMarkdownChunkComponent from './InstanceAiMarkdownChunk.vue';
 
 const props = defineProps<{
 	content: string;
@@ -10,6 +13,10 @@ const props = defineProps<{
 const thread = useThread();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
+const openChatArtifact = inject<((title?: string) => void) | undefined>(
+	'openChatArtifact',
+	undefined,
+);
 
 /**
  * Preview openers — return true when they switched the preview tab, false
@@ -24,18 +31,41 @@ const openDataTablePreview = inject<((id: string, projectId: string) => boolean)
 	undefined,
 );
 
-/** Icon SVG paths for each resource type — matches the n8n design system icons. */
-const ICON_SVGS: Record<string, string> = {
-	workflow:
-		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.17 8H7.83a1.83 1.83 0 1 0 0 3.66h8.34a1.83 1.83 0 0 1 0 3.66H2.83"/><path d="m18 2 4 4-4 4"/><path d="m6 20-4-4 4-4"/></svg>',
-	credential:
-		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>',
-	'data-table':
-		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+type ResourceType = 'workflow' | 'credential' | 'data-table';
+
+function isResourceType(value: string): value is ResourceType {
+	return value === 'workflow' || value === 'credential' || value === 'data-table';
+}
+
+type SvgIconChild = {
+	tag: 'path' | 'circle' | 'rect';
+	attrs: Record<string, string>;
+};
+
+const ICON_DEFINITIONS: Record<ResourceType, SvgIconChild[]> = {
+	workflow: [
+		{
+			tag: 'path',
+			attrs: { d: 'M21.17 8H7.83a1.83 1.83 0 1 0 0 3.66h8.34a1.83 1.83 0 0 1 0 3.66H2.83' },
+		},
+		{ tag: 'path', attrs: { d: 'm18 2 4 4-4 4' } },
+		{ tag: 'path', attrs: { d: 'm6 20-4-4 4-4' } },
+	],
+	credential: [
+		{ tag: 'path', attrs: { d: 'm15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4' } },
+		{ tag: 'path', attrs: { d: 'm21 2-9.6 9.6' } },
+		{ tag: 'circle', attrs: { cx: '7.5', cy: '15.5', r: '5.5' } },
+	],
+	'data-table': [
+		{ tag: 'path', attrs: { d: 'M12 3v18' } },
+		{ tag: 'rect', attrs: { width: '18', height: '18', x: '3', y: '3', rx: '2' } },
+		{ tag: 'path', attrs: { d: 'M3 9h18' } },
+		{ tag: 'path', attrs: { d: 'M3 15h18' } },
+	],
 };
 
 /** URL builders for each resource type — fallbacks when the registry has no projectId. */
-const URL_BUILDERS: Record<string, (id: string) => string> = {
+const URL_BUILDERS: Record<ResourceType, (id: string) => string> = {
 	workflow: (id) => `/workflow/${id}`,
 	credential: (id) => `/home/credentials/${id}`,
 	'data-table': () => '/home/datatables',
@@ -49,11 +79,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  * Only replaces names that appear as standalone words (not inside code spans
  * or existing links) and are at least 3 characters long to avoid false positives.
  */
-/** Internal XML blocks that should never render in the chat (LLM may echo them). */
-const INTERNAL_BLOCK_PATTERN =
-	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
-
-const rawContent = computed(() => props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim());
+const rawContent = computed(() => stripInternalInstanceAiBlocks(props.content));
 
 function escapeMarkdownLinkText(value: string): string {
 	return value.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
@@ -182,19 +208,33 @@ function decorateResourceNames(content: string): string {
 	return result;
 }
 
-const source = computed(() => ({
-	type: 'text' as const,
-	content: decorateResourceNames(rawContent.value),
-}));
+const sources = computed<InstanceAiMarkdownChunk[]>(() =>
+	parseInstanceAiMarkdown(rawContent.value).map((source) => {
+		if (source.type === 'text') {
+			return { ...source, content: decorateResourceNames(source.content) };
+		}
 
-/** Route patterns that map internal n8n URLs to resource types. */
-const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
-	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
-	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
-	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
-	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
-	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
-];
+		return source;
+	}),
+);
+
+const resourceEntriesByTypeAndId = computed(() => {
+	const entries = new Map<string, ResourceEntry>();
+	for (const entry of thread.resourceNameIndex.values()) {
+		entries.set(`${entry.type}:${entry.id}`, entry);
+	}
+	return entries;
+});
+
+function handleOpenArtifact(title: string): void {
+	openChatArtifact?.(title);
+}
+
+type InternalResourceLink = {
+	type: ResourceType;
+	id?: string;
+	projectId?: string;
+};
 
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
@@ -219,20 +259,88 @@ function decodeResourceId(value: string): string {
 	}
 }
 
+function parseInternalResourceLink(pathname: string): InternalResourceLink | undefined {
+	const workflowMatch = /^\/workflow\/([^/]+)/.exec(pathname);
+	if (workflowMatch) {
+		return { type: 'workflow', id: decodeResourceId(workflowMatch[1]) };
+	}
+
+	const projectCredentialMatch = /^\/projects\/([^/]+)\/credentials(?:\/([^/]+))?/.exec(pathname);
+	if (projectCredentialMatch) {
+		const [, projectId, id] = projectCredentialMatch;
+		return {
+			type: 'credential',
+			projectId: decodeResourceId(projectId),
+			id: id ? decodeResourceId(id) : undefined,
+		};
+	}
+
+	const projectDataTableMatch = /^\/projects\/([^/]+)\/datatables(?:\/([^/]+))?/.exec(pathname);
+	if (projectDataTableMatch) {
+		const [, projectId, id] = projectDataTableMatch;
+		return {
+			type: 'data-table',
+			projectId: decodeResourceId(projectId),
+			id: id ? decodeResourceId(id) : undefined,
+		};
+	}
+
+	const credentialMatch = /^\/(?:home\/)?credentials(?:\/([^/]+))?/.exec(pathname);
+	if (credentialMatch) {
+		const [, id] = credentialMatch;
+		return { type: 'credential', id: id ? decodeResourceId(id) : undefined };
+	}
+
+	const dataTableMatch = /^\/(?:home\/)?data-?tables(?:\/([^/]+))?/.exec(pathname);
+	if (dataTableMatch) {
+		const [, id] = dataTableMatch;
+		return { type: 'data-table', id: id ? decodeResourceId(id) : undefined };
+	}
+
+	return undefined;
+}
+
+function findResourceRegistryEntry(type: ResourceType, id: string) {
+	return resourceEntriesByTypeAndId.value.get(`${type}:${id}`);
+}
+
+function createResourceIcon(type: ResourceType): SVGSVGElement {
+	const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	const attrs: Record<string, string> = {
+		xmlns: 'http://www.w3.org/2000/svg',
+		width: '14',
+		height: '14',
+		viewBox: '0 0 24 24',
+		fill: 'none',
+		stroke: 'currentColor',
+		'stroke-width': '2',
+		'stroke-linecap': 'round',
+		'stroke-linejoin': 'round',
+	};
+	for (const [key, value] of Object.entries(attrs)) {
+		svg.setAttribute(key, value);
+	}
+	for (const child of ICON_DEFINITIONS[type]) {
+		const el = document.createElementNS('http://www.w3.org/2000/svg', child.tag);
+		for (const [key, value] of Object.entries(child.attrs)) {
+			el.setAttribute(key, value);
+		}
+		svg.append(el);
+	}
+	return svg;
+}
+
 /**
  * Apply resource chip styling (icon + class) to an anchor element.
  */
-function applyResourceChip(link: HTMLAnchorElement, type: string): void {
+function applyResourceChip(link: HTMLAnchorElement, type: ResourceType): void {
 	link.dataset.resourceChip = type;
 	link.classList.add(styles.resourceChip);
 
-	const iconHtml = ICON_SVGS[type];
-	if (iconHtml) {
-		const iconSpan = document.createElement('span');
-		iconSpan.classList.add(styles.resourceChipIcon);
-		iconSpan.innerHTML = iconHtml;
-		link.prepend(iconSpan);
-	}
+	const iconSpan = document.createElement('span');
+	iconSpan.classList.add(styles.resourceChipIcon);
+	iconSpan.append(createResourceIcon(type));
+	link.prepend(iconSpan);
 }
 
 /**
@@ -240,7 +348,7 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
  * when the registry knows the resource's projectId; otherwise we fall back to
  * the home view, which works for any resource the user has access to.
  */
-function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
+function buildResourceUrl(type: ResourceType, id: string, projectId: string | undefined): string {
 	if (projectId) {
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
@@ -250,6 +358,34 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 
 /** Track click handlers attached to links so they can be cleaned up. */
 const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
+
+function attachResourcePreviewHandler(
+	link: HTMLAnchorElement,
+	type: ResourceType,
+	id: string,
+	projectId: string | undefined,
+): void {
+	if (linkHandlers.has(link)) return;
+
+	const handler = (e: MouseEvent) => {
+		if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
+
+		let switched: boolean | undefined;
+		if (type === 'workflow') {
+			switched = openWorkflowPreview?.(id);
+		} else if (type === 'data-table' && projectId) {
+			switched = openDataTablePreview?.(id, projectId);
+		}
+
+		// Suppress default navigation only when the preview actually switched.
+		// If preview was already showing this resource (switched === false) or
+		// no preview is available (switched === undefined), let target="_blank"
+		// open a new tab.
+		if (switched === true) e.preventDefault();
+	};
+	link.addEventListener('click', handler);
+	linkHandlers.set(link, handler);
+}
 
 /**
  * Post-process the rendered DOM to transform resource links into
@@ -271,8 +407,20 @@ function enhanceResourceLinks(): void {
 	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
-		// Already enhanced — skip
-		if (link.dataset.resourceChip) continue;
+		// Already enhanced. Vue updates can reuse the same DOM node after our
+		// update cleanup removed handlers, so make sure preview clicks stay wired.
+		if (link.dataset.resourceChip) {
+			const type = link.dataset.resourceChip;
+			if (link.dataset.resourceId && isResourceType(type)) {
+				attachResourcePreviewHandler(
+					link,
+					type,
+					link.dataset.resourceId,
+					link.dataset.resourceProjectId,
+				);
+			}
+			continue;
+		}
 
 		const href = link.getAttribute('href') ?? '';
 
@@ -280,40 +428,25 @@ function enhanceResourceLinks(): void {
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
+			if (!isResourceType(type)) continue;
+			const resourceType = type;
 			const id = decodeResourceId(encodedId);
 
 			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
 			// resources — a user may click through to a resource the agent
 			// only referenced via a list call.
-			const registryEntry = [...thread.resourceNameIndex.values()].find(
-				(r) => r.type === type && r.id === id,
-			);
+			const registryEntry = findResourceRegistryEntry(resourceType, id);
 
-			link.href = buildResourceUrl(type, id, registryEntry?.projectId);
+			link.href = buildResourceUrl(resourceType, id, registryEntry?.projectId);
 			link.target = '_blank';
 			link.rel = 'noopener noreferrer';
 			link.dataset.resourceId = id;
-			applyResourceChip(link, type);
-
-			const handler = (e: MouseEvent) => {
-				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
-
-				let switched: boolean | undefined;
-				if (type === 'workflow') {
-					switched = openWorkflowPreview?.(id);
-				} else if (type === 'data-table' && registryEntry?.projectId) {
-					switched = openDataTablePreview?.(id, registryEntry.projectId);
-				}
-
-				// Suppress default navigation only when the preview actually switched.
-				// If preview was already showing this resource (switched === false) or
-				// no preview is available (switched === undefined), let target="_blank"
-				// open a new tab.
-				if (switched === true) e.preventDefault();
-			};
-			link.addEventListener('click', handler);
-			linkHandlers.set(link, handler);
+			if (registryEntry?.projectId) {
+				link.dataset.resourceProjectId = registryEntry.projectId;
+			}
+			applyResourceChip(link, resourceType);
+			attachResourcePreviewHandler(link, resourceType, id, registryEntry?.projectId);
 
 			continue;
 		}
@@ -322,12 +455,24 @@ function enhanceResourceLinks(): void {
 		const internalPathname = getSameOriginPathname(href);
 		if (!internalPathname) continue;
 
-		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(internalPathname)) {
-				link.target = '_blank';
-				link.rel = 'noopener noreferrer';
-				applyResourceChip(link, type);
-				break;
+		const internalResource = parseInternalResourceLink(internalPathname);
+		if (internalResource) {
+			const registryEntry = internalResource.id
+				? findResourceRegistryEntry(internalResource.type, internalResource.id)
+				: undefined;
+			const projectId = internalResource.projectId ?? registryEntry?.projectId;
+
+			link.target = '_blank';
+			link.rel = 'noopener noreferrer';
+			if (internalResource.id) {
+				link.dataset.resourceId = internalResource.id;
+				if (projectId) {
+					link.dataset.resourceProjectId = projectId;
+				}
+			}
+			applyResourceChip(link, internalResource.type);
+			if (internalResource.id) {
+				attachResourcePreviewHandler(link, internalResource.type, internalResource.id, projectId);
 			}
 		}
 	}
@@ -347,16 +492,18 @@ function cleanupLinkHandlers(): void {
 }
 
 onMounted(enhanceResourceLinks);
-onUpdated(() => {
-	cleanupLinkHandlers();
-	enhanceResourceLinks();
-});
+onUpdated(enhanceResourceLinks);
 onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>
 	<div ref="wrapperRef">
-		<ChatMarkdownChunk :source="source" />
+		<InstanceAiMarkdownChunkComponent
+			v-for="(source, index) in sources"
+			:key="index"
+			:source="source"
+			@open-artifact="handleOpenArtifact"
+		/>
 	</div>
 </template>
 

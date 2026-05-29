@@ -345,7 +345,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				children: [
 					{
 						agentId: 'bg-task',
-						role: 'workflow-builder',
+						role: 'research',
 						status: 'active',
 						textContent: '',
 						reasoning: '',
@@ -1116,15 +1116,15 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
-	it('distinguishes submit-workflow create vs update grants by workflowId presence', async () => {
+	it('distinguishes workflow create vs update grants by action', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('submit-workflow', {});
+		runtime.addAlwaysAllowKey('workflows', { action: 'create' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-create',
 			requestId: 'req-create',
-			toolName: 'submit-workflow',
-			args: {},
+			toolName: 'workflows',
+			args: { action: 'create' },
 		});
 		await vi.waitFor(() => {
 			expect(runtime.resolvedConfirmationIds.get('req-create')).toBe('approved');
@@ -1133,8 +1133,8 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update',
 			requestId: 'req-update',
-			toolName: 'submit-workflow',
-			args: { workflowId: 'wf-1' },
+			toolName: 'workflows',
+			args: { action: 'update', workflowId: 'wf-1' },
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
