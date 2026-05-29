@@ -12,7 +12,10 @@ const projectId = 'project-1';
 describe('search_knowledge tool', () => {
 	let commandService: AgentKnowledgeCommandService;
 	let knowledgeService: jest.Mocked<
-		Pick<AgentKnowledgeService, 'listWorkspaceFiles' | 'materializeWorkspace'>
+		Pick<
+			AgentKnowledgeService,
+			'listWorkspaceFiles' | 'materializeWorkspace' | 'resolveWorkspaceFiles'
+		>
 	>;
 
 	function mockKnowledgeService() {
@@ -24,6 +27,27 @@ describe('search_knowledge tool', () => {
 		knowledgeService = {
 			listWorkspaceFiles: jest.fn(),
 			materializeWorkspace: jest.fn(),
+			// The real method does a metadata-only DB query. For tests we mirror
+			// whatever materializeWorkspace is configured to produce (using a
+			// throwaway dir) so the tool's cache key reflects the same file set.
+			resolveWorkspaceFiles: jest.fn(async (resolveAgentId, resolveProjectId, fileReferences) => {
+				const { mkdtemp, rm } = await import('node:fs/promises');
+				const { tmpdir } = await import('node:os');
+				const nodePath = await import('node:path');
+				const dir = await mkdtemp(nodePath.join(tmpdir(), 'resolve-'));
+				try {
+					return await knowledgeService.materializeWorkspace(
+						resolveAgentId,
+						resolveProjectId,
+						dir,
+						{
+							fileReferences,
+						},
+					);
+				} finally {
+					await rm(dir, { recursive: true, force: true });
+				}
+			}),
 		};
 	});
 

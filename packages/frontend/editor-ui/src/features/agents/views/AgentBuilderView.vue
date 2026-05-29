@@ -309,9 +309,12 @@ async function onDeleteAgentFile(file: AgentFileDto) {
 	});
 	if (confirmed !== MODAL_CONFIRM) return;
 
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	deletingAgentFileId.value = file.id;
 	try {
-		await deleteAgentFile(rootStore.restApiContext, projectId.value, agentId.value, file.id);
+		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
 		showMessage({
 			title: locale.baseText('agents.builder.files.deleted'),

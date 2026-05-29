@@ -7,6 +7,7 @@ import type {
 import type { WorkspaceFiles } from './file-references';
 import {
 	CSV_DISTINCT_TRACK_LIMIT,
+	CSV_MAX_AGGREGATE_GROUPS,
 	CSV_PROFILE_DISTINCT_LIMIT,
 	CSV_SAMPLE_VALUE_LIMIT,
 	buildCsvAmbiguity,
@@ -201,6 +202,7 @@ export async function aggregateCsv(
 	}
 	const groups = new Map<string, CsvAggregateGroup>();
 	let rowCount = 0;
+	let groupLimitReached = false;
 
 	await streamCsvRecords(workspaceRoot, file, {
 		onHeaders: (headers) => {
@@ -215,8 +217,17 @@ export async function aggregateCsv(
 			rowCount++;
 			const groupValues = toCsvRecordValues(record, input.groupBy ?? []);
 			const key = JSON.stringify(groupValues);
-			const group = groups.get(key) ?? createCsvAggregateGroup(groupValues, metrics);
-			groups.set(key, group);
+			let group = groups.get(key);
+			if (!group) {
+				// Bound memory: stop opening new groups past the cap, but keep
+				// aggregating rows for groups we already track.
+				if (groups.size >= CSV_MAX_AGGREGATE_GROUPS) {
+					groupLimitReached = true;
+					return;
+				}
+				group = createCsvAggregateGroup(groupValues, metrics);
+				groups.set(key, group);
+			}
 			group.count++;
 			for (const metric of metrics) {
 				group.metrics[metric].add(normaliseCsvValue(record[metric]));
@@ -247,7 +258,7 @@ export async function aggregateCsv(
 		metrics,
 		groupBy: input.groupBy,
 		results: results.slice(0, limit),
-		truncated: results.length > limit,
+		truncated: results.length > limit || groupLimitReached,
 		skippedNonNumeric,
 	};
 }

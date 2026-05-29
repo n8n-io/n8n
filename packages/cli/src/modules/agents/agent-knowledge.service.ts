@@ -45,6 +45,14 @@ type StoredAgentFile = AgentFile & { binaryDataId: string };
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 
+/**
+ * Abuse guardrails for a single materialization. Deliberately generous so
+ * normal knowledge bases never hit them — they exist to stop a pathological
+ * corpus from writing unbounded data to the shared temp dir per call.
+ */
+const MAX_WORKSPACE_FILES = 2_000;
+const MAX_WORKSPACE_BYTES = 2 * 1024 * 1024 * 1024;
+
 @Service()
 export class AgentKnowledgeService {
 	constructor(
@@ -123,6 +131,26 @@ export class AgentKnowledgeService {
 		await this.agentFileRepository.delete({ agentId });
 	}
 
+	/**
+	 * Resolve the workspace-file metadata that {@link materializeWorkspace}
+	 * would write for these references, without touching the binary store. Used
+	 * to build a stable workspace cache key and to drive operations against a
+	 * reused workspace.
+	 */
+	async resolveWorkspaceFiles(
+		agentId: string,
+		projectId: string,
+		fileReferences?: string[],
+	): Promise<KnowledgeWorkspaceFile[]> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+		const files = this.filterFilesForWorkspace(
+			await this.agentFileRepository.findByAgentId(agentId),
+			fileReferences,
+		);
+		this.assertWorkspaceWithinLimits(files);
+		return files.map((file) => this.toWorkspaceFile(file));
+	}
+
 	async materializeWorkspace(
 		agentId: string,
 		projectId: string,
@@ -136,6 +164,7 @@ export class AgentKnowledgeService {
 			await this.agentFileRepository.findByAgentId(agentId),
 			options.fileReferences,
 		);
+		this.assertWorkspaceWithinLimits(files);
 		const materializedFiles: KnowledgeWorkspaceFile[] = [];
 
 		for (const file of files) {
@@ -238,6 +267,20 @@ export class AgentKnowledgeService {
 			fileSizeBytes: file.fileSizeBytes,
 			relativePath: this.getWorkspaceRelativePath(file),
 		};
+	}
+
+	private assertWorkspaceWithinLimits(files: AgentFile[]) {
+		if (files.length > MAX_WORKSPACE_FILES) {
+			throw new BadRequestError(
+				`Cannot materialize ${files.length} knowledge files at once (limit ${MAX_WORKSPACE_FILES}). Pass file references to narrow the operation.`,
+			);
+		}
+		const totalBytes = files.reduce((total, file) => total + file.fileSizeBytes, 0);
+		if (totalBytes > MAX_WORKSPACE_BYTES) {
+			throw new BadRequestError(
+				`Cannot materialize ${totalBytes} bytes of knowledge files at once (limit ${MAX_WORKSPACE_BYTES}). Pass file references to narrow the operation.`,
+			);
+		}
 	}
 
 	private filterFilesForWorkspace(files: AgentFile[], fileReferences: string[] | undefined) {

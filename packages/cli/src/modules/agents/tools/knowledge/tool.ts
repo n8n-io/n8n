@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents/tool';
+import { createHash } from 'node:crypto';
 
 import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
@@ -52,7 +53,7 @@ export function createSearchKnowledgeTool({
 				return {
 					operation: getSearchKnowledgeOperation(input),
 					files: [],
-					error: error instanceof Error ? error.message : String(error),
+					error: toToolErrorMessage(error),
 				};
 			}
 
@@ -66,28 +67,58 @@ export function createSearchKnowledgeTool({
 					return {
 						operation: 'list',
 						files: [],
-						error: error instanceof Error ? error.message : String(error),
+						error: toToolErrorMessage(error),
 					};
 				}
 			}
 
-			return await commandService.withWorkspace(async (workspaceRoot) => {
-				let files: WorkspaceFiles = [];
-				try {
-					files = await knowledgeService.materializeWorkspace(agentId, projectId, workspaceRoot, {
-						fileReferences: getRequiredFileReferences(parsedInput),
-					});
-					return await handleKnowledgeOperation(parsedInput, workspaceRoot, files, commandService);
-				} catch (error) {
-					return {
-						operation: parsedInput.operation,
-						files,
-						error: error instanceof Error ? error.message : String(error),
-					};
-				}
-			});
+			let files: WorkspaceFiles = [];
+			try {
+				const fileReferences = getRequiredFileReferences(parsedInput);
+				files = await knowledgeService.resolveWorkspaceFiles(agentId, projectId, fileReferences);
+				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, files);
+				return await commandService.withCachedWorkspace(
+					cacheKey,
+					async (workspaceRoot) => {
+						await knowledgeService.materializeWorkspace(agentId, projectId, workspaceRoot, {
+							fileReferences,
+						});
+					},
+					async (workspaceRoot) =>
+						await handleKnowledgeOperation(parsedInput, workspaceRoot, files, commandService),
+				);
+			} catch (error) {
+				return {
+					operation: parsedInput.operation,
+					files,
+					error: toToolErrorMessage(error),
+				};
+			}
 		})
 		.build();
+}
+
+/**
+ * Stable cache key for a materialized workspace. Encodes the agent plus the
+ * exact set of files and their sizes, so a different file selection or an
+ * add/delete invalidates the cache and forces re-materialization.
+ */
+function buildWorkspaceCacheKey(projectId: string, agentId: string, files: WorkspaceFiles): string {
+	const signature = files
+		.map((file) => `${file.relativePath}:${file.fileSizeBytes}`)
+		.sort()
+		.join('|');
+	return `${projectId}:${agentId}:${createHash('sha1').update(signature).digest('hex')}`;
+}
+
+/**
+ * Build the user-facing error string returned to the model. Strips absolute
+ * filesystem paths so internal temp/storage locations never leak to the model
+ * (and onward to end users).
+ */
+function toToolErrorMessage(error: unknown): string {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.replace(/(?<=^|\s)\/\S*\/\S*/g, '[path]');
 }
 
 async function handleKnowledgeOperation(

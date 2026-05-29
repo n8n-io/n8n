@@ -63,4 +63,34 @@ describe('AgentKnowledgeCommandService', () => {
 			}
 		});
 	});
+
+	it('rejects absolute paths and control characters', async () => {
+		await service.withWorkspace(async (workspaceRoot) => {
+			await expect(
+				service.run(workspaceRoot, { command: 'cat', file: '/etc/passwd' }),
+			).rejects.toThrow('Absolute paths are not allowed');
+			await expect(
+				service.run(workspaceRoot, { command: 'cat', file: 'notes\u0000.txt' }),
+			).rejects.toThrow('Invalid path');
+		});
+	});
+
+	it('reuses a cached workspace for the same key and re-materializes for a new key', async () => {
+		let materializeCount = 0;
+		const materialize = async (root: string) => {
+			materializeCount++;
+			await writeFile(path.join(root, 'notes.txt'), 'needle\n');
+		};
+		const operation = async (root: string) =>
+			await service.run(root, { command: 'git_grep', pattern: 'needle', fixedStrings: true });
+
+		const first = await service.withCachedWorkspace('key-a', materialize, operation);
+		const second = await service.withCachedWorkspace('key-a', materialize, operation);
+		expect(first.exitCode).toBe(0);
+		expect(second.exitCode).toBe(0);
+		expect(materializeCount).toBe(1);
+
+		await service.withCachedWorkspace('key-b', materialize, operation);
+		expect(materializeCount).toBe(2);
+	});
 });

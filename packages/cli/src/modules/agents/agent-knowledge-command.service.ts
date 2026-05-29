@@ -6,7 +6,52 @@ import { spawn } from 'node:child_process';
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const COMMAND_TIMEOUT_MS = 5_000;
+/**
+ * Cap concurrent knowledge workspaces per process. Each workspace reads files
+ * off the binary store and spawns a child process, so unbounded concurrency
+ * could saturate CPU/disk on a shared (multi-tenant) host.
+ */
+const MAX_CONCURRENT_WORKSPACES = 4;
+/** Evict a cached workspace after this much idle time. */
+const WORKSPACE_CACHE_TTL_MS = 10 * 60_000;
+/** Hard cap on retained workspaces to bound temp-dir disk usage. */
+const MAX_CACHED_WORKSPACES = 25;
 export const AGENT_KNOWLEDGE_COMMANDS = ['git_grep', 'cat', 'sed'] as const;
+
+/** Minimal FIFO counting semaphore used to bound concurrent workspace usage. */
+class Semaphore {
+	private available: number;
+	private readonly waiters: Array<() => void> = [];
+
+	constructor(max: number) {
+		this.available = max;
+	}
+
+	async acquire(): Promise<void> {
+		if (this.available > 0) {
+			this.available--;
+			return;
+		}
+		await new Promise<void>((resolve) => this.waiters.push(resolve));
+	}
+
+	release(): void {
+		const next = this.waiters.shift();
+		if (next) {
+			// Hand the slot directly to the next waiter to avoid a release/acquire race.
+			next();
+			return;
+		}
+		this.available++;
+	}
+}
+
+const workspaceSemaphore = new Semaphore(MAX_CONCURRENT_WORKSPACES);
+
+interface CachedWorkspace {
+	root: string;
+	lastUsedAt: number;
+}
 
 export type AgentKnowledgeCommand = (typeof AGENT_KNOWLEDGE_COMMANDS)[number];
 
@@ -43,6 +88,9 @@ type SafePathOptions = { allowRoot?: boolean };
 
 @Service()
 export class AgentKnowledgeCommandService {
+	private readonly cachedWorkspaces = new Map<string, CachedWorkspace>();
+	private readonly workspaceLocks = new Map<string, Promise<unknown>>();
+
 	async run(workspaceRoot: string, request: AgentKnowledgeCommandRequest) {
 		const root = await realpath(workspaceRoot);
 		const { executable, args } = await this.toSpawnArgs(root, request);
@@ -50,11 +98,105 @@ export class AgentKnowledgeCommandService {
 	}
 
 	async withWorkspace<T>(operation: (workspaceRoot: string) => Promise<T>) {
+		await workspaceSemaphore.acquire();
+		try {
+			const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-'));
+			try {
+				return await operation(workspaceRoot);
+			} finally {
+				await rm(workspaceRoot, { recursive: true, force: true });
+			}
+		} finally {
+			workspaceSemaphore.release();
+		}
+	}
+
+	/**
+	 * Like {@link withWorkspace}, but reuses a materialized workspace across
+	 * calls keyed by `cacheKey` (which must encode the agent + exact file set +
+	 * content). Calls for the same key are serialized so the shared directory is
+	 * never materialized or read concurrently; idle workspaces are evicted by
+	 * TTL/LRU rather than per call. This avoids re-writing the whole knowledge
+	 * base to disk on every tool call within a conversation.
+	 */
+	async withCachedWorkspace<T>(
+		cacheKey: string,
+		materialize: (workspaceRoot: string) => Promise<void>,
+		operation: (workspaceRoot: string) => Promise<T>,
+	): Promise<T> {
+		return await this.serializeByKey(cacheKey, async () => {
+			await workspaceSemaphore.acquire();
+			try {
+				const workspaceRoot = await this.ensureCachedWorkspace(cacheKey, materialize);
+				return await operation(workspaceRoot);
+			} finally {
+				workspaceSemaphore.release();
+			}
+		});
+	}
+
+	/** Run `fn`s sharing a key strictly one at a time (FIFO). */
+	private async serializeByKey<T>(key: string, fn: () => Promise<T>): Promise<T> {
+		const previous = this.workspaceLocks.get(key) ?? Promise.resolve();
+		const run = previous.then(fn, fn);
+		const tail = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		this.workspaceLocks.set(key, tail);
+		try {
+			return await run;
+		} finally {
+			if (this.workspaceLocks.get(key) === tail) this.workspaceLocks.delete(key);
+		}
+	}
+
+	private async ensureCachedWorkspace(
+		cacheKey: string,
+		materialize: (workspaceRoot: string) => Promise<void>,
+	): Promise<string> {
+		const existing = this.cachedWorkspaces.get(cacheKey);
+		if (existing && (await this.directoryExists(existing.root))) {
+			existing.lastUsedAt = Date.now();
+			return existing.root;
+		}
+		if (existing) this.cachedWorkspaces.delete(cacheKey);
+
 		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-'));
 		try {
-			return await operation(workspaceRoot);
-		} finally {
-			await rm(workspaceRoot, { recursive: true, force: true });
+			await materialize(workspaceRoot);
+		} catch (error) {
+			await rm(workspaceRoot, { recursive: true, force: true }).catch(() => {});
+			throw error;
+		}
+		this.cachedWorkspaces.set(cacheKey, { root: workspaceRoot, lastUsedAt: Date.now() });
+		await this.evictStaleWorkspaces();
+		return workspaceRoot;
+	}
+
+	private async evictStaleWorkspaces() {
+		const now = Date.now();
+		const evictable: Array<[string, CachedWorkspace]> = [];
+		const fresh: Array<[string, CachedWorkspace]> = [];
+		for (const entry of this.cachedWorkspaces) {
+			(now - entry[1].lastUsedAt > WORKSPACE_CACHE_TTL_MS ? evictable : fresh).push(entry);
+		}
+		if (fresh.length > MAX_CACHED_WORKSPACES) {
+			fresh.sort((left, right) => left[1].lastUsedAt - right[1].lastUsedAt);
+			evictable.push(...fresh.slice(0, fresh.length - MAX_CACHED_WORKSPACES));
+		}
+		for (const [key, workspace] of evictable) {
+			this.cachedWorkspaces.delete(key);
+			await rm(workspace.root, { recursive: true, force: true }).catch(() => {});
+		}
+	}
+
+	private async directoryExists(directory: string) {
+		try {
+			await realpath(directory);
+			return true;
+		} catch {
+			return false;
 		}
 	}
 
@@ -136,7 +278,20 @@ export class AgentKnowledgeCommandService {
 		command: AgentKnowledgeCommand,
 	): Promise<AgentKnowledgeCommandResult> {
 		return await new Promise((resolve, reject) => {
-			const child = spawn(executable, args, { cwd, shell: false, env: { PATH: process.env.PATH } });
+			const child = spawn(executable, args, {
+				cwd,
+				shell: false,
+				// Minimal env: PATH so the allow-listed binaries resolve, plus git
+				// isolation so no host/user gitconfig or credential prompt can
+				// influence `git grep`. No n8n secrets are exposed to the child.
+				env: {
+					PATH: process.env.PATH,
+					HOME: cwd,
+					GIT_CONFIG_NOSYSTEM: '1',
+					GIT_CONFIG_GLOBAL: '/dev/null',
+					GIT_TERMINAL_PROMPT: '0',
+				},
+			});
 			let stdout = '';
 			let stderr = '';
 			let truncated = false;

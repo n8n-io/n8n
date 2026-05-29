@@ -9,6 +9,10 @@ import type { CsvAggregateInput, CsvFilter } from './schemas';
 export const CSV_SAMPLE_VALUE_LIMIT = 5;
 export const CSV_PROFILE_DISTINCT_LIMIT = 100;
 export const CSV_DISTINCT_TRACK_LIMIT = 10_000;
+/** Cap distinct aggregate groups to bound memory on high-cardinality group-by. */
+export const CSV_MAX_AGGREGATE_GROUPS = 50_000;
+/** Wall-clock safety net for a single CSV operation (files are upload-size-capped). */
+const CSV_OPERATION_TIMEOUT_MS = 15_000;
 
 function isCsvFile(file: WorkspaceFiles[number]) {
 	return file.mimeType === 'text/csv' || file.relativePath.toLowerCase().endsWith('.csv');
@@ -49,6 +53,12 @@ export async function streamCsvRecords(
 			relax_column_count: true,
 		}),
 	);
+	// Safety net: destroying the parser rejects the async iterator below so a
+	// pathologically slow file can't tie up the event loop indefinitely.
+	const timeout = setTimeout(() => {
+		parser.destroy(new Error('CSV operation exceeded the time limit'));
+		readStream.destroy();
+	}, CSV_OPERATION_TIMEOUT_MS);
 	try {
 		for await (const { record, info } of parser as AsyncIterable<{
 			record: Record<string, unknown>;
@@ -57,6 +67,7 @@ export async function streamCsvRecords(
 			handlers.onRecord({ record, fileLineNumber: info.lines });
 		}
 	} finally {
+		clearTimeout(timeout);
 		readStream.destroy();
 		parser.destroy();
 	}
