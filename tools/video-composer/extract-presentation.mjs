@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { safePageName, validatePagesManifest } from './presentation-utils.mjs';
 
 const FIXTURE_PNG = Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/luzPygAAAABJRU5ErkJggg==',
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
 	'base64',
 );
 
