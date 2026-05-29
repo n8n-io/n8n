@@ -72,7 +72,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 		});
 
@@ -222,7 +222,7 @@ describe('WorkflowService', () => {
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 
 			jest.clearAllMocks();
@@ -797,7 +797,7 @@ describe('WorkflowService', () => {
 				mock(), // licenseState
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
-				mock(), // deprecatedNodesValidator
+				mock(), // deprecatedNodesValidationService
 			);
 
 			// Bypass validation internals
