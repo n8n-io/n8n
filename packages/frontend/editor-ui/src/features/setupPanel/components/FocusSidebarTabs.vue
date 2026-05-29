@@ -5,9 +5,12 @@ import type { FocusSidebarTabs } from '@/features/setupPanel/types';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nIcon, N8nTabs } from '@n8n/design-system';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 
 const i18n = useI18n();
 const focusPanelStore = useFocusPanelStore();
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 
 const props = withDefaults(
 	defineProps<{
@@ -15,6 +18,7 @@ const props = withDefaults(
 		tabLabels?: {
 			setup?: string;
 			focus?: string;
+			evaluations?: string;
 		};
 	}>(),
 	{
@@ -27,16 +31,25 @@ const emit = defineEmits<{
 	'update:modelValue': [tab: FocusSidebarTabs];
 }>();
 
-const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => [
-	{
-		label: props.tabLabels?.setup ?? i18n.baseText('setupPanel.tabs.setup'),
-		value: 'setup',
-	},
-	{
-		label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
-		value: 'focus',
-	},
-]);
+const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => {
+	const opts: Array<TabOptions<FocusSidebarTabs>> = [
+		{
+			label: props.tabLabels?.setup ?? i18n.baseText('setupPanel.tabs.setup'),
+			value: 'setup',
+		},
+		{
+			label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
+			value: 'focus',
+		},
+	];
+	if (isEvaluationsWizardSidepanelEnabled.value) {
+		opts.push({
+			label: props.tabLabels?.evaluations ?? i18n.baseText('setupPanel.tabs.evaluations'),
+			value: 'evaluations',
+		});
+	}
+	return opts;
+});
 
 const onTabSelected = (tab: FocusSidebarTabs) => {
 	emit('update:modelValue', tab);
