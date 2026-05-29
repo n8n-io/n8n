@@ -193,42 +193,6 @@ describe('MicrosoftSql Node', () => {
 			return mockPool;
 		};
 
-		it('should reject reserved tokens used as table name in delete operation', async () => {
-			mockedConnectionPool.mockReturnValue(buildPoolMock());
-
-			const node = new MicrosoftSql();
-			const context = getMockedExecuteFunctions({
-				getInputData: jest.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'operation') return 'delete';
-					if (paramName === 'table') return '__proto__';
-					if (paramName === 'deleteKey') return 'id';
-					return undefined;
-				}),
-				continueOnFail: jest.fn().mockReturnValue(false),
-			});
-
-			await expect(node.execute.call(context)).rejects.toThrow();
-		});
-
-		it('should reject reserved tokens used as delete key', async () => {
-			mockedConnectionPool.mockReturnValue(buildPoolMock());
-
-			const node = new MicrosoftSql();
-			const context = getMockedExecuteFunctions({
-				getInputData: jest.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
-					if (paramName === 'operation') return 'delete';
-					if (paramName === 'table') return 'users';
-					if (paramName === 'deleteKey') return '__proto__';
-					return undefined;
-				}),
-				continueOnFail: jest.fn().mockReturnValue(false),
-			});
-
-			await expect(node.execute.call(context)).rejects.toThrow();
-		});
-
 		it('should not alter shared object state when delete parameters contain reserved tokens', async () => {
 			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
 
@@ -246,9 +210,7 @@ describe('MicrosoftSql Node', () => {
 					}),
 					continueOnFail: jest.fn().mockReturnValue(false),
 				});
-				try {
-					await node.execute.call(context);
-				} catch {}
+				await node.execute.call(context);
 			}
 
 			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);

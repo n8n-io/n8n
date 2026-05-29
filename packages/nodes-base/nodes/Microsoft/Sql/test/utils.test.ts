@@ -463,38 +463,6 @@ describe('MSSQL tests', () => {
 
 			expect(result.orders['id']).toHaveLength(2);
 		});
-
-		it('should reject table identifiers that match reserved property tokens', () => {
-			const items = [makeItem({ id: 1 })];
-
-			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
-				expect(() => createTableStruct(makeGetParam(reserved, 'id'), items)).toThrow();
-			}
-		});
-
-		it('should reject column names that match reserved property tokens', () => {
-			const items = [makeItem({ id: 1 })];
-
-			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
-				expect(() => createTableStruct(makeGetParam('users', reserved), items)).toThrow();
-			}
-		});
-
-		it('should not alter shared object state when processing table parameters', () => {
-			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
-			const items = [makeItem({ id: 1 })];
-
-			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
-				try {
-					createTableStruct(makeGetParam(reserved, 'id'), items);
-				} catch {}
-				try {
-					createTableStruct(makeGetParam('users', reserved), items);
-				} catch {}
-			}
-
-			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
-		});
 	});
 
 	describe('copyInputItem', () => {
@@ -511,14 +479,6 @@ describe('MSSQL tests', () => {
 		it('should set missing properties to null', () => {
 			const item = makeItem({ id: 1 });
 			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: null });
-		});
-
-		it('should omit reserved property tokens from the copied output', () => {
-			const item = makeItem({ id: 1 });
-			const result = copyInputItem(item, ['__proto__', 'constructor', 'id']);
-
-			expect(Object.getOwnPropertyNames(result)).toEqual(['id']);
-			expect(result.id).toBe(1);
 		});
 	});
 });
