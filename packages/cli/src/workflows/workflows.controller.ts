@@ -100,11 +100,18 @@ export class WorkflowsController {
 		}
 
 		const newWorkflow = new WorkflowEntity();
-
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, etc. are never set from user input
-		Object.assign(newWorkflow, body);
+		Object.assign(newWorkflow, {
+			...(body.id !== undefined ? { id: body.id } : {}),
+			name: body.name,
+			nodes: body.nodes,
+			connections: body.connections,
+			...(body.description !== undefined ? { description: body.description } : {}),
+			...(body.settings !== undefined ? { settings: body.settings } : {}),
+			...(body.staticData !== undefined ? { staticData: body.staticData } : {}),
+			...(body.meta !== undefined ? { meta: body.meta } : {}),
+			...(body.pinData !== undefined ? { pinData: body.pinData } : {}),
+			...(body.nodeGroups !== undefined ? { nodeGroups: body.nodeGroups } : {}),
+		});
 
 		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 			tagIds: body.tags,
@@ -315,10 +322,17 @@ export class WorkflowsController {
 			throw new BadRequestError('Invalid timeSavedMode');
 		}
 
-		// Security: Object.assign is now safe because the DTO validates and filters all input
-		// Only fields defined in UpdateWorkflowDto are assigned; internal fields like
-		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
-		Object.assign(updateData, rest);
+		Object.assign(updateData, {
+			...(rest.name !== undefined ? { name: rest.name } : {}),
+			...(rest.description !== undefined ? { description: rest.description } : {}),
+			...(rest.nodes !== undefined ? { nodes: rest.nodes } : {}),
+			...(rest.connections !== undefined ? { connections: rest.connections } : {}),
+			...(rest.settings !== undefined ? { settings: rest.settings } : {}),
+			...(rest.staticData !== undefined ? { staticData: rest.staticData } : {}),
+			...(rest.meta !== undefined ? { meta: rest.meta } : {}),
+			...(rest.pinData !== undefined ? { pinData: rest.pinData } : {}),
+			...(rest.nodeGroups !== undefined ? { nodeGroups: rest.nodeGroups } : {}),
+		});
 
 		const isSharingEnabled = this.license.isSharingEnabled();
 		if (isSharingEnabled) {

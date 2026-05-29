@@ -101,7 +101,7 @@ export const baseWorkflowShape = {
 
 	// Folder organization
 	parentFolderId: z.string().optional(),
-	parentFolder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
+	parentFolder: z.never().optional(),
 
 	// Tags
 	tags: z

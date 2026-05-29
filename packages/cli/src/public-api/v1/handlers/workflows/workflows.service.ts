@@ -64,7 +64,18 @@ export async function createWorkflow(
 	body: WorkflowEntity & { projectId?: string },
 ): Promise<WorkflowEntity> {
 	const { projectId, ...rest } = body;
-	const workflow = Object.assign(new WorkflowEntity(), rest);
+	const workflow = Object.assign(new WorkflowEntity(), {
+		...(rest.id !== undefined ? { id: rest.id } : {}),
+		name: rest.name,
+		nodes: rest.nodes,
+		connections: rest.connections,
+		...(rest.description !== undefined ? { description: rest.description } : {}),
+		...(rest.settings !== undefined ? { settings: rest.settings } : {}),
+		...(rest.staticData !== undefined ? { staticData: rest.staticData } : {}),
+		...(rest.meta !== undefined ? { meta: rest.meta } : {}),
+		...(rest.pinData !== undefined ? { pinData: rest.pinData } : {}),
+		...(rest.nodeGroups !== undefined ? { nodeGroups: rest.nodeGroups } : {}),
+	});
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
 		publicApi: true,
