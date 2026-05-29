@@ -39,7 +39,7 @@ concurrency:
 jobs:
   probe:
     name: 'Two-build Turbo cache probe'
-    runs-on: ${{ inputs.runner }}
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     permissions:
       contents: read
     timeout-minutes: 90
