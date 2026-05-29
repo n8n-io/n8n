@@ -1531,7 +1531,7 @@ describe('AskAssistantChat', () => {
 								};
 							},
 							template: `
-								<div data-test-id="prompt-input" class="chat-input-stub">
+								<div data-test-id="chat-input" class="chat-input-stub">
 									<textarea :value="modelValue" @input="updateValue"></textarea>
 									<button @click="handleSubmit">Send</button>
 								</div>
@@ -1544,13 +1544,13 @@ describe('AskAssistantChat', () => {
 				},
 			});
 
-			const textarea = wrapper.find('[data-test-id="prompt-input"] textarea');
+			const textarea = wrapper.find('[data-test-id="chat-input"] textarea');
 			expect(textarea.exists()).toBe(true);
 
 			await textarea.setValue('Test message');
 			await wrapper.vm.$nextTick();
 
-			const sendButton = wrapper.find('[data-test-id="prompt-input"] button');
+			const sendButton = wrapper.find('[data-test-id="chat-input"] button');
 			expect(sendButton.exists()).toBe(true);
 
 			await sendButton.trigger('click');
