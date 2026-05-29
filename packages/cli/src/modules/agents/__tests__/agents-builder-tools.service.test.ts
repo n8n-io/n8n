@@ -37,6 +37,7 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		mock(),
 		credentialTypes,
 	);
 
@@ -93,6 +94,39 @@ describe('AgentsBuilderToolsService', () => {
 				updatedAt: '2026-01-01T00:00:00.000Z',
 				versionId: 'v1',
 			});
+		});
+
+		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listChatIntegrations.mockReturnValue([
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).handler!(
+				{},
+				ctx,
+			);
+
+			expect(result).toEqual([
+				{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
 		});
 
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
@@ -599,6 +633,42 @@ describe('AgentsBuilderToolsService', () => {
 				]),
 			});
 			expect(agentsService.createSkill).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('MCP module gating', () => {
+		it('does not include verify_mcp_server when the "mcp" module is not enabled', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+		});
+
+		it('does not include verify_mcp_server when enabledModules is an empty list', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, []).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+		});
+
+		it('includes verify_mcp_server when the "mcp" module is enabled', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, ['mcp']).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeDefined();
+		});
+
+		it('does not include verify_mcp_server when other modules are enabled but not "mcp"', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user, [
+				'someOtherModule',
+			]).json;
+
+			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
 		});
 	});
 });

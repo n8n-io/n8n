@@ -1,25 +1,26 @@
 import { Service } from '@n8n/di';
-import { z } from 'zod';
 
+import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService } from './chat-integration.service';
-import { normalizePlatformId } from './integration-platform-id';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import { connectionUnavailable, integrationError } from './integration-helpers';
 import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
 
-const getUserInputSchema = z.object({
-	userId: z.string().min(1),
-});
-
-const getChannelInfoInputSchema = z.object({
-	channelId: z.string().min(1),
-});
-
+/**
+ * Thin dispatcher that resolves the platform integration for a descriptor and
+ * delegates the context query to its {@link AgentChatIntegration.executeContextQuery}
+ * implementation. The actual per-platform logic lives in `platforms/*-operations.ts`.
+ */
 @Service()
 export class ChatIntegrationContextQueryExecutor implements IntegrationContextQueryExecutor {
-	constructor(private readonly chatIntegrationService: ChatIntegrationService) {}
+	constructor(
+		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly integrationRegistry: ChatIntegrationRegistry,
+	) {}
 
 	async execute(params: {
 		descriptor: IntegrationToolConnectionDescriptor;
@@ -27,58 +28,38 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		input: Record<string, unknown>;
 		persistence?: { threadId: string; resourceId: string };
 	}): Promise<unknown> {
-		if (!params.descriptor.agentId) {
-			return connectionUnavailable();
-		}
+		if (!params.descriptor.agentId) return connectionUnavailable();
+
 		const chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
 			type: params.descriptor.integration.type,
 			credentialId: params.descriptor.integration.credentialId,
 		});
-		if (!chat) {
-			return connectionUnavailable();
+		if (!chat) return connectionUnavailable();
+
+		const integration = this.integrationRegistry.get(params.descriptor.integration.type);
+		if (!integration?.executeContextQuery) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.UNSUPPORTED_QUERY,
+				`The ${params.descriptor.integration.type} integration does not support context queries.`,
+			);
 		}
 
 		try {
-			if (params.query === 'get_user') {
-				const input = getUserInputSchema.parse(params.input);
-				const user = await chat.getUser(input.userId);
-				return { ok: true, user };
-			}
-
-			if (params.query !== 'get_channel_info') {
-				return {
-					ok: false,
-					error: {
-						code: 'UNSUPPORTED_QUERY',
-						message: `Unsupported context query: ${params.query}`,
-					},
-				};
-			}
-
-			const input = getChannelInfoInputSchema.parse(params.input);
-			const channel = chat.channel(
-				normalizePlatformId(params.descriptor.integration.type, input.channelId),
-			);
-			const channelInfo = await channel.fetchMetadata();
-			return { ok: true, channel: channelInfo };
+			return await integration.executeContextQuery({
+				chat,
+				descriptor: params.descriptor,
+				query: params.query,
+				input: params.input,
+			});
 		} catch (error) {
-			return {
-				ok: false,
-				error: {
-					code: 'CONTEXT_QUERY_FAILED',
-					message: error instanceof Error ? error.message : String(error),
-				},
-			};
+			return integrationError(
+				INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
+				error instanceof Error ? error.message : String(error),
+			);
 		}
 	}
 }
 
-function connectionUnavailable() {
-	return {
-		ok: false,
-		error: {
-			code: 'CONNECTION_NOT_AVAILABLE',
-			message: 'The integration connection is not currently available.',
-		},
-	};
-}
+// Re-export the Linear normalizers used by tests / action executor message-context
+// construction. Tests reference these via this module path.
+export { normalizeLinearComment, normalizeLinearIssue } from './platforms/linear-operations';
