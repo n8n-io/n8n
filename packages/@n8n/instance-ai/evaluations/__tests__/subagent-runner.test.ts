@@ -10,7 +10,7 @@ jest.mock('../binaryChecks/index', () => ({
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflow, cleanupBuild, type BuildResult } from '../harness/runner';
-import { runSubAgent } from '../subagent/runner';
+import { runWorkflowBuildEval } from '../subagent/runner';
 
 const mockedBuildWorkflow = jest.mocked(buildWorkflow);
 const mockedCleanupBuild = jest.mocked(cleanupBuild);
@@ -27,13 +27,11 @@ function makeWorkflow(): WorkflowResponse {
 	};
 }
 
-function makeClient(): N8nClient & { runSubAgentEval: jest.Mock } {
-	return {
-		runSubAgentEval: jest.fn(),
-	} as unknown as N8nClient & { runSubAgentEval: jest.Mock };
+function makeClient(): N8nClient {
+	return {} as N8nClient;
 }
 
-describe('runSubAgent', () => {
+describe('runWorkflowBuildEval', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockedCleanupBuild.mockResolvedValue(undefined);
@@ -50,7 +48,7 @@ describe('runSubAgent', () => {
 		});
 	});
 
-	it('runs legacy subagent fixtures through the orchestrator build harness', async () => {
+	it('runs workflow-build fixtures through the orchestrator build harness', async () => {
 		const workflow = makeWorkflow();
 		const build: BuildResult = {
 			success: true,
@@ -66,19 +64,14 @@ describe('runSubAgent', () => {
 		const preRunWorkflowIds = new Set(['existing-workflow']);
 		const claimedWorkflowIds = new Set<string>();
 
-		const result = await runSubAgent(
+		const result = await runWorkflowBuildEval(
 			{
 				id: 'case-1',
 				prompt: 'Build a webhook workflow',
-				subagent: 'builder',
-				systemPrompt: 'legacy override',
-				tools: ['legacy-tool'],
-				maxSteps: 5,
 			},
 			{
 				modelId: 'anthropic/test-model',
 				timeoutMs: 1234,
-				maxSteps: 40,
 				verbose: false,
 			},
 			{
@@ -99,7 +92,6 @@ describe('runSubAgent', () => {
 				skipWorkflowChecks: true,
 			}),
 		);
-		expect(client.runSubAgentEval).not.toHaveBeenCalled();
 		expect(mockedRunBinaryChecks).toHaveBeenCalledWith(
 			workflow,
 			expect.objectContaining({
@@ -126,7 +118,7 @@ describe('runSubAgent', () => {
 
 		const client = makeClient();
 
-		const result = await runSubAgent(
+		const result = await runWorkflowBuildEval(
 			{ id: 'case-2', prompt: 'Build nothing' },
 			{ timeoutMs: 1234, verbose: false },
 			{
@@ -137,7 +129,6 @@ describe('runSubAgent', () => {
 			},
 		);
 
-		expect(client.runSubAgentEval).not.toHaveBeenCalled();
 		expect(mockedRunBinaryChecks).not.toHaveBeenCalled();
 		expect(mockedCleanupBuild).toHaveBeenCalledWith(client, build, expect.any(Object));
 		expect(result.error).toBe('No workflow produced');

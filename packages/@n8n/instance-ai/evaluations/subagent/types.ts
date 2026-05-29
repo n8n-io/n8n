@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Types for the eval:subagent compatibility harness
+// Types for the workflow-build eval harness
 // ---------------------------------------------------------------------------
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -16,24 +16,15 @@ export interface Feedback {
 }
 
 /**
- * A single sub-agent test case.
- * Describes a legacy subagent fixture now run through the orchestrator.
+ * A single workflow-build eval case.
  */
-export interface SubAgentTestCase {
+export interface WorkflowBuildEvalCase {
 	/** Unique test case identifier */
 	id: string;
 	/** The prompt / task description sent to Instance AI */
 	prompt: string;
-	/** Legacy selector retained for fixture and LangSmith compatibility. */
-	subagent?: string;
-	/** Legacy sub-agent override retained for dataset compatibility. */
-	systemPrompt?: string;
-	/** Legacy sub-agent tool list retained for dataset compatibility. */
-	tools?: string[];
 	/** Model ID override for this test case. Overrides the runner config modelId. */
 	modelId?: string;
-	/** Legacy step budget retained for dataset compatibility. */
-	maxSteps?: number;
 	/** Per-test-case annotations forwarded to binary checks. */
 	annotations?: Record<string, unknown>;
 }
@@ -51,11 +42,11 @@ export interface CapturedWorkflow {
 }
 
 /**
- * Result of running a single sub-agent test case.
+ * Result of running a single workflow-build eval case.
  */
-export interface SubAgentResult {
+export interface WorkflowBuildEvalResult {
 	/** The test case that was run */
-	testCase: SubAgentTestCase;
+	testCase: WorkflowBuildEvalCase;
 	/** The agent's final text output */
 	text: string;
 	/** Workflows captured from build-workflow tool calls */
@@ -69,15 +60,13 @@ export interface SubAgentResult {
 }
 
 /**
- * Configuration for the sub-agent runner.
+ * Configuration for the workflow-build eval runner.
  */
-export interface SubAgentRunnerConfig {
+export interface WorkflowBuildEvalConfig {
 	/** Optional model override. When unset, the server resolves the model from its own settings. */
 	modelId?: string;
-	/** Timeout per test case in milliseconds. Defaults to 120_000. */
+	/** Timeout per test case in milliseconds. Defaults to 900_000. */
 	timeoutMs?: number;
-	/** Legacy step budget retained for CLI compatibility. */
-	maxSteps?: number;
 	/** Whether to print verbose output */
 	verbose?: boolean;
 }

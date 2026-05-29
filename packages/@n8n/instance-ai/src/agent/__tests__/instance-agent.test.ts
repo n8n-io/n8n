@@ -181,6 +181,7 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
+		const secondRunAttachedTools = getAttachedTools(1);
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
@@ -190,14 +191,8 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(mockAgentInstances[0]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-1' })]),
-			{ search: { topK: 5 } },
-		);
-		expect(mockAgentInstances[1]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-2' })]),
-			{ search: { topK: 5 } },
-		);
+		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
+		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -223,11 +218,33 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
 			name: 'complete-checkpoint-checkpoint-run',
 		});
-		expect(attachedTools['executions-checkpoint-run']).toMatchObject({
-			name: 'executions-checkpoint-run',
-		});
 		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
-		expect(deferredTools['executions-checkpoint-run']).toBeUndefined();
+	});
+
+	it('keeps workflow-builder skill tool names always loaded', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'builder-skill-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'builder-skill-run',
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+			const scopedName = `${toolName}-builder-skill-run`;
+			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
+			expect(deferredTools[scopedName]).toBeUndefined();
+		}
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {

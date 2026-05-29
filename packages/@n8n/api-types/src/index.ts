@@ -312,7 +312,6 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -400,9 +399,6 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalToolCall,
-	InstanceAiEvalToolResult,
-	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
 
 export {

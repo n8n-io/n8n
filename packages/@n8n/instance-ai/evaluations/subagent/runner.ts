@@ -1,16 +1,16 @@
 // ---------------------------------------------------------------------------
-// Orchestrator-backed compatibility runner for eval:subagent
+// Workflow-build eval runner
 //
-// Keeps the subagent fixture corpus and LangSmith feedback shape, but routes
-// prompts through the normal Instance AI orchestrator build path.
+// Routes prompts through the normal Instance AI orchestrator build path and
+// scores the resulting workflow with binary checks.
 // ---------------------------------------------------------------------------
 
 import type {
 	CapturedWorkflow,
 	Feedback,
-	SubAgentResult,
-	SubAgentRunnerConfig,
-	SubAgentTestCase,
+	WorkflowBuildEvalResult,
+	WorkflowBuildEvalConfig,
+	WorkflowBuildEvalCase,
 } from './types';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext } from '../binaryChecks/types';
@@ -25,7 +25,7 @@ import { buildWorkflow, cleanupBuild, type BuildResult } from '../harness/runner
  */
 const BINARY_CHECK_DEFAULT_MODEL = 'anthropic/claude-sonnet-4-20250514';
 
-export interface RunSubAgentDeps {
+export interface RunWorkflowBuildEvalDeps {
 	client: N8nClient;
 	/** Delete workflows after the run (default true). Disable with --keep-workflows. */
 	deleteAfterRun: boolean;
@@ -33,11 +33,11 @@ export interface RunSubAgentDeps {
 	claimedWorkflowIds: Set<string>;
 }
 
-export async function runSubAgent(
-	testCase: SubAgentTestCase,
-	config: SubAgentRunnerConfig,
-	deps: RunSubAgentDeps,
-): Promise<SubAgentResult> {
+export async function runWorkflowBuildEval(
+	testCase: WorkflowBuildEvalCase,
+	config: WorkflowBuildEvalConfig,
+	deps: RunWorkflowBuildEvalDeps,
+): Promise<WorkflowBuildEvalResult> {
 	const startMs = Date.now();
 	const modelId = testCase.modelId ?? config.modelId;
 	const logger = createRunnerLogger(config.verbose ?? false);
@@ -70,7 +70,7 @@ export async function runSubAgent(
 		// string, two consumers — intentional.
 		if (build.error) {
 			feedback.unshift({
-				evaluator: 'subagent-runner',
+				evaluator: 'workflow-build-runner',
 				metric: 'run_error',
 				score: 0,
 				kind: 'score',
@@ -78,7 +78,7 @@ export async function runSubAgent(
 			});
 		}
 
-		const result: SubAgentResult = {
+		const result: WorkflowBuildEvalResult = {
 			testCase,
 			text: agentTextResponse,
 			capturedWorkflows,
@@ -95,7 +95,7 @@ export async function runSubAgent(
 			capturedWorkflows: [],
 			feedback: [
 				{
-					evaluator: 'subagent-runner',
+					evaluator: 'workflow-build-runner',
 					metric: 'run_error',
 					score: 0,
 					kind: 'score',
@@ -163,7 +163,7 @@ async function evaluateCapturedWorkflows(args: {
 	const feedback: Feedback[] = [];
 
 	feedback.push({
-		evaluator: 'subagent-runner',
+		evaluator: 'workflow-build-runner',
 		metric: 'workflow_produced',
 		score: args.workflows.length > 0 ? 1 : 0,
 		kind: 'score',

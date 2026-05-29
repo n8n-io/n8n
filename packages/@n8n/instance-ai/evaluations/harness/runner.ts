@@ -249,6 +249,8 @@ export interface BuildResult {
 	createdDataTableIds: string[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
+	/** Captured SSE events from the build run. */
+	events?: CapturedEvent[];
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
@@ -422,6 +424,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdWorkflowIds: [],
 				createdDataTableIds: outcome.dataTablesCreated,
 				conversationMetrics,
+				events,
 				threadId,
 				proxyDecisionStats,
 				transcript,
@@ -450,6 +453,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: outcome.dataTablesCreated,
 			conversationMetrics,
+			events,
 			threadId,
 			proxyDecisionStats,
 			transcript,
@@ -466,6 +470,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: [],
 			createdDataTableIds: [],
 			conversationMetrics,
+			events,
 			threadId,
 		};
 	}

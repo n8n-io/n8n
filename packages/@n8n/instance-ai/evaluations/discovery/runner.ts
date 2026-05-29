@@ -40,7 +40,7 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
+import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
