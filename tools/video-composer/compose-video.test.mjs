@@ -387,7 +387,7 @@ test('buildFfmpegArgs starts audio immediately while the body stage continues th
 	assert.match(filter, /\[screenmainsrc\]scale=.*reset_sar=1/);
 });
 
-test('buildFfmpegArgs softens only body-stage corner images when treatment is enabled', () => {
+test('buildFfmpegArgs makes only body-stage corner images transparent when treatment is enabled', () => {
 	const job = normalizeJob({
 		jobId: 'corner-treatment',
 		inputs: {
@@ -405,8 +405,8 @@ test('buildFfmpegArgs softens only body-stage corner images when treatment is en
 		layout: {
 			cornerImageTreatment: {
 				enabled: true,
-				blur: 2,
-				opacity: 0.82,
+				blur: 0,
+				opacity: 0.72,
 				borderColor: 'white',
 				borderWidth: 6,
 			},
@@ -421,12 +421,12 @@ test('buildFfmpegArgs softens only body-stage corner images when treatment is en
 	const coverTopPart = parts.find((part) => part.startsWith('[covertopsrc]'));
 	const screenTopPart = parts.find((part) => part.startsWith('[screentopsrc]'));
 
-	assert.match(coverTopPart, /boxblur=2/);
-	assert.match(coverTopPart, /colorchannelmixer=aa=0\.82/);
-	assert.match(screenTopPart, /boxblur=2/);
-	assert.match(screenTopPart, /colorchannelmixer=aa=0\.82/);
-	assert.doesNotMatch(coverMainPart, /boxblur=2/);
-	assert.doesNotMatch(screenMainPart, /boxblur=2/);
+	assert.doesNotMatch(coverTopPart, /boxblur=/);
+	assert.match(coverTopPart, /colorchannelmixer=aa=0\.72/);
+	assert.doesNotMatch(screenTopPart, /boxblur=/);
+	assert.match(screenTopPart, /colorchannelmixer=aa=0\.72/);
+	assert.doesNotMatch(coverMainPart, /colorchannelmixer=/);
+	assert.doesNotMatch(screenMainPart, /colorchannelmixer=/);
 });
 
 test('buildFfmpegArgs can use a safe temporary subtitle path for ffmpeg parsing', () => {

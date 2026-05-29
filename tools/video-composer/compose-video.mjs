@@ -246,8 +246,8 @@ export function normalizeJob(rawJob) {
 			},
 			cornerImageTreatment: {
 				enabled: rawJob.layout?.cornerImageTreatment?.enabled ?? true,
-				blur: rawJob.layout?.cornerImageTreatment?.blur ?? 2,
-				opacity: rawJob.layout?.cornerImageTreatment?.opacity ?? 0.82,
+				blur: rawJob.layout?.cornerImageTreatment?.blur ?? 0,
+				opacity: rawJob.layout?.cornerImageTreatment?.opacity ?? 0.72,
 				borderColor: rawJob.layout?.cornerImageTreatment?.borderColor ?? 'white',
 				borderWidth: rawJob.layout?.cornerImageTreatment?.borderWidth ?? 6,
 			},

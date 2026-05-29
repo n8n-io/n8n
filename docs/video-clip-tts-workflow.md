@@ -145,7 +145,7 @@ The exposed voice fields are restricted to the MVP podcast voice set verified ag
 
 - `0s - 3s`: background video plays, cover image is centered.
 - `3s - 7s`: background video continues, proof screenshot is centered.
-- `7s - end`: background video continues, cover image is placed top-left and screenshot top-right with light blur/softening.
+- `7s - end`: background video continues, cover image is placed top-left and screenshot top-right as clear semi-transparent overlays.
 - TTS audio and white transparent subtitles start from the beginning of the video.
 - Final video duration follows the complete merged TTS audio duration.
 
