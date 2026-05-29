@@ -212,10 +212,16 @@ export class CredentialsTester {
 
 				// Keep all credentials data keys which have a secret value
 				credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
+				const typeVersion =
+					typeof credentialsDecrypted.typeVersion === 'number'
+						? credentialsDecrypted.typeVersion
+						: null;
+
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
 					credentialType,
+					typeVersion,
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,

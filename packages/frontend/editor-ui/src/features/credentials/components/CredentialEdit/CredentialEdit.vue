@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, resolveDefaultVersion } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -201,6 +201,19 @@ const credentialType = computed(() => {
 	return {
 		...type,
 		properties: getCredentialProperties(credentialTypeName.value),
+	};
+});
+
+// For an existing credential, render against its saved typeVersion. NULL
+// coerces to 1 — never to the type's defaultVersion — so pre-feature
+// credentials keep rendering against v1 the day a type bumps its version.
+// For a new credential, use the type's defaultVersion.
+const versionContext = computed(() => {
+	if (currentCredential.value) {
+		return { typeVersion: currentCredential.value.typeVersion ?? 1 };
+	}
+	return {
+		typeVersion: credentialType.value ? resolveDefaultVersion(credentialType.value) : 1,
 	};
 });
 
@@ -610,7 +623,12 @@ function displayCredentialParameter(parameter: INodeProperties): boolean {
 		return true;
 	}
 
-	return nodeHelpers.displayParameter(credentialData.value as INodeParameters, parameter, '', null);
+	return NodeHelpers.displayParameter(
+		credentialData.value as INodeParameters,
+		parameter,
+		versionContext.value,
+		null,
+	);
 }
 
 function getCredentialProperties(name: string): INodeProperties[] {
@@ -899,14 +917,16 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	isSaving.value = true;
 
-	// Save only the none default data
+	// Save only the none default data. The version context is required so
+	// that `@version`-gated properties (e.g. v2-only fields) are not
+	// stripped from the payload before it reaches the API.
 	assert(credentialType.value);
 	const data = NodeHelpers.getNodeParameters(
 		credentialType.value.properties,
 		credentialData.value as INodeParameters,
 		false,
 		false,
-		null,
+		versionContext.value,
 		null,
 	);
 

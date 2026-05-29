@@ -16,10 +16,11 @@ import fs from 'fs';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { isDeclaredVersion, jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 
 import { BaseCommand } from '../base-command';
 
@@ -268,6 +269,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return await Promise.all(
 			credentials.map(async (credential) => {
 				const filteredCredential = this.filterCredentialProperties(credential, include, exclude);
+				this.validateImportedTypeVersion(filteredCredential);
 				if (typeof filteredCredential.data === 'object') {
 					// plain data / decrypted input. Should be encrypted first.
 					filteredCredential.data = await cipher.encryptV2(filteredCredential.data);
@@ -276,6 +278,42 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				return filteredCredential;
 			}),
 		);
+	}
+
+	/**
+	 * Strict-rejects an import whose numeric `typeVersion` is not declared by
+	 * the current credential type. Field-absent and explicit-null both land
+	 * with NULL — required for round-trip backup/restore of unversioned
+	 * credentials, whose exports always emit `null` (RFC §7.6).
+	 */
+	private validateImportedTypeVersion(credential: Partial<CredentialsEntity>) {
+		const { typeVersion } = credential;
+		if (typeVersion === undefined || typeVersion === null) return;
+
+		if (typeof typeVersion !== 'number' || !Number.isFinite(typeVersion) || typeVersion < 0) {
+			throw new UserError(
+				`Credential "${credential.id ?? '<unknown>'}" has invalid typeVersion: ${JSON.stringify(typeVersion)}.`,
+			);
+		}
+
+		if (!credential.type) return;
+
+		let credentialType;
+		try {
+			credentialType = Container.get(CredentialTypes).getByName(credential.type);
+		} catch {
+			// Unknown type — let the rest of the import flow surface that error;
+			// don't double-fail here on the version check.
+			return;
+		}
+
+		if (!isDeclaredVersion(credentialType, typeVersion)) {
+			throw new UserError(
+				`Credential "${credential.id ?? '<unknown>'}" of type "${credential.type}" ` +
+					`declares typeVersion ${typeVersion}; supported versions: ` +
+					`${JSON.stringify(credentialType.version ?? 1)}.`,
+			);
+		}
 	}
 
 	private parseCredentialProperties(
@@ -346,6 +384,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			name: true,
 			data: true,
 			type: true,
+			typeVersion: true,
 			isManaged: true,
 			isGlobal: true,
 			isResolvable: true,

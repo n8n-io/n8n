@@ -159,6 +159,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	id: string;
 	name: string;
 	type: string;
+	typeVersion?: number | null;
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
@@ -170,6 +171,7 @@ export interface ICredentialsEncrypted {
 	id?: string;
 	name: string;
 	type: string;
+	typeVersion?: number | null;
 	data?: string;
 }
 
@@ -356,6 +358,8 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
+	version?: number | number[];
+	defaultVersion?: number;
 	icon?: Icon;
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
@@ -383,7 +387,7 @@ export interface ICredentialType {
 
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
-	getByName(credentialType: string): ICredentialType;
+	getByName(credentialType: string, version?: number): ICredentialType;
 	getSupportedNodes(type: string): string[];
 	getParentTypes(typeName: string): string[];
 }

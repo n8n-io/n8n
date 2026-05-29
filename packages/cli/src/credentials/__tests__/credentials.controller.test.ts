@@ -15,6 +15,7 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
+import type { ICredentialType } from 'n8n-workflow';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
@@ -22,6 +23,8 @@ import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
+
+import type { CredentialTypes } from '@/credential-types';
 
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
@@ -37,6 +40,7 @@ describe('CredentialsController', () => {
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialTypes = mock<CredentialTypes>();
 
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
@@ -48,7 +52,7 @@ describe('CredentialsController', () => {
 		mock(), // errorReporter
 		mock(), // credentialsTester
 		mock(), // externalHooks
-		mock(), // credentialTypes
+		credentialTypes,
 		mock(), // projectRepository
 		mock(), // projectService
 		mock(), // roleService
@@ -105,6 +109,7 @@ describe('CredentialsController', () => {
 		emitSpy = jest.spyOn(eventService, 'emit');
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
+		credentialTypes.getByName.mockReturnValue({ name: 'unversioned' } as ICredentialType);
 	});
 
 	describe('createCredentials', () => {

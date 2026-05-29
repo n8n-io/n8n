@@ -434,10 +434,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 			);
 		}
 
+		const typeVersion =
+			typeof credentialsEntity.typeVersion === 'number' ? credentialsEntity.typeVersion : null;
+
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
 			type,
+			typeVersion,
 			mode,
 			executeData,
 			expressionResolveValues,
@@ -445,12 +449,18 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
-	 * Applies credential default data and overwrites
+	 * Applies credential default data and overwrites.
+	 *
+	 * `typeVersion` is forwarded as the node-shaped context to
+	 * `getNodeParameters` so that `@version`-gated credential properties
+	 * are retained at execution time. `null` coerces to `1` — the
+	 * implicit version every pre-feature credential targets.
 	 */
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
+		typeVersion: number | null,
 		mode: WorkflowExecuteMode,
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
@@ -469,7 +479,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			dataWithOverwrites as INodeParameters,
 			true,
 			false,
-			null,
+			{ typeVersion: typeVersion ?? 1 },
 			null,
 		) as ICredentialDataDecryptedObject;
 

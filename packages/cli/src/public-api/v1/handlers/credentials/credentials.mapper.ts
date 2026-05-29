@@ -8,7 +8,15 @@ import { UnexpectedError } from 'n8n-workflow';
 export function toPublicApiCredentialResponse(
 	credential: Pick<
 		ICredentialsDb,
-		'id' | 'name' | 'type' | 'isManaged' | 'isGlobal' | 'isResolvable' | 'createdAt' | 'updatedAt'
+		| 'id'
+		| 'name'
+		| 'type'
+		| 'typeVersion'
+		| 'isManaged'
+		| 'isGlobal'
+		| 'isResolvable'
+		| 'createdAt'
+		| 'updatedAt'
 	> & {
 		resolvableAllowFallback?: boolean;
 		resolverId?: string | null;
@@ -16,6 +24,7 @@ export function toPublicApiCredentialResponse(
 ): PublicApiCredentialResponse {
 	const parsed = publicApiCredentialResponseSchema.safeParse({
 		...credential,
+		typeVersion: credential.typeVersion ?? null,
 		resolvableAllowFallback: credential.resolvableAllowFallback ?? false,
 		resolverId: credential.resolverId ?? null,
 	});

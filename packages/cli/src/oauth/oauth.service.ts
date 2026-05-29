@@ -192,10 +192,13 @@ export class OauthService {
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
+		const typeVersion = typeof credential.typeVersion === 'number' ? credential.typeVersion : null;
+
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
 			credential.type,
+			typeVersion,
 			'internal',
 			undefined,
 			undefined,

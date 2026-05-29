@@ -3,7 +3,7 @@
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { validate } from 'jsonschema';
-import type { IDataObject } from 'n8n-workflow';
+import { resolveDefaultVersion, type IDataObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -16,18 +16,21 @@ import type { CredentialRequest } from '../../../types';
  * @param credentialType - The credential type to validate against
  * @param data - The credential data to validate
  * @param res - Express response object
+ * @param typeVersion - The credential's effective version. Drives `@version`
+ *   gating in the generated schema.
  * @returns Express response with error message if validation fails, or undefined if valid
  */
 function validateCredentialData(
 	credentialType: string,
 	data: IDataObject,
 	res: express.Response,
+	typeVersion: number,
 ): express.Response | void {
 	const properties = Container.get(CredentialsHelper)
 		.getCredentialsProperties(credentialType)
 		.filter((property) => property.type !== 'hidden');
 
-	const schema = toJsonSchema(properties);
+	const schema = toJsonSchema(properties, typeVersion);
 
 	const { valid, errors } = validate(data, schema, { nestedErrors: true });
 
@@ -59,7 +62,12 @@ export const validCredentialsProperties = (
 ): express.Response | void => {
 	const { type, data } = req.body;
 
-	const validationResult = validateCredentialData(type, data, res);
+	// Validate against the version a new credential will be persisted at —
+	// the type's defaultVersion (RFC §7.5.1).
+	const credentialType = Container.get(CredentialTypes).getByName(type);
+	const typeVersion = resolveDefaultVersion(credentialType);
+
+	const validationResult = validateCredentialData(type, data, res, typeVersion);
 	if (validationResult) {
 		return validationResult;
 	}
@@ -97,17 +105,27 @@ export const validCredentialsPropertiesForUpdate = async (
 
 	// Only validate if data is provided
 	if (data !== undefined) {
-		// Fetch existing credential to get type if not provided
+		const existingCredential = await getCredential(credentialId);
+		if (!existingCredential) {
+			return res.status(404).json({ message: 'Credential not found' });
+		}
+
 		if (type === undefined) {
-			const existingCredential = await getCredential(credentialId);
-			if (!existingCredential) {
-				return res.status(404).json({ message: 'Credential not found' });
-			}
 			type = existingCredential.type;
 		}
 
+		// Resolve the version the row will be persisted at after §7.3's
+		// recomputation runs: if the type is changing, use the new type's
+		// defaultVersion; otherwise keep the existing typeVersion. Validating
+		// type-B data against type-A's version, then persisting it at type-B's
+		// default, would be incoherent.
+		const typeVersion =
+			type !== existingCredential.type
+				? resolveDefaultVersion(Container.get(CredentialTypes).getByName(type))
+				: (existingCredential.typeVersion ?? 1);
+
 		// Validate data against type
-		const validationResult = validateCredentialData(type, data, res);
+		const validationResult = validateCredentialData(type, data, res, typeVersion);
 		if (validationResult) {
 			return validationResult;
 		}
