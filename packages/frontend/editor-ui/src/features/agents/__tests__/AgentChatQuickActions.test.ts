@@ -100,7 +100,7 @@ describe('AgentChatQuickActions', () => {
 		const { onConfirm } = openModalWithData.mock.calls[0][0].data;
 		const next = [{ type: 'node', name: 'y' } as unknown as AgentJsonToolRef];
 		onConfirm({ tools: next });
-		expect(wrapper.emitted('update:tools')?.[0]).toEqual([{ tools: next }]);
+		expect(wrapper.emitted('update:tools')?.[0]).toEqual([next]);
 	});
 
 	it('Add trigger opens the AgentAddTriggerModal with correct data', async () => {
