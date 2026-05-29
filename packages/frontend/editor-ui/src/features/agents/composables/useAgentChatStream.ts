@@ -271,9 +271,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-execution-start': {
+				// Timing is server-measured: store the backend `startTime` verbatim
+				// (no client clock) so the live duration matches the persisted one.
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
-					found.tc.startTime ??= Date.now();
+					found.tc.startTime = event.startTime;
 					if (found.tc.state !== TOOL_CALL_STATE.DONE && found.tc.state !== TOOL_CALL_STATE.ERROR) {
 						found.tc.state = TOOL_CALL_STATE.RUNNING;
 					}
@@ -284,7 +286,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Per-tool completion bridged from the runtime event bus. Flips a
 				// concurrent tool call to its terminal state the moment it settles,
 				// rather than waiting for the batched `tool-result` events. The later
-				// `tool-result` still fills in the output/summary.
+				// `tool-result` still fills in the output/summary. `endTime` is the
+				// server-measured settle time (no client clock).
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					if (
@@ -294,7 +297,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					) {
 						found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
 					}
-					found.tc.endTime ??= Date.now();
+					found.tc.endTime = event.endTime;
 				}
 				break;
 			}
@@ -303,7 +306,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					found.tc.output = event.output;
 					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
-					found.tc.endTime ??= Date.now();
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved

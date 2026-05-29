@@ -95,6 +95,8 @@ export type StreamChunk = ContentMetadata &
 				type: 'tool-execution-start';
 				toolCallId: string;
 				toolName: string;
+				/** Epoch ms when the handler started, measured on the runtime. */
+				startTime: number;
 		  }
 		| {
 				/**
@@ -107,6 +109,8 @@ export type StreamChunk = ContentMetadata &
 				toolCallId: string;
 				toolName: string;
 				isError: boolean;
+				/** Epoch ms when the handler settled, measured on the runtime. */
+				endTime: number;
 		  }
 		| {
 				type: 'tool-result';

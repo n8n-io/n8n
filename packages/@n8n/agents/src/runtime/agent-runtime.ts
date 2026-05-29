@@ -1216,6 +1216,7 @@ export class AgentRuntime {
 				type: 'tool-execution-start',
 				toolCallId: data.toolCallId,
 				toolName: data.toolName,
+				startTime: Date.now(),
 			});
 		};
 		const onToolExecutionEnd = (data: AgentEventData): void => {
@@ -1225,6 +1226,7 @@ export class AgentRuntime {
 				toolCallId: data.toolCallId,
 				toolName: data.toolName,
 				isError: data.isError,
+				endTime: Date.now(),
 			});
 		};
 		const onSubAgentStarted = (data: AgentEventData): void => {

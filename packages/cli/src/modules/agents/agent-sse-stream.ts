@@ -150,6 +150,7 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+				startTime: chunk.startTime,
 			});
 			break;
 		case 'tool-execution-end':
@@ -158,6 +159,7 @@ function emitToolChunk(
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				isError: chunk.isError,
+				endTime: chunk.endTime,
 			});
 			break;
 		case 'tool-result':

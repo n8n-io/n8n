@@ -323,7 +323,11 @@ onBeforeUnmount(() => {
 						</summary>
 						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
 					</details>
-					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
+					<AgentChatToolSteps
+						v-if="group.toolCalls.length"
+						:tool-calls="group.toolCalls"
+						:project-id="projectId"
+					/>
 					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
 						<InteractiveCard
 							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
@@ -392,6 +396,7 @@ onBeforeUnmount(() => {
 					<AgentChatToolSteps
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
+						:project-id="projectId"
 					/>
 
 					<div

@@ -6074,6 +6074,8 @@
 	"agents.chat.askCredential.skip": "Skip",
 	"agents.chat.toolNames.webSearch": "Web search",
 	"agents.chat.toolNames.searchKnowledge": "Search knowledge",
+	"agents.chat.delegate.label": "Sub-agent · {name}",
+	"agents.chat.delegate.labelFallback": "Sub-agent",
 	"agents.chat.askQuestion.otherLabel": "Other",
 	"agents.chat.askQuestion.otherPlaceholder": "Type another answer",
 	"agents.chat.askQuestion.submit": "Submit",

@@ -25,25 +25,34 @@ describe('ExecutionRecorder', () => {
 			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
 			recorder.record(makeToolCallChunk('b', {}, 'tc-2'));
 
-			// Both start executing together.
-			jest.setSystemTime(1_100);
-			recorder.record({ type: 'tool-execution-start', toolCallId: 'tc-1', toolName: 'a' });
-			recorder.record({ type: 'tool-execution-start', toolCallId: 'tc-2', toolName: 'b' });
+			// Both start executing together (server-stamped on the chunk).
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'a',
+				startTime: 1_100,
+			});
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-2',
+				toolName: 'b',
+				startTime: 1_100,
+			});
 
-			// They finish at different real times.
-			jest.setSystemTime(1_500);
+			// They finish at different real times (server-stamped on the chunk).
 			recorder.record({
 				type: 'tool-execution-end',
 				toolCallId: 'tc-1',
 				toolName: 'a',
 				isError: false,
+				endTime: 1_500,
 			});
-			jest.setSystemTime(3_000);
 			recorder.record({
 				type: 'tool-execution-end',
 				toolCallId: 'tc-2',
 				toolName: 'b',
 				isError: false,
+				endTime: 3_000,
 			});
 
 			// The batched tool-results arrive together, after the slowest finished.

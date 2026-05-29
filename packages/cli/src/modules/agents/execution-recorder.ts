@@ -267,10 +267,10 @@ export class ExecutionRecorder {
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
 			case 'tool-execution-start':
-				this.recordToolExecutionStart(chunk.toolCallId);
+				this.recordToolExecutionStart(chunk.toolCallId, chunk.startTime);
 				break;
 			case 'tool-execution-end':
-				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError);
+				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError, chunk.endTime);
 				break;
 			case 'tool-result':
 				this.recordToolResult(
@@ -405,25 +405,27 @@ export class ExecutionRecorder {
 	/**
 	 * Real per-tool execution start, bridged from the runtime event bus. The
 	 * `tool-call` chunk only marks when the model emitted the call; this marks
-	 * when the handler actually started, matching the live chat's timer.
+	 * when the handler actually started. Uses the server-stamped `startTime`
+	 * carried on the chunk so the persisted duration matches the live one
+	 * exactly (the FE reads the same value off the stream).
 	 */
-	private recordToolExecutionStart(toolCallId: string): void {
+	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
 		if (!toolCallId) return;
 		const entry = this.findOpenTimelineToolCall(toolCallId);
-		if (entry) entry.startTime = Date.now();
+		if (entry) entry.startTime = startTime;
 	}
 
 	/**
 	 * Real per-tool execution end, bridged from the runtime event bus. Closes
-	 * the timeline entry with the actual finish time so concurrently-executed
-	 * tools keep distinct durations — the batched `tool-result` chunks all
-	 * arrive together and would otherwise share a single end timestamp.
+	 * the timeline entry with the server-stamped finish time so concurrently-
+	 * executed tools keep distinct durations — the batched `tool-result` chunks
+	 * all arrive together and would otherwise share a single end timestamp.
 	 */
-	private recordToolExecutionEnd(toolCallId: string, isError: boolean): void {
+	private recordToolExecutionEnd(toolCallId: string, isError: boolean, endTime: number): void {
 		if (!toolCallId) return;
 		const entry = this.findOpenTimelineToolCall(toolCallId);
 		if (entry) {
-			entry.endTime = Date.now();
+			entry.endTime = endTime;
 			entry.success = !isError;
 		}
 	}

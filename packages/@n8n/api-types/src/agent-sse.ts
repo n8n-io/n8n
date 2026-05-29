@@ -84,6 +84,8 @@ export type AgentSseEvent =
 			type: 'tool-execution-start';
 			toolCallId: string;
 			toolName: string;
+			/** Epoch ms when the handler started, measured on the backend. */
+			startTime: number;
 	  }
 	| {
 			/**
@@ -95,6 +97,8 @@ export type AgentSseEvent =
 			toolCallId: string;
 			toolName: string;
 			isError: boolean;
+			/** Epoch ms when the handler settled, measured on the backend. */
+			endTime: number;
 	  }
 	| {
 			type: 'tool-result';

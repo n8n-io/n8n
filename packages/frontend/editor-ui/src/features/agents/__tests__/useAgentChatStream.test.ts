@@ -230,7 +230,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				input: { purpose: 'main' },
 			},
 			{ type: 'finish-step' },
-			{ type: 'tool-execution-start', toolCallId: 'tc-1', toolName: ASK_LLM_TOOL_NAME },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: ASK_LLM_TOOL_NAME,
+				startTime: 1_000,
+			},
 			{
 				type: 'tool-call-suspended',
 				payload: {
@@ -377,6 +382,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				type: 'tool-execution-start',
 				toolCallId: 'tc-9',
 				toolName: 'compute',
+				startTime: 1_000,
 			},
 			{
 				type: 'tool-result',
@@ -402,12 +408,18 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'start-step' },
 			{ type: 'tool-call', toolCallId: 'tc-11', toolName: 'delegate_subagent', input: {} },
 			{ type: 'finish-step' },
-			{ type: 'tool-execution-start', toolCallId: 'tc-11', toolName: 'delegate_subagent' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-11',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
 			{
 				type: 'tool-execution-end',
 				toolCallId: 'tc-11',
 				toolName: 'delegate_subagent',
 				isError: false,
+				endTime: 1_500,
 			},
 			{ type: 'done' },
 		];
@@ -421,17 +433,26 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 	});
 
-	it('records start/end timestamps across the tool lifecycle for the timer', async () => {
+	it('stores the server-stamped startTime/endTime verbatim (no client clock)', async () => {
+		// The FE must not compute timing itself — it stores the backend-measured
+		// timestamps off the lifecycle events so the live duration equals the
+		// persisted/reloaded one exactly.
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
 			{ type: 'tool-call', toolCallId: 'tc-12', toolName: 'delegate_subagent', input: {} },
 			{ type: 'finish-step' },
-			{ type: 'tool-execution-start', toolCallId: 'tc-12', toolName: 'delegate_subagent' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-12',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
 			{
 				type: 'tool-execution-end',
 				toolCallId: 'tc-12',
 				toolName: 'delegate_subagent',
 				isError: false,
+				endTime: 1_014,
 			},
 			{ type: 'done' },
 		];
@@ -442,8 +463,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await nextTick();
 
 		const tc = hook.messages.value[1].toolCalls?.[0];
-		expect(typeof tc?.startTime).toBe('number');
-		expect(typeof tc?.endTime).toBe('number');
-		expect(tc!.endTime!).toBeGreaterThanOrEqual(tc!.startTime!);
+		expect(tc?.startTime).toBe(1_000);
+		expect(tc?.endTime).toBe(1_014);
 	});
 });
