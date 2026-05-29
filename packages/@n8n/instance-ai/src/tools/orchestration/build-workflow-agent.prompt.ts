@@ -199,6 +199,10 @@ ${workspaceRoot}/
   workflows/                      # existing n8n workflows as JSON
   node-types/
     index.txt                     # searchable catalog: nodeType | displayName | description | version
+  knowledge-base/                 # workflow technique best practices (read-only)
+    registry.json                 # technique catalog
+    <technique>/
+      BEST_PRACTICE.md            # guidance for that technique
   ${sourceDirLabel}/
     workflow.ts                   # write this task's main workflow code here
   ${chunksDirLabel}/
@@ -432,18 +436,16 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    execute_command: grep -i "gmail" ${workspaceRoot}/node-types/index.txt
    \`\`\`
 
-   d. **Look for similar workflow examples** in \`${workspaceRoot}/examples/\` — a curated set of real n8n workflows in SDK form. Grep the index, then read the closest match for structural inspiration:
+   d. **Look up technique best practices** in \`${workspaceRoot}/knowledge-base/\` when the workflow matches a known category (scheduling, notification, chatbot, data_persistence, etc.). Grep the registry, then read the matching doc:
    \`\`\`
-   execute_command: grep -i "<keyword>" ${workspaceRoot}/examples/index.txt
-   execute_command: cat ${workspaceRoot}/examples/<file>.ts
+   execute_command: grep -i "<keyword>" ${workspaceRoot}/knowledge-base/registry.json
+   execute_command: cat ${workspaceRoot}/knowledge-base/<technique>/BEST_PRACTICE.md
    \`\`\`
-   Each line in \`examples/index.txt\` is \`filename | name | nodes | tags | source-id\`. Use the example as a reference for **structure** (which credential type each node uses, how nodes are wired, where sub-nodes attach to an agent, where sticky notes go) — not as a verbatim copy. The user's request will rarely match an example one-to-one.
+   Use the guidance to inform node choice, trigger patterns, and common pitfalls — not as a verbatim workflow blueprint.
 
-   The \`examples/\` directory is **read-only reference**. Never edit files there; \`${sourceDir}/\` and \`${chunksDir}/\` are your scratch.
+   The \`knowledge-base/\` directory is **read-only reference**. Never edit files there; \`${sourceDir}/\` and \`${chunksDir}/\` are your scratch.
 
-   Examples use \`newCredential('Name', 'id')\` for clarity. When you copy a pattern into \`${mainWorkflowPath}\`, replace those calls with raw \`{ id, name }\` from \`credentials(action="list")\` per the rules above.
-
-   If grep returns nothing, build from scratch. **Do not fabricate examples that do not exist.**
+   If grep returns nothing, build from scratch. **Do not fabricate best-practice docs that do not exist.**
 
 3. **Get node schemas**: Call \`nodes(action="type-definition")\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
    **Important**: Only call \`nodes(action="type-definition")\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`nodes(action="search")\` results instead.

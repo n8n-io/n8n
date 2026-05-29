@@ -48,6 +48,8 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
+import { materializeKnowledgeBaseIntoWorkspace } from '../../src/knowledge-base/materialize-knowledge-base';
+import { loadInstanceAiBestPracticeSource } from '../../src/knowledge-base/runtime-best-practices';
 import { materializeRuntimeSkillsIntoWorkspace } from '../../src/skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import { createToolRegistry, toolRegistryValues } from '../../src/tool-registry';
@@ -245,6 +247,12 @@ export async function buildInProcess(
 		const runtimeSkillSource = loadInstanceAiRuntimeSkillSource();
 		const materializedRuntimeSkills = await materializeRuntimeSkillsIntoWorkspace({
 			source: runtimeSkillSource,
+			workspace,
+			root,
+			logger,
+		});
+		await materializeKnowledgeBaseIntoWorkspace({
+			source: loadInstanceAiBestPracticeSource(),
 			workspace,
 			root,
 			logger,

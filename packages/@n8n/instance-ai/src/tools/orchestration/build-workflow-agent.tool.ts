@@ -31,6 +31,7 @@ import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspac
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
+import { materializeBuilderKnowledgeBase } from '../../knowledge-base/materialize-knowledge-base';
 import {
 	createPrebakedRuntimeSkillsFromWorkspace,
 	materializeRuntimeSkillsIntoWorkspace,
@@ -1422,6 +1423,12 @@ export async function startBuildWorkflowAgentTask(
 				// Append-only history so a later failed submit for the main path
 				// cannot mask an earlier successful submit during post-error recovery.
 				const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
+				console.log('[instance-ai knowledge-base] Starting builder knowledge-base seed', {
+					useSandbox,
+					sharedWorkspace,
+					domainContext,
+				});
+
 				if (useSandbox && sharedWorkspace && domainContext) {
 					let workspace = sharedWorkspace;
 					const root = await getWorkspaceRoot(workspace);
@@ -1430,6 +1437,26 @@ export async function startBuildWorkflowAgentTask(
 						workspace,
 						root,
 					);
+					console.log('[instance-ai knowledge-base] Invoking builder knowledge-base seed', {
+						root,
+						workItemId,
+						threadId: context.threadId,
+						runId: context.runId,
+					});
+					const knowledgeBaseResult = await materializeBuilderKnowledgeBase(
+						workspace,
+						root,
+						context.logger,
+					);
+					console.log('[instance-ai knowledge-base] Builder knowledge-base seed finished', {
+						root,
+						workItemId,
+						materialized: knowledgeBaseResult.materialized !== undefined,
+						knowledgeBaseRoot: knowledgeBaseResult.materialized?.rootDir,
+						techniqueIds: knowledgeBaseResult.materialized?.techniques.map(
+							(technique) => technique.id,
+						),
+					});
 					workspace = materializedRuntimeSkills.workspace;
 					const runtimeSkills = materializedRuntimeSkills.source;
 					const builderLayout = builderWorkflowWorkspaceLayout(root, workItemId);

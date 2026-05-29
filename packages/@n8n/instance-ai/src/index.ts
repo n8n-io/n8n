@@ -5,6 +5,8 @@ import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
+import type * as MaterializeKnowledgeBaseMod from './knowledge-base/materialize-knowledge-base';
+import type * as RuntimeBestPracticesMod from './knowledge-base/runtime-best-practices';
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
@@ -85,6 +87,13 @@ const loadRuntimeSkills = lazyModule(
 );
 const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
+);
+const loadRuntimeBestPractices = lazyModule(
+	() => require('./knowledge-base/runtime-best-practices') as typeof RuntimeBestPracticesMod,
+);
+const loadMaterializeKnowledgeBase = lazyModule(
+	() =>
+		require('./knowledge-base/materialize-knowledge-base') as typeof MaterializeKnowledgeBaseMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
 const loadBuilderTemplatesService = lazyModule(
@@ -181,6 +190,31 @@ export type {
 	RuntimeSkillWorkspaceManifest,
 } from './skills/materialize-runtime-skills';
 
+export const loadInstanceAiBestPracticeSource: typeof RuntimeBestPracticesMod.loadInstanceAiBestPracticeSource =
+	lazyFunction(() => loadRuntimeBestPractices().loadInstanceAiBestPracticeSource);
+export const hasBestPractices: typeof RuntimeBestPracticesMod.hasBestPractices = lazyFunction(
+	() => loadRuntimeBestPractices().hasBestPractices,
+);
+export const buildKnowledgeBaseWorkspaceBundle: typeof MaterializeKnowledgeBaseMod.buildKnowledgeBaseWorkspaceBundle =
+	lazyFunction(() => loadMaterializeKnowledgeBase().buildKnowledgeBaseWorkspaceBundle);
+export const materializeKnowledgeBaseIntoWorkspace: typeof MaterializeKnowledgeBaseMod.materializeKnowledgeBaseIntoWorkspace =
+	lazyFunction(() => loadMaterializeKnowledgeBase().materializeKnowledgeBaseIntoWorkspace);
+export const materializeBuilderKnowledgeBase: typeof MaterializeKnowledgeBaseMod.materializeBuilderKnowledgeBase =
+	lazyFunction(() => loadMaterializeKnowledgeBase().materializeBuilderKnowledgeBase);
+export declare const SANDBOX_KNOWLEDGE_BASE_DIR: typeof MaterializeKnowledgeBaseMod.SANDBOX_KNOWLEDGE_BASE_DIR;
+export declare const N8N_KNOWLEDGE_BASE_DIR_ENV: typeof MaterializeKnowledgeBaseMod.N8N_KNOWLEDGE_BASE_DIR_ENV;
+export type {
+	MaterializedBestPractice,
+	MaterializedKnowledgeBase,
+	KnowledgeBaseWorkspaceBundle,
+	KnowledgeBaseWorkspaceManifest,
+} from './knowledge-base/materialize-knowledge-base';
+export type {
+	BestPracticeSource,
+	BestPracticeRegistry,
+	BestPracticeRegistryEntry,
+} from './knowledge-base/runtime-best-practices';
+
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
 );
@@ -268,6 +302,14 @@ defineLazyExport('N8N_SKILL_DIR_ENV', () => loadMaterializeRuntimeSkills().N8N_S
 defineLazyExport(
 	'N8N_WORKSPACE_DIR_ENV',
 	() => loadMaterializeRuntimeSkills().N8N_WORKSPACE_DIR_ENV,
+);
+defineLazyExport(
+	'SANDBOX_KNOWLEDGE_BASE_DIR',
+	() => loadMaterializeKnowledgeBase().SANDBOX_KNOWLEDGE_BASE_DIR,
+);
+defineLazyExport(
+	'N8N_KNOWLEDGE_BASE_DIR_ENV',
+	() => loadMaterializeKnowledgeBase().N8N_KNOWLEDGE_BASE_DIR_ENV,
 );
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
