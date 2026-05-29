@@ -13,7 +13,7 @@ export class CreateInstanceAiMcpRegistryConnectionTable1784000000017
 				column('serverSlug').varchar(255).notNull,
 				column('userId').uuid.notNull,
 			)
-			.withIndexOn(['userId', 'credentialId'], true)
+			.withIndexOn(['userId', 'serverSlug', 'credentialId'], true)
 			.withForeignKey('credentialId', {
 				tableName: 'credentials_entity',
 				columnName: 'id',
