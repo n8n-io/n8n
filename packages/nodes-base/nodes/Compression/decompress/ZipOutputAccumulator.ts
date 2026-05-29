@@ -1,13 +1,12 @@
-import { UserError } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result, UserError } from 'n8n-workflow';
+import assert from 'node:assert';
 
 /**
  * Tracks per-file decompressed chunks across a zip archive while enforcing
  * a shared cumulative size limit and a maximum entry count.
  */
 export class ZipOutputAccumulator {
-	exceeded = false;
-
-	exceededReason = '';
+	error: UserError | undefined = undefined;
 
 	private totalSize = 0;
 
@@ -20,30 +19,40 @@ export class ZipOutputAccumulator {
 		private readonly maxEntries: number,
 	) {}
 
-	addEntry(name: string): ((chunk: Uint8Array) => void) | undefined {
-		if (this.exceeded) return undefined;
+	get exceededError(): UserError {
+		assert(this.error);
+		return this.error;
+	}
+
+	get isLimitExceeded(): boolean {
+		return this.error !== undefined;
+	}
+
+	/** Registers a new zip entry and returns a chunk writer, or an error if a limit was hit. */
+	addEntry(name: string): Result<(chunk: Uint8Array) => void, UserError> {
+		if (this.error) return createResultError(this.error);
 
 		this.entryCount++;
 		if (this.entryCount > this.maxEntries) {
-			this.exceeded = true;
-			this.exceededReason = `The archive contains more than ${this.maxEntries} entries`;
-			return undefined;
+			this.error = new UserError(`The archive contains more than ${this.maxEntries} entries`);
+			return createResultError(this.error);
 		}
 
 		const chunks: Uint8Array[] = [];
 		this.fileChunksByName[name] = chunks;
 
-		return (chunk: Uint8Array) => {
-			if (this.exceeded) return;
+		return createResultOk((chunk: Uint8Array) => {
+			if (this.isLimitExceeded) return;
 			this.totalSize += chunk.length;
 			if (this.totalSize > this.maxSize) {
-				this.exceeded = true;
 				const limitMb = Math.round(this.maxSize / (1024 * 1024));
-				this.exceededReason = `The decompressed output exceeds the maximum allowed size of ${limitMb} MB`;
+				this.error = new UserError(
+					`The decompressed output exceeds the maximum allowed size of ${limitMb} MB`,
+				);
 				return;
 			}
 			chunks.push(chunk.slice());
-		};
+		});
 	}
 
 	toBuffers(): Record<string, Buffer> {
@@ -52,9 +61,5 @@ export class ZipOutputAccumulator {
 			result[name] = Buffer.concat(chunks);
 		}
 		return result;
-	}
-
-	toError(): UserError {
-		return new UserError(this.exceededReason);
 	}
 }

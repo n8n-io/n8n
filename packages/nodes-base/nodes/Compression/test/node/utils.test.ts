@@ -65,6 +65,10 @@ describe('boundedGunzip', () => {
 
 		expect(result.length).toBe(0);
 	});
+
+	it('should reject empty gzip input', async () => {
+		await expect(boundedGunzip(Buffer.alloc(0), 1024)).rejects.toThrow('invalid gzip data');
+	});
 });
 
 describe('boundedUnzip', () => {
@@ -122,6 +126,19 @@ describe('boundedUnzip', () => {
 		const result = await boundedUnzip(compressed, 1024, 100);
 
 		expect(result['stored.txt'].length).toBe(256);
+	});
+
+	it('should reject truncated zip archives', async () => {
+		const compressed = createZipData({ 'file.txt': 256 });
+		const truncated = compressed.subarray(0, compressed.length - 10);
+
+		await expect(boundedUnzip(truncated, 1024, 100)).rejects.toThrow('invalid zip data');
+	});
+
+	it('should reject invalid zip data', async () => {
+		await expect(boundedUnzip(Buffer.from('invalid zip data'), 1024, 100)).rejects.toThrow(
+			'invalid zip data',
+		);
 	});
 
 	it('should surface zip stream errors', async () => {

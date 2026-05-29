@@ -13,7 +13,8 @@ import {
 } from 'n8n-workflow';
 import { promisify } from 'util';
 
-import { boundedGunzip, boundedUnzip } from './utils';
+import { boundedGunzip } from './decompress/BoundedGunzip';
+import { boundedUnzip } from './decompress/BoundedUnzip';
 
 const gzip = promisify(fflate.gzip);
 const zip = promisify(fflate.zip);

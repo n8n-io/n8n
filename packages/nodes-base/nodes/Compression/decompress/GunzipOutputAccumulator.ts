@@ -3,7 +3,7 @@
  * fflate reuses its internal buffer between callbacks, so every chunk is
  * copied via `slice()` before being stored.
  */
-export class OutputAccumulator {
+export class GunzipOutputAccumulator {
 	readonly chunks: Uint8Array[] = [];
 
 	exceeded = false;
@@ -12,6 +12,7 @@ export class OutputAccumulator {
 
 	constructor(private readonly maxSize: number) {}
 
+	/** Appends a chunk and returns `true` if the cumulative size now exceeds the limit. */
 	write(chunk: Uint8Array): boolean {
 		if (this.exceeded) return this.exceeded;
 		this.totalSize += chunk.length;
