@@ -96,11 +96,14 @@ The BQ table schema lives with the writer workflow (in n8n's internal Quality pr
 
 The writer workflow lives in n8n's internal Quality project. It's created and maintained outside this repo. This README documents the contract it implements.
 
-## Packages & onboarding
+## Passes, packages & onboarding
 
-The nightly runs a **matrix over packages** (see `matrix.include` in `mutation-health-nightly.yml`). Each leg picks, mutates, and writes back independently; the ledger is keyed by package, so they don't collide.
+The nightly runs a **matrix of `package × pass`** (built once in the `setup` job of `mutation-health-nightly.yml`). Each leg picks, mutates, and writes back independently; the ledger is keyed by package, so they don't collide. Two passes, selectable via the `mode` dispatch input (`both` on schedule):
 
-To onboard a **vitest** package: add one `{ name, dir, slug }` line to the matrix. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
+- **baseline** — `pick-next.mjs --mode baseline` → scores files with no result yet (the `new` bucket). Builds out coverage.
+- **coverage** — `pick-next.mjs --mode coverage` → revisits the weakest scored files (`red`/`stale`, lowest score first). Strengthens existing tests.
+
+To onboard a **vitest** package: add one `{ name, dir, slug }` line to the `packages` array in the `setup` job. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
 
 Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 

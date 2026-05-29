@@ -22,10 +22,15 @@
  * Inputs:
  *   --package-dir <path>     Required. Repo-relative path to the package, e.g. packages/workflow
  *   --ledger-file <path>     Required. Live ledger JSON: { "ledger": [ ... ] }
+ *   --mode <baseline|coverage>  Optional. Restrict the picker to one bucket:
+ *                              baseline → only `new` (establish first scores)
+ *                              coverage → only `red`/`stale` (revisit weakest, lowest-first)
+ *                              omitted  → combined new → red → stale (default)
  *   --stale-after-weeks <n>  Optional. Default 4.
  *
  * Output (stdout): { picked: { source_file_path, package, prior_status, effective_status } }
- *                  OR { picked: null, reason: "all-green" | "empty-source-tree" }.
+ *                  OR { picked: null, reason: "all-green" | "empty-source-tree"
+ *                       | "no-new-files" | "nothing-below-threshold" }.
  *
  * Exit codes:
  *   0 — picked a row OR nothing to do (with picked: null sentinel)
@@ -202,11 +207,31 @@ process.stderr.write(
 		`new=${counts.new ?? 0} red=${counts.red ?? 0} stale=${counts.stale ?? 0} green=${counts.green ?? 0}\n`,
 );
 
-const top = annotated[0];
+// --mode restricts the candidate set to one bucket; omitted = combined.
+const MODE_BUCKETS = {
+	baseline: new Set(['new']),
+	coverage: new Set(['red', 'stale']),
+};
+const mode = args.mode;
+if (mode !== undefined && !MODE_BUCKETS[mode]) {
+	die(2, `Invalid --mode=${mode}. Use 'baseline' or 'coverage' (omit for combined new→red→stale).`);
+}
+const candidates = mode
+	? annotated.filter((r) => MODE_BUCKETS[mode].has(r.effective_status))
+	: annotated;
 
-if (top.effective_status === 'green') {
-	process.stderr.write(`All actionable rows green (stale threshold ${STALE_AFTER_WEEKS} weeks) — nothing to do.\n`);
-	process.stdout.write(JSON.stringify({ picked: null, reason: 'all-green' }) + '\n');
+const top = candidates[0];
+
+// Nothing to do: an empty mode-filtered set, or (combined mode) the best row is green.
+if (!top || (!mode && top.effective_status === 'green')) {
+	const reason =
+		mode === 'baseline'
+			? 'no-new-files'
+			: mode === 'coverage'
+				? 'nothing-below-threshold'
+				: 'all-green';
+	process.stderr.write(`Nothing to do for mode=${mode ?? 'combined'} (${reason}).\n`);
+	process.stdout.write(JSON.stringify({ picked: null, reason }) + '\n');
 	process.exit(0);
 }
 

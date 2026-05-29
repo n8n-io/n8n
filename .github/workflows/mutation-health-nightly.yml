@@ -2,9 +2,18 @@ name: 'Mutation Health (nightly)'
 
 on:
   schedule:
-    # 03:30 UTC daily — outside CI rush, before EU morning.
+    # 03:30 UTC daily — outside CI rush, before EU morning. Runs both passes.
     - cron: '30 3 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Which pass to run'
+        type: choice
+        options:
+          - both
+          - baseline # score files with no result yet (the `new` bucket)
+          - coverage # revisit the weakest scored files (`red`/`stale`, lowest first)
+        default: both
 
 permissions:
   contents: read
@@ -13,31 +22,55 @@ env:
   READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
 
 jobs:
+  # Build the (package × pass) matrix once. The package list lives here only —
+  # onboarding a vitest package is a one-line addition below. The requested
+  # `mode` filters which passes run (scheduled runs default to both).
+  #   baseline → score files with no result yet (picker `new` bucket)
+  #   coverage → revisit the weakest scored files (picker `red`/`stale`, lowest first)
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build matrix
+        id: build
+        env:
+          REQUESTED_MODE: ${{ github.event.inputs.mode || 'both' }}
+        # vitest packages only. A package with its own stryker.config.mjs overrides
+        # the shared default (scripts/mutation-health/stryker.default.mjs) — n8n-workflow
+        # does this to run the legacy expression engine and dodge the isolated-vm
+        # dry-run crash (see its config + DEVP-257). Jest packages and
+        # @n8n/expression-runtime are intentionally absent.
+        run: |
+          node -e '
+            const packages = [
+              { name: "n8n-workflow", dir: "packages/workflow", slug: "workflow" },
+              { name: "@n8n/crdt", dir: "packages/@n8n/crdt", slug: "crdt" },
+              { name: "@n8n/decorators", dir: "packages/@n8n/decorators", slug: "decorators" },
+            ];
+            const req = process.env.REQUESTED_MODE;
+            const modes = req === "both" ? ["baseline", "coverage"] : [req];
+            const include = packages.flatMap((p) => modes.map((mode) => ({ ...p, mode })));
+            console.log("matrix=" + JSON.stringify({ include }));
+          ' >> "$GITHUB_OUTPUT"
+
   mutate:
-    name: ${{ matrix.name }} — mutate one file, ledger writeback
+    needs: setup
+    name: ${{ matrix.mode }} · ${{ matrix.name }}
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 60
     strategy:
-      fail-fast: false # one package's failure must not skip the others
-      matrix:
-        include:
-          # vitest packages only. A package with its own stryker.config.mjs
-          # overrides the shared default (scripts/mutation-health/stryker.default.mjs)
-          # — n8n-workflow does this to run the legacy expression engine and
-          # avoid the isolated-vm dry-run crash (see its config + DEVP-257).
-          # Jest packages and @n8n/expression-runtime are intentionally absent
-          # (different runner / blocked on DEVP-257). Append a line to onboard.
-          - { name: n8n-workflow, dir: packages/workflow, slug: workflow }
-          - { name: '@n8n/crdt', dir: packages/@n8n/crdt, slug: crdt }
-          - { name: '@n8n/decorators', dir: packages/@n8n/decorators, slug: decorators }
-    # Per-package: a scheduled run and a manual run won't double-write the same
-    # package's ledger row, but different packages still run in parallel.
+      fail-fast: false # one leg's failure must not skip the others
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    # Per package + pass: a scheduled run and a manual run won't double-write the
+    # same ledger row, but different packages/passes still run in parallel.
     concurrency:
-      group: mutation-health-${{ matrix.slug }}
+      group: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}
       cancel-in-progress: false
     env:
       PACKAGE_NAME: ${{ matrix.name }}
       PKG_DIR: ${{ matrix.dir }}
+      MODE: ${{ matrix.mode }}
       REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
     steps:
       - name: Checkout
@@ -59,11 +92,12 @@ jobs:
         run: |
           picked_json=$(node scripts/mutation-health/pick-next.mjs \
             --package-dir "$PKG_DIR" \
-            --ledger-file "$REPORTS_DIR/live-ledger.json")
+            --ledger-file "$REPORTS_DIR/live-ledger.json" \
+            --mode "$MODE")
           echo "$picked_json"
           src_repo=$(echo "$picked_json" | jq -r '.picked.source_file_path // ""')
           if [ -z "$src_repo" ]; then
-            echo "::notice::Picker returned no work (all-green / empty ledger). Exiting cleanly."
+            echo "::notice::Picker returned no work for mode=$MODE (bucket empty). Exiting cleanly."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -113,7 +147,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: mutation-health-${{ matrix.slug }}-${{ github.run_id }}
+          name: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}-${{ github.run_id }}
           path: |
             ${{ env.REPORTS_DIR }}/raw.json
             ${{ env.REPORTS_DIR }}/raw.html
