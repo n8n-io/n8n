@@ -263,6 +263,9 @@ export class SourceControlController {
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
@@ -275,6 +278,9 @@ export class SourceControlController {
 				new SourceControlGetStatus(req.query),
 			);
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
