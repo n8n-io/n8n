@@ -2,6 +2,8 @@ import * as fflate from 'fflate';
 
 import { boundedGunzip, boundedUnzip } from '../../utils';
 
+type CompressionLevel = NonNullable<fflate.ZipOptions['level']>;
+
 function createGzipData(uncompressedSize: number): Buffer {
 	const data = new Uint8Array(uncompressedSize);
 	return Buffer.from(fflate.gzipSync(data));
@@ -9,13 +11,28 @@ function createGzipData(uncompressedSize: number): Buffer {
 
 function createZipData(
 	files: Record<string, number>,
-	options?: { compressionLevel?: number },
+	options?: { compressionLevel?: CompressionLevel },
 ): Buffer {
 	const zippable: fflate.Zippable = {};
 	for (const [name, size] of Object.entries(files)) {
 		zippable[name] = [new Uint8Array(size), { level: options?.compressionLevel ?? 6 }];
 	}
 	return Buffer.from(fflate.zipSync(zippable));
+}
+
+function createZipWithUnsupportedCompression(): Buffer {
+	const compressed = createZipData({ 'file.txt': 1 });
+
+	compressed[8] = 99;
+	compressed[9] = 0;
+
+	const centralDirectoryOffset = compressed.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+	if (centralDirectoryOffset === -1) throw new Error('Central directory header not found');
+
+	compressed[centralDirectoryOffset + 10] = 99;
+	compressed[centralDirectoryOffset + 11] = 0;
+
+	return compressed;
 }
 
 describe('boundedGunzip', () => {
@@ -105,5 +122,13 @@ describe('boundedUnzip', () => {
 		const result = await boundedUnzip(compressed, 1024, 100);
 
 		expect(result['stored.txt'].length).toBe(256);
+	});
+
+	it('should surface zip stream errors', async () => {
+		const compressed = createZipWithUnsupportedCompression();
+
+		await expect(boundedUnzip(compressed, 1024, 100)).rejects.toThrow(
+			'ZIP entry "file.txt" couldn\'t be decompressed. Check the archive and try again. Original error: unknown compression type 99',
+		);
 	});
 });

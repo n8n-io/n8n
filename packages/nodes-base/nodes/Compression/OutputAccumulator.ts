@@ -12,17 +12,18 @@ export class OutputAccumulator {
 
 	constructor(private readonly maxSize: number) {}
 
-	write(chunk: Uint8Array): void {
-		if (this.exceeded) return;
+	write(chunk: Uint8Array): boolean {
+		if (this.exceeded) return this.exceeded;
 		this.totalSize += chunk.length;
 		if (this.totalSize > this.maxSize) {
 			this.exceeded = true;
-			return;
+			return this.exceeded;
 		}
 		this.chunks.push(chunk.slice());
+		return this.exceeded;
 	}
 
-	toBuffer(): Buffer {
+	combineChunksToBuffer(): Buffer {
 		return Buffer.concat(this.chunks);
 	}
 }
