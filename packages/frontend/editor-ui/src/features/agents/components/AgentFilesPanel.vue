@@ -11,7 +11,12 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentFileDto } from '@n8n/api-types';
+import {
+	ALLOWED_AGENT_FILE_EXTENSIONS,
+	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_FILES_PER_UPLOAD,
+	type AgentFileDto,
+} from '@n8n/api-types';
 
 const props = withDefaults(
 	defineProps<{
@@ -39,6 +44,13 @@ const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const totalCount = computed(() => props.files.length);
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
 const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
+
+const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
+const description = computed(() =>
+	i18n.baseText('agents.builder.files.description', {
+		interpolate: { maxFiles: MAX_AGENT_FILES_PER_UPLOAD, maxSizeMb: MAX_AGENT_FILE_SIZE_MB },
+	}),
+);
 
 function getFileIcon(file: AgentFileDto) {
 	const extension = file.fileName.split('.').pop()?.toLowerCase();
@@ -114,14 +126,14 @@ function onFilesSelected(event: Event) {
 				</N8nTooltip>
 			</div>
 			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.files.description') }}
+				{{ description }}
 			</N8nText>
 		</div>
 
 		<input
 			ref="fileInput"
 			type="file"
-			accept=".csv,.pdf,.md,.markdown,.txt"
+			:accept="acceptAttr"
 			multiple
 			:class="$style.fileInput"
 			data-testid="agent-files-upload-input"

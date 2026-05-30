@@ -71,19 +71,8 @@ export class AgentKnowledgeCommandService {
 		return await this.spawnCommand(root, executable, args, request.command);
 	}
 
-	async withWorkspace<T>(operation: (workspaceRoot: string) => Promise<T>) {
-		return await workspaceLimit(async () => {
-			const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-'));
-			try {
-				return await operation(workspaceRoot);
-			} finally {
-				await rm(workspaceRoot, { recursive: true, force: true });
-			}
-		});
-	}
-
 	/**
-	 * Like {@link withWorkspace}, but reuses a materialized workspace across
+	 * Runs an operation against a materialized workspace, reusing it across
 	 * calls keyed by `cacheKey` (which must encode the agent + exact file set +
 	 * content). Calls for the same key are serialized so the shared directory is
 	 * never materialized or read concurrently; idle workspaces are evicted by

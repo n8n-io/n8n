@@ -6228,7 +6228,7 @@
 	"agents.builder.memory.episodicMemory.hint": "Stores source-backed memories from previous conversations. Requires OpenAI credential.",
 	"agents.builder.memory.episodicMemory.changeCredential": "Change credential",
 	"agents.builder.files.title": "Knowledge base",
-	"agents.builder.files.description": "Add CSV, PDF, Markdown, or TXT files this agent can search and read. Upload up to 10 files at a time, 50 MB each.",
+	"agents.builder.files.description": "Add CSV, PDF, Markdown, or TXT files this agent can search and read. Upload up to {maxFiles} files at a time, {maxSizeMb} MB each.",
 	"agents.builder.files.count": "{count} file uploaded | {count} files uploaded",
 	"agents.builder.files.upload": "Upload file",
 	"agents.builder.files.uploadFileTooLarge.title": "File too large",

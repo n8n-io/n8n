@@ -8,6 +8,16 @@ import type {
 
 export const DEFAULT_SEARCH_HEAD_LIMIT = 250;
 
+export const KNOWLEDGE_OPERATIONS = [
+	'list',
+	'search',
+	'read',
+	'csv_query',
+	'csv_profile',
+	'csv_distinct',
+	'csv_aggregate',
+] as const;
+
 const lineRangeSchema = z.object({
 	start: z.number().int().min(1),
 	end: z.number().int().min(1),
@@ -106,7 +116,7 @@ const csvAggregateInputSchema = z
 	})
 	.strict();
 
-const searchKnowledgeParsingSchema = z.discriminatedUnion('operation', [
+export const searchKnowledgeParsingSchema = z.discriminatedUnion('operation', [
 	listInputSchema,
 	searchInputSchema,
 	readInputSchema,
@@ -435,15 +445,7 @@ const csvAggregateOutputSchema = z.object({
 });
 
 export const searchKnowledgeOutputSchema = z.object({
-	operation: z.enum([
-		'list',
-		'search',
-		'read',
-		'csv_query',
-		'csv_profile',
-		'csv_distinct',
-		'csv_aggregate',
-	]),
+	operation: z.enum(KNOWLEDGE_OPERATIONS),
 	files: z.array(knowledgeFileOutputSchema),
 	result: commandResultOutputSchema.optional(),
 	search: searchResultOutputSchema.optional(),
@@ -492,15 +494,7 @@ export function parseSearchKnowledgeInput(input: unknown): ParsedSearchKnowledge
 export function getSearchKnowledgeOperation(input: unknown): SearchKnowledgeOutput['operation'] {
 	const parsed = z
 		.object({
-			operation: z.enum([
-				'list',
-				'search',
-				'read',
-				'csv_query',
-				'csv_profile',
-				'csv_distinct',
-				'csv_aggregate',
-			]),
+			operation: z.enum(KNOWLEDGE_OPERATIONS),
 		})
 		.safeParse(input);
 	return parsed.success ? parsed.data.operation : 'list';

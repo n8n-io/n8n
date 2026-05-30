@@ -6,6 +6,15 @@ import { AgentKnowledgeCommandService } from '../agent-knowledge-command.service
 
 jest.unmock('node:fs/promises');
 
+async function withTempWorkspace(operation: (workspaceRoot: string) => Promise<void>) {
+	const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-test-'));
+	try {
+		await operation(workspaceRoot);
+	} finally {
+		await rm(workspaceRoot, { recursive: true, force: true });
+	}
+}
+
 describe('AgentKnowledgeCommandService', () => {
 	let service: AgentKnowledgeCommandService;
 
@@ -14,7 +23,7 @@ describe('AgentKnowledgeCommandService', () => {
 	});
 
 	it('searches text files with git grep', async () => {
-		await service.withWorkspace(async (workspaceRoot) => {
+		await withTempWorkspace(async (workspaceRoot) => {
 			await writeFile(path.join(workspaceRoot, 'notes.txt'), 'alpha\nneedle\nomega\n');
 
 			const result = await service.run(workspaceRoot, {
@@ -29,7 +38,7 @@ describe('AgentKnowledgeCommandService', () => {
 		});
 	});
 	it('truncates command output to the byte budget for non-ASCII content', async () => {
-		await service.withWorkspace(async (workspaceRoot) => {
+		await withTempWorkspace(async (workspaceRoot) => {
 			await writeFile(path.join(workspaceRoot, 'notes.txt'), 'é'.repeat(40_000));
 
 			const result = await service.run(workspaceRoot, {
@@ -43,7 +52,7 @@ describe('AgentKnowledgeCommandService', () => {
 	});
 
 	it('rejects parent path traversal and symlink escapes', async () => {
-		await service.withWorkspace(async (workspaceRoot) => {
+		await withTempWorkspace(async (workspaceRoot) => {
 			const outsideDirectory = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-outside-'));
 			try {
 				await writeFile(path.join(outsideDirectory, 'secret.txt'), 'secret\n');
@@ -65,7 +74,7 @@ describe('AgentKnowledgeCommandService', () => {
 	});
 
 	it('rejects absolute paths and control characters', async () => {
-		await service.withWorkspace(async (workspaceRoot) => {
+		await withTempWorkspace(async (workspaceRoot) => {
 			await expect(
 				service.run(workspaceRoot, { command: 'cat', file: '/etc/passwd' }),
 			).rejects.toThrow('Absolute paths are not allowed');

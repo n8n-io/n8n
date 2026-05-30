@@ -3,7 +3,11 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILE_SIZE_MB,
+} from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -66,8 +70,6 @@ const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
 const AGENT_EDITOR_MIN_WIDTH = 360;
-const MAX_AGENT_FILE_SIZE_MB = 50;
-const MAX_AGENT_FILE_SIZE_BYTES = MAX_AGENT_FILE_SIZE_MB * 1024 * 1024;
 
 const route = useRoute();
 const router = useRouter();

@@ -1,6 +1,7 @@
 import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 import { createSearchKnowledgeTool } from '../knowledge/tool';
+import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
 import type { JSONSchema7 } from 'json-schema';
 
 jest.unmock('node:fs');
@@ -82,6 +83,18 @@ describe('search_knowledge tool', () => {
 		expect(String(properties.file.description)).toContain(
 			'cite the returned fileName and lineRange instead',
 		);
+	});
+
+	it('keeps the provider JSON schema property names in sync with the Zod parsing schema', () => {
+		// The flat JSON schema (steered at the LLM) and the strict Zod discriminated
+		// union (used for validation) are maintained by hand. Guard against drift by
+		// asserting they expose the exact same set of field names.
+		const zodKeys = new Set(
+			searchKnowledgeParsingSchema.options.flatMap((option) => Object.keys(option.shape)),
+		);
+		const jsonKeys = new Set(Object.keys(searchKnowledgeInputSchema.properties ?? {}));
+
+		expect(jsonKeys).toEqual(zodKeys);
 	});
 
 	it('lists uploaded knowledge files', async () => {
