@@ -613,6 +613,42 @@ async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<voi
 	}
 }
 
+export async function __testRehydrateAccumulatorFromGraph(
+	context: OrchestrationContext,
+	accumulator: BlueprintAccumulator,
+): Promise<void> {
+	return await rehydrateAccumulatorFromGraph(context, accumulator);
+}
+
+/**
+ * Seed a freshly-built accumulator from the persisted plan before a planner
+ * resume. The parent plan-tool handler exits on every cascade-suspend, so the
+ * first-call accumulator is gone by the time an "ask for edits" revision
+ * resumes the planner — without this, remove-plan-item can't touch the
+ * original items, add-plan-item only carries the newly-added ones, and the
+ * re-submit's createPlan (which overwrites unconditionally) replaces the graph
+ * with a partial plan.
+ *
+ * Only rehydrates while the plan is still `awaiting_approval` (the revision
+ * window) — an already-approved/active graph with in-flight tasks must not be
+ * reopened here. Best-effort: a getGraph failure leaves the accumulator empty
+ * rather than blocking the resume.
+ */
+async function rehydrateAccumulatorFromGraph(
+	context: OrchestrationContext,
+	accumulator: BlueprintAccumulator,
+): Promise<void> {
+	if (!context.plannedTaskService) return;
+	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		if (graph?.status === 'awaiting_approval' && graph.tasks.length > 0) {
+			accumulator.loadFromTasks(graph.tasks);
+		}
+	} catch {
+		// Best-effort — fall back to an empty accumulator rather than block resume.
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tool factory
 // ---------------------------------------------------------------------------
@@ -763,6 +799,11 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 								'The planning step could not be resumed because its state was lost. Please send a new message to continue.',
 						};
 					}
+
+					// Rehydrate the accumulator from the persisted plan so an
+					// "ask for edits" revision operates on the full plan rather
+					// than an empty accumulator. See rehydrateAccumulatorFromGraph.
+					await rehydrateAccumulatorFromGraph(context, accumulator);
 
 					// Open a trace span for the resumed leg so a plan that suspended
 					// at HITL and resumed still shows its continuation in LangSmith.
