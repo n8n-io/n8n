@@ -874,6 +874,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							toolName: consumeResult.suspension.toolName,
 							zodIssues: parsed.error.issues,
 						});
+						publishClearingEvent(context);
+						await clearDraftChecklist(context);
+						await clearPlannedTaskGraph(context);
 						return {
 							result:
 								'Planner requested user input but the payload was malformed. Please try again.',
