@@ -29,7 +29,12 @@ const delegateSubAgentInputSchema = z.object({
 		.min(1)
 		.describe('Short human-readable name for this delegated task, e.g. "research_api".'),
 	goal: z.string().min(1).describe('The concrete goal the sub-agent should accomplish.'),
-	context: z.string().optional().describe('Relevant context the sub-agent needs for the task.'),
+	context: z
+		.string()
+		.optional()
+		.describe(
+			'All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out.',
+		),
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
 });
 
@@ -170,19 +175,18 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 
 	return new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
-			'Run a focused child agent on a bounded, self-contained subtask and return its result. ' +
-				'Use for independent research, review, analysis, or exploration that would clutter the parent context or benefit from a fresh perspective. ' +
-				'Do not use for trivial work or to pass through the entire user request unchanged.',
+			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context (it sees only what you pass in) and returns a concise result. ' +
+				'Reach for it when a subtask needs substantial search/research/review/reasoning whose intermediate output would clutter your context, or clearly benefits from a fresh perspective. ' +
+				'Do not use it for trivial work, for steps that depend on this conversation you cannot restate, or to forward the user request wholesale instead of decomposing it.',
 		)
 		.systemInstruction(
 			[
-				'You have access to delegate_subagent, which runs a focused child agent in a fresh context and returns a concise result.',
-				'Use delegate_subagent when the user request contains a bounded subtask that can be handled independently, the subtask needs substantial exploration/review/search/reasoning that would clutter your context, or a fresh perspective would help.',
-				'Do not use delegate_subagent when the task is trivial, can be completed with one or two direct tool calls, depends on unstated conversation context you cannot summarize clearly, or would simply pass the entire user request to another agent without decomposition.',
-				'Before delegating, make a brief plan for yourself: identify the concrete subtask, decide whether delegation is useful, and provide a self-contained handoff if you delegate.',
+				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. The child cannot see this conversation, your tools, or your memory, so everything it needs must be in the call.',
+				'Delegate only when all of these hold: the work is a concrete, self-contained subtask; it can be fully specified without unstated context from this conversation; and it is heavy enough (substantial search/research/review/reasoning) that doing it inline would clutter your context, or a fresh perspective clearly helps.',
+				'Do not delegate when: the task is trivial or is one or two tool calls you can make directly; it is the core reasoning you are responsible for (never delegate the understanding); it depends on context you cannot restate; or you would just forward the user request without decomposing it. Wanting more depth, thoroughness, or research is not by itself a reason to delegate.',
+				'Write the handoff for a smart colleague who just walked in and has seen none of this conversation: put the concrete outcome in goal; put every detail the child needs in context (constraints, paths, data, prior decisions, acceptance criteria, what you have already tried or ruled out); state exactly what you need back, and how concise, in expectedOutput; and give it a short descriptive taskName.',
 				...formatAvailableSubAgents(options.availableSubAgents),
-				'When calling delegate_subagent, use taskName for a short descriptive name, goal for the concrete outcome, context for all relevant details including constraints/paths/data/prior decisions/acceptance criteria, and expectedOutput for what you need back.',
-				'After the subagent returns, inspect the result before using it, synthesize it into your response instead of blindly copying it, and retry with better context or handle the task yourself if the result is incomplete or failed.',
+				'When the child returns: inspect the answer before relying on it, do not blindly trust self-reported success, synthesize it into your own response instead of copying it verbatim, and if it is incomplete or failed either retry with a sharper handoff or do the task yourself.',
 			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)
@@ -355,7 +359,10 @@ export function renderDelegateSubAgentPrompt(request: {
 	context?: string;
 	expectedOutput?: string;
 }): string {
-	const sections = [`Goal:\n${request.goal}`];
+	const sections = [
+		'You are running as a delegated sub-agent on a single, self-contained task. You have no access to the parent conversation beyond what is written below, and you cannot ask follow-up questions during this run. Complete the task independently and reply with a concise, self-contained answer.',
+		`Goal:\n${request.goal}`,
+	];
 
 	if (request.context) {
 		sections.push(`Context:\n${request.context}`);
@@ -364,6 +371,10 @@ export function renderDelegateSubAgentPrompt(request: {
 	if (request.expectedOutput) {
 		sections.push(`Expected output:\n${request.expectedOutput}`);
 	}
+
+	sections.push(
+		'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
+	);
 
 	return sections.join('\n\n');
 }

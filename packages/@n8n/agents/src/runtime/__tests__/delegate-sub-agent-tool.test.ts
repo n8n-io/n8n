@@ -223,15 +223,24 @@ describe('createDelegateSubAgentTool', () => {
 });
 
 describe('renderDelegateSubAgentPrompt', () => {
-	it('renders only the provided sections', () => {
-		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).toBe('Goal:\nFind it.');
-		expect(
-			renderDelegateSubAgentPrompt({
-				goal: 'Find it.',
-				context: 'auth endpoints',
-				expectedOutput: 'a summary',
-			}),
-		).toBe('Goal:\nFind it.\n\nContext:\nauth endpoints\n\nExpected output:\na summary');
+	it('includes the goal and omits unset sections', () => {
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
+
+		expect(prompt).toContain('Goal:\nFind it.');
+		expect(prompt).not.toContain('Context:');
+		expect(prompt).not.toContain('Expected output:');
+	});
+
+	it('includes context and expected output when provided', () => {
+		const prompt = renderDelegateSubAgentPrompt({
+			goal: 'Find it.',
+			context: 'auth endpoints',
+			expectedOutput: 'a summary',
+		});
+
+		expect(prompt).toContain('Goal:\nFind it.');
+		expect(prompt).toContain('Context:\nauth endpoints');
+		expect(prompt).toContain('Expected output:\na summary');
 	});
 });
 

@@ -160,11 +160,7 @@ describe('SubAgentForegroundRunner', () => {
 		// With no parent resource scope, memory isolates to the run's own thread,
 		// so resourceId === threadId.
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			[
-				'Goal:\nFind the relevant API behavior.',
-				'Context:\nFocus on auth endpoints.',
-				'Expected output:\nA concise summary.',
-			].join('\n\n'),
+			expect.stringContaining('Goal:\nFind the relevant API behavior.'),
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
@@ -172,6 +168,9 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
+		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
+		expect(childPrompt).toContain('Context:\nFocus on auth endpoints.');
+		expect(childPrompt).toContain('Expected output:\nA concise summary.');
 		// Every sub-agent run is a saved n8n agent, so it records under its run
 		// thread id, owned by the sub-agent's own id.
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
