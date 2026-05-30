@@ -68,6 +68,11 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Omit (or pass empty) to intercept every
+	 *  interceptable AI root the workflow contains. Server-side gated by the
+	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
+	pinAiRoots?: string[];
 }
 
 /**
@@ -144,6 +149,7 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
+					config.pinAiRoots,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -478,8 +484,17 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
+	return await runScenario(
+		client,
+		scenario,
+		workflowId,
+		workflowJsons,
+		logger,
+		timeoutMs,
+		pinAiRoots,
+	);
 }
 
 /**
@@ -526,13 +541,22 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
+	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
+
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
+	const evalResult = await client.executeWithLlmMock(
+		workflowId,
+		scenario.dataSetup,
+		timeoutMs,
+		pinNodes,
+	);
 	const execMs = Date.now() - execStart;
 
+	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
 	logger.info(
-		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${pinTag}`,
 	);
 
 	const verifyStart = Date.now();

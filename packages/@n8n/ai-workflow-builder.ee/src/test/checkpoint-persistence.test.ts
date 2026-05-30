@@ -126,7 +126,12 @@ describe('LangGraph Checkpoint Message Persistence', () => {
 		expect(contents).toContain('user-answers');
 	});
 
-	it('should persist Command.update messages across two sequential interrupts and resumes', async () => {
+	// Skipped: flaky due to a race in @langchain/langgraph@1.0.2's
+	// Command.update + Command.resume + interrupt handling. On a failing run, the
+	// first Command.resume is dropped — step1 re-interrupts instead of returning, so
+	// the graph never advances to step2's final write. Tracked in AI-2531.
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should persist Command.update messages across two sequential interrupts and resumes', async () => {
 		// Two separate interrupt points in sequence (mimics questions interrupt → plan interrupt)
 		const parent = new StateGraph(ParentState)
 			.addNode('step1', (state) => {

@@ -36,4 +36,19 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 
 		return new Set(rows.map((row) => row.credentialId));
 	}
+
+	/**
+	 * Deletes the running user's connection row(s) for the given credential.
+	 * Scoped to the system resolver to mirror {@link findConnectedCredentialIds}.
+	 * Returns the number of rows deleted.
+	 */
+	async deleteMyConnection(userId: string, credentialId: string): Promise<number> {
+		const result = await this.repository.delete({
+			userId,
+			credentialId,
+			resolverId: SYSTEM_RESOLVER_ID,
+		});
+
+		return result.affected ?? 0;
+	}
 }

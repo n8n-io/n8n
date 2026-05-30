@@ -56,18 +56,38 @@ Never write empty, placeholder, or guessed \`instructions\`. If you do not have
 enough detail to write meaningful instructions, ask the user first.`;
 }
 
-export const BUILDER_SKILL_ROUTING_SECTION = `\
-## Builder Runtime Skills
+/**
+ * Build the routing section that tells the builder LLM which runtime skills
+ * exist and what they cover.
+ */
+export function getBuilderSkillRoutingSection(): string {
+	const lines: string[] = [
+		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
+			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
+			'  be a chat integration/trigger or a node/workflow tool.',
+		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-target-skills`: creating skills for the target agent.',
+	];
+
+	return `\
+## Builder runtime skills
 
 Additional specialized builder guidance is available through runtime skills.
-Before these specialized tasks, call \`load_skill\` with
+Always load relevant runtime skills first. Before any specialized tool calls
+or config mutations in a domain covered by a skill, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
-- \`agent-builder-integrations\`: schedule and chat integrations.
-- \`agent-builder-target-skills\`: creating skills for the target agent.
+${lines.join('\n')}
+
+Requests for "web search", "Brave web search", or "SearXNG web search" are
+agent config changes, not node-tool tasks. Follow the Config schema reference:
+web search lives under \`config.webSearch\`. Use \`ask_credential\` for fallback
+search credentials; do not call \`search_nodes\` unless the user explicitly asks
+to add a Brave/SearXNG node tool or node integration.
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
+}
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools
@@ -121,8 +141,12 @@ export const IMPORTANT_SECTION = `\
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
 - Use \`ask_question\` instead of prose when the answer is a known small set.
-- Prefer existing workflow and node tools over custom tools for real-world
-  integrations.
+- Tool preference order for real-world integrations:
+  1. MCP servers (\`search_mcp_servers\`) — always check first
+  2. Node tools (\`search_nodes\`)
+		- Exception: generic web search is configured via \`config.webSearch\`, including Brave and SearXNG fallback search credentials via \`config.webSearch.fallbackSearchCredentials\`. Do not call \`search_nodes\` for web search.
+  3. Workflow tools (\`list_workflows\`)
+  4. Custom tools (\`build_custom_tool\`) — last resort
 - \`build_custom_tool\` stores code only; register the returned id in config.
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
@@ -190,6 +214,15 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
+### Add MCP integration: "Connect Notion MCP"
+1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
+2. \`search_mcp_servers({ queries: ["notion"] })\`.
+3. \`ask_credential({ credentialType: "<result.credentialType>" })\`.
+4. \`verify_mcp_server({ name, url, transport, authentication, credential })\`.
+5. \`read_config()\`.
+6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
+   \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
+
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_question(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
@@ -202,6 +235,7 @@ export interface BuilderPromptContext {
 	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
+	enabledModules: string[];
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
@@ -223,7 +257,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
-		BUILDER_SKILL_ROUTING_SECTION,
+		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,

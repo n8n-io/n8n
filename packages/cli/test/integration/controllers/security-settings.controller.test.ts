@@ -5,6 +5,7 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
+import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
@@ -16,6 +17,7 @@ import { setupTestServer } from '../shared/utils';
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);
 	const instanceRedactionEnforcementService = mockInstance(InstanceRedactionEnforcementService);
+	const eventService = mockInstance(EventService);
 	const instanceSettingsLoaderConfig = mockInstance(InstanceSettingsLoaderConfig, {
 		securityPolicyManagedByEnv: false,
 	});
@@ -294,6 +296,14 @@ describe('SecuritySettingsController', () => {
 		});
 
 		describe('POST /settings/security', () => {
+			beforeEach(() => {
+				instanceRedactionEnforcementService.get.mockResolvedValue({
+					enforced: false,
+					manual: false,
+					production: false,
+				});
+			});
+
 			it('should ignore redactionEnforcement when feature flag is off', async () => {
 				const response = await ownerAgent
 					.post('/settings/security')
@@ -302,6 +312,10 @@ describe('SecuritySettingsController', () => {
 
 				expect(response.body).toEqual({ data: {} });
 				expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith(
+					'redaction-enforcement-updated',
+					expect.anything(),
+				);
 			});
 
 			it('should persist redactionEnforcement.floor = "production" when flag is on', async () => {
@@ -342,6 +356,11 @@ describe('SecuritySettingsController', () => {
 
 			it('should persist redactionEnforcement.floor = "off" when flag is on', async () => {
 				enableRedactionFlag();
+				instanceRedactionEnforcementService.get.mockResolvedValue({
+					enforced: true,
+					manual: false,
+					production: true,
+				});
 				instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 				await ownerAgent
@@ -388,6 +407,76 @@ describe('SecuritySettingsController', () => {
 					.expect(400);
 
 				expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+			});
+
+			describe('audit event emission', () => {
+				it('should emit `redaction-enforcement-updated` with before/after when settings change', async () => {
+					enableRedactionFlag();
+					instanceRedactionEnforcementService.get.mockResolvedValue({
+						enforced: false,
+						manual: false,
+						production: false,
+					});
+					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
+
+					await ownerAgent
+						.post('/settings/security')
+						.send({ redactionEnforcement: { floor: 'production' } })
+						.expect(200);
+
+					expect(eventService.emit).toHaveBeenCalledWith(
+						'redaction-enforcement-updated',
+						expect.objectContaining({
+							user: expect.objectContaining({ id: expect.any(String) }),
+							before: { enforced: false, manual: false, production: false },
+							after: { enforced: true, manual: false, production: true },
+						}),
+					);
+				});
+
+				it('should emit `redaction-enforcement-updated` with before/after when settings are disabled', async () => {
+					enableRedactionFlag();
+					instanceRedactionEnforcementService.get.mockResolvedValue({
+						enforced: true,
+						manual: false,
+						production: true,
+					});
+					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
+
+					await ownerAgent
+						.post('/settings/security')
+						.send({ redactionEnforcement: { floor: 'off' } })
+						.expect(200);
+
+					expect(eventService.emit).toHaveBeenCalledWith(
+						'redaction-enforcement-updated',
+						expect.objectContaining({
+							user: expect.objectContaining({ id: expect.any(String) }),
+							before: { enforced: true, manual: false, production: true },
+							after: { enforced: false, manual: false, production: false },
+						}),
+					);
+				});
+
+				it('should not emit when save is idempotent', async () => {
+					enableRedactionFlag();
+					instanceRedactionEnforcementService.get.mockResolvedValue({
+						enforced: true,
+						manual: false,
+						production: true,
+					});
+					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
+
+					await ownerAgent
+						.post('/settings/security')
+						.send({ redactionEnforcement: { floor: 'production' } })
+						.expect(200);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'redaction-enforcement-updated',
+						expect.anything(),
+					);
+				});
 			});
 		});
 	});

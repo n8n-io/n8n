@@ -17,6 +17,23 @@ on:
         required: false
         default: false
         type: boolean
+      affectedPackages:
+        description: |
+          Space-separated list of workspace packages affected by the PR, as
+          computed by `janitor affected-packages` in install-and-build. Empty
+          string means "no scoping data, run everything".
+        required: false
+        default: ''
+        type: string
+      changedFiles:
+        description: |
+          Newline-separated list of CHANGED_FILES from ci-filter. Passed to
+          per-package `janitor scope` invocations so test runners can filter
+          to actually-changed source files via jest --findRelatedTests or
+          vitest related.
+        required: false
+        default: ''
+        type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
 
@@ -26,8 +43,10 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
@@ -36,8 +55,16 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Test Unit
-        run: pnpm test:ci:backend:unit --summarize
+      # cli is the only backend package wired into janitor scoping today, so
+      # the workspace bulk run excludes it and a dedicated step invokes the
+      # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
+      # for every backend package that hasn't yet added the script.
+      - name: Test Unit (backend, except cli)
+        run: pnpm turbo test:unit --continue --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+
+      - name: Test Unit (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -69,8 +96,10 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
@@ -112,13 +141,12 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
-      MERGE_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
-      TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
 
       - name: Build
         uses: ./.github/actions/setup-nodejs
@@ -126,12 +154,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: |
-          if [ -n "${MERGE_BASE:-}" ]; then
-            pnpm turbo test:changed --filter=n8n-nodes-base --affected --summarize
-          else
-            pnpm turbo test --filter=n8n-nodes-base --summarize
-          fi
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -167,8 +190,10 @@ jobs:
         shard: [1, 2]
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
@@ -178,7 +203,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend:changed --summarize -- --shard=${{ matrix.shard }}/2
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
 

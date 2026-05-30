@@ -11,6 +11,7 @@ export type EmailSendOptions = {
 	appendAttribution?: boolean;
 	allowUnauthorizedCerts?: boolean;
 	attachments?: string;
+	fileAttachments?: string;
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;

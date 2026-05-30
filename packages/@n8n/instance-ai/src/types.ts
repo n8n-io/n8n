@@ -88,12 +88,89 @@ export interface NodeOutputResult {
 	returned: { from: number; to: number };
 }
 
+export interface ResolvedExpressionFailure {
+	/** Dot-path into the parameters tree, e.g. "headers.parameters[0].value". */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** Error message from the expression engine. */
+	error: string;
+	/**
+	 * `unreconstructable-context` flags failures stemming from expression contexts that
+	 * only exist during a live execution (e.g. `$ai`, `$response`, `$request`,
+	 * `$pageCount`, `$secrets`). These are expected and not real expression bugs.
+	 */
+	reason?: 'expression-error' | 'unreconstructable-context';
+}
+
+export interface EmptyExpressionResolution {
+	/** Dot-path into the parameters tree. */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** The resolved value — one of `null`, `undefined`, or `""`. */
+	resolved: null | undefined | '';
+	/** Set when the expression references a non-reconstructed context var (`$vars`, `$secrets`, `$ai`, `$response`, `$request`, `$pageCount`) */
+	reason?: 'unreconstructable-context';
+}
+
+export interface ResolvedNodeParametersResult {
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	/**
+	 * The node's parameters straight from the execution's workflow snapshot, with
+	 * `{{ ... }}` expressions intact. Pair with `resolved` to see which value came
+	 * from which expression. `null` when resolution was refused — see `suppressed`.
+	 */
+	parameters: Record<string, unknown> | null;
+	/**
+	 * Mirror of `parameters` with each expression leaf replaced by its resolved
+	 * value (or `null` if it threw). Oversized leaves are replaced with a
+	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * Returned as a JSON-stringified blob inside `<untrusted_data>` markers —
+	 * resolved values can echo content from upstream nodes (webhook bodies,
+	 * HTTP responses, etc.) and must be treated as untrusted by the agent.
+	 *
+	 * `null` when resolution was refused — see `suppressed`.
+	 */
+	resolved: string | null;
+	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
+	failedExpressions: ResolvedExpressionFailure[];
+	/**
+	 * Expressions that resolved to `null`, `undefined`, or `""` — common cause of
+	 * "this node ran but a parameter looked empty". Often the root cause for missing
+	 * fields downstream when the runtime did not throw.
+	 */
+	emptyResolutions: EmptyExpressionResolution[];
+	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
+	suppressed?: 'parameter-values-disabled';
+}
+
+/**
+ * Resolved-parameter bundle attached to a debug failedNode.
+ * Same payload as `ResolvedNodeParametersResult` minus `nodeName` (redundant —
+ * `failedNode.name` already carries it).
+ */
+export type ResolvedParametersDebugBundle = Omit<
+	ResolvedNodeParametersResult,
+	'nodeName' | 'suppressed'
+>;
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
 		type: string;
 		error: string;
 		inputData?: Record<string, unknown> | string;
+		/**
+		 * Re-resolved parameters for the failed node (parameters tree with expressions
+		 * intact + the same tree with expressions substituted + failed/empty expression
+		 * lists). Omitted when parameter values are gated off, when resolution itself
+		 * errors (debug must not fail), or when the snapshot lacks node-type info.
+		 */
+		resolvedParameters?: ResolvedParametersDebugBundle;
 	};
 	nodeTrace: Array<{
 		name: string;
@@ -261,6 +338,17 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+	/**
+	 * Re-resolve a node's parameter expressions against a saved execution's data.
+	 * Server-side replay of the editor's resolved-parameter view, so the agent can
+	 * see exactly what each parameter resolved to (and which expressions failed)
+	 * for a given item in a past run.
+	 */
+	getResolvedNodeParameters(
+		executionId: string,
+		nodeName: string,
+		options?: { itemIndex?: number; runIndex?: number },
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -821,9 +909,17 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
@@ -1073,12 +1169,9 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
