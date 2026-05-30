@@ -29,7 +29,7 @@ import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composable
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import { isPendingItemFloating } from './confirmationKinds';
-import { scrubSecretsInText } from './scrubSecrets';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
