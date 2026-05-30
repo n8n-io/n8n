@@ -169,8 +169,9 @@ describe('TaskRequester', () => {
 				});
 			});
 
-			(instance as unknown as { executionIdsToTaskIds: Map<string, Set<string>> })
-				.executionIdsToTaskIds.set(executionId, new Set([taskId]));
+			(
+				instance as unknown as { executionIdsToTaskIds: Map<string, Set<string>> }
+			).executionIdsToTaskIds.set(executionId, new Set([taskId]));
 
 			instance.cancelTasks(executionId);
 
