@@ -86,6 +86,14 @@ export function useTimelineGrouping(
 			};
 		}
 
+		function appendArtifacts(group: ResponseGroupSegment, artifacts: ArtifactInfo[]) {
+			for (const artifact of artifacts) {
+				if (!group.artifacts.some((existing) => existing.resourceId === artifact.resourceId)) {
+					group.artifacts.push(artifact);
+				}
+			}
+		}
+
 		for (const entry of timeline) {
 			if (entry.type === 'text') {
 				// Text from the same API response as the current group stays inside
@@ -110,8 +118,9 @@ export function useTimelineGrouping(
 					currentGroup.questionCount++;
 				}
 				if (tc) {
-					currentGroup.artifacts.push(
-						...extractArtifacts({
+					appendArtifacts(
+						currentGroup,
+						extractArtifacts({
 							...agentNode.value,
 							targetResource: undefined,
 							toolCalls: [tc],
@@ -129,7 +138,7 @@ export function useTimelineGrouping(
 				currentGroup.childCount++;
 				const child = agentNode.value.children.find((c) => c.agentId === entry.agentId);
 				if (child) {
-					currentGroup.artifacts.push(...extractArtifacts(child));
+					appendArtifacts(currentGroup, extractArtifacts(child));
 				}
 			}
 		}

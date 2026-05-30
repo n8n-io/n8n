@@ -23,7 +23,7 @@
     "test:unit": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.unit.js",
     "test:unit:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped --runner=jest -- --config=jest.config.unit.js",
     "test:integration": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.integration.js",
-    "test:integration:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped --runner=jest --jest-variant=integration -- --config=jest.config.integration.js",
+    "test:integration:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped --runner=jest --jest-variant=integration -- --config=jest.config.integration.js --passWithNoTests",
     "test:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.integration.js --no-coverage",
     "test:sqlite:migrations": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.migration.js --no-coverage",

@@ -1,4 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 
 export function createInMemoryEventBus(): InstanceAiEventBus {

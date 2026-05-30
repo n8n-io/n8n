@@ -322,6 +322,7 @@ import {
   documentLoader,
   textSplitter,
   fromAi,
+  nodeJson,
   expr,
 } from '@n8n/workflow-sdk';
 ```
