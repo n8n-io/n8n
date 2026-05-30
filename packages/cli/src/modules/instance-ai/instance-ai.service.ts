@@ -3177,21 +3177,39 @@ export class InstanceAiService {
 
 	/**
 	 * Resolve the workflow IDs the checkpoint task is verifying so the runWorkflow
-	 * permission override can be scoped. Walks the checkpoint's `dependsOn` to find
-	 * the build-workflow tasks it depends on and reads their `outcome.workflowId`.
-	 * Returns an empty set when the graph is missing or the checkpoint has no
-	 * resolved workflow deps (in which case the override applies broadly via the
-	 * `allowList === undefined` short-circuit only if we don't set the field).
+	 * permission override can be scoped, and keep explicit user-requested runs
+	 * approval-gated even when they happen as checkpoint fallback.
 	 */
-	private async getCheckpointAllowedWorkflowIds(
+	private checkpointRequiresRunApproval(
+		graph: PlannedTaskGraph,
+		checkpoint: PlannedTaskRecord,
+	): boolean {
+		if (graph.postBuildRunApprovalRequired === true) return true;
+
+		const deps = new Set(checkpoint.deps);
+		const text = graph.tasks
+			.filter((task) => deps.has(task.id))
+			.map((task) => `${task.title}\n${task.spec}`)
+			.join('\n')
+			.toLowerCase();
+
+		return (
+			/\bthen\s+(run|execute|test)\b/.test(text) ||
+			/\b(run|execute|test)\s+(it\s+)?(once|immediately|manually|after building)\b/.test(text)
+		);
+	}
+
+	private async getCheckpointRunPolicy(
 		threadId: string,
 		checkpointTaskId: string,
-	): Promise<ReadonlySet<string>> {
+	): Promise<{ allowedWorkflowIds: ReadonlySet<string>; requireApproval: boolean }> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
 			const graph = await plannedTaskService.getGraph(threadId);
 			const checkpoint = graph?.tasks.find((t) => t.id === checkpointTaskId);
-			if (!graph || !checkpoint) return new Set();
+			if (!graph || !checkpoint) {
+				return { allowedWorkflowIds: new Set(), requireApproval: false };
+			}
 			const deps = new Set(checkpoint.deps);
 			const allowed = new Set<string>();
 			for (const task of graph.tasks) {
@@ -3201,14 +3219,17 @@ export class InstanceAiService {
 					allowed.add(workflowId);
 				}
 			}
-			return allowed;
+			return {
+				allowedWorkflowIds: allowed,
+				requireApproval: this.checkpointRequiresRunApproval(graph, checkpoint),
+			};
 		} catch (error) {
 			this.logger.warn('Failed to resolve checkpoint allowed workflow IDs', {
 				threadId,
 				checkpointTaskId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return new Set();
+			return { allowedWorkflowIds: new Set(), requireApproval: false };
 		}
 	}
 
@@ -3576,10 +3597,9 @@ export class InstanceAiService {
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
 				// the orchestrator can call `executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
-				context.allowedRunWorkflowIds = await this.getCheckpointAllowedWorkflowIds(
-					threadId,
-					checkpoint.checkpointTaskId,
-				);
+				const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
+				context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
+				context.requireRunWorkflowApproval = runPolicy.requireApproval;
 			}
 
 			if (plannedBuild?.isPlannedBuildFollowUp) {

@@ -732,6 +732,8 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -831,6 +833,7 @@ export type PlannedTaskGraphStatus =
 export interface PlannedTaskGraph {
 	planRunId: string;
 	messageGroupId?: string;
+	postBuildRunApprovalRequired?: boolean;
 	status: PlannedTaskGraphStatus;
 	tasks: PlannedTaskRecord[];
 }
@@ -847,7 +850,11 @@ export interface PlannedTaskService {
 	createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph>;
 	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
 	markRunning(

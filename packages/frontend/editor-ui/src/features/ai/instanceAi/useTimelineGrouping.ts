@@ -109,6 +109,17 @@ export function useTimelineGrouping(
 				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
 					currentGroup.questionCount++;
 				}
+				if (tc) {
+					currentGroup.artifacts.push(
+						...extractArtifacts({
+							...agentNode.value,
+							targetResource: undefined,
+							toolCalls: [tc],
+							children: [],
+							timeline: [],
+						}),
+					);
+				}
 			} else if (entry.type === 'child') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -139,7 +150,7 @@ export function useTimelineGrouping(
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0;
+			return seg.toolCallCount > 0 || seg.childCount > 0 || seg.artifacts.length > 0;
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.

@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents';
+import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -27,6 +28,21 @@ const patchSchema = z.object({
 	old_str: z.string().describe('Exact string to find in the code'),
 	new_str: z.string().describe('Replacement string'),
 });
+
+const confirmationSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+});
+
+const confirmationResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+interface BuildCtx {
+	resumeData?: z.infer<typeof confirmationResumeSchema>;
+	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+}
 
 // Coerce JSON-stringified arrays into arrays. The model sometimes sends `patches`
 // as a JSON string because the payload contains escaped code. Leave non-strings
@@ -216,6 +232,21 @@ function withDeterministicRouting(
 	};
 }
 
+function isPlannedBuildContext(context: InstanceAiContext): boolean {
+	return Boolean(context.workflowBuildContext?.plannedTaskService);
+}
+
+async function resolveWorkflowName(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string> {
+	try {
+		return (await context.workflowService.getAsWorkflowJSON(workflowId)).name || 'workflow';
+	} catch {
+		return 'workflow';
+	}
+}
+
 async function reportWorkflowBuildOutcome(
 	context: InstanceAiContext,
 	outcome: WorkflowBuildOutcome,
@@ -286,14 +317,53 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				usesWorkflowPinDataForVerification: z.boolean().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
+				denied: z.boolean().optional(),
+				reason: z.string().optional(),
 				errors: z.array(z.string()).optional(),
 				warnings: z.array(z.string()).optional(),
 			}),
 		)
-		.handler(async (input: z.infer<typeof buildWorkflowInputSchema>) => {
+		.suspend(confirmationSuspendSchema)
+		.resume(confirmationResumeSchema)
+		.handler(async (input, ctx: BuildCtx) => {
 			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				return { success: false, errors: ['Action blocked by admin'] };
+			}
+
+			if (!input.workflowId && !isPlannedBuildContext(context)) {
+				return {
+					success: false,
+					errors: [
+						'New workflow builds must be planned first: call `plan` so the user can approve the build plan before saving.',
+					],
+				};
+			}
+
+			if (
+				input.workflowId &&
+				!isPlannedBuildContext(context) &&
+				context.permissions?.updateWorkflow !== 'always_allow'
+			) {
+				if (ctx.resumeData && !ctx.resumeData.approved) {
+					return {
+						success: false,
+						denied: true,
+						reason: 'User denied the action',
+						errors: ['User denied the action'],
+					};
+				}
+				if (!ctx.resumeData) {
+					if (!ctx.suspend) {
+						return { success: false, errors: ['Workflow edit approval is required.'] };
+					}
+					const workflowName = await resolveWorkflowName(context, input.workflowId);
+					return await ctx.suspend({
+						requestId: nanoid(),
+						message: `Edit ${workflowName} (ID: ${input.workflowId})?`,
+						severity: 'warning',
+					});
+				}
 			}
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;

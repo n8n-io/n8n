@@ -122,7 +122,11 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 	async createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph> {
 		validateDependencies(tasks);
 
@@ -132,6 +136,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		const graph: PlannedTaskGraph = {
 			planRunId: metadata.planRunId,
 			messageGroupId: metadata.messageGroupId,
+			postBuildRunApprovalRequired: metadata.postBuildRunApprovalRequired ?? undefined,
 			status: 'awaiting_approval',
 			tasks: tasks.map<PlannedTaskRecord>((task) => ({
 				...task,

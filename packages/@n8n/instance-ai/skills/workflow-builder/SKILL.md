@@ -39,6 +39,11 @@ Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
 
+For normal new-workflow requests, call `plan` first so the user can approve the
+build plan. Use this skill to create new workflows only during an approved
+`<planned-task-follow-up type="build-workflow">` turn. If this skill was loaded
+for a normal new-workflow request, stop discovery and call `plan` immediately.
+
 Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
 orchestrator's tools.
