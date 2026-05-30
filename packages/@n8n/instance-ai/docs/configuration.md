@@ -189,6 +189,11 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
+# With a governed OpenAI-compatible endpoint (e.g. Tuning Engines)
+N8N_INSTANCE_AI_MODEL=custom/gpt-4o
+N8N_INSTANCE_AI_MODEL_URL=https://api.tuningengines.com/v1
+N8N_INSTANCE_AI_MODEL_API_KEY=sk-te-your-inference-key
+
 # Full configuration with observational memory tuning
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
