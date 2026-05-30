@@ -9,7 +9,7 @@ import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, SearchWorkflowNodesResponse } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -18,6 +18,15 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+
+export async function searchWorkflowNodes(context: IRestApiContext, query: string) {
+	return await makeRestApiRequest<SearchWorkflowNodesResponse>(
+		context,
+		'GET',
+		'/workflows/search-nodes',
+		{ query },
+	);
+}
 
 export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
 	const response = await makeRestApiRequest<NewWorkflowResponse>(
