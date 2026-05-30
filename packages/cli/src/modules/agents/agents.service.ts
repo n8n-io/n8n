@@ -2046,24 +2046,41 @@ export class AgentsService {
 		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
+	/**
+	 * Resolve configured sub-agent refs to their saved agents, de-duplicated
+	 * (order preserved) and fetched once each. `agent` is null when the id no
+	 * longer resolves in the project. Shared by save-time validation and
+	 * runtime delegation config.
+	 */
+	private async fetchUniqueSubAgents(
+		refs: Array<{ agentId: string }>,
+		projectId: string,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		const seen = new Set<string>();
+		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
+		for (const { agentId } of refs) {
+			if (seen.has(agentId)) continue;
+			seen.add(agentId);
+			resolved.push({
+				agentId,
+				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
+			});
+		}
+		return resolved;
+	}
+
 	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
 		const refs = config.subAgents?.agents ?? [];
 		if (refs.length === 0) return;
 
-		const seen = new Set<string>();
-		for (const { agentId } of refs) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
-
-			const subAgent = await this.agentRepository.findByIdAndProjectId(agentId, entity.projectId);
-			if (!subAgent) {
+			if (!agent) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
 			}
-			if (!subAgent.activeVersionId) {
+			if (!agent.activeVersionId) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
 			}
 		}
@@ -2188,13 +2205,8 @@ export class AgentsService {
 
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
-		const seen = new Set<string>();
 
-		for (const { agentId } of configuredAgents) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-
-			const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
 			if (!agent?.activeVersionId) continue;
 
 			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };

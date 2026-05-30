@@ -1234,11 +1234,6 @@ export class AgentRuntime {
 			const { type: _type, ...payload } = data;
 			writeEventChunk({ type: 'subagent-started', ...payload });
 		};
-		const onSubAgentProgress = (data: AgentEventData): void => {
-			if (data.type !== AgentEvent.SubAgentProgress) return;
-			const { type: _type, ...payload } = data;
-			writeEventChunk({ type: 'subagent-progress', ...payload });
-		};
 		const onSubAgentCompleted = (data: AgentEventData): void => {
 			if (data.type !== AgentEvent.SubAgentCompleted) return;
 			const { type: _type, ...payload } = data;
@@ -1247,7 +1242,6 @@ export class AgentRuntime {
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 		this.eventBus.on(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 		this.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
-		this.eventBus.on(AgentEvent.SubAgentProgress, onSubAgentProgress);
 		this.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 
 		this.withTelemetryRootSpan(
@@ -1271,7 +1265,6 @@ export class AgentRuntime {
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
-				this.eventBus.off(AgentEvent.SubAgentProgress, onSubAgentProgress);
 				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 			});
 

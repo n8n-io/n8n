@@ -205,24 +205,7 @@ interface RawSuspensionEvent {
 	timestamp: number;
 }
 
-interface RawSubAgentEvent {
-	type: 'subagent';
-	taskName: string;
-	taskPath: string;
-	parentToolCallId?: string;
-	subAgentId?: string;
-	runId?: string;
-	threadId?: string;
-	status: 'running' | 'completed' | 'failed';
-	startTime: number;
-	endTime: number;
-	durationMs?: number;
-	usage?: unknown;
-	finishReason?: string;
-	error?: string;
-}
-
-type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent | RawSubAgentEvent;
+type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -249,19 +232,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			});
 		}
 
-		const events = timelineEvents(exec);
-		// A delegate_subagent call is recorded as BOTH a `tool-call` entry and a
-		// `subagent` lifecycle entry that share one toolCallId. Track the tool-call
-		// ids so the subagent branch can skip the duplicate — the tool-call entry is
-		// the richer one (it carries the goal/context input and the full answer).
-		const delegateToolCallIds = new Set<string>();
-		for (const e of events) {
-			if (e.type === 'tool-call' && e.name === 'delegate_subagent' && e.toolCallId) {
-				delegateToolCallIds.add(e.toolCallId);
-			}
-		}
-
-		for (const event of events) {
+		for (const event of timelineEvents(exec)) {
 			if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
@@ -305,37 +276,6 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolName: event.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
-				});
-			} else if (event.type === 'subagent') {
-				// Skip the lifecycle-derived duplicate when the matching delegate_subagent
-				// tool-call entry is present (same toolCallId); keep the richer tool item.
-				if (
-					event.parentToolCallId !== undefined &&
-					delegateToolCallIds.has(event.parentToolCallId)
-				) {
-					continue;
-				}
-				items.push({
-					kind: 'tool',
-					executionId: exec.id,
-					toolName: 'delegate_subagent',
-					...(event.parentToolCallId !== undefined ? { toolCallId: event.parentToolCallId } : {}),
-					toolInput: {
-						taskName: event.taskName,
-						taskPath: event.taskPath,
-						...(event.subAgentId !== undefined ? { subAgentId: event.subAgentId } : {}),
-					},
-					toolOutput: {
-						status: event.status,
-						...(event.runId !== undefined ? { runId: event.runId } : {}),
-						...(event.threadId !== undefined ? { threadId: event.threadId } : {}),
-						...(event.usage !== undefined ? { usage: event.usage } : {}),
-						...(event.finishReason !== undefined ? { finishReason: event.finishReason } : {}),
-						...(event.error !== undefined ? { error: event.error } : {}),
-					},
-					toolSuccess: event.status === 'completed',
-					timestamp: event.startTime,
-					endTimestamp: event.endTime || event.startTime,
 				});
 			}
 		}

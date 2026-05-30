@@ -64,10 +64,6 @@ export class SubAgentForegroundRunner {
 			throw new UserError('Foreground sub-agent runner only supports foreground execution mode');
 		}
 
-		if (request.contextMode !== undefined && request.contextMode !== 'fresh') {
-			throw new UserError('Foreground sub-agent runner only supports fresh context mode');
-		}
-
 		// The SDK delegate tool already assigned this delegation's task path and
 		// enforced the depth/fan-out policy before invoking the runner. Just
 		// validate the forwarded shape — don't recompute it or re-run the gates.

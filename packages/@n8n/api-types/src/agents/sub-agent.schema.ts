@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
-import {
-	RunnableAgentJsonConfigSchema,
-	type RunnableAgentJsonConfig,
-} from './agent-json-config.schema';
+import type { RunnableAgentJsonConfig } from './agent-json-config.schema';
 
-export const SubAgentTaskPathSchema = z.string().regex(/^\/root(?:\/[a-z0-9_]+)*$/);
+// The `/root[/segment]*` task-path shape is owned and validated by `@n8n/agents`
+// (`assertSubAgentTaskPath`), which the n8n runner calls before running a child.
+// This schema only types the spawn request, so a plain string suffices and we
+// avoid duplicating the SDK's pattern here.
+export const SubAgentTaskPathSchema = z.string().min(1);
 
-export const SubAgentContextModeSchema = z.enum(['fresh', 'fork-filtered', 'selected-summary']);
+// Only 'fresh' (a brand-new child conversation) is implemented today.
+export const SubAgentContextModeSchema = z.enum(['fresh']);
 
 /**
  * 'foreground' blocks the parent turn until the subagent completes — the only
@@ -24,13 +26,6 @@ export const SubAgentExecutionModeSchema = z.enum(['foreground', 'background']);
  */
 export const SubAgentSourceSchema = z.object({
 	agentId: z.string().min(1),
-	versionId: z.string().min(1).optional(),
-});
-
-export const ResolvedSubAgentSourceSchema = z.object({
-	config: RunnableAgentJsonConfigSchema,
-	/** The saved agent id this source resolved from. */
-	sourceId: z.string().min(1),
 	versionId: z.string().min(1).optional(),
 });
 
@@ -57,10 +52,6 @@ export const SubAgentSpawnRequestSchema = z.object({
 	/** This delegation's task path — already assigned and policy-checked by the SDK delegate tool. */
 	taskPath: SubAgentTaskPathSchema,
 });
-
-export type SubAgentTaskPath = `/root${'' | `/${string}`}`;
-export type SubAgentContextMode = z.infer<typeof SubAgentContextModeSchema>;
-export type SubAgentExecutionMode = z.infer<typeof SubAgentExecutionModeSchema>;
 
 export type SubAgentSource = {
 	agentId: string;

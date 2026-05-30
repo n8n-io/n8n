@@ -1453,12 +1453,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 					startedAt: 100,
 				});
 				toolCtx.emitEvent?.({
-					type: AgentEvent.SubAgentProgress,
-					...base,
-					stage: 'running',
-					timestamp: 150,
-				});
-				toolCtx.emitEvent?.({
 					type: AgentEvent.SubAgentCompleted,
 					...base,
 					status: 'completed',
@@ -1505,7 +1499,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(chunks).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ type: 'subagent-started', taskPath: '/root/research_api' }),
-				expect.objectContaining({ type: 'subagent-progress', stage: 'running' }),
 				expect.objectContaining({
 					type: 'subagent-completed',
 					status: 'completed',

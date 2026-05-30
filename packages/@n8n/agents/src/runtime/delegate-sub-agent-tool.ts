@@ -127,7 +127,7 @@ export interface DelegateSubAgentToolOutput {
  * You supply `runSubAgent` — the host callback that actually runs the child for
  * a delegation and returns its result. Everything else (input/output schema,
  * system prompt, task-path bookkeeping, policy enforcement, and the
- * `subagent-started` / `-progress` / `-completed` lifecycle events) is owned by
+ * `subagent-started` / `-completed` lifecycle events) is owned by
  * the tool.
  */
 export interface CreateDelegateSubAgentToolOptions {
@@ -154,7 +154,7 @@ export interface CreateDelegateSubAgentToolOptions {
  * The tool owns the cross-cutting concerns: the model-facing input/output
  * schema, the description + system instruction that teach the LLM when/how to
  * delegate, task-path bookkeeping, policy enforcement (depth / fan-out /
- * canSpawnSubAgents), and the `subagent-started` / `-progress` / `-completed`
+ * canSpawnSubAgents), and the `subagent-started` / `-completed`
  * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
  * @example Host-controlled execution (what the n8n CLI does):
@@ -251,7 +251,6 @@ async function handleDelegateSubAgent(
 
 		startedAt = Date.now();
 		emitSubAgentStarted(ctx, request, startedAt);
-		emitSubAgentProgress(ctx, request);
 		const output = await options.runSubAgent(request);
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;
@@ -287,15 +286,6 @@ function emitSubAgentStarted(
 		type: AgentEvent.SubAgentStarted,
 		...subAgentLifecycleBase(request),
 		startedAt,
-	});
-}
-
-function emitSubAgentProgress(ctx: ToolContext, request: DelegateSubAgentRequest): void {
-	ctx.emitEvent?.({
-		type: AgentEvent.SubAgentProgress,
-		...subAgentLifecycleBase(request),
-		stage: 'running',
-		timestamp: Date.now(),
 	});
 }
 

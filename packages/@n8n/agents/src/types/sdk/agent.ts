@@ -8,7 +8,6 @@ import type {
 	AgentEvent,
 	AgentEventHandler,
 	SubAgentCompletedPayload,
-	SubAgentProgressPayload,
 	SubAgentStartedPayload,
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
@@ -132,7 +131,6 @@ export type StreamChunk = ContentMetadata &
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
-		| ({ type: 'subagent-progress' } & SubAgentProgressPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| {
 				type: 'finish';

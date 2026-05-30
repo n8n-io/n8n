@@ -138,7 +138,6 @@ describe('createDelegateSubAgentTool', () => {
 
 		expect(events.map((event) => event.type)).toEqual([
 			AgentEvent.SubAgentStarted,
-			AgentEvent.SubAgentProgress,
 			AgentEvent.SubAgentCompleted,
 		]);
 		expect(events[0]).toMatchObject({
@@ -147,7 +146,7 @@ describe('createDelegateSubAgentTool', () => {
 			parentRunId: 'parent-run-1',
 			parentToolCallId: 'tool-call-1',
 		});
-		expect(events[2]).toMatchObject({
+		expect(events[1]).toMatchObject({
 			status: 'completed',
 			runId: 'child-run-1',
 			threadId: 'child-thread-1',

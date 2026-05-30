@@ -6262,7 +6262,6 @@
 	"agents.builder.subAgents.title": "Sub agents",
 	"agents.builder.subAgents.description": "Let this agent delegate focused subtasks to selected agents in this project. Add at least one published agent to enable delegation.",
 	"agents.builder.subAgents.add": "Add agent",
-	"agents.builder.subAgents.selectPlaceholder": "Select an agent",
 	"agents.builder.subAgents.remove": "Remove {name}",
 	"agents.builder.subAgents.modal.title": "Add sub agents",
 	"agents.builder.subAgents.modal.description": "Select published agents from this project to let this agent delegate work to them.",

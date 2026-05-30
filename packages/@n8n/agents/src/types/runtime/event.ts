@@ -18,11 +18,6 @@ export interface SubAgentStartedPayload extends SubAgentLifecycleBase {
 	startedAt: number;
 }
 
-export interface SubAgentProgressPayload extends SubAgentLifecycleBase {
-	stage: 'running';
-	timestamp: number;
-}
-
 export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
 	status: 'completed' | 'failed';
 	startedAt: number;
@@ -44,7 +39,6 @@ export const enum AgentEvent {
 	ToolExecutionStart = 'tool_execution_start',
 	ToolExecutionEnd = 'tool_execution_end',
 	SubAgentStarted = 'subagent_started',
-	SubAgentProgress = 'subagent_progress',
 	SubAgentCompleted = 'subagent_completed',
 	Error = 'error',
 }
@@ -63,7 +57,6 @@ export type AgentEventData =
 			isError: boolean;
 	  }
 	| ({ type: AgentEvent.SubAgentStarted } & SubAgentStartedPayload)
-	| ({ type: AgentEvent.SubAgentProgress } & SubAgentProgressPayload)
 	| ({ type: AgentEvent.SubAgentCompleted } & SubAgentCompletedPayload)
 	| {
 			type: AgentEvent.Error;

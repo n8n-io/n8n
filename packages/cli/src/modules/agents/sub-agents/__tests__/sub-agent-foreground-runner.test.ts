@@ -286,23 +286,6 @@ describe('SubAgentForegroundRunner', () => {
 		});
 	});
 
-	it('rejects non-fresh context modes for now', async () => {
-		await expect(
-			runner.runForeground(
-				{
-					...spawnRequest,
-					contextMode: 'selected-summary',
-				},
-				{
-					projectId,
-					credentialProvider,
-					createToolExecutor,
-					createMemoryFactory,
-				},
-			),
-		).rejects.toThrow('Foreground sub-agent runner only supports fresh context mode');
-	});
-
 	it('passes an abort signal when timeout policy is configured', async () => {
 		await runner.runForeground(
 			{
