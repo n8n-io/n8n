@@ -187,7 +187,6 @@ import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import { CreateAgentFilesTable1784000000017 } from '../common/1784000000017-CreateAgentFilesTable';
 import { AddSubAgentOriginToAgentExecutionThreads1784000000018 } from '../common/1784000000018-AddSubAgentOriginToAgentExecutionThreads';
-import { WidenAgentThreadIdColumns1784000000019 } from '../common/1784000000019-WidenAgentThreadIdColumns';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -380,7 +379,6 @@ const sqliteMigrations: Migration[] = [
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
 	CreateAgentFilesTable1784000000017,
 	AddSubAgentOriginToAgentExecutionThreads1784000000018,
-	WidenAgentThreadIdColumns1784000000019,
 ];
 
 export { sqliteMigrations };

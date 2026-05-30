@@ -26,8 +26,8 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	thread: AgentExecutionThread;
 
 	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
-	// `test-<agentId>:<userId>`), so they exceed a bare uuid — matches
-	// WidenAgentThreadIdColumns.
+	// `test-<agentId>:<userId>`), so they exceed a bare uuid — widened to 255 in
+	// AddSubAgentOriginToAgentExecutionThreads1784000000018.
 	@Column({ type: 'varchar', length: 255 })
 	threadId: string;
 
