@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	delegateLabel,
 	humanizeTaskName,
 	isDelegateSubAgentTool,
 	isFailedDelegateOutput,
 	parseDelegateInput,
 	parseDelegateOutput,
+	resolveSubAgentName,
 } from '../utils/delegate-tool';
 
 describe('delegate-tool', () => {
@@ -92,6 +94,56 @@ describe('delegate-tool', () => {
 		it('returns empty string for empty/undefined', () => {
 			expect(humanizeTaskName(undefined)).toBe('');
 			expect(humanizeTaskName('   ')).toBe('');
+		});
+	});
+
+	describe('resolveSubAgentName', () => {
+		it('prefers the configured sub-agent name from the id map', () => {
+			const map = new Map([['agent-1', 'Research Bot']]);
+			expect(resolveSubAgentName({ subAgentId: 'agent-1', taskName: 'research_api' }, map)).toBe(
+				'Research Bot',
+			);
+		});
+
+		it('falls back to the humanized task name when the id is unknown', () => {
+			expect(
+				resolveSubAgentName({ subAgentId: 'missing', taskName: 'research_api' }, new Map()),
+			).toBe('Research api');
+		});
+
+		it('falls back to the humanized task name when no id is given', () => {
+			expect(resolveSubAgentName({ taskName: 'compare-pricing' }, new Map())).toBe(
+				'Compare pricing',
+			);
+		});
+
+		it('ignores a blank resolved name and uses the task name', () => {
+			const map = new Map([['agent-1', '   ']]);
+			expect(resolveSubAgentName({ subAgentId: 'agent-1', taskName: 'deep_research' }, map)).toBe(
+				'Deep research',
+			);
+		});
+
+		it('returns empty string when neither id nor task name resolve', () => {
+			expect(resolveSubAgentName({}, new Map())).toBe('');
+			expect(resolveSubAgentName('not-an-object', new Map())).toBe('');
+		});
+	});
+
+	describe('delegateLabel', () => {
+		// Stub returns the chosen key (with the interpolated name) so the assertions
+		// pin down both which key is used and the interpolation.
+		const i18n = {
+			baseText: (key: string, opts?: { interpolate?: { name?: string } }) =>
+				opts?.interpolate?.name ? `${key}:${opts.interpolate.name}` : key,
+		} as unknown as Parameters<typeof delegateLabel>[0];
+
+		it('uses the named label and interpolates the name', () => {
+			expect(delegateLabel(i18n, 'Research Bot')).toBe('agents.chat.delegate.label:Research Bot');
+		});
+
+		it('falls back to the bare label when the name is empty', () => {
+			expect(delegateLabel(i18n, '')).toBe('agents.chat.delegate.labelFallback');
 		});
 	});
 });

@@ -133,13 +133,6 @@ export function chartBlockColor(kind: EventKind): string {
 }
 
 /**
- * i18n keys for built-in tools that should render as a friendly label rather
- * than their raw machine name. Returns `null` for any tool not in the map so
- * callers fall back to the raw `toolName`.
- */
-export type BuiltinToolLabelKey = BaseTextKey;
-
-/**
  * Resolve the i18n label for a tool entry. Some built-in tools (currently
  * `rich_interaction`) have two semantically distinct modes — interactive
  * (suspends, awaits user input) vs display-only (renders a card and the
@@ -151,7 +144,7 @@ export type BuiltinToolLabelKey = BaseTextKey;
 export function builtinToolLabelKey(
 	toolName: string | undefined,
 	output?: unknown,
-): BuiltinToolLabelKey | null {
+): BaseTextKey | null {
 	switch (toolName) {
 		case 'rich_interaction':
 			return isDisplayOnlyOutput(output)

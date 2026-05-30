@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { N8nIcon, N8nMarkdownEditor, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, reactive, toRef, watch } from 'vue';
+import { reactive, toRef } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
-import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatDuration } from '../session-timeline.utils';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 import {
-	humanizeTaskName,
+	delegateLabel,
 	isDelegateSubAgentTool,
-	parseDelegateInput,
 	parseDelegateOutput,
+	resolveSubAgentName,
 } from '../utils/delegate-tool';
 
 const props = defineProps<{
@@ -20,28 +20,12 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-// Resolve sub-agent ids → friendly names for the delegate step's label, via the
-// cached/deduped project agents list (shared with the sub-agent picker).
+// Resolve sub-agent ids → friendly names for the delegate step's label, loaded
+// lazily and only when the chat actually contains delegations.
 const projectIdRef = toRef(() => props.projectId ?? '');
-const { list: projectAgents, ensureLoaded } = useProjectAgentsList(projectIdRef);
-
-const hasDelegateCall = computed(() =>
+const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 	props.toolCalls.some((tc) => isDelegateSubAgentTool(tc.tool)),
 );
-
-watch(
-	[hasDelegateCall, projectIdRef],
-	([needed, projectId]) => {
-		if (needed && projectId) void ensureLoaded().catch(() => {});
-	},
-	{ immediate: true },
-);
-
-const subAgentNameById = computed(() => {
-	const map = new Map<string, string>();
-	for (const agent of projectAgents.value ?? []) map.set(agent.id, agent.name);
-	return map;
-});
 
 // Track which delegate steps are expanded (by tool-call id).
 const expandedIds = reactive(new Set<string>());
@@ -51,16 +35,11 @@ function getToolDisplayName(toolName: string): string {
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
 }
 
-// Delegate steps are prefixed to flag that a sub-agent ran, then labelled with
-// the sub-agent's name when resolvable, falling back to the humanized task name.
+// Delegate steps render as "Sub-agent · <name>" (resolved id, else humanized
+// task name) to flag that a sub-agent ran.
 function stepLabel(tc: ToolCall): string {
 	if (!isDelegateSubAgentTool(tc.tool)) return getToolDisplayName(tc.tool);
-	const input = parseDelegateInput(tc.input);
-	const resolved = input?.subAgentId ? subAgentNameById.value.get(input.subAgentId) : undefined;
-	const name = resolved?.trim() || humanizeTaskName(input?.taskName);
-	return name
-		? i18n.baseText('agents.chat.delegate.label', { interpolate: { name } })
-		: i18n.baseText('agents.chat.delegate.labelFallback');
+	return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
 }
 
 function delegateAnswer(tc: ToolCall): string {
@@ -140,7 +119,7 @@ function toolDuration(tc: ToolCall): string {
 					<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 						{{ stepLabel(tc) }}
 					</span>
-					<span v-if="toolDuration(tc)" :class="$style.duration" data-test-id="tool-step-duration">
+					<span v-if="toolDuration(tc)" :class="$style.duration">
 						{{ toolDuration(tc) }}
 					</span>
 					<N8nIcon
@@ -150,11 +129,7 @@ function toolDuration(tc: ToolCall): string {
 						:class="$style.chevron"
 					/>
 				</component>
-				<div
-					v-if="isExpandable(tc) && isExpanded(tc)"
-					:class="$style.answer"
-					data-test-id="delegate-answer"
-				>
+				<div v-if="isExpandable(tc) && isExpanded(tc)" :class="$style.answer">
 					<N8nMarkdownEditor
 						:model-value="delegateAnswer(tc)"
 						readonly

@@ -28,8 +28,8 @@ import {
 	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
 } from '@/features/agents/session-timeline.utils';
-import { useProjectAgentsList } from '@/features/agents/composables/useProjectAgentsList';
-import { parseDelegateInput, humanizeTaskName } from '@/features/agents/utils/delegate-tool';
+import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
@@ -73,31 +73,17 @@ const baseItems = computed<TimelineItem[]>(() =>
 	flattenExecutionsToTimelineItems(executions.value),
 );
 
-// Resolve sub-agent ids to friendly names via the project agents list, loaded
-// lazily and only when the session actually contains delegations (mirrors how
-// the chat resolves the delegate step label).
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
-	useProjectAgentsList(projectId);
-const subAgentNameById = computed(() => {
-	const map = new Map<string, string>();
-	for (const agent of projectAgents.value ?? []) map.set(agent.id, agent.name);
-	return map;
-});
-
-watch(
-	() => baseItems.value.some(isSubAgentTimelineItem),
-	(needed) => {
-		if (needed) void ensureProjectAgentsLoaded().catch(() => {});
-	},
-	{ immediate: true },
+// Resolve sub-agent ids to friendly names, loaded lazily and only when the
+// session actually contains delegations (mirrors how the chat resolves the
+// delegate step label).
+const { subAgentNameById } = useSubAgentNames(projectId, () =>
+	baseItems.value.some(isSubAgentTimelineItem),
 );
 
 const items = computed<TimelineItem[]>(() =>
 	baseItems.value.map((item) => {
 		if (!isSubAgentTimelineItem(item)) return item;
-		const input = parseDelegateInput(item.toolInput);
-		const resolved = input?.subAgentId ? subAgentNameById.value.get(input.subAgentId) : undefined;
-		const name = resolved?.trim() || humanizeTaskName(input?.taskName);
+		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
 		return name ? { ...item, subAgentName: name } : item;
 	}),
 );

@@ -20,6 +20,7 @@ import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
@@ -131,18 +132,10 @@ const isSubAgent = computed((): boolean =>
 	props.item ? isSubAgentTimelineItem(props.item) : false,
 );
 
-function subAgentLabel(): string {
-	return props.item?.subAgentName
-		? i18n.baseText('agents.chat.delegate.label', {
-				interpolate: { name: props.item.subAgentName },
-			})
-		: i18n.baseText('agents.chat.delegate.labelFallback');
-}
-
 const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
-	if (isSubAgent.value) return subAgentLabel();
+	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);

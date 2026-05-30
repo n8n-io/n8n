@@ -1,3 +1,4 @@
+import type { useI18n } from '@n8n/i18n';
 import { z } from 'zod';
 
 /**
@@ -63,4 +64,34 @@ export function humanizeTaskName(taskName: string | undefined): string {
 	const normalized = taskName?.trim().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
 	if (!normalized) return '';
 	return normalized.charAt(0).toLocaleUpperCase() + normalized.slice(1);
+}
+
+/**
+ * Resolve a delegate call's display name from its raw tool input: the configured
+ * sub-agent's name when its id maps to one, else the humanized task name, else
+ * `''`. Shared by the chat tool step and the session timeline so both label a
+ * delegation identically.
+ */
+export function resolveSubAgentName(input: unknown, nameById: Map<string, string>): string {
+	const parsed = parseDelegateInput(input);
+	// A blank/empty resolved name must fall through to the task name, so this is a
+	// truthiness check (not nullish) on purpose.
+	const resolved = parsed?.subAgentId ? nameById.get(parsed.subAgentId)?.trim() : undefined;
+	if (resolved) return resolved;
+	return humanizeTaskName(parsed?.taskName);
+}
+
+/**
+ * Format a delegate label: `Sub-agent · <name>` when a name resolved, otherwise
+ * the bare `Sub-agent` fallback. Takes the i18n instance (rather than resolving
+ * keys at the call site) so the chat, timeline row, and detail panel stay in
+ * sync.
+ */
+export function delegateLabel(
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
+	name: string,
+): string {
+	return name
+		? i18n.baseText('agents.chat.delegate.label', { interpolate: { name } })
+		: i18n.baseText('agents.chat.delegate.labelFallback');
 }

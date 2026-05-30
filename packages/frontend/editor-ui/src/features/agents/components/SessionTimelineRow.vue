@@ -8,6 +8,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
@@ -25,14 +26,6 @@ const i18n = useI18n();
 // to match the chat, rather than as a plain tool.
 const isSubAgent = computed((): boolean => isSubAgentTimelineItem(props.item));
 const pillKind = computed(() => (isSubAgent.value ? 'subagent' : props.item.kind));
-
-function subAgentLabel(): string {
-	return props.item.subAgentName
-		? i18n.baseText('agents.chat.delegate.label', {
-				interpolate: { name: props.item.subAgentName },
-			})
-		: i18n.baseText('agents.chat.delegate.labelFallback');
-}
 
 const time = computed((): string => {
 	if (!props.item.timestamp) return '';
@@ -52,7 +45,7 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
-			if (isSubAgent.value) return subAgentLabel();
+			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
 			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
 		}
