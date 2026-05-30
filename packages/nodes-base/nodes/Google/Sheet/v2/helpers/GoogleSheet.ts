@@ -93,12 +93,8 @@ export class GoogleSheet {
 	async getData(range: string, valueRenderMode: ValueRenderOption, dateTimeRenderOption?: string) {
 		const query: IDataObject = {
 			valueRenderOption: valueRenderMode,
-			dateTimeRenderOption: 'FORMATTED_STRING',
+			dateTimeRenderOption: dateTimeRenderOption ?? 'FORMATTED_STRING',
 		};
-
-		if (dateTimeRenderOption) {
-			query.dateTimeRenderOption = dateTimeRenderOption;
-		}
 
 		const response = await apiRequest.call(
 			this.executeFunctions,

@@ -1,7 +1,14 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/read.operation';
-import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
+import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
+import { apiRequest } from '../../../v2/transport';
+
+jest.mock('../../../v2/transport', () => ({
+	apiRequest: {
+		call: jest.fn(),
+	},
+}));
 
 describe('Google Sheet - Read', () => {
 	let mockExecuteFunctions: Partial<IExecuteFunctions>;
@@ -77,5 +84,46 @@ describe('Google Sheet - Read', () => {
 			'Sheet1',
 		);
 		expect(result).toEqual([]);
+	});
+
+	test('should send SERIAL_NUMBER date formatting when reading sheet data', async () => {
+		const spreadsheetId = 'spreadsheet123';
+		const sheet = new GoogleSheet(spreadsheetId, mockExecuteFunctions as IExecuteFunctions);
+
+		mockExecuteFunctions.getNodeParameter = jest.fn((param) => {
+			const mockParams: { [key: string]: unknown } = {
+				options: {
+					outputFormatting: {
+						values: {
+							general: 'UNFORMATTED_VALUE',
+							date: 'SERIAL_NUMBER',
+						},
+					},
+				},
+				'filtersUI.values': [],
+				combineFilters: 'AND',
+			};
+			return mockParams[param];
+		}) as unknown as IExecuteFunctions['getNodeParameter'];
+
+		(apiRequest.call as jest.Mock).mockResolvedValue({
+			values: [
+				['Header1', 'Header2'],
+				['Value1', '45292'],
+			],
+		});
+
+		await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, 'Sheet1');
+
+		expect(apiRequest.call).toHaveBeenCalledWith(
+			mockExecuteFunctions,
+			'GET',
+			`/v4/spreadsheets/${spreadsheetId}/values/'Sheet1'`,
+			{},
+			{
+				valueRenderOption: 'UNFORMATTED_VALUE',
+				dateTimeRenderOption: 'SERIAL_NUMBER',
+			},
+		);
 	});
 });
