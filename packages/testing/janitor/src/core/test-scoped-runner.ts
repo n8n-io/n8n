@@ -31,10 +31,15 @@ export function buildRunnerArgs(
 		return runner === 'vitest' ? ['run', ...passthroughArgs] : [...passthroughArgs];
 	}
 	const absoluteFiles = scope.files.map((f) => (isAbsolute(f) ? f : resolve(rootDir, f)));
+	// `jest --findRelatedTests` exits 1 when the changed files resolve to zero
+	// related tests (e.g. a variant like integration that has no matching tests
+	// for this change). `--passWithNoTests` makes that a pass, matching the
+	// `skip` semantics above and `vitest related`'s behaviour.
+	//
 	// `vitest related` defaults to watch mode and does NOT TTY-detect, so it
 	// would hang the CI runner forever. `--run` forces a single-pass execution.
 	return runner === 'jest'
-		? ['--findRelatedTests', ...absoluteFiles, ...passthroughArgs]
+		? ['--findRelatedTests', ...absoluteFiles, '--passWithNoTests', ...passthroughArgs]
 		: ['related', ...absoluteFiles, '--run', ...passthroughArgs];
 }
 
