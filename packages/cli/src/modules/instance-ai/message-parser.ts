@@ -22,6 +22,19 @@ const toolCallContentPartSchema = z.object({
 	error: z.string().optional(),
 });
 
+const textContentPartSchema = z.object({ type: z.literal('text'), text: z.string() });
+const reasoningContentPartSchema = z.object({ type: z.literal('reasoning'), text: z.string() });
+const opaqueContentPartSchema = z
+	.object({ type: z.enum(['invalid-tool-call', 'file', 'citation', 'provider']) })
+	.passthrough();
+
+const contentPartSchema = z.union([
+	textContentPartSchema,
+	reasoningContentPartSchema,
+	toolCallContentPartSchema,
+	opaqueContentPartSchema,
+]);
+
 // ---------------------------------------------------------------------------
 // Persisted message shapes
 // ---------------------------------------------------------------------------
@@ -70,31 +83,19 @@ function extractReasoningFromContent(content: unknown): string {
 
 function extractTextFromParts(parts: unknown[]): string {
 	return parts
-		.filter(
-			(p): p is { type: 'text'; text: string } =>
-				typeof p === 'object' &&
-				p !== null &&
-				'type' in p &&
-				p.type === 'text' &&
-				'text' in p &&
-				typeof p.text === 'string',
-		)
-		.map((p) => p.text)
+		.flatMap((p) => {
+			const parsed = textContentPartSchema.safeParse(p);
+			return parsed.success ? [parsed.data.text] : [];
+		})
 		.join('');
 }
 
 function extractReasoningFromParts(parts: unknown[]): string {
 	return parts
-		.filter(
-			(p): p is { type: 'reasoning'; text: string } =>
-				typeof p === 'object' &&
-				p !== null &&
-				'type' in p &&
-				p.type === 'reasoning' &&
-				'text' in p &&
-				typeof p.text === 'string',
-		)
-		.map((p) => p.text)
+		.flatMap((p) => {
+			const parsed = reasoningContentPartSchema.safeParse(p);
+			return parsed.success ? [parsed.data.text] : [];
+		})
 		.join('');
 }
 
@@ -103,20 +104,8 @@ function extractParts(content: unknown): StoredContentPart[] | undefined {
 	return undefined;
 }
 
-const KNOWN_CONTENT_PART_TYPES = new Set<MessageContent['type']>([
-	'text',
-	'tool-call',
-	'invalid-tool-call',
-	'reasoning',
-	'file',
-	'citation',
-	'provider',
-]);
-
 function isStoredContentPart(value: unknown): value is StoredContentPart {
-	if (typeof value !== 'object' || value === null) return false;
-	const type = (value as { type?: unknown }).type;
-	return typeof type === 'string' && KNOWN_CONTENT_PART_TYPES.has(type as MessageContent['type']);
+	return contentPartSchema.safeParse(value).success;
 }
 
 function toRecord(value: unknown): Record<string, unknown> {

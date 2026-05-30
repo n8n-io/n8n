@@ -244,6 +244,32 @@ describe('parseStoredMessages', () => {
 			expect(toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc-ok']);
 		});
 
+		it('should drop content parts with an unrecognized type', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Hello' },
+						// Unknown type — not in the content-part union, must be ignored.
+						{ type: 'bogus-part', text: 'should not surface', payload: 42 },
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].content).toBe('Hello');
+			expect(result[1].agentTree?.timeline).toEqual([{ type: 'text', content: 'Hello' }]);
+		});
+
 		it('should parse reasoning from native parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{
