@@ -24,7 +24,6 @@ const mockCheckpointRepository = { findActiveByThreadId: jest.fn().mockResolvedV
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
-			lastMessages: 40,
 			threadTtlDays: options.threadTtlDays ?? 0,
 		},
 		database: {
