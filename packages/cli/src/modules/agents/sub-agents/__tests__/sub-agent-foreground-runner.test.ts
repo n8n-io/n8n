@@ -16,7 +16,7 @@ import { mock } from 'jest-mock-extended';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { buildFromJson, type ToolExecutor } from '../../json-config/from-json-config';
 import {
-	createSubAgentMemoryScopeId,
+	createSubAgentThreadId,
 	renderSubAgentPrompt,
 	SubAgentForegroundRunner,
 } from '../sub-agent-foreground-runner';
@@ -143,7 +143,7 @@ describe('SubAgentForegroundRunner', () => {
 		});
 
 		expect(result).toMatchObject({
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			source,
 			status: 'completed',
 			result: expect.objectContaining({
@@ -171,12 +171,36 @@ describe('SubAgentForegroundRunner', () => {
 			].join('\n\n'),
 			expect.objectContaining({
 				persistence: {
-					resourceId: parentRunId,
-					threadId: 'subagent:parent-run-1:/root/research_api',
+					// Inline sub-agents have no source id, so the thread falls back to
+					// the task path; the resource scope falls back to the project.
+					resourceId: 'project-1',
+					threadId: 'subagent:parent-thread-1:/root/research_api_0',
 				},
 			}),
 		);
 		expect(agentExecutionService.recordMessage).not.toHaveBeenCalled();
+	});
+
+	it('inherits the parent resource id as the child memory scope when provided', async () => {
+		await runner.runForeground(
+			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
+			{
+				projectId,
+				credentialProvider,
+				createToolExecutor,
+				createMemoryFactory,
+			},
+		);
+
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				persistence: {
+					resourceId: 'draft-chat:user-1',
+					threadId: 'subagent:parent-thread-1:/root/research_api_0',
+				},
+			}),
+		);
 	});
 
 	it('uses the saved n8n agent id as memory owner while keeping a subagent thread scope', async () => {
@@ -216,13 +240,15 @@ describe('SubAgentForegroundRunner', () => {
 			expect.any(String),
 			expect.objectContaining({
 				persistence: {
-					resourceId: parentRunId,
-					threadId: 'subagent:parent-run-1:/root/research_api',
+					resourceId: 'project-1',
+					threadId: 'subagent:parent-thread-1:agent-2',
 				},
 			}),
 		);
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
+				// Same id as the SDK memory thread above, so title sync + deletion line up.
+				threadId: 'subagent:parent-thread-1:agent-2',
 				agentId: 'agent-2',
 				agentName: 'Helper Agent',
 				projectId,
@@ -333,6 +359,40 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
+	it('aborts the child run when the parent run is cancelled', async () => {
+		const parentAbort = new AbortController();
+		childAgent.stream.mockImplementation(
+			async (_input, options) =>
+				await new Promise<StreamResult>((resolve) => {
+					const settle = () =>
+						resolve(
+							makeStreamResult([
+								{ type: 'error', error: new Error('aborted') },
+								{ type: 'finish', finishReason: 'error' },
+							]),
+						);
+					if (options?.abortSignal?.aborted) settle();
+					else options?.abortSignal?.addEventListener('abort', settle, { once: true });
+				}),
+		);
+
+		const run = runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+			abortSignal: parentAbort.signal,
+		});
+
+		parentAbort.abort();
+
+		await expect(run).resolves.toMatchObject({ status: 'failed' });
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+		);
+	});
+
 	it('returns failed status when timeout aborts the child run', async () => {
 		jest.useFakeTimers();
 		childAgent.stream.mockImplementation(
@@ -386,10 +446,16 @@ describe('renderSubAgentPrompt', () => {
 	});
 });
 
-describe('createSubAgentMemoryScopeId', () => {
-	it('creates a stable child memory scope', () => {
-		expect(createSubAgentMemoryScopeId('parent-run', '/root/research')).toBe(
-			'subagent:parent-run:/root/research',
+describe('createSubAgentThreadId', () => {
+	it('keys the thread by the parent conversation and the sub-agent source', () => {
+		expect(createSubAgentThreadId('test-agent-1:user-1', 'agent-2', '/root/research_api_0')).toBe(
+			'subagent:test-agent-1:user-1:agent-2',
+		);
+	});
+
+	it('falls back to the task path when the parent thread or source id is missing', () => {
+		expect(createSubAgentThreadId(undefined, undefined, '/root/research_api_0')).toBe(
+			'subagent:/root/research_api_0:/root/research_api_0',
 		);
 	});
 });

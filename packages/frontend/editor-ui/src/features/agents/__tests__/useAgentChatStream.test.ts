@@ -433,6 +433,57 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 	});
 
+	it('renders a failed delegate_subagent result as an error step even though the call resolves', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-d1',
+				toolName: 'delegate_subagent',
+				input: { taskName: 'research' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-d1',
+				toolName: 'delegate_subagent',
+				output: { status: 'failed', answer: '', error: 'child failed' },
+				isError: false,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('go');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('error');
+	});
+
+	it('renders a completed delegate_subagent result as a done step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-call', toolCallId: 'tc-d2', toolName: 'delegate_subagent', input: {} },
+			{ type: 'finish-step' },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-d2',
+				toolName: 'delegate_subagent',
+				output: { status: 'completed', answer: 'all good' },
+				isError: false,
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('go');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('done');
+	});
+
 	it('stores the server-stamped startTime/endTime verbatim (no client clock)', async () => {
 		// The FE must not compute timing itself — it stores the backend-measured
 		// timestamps off the lifecycle events so the live duration equals the

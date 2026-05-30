@@ -48,7 +48,7 @@ const generateResult: GenerateResult = {
 };
 
 const foregroundResult: SubAgentForegroundResult = {
-	taskPath: '/root/research_api',
+	taskPath: '/root/research_api_0',
 	source: {
 		type: 'inline',
 		config: runnableConfig,
@@ -104,7 +104,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			),
 		).resolves.toMatchObject({
 			status: 'completed',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
 			answer: 'Preamble\nChild answer',
 		});
@@ -133,7 +133,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
-	it('forwards the parent persistence thread id to the runner', async () => {
+	it('forwards the parent persistence thread id and resource id to the runner', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
@@ -152,7 +152,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 
 		expect(runner.runForeground).toHaveBeenCalledWith(
-			expect.objectContaining({ parentThreadId: 'parent-thread-1' }),
+			expect.objectContaining({
+				parentThreadId: 'parent-thread-1',
+				parentResourceId: 'resource-1',
+			}),
 			expect.any(Object),
 		);
 	});
@@ -181,6 +184,55 @@ describe('createN8nDelegateSubAgentTool', () => {
 			expect.any(Object),
 			expect.objectContaining({ childCount: 1 }),
 		);
+	});
+
+	it('caps concurrent runForeground calls to the configured concurrency', async () => {
+		let started = 0;
+		let active = 0;
+		let maxActive = 0;
+		let releaseFirst!: () => void;
+		let firstStartedResolve!: () => void;
+		const gate = new Promise<void>((release) => {
+			releaseFirst = release;
+		});
+		const firstStarted = new Promise<void>((resolve) => {
+			firstStartedResolve = resolve;
+		});
+		runner.runForeground.mockImplementation(async () => {
+			started += 1;
+			active += 1;
+			maxActive = Math.max(maxActive, active);
+			if (started === 1) {
+				firstStartedResolve();
+				await gate;
+			}
+			active -= 1;
+			return foregroundResult;
+		});
+
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+			policy: { maxChildren: 3 },
+			concurrency: 1,
+		});
+
+		const first = tool.handler?.({ taskName: 'One', goal: 'First.' }, { runId: 'parent-run-1' });
+		const second = tool.handler?.({ taskName: 'Two', goal: 'Second.' }, { runId: 'parent-run-1' });
+
+		await firstStarted;
+		// Let the event loop turn; the second call must stay queued behind the cap.
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(started).toBe(1);
+
+		releaseFirst();
+		await Promise.all([first, second]);
+		expect(started).toBe(2);
+		expect(maxActive).toBe(1);
 	});
 
 	it('selects a configured n8n agent source by subAgentId', async () => {
@@ -228,7 +280,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			),
 		).resolves.toMatchObject({
 			status: 'failed',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			answer: '',
 			error: 'child failed',
 		});
@@ -239,7 +291,7 @@ describe('formatSubAgentToolOutput', () => {
 	it('keeps child metadata compact for the parent model', () => {
 		expect(formatSubAgentToolOutput(foregroundResult)).toEqual({
 			status: 'completed',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
 			answer: 'Preamble\nChild answer',
 			usage: {

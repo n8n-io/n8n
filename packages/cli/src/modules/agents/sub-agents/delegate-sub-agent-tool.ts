@@ -5,6 +5,7 @@ import {
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+import pLimit from 'p-limit';
 
 import type {
 	SubAgentForegroundRunContext,
@@ -12,17 +13,34 @@ import type {
 	SubAgentForegroundRunner,
 } from './sub-agent-foreground-runner';
 
+/** Fallback when the caller does not configure a per-run concurrency cap. */
+const DEFAULT_SUB_AGENT_CONCURRENCY = 3;
+
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	parentTaskPath?: SubAgentTaskPath;
 	policy?: SubAgentRunPolicy;
+	/** Max child runs allowed to execute concurrently for this delegate tool instance. */
+	concurrency?: number;
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
-	const { runner, sourcesById, availableSubAgents, parentTaskPath, policy, ...runContext } =
-		options;
+	const {
+		runner,
+		sourcesById,
+		availableSubAgents,
+		parentTaskPath,
+		policy,
+		concurrency,
+		...runContext
+	} = options;
+
+	// One gate per delegate tool instance (i.e. per parent run) — same lifetime as
+	// the SDK's per-parent childCounts map — so a wide fan-out can't spawn every
+	// child agent at once. Independent of maxChildren (total) and toolCallConcurrency.
+	const limit = pLimit(Math.max(1, concurrency ?? DEFAULT_SUB_AGENT_CONCURRENCY));
 
 	return createDelegateSubAgentTool({
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
@@ -41,33 +59,42 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				};
 			}
 
-			const result = await runner.runForeground(
-				{
-					taskName: request.taskName,
-					goal: request.goal,
-					source: selectedSource,
-					contextMode: 'fresh',
-					executionMode: 'foreground',
-					...(request.context !== undefined ? { context: request.context } : {}),
-					...(request.expectedOutput !== undefined
-						? { expectedOutput: request.expectedOutput }
-						: {}),
-					...(policy !== undefined ? { policy } : {}),
-					...(request.parentRunId !== undefined ? { parentRunId: request.parentRunId } : {}),
-					...(request.parentThreadId !== undefined
-						? { parentThreadId: request.parentThreadId }
-						: {}),
-					...(request.parentToolCallId !== undefined
-						? { parentToolCallId: request.parentToolCallId }
-						: {}),
-					...(request.parentTaskPath !== undefined
-						? { parentTaskPath: request.parentTaskPath }
-						: {}),
-				},
-				{
-					...runContext,
-					childCount: request.childCount,
-				},
+			const result = await limit(
+				async () =>
+					await runner.runForeground(
+						{
+							taskName: request.taskName,
+							goal: request.goal,
+							source: selectedSource,
+							contextMode: 'fresh',
+							executionMode: 'foreground',
+							...(request.context !== undefined ? { context: request.context } : {}),
+							...(request.expectedOutput !== undefined
+								? { expectedOutput: request.expectedOutput }
+								: {}),
+							...(policy !== undefined ? { policy } : {}),
+							...(request.parentRunId !== undefined ? { parentRunId: request.parentRunId } : {}),
+							...(request.parentThreadId !== undefined
+								? { parentThreadId: request.parentThreadId }
+								: {}),
+							...(request.parentResourceId !== undefined
+								? { parentResourceId: request.parentResourceId }
+								: {}),
+							...(request.parentToolCallId !== undefined
+								? { parentToolCallId: request.parentToolCallId }
+								: {}),
+							...(request.parentTaskPath !== undefined
+								? { parentTaskPath: request.parentTaskPath }
+								: {}),
+						},
+						{
+							...runContext,
+							childCount: request.childCount,
+							...(request.parentAbortSignal !== undefined
+								? { abortSignal: request.parentAbortSignal }
+								: {}),
+						},
+					),
 			);
 
 			return formatSubAgentToolOutput(result);

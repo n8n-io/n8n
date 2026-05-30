@@ -3,6 +3,7 @@ import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	humanizeTaskName,
 	isDelegateSubAgentTool,
+	isFailedDelegateOutput,
 	parseDelegateInput,
 	parseDelegateOutput,
 } from '../utils/delegate-tool';
@@ -37,18 +38,48 @@ describe('delegate-tool', () => {
 	});
 
 	describe('parseDelegateOutput', () => {
-		it('extracts the answer and strips the rest', () => {
+		it('keeps status/answer/error and strips the rest', () => {
 			expect(
 				parseDelegateOutput({
 					status: 'completed',
 					answer: 'Done',
 					usage: { totalTokens: 1234 },
 				}),
-			).toEqual({ answer: 'Done' });
+			).toEqual({ status: 'completed', answer: 'Done' });
+		});
+
+		it('keeps the error on a failed delegation', () => {
+			expect(parseDelegateOutput({ status: 'failed', answer: '', error: 'child failed' })).toEqual({
+				status: 'failed',
+				answer: '',
+				error: 'child failed',
+			});
 		});
 
 		it('returns undefined for a non-object (rejected tool call raw error string)', () => {
 			expect(parseDelegateOutput('Something failed')).toBeUndefined();
+		});
+	});
+
+	describe('isFailedDelegateOutput', () => {
+		it('is true only for a delegate tool whose output status is failed', () => {
+			expect(
+				isFailedDelegateOutput(DELEGATE_SUB_AGENT_TOOL_NAME, { status: 'failed', answer: '' }),
+			).toBe(true);
+		});
+
+		it('is false for a completed delegate output', () => {
+			expect(
+				isFailedDelegateOutput(DELEGATE_SUB_AGENT_TOOL_NAME, { status: 'completed', answer: 'ok' }),
+			).toBe(false);
+		});
+
+		it('is false for non-delegate tools even when the output looks failed', () => {
+			expect(isFailedDelegateOutput('web_search', { status: 'failed' })).toBe(false);
+		});
+
+		it('is false when the output is a raw error string', () => {
+			expect(isFailedDelegateOutput(DELEGATE_SUB_AGENT_TOOL_NAME, 'boom')).toBe(false);
 		});
 	});
 

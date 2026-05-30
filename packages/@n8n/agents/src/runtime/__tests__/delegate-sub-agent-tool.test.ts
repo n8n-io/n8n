@@ -54,7 +54,7 @@ describe('createDelegateSubAgentTool', () => {
 
 		expect(runSubAgent).toHaveBeenCalledWith({
 			...input,
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			parentRunId: 'parent-run-1',
 			parentToolCallId: 'tool-call-1',
 			parentTaskPath: '/root',
@@ -63,7 +63,7 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('forwards the parent persistence thread id as parentThreadId', async () => {
+	it('forwards the parent persistence thread id and resource id', async () => {
 		const runSubAgent = jest
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
@@ -75,11 +75,14 @@ describe('createDelegateSubAgentTool', () => {
 		});
 
 		expect(runSubAgent).toHaveBeenCalledWith(
-			expect.objectContaining({ parentThreadId: 'parent-thread-1' }),
+			expect.objectContaining({
+				parentThreadId: 'parent-thread-1',
+				parentResourceId: 'resource-1',
+			}),
 		);
 	});
 
-	it('omits parentThreadId when the parent run has no persistence scope', async () => {
+	it('omits parent persistence fields when the parent run has no persistence scope', async () => {
 		const runSubAgent = jest
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
@@ -88,6 +91,22 @@ describe('createDelegateSubAgentTool', () => {
 		await tool.handler?.(input, { runId: 'parent-run-1' });
 
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentThreadId');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentResourceId');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
+	});
+
+	it('forwards the parent run abort signal to the runner callback', async () => {
+		const runSubAgent = jest
+			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const controller = new AbortController();
+
+		await tool.handler?.(input, { runId: 'parent-run-1', abortSignal: controller.signal });
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ parentAbortSignal: controller.signal }),
+		);
 	});
 
 	it('emits lifecycle events around runner callback execution', async () => {
@@ -121,7 +140,7 @@ describe('createDelegateSubAgentTool', () => {
 		]);
 		expect(events[0]).toMatchObject({
 			taskName: 'Research API',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			parentRunId: 'parent-run-1',
 			parentToolCallId: 'tool-call-1',
 		});
@@ -161,7 +180,7 @@ describe('createDelegateSubAgentTool', () => {
 
 		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
 			status: 'completed',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
 			answer: 'preamble\nchild answer',
 			usage: {
@@ -220,7 +239,7 @@ describe('createDelegateSubAgentTool', () => {
 			}),
 		).resolves.toMatchObject({
 			status: 'failed',
-			taskPath: '/root/research_api',
+			taskPath: '/root/research_api_0',
 			answer: '',
 			error: 'Runner failed',
 		});

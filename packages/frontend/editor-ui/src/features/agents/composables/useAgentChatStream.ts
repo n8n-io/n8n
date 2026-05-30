@@ -24,6 +24,7 @@ import {
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -305,7 +306,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					found.tc.state = failed ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved

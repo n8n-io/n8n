@@ -65,6 +65,8 @@ export const SubAgentSpawnRequestSchema = z.object({
 	policy: SubAgentRunPolicySchema.optional(),
 	parentRunId: z.string().min(1).optional(),
 	parentThreadId: z.string().min(1).optional(),
+	/** Parent's episodic-memory resource id, inherited so the child shares its scope. */
+	parentResourceId: z.string().min(1).optional(),
 	parentToolCallId: z.string().min(1).optional(),
 	parentTaskPath: SubAgentTaskPathSchema.optional(),
 });

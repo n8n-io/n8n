@@ -129,6 +129,7 @@ export async function executeTool(
 			runId: executionContext.runId,
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
+			abortSignal: executionContext.abortSignal,
 		};
 		return await builtTool.handler(args, ctx);
 	}
@@ -139,6 +140,7 @@ export async function executeTool(
 		runId: executionContext.runId,
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
+		abortSignal: executionContext.abortSignal,
 	};
 	return await builtTool.handler(args, ctx);
 }

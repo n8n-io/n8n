@@ -18,7 +18,12 @@ const delegateInputSchema = z.object({
 });
 
 const delegateOutputSchema = z.object({
+	// A failed delegation still RESOLVES the tool call (the SDK never throws for
+	// it), so the chat relies on `status`/`error` rather than the tool-call's
+	// own error flag to render it as a failure.
+	status: z.enum(['completed', 'failed']).optional(),
 	answer: z.string().optional(),
+	error: z.string().optional(),
 });
 
 export type DelegateInput = z.infer<typeof delegateInputSchema>;
@@ -41,6 +46,16 @@ export function parseDelegateInput(input: unknown): DelegateInput | undefined {
 export function parseDelegateOutput(output: unknown): DelegateOutput | undefined {
 	const result = delegateOutputSchema.safeParse(output);
 	return result.success ? result.data : undefined;
+}
+
+/**
+ * True when a `delegate_subagent` call resolved with a failed result. Such a
+ * call settles successfully at the tool layer, so its step must be flipped to an
+ * error state explicitly (both live and on reload).
+ */
+export function isFailedDelegateOutput(toolName: string | undefined, output: unknown): boolean {
+	if (!isDelegateSubAgentTool(toolName)) return false;
+	return parseDelegateOutput(output)?.status === 'failed';
 }
 
 /** Humanize a snake/kebab task name, e.g. `research_api` → `Research api`. */

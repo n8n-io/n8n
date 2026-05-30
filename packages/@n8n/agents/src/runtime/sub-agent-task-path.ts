@@ -4,9 +4,12 @@
  * A "task path" is a filesystem-like address that gives every agent run a
  * stable, human-readable position in the delegation tree, e.g.:
  *
- *   /root                                ← the top-level (orchestrating) agent
- *   /root/research_api                   ← a child it delegated to
- *   /root/research_api/compare_pricing   ← a grandchild that child delegated to
+ *   /root                                      ← the top-level (orchestrating) agent
+ *   /root/research_api_0                       ← the agent's first delegation
+ *   /root/research_api_0/compare_pricing_0     ← a grandchild that child delegated to
+ *
+ * Each child segment carries the parent's 0-based child index (`_0`, `_1`, …) so
+ * that delegations with the same task name stay distinct.
  *
  * Why this concept exists:
  *  - Identity: each delegated unit of work gets a unique, traceable name we can
@@ -110,19 +113,25 @@ export function getSubAgentTaskPathDepth(path: SubAgentTaskPath): number {
 }
 
 /**
- * Build a child path by appending a sanitized task name to the parent path
- * (defaulting to `/root` when there is no parent — i.e. the first level of
- * delegation). This is how the tree grows: every delegate call extends its
- * parent's path by exactly one segment.
+ * Build a child path by appending `<sanitized task name>_<childCount>` to the
+ * parent path (defaulting to `/root` when there is no parent — i.e. the first
+ * level of delegation). This is how the tree grows: every delegate call extends
+ * its parent's path by exactly one segment.
+ *
+ * `childCount` is the parent's 0-based index for this child (the number of
+ * children it had already spawned). Appending it disambiguates same-named
+ * siblings within a single parent run, keeping each delegation's path — and the
+ * memory scope derived from it — unique even when the model reuses a task name.
  */
 export function createChildSubAgentTaskPath(
 	parentPath: SubAgentTaskPath | undefined,
 	taskName: string,
+	childCount: number,
 ): SubAgentTaskPath {
 	const parent = parentPath ?? ROOT_SUB_AGENT_TASK_PATH;
 	assertSubAgentTaskPath(parent);
 
-	const childPath = `${parent}/${sanitizeSubAgentTaskName(taskName)}`;
+	const childPath = `${parent}/${sanitizeSubAgentTaskName(taskName)}_${childCount}`;
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;

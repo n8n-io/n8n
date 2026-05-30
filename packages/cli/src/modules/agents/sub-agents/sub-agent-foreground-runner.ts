@@ -9,7 +9,6 @@ import {
 	type GenerateResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import { randomUUID } from 'node:crypto';
 import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Service } from '@n8n/di';
@@ -36,6 +35,8 @@ export interface SubAgentForegroundRunContext {
 	createMemoryFactory(memoryOwnerAgentId: string): MemoryFactory;
 	resolveTool?: ToolResolver;
 	executionCounter?: AgentExecutionCounter;
+	/** Parent run's abort signal — cancelling the parent cancels this child. */
+	abortSignal?: AbortSignal;
 }
 
 export interface SubAgentForegroundResult {
@@ -79,13 +80,28 @@ export class SubAgentForegroundRunner {
 		assertSubAgentPolicyAllowsChild(parentTaskPath, request.policy);
 		assertSubAgentPolicyAllowsChildCount(context.childCount ?? 0, request.policy);
 
-		const taskPath = createChildSubAgentTaskPath(parentTaskPath, request.taskName);
+		const taskPath = createChildSubAgentTaskPath(
+			parentTaskPath,
+			request.taskName,
+			context.childCount ?? 0,
+		);
 		const runtimeSource = await this.sourceResolver.resolveForRuntime(request.source, {
 			projectId: context.projectId,
 		});
 
 		const toolExecutor = context.createToolExecutor(runtimeSource.toolCodeByName);
-		const memoryScopeId = createSubAgentMemoryScopeId(request.parentRunId, taskPath);
+		// One stable id shared by the SDK memory thread and the session record so
+		// title sync, recall, and deletion all resolve to the same thread. Keyed by
+		// the parent conversation + the sub-agent, so re-delegating the same
+		// sub-agent within a conversation continues its thread (the normal-agent
+		// model) rather than spawning a fresh, orphaned one each time.
+		const threadId = createSubAgentThreadId(
+			request.parentThreadId,
+			runtimeSource.source.sourceId,
+			taskPath,
+		);
+		// Inherit the parent's episodic-memory scope; fall back to the project.
+		const resourceId = request.parentResourceId ?? context.projectId;
 		const agent = await buildFromJson(runtimeSource.source.config, runtimeSource.toolDescriptors, {
 			toolExecutor,
 			credentialProvider: context.credentialProvider,
@@ -94,19 +110,21 @@ export class SubAgentForegroundRunner {
 			memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
 		});
 
-		const abortController = request.policy?.timeoutMs ? new AbortController() : undefined;
-		const timeout = request.policy?.timeoutMs
-			? setTimeout(() => abortController?.abort(), request.policy.timeoutMs)
+		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
+		const timeout = timeoutController
+			? setTimeout(() => timeoutController.abort(), request.policy?.timeoutMs)
 			: undefined;
+		// Abort the child when the parent run is cancelled or the timeout fires.
+		const abortSignal = combineAbortSignals(context.abortSignal, timeoutController?.signal);
 
 		const startedAt = Date.now();
 		const prompt = renderSubAgentPrompt(request);
 		try {
 			const resultStream = await agent.stream(prompt, {
-				abortSignal: abortController?.signal,
+				...(abortSignal !== undefined ? { abortSignal } : {}),
 				persistence: {
-					resourceId: request.parentRunId ?? taskPath,
-					threadId: memoryScopeId,
+					resourceId,
+					threadId,
 				},
 				executionCounter: context.executionCounter,
 			});
@@ -132,6 +150,7 @@ export class SubAgentForegroundRunner {
 			await this.recordSubAgentExecution({
 				runtimeSource: runtimeSource.source,
 				projectId: context.projectId,
+				threadId,
 				parentThreadId: request.parentThreadId,
 				parentAgentId: context.parentAgentId,
 				taskPath,
@@ -162,19 +181,29 @@ export class SubAgentForegroundRunner {
 	private async recordSubAgentExecution(params: {
 		runtimeSource: ResolvedSubAgentSource;
 		projectId: string;
+		/** Unified thread id, shared with the SDK memory thread. */
+		threadId: string;
 		parentThreadId?: string;
 		parentAgentId?: string;
 		taskPath: SubAgentTaskPath;
 		prompt: string;
 		record: MessageRecord;
 	}): Promise<void> {
-		const { runtimeSource, projectId, parentThreadId, parentAgentId, taskPath, prompt, record } =
-			params;
+		const {
+			runtimeSource,
+			projectId,
+			threadId,
+			parentThreadId,
+			parentAgentId,
+			taskPath,
+			prompt,
+			record,
+		} = params;
 		if (runtimeSource.type !== 'n8n-agent' || !runtimeSource.sourceId) return;
 
 		try {
 			await this.agentExecutionService.recordMessage({
-				threadId: randomUUID(),
+				threadId,
 				agentId: runtimeSource.sourceId,
 				agentName: runtimeSource.config.name,
 				projectId,
@@ -278,9 +307,32 @@ export function renderSubAgentPrompt(request: SubAgentSpawnRequest): string {
 	return sections.join('\n\n');
 }
 
-export function createSubAgentMemoryScopeId(
-	parentRunId: string | undefined,
+/**
+ * Build the stable thread id shared by a sub-agent's SDK memory thread and its
+ * recorded session. Scoped to the parent conversation and the specific
+ * sub-agent so repeated delegations to the same sub-agent in one conversation
+ * reuse the thread (mirroring how a normal agent keeps one thread per
+ * conversation). Falls back to the task path when the parent thread or the
+ * sub-agent source id is unavailable (e.g. inline sub-agents, which are not
+ * recorded as sessions, so the id is only used for in-memory scoping).
+ *
+ * @example createSubAgentThreadId('test-agent-1:user-1', 'agent-2', '/root/research_api_0')
+ *   => 'subagent:test-agent-1:user-1:agent-2'
+ */
+export function createSubAgentThreadId(
+	parentThreadId: string | undefined,
+	sourceId: string | undefined,
 	taskPath: SubAgentTaskPath,
 ): string {
-	return `subagent:${parentRunId ?? 'adhoc'}:${taskPath}`;
+	return `subagent:${parentThreadId ?? taskPath}:${sourceId ?? taskPath}`;
+}
+
+/** Merge up to two abort signals: cancellation of either cancels the child run. */
+function combineAbortSignals(
+	a: AbortSignal | undefined,
+	b: AbortSignal | undefined,
+): AbortSignal | undefined {
+	const signals = [a, b].filter((signal): signal is AbortSignal => signal !== undefined);
+	if (signals.length <= 1) return signals[0];
+	return AbortSignal.any(signals);
 }

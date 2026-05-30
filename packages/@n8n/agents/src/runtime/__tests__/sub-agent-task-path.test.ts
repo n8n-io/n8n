@@ -49,11 +49,19 @@ describe('sub-agent task paths', () => {
 		expect(getSubAgentTaskPathDepth('/root/research/check_tests')).toBe(2);
 	});
 
-	it('creates child paths from root or a parent path', () => {
-		expect(createChildSubAgentTaskPath(undefined, 'Research API')).toBe('/root/research_api');
-		expect(createChildSubAgentTaskPath('/root/research_api', 'Check tests')).toBe(
-			'/root/research_api/check_tests',
+	it('creates child paths with the parent child index appended', () => {
+		expect(createChildSubAgentTaskPath(undefined, 'Research API', 0)).toBe('/root/research_api_0');
+		expect(createChildSubAgentTaskPath('/root/research_api_0', 'Check tests', 1)).toBe(
+			'/root/research_api_0/check_tests_1',
 		);
+	});
+
+	it('disambiguates same-named siblings by child index', () => {
+		const first = createChildSubAgentTaskPath('/root', 'research', 0);
+		const second = createChildSubAgentTaskPath('/root', 'research', 1);
+		expect(first).toBe('/root/research_0');
+		expect(second).toBe('/root/research_1');
+		expect(first).not.toBe(second);
 	});
 
 	it('enforces spawn and depth policy before creating a child', () => {

@@ -22,6 +22,7 @@ import {
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import type { ChatMessageStatus, ToolCallState } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 export { type ChatMessageStatus, type ToolCallState };
 
 // ---------------------------------------------------------------------------
@@ -290,8 +291,12 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				let state: ToolCallState;
 				let output: unknown;
 				if (part.state === 'resolved') {
-					state = TOOL_CALL_STATE.DONE;
 					output = part.output;
+					// A failed delegation resolves like any other tool, so detect it
+					// from the output and render it as an error to match the live run.
+					state = isFailedDelegateOutput(part.toolName, part.output)
+						? TOOL_CALL_STATE.ERROR
+						: TOOL_CALL_STATE.DONE;
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;

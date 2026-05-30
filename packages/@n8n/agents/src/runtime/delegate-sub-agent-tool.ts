@@ -88,8 +88,15 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentRunId?: string;
 	/** Parent's persisted memory thread id (`ctx.persistence.threadId`). */
 	parentThreadId?: string;
+	/** Parent's episodic-memory resource id (`ctx.persistence.resourceId`). */
+	parentResourceId?: string;
 	/** Parent's tool-call id that triggered this delegation. */
 	parentToolCallId?: string;
+	/**
+	 * Parent run's abort signal (`ctx.abortSignal`). Forward it to the child so
+	 * cancelling the parent run also cancels the delegated work.
+	 */
+	parentAbortSignal?: AbortSignal;
 	/** Parent's own task path (this child's path is derived from it). */
 	parentTaskPath?: SubAgentTaskPath;
 	/** How many siblings the parent already spawned before this one (0-based). */
@@ -269,7 +276,7 @@ async function handleDelegateSubAgent(
 		const childCount = childCounts.get(childCountKey) ?? 0;
 		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
 
-		taskPath = createChildSubAgentTaskPath(parentTaskPath, input.taskName);
+		taskPath = createChildSubAgentTaskPath(parentTaskPath, input.taskName, childCount);
 		childCounts.set(childCountKey, childCount + 1);
 
 		request = {
@@ -280,6 +287,10 @@ async function handleDelegateSubAgent(
 			...(ctx.persistence?.threadId !== undefined
 				? { parentThreadId: ctx.persistence.threadId }
 				: {}),
+			...(ctx.persistence?.resourceId !== undefined
+				? { parentResourceId: ctx.persistence.resourceId }
+				: {}),
+			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
 			...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
@@ -388,9 +399,25 @@ async function runSubAgent(
 			: await options.createAgent(request);
 	const prompt = options.renderPrompt?.(request) ?? renderDelegateSubAgentPrompt(request);
 	const generateOptions = await resolveGenerateOptions(request, options);
-	const result = await agent.generate(prompt, generateOptions);
+	// Cancel the child when the parent is cancelled, preserving any abort signal
+	// the caller already configured via generateOptions.
+	const abortSignal = combineAbortSignals(request.parentAbortSignal, generateOptions?.abortSignal);
+	const result = await agent.generate(prompt, {
+		...generateOptions,
+		...(abortSignal !== undefined ? { abortSignal } : {}),
+	});
 
 	return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+}
+
+/** Merge up to two abort signals: cancellation of either cancels the result. */
+function combineAbortSignals(
+	a: AbortSignal | undefined,
+	b: AbortSignal | undefined,
+): AbortSignal | undefined {
+	const signals = [a, b].filter((signal): signal is AbortSignal => signal !== undefined);
+	if (signals.length <= 1) return signals[0];
+	return AbortSignal.any(signals);
 }
 
 async function resolveGenerateOptions(

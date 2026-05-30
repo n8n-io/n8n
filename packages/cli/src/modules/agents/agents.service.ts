@@ -28,6 +28,7 @@ import {
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 	type SubAgentSource,
+	type SubAgentRunPolicy,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
@@ -1005,12 +1006,23 @@ export class AgentsService {
 				projectId,
 				parentAgentId: agentId,
 				credentialProvider,
+				policy: this.buildSubAgentPolicy(),
+				concurrency: this.agentsConfig.subAgentConcurrency,
 				createToolExecutor: (toolCodeByName) =>
 					this.secureRuntime.createToolExecutor(toolCodeByName),
 				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId });
+	}
+
+	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */
+	private buildSubAgentPolicy(): SubAgentRunPolicy {
+		return {
+			maxDepth: this.agentsConfig.subAgentMaxDepth,
+			maxChildren: this.agentsConfig.subAgentMaxChildren,
+			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+		};
 	}
 
 	/**

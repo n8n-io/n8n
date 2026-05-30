@@ -114,7 +114,7 @@ function toolDuration(tc: ToolCall): string {
 					<N8nTooltip
 						v-else-if="tc.state === 'suspended'"
 						placement="top"
-						content="Waiting for your input"
+						:content="i18n.baseText('agents.chat.toolStep.waitingForInput')"
 					>
 						<N8nIcon icon="clock" size="large" :class="$style.indicatorSuspended" />
 					</N8nTooltip>
@@ -140,7 +140,7 @@ function toolDuration(tc: ToolCall): string {
 					<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 						{{ stepLabel(tc) }}
 					</span>
-					<span v-if="toolDuration(tc)" :class="$style.duration" data-testid="tool-step-duration">
+					<span v-if="toolDuration(tc)" :class="$style.duration" data-test-id="tool-step-duration">
 						{{ toolDuration(tc) }}
 					</span>
 					<N8nIcon
@@ -153,7 +153,7 @@ function toolDuration(tc: ToolCall): string {
 				<div
 					v-if="isExpandable(tc) && isExpanded(tc)"
 					:class="$style.answer"
-					data-testid="delegate-answer"
+					data-test-id="delegate-answer"
 				>
 					<N8nMarkdownEditor
 						:model-value="delegateAnswer(tc)"
@@ -289,7 +289,11 @@ function toolDuration(tc: ToolCall): string {
 	background-color: var(--background--subtle);
 	overflow: hidden;
 	color: var(--text-color--subtle);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
+	/* N8nMarkdownEditor sizes its content from --input--font-size (falling back
+	   to inherit when unset). Pin it a step below the step label so the
+	   sub-agent answer reads as secondary, compact detail. */
+	--input--font-size: var(--font-size--2xs);
 }
 
 .shimmer {
