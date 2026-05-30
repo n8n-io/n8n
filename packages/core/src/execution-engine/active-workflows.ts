@@ -76,6 +76,12 @@ export class ActiveWorkflows {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
+		// Deregister any existing crons for this workflow before re-registering.
+		// This prevents duplicate cron jobs when a workflow is re-activated (e.g. on save),
+		// because `toCronExpression()` generates a random second component on each call,
+		// causing the dedup key in `ScheduledTaskManager` to differ across activations.
+		this.scheduledTaskManager.deregisterCrons(workflowId);
+
 		const triggerNodes = workflow.getTriggerNodes();
 
 		const triggerResponses: ITriggerResponse[] = [];
