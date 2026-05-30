@@ -230,13 +230,9 @@ export class CredentialsController {
 			id: credential.id,
 			name: preparedCredentialData.name,
 			type: preparedCredentialData.type,
+			typeVersion: preparedCredentialData.typeVersion,
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
-
-		// `createEncryptedData` builds a fresh entity from {id, name, type, data}
-		// and does not carry typeVersion. Forward the resolved value from
-		// `prepareUpdateData` so type-change recomputation actually lands.
-		newCredentialData.typeVersion = preparedCredentialData.typeVersion;
 
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;

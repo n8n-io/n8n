@@ -387,7 +387,7 @@ export interface ICredentialType {
 
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
-	getByName(credentialType: string, version?: number): ICredentialType;
+	getByName(credentialType: string): ICredentialType;
 	getSupportedNodes(type: string): string[];
 	getParentTypes(typeName: string): string[];
 }

@@ -46,6 +46,19 @@ export function resolveDefaultVersion(
 }
 
 /**
+ * Resolves the typeVersion a new credential should be persisted at.
+ * Returns `null` for unversioned types so they're not pinned to v1 — that
+ * `null` is what differentiates "predates versioning / unversioned type"
+ * from "explicitly created against v1" at read time.
+ */
+export function resolveTypeVersionForCreate(
+	type: Pick<ICredentialType, 'name' | 'version' | 'defaultVersion'>,
+): number | null {
+	const hasVersioning = type.defaultVersion !== undefined || type.version !== undefined;
+	return hasVersioning ? resolveDefaultVersion(type) : null;
+}
+
+/**
  * Resolves the typeVersion for an update operation. Preserves the existing
  * value when the type is unchanged; re-resolves against the new type's
  * default when the type changes (since the existing value may not be a
@@ -57,7 +70,5 @@ export function resolveTypeVersionForUpdate(
 	existing: { type: string; typeVersion: number | null },
 ): number | null {
 	if (incomingType === existing.type) return existing.typeVersion;
-	const newType = credentialTypes.getByName(incomingType);
-	const hasVersioning = newType.defaultVersion !== undefined || newType.version !== undefined;
-	return hasVersioning ? resolveDefaultVersion(newType) : null;
+	return resolveTypeVersionForCreate(credentialTypes.getByName(incomingType));
 }

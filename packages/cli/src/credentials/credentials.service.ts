@@ -39,6 +39,7 @@ import {
 	jsonStringify,
 	NodeHelpers,
 	resolveDefaultVersion,
+	resolveTypeVersionForCreate,
 	resolveTypeVersionForUpdate,
 } from 'n8n-workflow';
 
@@ -771,6 +772,7 @@ export class CredentialsService {
 		id: string | null;
 		name: string;
 		type: string;
+		typeVersion?: number | null;
 		data: ICredentialDataDecryptedObject;
 	}): Promise<ICredentialsDb> {
 		const credentials = new Credentials(
@@ -781,6 +783,9 @@ export class CredentialsService {
 		await credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
+		if (credential.typeVersion !== undefined) {
+			newCredentialData.typeVersion = credential.typeVersion;
+		}
 
 		// Add special database related data
 		newCredentialData.updatedAt = new Date();
@@ -1435,13 +1440,9 @@ export class CredentialsService {
 			id: null,
 			name: opts.name,
 			type: opts.type,
+			typeVersion: resolveTypeVersionForCreate(this.credentialTypes.getByName(opts.type)),
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
-
-		const credentialType = this.credentialTypes.getByName(opts.type);
-		const hasVersioning =
-			credentialType.defaultVersion !== undefined || credentialType.version !== undefined;
-		encryptedCredential.typeVersion = hasVersioning ? resolveDefaultVersion(credentialType) : null;
 
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;

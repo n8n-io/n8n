@@ -1,6 +1,7 @@
 import {
 	isDeclaredVersion,
 	resolveDefaultVersion,
+	resolveTypeVersionForCreate,
 	resolveTypeVersionForUpdate,
 } from '../src/credential-versioning';
 import { UnexpectedError } from '../src/errors';
@@ -78,6 +79,26 @@ describe('resolveDefaultVersion', () => {
 		expect(() =>
 			resolveDefaultVersion(credentialType({ name: 'mycreds', version: [1], defaultVersion: 5 })),
 		).toThrow(/mycreds/);
+	});
+});
+
+describe('resolveTypeVersionForCreate', () => {
+	it('returns null for unversioned types', () => {
+		expect(resolveTypeVersionForCreate(credentialType({}))).toBeNull();
+	});
+
+	it('returns the default version for versioned types', () => {
+		expect(resolveTypeVersionForCreate(credentialType({ version: 2 }))).toBe(2);
+		expect(resolveTypeVersionForCreate(credentialType({ version: [1, 2] }))).toBe(2);
+		expect(
+			resolveTypeVersionForCreate(credentialType({ version: [1, 2], defaultVersion: 1 })),
+		).toBe(1);
+	});
+
+	it('throws when defaultVersion is set without a matching `version` declaration', () => {
+		// `defaultVersion: 3` with implicit v1 is misconfigured — same loud
+		// failure mode as `resolveDefaultVersion`.
+		expect(() => resolveTypeVersionForCreate(credentialType({ defaultVersion: 3 }))).toThrow();
 	});
 });
 
