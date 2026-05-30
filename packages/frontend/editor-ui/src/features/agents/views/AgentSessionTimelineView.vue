@@ -26,7 +26,10 @@ import {
 	itemFilterKey,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
+	isSubAgentTimelineItem,
 } from '@/features/agents/session-timeline.utils';
+import { useProjectAgentsList } from '@/features/agents/composables/useProjectAgentsList';
+import { parseDelegateInput, humanizeTaskName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
@@ -66,7 +69,38 @@ const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 let loadThreadDetailRequestId = 0;
 
-const items = computed<TimelineItem[]>(() => flattenExecutionsToTimelineItems(executions.value));
+const baseItems = computed<TimelineItem[]>(() =>
+	flattenExecutionsToTimelineItems(executions.value),
+);
+
+// Resolve sub-agent ids to friendly names via the project agents list, loaded
+// lazily and only when the session actually contains delegations (mirrors how
+// the chat resolves the delegate step label).
+const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
+	useProjectAgentsList(projectId);
+const subAgentNameById = computed(() => {
+	const map = new Map<string, string>();
+	for (const agent of projectAgents.value ?? []) map.set(agent.id, agent.name);
+	return map;
+});
+
+watch(
+	() => baseItems.value.some(isSubAgentTimelineItem),
+	(needed) => {
+		if (needed) void ensureProjectAgentsLoaded().catch(() => {});
+	},
+	{ immediate: true },
+);
+
+const items = computed<TimelineItem[]>(() =>
+	baseItems.value.map((item) => {
+		if (!isSubAgentTimelineItem(item)) return item;
+		const input = parseDelegateInput(item.toolInput);
+		const resolved = input?.subAgentId ? subAgentNameById.value.get(input.subAgentId) : undefined;
+		const name = resolved?.trim() || humanizeTaskName(input?.taskName);
+		return name ? { ...item, subAgentName: name } : item;
+	}),
+);
 const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 

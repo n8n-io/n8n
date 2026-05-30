@@ -1414,6 +1414,7 @@
 	"agentSessions.timeline.suspended": "Suspended",
 	"agentSessions.timeline.idle": "Idle",
 	"agentSessions.timeline.agent": "Agent",
+	"agentSessions.timeline.subAgent": "Sub-agent",
 	"agentSessions.timeline.tool.richInteraction": "Feedback requested from user",
 	"agentSessions.timeline.tool.richInteractionDisplay": "Card sent to user",
 	"agentSessions.timeline.waitingForUser": "Waiting for user response",

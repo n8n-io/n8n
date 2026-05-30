@@ -1,12 +1,18 @@
 import type { BaseTextKey } from '@n8n/i18n';
 import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
+}
+
+/** A `delegate_subagent` tool call — rendered as a sub-agent (bot icon) rather than a plain tool. */
+export function isSubAgentTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
 export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
@@ -44,7 +50,13 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('suspension-waiting'));
 	}
 
-	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
+	parts.push(
+		item.content,
+		item.toolName,
+		item.workflowName,
+		item.nodeDisplayName,
+		item.subAgentName,
+	);
 	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 
 	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
