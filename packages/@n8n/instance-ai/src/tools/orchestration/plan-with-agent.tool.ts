@@ -764,22 +764,43 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						};
 					}
 
-					const resumed = await resumeAgentStream(subAgent, resumeData, {
-						runId: resumeInfo.runId,
-						toolCallId: resumeInfo.toolCallId,
-						persistence: resumeInfo.persistence,
-						maxIterations: MAX_STEPS.PLANNER,
-					});
-
-					consumeResult = await consumeStreamCascading({
-						agent: subAgent,
-						stream: resumed,
-						runId: context.runId,
+					// Open a trace span for the resumed leg so a plan that suspended
+					// at HITL and resumed still shows its continuation in LangSmith.
+					// The planner card itself is already in the snapshot from the
+					// first call, so no agent-spawned event is (re-)published here.
+					traceRun = await startSubAgentTrace(context, {
 						agentId: subAgentId,
-						eventBus: context.eventBus,
-						logger: context.logger,
-						threadId: context.threadId,
-						abortSignal: context.abortSignal,
+						role: 'planner',
+						kind: 'planner',
+						inputs: { resumed: true },
+					});
+					mergeTraceRunInputs(
+						traceRun,
+						buildAgentTraceInputs({
+							systemPrompt: PLANNER_AGENT_PROMPT,
+							tools: tracedPlannerTools,
+							modelId: context.modelId,
+						}),
+					);
+
+					consumeResult = await withTraceRun(context, traceRun, async () => {
+						const resumed = await resumeAgentStream(subAgent, resumeData, {
+							runId: resumeInfo.runId,
+							toolCallId: resumeInfo.toolCallId,
+							persistence: resumeInfo.persistence,
+							maxIterations: MAX_STEPS.PLANNER,
+						});
+
+						return await consumeStreamCascading({
+							agent: subAgent,
+							stream: resumed,
+							runId: context.runId,
+							agentId: subAgentId,
+							eventBus: context.eventBus,
+							logger: context.logger,
+							threadId: context.threadId,
+							abortSignal: context.abortSignal,
+						});
 					});
 				} else {
 					// ── First-call path ─────────────────────────────────────
