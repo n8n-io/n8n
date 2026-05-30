@@ -4798,6 +4798,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -4996,6 +4999,10 @@ importers:
         version: 3.25.67
 
   packages/testing/rules-engine:
+    dependencies:
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
