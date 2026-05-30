@@ -1649,4 +1649,47 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 	});
+
+	describe('Save Button Dirty State', () => {
+		it('should render Save button in outline style when no changes have been made', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			const saveButton = getByRole('button', { name: 'Save' });
+			expect(saveButton).toHaveClass('outline');
+			expect(saveButton).not.toHaveClass('solid');
+		});
+
+		it('should switch Save button to solid style when a setting is changed', async () => {
+			const { getByRole, getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const saveButton = getByRole('button', { name: 'Save' });
+			expect(saveButton).toHaveClass('outline');
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			await userEvent.click(dropdownItems[1]);
+
+			expect(saveButton).toHaveClass('solid');
+			expect(saveButton).not.toHaveClass('outline');
+		});
+
+		it('should return Save button to outline style when a change is reverted', async () => {
+			const { getByRole, getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const saveButton = getByRole('button', { name: 'Save' });
+			expect(saveButton).toHaveClass('outline');
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			await userEvent.click(dropdownItems[1]);
+			expect(saveButton).toHaveClass('solid');
+
+			const dropdownItemsAfter = await getDropdownItems(getByTestId('error-workflow'));
+			await userEvent.click(dropdownItemsAfter[0]);
+
+			expect(saveButton).toHaveClass('outline');
+			expect(saveButton).not.toHaveClass('solid');
+		});
+	});
 });
