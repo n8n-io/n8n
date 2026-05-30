@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, provide, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -36,12 +36,18 @@ const isOpen = computed({
 
 const detailItem = ref<ToolConnectionItem | null>(null);
 
-watch(isOpen, async (open) => {
-	if (open) {
-		await mcpStore.fetchCatalogLazy();
-	} else {
-		detailItem.value = null;
-	}
+// ModalRoot only renders this wrapper while the modal is open, so isOpen is
+// already true on mount — kick off the lazy catalog fetch here rather than via
+// a transition watcher (which wouldn't fire on initial true).
+onMounted(() => {
+	void mcpStore.fetchCatalogLazy();
+	// Also ensure connections are loaded if the user opens the modal before
+	// ConnectionsCard has mounted (e.g. opened via a deep link).
+	void mcpStore.fetchConnections();
+});
+
+watch(isOpen, (open) => {
+	if (!open) detailItem.value = null;
 });
 
 const AUTH_TYPE_TO_CREDENTIAL_TYPE: Record<string, string> = {
