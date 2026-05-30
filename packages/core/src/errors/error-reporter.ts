@@ -56,6 +56,21 @@ const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
+const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
+const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
+
+/**
+ * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
+ * paths and the n8n CLI install prefix become stable `app:///` roots. This
+ * lets Sentry code mappings match `n8n-core`, `n8n-nodes-base`, and cli
+ * frames without depending on the per-release pnpm peer-deps hash segment.
+ */
+export function normalizeFrameFilename(filename: string): string {
+	return filename
+		.replace(PNPM_NESTED_FRAME_RE, 'app:///')
+		.replace(N8N_CLI_INSTALL_PREFIX, 'app:///');
+}
+
 @Service()
 export class ErrorReporter {
 	private expirationTimer?: NodeJS.Timeout;
@@ -218,7 +233,15 @@ export class ErrorReporter {
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
-				rewriteFramesIntegration({ root: '/' }),
+				rewriteFramesIntegration({
+					root: '/',
+					iteratee: (frame) => {
+						if (frame.filename) {
+							frame.filename = normalizeFrameFilename(frame.filename);
+						}
+						return frame;
+					},
+				}),
 				requestDataIntegration({
 					include: {
 						cookies: false,
