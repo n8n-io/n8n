@@ -2,15 +2,21 @@ import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
+import { QueryFailedError } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
+import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -86,8 +92,68 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
+	}
+
+	async listConnectionsForUser(user: User): Promise<InstanceAiMcpRegistryConnection[]> {
+		return await this.connectionRepository.findBy({ userId: user.id });
+	}
+
+	async createConnection(
+		user: User,
+		input: { serverSlug: string; credentialId: string },
+	): Promise<InstanceAiMcpRegistryConnection> {
+		const server = await this.mcpRegistryService.get(input.serverSlug);
+		if (!server) {
+			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			input.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		const entity = this.connectionRepository.create({
+			id: randomUUID(),
+			userId: user.id,
+			serverSlug: input.serverSlug,
+			credentialId: input.credentialId,
+		});
+
+		try {
+			const saved = await this.connectionRepository.save(entity);
+			this.eventService.emit('instance-ai-mcp-registry-connection-created', {
+				userId: user.id,
+				serverSlug: input.serverSlug,
+			});
+			return saved;
+		} catch (error) {
+			if (isUniqueConstraintViolation(error)) {
+				throw new ConflictError(
+					'A connection for this MCP server with this credential already exists',
+				);
+			}
+			throw error;
+		}
+	}
+
+	async deleteConnection(user: User, id: string): Promise<void> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		await this.connectionRepository.delete({ id });
+		this.eventService.emit('instance-ai-mcp-registry-connection-deleted', {
+			userId: user.id,
+			serverSlug: connection.serverSlug,
+		});
 	}
 
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
@@ -263,4 +329,11 @@ export class InstanceAiMcpRegistryService {
 
 		return { credential, data };
 	}
+}
+
+function isUniqueConstraintViolation(error: unknown): boolean {
+	if (!(error instanceof QueryFailedError)) return false;
+	const driverError = error.driverError as { code?: string };
+	const code = driverError?.code;
+	return code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }
