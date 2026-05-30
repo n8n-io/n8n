@@ -1048,6 +1048,20 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+// ---------------------------------------------------------------------------
+// MCP registry connections — per-user
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiMcpConnectionResponse {
+	id: string;
+	serverSlug: string;
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
