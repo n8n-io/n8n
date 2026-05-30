@@ -12,6 +12,7 @@ import {
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow from './ConnectionRow.vue';
 
 type SingletonConnectionType = 'computer-use' | 'browser-use';
@@ -23,6 +24,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
 const props = defineProps<{
@@ -104,6 +106,8 @@ async function openSingletonModal(type: SingletonConnectionType) {
 
 async function handleAdd(option: AddMenuOption) {
 	if (option === 'mcp') {
+		mcpTelemetry.trackAddMenuMcpSelected();
+		mcpTelemetry.trackModalOpened();
 		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 		return;
 	}
@@ -126,7 +130,12 @@ async function handleMcpDisconnect(connectionId: string) {
 	await mcpStore.disconnect(connectionId);
 }
 
-function openMcpSettings(_connectionId: string) {
+function openMcpSettings(connectionId: string) {
+	const connection = mcpStore.connections.find((c) => c.id === connectionId);
+	if (connection) {
+		mcpTelemetry.trackSettingsOpened(connection.serverSlug);
+	}
+	mcpTelemetry.trackModalOpened();
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
