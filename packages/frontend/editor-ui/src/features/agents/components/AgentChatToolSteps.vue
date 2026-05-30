@@ -119,6 +119,9 @@ function toolDuration(tc: ToolCall): string {
 					<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 						{{ stepLabel(tc) }}
 					</span>
+					<span v-if="tc.displaySummary" :class="$style.summary" data-testid="tool-step-summary">
+						· {{ tc.displaySummary }}
+					</span>
 					<span v-if="toolDuration(tc)" :class="$style.duration">
 						{{ toolDuration(tc) }}
 					</span>
@@ -244,6 +247,16 @@ function toolDuration(tc: ToolCall): string {
 	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtler);
 	line-height: var(--line-height--sm);
+}
+
+.summary {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--sm);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .duration {
