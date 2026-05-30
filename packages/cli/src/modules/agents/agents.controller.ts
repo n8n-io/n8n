@@ -48,7 +48,7 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
-import { AgentUploadMiddleware } from './agent-upload.middleware';
+import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -418,22 +418,29 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
-		if (req.fileUploadError) {
-			const error = req.fileUploadError;
-			if (error instanceof multer.MulterError) {
-				throw new BadRequestError(`File upload error: ${error.message}`);
+		const files = req.files ?? [];
+		try {
+			this.assertKnowledgeBaseEnabled();
+			if (req.fileUploadError) {
+				const error = req.fileUploadError;
+				if (error instanceof multer.MulterError) {
+					throw new BadRequestError(`File upload error: ${error.message}`);
+				}
+				throw error;
 			}
-			if (error instanceof BadRequestError) throw error;
+
+			if (files.length === 0) {
+				throw new BadRequestError('No files uploaded');
+			}
+
+			return await this.agentKnowledgeService.uploadFiles(agentId, req.params.projectId, files);
+		} catch (error) {
+			// Multer wrote temp files to disk before this handler ran. The success
+			// path hands them to AgentKnowledgeService (which cleans up its own temp
+			// files), but these early bail-outs return first, so clean up here.
+			await cleanupUploadedTempFiles(files);
 			throw error;
 		}
-
-		const files = req.files ?? [];
-		if (files.length === 0) {
-			throw new BadRequestError('No files uploaded');
-		}
-
-		return await this.agentKnowledgeService.uploadFiles(agentId, req.params.projectId, files);
 	}
 
 	@Delete('/:agentId/files/:fileId')

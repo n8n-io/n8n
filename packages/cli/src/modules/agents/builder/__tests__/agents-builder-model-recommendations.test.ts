@@ -205,10 +205,11 @@ describe('builder model recommendations', () => {
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		const skills = getBuilderRuntimeSkills({ enabledModules: [] });
+		const skills = getBuilderRuntimeSkills();
 
 		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
+			'agent-builder-mcp',
 			'agent-builder-target-skills',
 		]);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
@@ -217,7 +218,7 @@ describe('builder model recommendations', () => {
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
-		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
+		const integrationsSkill = getBuilderRuntimeSkills().find(
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 

@@ -165,31 +165,36 @@ export function getSuggestedDisambiguatingColumns(
 	selectedColumns: string[],
 ) {
 	const alreadyUsed = new Set([...filters.map((filter) => filter.column), ...selectedColumns]);
-	const preferred = [
-		'Year',
-		'Date',
-		'Month',
-		'Country',
-		'Country Name',
-		'Source',
-		'Category',
-		'Name',
-	];
 	return headers
 		.filter((header) => !alreadyUsed.has(header))
-		.sort((left, right) => preferenceScore(left, preferred) - preferenceScore(right, preferred))
+		.sort((left, right) => preferenceScore(left) - preferenceScore(right))
 		.slice(0, 5);
 }
 
-function preferenceScore(column: string, preferred: string[]) {
-	const exactIndex = preferred.findIndex(
+/**
+ * Column-name heuristics used to rank likely disambiguating columns. Shared by
+ * getSuggestedDisambiguatingColumns and getLikelyDisambiguatingColumns.
+ */
+const PREFERRED_DISAMBIGUATING_COLUMNS = [
+	'Year',
+	'Date',
+	'Month',
+	'Country',
+	'Country Name',
+	'Source',
+	'Category',
+	'Name',
+];
+
+function preferenceScore(column: string) {
+	const exactIndex = PREFERRED_DISAMBIGUATING_COLUMNS.findIndex(
 		(candidate) => candidate.toLowerCase() === column.toLowerCase(),
 	);
 	if (exactIndex !== -1) return exactIndex;
-	const partialIndex = preferred.findIndex((candidate) =>
+	const partialIndex = PREFERRED_DISAMBIGUATING_COLUMNS.findIndex((candidate) =>
 		column.toLowerCase().includes(candidate.toLowerCase()),
 	);
-	return partialIndex === -1 ? preferred.length + 1 : partialIndex + 0.5;
+	return partialIndex === -1 ? PREFERRED_DISAMBIGUATING_COLUMNS.length + 1 : partialIndex + 0.5;
 }
 
 type CsvColumnType = 'empty' | 'integer' | 'number' | 'boolean' | 'date' | 'string';
@@ -280,25 +285,12 @@ export function getLikelyDisambiguatingColumns(
 	}>,
 	rowCount: number,
 ) {
-	const preferred = [
-		'Year',
-		'Date',
-		'Month',
-		'Country',
-		'Country Name',
-		'Source',
-		'Category',
-		'Name',
-	];
 	return columnProfiles
 		.filter((column) => {
 			const distinctCount = column.distinctCount ?? 0;
 			return distinctCount > 1 && distinctCount < rowCount && !column.distinctCountTruncated;
 		})
-		.sort(
-			(left, right) =>
-				preferenceScore(left.name, preferred) - preferenceScore(right.name, preferred),
-		)
+		.sort((left, right) => preferenceScore(left.name) - preferenceScore(right.name))
 		.slice(0, 5)
 		.map((column) => column.name);
 }

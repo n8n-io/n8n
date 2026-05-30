@@ -11,6 +11,7 @@ export const BUILDER_TOOLS = {
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	RESOLVE_LLM: 'resolve_llm',
+	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;
 

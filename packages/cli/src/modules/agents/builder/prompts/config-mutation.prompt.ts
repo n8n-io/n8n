@@ -1,6 +1,6 @@
 import { getConfigRulesSection, getSchemaReferenceSection } from './config-rules.prompt';
 
-export function getConfigMutationPrompt(enabledModules: string[]): string {
+export function getConfigMutationPrompt(): string {
 	return `\
 ## Config Mutation Guidance
 
@@ -24,7 +24,7 @@ Use this after deciding a config change is needed and before calling
 
 ${getConfigRulesSection()}
 
-${getSchemaReferenceSection(enabledModules)}
+${getSchemaReferenceSection()}
 
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.

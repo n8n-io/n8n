@@ -58,29 +58,23 @@ enough detail to write meaningful instructions, ask the user first.`;
 
 /**
  * Build the routing section that tells the builder LLM which runtime skills
- * exist and what they cover. Module-gated skills (like `agent-builder-mcp`)
- * are only listed when their owning module is active so the LLM doesn't try
- * to load a skill the runtime won't surface.
+ * exist and what they cover.
  */
-export function getBuilderSkillRoutingSection(enabledModules?: ReadonlyArray<string>): string {
+export function getBuilderSkillRoutingSection(): string {
 	const lines: string[] = [
 		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
+		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 	];
-
-	if (enabledModules?.includes('mcp')) {
-		lines.push(
-			'- `agent-builder-mcp`: adding, removing, or updating MCP (Model Context Protocol) servers.',
-		);
-	}
 
 	return `\
 ## Builder runtime skills
 
 Additional specialized builder guidance is available through runtime skills.
-Before these specialized tasks, call \`load_skill\` with
+Always load relevant runtime skills first. Before any specialized tool calls
+or config mutations in a domain covered by a skill, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
 ${lines.join('\n')}
@@ -179,9 +173,12 @@ export const IMPORTANT_SECTION = `\
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
 - Use \`ask_question\` instead of prose when the answer is a known small set.
-- Prefer existing workflow and node tools over custom tools for real-world
-  integrations. Exception: generic web search is configured via
-  \`config.webSearch\`, including Brave and SearXNG fallback search.
+- Tool preference order for real-world integrations:
+  1. MCP servers (\`search_mcp_servers\`) — always check first
+  2. Node tools (\`search_nodes\`)
+		- Exception: generic web search is configured via \`config.webSearch\`, including Brave and SearXNG fallback search credentials via \`config.webSearch.fallbackSearchCredentials\`. Do not call \`search_nodes\` for web search.
+  3. Workflow tools (\`list_workflows\`)
+  4. Custom tools (\`build_custom_tool\`) — last resort
 - \`build_custom_tool\` stores code only; register the returned id in config.
 - \`create_skill\` stores a target-agent skill body only. It is active only
   after \`read_config\` plus \`patch_config\` or \`write_config\` adds
@@ -257,6 +254,15 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
    refs to \`/subAgents/agents\`.
 
+### Add MCP integration: "Connect Notion MCP"
+1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
+2. \`search_mcp_servers({ queries: ["notion"] })\`.
+3. \`ask_credential({ credentialType: "<result.credentialType>" })\`.
+4. \`verify_mcp_server({ name, url, transport, authentication, credential })\`.
+5. \`read_config()\`.
+6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
+   \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
+
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_question(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
@@ -280,7 +286,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		toolList,
 		agentPreviewPath,
 		modelRecommendationsSection,
-		enabledModules,
 	} = ctx;
 
 	const sections = [
@@ -288,11 +293,11 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		TARGET_AGENT_SECTION,
 		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
 		getConversationModeSection(agentPreviewPath),
-		getConfigMutationPrompt(enabledModules),
+		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
-		getBuilderSkillRoutingSection(enabledModules),
+		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		SUB_AGENTS_SECTION,
