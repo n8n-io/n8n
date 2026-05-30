@@ -1,4 +1,5 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
+import type * as N8nWorkflow from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -12,7 +13,7 @@ vi.mock('../processItem', () => ({
 }));
 
 vi.mock('n8n-workflow', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('n8n-workflow')>();
+	const actual = await importOriginal<typeof N8nWorkflow>();
 	return {
 		...actual,
 		sleep: vi.fn().mockResolvedValue(undefined),
