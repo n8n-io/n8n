@@ -70,14 +70,14 @@ function formatDuration(ms: number): string {
 
 function originLabel(thread: AgentExecutionThread): string {
 	return i18n.baseText(
-		thread.origin === 'subagent' ? 'agentSessions.origin.subAgent' : 'agentSessions.origin.agent',
+		thread.parentThreadId ? 'agentSessions.origin.subAgent' : 'agentSessions.origin.agent',
 	);
 }
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
 	const actions: Array<ActionDropdownItem<string>> = [];
 
-	if (thread.origin === 'subagent' && thread.parentThreadId && thread.parentAgentId) {
+	if (thread.parentThreadId && thread.parentAgentId) {
 		actions.push({
 			id: 'goToParentRun',
 			label: i18n.baseText('agentSessions.goToParentRun'),

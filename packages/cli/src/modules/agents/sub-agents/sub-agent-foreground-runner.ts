@@ -189,7 +189,6 @@ export class SubAgentForegroundRunner {
 				record,
 				source: 'subagent',
 				threadMetadata: {
-					origin: 'subagent',
 					...(parentThreadId !== undefined ? { parentThreadId } : {}),
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},

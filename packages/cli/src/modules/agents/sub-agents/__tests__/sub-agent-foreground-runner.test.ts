@@ -256,7 +256,6 @@ describe('SubAgentForegroundRunner', () => {
 				source: 'subagent',
 				// Parent linkage lives in columns, not in the thread id.
 				threadMetadata: {
-					origin: 'subagent',
 					parentThreadId,
 					parentAgentId,
 				},

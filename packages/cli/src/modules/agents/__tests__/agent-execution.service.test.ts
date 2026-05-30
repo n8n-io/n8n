@@ -19,7 +19,6 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		projectId: 'project-1',
 		title: null,
 		emoji: null,
-		origin: 'direct',
 		parentThreadId: null,
 		parentAgentId: null,
 		sessionNumber: 1,
@@ -59,7 +58,7 @@ describe('AgentExecutionService', () => {
 
 	describe('recordMessage', () => {
 		it('passes thread metadata when creating a subagent execution session', async () => {
-			const thread = makeThread({ origin: 'subagent' });
+			const thread = makeThread({ parentThreadId: 'parent-thread-1' });
 			const record: MessageRecord = {
 				assistantResponse: 'Done',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -85,7 +84,6 @@ describe('AgentExecutionService', () => {
 				record,
 				source: 'subagent',
 				threadMetadata: {
-					origin: 'subagent',
 					parentThreadId: 'parent-thread-1',
 					parentAgentId: 'parent-agent-1',
 				},
@@ -97,7 +95,6 @@ describe('AgentExecutionService', () => {
 				'Agent',
 				'project-1',
 				{
-					origin: 'subagent',
 					parentThreadId: 'parent-thread-1',
 					parentAgentId: 'parent-agent-1',
 				},

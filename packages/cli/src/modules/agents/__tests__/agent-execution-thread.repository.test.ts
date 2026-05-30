@@ -52,7 +52,6 @@ describe('AgentExecutionThreadRepository', () => {
 				agentName: 'Support agent',
 				projectId: 'project-1',
 				sessionNumber: 8,
-				origin: 'direct',
 				parentThreadId: null,
 				parentAgentId: null,
 			});
@@ -68,7 +67,6 @@ describe('AgentExecutionThreadRepository', () => {
 			});
 
 			await repository.findOrCreate('thread-1', 'agent-1', 'Support agent', 'project-1', {
-				origin: 'subagent',
 				parentThreadId: 'parent-thread-1',
 				parentAgentId: 'parent-agent-1',
 			});
@@ -79,7 +77,6 @@ describe('AgentExecutionThreadRepository', () => {
 				agentName: 'Support agent',
 				projectId: 'project-1',
 				sessionNumber: 8,
-				origin: 'subagent',
 				parentThreadId: 'parent-thread-1',
 				parentAgentId: 'parent-agent-1',
 			});

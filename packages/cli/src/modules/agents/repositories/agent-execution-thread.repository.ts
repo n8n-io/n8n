@@ -2,12 +2,10 @@ import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { AgentExecutionThreadOrigin } from '../entities/agent-execution-thread.entity';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
 export interface AgentExecutionThreadMetadata {
-	origin?: AgentExecutionThreadOrigin;
 	parentThreadId?: string;
 	parentAgentId?: string;
 }
@@ -79,7 +77,6 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				agentName,
 				projectId,
 				sessionNumber,
-				origin: metadata?.origin ?? 'direct',
 				parentThreadId: metadata?.parentThreadId ?? null,
 				parentAgentId: metadata?.parentAgentId ?? null,
 			});

@@ -2,8 +2,8 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 /**
  * Adds the sub-agent session-linkage columns to `agent_execution_threads`
- * (origin / parentThreadId / parentAgentId) and widens the agent thread-id
- * columns to varchar(255).
+ * (parentThreadId / parentAgentId) and widens the agent thread-id columns to
+ * varchar(255).
  *
  * Agent thread ids are not bare uuids — several surfaces scope them with a
  * prefix and a user id (e.g. the test chat's `test-<agentId>:<userId>`, the
@@ -24,7 +24,7 @@ const COLUMNS_TO_WIDEN: Array<{ table: string; column: string }> = [
 	{ table: 'agent_execution', column: 'threadId' },
 ];
 
-export class AddSubAgentOriginToAgentExecutionThreads1784000000018
+export class AddSubAgentLinkageToAgentExecutionThreads1784000000018
 	implements IrreversibleMigration
 {
 	async up({
@@ -34,11 +34,6 @@ export class AddSubAgentOriginToAgentExecutionThreads1784000000018
 		escape,
 	}: MigrationContext) {
 		await addColumns('agent_execution_threads', [
-			column('origin')
-				.varchar(16)
-				.notNull.default("'direct'")
-				.withEnumCheck(['direct', 'subagent'])
-				.comment('How this agent session was started.'),
 			column('parentThreadId')
 				.varchar(255)
 				.comment('Parent session thread id that delegated this subagent run.'),
