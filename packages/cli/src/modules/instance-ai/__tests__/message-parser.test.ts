@@ -1017,4 +1017,77 @@ describe('confirmation expiration helpers', () => {
 		expect(collectConfirmationRequestIds(messages)).toEqual([]);
 		markExpiredConfirmations(messages, new Set());
 	});
+
+	/** Build a single assistant message carrying one plan-review confirmation
+	 *  card, with overridable actionability fields. */
+	function makeCardMessage(
+		overrides: Partial<{ isLoading: boolean; confirmationStatus: 'approved' | 'denied' }>,
+	): InstanceAiMessage {
+		return {
+			id: 'msg-a',
+			role: 'assistant',
+			createdAt: makeDate().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			runId: 'run-1',
+			agentTree: {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-0',
+						toolName: 'plan',
+						args: {},
+						isLoading: overrides.isLoading ?? true,
+						...(overrides.confirmationStatus
+							? { confirmationStatus: overrides.confirmationStatus }
+							: {}),
+						confirmation: {
+							requestId: 'req-resolved',
+							severity: 'info' as const,
+							message: '',
+							inputType: 'plan-review' as const,
+						},
+					},
+				],
+				children: [],
+				timeline: [],
+			},
+		};
+	}
+
+	// Regression: a resolved plan card reloaded after the user approved/denied it
+	// has no pending-confirmation row (claim() deleted it), but that absence must
+	// NOT relabel the historical card as "Plan (expired)".
+	it('does not mark a settled (no longer loading) card expired even with no live row', () => {
+		const messages = [makeCardMessage({ isLoading: false })];
+		markExpiredConfirmations(messages, new Set());
+		expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBeUndefined();
+	});
+
+	it.each(['approved', 'denied'] as const)(
+		'does not mark a %s card expired even with no live row',
+		(confirmationStatus) => {
+			const messages = [makeCardMessage({ confirmationStatus })];
+			markExpiredConfirmations(messages, new Set());
+			expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBeUndefined();
+		},
+	);
+
+	it('does not collect request IDs for settled cards', () => {
+		expect(collectConfirmationRequestIds([makeCardMessage({ isLoading: false })])).toEqual([]);
+		expect(
+			collectConfirmationRequestIds([makeCardMessage({ confirmationStatus: 'approved' })]),
+		).toEqual([]);
+	});
+
+	it('still marks a genuinely actionable card expired when its row is gone', () => {
+		const messages = [makeCardMessage({ isLoading: true })];
+		markExpiredConfirmations(messages, new Set());
+		expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBe(true);
+	});
 });

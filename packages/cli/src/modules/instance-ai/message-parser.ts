@@ -502,21 +502,43 @@ function propagateMessageGroupIdWithinRange(
 }
 
 /** Pull every confirmation requestId out of the parsed messages' agent trees. */
+/**
+ * A confirmation card is "actionable" only while the user can still respond to
+ * it: the tool call is in-flight and no terminal status has been recorded.
+ * Once approved/denied (or otherwise settled) the card is historical — its
+ * pending-confirmation row is gone after claim/delete, but that absence means
+ * "resolved", not "expired".
+ */
+function isActionableConfirmation(tc: InstanceAiToolCallState): boolean {
+	return (
+		tc.confirmation !== undefined &&
+		tc.isLoading &&
+		tc.confirmationStatus !== 'approved' &&
+		tc.confirmationStatus !== 'denied'
+	);
+}
+
 export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): string[] {
 	const requestIds: string[] = [];
 	for (const message of messages) {
 		if (!message.agentTree) continue;
 		walkAgentNodes(message.agentTree, (node) => {
 			for (const tc of node.toolCalls) {
-				const requestId = tc.confirmation?.requestId;
-				if (requestId) requestIds.push(requestId);
+				const { confirmation } = tc;
+				if (!confirmation || !isActionableConfirmation(tc)) continue;
+				requestIds.push(confirmation.requestId);
 			}
 		});
 	}
 	return requestIds;
 }
 
-/** Flip `confirmation.expired = true` on every card whose requestId is not in `liveRequestIds`. */
+/**
+ * Flip `confirmation.expired = true` on still-actionable cards whose
+ * pending-confirmation row is no longer live. Settled cards (approved/denied,
+ * or no longer loading) are left untouched — their row is also gone, but that
+ * means "resolved", not "expired", so relabeling them would rewrite history.
+ */
 export function markExpiredConfirmations(
 	messages: InstanceAiMessage[],
 	liveRequestIds: Set<string>,
@@ -525,9 +547,10 @@ export function markExpiredConfirmations(
 		if (!message.agentTree) continue;
 		walkAgentNodes(message.agentTree, (node) => {
 			for (const tc of node.toolCalls) {
-				if (!tc.confirmation) continue;
-				if (!liveRequestIds.has(tc.confirmation.requestId)) {
-					tc.confirmation.expired = true;
+				const { confirmation } = tc;
+				if (!confirmation || !isActionableConfirmation(tc)) continue;
+				if (!liveRequestIds.has(confirmation.requestId)) {
+					confirmation.expired = true;
 				}
 			}
 		});
