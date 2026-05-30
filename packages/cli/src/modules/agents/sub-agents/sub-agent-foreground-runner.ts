@@ -154,6 +154,15 @@ export class SubAgentForegroundRunner {
 			};
 		} finally {
 			if (timeout) clearTimeout(timeout);
+			// Each delegation builds its own child agent, so release it here:
+			// dispose the runtime's background tasks and disconnect any MCP
+			// transports instead of leaking them per delegated run.
+			await agent.close().catch((error) => {
+				this.logger.warn('Failed to close subagent after run', {
+					taskPath,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 		}
 	}
 

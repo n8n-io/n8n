@@ -117,6 +117,7 @@ describe('SubAgentForegroundRunner', () => {
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		childAgent.close.mockResolvedValue(undefined);
 		jest.mocked(buildFromJson).mockResolvedValue(childAgent as never);
 
 		credentialProvider = mock<CredentialProvider>();
@@ -144,6 +145,7 @@ describe('SubAgentForegroundRunner', () => {
 			}),
 		});
 		expect(createToolExecutor).toHaveBeenCalledWith(runtimeSource.toolCodeByName);
+		expect(childAgent.close).toHaveBeenCalledTimes(1);
 		expect(buildFromJson).toHaveBeenCalledWith(
 			runnableConfig,
 			runtimeSource.toolDescriptors,
@@ -281,6 +283,7 @@ describe('SubAgentForegroundRunner', () => {
 		).resolves.toMatchObject({
 			status: 'failed',
 		});
+		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
 	it('passes an abort signal when timeout policy is configured', async () => {
