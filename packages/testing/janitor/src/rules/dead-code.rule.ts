@@ -1,7 +1,7 @@
-import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
-
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
+import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { matchesPatterns } from '../utils/paths.js';

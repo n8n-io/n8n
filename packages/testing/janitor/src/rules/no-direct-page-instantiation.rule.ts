@@ -23,10 +23,11 @@
  * - Page instantiation in page object files (for composition)
  * - Page instantiation in composables (if they need to create pages)
  */
-import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
+import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';

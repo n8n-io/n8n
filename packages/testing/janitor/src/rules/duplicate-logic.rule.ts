@@ -1,3 +1,5 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import {
 	SyntaxKind,
 	type Project,
@@ -6,8 +8,6 @@ import {
 	type MethodDeclaration,
 } from 'ts-morph';
 
-import { AstRule } from '@n8n/rules-engine/ast';
-import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { getRelativePath, matchesPatterns } from '../utils/paths.js';

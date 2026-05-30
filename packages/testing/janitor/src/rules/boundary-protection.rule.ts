@@ -1,17 +1,16 @@
+import type { Violation } from '@n8n/rules-engine';
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import type { Violation } from '@n8n/rules-engine';
 import type { Project } from 'ts-morph';
 
+import { getConfig } from '../config.js';
 import { isPageImport } from '../utils/ast-helpers.js';
-
-const DEFAULT_EXCLUDES = ['n8nPage.ts', 'BasePage.ts', 'BaseModal.ts', 'BaseComponent.ts'];
-const normalize = (p: string) => p.replace(/\\/g, '/');
+import { isExcludedPage } from '../utils/paths.js';
 
 /**
  * Pages must not import other pages directly. Janitor-owned (playwright domain
- * logic via {@link isPageImport}) but built on the shared `@n8n/rules-engine/ast`
- * substrate rather than a janitor-local base.
+ * logic via {@link isPageImport} + config-driven {@link isExcludedPage}) but
+ * built on the shared `@n8n/rules-engine/ast` substrate rather than a janitor base.
  */
 export class BoundaryProtectionRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'boundary-protection';
@@ -20,7 +19,7 @@ export class BoundaryProtectionRule extends AstRule<{ rootDir: string }> {
 	readonly severity = 'error' as const;
 
 	getTargetGlobs(): string[] {
-		return ['pages/**/*.ts'];
+		return getConfig().patterns.pages.filter((p) => !p.includes('components'));
 	}
 
 	protected projectConfig(): AstProjectConfig {
@@ -32,13 +31,12 @@ export class BoundaryProtectionRule extends AstRule<{ rootDir: string }> {
 	}
 
 	analyzeProject(project: Project): Violation[] {
-		const excludes = (this.getOptions().excludeFromPages as string[]) ?? DEFAULT_EXCLUDES;
 		const violations: Violation[] = [];
 
 		for (const file of project.getSourceFiles()) {
-			const filePath = normalize(file.getFilePath());
+			const filePath = file.getFilePath();
+			if (isExcludedPage(filePath)) continue;
 			if (filePath.includes('/components/')) continue;
-			if (excludes.some((e) => filePath.endsWith(e))) continue;
 
 			for (const decl of file.getImportDeclarations()) {
 				const spec = decl.getModuleSpecifierValue();

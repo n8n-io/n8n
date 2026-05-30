@@ -1,7 +1,7 @@
-import type { Project, SourceFile } from 'ts-morph';
-
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
+import type { Project, SourceFile } from 'ts-morph';
+
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';

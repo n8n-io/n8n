@@ -1,8 +1,8 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import * as path from 'node:path';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
-import { AstRule } from '@n8n/rules-engine/ast';
-import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { getRootDir, getTestDataFiles } from '../utils/paths.js';

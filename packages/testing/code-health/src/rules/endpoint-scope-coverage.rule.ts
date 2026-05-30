@@ -1,3 +1,4 @@
+import type { Violation } from '@n8n/rules-engine';
 import {
 	AstRule,
 	classHasDecorator,
@@ -5,13 +6,12 @@ import {
 	getDecoratorObjectFlag,
 } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
-import type { Violation } from '@n8n/rules-engine';
 import type { Project } from 'ts-morph';
 
 import type { CodeHealthContext } from '../context.js';
 
 const CONTROLLER_DECORATORS = ['RestController', 'RootLevelController'];
-const ROUTE_DECORATORS = ['Get', 'Post', 'Put', 'Patch', 'Delete'];
+const ROUTE_DECORATORS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'Head', 'Options'];
 const SCOPE_DECORATORS = ['GlobalScope', 'ProjectScope'];
 /** Route options that opt out of requiring an authenticated, scoped user. */
 const PUBLIC_FLAGS = ['skipAuth', 'allowUnauthenticated', 'apiKeyAuth'];
@@ -33,7 +33,7 @@ export class EndpointScopeCoverageRule extends AstRule<CodeHealthContext> {
 		return { packages };
 	}
 
-	async analyze(context: CodeHealthContext): Promise<Violation[]> {
+	analyze(context: CodeHealthContext): Violation[] {
 		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
 	}
 
