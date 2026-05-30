@@ -149,7 +149,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		if (typeof requestObject.body === 'string') {
 			axiosConfig.data = requestObject.body;
 		} else {
-			const allData = Object.assign(requestObject.body || {}, requestObject.form || {}) as Record<
+			const allData = { ...(requestObject.body as object | undefined || {}), ...(requestObject.form || {}) } as Record<
 				string,
 				string
 			>;
@@ -176,7 +176,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 
 		const headers = axiosConfig.data.getHeaders();
 
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+		axiosConfig.headers = { ...(axiosConfig.headers || {}), ...headers };
 		await generateContentLengthHeader(axiosConfig);
 	} else {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
@@ -217,14 +217,14 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 
 			const headers = axiosConfig.data.getHeaders();
 
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
+			axiosConfig.headers = { ...(axiosConfig.headers || {}), ...headers };
 			await generateContentLengthHeader(axiosConfig);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined && requestObject.body) {
 				// merge both objects when exist.
 
-				requestObject.body = Object.assign(requestObject.body, requestObject.form);
+				requestObject.body = { ...(requestObject.body as object), ...requestObject.form };
 			}
 			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
 		}
@@ -291,9 +291,10 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
+			axiosConfig.headers = {
+				...(axiosConfig.headers || {}),
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
-			});
+			};
 		} else {
 			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
@@ -316,9 +317,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 						.map((headerKey) => headerKey.toLowerCase())
 						.includes('accept');
 		if (!acceptHeaderExists) {
-			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				Accept: 'application/json',
-			});
+			axiosConfig.headers = { ...(axiosConfig.headers || {}), Accept: 'application/json' };
 		}
 	}
 	if (requestObject.json === false || requestObject.json === undefined) {
@@ -378,7 +377,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 	// as the service returns XML unless requested otherwise.
 	const allHeaders = axiosConfig.headers ? Object.keys(axiosConfig.headers) : [];
 	if (!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'accept')) {
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, { accept: '*/*' });
+		axiosConfig.headers = { ...(axiosConfig.headers || {}), accept: '*/*' };
 	}
 	if (
 		requestObject.json !== false &&
@@ -392,9 +391,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		// application/json; charset=utf-8
 		// and this breaks a lot of stuff
 
-		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-			'content-type': 'application/json',
-		});
+		axiosConfig.headers = { ...(axiosConfig.headers || {}), 'content-type': 'application/json' };
 	}
 
 	if (requestObject.simple === false) {
@@ -646,7 +643,7 @@ async function validateUrlSsrf(url: string | undefined, ssrfBridge?: SsrfBridge)
 function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
 	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
 	const baseURL = requestObject.baseURL?.toString();
-	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
+	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl ?? baseURL;
 }
 
 const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
@@ -665,7 +662,7 @@ export async function httpRequest(
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
+	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.baseURL ?? requestOptions.url;
 	await validateUrlSsrf(url, ssrfBridge);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
