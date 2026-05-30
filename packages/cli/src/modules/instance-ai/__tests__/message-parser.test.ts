@@ -200,6 +200,50 @@ describe('parseStoredMessages', () => {
 			expect(tc?.error).toBe('Workflow not found');
 		});
 
+		it('should skip malformed tool-call parts instead of rendering half-populated cards', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						// Valid tool call — should survive.
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-ok',
+							toolName: 'list-workflows',
+							input: {},
+							state: 'resolved',
+							output: { ok: true },
+						},
+						// Missing toolName — fails the schema, must be dropped.
+						{ type: 'tool-call', toolCallId: 'tc-no-name', input: {}, state: 'resolved' },
+						// Missing toolCallId — dropped.
+						{ type: 'tool-call', toolName: 'orphan', input: {}, state: 'resolved' },
+						// `error` wrong type for a rejected call — dropped.
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-bad-error',
+							toolName: 'workflows',
+							state: 'rejected',
+							error: { not: 'a string' },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc-ok']);
+		});
+
 		it('should parse reasoning from native parts', () => {
 			const messages: StoredAgentMessage[] = [
 				{

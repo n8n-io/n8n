@@ -6,10 +6,21 @@ import type {
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
 import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
+import { z } from 'zod';
 
 import { cleanStoredUserMessage } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
+
+const toolCallContentPartSchema = z.object({
+	type: z.literal('tool-call'),
+	toolCallId: z.string(),
+	toolName: z.string(),
+	input: z.unknown().optional(),
+	state: z.enum(['pending', 'resolved', 'rejected']).optional(),
+	output: z.unknown().optional(),
+	error: z.string().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Persisted message shapes
@@ -24,12 +35,6 @@ interface StoredToolInvocation {
 	error?: string;
 }
 
-/**
- * Persisted content parts in `instance_ai_messages.content` are JSON-encoded
- * `MessageContent` objects produced by the @n8n/agents SDK. We narrow against
- * that canonical type so downstream readers fail at compile time if the SDK
- * shape (e.g. the `'tool-call' state: 'resolved' + output` union) changes.
- */
 type StoredContentPart = MessageContent;
 
 export interface StoredAgentMessage {
@@ -122,35 +127,34 @@ function toRecord(value: unknown): Record<string, unknown> {
 
 function nativeToolPartToInvocation(part: StoredContentPart): StoredToolInvocation | undefined {
 	if (part.type !== 'tool-call') return undefined;
-	// `ContentToolCall` is a discriminated union on `state`:
-	//   'pending'  — call in flight, no result yet
-	//   'resolved' — completed with `output`
-	//   'rejected' — failed with `error`
-	// The output/error live on the SAME part as the call; there is no separate
-	// `tool-result` content part in the persisted shape.
-	const args = toRecord(part.input);
-	if (part.state === 'resolved') {
+
+	const parsed = toolCallContentPartSchema.safeParse(part);
+	if (!parsed.success) return undefined;
+	const toolCall = parsed.data;
+
+	const args = toRecord(toolCall.input);
+	if (toolCall.state === 'resolved') {
 		return {
 			state: 'result',
-			toolCallId: part.toolCallId,
-			toolName: part.toolName,
+			toolCallId: toolCall.toolCallId,
+			toolName: toolCall.toolName,
 			args,
-			result: part.output,
+			result: toolCall.output,
 		};
 	}
-	if (part.state === 'rejected') {
+	if (toolCall.state === 'rejected') {
 		return {
 			state: 'result',
-			toolCallId: part.toolCallId,
-			toolName: part.toolName,
+			toolCallId: toolCall.toolCallId,
+			toolName: toolCall.toolName,
 			args,
-			error: part.error,
+			error: toolCall.error,
 		};
 	}
 	return {
 		state: 'call',
-		toolCallId: part.toolCallId,
-		toolName: part.toolName,
+		toolCallId: toolCall.toolCallId,
+		toolName: toolCall.toolName,
 		args,
 	};
 }
