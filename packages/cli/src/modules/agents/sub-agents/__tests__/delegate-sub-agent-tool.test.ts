@@ -98,12 +98,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 		expect(runner.runForeground).toHaveBeenCalledWith(
 			{
-				taskName: 'Research API',
 				goal: 'Find the API behavior.',
 				context: 'Focus on auth endpoints.',
 				expectedOutput: 'A short summary.',
 				source,
-				contextMode: 'fresh',
 				executionMode: 'foreground',
 				policy: { maxChildren: 2, timeoutMs: 1000 },
 				taskPath: '/root/research_api_0',

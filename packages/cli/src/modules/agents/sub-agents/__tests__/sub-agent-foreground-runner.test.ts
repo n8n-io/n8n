@@ -75,14 +75,12 @@ const runtimeSource: ResolvedSubAgentRuntimeSource = {
 };
 
 const spawnRequest: SubAgentSpawnRequest = {
-	taskName: 'Research API',
 	goal: 'Find the relevant API behavior.',
 	context: 'Focus on auth endpoints.',
 	expectedOutput: 'A concise summary.',
 	source: {
 		agentId: 'agent-1',
 	},
-	contextMode: 'fresh',
 	executionMode: 'foreground',
 	parentThreadId,
 	taskPath: '/root/research_api_0',

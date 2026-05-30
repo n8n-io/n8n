@@ -43,10 +43,8 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			const result = await runner.runForeground(
 				{
-					taskName: request.taskName,
 					goal: request.goal,
 					source: selectedSource,
-					contextMode: 'fresh',
 					executionMode: 'foreground',
 					...(request.context !== undefined ? { context: request.context } : {}),
 					...(request.expectedOutput !== undefined
