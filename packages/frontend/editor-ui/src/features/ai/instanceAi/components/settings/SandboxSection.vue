@@ -4,9 +4,8 @@ import {
 	N8nHeading,
 	N8nInput,
 	N8nInputNumber,
-	N8nSelect,
-	N8nOption,
 	N8nInputLabel,
+	N8nSelect2 as N8nSelect,
 } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
@@ -55,6 +54,30 @@ const selectedN8nSandboxCredentialId = computed(() => {
 	}
 	return store.settings?.n8nSandboxCredentialId ?? '';
 });
+
+const sandboxProviderItems = [
+	{ value: 'daytona', label: 'Daytona' },
+	{ value: 'n8n-sandbox', label: 'n8n Sandbox Service' },
+	{ value: 'local', label: 'Local' },
+];
+
+const daytonaCredentialItems = computed(() => [
+	{ value: '', label: i18n.baseText('instanceAi.settings.credential.none') },
+	...daytonaCredentials.value.map((credential) => ({
+		value: credential.id,
+		label: credential.name,
+	})),
+	{ value: CREATE_NEW, label: i18n.baseText('instanceAi.settings.credential.createNew') },
+]);
+
+const n8nSandboxCredentialItems = computed(() => [
+	{ value: '', label: i18n.baseText('instanceAi.settings.credential.none') },
+	...n8nSandboxCredentials.value.map((credential) => ({
+		value: credential.id,
+		label: credential.name,
+	})),
+	{ value: CREATE_NEW, label: i18n.baseText('instanceAi.settings.credential.createNew') },
+]);
 
 let creatingCredential = false;
 let creatingCredentialType: 'daytonaApi' | 'httpHeaderAuth' | null = null;
@@ -131,12 +154,9 @@ watch(
 			<N8nSelect
 				:model-value="provider"
 				size="small"
+				:items="sandboxProviderItems"
 				@update:model-value="store.setField('sandboxProvider', String($event))"
-			>
-				<N8nOption value="daytona" label="Daytona" />
-				<N8nOption value="n8n-sandbox" label="n8n Sandbox Service" />
-				<N8nOption value="local" label="Local" />
-			</N8nSelect>
+			/>
 		</N8nInputLabel>
 
 		<template v-if="showDaytonaFields">
@@ -149,20 +169,9 @@ watch(
 					:model-value="selectedDaytonaCredentialId"
 					size="small"
 					:placeholder="i18n.baseText('instanceAi.settings.credential.placeholder')"
+					:items="daytonaCredentialItems"
 					@update:model-value="handleDaytonaCredentialChange"
-				>
-					<N8nOption value="" :label="i18n.baseText('instanceAi.settings.credential.none')" />
-					<N8nOption
-						v-for="cred in daytonaCredentials"
-						:key="cred.id"
-						:value="cred.id"
-						:label="cred.name"
-					/>
-					<N8nOption
-						:value="CREATE_NEW"
-						:label="i18n.baseText('instanceAi.settings.credential.createNew')"
-					/>
-				</N8nSelect>
+				/>
 			</N8nInputLabel>
 		</template>
 
@@ -176,20 +185,9 @@ watch(
 					:model-value="selectedN8nSandboxCredentialId"
 					size="small"
 					:placeholder="i18n.baseText('instanceAi.settings.credential.placeholder')"
+					:items="n8nSandboxCredentialItems"
 					@update:model-value="handleN8nSandboxCredentialChange"
-				>
-					<N8nOption value="" :label="i18n.baseText('instanceAi.settings.credential.none')" />
-					<N8nOption
-						v-for="cred in n8nSandboxCredentials"
-						:key="cred.id"
-						:value="cred.id"
-						:label="cred.name"
-					/>
-					<N8nOption
-						:value="CREATE_NEW"
-						:label="i18n.baseText('instanceAi.settings.credential.createNew')"
-					/>
-				</N8nSelect>
+				/>
 			</N8nInputLabel>
 		</template>
 

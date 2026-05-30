@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, watch } from 'vue';
-import { N8nHeading, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nInputLabel, N8nSelect2 as N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -21,6 +21,16 @@ const selectedSearchCredentialId = computed(() => {
 	if (store.draft.searchCredentialId !== undefined) return store.draft.searchCredentialId ?? '';
 	return store.settings?.searchCredentialId ?? '';
 });
+
+const searchCredentialItems = computed(() => [
+	{ value: '', label: i18n.baseText('instanceAi.settings.credential.none') },
+	...searchCredentials.value.map((credential) => ({
+		value: credential.id,
+		label: `${credential.name} (${credential.type === 'braveSearchApi' ? 'Brave' : 'SearXNG'})`,
+	})),
+	{ value: CREATE_BRAVE, label: i18n.baseText('instanceAi.settings.credential.createBrave') },
+	{ value: CREATE_SEARXNG, label: i18n.baseText('instanceAi.settings.credential.createSearxng') },
+]);
 
 let creatingCredential = false;
 
@@ -70,24 +80,9 @@ watch(
 				:model-value="selectedSearchCredentialId"
 				size="small"
 				:placeholder="i18n.baseText('instanceAi.settings.credential.placeholder')"
+				:items="searchCredentialItems"
 				@update:model-value="handleSearchCredentialChange"
-			>
-				<N8nOption value="" :label="i18n.baseText('instanceAi.settings.credential.none')" />
-				<N8nOption
-					v-for="cred in searchCredentials"
-					:key="cred.id"
-					:value="cred.id"
-					:label="`${cred.name} (${cred.type === 'braveSearchApi' ? 'Brave' : 'SearXNG'})`"
-				/>
-				<N8nOption
-					:value="CREATE_BRAVE"
-					:label="i18n.baseText('instanceAi.settings.credential.createBrave')"
-				/>
-				<N8nOption
-					:value="CREATE_SEARXNG"
-					:label="i18n.baseText('instanceAi.settings.credential.createSearxng')"
-				/>
-			</N8nSelect>
+			/>
 		</N8nInputLabel>
 	</div>
 </template>

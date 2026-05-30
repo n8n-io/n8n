@@ -19,10 +19,54 @@ const meta = {
 			source: { type: 'dynamic' },
 		},
 	},
+	argTypes: {
+		size: {
+			control: 'select',
+			options: ['mini', 'xsmall', 'small', 'medium', 'large', 'xlarge'],
+		},
+		variant: {
+			control: 'select',
+			options: ['default', 'ghost'],
+		},
+		placeholder: {
+			control: 'text',
+		},
+		disabled: {
+			control: 'boolean',
+		},
+		side: {
+			control: 'select',
+			options: ['top', 'right', 'bottom', 'left'],
+		},
+	},
 } satisfies GenericMeta<typeof Select<SelectItem[]>>;
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+export const Default = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<Select v-bind="args" v-model="value" />
+		</div>
+		`,
+	}),
+	args: {
+		items: ['Option 1', 'Option 2', 'Option 3'],
+		modelValue: undefined,
+		size: 'small',
+		variant: 'default',
+		placeholder: 'Select an option',
+		disabled: false,
+	},
+} satisfies Story;
 
 export const Items = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
@@ -44,7 +88,7 @@ export const Items = {
 	},
 } satisfies Story;
 
-export const ItemsObjectArray = {
+export const ObjectArray = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
@@ -53,11 +97,8 @@ export const ItemsObjectArray = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
-			<h3>Default </h3>
+		<div style="padding: 40px;">
 			<Select v-bind="args" v-model="value" />
-			<h3>Disabled </h3>
-			<Select v-bind="args" v-model="value" disabled/>
 		</div>
 		`,
 	}),
@@ -68,11 +109,13 @@ export const ItemsObjectArray = {
 			{ label: 'Option 3', value: 'option3' },
 		],
 		modelValue: undefined,
+		size: 'small',
+		variant: 'default',
 	},
 } satisfies Story;
 
-export const ItemsTypes = {
-	/// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+export const WithLabelsAndSeparators = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -80,13 +123,8 @@ export const ItemsTypes = {
 			return { args, value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: center; padding: 40px;">
-			<h3>xsmall </h3>
-			<Select v-bind="args" v-model="value" size="xsmall"/>
-			<h3 style="margin-top: 15px;">small (default)</h3>
-			<Select v-bind="args" v-model="value" size="small" />
-			<h3 style="margin-top: 15px;">medium</h3>
-			<Select v-bind="args" v-model="value" size="medium" />
+		<div style="padding: 40px;">
+			<Select v-bind="args" v-model="value" />
 		</div>
 		`,
 	}),
@@ -98,35 +136,14 @@ export const ItemsTypes = {
 			{ label: 'Orange', value: 'orange' },
 			{ label: 'Grapes', value: 'grapes' },
 			{ label: 'Mango', value: 'mango' },
-			{ label: 'Pineapple', value: 'pineapple' },
-			{ label: 'Strawberry', value: 'strawberry' },
-			{ label: 'Blueberry', value: 'blueberry' },
-			{ label: 'Watermelon', value: 'watermelon' },
-			{ label: 'Papaya', value: 'papaya' },
-			{ label: 'Cherry', value: 'cherry' },
-			{ label: 'Peach', value: 'peach' },
-			{ label: 'Pear', value: 'pear' },
-			{ label: 'Plum', value: 'plum' },
-			{ label: 'Kiwi', value: 'kiwi' },
-			{ label: 'Lemon', value: 'lemon' },
-			{ label: 'Lime', value: 'lime' },
-			{ label: 'Coconut', value: 'coconut' },
 			{ type: 'separator' },
 			{ type: 'label', label: 'More Fruits' },
 			{ label: 'Pomegranate', value: 'pomegranate' },
 			{ label: 'Guava', value: 'guava' },
-			{ label: 'Dragon Fruit', value: 'dragon_fruit' },
-			{ label: 'Lychee', value: 'lychee' },
-			{ label: 'Fig', value: 'fig' },
-			{ label: 'Apricot', value: 'apricot' },
-			{ label: 'Raspberry', value: 'raspberry' },
-			{ label: 'Blackberry', value: 'blackberry' },
-			{ label: 'Cantaloupe', value: 'cantaloupe' },
-			{ label: 'Passion Fruit', value: 'passion_fruit' },
-			{ label: 'Cranberry', value: 'cranberry' },
-			{ label: 'Tangerine', value: 'tangerine' },
 		],
 		modelValue: undefined,
+		size: 'small',
+		variant: 'default',
 	},
 } satisfies Story;
 

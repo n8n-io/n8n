@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import Draggable from 'vuedraggable';
-import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nIcon, N8nSelect2 as N8nSelect } from '@n8n/design-system';
 import { useRolesStore } from '@/app/stores/roles.store';
 import type {
 	RoleMappingRuleResponse,
@@ -102,15 +102,9 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 					:disabled="props.disabled"
 					data-test-id="fallback-role-select"
 					:class="$style.fallbackSelect"
+					:items="fallbackRoleOptions"
 					@update:model-value="emit('update:fallbackRole', String($event))"
-				>
-					<N8nOption
-						v-for="option in fallbackRoleOptions"
-						:key="option.value"
-						:label="option.label"
-						:value="option.value"
-					/>
-				</N8nSelect>
+				/>
 			</div>
 			<div :class="$style.defaultCellSpacer" />
 		</div>

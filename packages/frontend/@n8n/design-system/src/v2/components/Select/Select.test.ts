@@ -6,9 +6,12 @@ import Select from './Select.vue';
 
 const sizeCases: Array<[SelectSizes | undefined, string]> = [
 	[undefined, 'small'],
+	['mini', 'mini'],
 	['xsmall', 'xsmall'],
 	['small', 'small'],
 	['medium', 'medium'],
+	['large', 'large'],
+	['xlarge', 'xlarge'],
 ];
 
 const variantCases: Array<[SelectVariants | undefined, string]> = [

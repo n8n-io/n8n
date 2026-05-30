@@ -59,6 +59,7 @@ import {
 	N8nOption,
 	N8nPopover,
 	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -314,6 +315,13 @@ const statusFilterOptions: Array<{ label: string; value: SourceControlledFileSta
 		value: SOURCE_CONTROL_FILE_STATUS.deleted,
 	},
 ] as const;
+
+const statusFilterItems = computed(() =>
+	statusFilterOptions.map((option) => ({
+		...option,
+		'data-test-id': 'source-control-status-filter-option',
+	})),
+);
 
 const search = ref('');
 const debouncedSearch = refDebounced(search, 250);
@@ -949,18 +957,9 @@ onMounted(async () => {
 								color="text-base"
 								class="mb-3xs"
 							/>
-							<N8nSelect
-								v-model="filters.status"
-								data-test-id="source-control-status-filter"
-								clearable
-							>
-								<N8nOption
-									v-for="option in statusFilterOptions"
-									:key="option.label"
-									data-test-id="source-control-status-filter-option"
-									v-bind="option"
-								/>
-							</N8nSelect>
+							<div data-test-id="source-control-status-filter">
+								<N8nSelect2 v-model="filters.status" clearable :items="statusFilterItems" />
+							</div>
 							<N8nInputLabel
 								:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
 								:bold="false"
