@@ -243,6 +243,21 @@ plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.
 
+**Cross-package SKIPs are intentional.** When a change in a universal sink
+like `packages/workflow` or `packages/core` lands, every downstream package
+(cli, nodes-base, editor-ui, all `@n8n/*`) is listed as affected by
+`affected-packages` — but each downstream's `test:changed` filters
+`CHANGED_FILES` to in-package files only, finds none, and emits `SKIP`. Only
+the sink's own tests scope via `vitest related`. The bet: workflow/core's own
+unit tests plus repo-wide `typecheck` catch contract breaks, so re-running
+downstream suites against an unchanged-in-package diff is wasted CI. If a
+cross-package runtime regression slips through, the conservative escalation
+is to add the sink's directory to `GLOBAL_TRIGGER_PREFIXES` in
+`affected-packages-analyzer.ts` (forcing `RUN_FULL` workspace-wide on those
+PRs); a more precise alternative is to feed the full `CHANGED_FILES` into
+each downstream's `vitest related` walk so the import graph picks up the
+transitive coupling.
+
 ## Rules
 
 ### Architecture Rules
