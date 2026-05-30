@@ -1007,7 +1007,6 @@ export class AgentsService {
 				parentAgentId: agentId,
 				credentialProvider,
 				policy: this.buildSubAgentPolicy(),
-				concurrency: this.agentsConfig.subAgentConcurrency,
 				createToolExecutor: (toolCodeByName) =>
 					this.secureRuntime.createToolExecutor(toolCodeByName),
 				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
@@ -1019,7 +1018,6 @@ export class AgentsService {
 	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */
 	private buildSubAgentPolicy(): SubAgentRunPolicy {
 		return {
-			maxDepth: this.agentsConfig.subAgentMaxDepth,
 			maxChildren: this.agentsConfig.subAgentMaxChildren,
 			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
 		};
@@ -2215,7 +2213,7 @@ export class AgentsService {
 			const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 			if (!agent?.activeVersionId) continue;
 
-			sourcesById[agentId] = { type: 'n8n-agent', agentId, versionId: agent.activeVersionId };
+			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,

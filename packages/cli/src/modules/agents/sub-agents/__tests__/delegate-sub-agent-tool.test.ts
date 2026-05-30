@@ -1,5 +1,5 @@
 import type { CredentialProvider, GenerateResult } from '@n8n/agents';
-import type { RunnableAgentJsonConfig, SubAgentSource } from '@n8n/api-types';
+import type { SubAgentSource } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import type { ToolExecutor } from '../../json-config/from-json-config';
@@ -14,16 +14,8 @@ import type {
 
 const projectId = 'project-1';
 
-const runnableConfig: RunnableAgentJsonConfig = {
-	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
-	credential: 'credential-1',
-	instructions: 'Help with delegated work.',
-};
-
 const source: SubAgentSource = {
-	type: 'inline',
-	config: runnableConfig,
+	agentId: 'agent-2',
 };
 
 const generateResult: GenerateResult = {
@@ -49,14 +41,8 @@ const generateResult: GenerateResult = {
 
 const foregroundResult: SubAgentForegroundResult = {
 	taskPath: '/root/research_api_0',
-	source: {
-		type: 'inline',
-		config: runnableConfig,
-	},
+	threadId: 'child-thread-1',
 	status: 'completed',
-	startedAt: 100,
-	finishedAt: 150,
-	durationMs: 50,
 	result: generateResult,
 };
 
@@ -106,6 +92,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			status: 'completed',
 			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
+			threadId: 'child-thread-1',
 			answer: 'Preamble\nChild answer',
 		});
 
@@ -119,13 +106,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 				contextMode: 'fresh',
 				executionMode: 'foreground',
 				policy: { maxChildren: 2, timeoutMs: 1000 },
-				parentRunId: 'parent-run-1',
-				parentToolCallId: 'tool-call-1',
-				parentTaskPath: '/root',
+				taskPath: '/root/research_api_0',
 			},
 			expect.objectContaining({
 				projectId,
-				childCount: 0,
 				credentialProvider,
 				createToolExecutor,
 				createMemoryFactory,
@@ -160,83 +144,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
-	it('passes incrementing child counts from the SDK tool to the runner', async () => {
-		const tool = createN8nDelegateSubAgentTool({
-			runner,
-			sourcesById: { 'agent-2': source },
-			projectId,
-			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
-			policy: { maxChildren: 3 },
-		});
-
-		await tool.handler?.({ taskName: 'One', goal: 'First task.' }, { runId: 'parent-run-1' });
-		await tool.handler?.({ taskName: 'Two', goal: 'Second task.' }, { runId: 'parent-run-1' });
-
-		expect(runner.runForeground).toHaveBeenNthCalledWith(
-			1,
-			expect.any(Object),
-			expect.objectContaining({ childCount: 0 }),
-		);
-		expect(runner.runForeground).toHaveBeenNthCalledWith(
-			2,
-			expect.any(Object),
-			expect.objectContaining({ childCount: 1 }),
-		);
-	});
-
-	it('caps concurrent runForeground calls to the configured concurrency', async () => {
-		let started = 0;
-		let active = 0;
-		let maxActive = 0;
-		let releaseFirst!: () => void;
-		let firstStartedResolve!: () => void;
-		const gate = new Promise<void>((release) => {
-			releaseFirst = release;
-		});
-		const firstStarted = new Promise<void>((resolve) => {
-			firstStartedResolve = resolve;
-		});
-		runner.runForeground.mockImplementation(async () => {
-			started += 1;
-			active += 1;
-			maxActive = Math.max(maxActive, active);
-			if (started === 1) {
-				firstStartedResolve();
-				await gate;
-			}
-			active -= 1;
-			return foregroundResult;
-		});
-
-		const tool = createN8nDelegateSubAgentTool({
-			runner,
-			sourcesById: { 'agent-2': source },
-			projectId,
-			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
-			policy: { maxChildren: 3 },
-			concurrency: 1,
-		});
-
-		const first = tool.handler?.({ taskName: 'One', goal: 'First.' }, { runId: 'parent-run-1' });
-		const second = tool.handler?.({ taskName: 'Two', goal: 'Second.' }, { runId: 'parent-run-1' });
-
-		await firstStarted;
-		// Let the event loop turn; the second call must stay queued behind the cap.
-		await new Promise((resolve) => setTimeout(resolve, 10));
-		expect(started).toBe(1);
-
-		releaseFirst();
-		await Promise.all([first, second]);
-		expect(started).toBe(2);
-		expect(maxActive).toBe(1);
-	});
-
 	it('selects a configured n8n agent source by subAgentId', async () => {
-		const selectedSource: SubAgentSource = { type: 'n8n-agent', agentId: 'agent-2' };
+		const selectedSource: SubAgentSource = { agentId: 'agent-2' };
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: {
@@ -293,6 +202,7 @@ describe('formatSubAgentToolOutput', () => {
 			status: 'completed',
 			taskPath: '/root/research_api_0',
 			runId: 'child-run-1',
+			threadId: 'child-thread-1',
 			answer: 'Preamble\nChild answer',
 			usage: {
 				promptTokens: 10,

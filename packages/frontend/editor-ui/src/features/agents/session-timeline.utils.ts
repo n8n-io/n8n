@@ -212,6 +212,7 @@ interface RawSubAgentEvent {
 	parentToolCallId?: string;
 	subAgentId?: string;
 	runId?: string;
+	threadId?: string;
 	status: 'running' | 'completed' | 'failed';
 	startTime: number;
 	endTime: number;
@@ -327,6 +328,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolOutput: {
 						status: event.status,
 						...(event.runId !== undefined ? { runId: event.runId } : {}),
+						...(event.threadId !== undefined ? { threadId: event.threadId } : {}),
 						...(event.usage !== undefined ? { usage: event.usage } : {}),
 						...(event.finishReason !== undefined ? { finishReason: event.finishReason } : {}),
 						...(event.error !== undefined ? { error: event.error } : {}),

@@ -30,14 +30,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 345600; // 96 hours
 
-	/**
-	 * Maximum delegation nesting depth (root = 0). Bounds how deep
-	 * `delegate_subagent` can recurse so an agent cannot trigger an unbounded
-	 * "agent delegates to agent…" chain.
-	 */
-	@Env('N8N_AGENTS_SUBAGENT_MAX_DEPTH')
-	subAgentMaxDepth: number = 1;
-
 	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
 	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
 	subAgentMaxChildren: number = 5;
@@ -45,10 +37,6 @@ export class AgentsConfig {
 	/** Abort an individual sub-agent run after this many milliseconds. */
 	@Env('N8N_AGENTS_SUBAGENT_TIMEOUT_MS')
 	subAgentTimeoutMs: number = 300000; // 5 minutes
-
-	/** Maximum number of sub-agent runs executing concurrently within one parent run. */
-	@Env('N8N_AGENTS_SUBAGENT_CONCURRENCY')
-	subAgentConcurrency: number = 3;
 
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry

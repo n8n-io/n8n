@@ -13,10 +13,10 @@
  *
  * Why this concept exists:
  *  - Identity: each delegated unit of work gets a unique, traceable name we can
- *    log, surface in the timeline, and use for memory scoping — without the
- *    parent having to invent ids.
+ *    log and surface in the timeline — without the parent having to invent ids.
+ *    (Memory/session ids are independent — a run gets its own thread id.)
  *  - Depth: the path encodes how deeply nested a delegation is (root = 0), which
- *    is what lets us bound recursion.
+ *    is what lets us bound recursion when a consumer wires nested delegation.
  *  - Policy enforcement: together with {@link SubAgentTaskPathPolicy}, the path
  *    lets us cap nesting depth and per-parent fan-out so a misbehaving agent
  *    can't trigger runaway delegation — an infinite "agent delegates to agent

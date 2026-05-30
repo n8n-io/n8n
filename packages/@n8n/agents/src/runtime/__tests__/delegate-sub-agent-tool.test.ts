@@ -1,8 +1,10 @@
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
-import type { BuiltAgent, GenerateResult } from '../../types/sdk/agent';
+import type { GenerateResult } from '../../types/sdk/agent';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	createDelegateSubAgentTool,
+	generateResultToDelegateSubAgentOutput,
+	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
 } from '../delegate-sub-agent-tool';
@@ -117,6 +119,7 @@ describe('createDelegateSubAgentTool', () => {
 					status: 'completed',
 					taskPath: '/root/research_api',
 					runId: 'child-run-1',
+					threadId: 'child-thread-1',
 					answer: 'done',
 					usage: {
 						promptTokens: 3,
@@ -147,55 +150,10 @@ describe('createDelegateSubAgentTool', () => {
 		expect(events[2]).toMatchObject({
 			status: 'completed',
 			runId: 'child-run-1',
+			threadId: 'child-thread-1',
 			usage: { totalTokens: 5 },
 			finishReason: 'stop',
 		});
-	});
-
-	it('runs a provided child agent by default', async () => {
-		const childResult: GenerateResult = {
-			runId: 'child-run-1',
-			messages: [
-				{
-					role: 'assistant',
-					type: 'llm',
-					content: [
-						{ type: 'text', text: 'preamble' },
-						{ type: 'text', text: 'child answer' },
-					],
-				},
-			],
-			finishReason: 'stop',
-			usage: {
-				promptTokens: 3,
-				completionTokens: 2,
-				totalTokens: 5,
-			},
-		};
-		const child = makeBuiltAgent(childResult);
-		const tool = createDelegateSubAgentTool({
-			agent: child,
-			generateOptions: { maxIterations: 2 },
-		});
-
-		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
-			status: 'completed',
-			taskPath: '/root/research_api_0',
-			runId: 'child-run-1',
-			answer: 'preamble\nchild answer',
-			usage: {
-				totalTokens: 5,
-			},
-			finishReason: 'stop',
-		});
-		expect(child.generate).toHaveBeenCalledWith(
-			[
-				'Goal:\nFind the API behavior.',
-				'Context:\nFocus on auth endpoints.',
-				'Expected output:\nA short summary.',
-			].join('\n\n'),
-			{ maxIterations: 2 },
-		);
 	});
 
 	it('tracks child count per parent run id', async () => {
@@ -265,16 +223,62 @@ describe('createDelegateSubAgentTool', () => {
 	});
 });
 
-function makeBuiltAgent(result: GenerateResult): jest.Mocked<BuiltAgent> {
-	return {
-		name: 'child',
-		generate: jest.fn().mockResolvedValue(result),
-		stream: jest.fn(),
-		on: jest.fn(),
-		getState: jest.fn(),
-		abort: jest.fn(),
-		resume: jest.fn(),
-		approve: jest.fn(),
-		deny: jest.fn(),
-	} as unknown as jest.Mocked<BuiltAgent>;
-}
+describe('renderDelegateSubAgentPrompt', () => {
+	it('renders only the provided sections', () => {
+		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).toBe('Goal:\nFind it.');
+		expect(
+			renderDelegateSubAgentPrompt({
+				goal: 'Find it.',
+				context: 'auth endpoints',
+				expectedOutput: 'a summary',
+			}),
+		).toBe('Goal:\nFind it.\n\nContext:\nauth endpoints\n\nExpected output:\na summary');
+	});
+});
+
+describe('generateResultToDelegateSubAgentOutput', () => {
+	it('maps a successful GenerateResult to the tool output', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-1',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [
+						{ type: 'text', text: 'preamble' },
+						{ type: 'text', text: 'answer' },
+					],
+				},
+			],
+			finishReason: 'stop',
+			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+		};
+
+		expect(
+			generateResultToDelegateSubAgentOutput('/root/research_api_0', result, 'child-thread-1'),
+		).toEqual({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+			threadId: 'child-thread-1',
+			answer: 'preamble\nanswer',
+			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+			finishReason: 'stop',
+		});
+	});
+
+	it('marks an errored result as failed', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-2',
+			messages: [],
+			finishReason: 'error',
+			error: new Error('boom'),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			answer: '',
+			error: 'boom',
+		});
+	});
+});

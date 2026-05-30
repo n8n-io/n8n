@@ -15,11 +15,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { buildFromJson, type ToolExecutor } from '../../json-config/from-json-config';
-import {
-	createSubAgentThreadId,
-	renderSubAgentPrompt,
-	SubAgentForegroundRunner,
-} from '../sub-agent-foreground-runner';
+import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
@@ -30,7 +26,6 @@ jest.mock('../../json-config/from-json-config', () => ({
 }));
 
 const projectId = 'project-1';
-const parentRunId = 'parent-run-1';
 const parentThreadId = 'parent-thread-1';
 const parentAgentId = 'parent-agent-1';
 
@@ -42,7 +37,7 @@ const runnableConfig: RunnableAgentJsonConfig = {
 };
 
 const source: ResolvedSubAgentSource = {
-	type: 'inline',
+	sourceId: 'agent-1',
 	config: runnableConfig,
 };
 
@@ -85,14 +80,12 @@ const spawnRequest: SubAgentSpawnRequest = {
 	context: 'Focus on auth endpoints.',
 	expectedOutput: 'A concise summary.',
 	source: {
-		type: 'inline',
-		config: runnableConfig,
+		agentId: 'agent-1',
 	},
 	contextMode: 'fresh',
 	executionMode: 'foreground',
-	parentRunId,
 	parentThreadId,
-	parentTaskPath: '/root',
+	taskPath: '/root/research_api_0',
 };
 
 const defaultStreamChunks: StreamChunk[] = [
@@ -144,7 +137,7 @@ describe('SubAgentForegroundRunner', () => {
 
 		expect(result).toMatchObject({
 			taskPath: '/root/research_api_0',
-			source,
+			threadId: expect.any(String),
 			status: 'completed',
 			result: expect.objectContaining({
 				runId: 'child-run-1',
@@ -163,6 +156,9 @@ describe('SubAgentForegroundRunner', () => {
 				memoryFactory: expect.any(Function),
 			}),
 		);
+		// A delegated run gets an ordinary uuid thread id (no special structure).
+		// With no parent resource scope, memory isolates to the run's own thread,
+		// so resourceId === threadId.
 		expect(childAgent.stream).toHaveBeenCalledWith(
 			[
 				'Goal:\nFind the relevant API behavior.',
@@ -171,18 +167,24 @@ describe('SubAgentForegroundRunner', () => {
 			].join('\n\n'),
 			expect.objectContaining({
 				persistence: {
-					// Inline sub-agents have no source id, so the thread falls back to
-					// the task path; the resource scope falls back to the project.
-					resourceId: 'project-1',
-					threadId: 'subagent:parent-thread-1:/root/research_api_0',
+					resourceId: result.threadId,
+					threadId: result.threadId,
 				},
 			}),
 		);
-		expect(agentExecutionService.recordMessage).not.toHaveBeenCalled();
+		// Every sub-agent run is a saved n8n agent, so it records under its run
+		// thread id, owned by the sub-agent's own id.
+		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: result.threadId,
+				agentId: 'agent-1',
+				source: 'subagent',
+			}),
+		);
 	});
 
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
-		await runner.runForeground(
+		const result = await runner.runForeground(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
 				projectId,
@@ -197,17 +199,17 @@ describe('SubAgentForegroundRunner', () => {
 			expect.objectContaining({
 				persistence: {
 					resourceId: 'draft-chat:user-1',
-					threadId: 'subagent:parent-thread-1:/root/research_api_0',
+					threadId: result.threadId,
 				},
 			}),
 		);
+		expect(result.threadId).toEqual(expect.any(String));
 	});
 
-	it('uses the saved n8n agent id as memory owner while keeping a subagent thread scope', async () => {
+	it('uses the saved n8n agent id as memory owner and records the session under the run thread id', async () => {
 		sourceResolver.resolveForRuntime.mockResolvedValue({
 			...runtimeSource,
 			source: {
-				type: 'n8n-agent',
 				sourceId: 'agent-2',
 				versionId: 'version-1',
 				config: {
@@ -221,10 +223,10 @@ describe('SubAgentForegroundRunner', () => {
 			return childAgent as never;
 		});
 
-		await runner.runForeground(
+		const result = await runner.runForeground(
 			{
 				...spawnRequest,
-				source: { type: 'n8n-agent', agentId: 'agent-2', versionId: 'version-1' },
+				source: { agentId: 'agent-2', versionId: 'version-1' },
 			},
 			{
 				projectId,
@@ -235,24 +237,26 @@ describe('SubAgentForegroundRunner', () => {
 			},
 		);
 
+		// Memory is owned by the sub-agent's own id, exactly like a normal agent.
 		expect(createMemoryFactory).toHaveBeenCalledWith('agent-2');
 		expect(childAgent.stream).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
 				persistence: {
-					resourceId: 'project-1',
-					threadId: 'subagent:parent-thread-1:agent-2',
+					resourceId: result.threadId,
+					threadId: result.threadId,
 				},
 			}),
 		);
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				// Same id as the SDK memory thread above, so title sync + deletion line up.
-				threadId: 'subagent:parent-thread-1:agent-2',
+				threadId: result.threadId,
 				agentId: 'agent-2',
 				agentName: 'Helper Agent',
 				projectId,
 				source: 'subagent',
+				// Parent linkage lives in columns, not in the thread id.
 				threadMetadata: {
 					origin: 'subagent',
 					parentThreadId,
@@ -280,44 +284,6 @@ describe('SubAgentForegroundRunner', () => {
 		).resolves.toMatchObject({
 			status: 'failed',
 		});
-	});
-
-	it('rejects child creation when maxDepth would be exceeded', async () => {
-		await expect(
-			runner.runForeground(
-				{
-					...spawnRequest,
-					parentTaskPath: '/root/parent',
-					policy: { maxDepth: 1 },
-				},
-				{
-					projectId,
-					credentialProvider,
-					createToolExecutor,
-					createMemoryFactory,
-				},
-			),
-		).rejects.toThrow('Sub-agent task path depth 2 exceeds maxDepth 1');
-		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
-	});
-
-	it('rejects child creation when maxChildren would be exceeded', async () => {
-		await expect(
-			runner.runForeground(
-				{
-					...spawnRequest,
-					policy: { maxChildren: 1 },
-				},
-				{
-					projectId,
-					childCount: 1,
-					credentialProvider,
-					createToolExecutor,
-					createMemoryFactory,
-				},
-			),
-		).rejects.toThrow('Sub-agent child count 2 exceeds maxChildren 1');
-		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
 	});
 
 	it('rejects non-fresh context modes for now', async () => {
@@ -431,32 +397,6 @@ describe('SubAgentForegroundRunner', () => {
 		} finally {
 			jest.useRealTimers();
 		}
-	});
-});
-
-describe('renderSubAgentPrompt', () => {
-	it('renders only provided sections', () => {
-		expect(
-			renderSubAgentPrompt({
-				taskName: 'Summarize',
-				goal: 'Summarize the thread.',
-				source: spawnRequest.source,
-			}),
-		).toBe('Goal:\nSummarize the thread.');
-	});
-});
-
-describe('createSubAgentThreadId', () => {
-	it('keys the thread by the parent conversation and the sub-agent source', () => {
-		expect(createSubAgentThreadId('test-agent-1:user-1', 'agent-2', '/root/research_api_0')).toBe(
-			'subagent:test-agent-1:user-1:agent-2',
-		);
-	});
-
-	it('falls back to the task path when the parent thread or source id is missing', () => {
-		expect(createSubAgentThreadId(undefined, undefined, '/root/research_api_0')).toBe(
-			'subagent:/root/research_api_0:/root/research_api_0',
-		);
 	});
 });
 

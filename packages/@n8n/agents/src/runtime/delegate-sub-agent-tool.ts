@@ -10,14 +10,7 @@ import {
 import { filterLlmMessages } from '../sdk/message';
 import { Tool } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
-import type {
-	BuiltAgent,
-	ExecutionOptions,
-	FinishReason,
-	GenerateResult,
-	RunOptions,
-	TokenUsage,
-} from '../types/sdk/agent';
+import type { FinishReason, GenerateResult, TokenUsage } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolContext } from '../types/sdk/tool';
 
@@ -47,6 +40,7 @@ const delegateSubAgentOutputSchema = z.object({
 	status: z.enum(['completed', 'failed']),
 	taskPath: z.string().optional(),
 	runId: z.string().optional(),
+	threadId: z.string().optional(),
 	answer: z.string(),
 	structuredOutput: z.unknown().optional(),
 	usage: z
@@ -65,18 +59,17 @@ const delegateSubAgentOutputSchema = z.object({
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
 
 /**
- * Limits enforced for a delegation. Extends the task-path policy (max depth /
- * max children / canSpawnSubAgents) with per-child run constraints.
+ * Limits the delegate tool enforces structurally for a delegation: nesting
+ * depth, fan-out, and the on/off switch (see {@link SubAgentTaskPathPolicy}).
+ *
+ * Per-run runtime constraints (e.g. a wall-clock timeout) are intentionally not
+ * here — they're a host concern, enforced inside the `runSubAgent` callback (as
+ * the n8n CLI runner does).
  */
-export interface DelegateSubAgentPolicy extends SubAgentTaskPathPolicy {
-	/** Abort the child run after this many milliseconds. */
-	timeoutMs?: number;
-	/** Restrict the child to this allow-list of tool names. */
-	allowedToolNames?: string[];
-}
+export type DelegateSubAgentPolicy = SubAgentTaskPathPolicy;
 
 /**
- * What a host's `runSubAgent` / `createAgent` callback receives: the model's
+ * What a host's `runSubAgent` callback receives: the model's
  * {@link DelegateSubAgentInput} plus runtime-derived context the host needs to
  * run and link the child. All `parent*` fields come from the parent's tool
  * execution context and are used for tracing/linkage, not required to run.
@@ -112,6 +105,12 @@ export interface DelegateSubAgentToolOutput {
 	taskPath?: SubAgentTaskPath;
 	/** The child run's id, when the executor produced one. */
 	runId?: string;
+	/**
+	 * The child run's memory thread id (`persistence.threadId`), when the
+	 * executor used one. Surfaced so a consumer can correlate the child run or
+	 * re-supply it to continue the same thread on a later delegation.
+	 */
+	threadId?: string;
 	/** The child's answer — the main payload the parent acts on. */
 	answer: string;
 	structuredOutput?: unknown;
@@ -122,10 +121,16 @@ export interface DelegateSubAgentToolOutput {
 	error?: string;
 }
 
-type DelegateSubAgentGenerateOptions = RunOptions & ExecutionOptions;
-
-/** Options shared by all three execution modes. */
-interface CreateDelegateSubAgentToolBaseOptions {
+/**
+ * Options for the `delegate_subagent` tool.
+ *
+ * You supply `runSubAgent` — the host callback that actually runs the child for
+ * a delegation and returns its result. Everything else (input/output schema,
+ * system prompt, task-path bookkeeping, policy enforcement, and the
+ * `subagent-started` / `-progress` / `-completed` lifecycle events) is owned by
+ * the tool.
+ */
+export interface CreateDelegateSubAgentToolOptions {
 	/**
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
@@ -136,59 +141,11 @@ interface CreateDelegateSubAgentToolBaseOptions {
 	 * for a top-level agent — children then hang off `/root`.
 	 */
 	parentTaskPath?: SubAgentTaskPath;
-	/** Depth / fan-out / tool limits enforced before each delegation. */
+	/** Depth / fan-out limits enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
-	/**
-	 * Override the run options passed to the child's `generate(...)` — static or
-	 * computed per request. Only used by the `agent` / `createAgent` modes (a
-	 * `runSubAgent` override controls its own execution).
-	 */
-	generateOptions?:
-		| DelegateSubAgentGenerateOptions
-		| ((
-				request: DelegateSubAgentRequest,
-		  ) => DelegateSubAgentGenerateOptions | Promise<DelegateSubAgentGenerateOptions>);
-	/**
-	 * Override how a request becomes the child's prompt (defaults to
-	 * {@link renderDelegateSubAgentPrompt}). Only used by the `agent` /
-	 * `createAgent` modes.
-	 */
-	renderPrompt?: (request: DelegateSubAgentRequest) => string;
+	/** Run the child for this delegation and return its result. */
+	runSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
 }
-
-/**
- * Base options PLUS exactly one execution mode — pick the one matching how much
- * control you need over running the child:
- *
- *  - `agent`: a single, prebuilt child agent reused for every delegation.
- *    Simplest; every delegation runs the same fixed agent.
- *  - `createAgent(request)`: build a fresh child per delegation from the request
- *    (e.g. select by `request.subAgentId`, choose a model, apply
- *    `request.policy.allowedToolNames`). The tool still renders the prompt, calls
- *    `agent.generate(...)`, and maps the result for you.
- *  - `runSubAgent(request)`: full override — you run the child however you want
- *    and return the output. Use when execution needs host concerns the SDK can't
- *    know about (credential/source resolution, memory, persistence). This is what
- *    the n8n CLI uses.
- */
-export type CreateDelegateSubAgentToolOptions = CreateDelegateSubAgentToolBaseOptions &
-	(
-		| {
-				agent: BuiltAgent;
-				createAgent?: never;
-				runSubAgent?: never;
-		  }
-		| {
-				createAgent: (request: DelegateSubAgentRequest) => BuiltAgent | Promise<BuiltAgent>;
-				agent?: never;
-				runSubAgent?: never;
-		  }
-		| {
-				runSubAgent(request: DelegateSubAgentRequest): Promise<DelegateSubAgentToolOutput>;
-				agent?: never;
-				createAgent?: never;
-		  }
-	);
 
 /**
  * Build the generic `delegate_subagent` tool — lets a parent agent hand a
@@ -198,11 +155,7 @@ export type CreateDelegateSubAgentToolOptions = CreateDelegateSubAgentToolBaseOp
  * schema, the description + system instruction that teach the LLM when/how to
  * delegate, task-path bookkeeping, policy enforcement (depth / fan-out /
  * canSpawnSubAgents), and the `subagent-started` / `-progress` / `-completed`
- * lifecycle events. You only supply HOW to run the child, via one of the three
- * modes on {@link CreateDelegateSubAgentToolOptions}.
- *
- * @example Fixed child agent:
- *   agent.tool(createDelegateSubAgentTool({ agent: researcher }));
+ * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
  * @example Host-controlled execution (what the n8n CLI does):
  *   agent.tool(createDelegateSubAgentTool({
@@ -239,7 +192,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 }
 
 function formatAvailableSubAgents(
-	availableSubAgents: CreateDelegateSubAgentToolBaseOptions['availableSubAgents'],
+	availableSubAgents: CreateDelegateSubAgentToolOptions['availableSubAgents'],
 ): string[] {
 	if (!availableSubAgents?.length) return [];
 
@@ -255,10 +208,10 @@ function formatAvailableSubAgents(
 /**
  * Tool handler: enforce policy (depth + fan-out), assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
- * parent tool context, then run the child via {@link runSubAgent} while emitting
- * started/progress/completed lifecycle events. Any error is converted into a
- * `status: 'failed'` output (never thrown) so one failed delegation can't abort
- * the parent's run.
+ * parent tool context, then run the child via the host `runSubAgent` callback
+ * while emitting started/progress/completed lifecycle events. Any error is
+ * converted into a `status: 'failed'` output (never thrown) so one failed
+ * delegation can't abort the parent's run.
  */
 async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
@@ -299,7 +252,7 @@ async function handleDelegateSubAgent(
 		startedAt = Date.now();
 		emitSubAgentStarted(ctx, request, startedAt);
 		emitSubAgentProgress(ctx, request);
-		const output = await runSubAgent(request, options);
+		const output = await options.runSubAgent(request);
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;
 	} catch (error) {
@@ -361,6 +314,7 @@ function emitSubAgentCompleted(
 		finishedAt,
 		durationMs: finishedAt - startedAt,
 		...(output.runId !== undefined ? { runId: output.runId } : {}),
+		...(output.threadId !== undefined ? { threadId: output.threadId } : {}),
 		...(output.usage !== undefined ? { usage: output.usage } : {}),
 		...(output.finishReason !== undefined ? { finishReason: output.finishReason } : {}),
 		...(output.error !== undefined ? { error: output.error } : {}),
@@ -379,59 +333,38 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 	};
 }
 
-/**
- * Dispatch to the configured execution mode: use the host `runSubAgent` override
- * if present; otherwise run the SDK default — resolve the child (`agent` or
- * `createAgent(request)`), render its prompt, call `generate(...)`, and map the
- * result to {@link DelegateSubAgentToolOutput}.
- */
-async function runSubAgent(
-	request: DelegateSubAgentRequest,
-	options: CreateDelegateSubAgentToolOptions,
-): Promise<DelegateSubAgentToolOutput> {
-	if ('runSubAgent' in options && options.runSubAgent !== undefined) {
-		return await options.runSubAgent(request);
+function getChildCountKey(ctx: ToolContext, parentTaskPath: SubAgentTaskPath | undefined): string {
+	return ctx.runId ?? ctx.persistence?.threadId ?? parentTaskPath ?? 'adhoc';
+}
+
+function stringifyUnknown(value: unknown): string {
+	if (value instanceof Error) return value.message;
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+		return String(value);
 	}
-
-	const agent =
-		'agent' in options && options.agent !== undefined
-			? options.agent
-			: await options.createAgent(request);
-	const prompt = options.renderPrompt?.(request) ?? renderDelegateSubAgentPrompt(request);
-	const generateOptions = await resolveGenerateOptions(request, options);
-	// Cancel the child when the parent is cancelled, preserving any abort signal
-	// the caller already configured via generateOptions.
-	const abortSignal = combineAbortSignals(request.parentAbortSignal, generateOptions?.abortSignal);
-	const result = await agent.generate(prompt, {
-		...generateOptions,
-		...(abortSignal !== undefined ? { abortSignal } : {}),
-	});
-
-	return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return 'Unknown error';
+	}
 }
 
-/** Merge up to two abort signals: cancellation of either cancels the result. */
-function combineAbortSignals(
-	a: AbortSignal | undefined,
-	b: AbortSignal | undefined,
-): AbortSignal | undefined {
-	const signals = [a, b].filter((signal): signal is AbortSignal => signal !== undefined);
-	if (signals.length <= 1) return signals[0];
-	return AbortSignal.any(signals);
-}
+/**
+ * Optional helpers for a `runSubAgent` implementation.
+ *
+ * A host that runs the child by calling `agent.generate(...)`/`stream(...)` can
+ * reuse these instead of hand-rolling the delegation prompt and the result
+ * mapping. They are NOT wired into the tool — call them from your `runSubAgent`
+ * (the n8n CLI runner does).
+ */
 
-async function resolveGenerateOptions(
-	request: DelegateSubAgentRequest,
-	options: CreateDelegateSubAgentToolOptions,
-): Promise<DelegateSubAgentGenerateOptions | undefined> {
-	if (options.generateOptions === undefined) return undefined;
-
-	return typeof options.generateOptions === 'function'
-		? await options.generateOptions(request)
-		: options.generateOptions;
-}
-
-export function renderDelegateSubAgentPrompt(request: DelegateSubAgentRequest): string {
+/** Render the default delegation prompt from a request's goal / context / expectedOutput. */
+export function renderDelegateSubAgentPrompt(request: {
+	goal: string;
+	context?: string;
+	expectedOutput?: string;
+}): string {
 	const sections = [`Goal:\n${request.goal}`];
 
 	if (request.context) {
@@ -445,14 +378,17 @@ export function renderDelegateSubAgentPrompt(request: DelegateSubAgentRequest): 
 	return sections.join('\n\n');
 }
 
+/** Map an agent {@link GenerateResult} into the delegate tool's output shape. */
 export function generateResultToDelegateSubAgentOutput(
 	taskPath: SubAgentTaskPath,
 	result: GenerateResult,
+	threadId?: string,
 ): DelegateSubAgentToolOutput {
 	return {
 		status: result.finishReason === 'error' || result.error !== undefined ? 'failed' : 'completed',
 		taskPath,
 		runId: result.runId,
+		...(threadId !== undefined ? { threadId } : {}),
 		answer: lastText(result.messages),
 		...(result.structuredOutput !== undefined ? { structuredOutput: result.structuredOutput } : {}),
 		...(result.usage !== undefined
@@ -470,10 +406,7 @@ export function generateResultToDelegateSubAgentOutput(
 	};
 }
 
-function getChildCountKey(ctx: ToolContext, parentTaskPath: SubAgentTaskPath | undefined): string {
-	return ctx.runId ?? ctx.persistence?.threadId ?? parentTaskPath ?? 'adhoc';
-}
-
+/** Last non-empty assistant text across the run's messages. */
 function lastText(messages: AgentMessage[]): string {
 	const llmMessages = filterLlmMessages(messages);
 	for (let i = llmMessages.length - 1; i >= 0; i--) {
@@ -489,17 +422,4 @@ function lastText(messages: AgentMessage[]): string {
 	}
 
 	return '';
-}
-
-function stringifyUnknown(value: unknown): string {
-	if (value instanceof Error) return value.message;
-	if (typeof value === 'string') return value;
-	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
-		return String(value);
-	}
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return 'Unknown error';
-	}
 }

@@ -312,6 +312,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 					endTime: 1500,
 					durationMs: 500,
 					runId: 'child-run-1',
+					threadId: 'child-thread-1',
 					finishReason: 'stop',
 				},
 			]),
@@ -328,6 +329,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			toolOutput: {
 				status: 'completed',
 				runId: 'child-run-1',
+				threadId: 'child-thread-1',
 				finishReason: 'stop',
 			},
 			toolSuccess: true,

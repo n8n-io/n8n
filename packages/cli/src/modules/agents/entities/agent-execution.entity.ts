@@ -25,8 +25,9 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'threadId' })
 	thread: AgentExecutionThread;
 
-	// Sub-agent runs use a composite thread id (see createSubAgentThreadId),
-	// which is longer than a plain id — matches WidenAgentThreadIdColumns.
+	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
+	// `test-<agentId>:<userId>`), so they exceed a bare uuid — matches
+	// WidenAgentThreadIdColumns.
 	@Column({ type: 'varchar', length: 255 })
 	threadId: string;
 

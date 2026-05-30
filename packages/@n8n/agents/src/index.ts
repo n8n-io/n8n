@@ -210,6 +210,8 @@ export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-age
 export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	createDelegateSubAgentTool,
+	generateResultToDelegateSubAgentOutput,
+	renderDelegateSubAgentPrompt,
 } from './runtime/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,

@@ -25,7 +25,30 @@ describe('delegate_subagent integration', () => {
 
 		const delegateTool = createDelegateSubAgentTool({
 			policy: { maxChildren: 1 },
-			agent: child,
+			runSubAgent: async (request) => {
+				const childResult = await child.generate(`Goal:\n${request.goal}`);
+				return {
+					status:
+						childResult.finishReason === 'error' || childResult.error !== undefined
+							? 'failed'
+							: 'completed',
+					taskPath: request.taskPath,
+					runId: childResult.runId,
+					answer: lastText(childResult.messages),
+					...(childResult.usage !== undefined
+						? {
+								usage: {
+									promptTokens: childResult.usage.promptTokens,
+									completionTokens: childResult.usage.completionTokens,
+									totalTokens: childResult.usage.totalTokens,
+								},
+							}
+						: {}),
+					...(childResult.finishReason !== undefined
+						? { finishReason: childResult.finishReason }
+						: {}),
+				};
+			},
 		});
 
 		const parent = new Agent('sub-agent-parent-integration')

@@ -186,6 +186,8 @@ export type TimelineEvent =
 			parentToolCallId?: string;
 			subAgentId?: string;
 			runId?: string;
+			/** The child's session thread id, so the UI can link to its session. */
+			threadId?: string;
 			status: 'running' | 'completed' | 'failed';
 			startTime: number;
 			endTime: number;
@@ -585,6 +587,7 @@ export class ExecutionRecorder {
 			pending.endTime = chunk.finishedAt;
 			pending.durationMs = chunk.durationMs;
 			if (chunk.runId !== undefined) pending.runId = chunk.runId;
+			if (chunk.threadId !== undefined) pending.threadId = chunk.threadId;
 			if (chunk.usage !== undefined) pending.usage = chunk.usage;
 			if (chunk.finishReason !== undefined) pending.finishReason = chunk.finishReason;
 			if (chunk.error !== undefined) pending.error = chunk.error;
@@ -599,6 +602,7 @@ export class ExecutionRecorder {
 			...(chunk.parentToolCallId !== undefined ? { parentToolCallId: chunk.parentToolCallId } : {}),
 			...(chunk.subAgentId !== undefined ? { subAgentId: chunk.subAgentId } : {}),
 			...(chunk.runId !== undefined ? { runId: chunk.runId } : {}),
+			...(chunk.threadId !== undefined ? { threadId: chunk.threadId } : {}),
 			status: chunk.status,
 			startTime: chunk.startedAt,
 			endTime: chunk.finishedAt,

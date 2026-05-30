@@ -117,6 +117,8 @@ export type AgentSseEvent =
 			finishedAt: number;
 			durationMs: number;
 			runId?: string;
+			/** The child's session/memory thread id, for linking to its session. */
+			threadId?: string;
 			usage?: AgentSseSubAgentUsage;
 			finishReason?: string;
 			error?: string;

@@ -44,8 +44,11 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, default: 'direct' })
 	origin: AgentExecutionThreadOrigin;
 
-	/** Parent session thread id that delegated this run, for navigating back to it. */
-	@Column({ type: 'varchar', length: 128, nullable: true })
+	/**
+	 * Parent session thread id that delegated this run, for navigating back to
+	 * it. Holds another thread's id, so it matches the id column width (255).
+	 */
+	@Column({ type: 'varchar', length: 255, nullable: true })
 	parentThreadId: string | null;
 
 	/** Saved agent id of the parent that delegated this run. */

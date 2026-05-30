@@ -195,6 +195,7 @@ describe('ExecutionRecorder', () => {
 				finishedAt: 250,
 				durationMs: 150,
 				runId: 'child-run-1',
+				threadId: 'child-thread-1',
 				usage: {
 					promptTokens: 3,
 					completionTokens: 2,
@@ -216,6 +217,7 @@ describe('ExecutionRecorder', () => {
 				endTime: 250,
 				durationMs: 150,
 				runId: 'child-run-1',
+				threadId: 'child-thread-1',
 				usage: { totalTokens: 5 },
 			});
 		});

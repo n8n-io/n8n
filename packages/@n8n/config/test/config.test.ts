@@ -555,10 +555,8 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxDepth: 1,
 			subAgentMaxChildren: 5,
 			subAgentTimeoutMs: 300000,
-			subAgentConcurrency: 3,
 			modules: [],
 		},
 	} satisfies GlobalConfigShape;

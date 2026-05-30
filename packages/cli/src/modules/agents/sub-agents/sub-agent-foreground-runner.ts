@@ -1,8 +1,6 @@
 import {
-	assertSubAgentPolicyAllowsChild,
-	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
-	createChildSubAgentTaskPath,
+	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
 	type CredentialProvider,
@@ -13,6 +11,7 @@ import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import { ExecutionRecorder } from '../execution-recorder';
@@ -29,7 +28,6 @@ export interface SubAgentForegroundRunContext {
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
-	childCount?: number;
 	credentialProvider: CredentialProvider;
 	createToolExecutor(toolCodeByName: Record<string, string>): ToolExecutor;
 	createMemoryFactory(memoryOwnerAgentId: string): MemoryFactory;
@@ -41,11 +39,9 @@ export interface SubAgentForegroundRunContext {
 
 export interface SubAgentForegroundResult {
 	taskPath: SubAgentTaskPath;
-	source: ResolvedSubAgentSource;
+	/** The child run's memory/session thread id, so callers can link or continue it. */
+	threadId: string;
 	status: 'completed' | 'failed';
-	startedAt: number;
-	finishedAt: number;
-	durationMs: number;
 	result: GenerateResult;
 }
 
@@ -72,36 +68,28 @@ export class SubAgentForegroundRunner {
 			throw new UserError('Foreground sub-agent runner only supports fresh context mode');
 		}
 
-		const parentTaskPath = request.parentTaskPath;
-		if (parentTaskPath !== undefined) {
-			assertSubAgentTaskPath(parentTaskPath);
-		}
+		// The SDK delegate tool already assigned this delegation's task path and
+		// enforced the depth/fan-out policy before invoking the runner. Just
+		// validate the forwarded shape — don't recompute it or re-run the gates.
+		const taskPath = request.taskPath;
+		assertSubAgentTaskPath(taskPath);
 
-		assertSubAgentPolicyAllowsChild(parentTaskPath, request.policy);
-		assertSubAgentPolicyAllowsChildCount(context.childCount ?? 0, request.policy);
-
-		const taskPath = createChildSubAgentTaskPath(
-			parentTaskPath,
-			request.taskName,
-			context.childCount ?? 0,
-		);
 		const runtimeSource = await this.sourceResolver.resolveForRuntime(request.source, {
 			projectId: context.projectId,
 		});
 
 		const toolExecutor = context.createToolExecutor(runtimeSource.toolCodeByName);
-		// One stable id shared by the SDK memory thread and the session record so
-		// title sync, recall, and deletion all resolve to the same thread. Keyed by
-		// the parent conversation + the sub-agent, so re-delegating the same
-		// sub-agent within a conversation continues its thread (the normal-agent
-		// model) rather than spawning a fresh, orphaned one each time.
-		const threadId = createSubAgentThreadId(
-			request.parentThreadId,
-			runtimeSource.source.sourceId,
-			taskPath,
-		);
-		// Inherit the parent's episodic-memory scope; fall back to the project.
-		const resourceId = request.parentResourceId ?? context.projectId;
+		// A delegated run is a fresh conversation, so it gets an ordinary thread id
+		// (a uuid) — exactly like any other agent run, with no special structure.
+		// The parent linkage is persisted as columns on the session record
+		// (origin / parentThreadId / parentAgentId), never encoded into the id.
+		// The same id is shared by the SDK memory thread and the session record so
+		// title sync, recall, and deletion all resolve to the same thread, and it is
+		// returned on the result so a caller can re-supply it to continue the thread.
+		const threadId = uuid();
+		// Inherit the parent's episodic-memory scope. When the parent has none,
+		// isolate this run to its own thread rather than widening to the project.
+		const resourceId = request.parentResourceId ?? threadId;
 		const agent = await buildFromJson(runtimeSource.source.config, runtimeSource.toolDescriptors, {
 			toolExecutor,
 			credentialProvider: context.credentialProvider,
@@ -117,8 +105,7 @@ export class SubAgentForegroundRunner {
 		// Abort the child when the parent run is cancelled or the timeout fires.
 		const abortSignal = combineAbortSignals(context.abortSignal, timeoutController?.signal);
 
-		const startedAt = Date.now();
-		const prompt = renderSubAgentPrompt(request);
+		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
 			const resultStream = await agent.stream(prompt, {
 				...(abortSignal !== undefined ? { abortSignal } : {}),
@@ -145,7 +132,6 @@ export class SubAgentForegroundRunner {
 				reader.releaseLock();
 			}
 
-			const finishedAt = Date.now();
 			const messageRecord = recorder.getMessageRecord();
 			await this.recordSubAgentExecution({
 				runtimeSource: runtimeSource.source,
@@ -165,12 +151,9 @@ export class SubAgentForegroundRunner {
 
 			return {
 				taskPath,
-				source: runtimeSource.source,
+				threadId,
 				status:
 					result.finishReason === 'error' || result.error !== undefined ? 'failed' : 'completed',
-				startedAt,
-				finishedAt,
-				durationMs: finishedAt - startedAt,
 				result,
 			};
 		} finally {
@@ -199,7 +182,6 @@ export class SubAgentForegroundRunner {
 			prompt,
 			record,
 		} = params;
-		if (runtimeSource.type !== 'n8n-agent' || !runtimeSource.sourceId) return;
 
 		try {
 			await this.agentExecutionService.recordMessage({
@@ -285,46 +267,8 @@ function createSubAgentMemoryFactory(
 	context: SubAgentForegroundRunContext,
 ): MemoryFactory {
 	return async (params) => {
-		if (source.type !== 'n8n-agent' || !source.sourceId) {
-			throw new UserError('Sub-agent memory is only supported for saved n8n agents');
-		}
-
 		return await context.createMemoryFactory(source.sourceId)(params);
 	};
-}
-
-export function renderSubAgentPrompt(request: SubAgentSpawnRequest): string {
-	const sections = [`Goal:\n${request.goal}`];
-
-	if (request.context) {
-		sections.push(`Context:\n${request.context}`);
-	}
-
-	if (request.expectedOutput) {
-		sections.push(`Expected output:\n${request.expectedOutput}`);
-	}
-
-	return sections.join('\n\n');
-}
-
-/**
- * Build the stable thread id shared by a sub-agent's SDK memory thread and its
- * recorded session. Scoped to the parent conversation and the specific
- * sub-agent so repeated delegations to the same sub-agent in one conversation
- * reuse the thread (mirroring how a normal agent keeps one thread per
- * conversation). Falls back to the task path when the parent thread or the
- * sub-agent source id is unavailable (e.g. inline sub-agents, which are not
- * recorded as sessions, so the id is only used for in-memory scoping).
- *
- * @example createSubAgentThreadId('test-agent-1:user-1', 'agent-2', '/root/research_api_0')
- *   => 'subagent:test-agent-1:user-1:agent-2'
- */
-export function createSubAgentThreadId(
-	parentThreadId: string | undefined,
-	sourceId: string | undefined,
-	taskPath: SubAgentTaskPath,
-): string {
-	return `subagent:${parentThreadId ?? taskPath}:${sourceId ?? taskPath}`;
 }
 
 /** Merge up to two abort signals: cancellation of either cancels the child run. */

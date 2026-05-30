@@ -6,8 +6,7 @@ import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import { BUILT_IN_SUB_AGENTS } from '../built-in-sub-agents';
-import { applySubAgentOverrides, SubAgentSourceResolver } from '../sub-agent-source-resolver';
+import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -76,69 +75,17 @@ describe('SubAgentSourceResolver', () => {
 		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
 	});
 
-	afterEach(() => {
-		delete BUILT_IN_SUB_AGENTS.researcher;
-	});
-
-	it('resolves an inline config when it is runnable', async () => {
-		await expect(
-			resolver.resolve({ type: 'inline', config: runnableConfig }, { projectId }),
-		).resolves.toEqual({
-			type: 'inline',
-			config: runnableConfig,
-		});
-	});
-
-	it('rejects an inline config that is not runnable', async () => {
-		const { credential: _credential, ...invalidConfig } = runnableConfig;
-
-		await expect(
-			resolver.resolve({ type: 'inline', config: invalidConfig }, { projectId }),
-		).rejects.toThrow('Invalid sub-agent config');
-	});
-
-	it('rejects an unknown built-in source', async () => {
-		await expect(
-			resolver.resolve({ type: 'built-in', id: 'missing' }, { projectId }),
-		).rejects.toThrow('Built-in sub-agent "missing" not found');
-	});
-
-	it('resolves a built-in source with shallow config overrides', async () => {
-		BUILT_IN_SUB_AGENTS.researcher = runnableConfig;
-
-		await expect(
-			resolver.resolve(
-				{
-					type: 'built-in',
-					id: 'researcher',
-					overrides: {
-						instructions: 'Use a sharper research style.',
-						config: { maxIterations: 8 },
-					},
-				},
-				{ projectId },
-			),
-		).resolves.toMatchObject({
-			type: 'built-in',
-			sourceId: 'researcher',
-			config: {
-				...runnableConfig,
-				instructions: 'Use a sharper research style.',
-				config: { maxIterations: 8 },
-			},
-		});
-	});
-
 	it('resolves a saved draft n8n agent in the same project', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
-		await expect(resolver.resolve({ type: 'n8n-agent', agentId }, { projectId })).resolves.toEqual({
-			type: 'n8n-agent',
-			sourceId: agentId,
-			versionId,
-			config: {
-				...runnableConfig,
-				integrations: [],
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).resolves.toMatchObject({
+			source: {
+				sourceId: agentId,
+				versionId,
+				config: {
+					...runnableConfig,
+					integrations: [],
+				},
 			},
 		});
 	});
@@ -148,12 +95,13 @@ describe('SubAgentSourceResolver', () => {
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
 
 		await expect(
-			resolver.resolve({ type: 'n8n-agent', agentId, versionId }, { projectId }),
-		).resolves.toEqual({
-			type: 'n8n-agent',
-			sourceId: agentId,
-			versionId,
-			config: runnableConfig,
+			resolver.resolveForRuntime({ agentId, versionId }, { projectId }),
+		).resolves.toMatchObject({
+			source: {
+				sourceId: agentId,
+				versionId,
+				config: runnableConfig,
+			},
 		});
 	});
 
@@ -176,11 +124,8 @@ describe('SubAgentSourceResolver', () => {
 			}),
 		);
 
-		await expect(
-			resolver.resolveForRuntime({ type: 'n8n-agent', agentId }, { projectId }),
-		).resolves.toMatchObject({
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).resolves.toMatchObject({
 			source: {
-				type: 'n8n-agent',
 				sourceId: agentId,
 			},
 			toolDescriptors: {
@@ -202,7 +147,7 @@ describe('SubAgentSourceResolver', () => {
 	it('rejects missing or inaccessible n8n agents', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(resolver.resolve({ type: 'n8n-agent', agentId }, { projectId })).rejects.toThrow(
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
 			`Agent "${agentId}" not found`,
 		);
 	});
@@ -210,46 +155,26 @@ describe('SubAgentSourceResolver', () => {
 	it('rejects n8n agents with no config', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: null }));
 
-		await expect(resolver.resolve({ type: 'n8n-agent', agentId }, { projectId })).rejects.toThrow(
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
 			`Agent "${agentId}" has no config`,
 		);
 	});
 
-	it('applies overrides before validating n8n agent config', async () => {
-		const { credential: _credential, ...missingCredentialConfig } = runnableConfig;
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ schema: missingCredentialConfig }),
+	it('rejects a pinned version that does not exist', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
+			`Version "${versionId}" not found for agent "${agentId}"`,
 		);
-
-		await expect(
-			resolver.resolve(
-				{
-					type: 'n8n-agent',
-					agentId,
-					overrides: { credential: 'credential-override' },
-				},
-				{ projectId },
-			),
-		).resolves.toMatchObject({
-			config: { credential: 'credential-override' },
-		});
 	});
-});
 
-describe('applySubAgentOverrides', () => {
-	it('merges top-level fields and the nested config block', () => {
-		expect(
-			applySubAgentOverrides(runnableConfig, {
-				description: 'Override description',
-				config: { toolCallConcurrency: 3 },
-			}),
-		).toEqual({
-			...runnableConfig,
-			description: 'Override description',
-			config: {
-				maxIterations: 5,
-				toolCallConcurrency: 3,
-			},
-		});
+	it('rejects a resolved config that is not runnable', async () => {
+		const { credential: _credential, ...invalidConfig } = runnableConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: invalidConfig }));
+
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
+			'Invalid sub-agent config',
+		);
 	});
 });

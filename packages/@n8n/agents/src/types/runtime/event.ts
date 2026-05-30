@@ -29,6 +29,8 @@ export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
 	finishedAt: number;
 	durationMs: number;
 	runId?: string;
+	/** The child run's memory thread id (`persistence.threadId`), so consumers can correlate or continue it. */
+	threadId?: string;
 	usage?: SubAgentLifecycleUsage;
 	finishReason?: FinishReason;
 	error?: string;
