@@ -380,6 +380,7 @@ export type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,
+	InstanceAiMcpConnectionResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -404,6 +405,13 @@ export type {
 	InstanceAiEvalToolResult,
 	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
+
+export type {
+	McpRegistryServerStatus,
+	McpRegistryServerIconResponse,
+	McpRegistryServerToolResponse,
+	McpRegistryServerResponse,
+} from './schemas/mcp-registry.schema';
 
 export {
 	createInitialState,
