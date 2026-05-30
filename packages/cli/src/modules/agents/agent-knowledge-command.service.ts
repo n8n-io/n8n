@@ -1,8 +1,9 @@
 import { Service } from '@n8n/di';
+import { spawn } from 'node:child_process';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import pLimit from 'p-limit';
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const COMMAND_TIMEOUT_MS = 5_000;
@@ -18,35 +19,8 @@ const WORKSPACE_CACHE_TTL_MS = 10 * 60_000;
 const MAX_CACHED_WORKSPACES = 25;
 export const AGENT_KNOWLEDGE_COMMANDS = ['git_grep', 'cat', 'sed'] as const;
 
-/** Minimal FIFO counting semaphore used to bound concurrent workspace usage. */
-class Semaphore {
-	private available: number;
-	private readonly waiters: Array<() => void> = [];
-
-	constructor(max: number) {
-		this.available = max;
-	}
-
-	async acquire(): Promise<void> {
-		if (this.available > 0) {
-			this.available--;
-			return;
-		}
-		await new Promise<void>((resolve) => this.waiters.push(resolve));
-	}
-
-	release(): void {
-		const next = this.waiters.shift();
-		if (next) {
-			// Hand the slot directly to the next waiter to avoid a release/acquire race.
-			next();
-			return;
-		}
-		this.available++;
-	}
-}
-
-const workspaceSemaphore = new Semaphore(MAX_CONCURRENT_WORKSPACES);
+/** Bounds concurrent workspace usage; queued calls run in FIFO order. */
+const workspaceLimit = pLimit(MAX_CONCURRENT_WORKSPACES);
 
 interface CachedWorkspace {
 	root: string;
@@ -98,17 +72,14 @@ export class AgentKnowledgeCommandService {
 	}
 
 	async withWorkspace<T>(operation: (workspaceRoot: string) => Promise<T>) {
-		await workspaceSemaphore.acquire();
-		try {
+		return await workspaceLimit(async () => {
 			const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-'));
 			try {
 				return await operation(workspaceRoot);
 			} finally {
 				await rm(workspaceRoot, { recursive: true, force: true });
 			}
-		} finally {
-			workspaceSemaphore.release();
-		}
+		});
 	}
 
 	/**
@@ -124,15 +95,14 @@ export class AgentKnowledgeCommandService {
 		materialize: (workspaceRoot: string) => Promise<void>,
 		operation: (workspaceRoot: string) => Promise<T>,
 	): Promise<T> {
-		return await this.serializeByKey(cacheKey, async () => {
-			await workspaceSemaphore.acquire();
-			try {
-				const workspaceRoot = await this.ensureCachedWorkspace(cacheKey, materialize);
-				return await operation(workspaceRoot);
-			} finally {
-				workspaceSemaphore.release();
-			}
-		});
+		return await this.serializeByKey(
+			cacheKey,
+			async () =>
+				await workspaceLimit(async () => {
+					const workspaceRoot = await this.ensureCachedWorkspace(cacheKey, materialize);
+					return await operation(workspaceRoot);
+				}),
+		);
 	}
 
 	/** Run `fn`s sharing a key strictly one at a time (FIFO). */
