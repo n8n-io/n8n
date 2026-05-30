@@ -20,7 +20,7 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import { Workflow, UnexpectedError, UserError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -158,7 +158,7 @@ export class DynamicNodeParametersService {
 			// requiring a baseURL to be defined can at least not a random server be called.
 			// In the future this code has to get improved that it does not use the request information from
 			// the request rather resolves it via the parameter-path and nodeType data.
-			throw new UnexpectedError(
+			throw new UserError(
 				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
 				{ tags: { nodeType: nodeType.description.name } },
 			);
@@ -353,7 +353,7 @@ export class DynamicNodeParametersService {
 					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
 					: '';
 
-			throw new UnexpectedError(
+			throw new UserError(
 				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
 				{
 					tags: { nodeType: nodeType.description.name },
