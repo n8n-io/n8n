@@ -1819,6 +1819,7 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
 			type: savedCredential.type,
+			typeVersion: null,
 			data: credential.data,
 		});
 	});
@@ -1849,6 +1850,7 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
 			type: savedCredential.type,
+			typeVersion: null,
 			data: credential.data,
 		});
 	});

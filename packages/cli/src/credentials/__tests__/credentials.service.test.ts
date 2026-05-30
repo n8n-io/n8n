@@ -2443,7 +2443,7 @@ describe('CredentialsService', () => {
 			let saved: any;
 			credentialsRepository.create.mockImplementation((data) => {
 				saved = { ...data };
-				return saved as any;
+				return saved;
 			});
 			mockTransactionManager({ credentialId: 'versioned-id' });
 
@@ -2459,7 +2459,7 @@ describe('CredentialsService', () => {
 			let saved: any;
 			credentialsRepository.create.mockImplementation((data) => {
 				saved = { ...data };
-				return saved as any;
+				return saved;
 			});
 			mockTransactionManager({ credentialId: 'unversioned-id' });
 
@@ -2481,7 +2481,7 @@ describe('CredentialsService', () => {
 			let saved: any;
 			credentialsRepository.create.mockImplementation((data) => {
 				saved = { ...data };
-				return saved as any;
+				return saved;
 			});
 			mockTransactionManager({ credentialId: 'ignored-id' });
 
