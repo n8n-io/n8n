@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIcon } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -16,9 +16,10 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow from './ConnectionRow.vue';
 
 type SingletonConnectionType = 'computer-use' | 'browser-use';
-type AddMenuOption = SingletonConnectionType | 'mcp';
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+
+type SidebarRowIcon = SingletonConnectionType | 'mcp';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -39,40 +40,11 @@ const isVisible = computed(
 		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
 );
 
-const ICON_MAP: Record<AddMenuOption, IconName> = {
+const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
 	mcp: 'server',
 };
-
-const baseAddItems: Array<DropdownMenuItemProps<AddMenuOption>> = [
-	{
-		id: 'computer-use',
-		label: i18n.baseText('instanceAi.connections.add.computerUse'),
-		icon: { type: 'icon', value: 'mouse-pointer' },
-	},
-];
-
-const addItems = computed(() => {
-	const addedSingletons = new Set(singletonConnections.value.map((c) => c.type));
-	const items: Array<DropdownMenuItemProps<AddMenuOption>> = baseAddItems.filter((item) => {
-		if (addedSingletons.has(item.id as SingletonConnectionType)) return false;
-		if (store.isLocalGatewayDisabledByAdmin) return false;
-		return true;
-	});
-
-	if (isMcpFeatureEnabled.value) {
-		items.push({
-			id: 'mcp',
-			label: i18n.baseText('instanceAi.connections.add.mcp'),
-			icon: { type: 'icon', value: 'server' },
-		});
-	}
-
-	return items;
-});
-
-const hasAddableConnection = computed(() => addItems.value.length > 0);
 
 function getSingletonRowActions(
 	type: SingletonConnectionType,
@@ -86,9 +58,6 @@ function getSingletonRowActions(
 const MCP_ROW_ACTIONS: RowAction[] = ['settings', 'remove'];
 
 async function openSingletonModal(type: SingletonConnectionType) {
-	// Adding Computer Use from the +menu while the user preference has it
-	// disabled re-enables it. The existing watcher in InstanceAiView triggers
-	// daemon probing/polling.
 	if (
 		type === 'computer-use' &&
 		!store.isLocalGatewayDisabledByAdmin &&
@@ -104,14 +73,10 @@ async function openSingletonModal(type: SingletonConnectionType) {
 	}
 }
 
-async function handleAdd(option: AddMenuOption) {
-	if (option === 'mcp') {
-		mcpTelemetry.trackAddMenuMcpSelected();
-		mcpTelemetry.trackModalOpened();
-		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
-		return;
-	}
-	await openSingletonModal(option);
+function openToolsConnectionModal() {
+	mcpTelemetry.trackAddMenuMcpSelected();
+	mcpTelemetry.trackModalOpened();
+	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
@@ -151,14 +116,13 @@ onMounted(() => {
 			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
-			<div v-if="hasAddableConnection" :class="$style.headerActions">
-				<N8nDropdownMenu
-					:items="addItems"
-					:activator-icon="{ type: 'icon', value: 'plus' }"
-					placement="bottom-end"
-					:portal-target="props.dropdownPortalTarget"
+			<div v-if="isMcpFeatureEnabled" :class="$style.headerActions">
+				<N8nIconButton
+					icon="plus"
+					type="tertiary"
+					size="mini"
 					data-test-id="instance-ai-connections-add"
-					@select="handleAdd"
+					@click="openToolsConnectionModal"
 				/>
 			</div>
 		</div>
