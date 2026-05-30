@@ -655,6 +655,12 @@ export interface NewCredentialsModal extends ModalState {
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
+	/**
+	 * Opt-in: mount the dialog to `<body>` instead of `#app-modals`. Required
+	 * when opening on top of a modal that lives in an incompatible stacking
+	 * context (e.g. the reka-ui-based `N8nDialog`).
+	 */
+	appendToBody?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

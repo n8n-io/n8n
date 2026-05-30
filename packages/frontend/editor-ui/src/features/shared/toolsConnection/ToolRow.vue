@@ -38,12 +38,14 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
-function handleConnect() {
-	emit('connect', props.item);
+function handleOpenDetail(event: MouseEvent) {
+	event.stopPropagation();
+	emit('open-detail', props.item);
 }
 
-function handleOpenDetail() {
-	emit('open-detail', props.item);
+function handleConnect(event: MouseEvent) {
+	event.stopPropagation();
+	emit('connect', props.item);
 }
 </script>
 
