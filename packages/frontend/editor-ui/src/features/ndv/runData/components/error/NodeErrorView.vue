@@ -66,7 +66,7 @@ const displayCause = computed(() => {
 });
 
 const node = computed(() => {
-	return props.error.node || ndvStore.activeNode;
+	return props.error.node || ndvStore.value.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
@@ -94,7 +94,7 @@ const n8nVersion = computed(() => {
 });
 
 const hasManyInputItems = computed(() => {
-	return ndvStore.ndvInputData.length > 1;
+	return ndvStore.value.ndvInputData.length > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -146,7 +146,7 @@ const isAskAssistantAvailable = computed(() => {
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
-		node: props.error.node || ndvStore.activeNode,
+		node: props.error.node || ndvStore.value.activeNode,
 	});
 });
 
@@ -424,7 +424,7 @@ const onOpenErrorNodeDetailClick = () => {
 		});
 		window.open(link.href, '_blank');
 	} else {
-		ndvStore.setActiveNodeName(props.error.node.name, 'other');
+		ndvStore.value.setActiveNodeName(props.error.node.name, 'other');
 	}
 };
 

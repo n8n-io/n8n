@@ -124,10 +124,6 @@ export const establishExecutionContext = async (
 		version: 1,
 		establishedAt: Date.now(),
 		source: mode,
-		redaction: {
-			version: 1,
-			policy: workflow.settings?.redactionPolicy ?? 'none',
-		},
 	};
 
 	if (mode === 'manual' && additionalData?.encryptedRunnerIdentity) {

@@ -58,6 +58,7 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 			updateCredentials: jest.fn(),
 			updateCredentialsOauthTokenData: jest.fn(),
 			getCredentialsProperties: jest.fn().mockReturnValue([]),
+			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 
