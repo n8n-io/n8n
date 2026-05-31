@@ -4,7 +4,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentTaskConfig } from '@n8n/api-types';
 import { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 
@@ -43,6 +43,7 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 			schema: AgentJsonConfig | null;
 			tools: Agent['tools'] | null;
 			skills: Agent['skills'] | null;
+			tasks: Record<string, AgentTaskConfig> | null;
 			publishedBy: User | string;
 		},
 		trx?: EntityManager,
@@ -63,6 +64,7 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 			schema: data.schema as InsertShape['schema'],
 			tools: data.tools as InsertShape['tools'],
 			skills: data.skills as InsertShape['skills'],
+			tasks: data.tasks as InsertShape['tasks'],
 			author,
 			publishedById,
 		});

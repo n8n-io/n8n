@@ -579,6 +579,7 @@ describe('AgentsService', () => {
 					schema: agent.schema,
 					tools: null,
 					skills: null,
+					tasks: null,
 					publishedBy: testUser,
 				},
 				mockTrx,
@@ -1287,11 +1288,18 @@ describe('AgentsService', () => {
 	});
 
 	describe('revertToPublishedAgent', () => {
-		let mockTrx: { save: jest.Mock };
+		let mockTrx: { save: jest.Mock; getRepository: jest.Mock };
 		let mockTransaction: jest.Mock;
+		let taskRepo: { findBy: jest.Mock; delete: jest.Mock; update: jest.Mock; insert: jest.Mock };
 
 		beforeEach(() => {
-			mockTrx = { save: jest.fn() };
+			taskRepo = {
+				findBy: jest.fn().mockResolvedValue([]),
+				delete: jest.fn(),
+				update: jest.fn(),
+				insert: jest.fn(),
+			};
+			mockTrx = { save: jest.fn(), getRepository: jest.fn().mockReturnValue(taskRepo) };
 			mockTransaction = jest.fn(
 				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 			);
@@ -1374,6 +1382,32 @@ describe('AgentsService', () => {
 			expect(mockTrx.save).toHaveBeenCalledWith(agent);
 			expect(result).toBe(agent);
 			expect(result.activeVersion).toBe(activeVersion);
+		});
+
+		it('reconciles draft task rows to match the published snapshot', async () => {
+			const activeVersion = makeAgentHistory({
+				versionId: 'published-version-id',
+				schema: {
+					name: 'A',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'i',
+					tasks: [{ type: 'task', id: 'keep', enabled: true }],
+				},
+				tasks: { keep: { name: 'Keep', objective: 'Keep objective', cronExpression: '0 9 * * *' } },
+			});
+			const agent = makeAgent({ activeVersionId: 'published-version-id', activeVersion });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			// Draft has the published 'keep' row plus an 'added' row that isn't published.
+			taskRepo.findBy.mockResolvedValue([{ id: 'keep' }, { id: 'added' }]);
+
+			await service.revertToPublishedAgent(agentId, projectId);
+
+			expect(taskRepo.delete).toHaveBeenCalledWith(['added']);
+			expect(taskRepo.update).toHaveBeenCalledWith(
+				'keep',
+				expect.objectContaining({ objective: 'Keep objective' }),
+			);
+			expect(taskRepo.insert).not.toHaveBeenCalled();
 		});
 	});
 

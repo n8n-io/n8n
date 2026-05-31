@@ -31,16 +31,16 @@ import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
 /**
- * Owns an agent's scheduled tasks. Task bodies (name/objective/cron + run
+ * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron + run
  * metadata) live in the `agent_task` table; membership and the `enabled` flag
  * live in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
- * skills). The config is the source of truth, so the cron runtime is driven by
- * the PUBLISHED snapshot (`activeVersion.schema.tasks`): a `CronJob` is
+ * skills). Scheduling is driven entirely by the PUBLISHED snapshot: enabled refs
+ * come from `activeVersion.schema.tasks` and the body (cron/name/objective) from
+ * the frozen `activeVersion.tasks` snapshot taken at publish. A `CronJob` is
  * registered per enabled ref of a published agent (leader-only). Adding,
- * removing, or toggling a task is a draft change that only affects scheduling
- * once the agent is (re)published. The same contract applies to editing a task
- * body (name/objective/cron): a live `CronJob` is only (re)registered on
- * (re)publish, so the source of truth is "republish to apply".
+ * removing, toggling, or editing a task is a draft change that only affects
+ * scheduled runs once the agent is (re)published — "republish to apply". Manual
+ * "Run now" deliberately runs the live draft body instead.
  */
 @Service()
 export class AgentTaskService {
@@ -102,12 +102,11 @@ export class AgentTaskService {
 	}
 
 	/**
-	 * Update a task body (name/objective/cron). Marks the agent draft dirty but
-	 * deliberately does NOT re-register the live `CronJob`: a running task keeps
-	 * its current schedule until the agent is (re)published (which reconciles via
-	 * `registerEnabledForAgent` -> `registerOrRefresh`). So a cron edit only
-	 * takes effect on the next publish — the documented "republish to apply"
-	 * contract.
+	 * Update a task body (name/objective/cron) in the draft. Marks the agent draft
+	 * dirty but does NOT touch live scheduling: scheduled runs read the published
+	 * snapshot (`activeVersion.tasks`), so any body edit only takes effect on the
+	 * next (re)publish — the "republish to apply" contract. Manual "Run now" uses
+	 * the draft body immediately.
 	 */
 	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
@@ -202,7 +201,7 @@ export class AgentTaskService {
 			this.deregisterAgentTasks(agentId);
 			return;
 		}
-		await this.reconcileAgent(agent);
+		this.reconcileAgent(agent);
 	}
 
 	/**
@@ -244,7 +243,7 @@ export class AgentTaskService {
 		this.logger.debug('[AgentTaskService] Reconnecting published agents', { count: agents.length });
 		for (const agent of agents) {
 			try {
-				await this.reconcileAgent(agent);
+				this.reconcileAgent(agent);
 			} catch (error) {
 				this.logger.error('[AgentTaskService] Failed to reconnect agent tasks', {
 					agentId: agent.id,
@@ -263,7 +262,7 @@ export class AgentTaskService {
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
-	private async reconcileAgent(agent: Agent): Promise<void> {
+	private reconcileAgent(agent: Agent): void {
 		// Only the leader owns task crons — a cron firing on multiple mains would
 		// run the agent twice per tick. Followers skip registration entirely; the
 		// leader applies the change via the `agent-tasks-changed` pubsub reconcile.
@@ -278,14 +277,15 @@ export class AgentTaskService {
 
 		if (enabledIds.size === 0) return;
 
-		const bodies = await this.taskRepository.findByAgentId(agent.id);
-		const byId = new Map(bodies.map((body) => [body.id, body]));
+		// Bodies come from the PUBLISHED snapshot, so cron/name/objective are all
+		// frozen at publish time; draft edits only apply on the next publish.
+		const snapshot = agent.activeVersion?.tasks ?? {};
 		for (const taskId of enabledIds) {
-			const body = byId.get(taskId);
+			const body = snapshot[taskId];
 			if (body) {
-				this.registerOrRefresh(body);
+				this.registerOrRefresh(taskId, agent.id, body.cronExpression);
 			} else {
-				this.logger.warn('[AgentTaskService] Enabled task ref has no body', {
+				this.logger.warn('[AgentTaskService] Enabled task ref has no published body', {
 					agentId: agent.id,
 					taskId,
 				});
@@ -301,30 +301,30 @@ export class AgentTaskService {
 		);
 	}
 
-	private registerOrRefresh(task: AgentTask): void {
-		if (!isValidCronExpression(task.cronExpression)) {
-			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId: task.id });
-			this.deregister(task.id);
+	private registerOrRefresh(taskId: string, agentId: string, cronExpression: string): void {
+		if (!isValidCronExpression(cronExpression)) {
+			this.logger.warn('[AgentTaskService] Skipping task with invalid cron', { taskId });
+			this.deregister(taskId);
 			return;
 		}
 
-		this.deregister(task.id);
+		this.deregister(taskId);
 
 		const timezone = this.globalConfig.generic.timezone;
 		const job = new CronJob(
-			task.cronExpression,
+			cronExpression,
 			() => {
-				void this.runTask(task.id);
+				void this.runTask(taskId);
 			},
 			null,
 			true,
 			timezone,
 		);
-		this.jobs.set(task.id, { agentId: task.agentId, job });
+		this.jobs.set(taskId, { agentId, job });
 		this.logger.info('[AgentTaskService] Registered task', {
-			taskId: task.id,
-			agentId: task.agentId,
-			cronExpression: task.cronExpression,
+			taskId,
+			agentId,
+			cronExpression,
 			timezone,
 		});
 	}
@@ -340,23 +340,19 @@ export class AgentTaskService {
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runTask(taskId: string): Promise<void> {
-		let agentId: string | undefined;
+		// agentId comes from the live job entry (set at registration), so a task
+		// whose draft row was deleted but is still published keeps running.
+		const agentId = this.jobs.get(taskId)?.agentId;
 		let projectId: string | undefined;
 
 		try {
-			// Body is read fresh each fire, so name/objective edits apply on the
-			// next run. The cron itself is fixed in the live CronJob, so schedule
-			// edits only apply after a republish re-registers the job.
-			const task = await this.taskRepository.findOne({ where: { id: taskId } });
-			if (!task) {
-				this.logger.warn('[AgentTaskService] Task fired for missing task', { taskId });
+			if (!agentId) {
 				this.deregister(taskId);
 				return;
 			}
-			agentId = task.agentId;
 
 			const agent = await this.agentRepository.findOne({
-				where: { id: task.agentId },
+				where: { id: agentId },
 				relations: { activeVersion: true },
 			});
 			if (!agent) {
@@ -382,6 +378,18 @@ export class AgentTaskService {
 				return;
 			}
 
+			// Body comes from the PUBLISHED snapshot, so name/objective/cron reflect
+			// publish time rather than live draft edits.
+			const body = agent.activeVersion?.tasks?.[taskId];
+			if (!body) {
+				this.logger.warn('[AgentTaskService] Task fired but has no published body', {
+					taskId,
+					agentId,
+				});
+				this.deregister(taskId);
+				return;
+			}
+
 			const executionUserId = await this.resolveExecutionUserId(agent);
 			if (!executionUserId) {
 				this.logger.warn('[AgentTaskService] No project member available for task run', {
@@ -392,13 +400,13 @@ export class AgentTaskService {
 				return;
 			}
 
-			const { message, threadId } = this.buildTaskRunMessage(task);
+			const { message, threadId } = this.buildTaskRunMessage(taskId, body.objective);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
 				agentId,
 				projectId,
-				cronExpression: task.cronExpression,
+				cronExpression: body.cronExpression,
 			});
 
 			await this.consumeTaskRun(
@@ -437,14 +445,17 @@ export class AgentTaskService {
 
 	/**
 	 * Build the single unattended message the agent receives for a task run plus
-	 * a fresh thread id. Shared by the scheduled and manual paths so the wake-up
-	 * format stays in sync.
+	 * a fresh thread id. Shared by the scheduled path (published snapshot body)
+	 * and the manual path (live draft body), so the wake-up format stays in sync.
 	 */
-	private buildTaskRunMessage(task: AgentTask): { message: string; threadId: string } {
+	private buildTaskRunMessage(
+		taskId: string,
+		objective: string,
+	): { message: string; threadId: string } {
 		const timezone = this.globalConfig.generic.timezone;
 		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
-		const message = `${task.objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
-		const threadId = `task-${task.id}-${randomUUID()}`;
+		const message = `${objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
+		const threadId = `task-${taskId}-${randomUUID()}`;
 		return { message, threadId };
 	}
 
@@ -497,7 +508,7 @@ export class AgentTaskService {
 	}
 
 	private async executeNow(task: AgentTask, projectId: string, userId: string): Promise<void> {
-		const { message, threadId } = this.buildTaskRunMessage(task);
+		const { message, threadId } = this.buildTaskRunMessage(task.id, task.objective);
 
 		this.logger.info('[AgentTaskService] Manual task run started', {
 			taskId: task.id,

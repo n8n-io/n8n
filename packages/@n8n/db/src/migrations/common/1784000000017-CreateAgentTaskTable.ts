@@ -2,10 +2,11 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
  * Sets up the agent Tasks schema in one migration: the `agent_task` table
- * (the 1:many scheduled-objective model) plus a nullable `taskId` FK on
+ * (the 1:many scheduled-objective model), a nullable `taskId` FK on
  * `agent_execution_threads` so a session can be traced back to the task that
- * triggered it. The two changes ship together because the session FK
- * references `agent_task`.
+ * triggered it, and a `tasks` snapshot column on `agent_history` so the
+ * published task bodies (name/objective/cron) are frozen at publish time and
+ * drive scheduling. They ship together because they form one feature's schema.
  */
 export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 	async up({
@@ -40,11 +41,18 @@ export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 			undefined,
 			'SET NULL',
 		);
+
+		await addColumns('agent_history', [
+			column('tasks').json.comment(
+				'Frozen map of taskId to { name, objective, cronExpression } at publish time',
+			),
+		]);
 	}
 
 	async down({
 		schemaBuilder: { dropForeignKey, dropIndex, dropColumns, dropTable },
 	}: MigrationContext) {
+		await dropColumns('agent_history', ['tasks']);
 		await dropForeignKey('agent_execution_threads', 'taskId', ['agent_task', 'id']);
 		await dropIndex('agent_execution_threads', ['taskId']);
 		await dropColumns('agent_execution_threads', ['taskId']);
