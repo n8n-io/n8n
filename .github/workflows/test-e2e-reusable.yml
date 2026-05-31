@@ -149,11 +149,13 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/coverage/.cache/
+            packages/testing/playwright/coverage/.backend-v8/
           retention-days: 1
           if-no-files-found: ignore
-          # upload-artifact@v7 defaults this to false, which silently drops
-          # `coverage/.cache/` (raw V8 from monocart) — needed by the weekly
-          # coverage workflow's aggregate step.
+          # upload-artifact@v7 defaults this to false, which silently drops the
+          # hidden coverage dirs: `coverage/.cache/` (frontend monocart raw) and
+          # `coverage/.backend-v8/` (backend NODE_V8_COVERAGE raw) — both needed
+          # by the coverage workflow's aggregate step.
           include-hidden-files: true
 
       - name: Cancel Currents run if workflow is cancelled

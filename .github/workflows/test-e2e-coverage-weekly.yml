@@ -47,17 +47,28 @@ jobs:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Collect raw V8 coverage
+      - name: Collect raw coverage (frontend monocart + backend V8)
         shell: bash
         run: |
           mkdir -p packages/testing/playwright/coverage/.cache
-          found=$(find /tmp/shards -path '*/coverage/.cache/*' -type f 2>/dev/null | wc -l)
-          echo "Found $found raw V8 coverage files across shards"
+          mkdir -p packages/testing/playwright/coverage/.backend-v8
+          fe=$(find /tmp/shards -path '*/coverage/.cache/*' -type f 2>/dev/null | wc -l)
+          be=$(find /tmp/shards -path '*/coverage/.backend-v8/*' -type f 2>/dev/null | wc -l)
+          echo "Frontend monocart raw: $fe | backend V8 raw: $be"
           find /tmp/shards -path '*/coverage/.cache/*' -type f \
             -exec cp {} packages/testing/playwright/coverage/.cache/ \;
-          ls -la packages/testing/playwright/coverage/.cache/ || true
+          # Backend raw is nested per-container; flatten with unique names.
+          find /tmp/shards -path '*/coverage/.backend-v8/*' -name '*.json' -type f \
+            -exec sh -c 'cp "$1" "packages/testing/playwright/coverage/.backend-v8/be-$(echo "$1" | md5sum | cut -c1-12).json"' _ {} \;
+
+      # Backend V8 maps to source against the repo's own byte-identical dist +
+      # .js.map (the image was built from this commit). Build so they exist.
+      - name: Build (for backend source-map resolution)
+        run: pnpm build
 
       - name: Generate Coverage Report
+        env:
+          N8N_COVERAGE_DIR: ${{ github.workspace }}/packages/testing/playwright/coverage/.backend-v8
         run: pnpm --filter n8n-playwright coverage:report
 
       - name: Upload Coverage Report Artifact
