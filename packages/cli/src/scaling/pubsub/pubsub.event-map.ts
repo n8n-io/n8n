@@ -221,6 +221,16 @@ export type PubSubCommandMap = {
 		agentId: string;
 	};
 
+	/**
+	 * Reconcile an agent's scheduled task cron jobs across main instances.
+	 * Published by the main that handled a publish/unpublish/delete after the
+	 * change is persisted. Only the leader owns task crons, so every main runs
+	 * the same reconcile but registration is a no-op on followers.
+	 */
+	'agent-tasks-changed': {
+		agentId: string;
+	};
+
 	// #endregion
 };
 

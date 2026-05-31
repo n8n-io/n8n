@@ -70,10 +70,11 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
-// Publish/unpublish call into AgentTaskService via the DI container; the publish
-// hook awaits `registerEnabledForAgent(...).catch(...)`, so the mock must resolve.
+// Publish/unpublish/delete call into AgentTaskService via the DI container; the
+// hooks await `requestReconcile(...)`, so the mock must resolve.
 function mockAgentTaskService(): ReturnType<typeof mock<AgentTaskService>> {
 	const taskService = mock<AgentTaskService>();
+	taskService.requestReconcile.mockResolvedValue(undefined);
 	taskService.registerEnabledForAgent.mockResolvedValue(undefined);
 	return taskService;
 }

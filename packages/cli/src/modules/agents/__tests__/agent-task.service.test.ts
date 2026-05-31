@@ -3,9 +3,11 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { CronJob } from 'cron';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentsService } from '../agents.service';
@@ -67,16 +69,39 @@ async function runTaskOf(service: AgentTaskService, taskId: string): Promise<voi
 
 describe('AgentTaskService', () => {
 	const logger = mock<Logger>();
-	const globalConfig = { generic: { timezone: 'UTC' } } as unknown as GlobalConfig;
+	const globalConfig = {
+		generic: { timezone: 'UTC' },
+		multiMainSetup: { enabled: false },
+	} as unknown as GlobalConfig;
 	let taskRepository: ReturnType<typeof mock<AgentTaskRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentsService: ReturnType<typeof mock<AgentsService>>;
+	let publisher: ReturnType<typeof mock<Publisher>>;
 	let txManager: { save: jest.Mock; remove: jest.Mock };
 	let service: AgentTaskService;
 
+	function setMultiMain(enabled: boolean): void {
+		(globalConfig.multiMainSetup as { enabled: boolean }).enabled = enabled;
+	}
+
+	/** Build a service with a specific leadership role — cron registration is leader-only. */
+	function buildService(isLeader: boolean): AgentTaskService {
+		return new AgentTaskService(
+			logger,
+			globalConfig,
+			taskRepository,
+			agentRepository,
+			projectRelationRepository,
+			agentsService,
+			mock<InstanceSettings>({ isLeader }),
+			publisher,
+		);
+	}
+
 	beforeEach(() => {
 		jest.clearAllMocks();
+		setMultiMain(false);
 		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
 		// `create` fills the body so `save`/`toDto` see a complete entity.
@@ -97,14 +122,10 @@ describe('AgentTaskService', () => {
 		};
 		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentsService = mock<AgentsService>();
-		service = new AgentTaskService(
-			logger,
-			globalConfig,
-			taskRepository,
-			agentRepository,
-			projectRelationRepository,
-			agentsService,
-		);
+		publisher = mock<Publisher>();
+		publisher.publishCommand.mockResolvedValue(undefined);
+		// Default to the leader so existing registration assertions hold.
+		service = buildService(true);
 	});
 
 	describe('create', () => {
@@ -304,6 +325,73 @@ describe('AgentTaskService', () => {
 			await service.registerEnabledForAgent(AGENT_ID);
 
 			expect(CronJobMock).not.toHaveBeenCalled();
+		});
+
+		it('does not register cron jobs on a follower (leader owns the cron)', async () => {
+			const follower = buildService(false);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makeAgent({
+					activeVersion: {
+						publishedById: 'user-1',
+						schema: { tasks: [{ type: 'task', id: 'task-1', enabled: true }] },
+					},
+				} as Partial<Agent>),
+			);
+			(taskRepository.findByAgentId as jest.Mock).mockResolvedValue([makeTask({ id: 'task-1' })]);
+
+			await follower.registerEnabledForAgent(AGENT_ID);
+
+			expect(CronJobMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestReconcile', () => {
+		it('broadcasts a task reconcile in multi-main mode', async () => {
+			setMultiMain(true);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makeAgent({ activeVersionId: null }),
+			);
+
+			await service.requestReconcile(AGENT_ID);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-tasks-changed',
+				payload: { agentId: AGENT_ID },
+			});
+		});
+
+		it('does not broadcast in single-main mode', async () => {
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makeAgent({ activeVersionId: null }),
+			);
+
+			await service.requestReconcile(AGENT_ID);
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleTasksChanged', () => {
+		it('reconciles the agent so the leader registers its enabled tasks', async () => {
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makeAgent({
+					activeVersion: {
+						publishedById: 'user-1',
+						schema: { tasks: [{ type: 'task', id: 'task-1', enabled: true }] },
+					},
+				} as Partial<Agent>),
+			);
+			(taskRepository.findByAgentId as jest.Mock).mockResolvedValue([makeTask({ id: 'task-1' })]);
+
+			await service.handleTasksChanged({ agentId: AGENT_ID });
+
+			expect(CronJobMock).toHaveBeenCalledWith(
+				'0 9 * * *',
+				expect.any(Function),
+				null,
+				true,
+				'UTC',
+			);
 		});
 	});
 

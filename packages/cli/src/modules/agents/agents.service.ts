@@ -593,10 +593,12 @@ export class AgentsService {
 		}
 
 		// Register any enabled tasks now that the agent is published and can run.
+		// Routed through requestReconcile so the leader owns the cron even when a
+		// follower handled this publish request (multi-main).
 		// eslint-disable-next-line import-x/no-cycle
 		const { AgentTaskService } = await import('./agent-task.service');
 		await Container.get(AgentTaskService)
-			.registerEnabledForAgent(agentId)
+			.requestReconcile(agentId)
 			.catch((error) =>
 				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
 			);
@@ -634,7 +636,11 @@ export class AgentsService {
 
 		// eslint-disable-next-line import-x/no-cycle
 		const { AgentTaskService } = await import('./agent-task.service');
-		Container.get(AgentTaskService).deregisterAgentTasks(agentId);
+		await Container.get(AgentTaskService)
+			.requestReconcile(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to stop agent tasks on unpublish', { agentId, error }),
+			);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -689,7 +695,7 @@ export class AgentsService {
 		try {
 			// eslint-disable-next-line import-x/no-cycle
 			const { AgentTaskService } = await import('./agent-task.service');
-			Container.get(AgentTaskService).deregisterAgentTasks(agentId);
+			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {
 				agentId,

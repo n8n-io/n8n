@@ -7,15 +7,18 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
+import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentsService } from './agents.service';
 import { Agent } from './entities/agent.entity';
@@ -51,6 +54,8 @@ export class AgentTaskService {
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentsService: AgentsService,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -171,8 +176,22 @@ export class AgentTaskService {
 	// ── Scheduling lifecycle ──────────────────────────────────────────────
 
 	/**
-	 * Reconcile an agent's cron jobs against its PUBLISHED config — called when
-	 * the agent is published or reverted. Stops jobs no longer enabled/present.
+	 * Reconcile an agent's task crons after a publish/unpublish/delete: apply the
+	 * change locally (registration is leader-only, see `reconcileAgent`) and, in
+	 * multi-main mode, broadcast so the leader picks it up even when a follower
+	 * handled the HTTP request. `registerEnabledForAgent` is idempotent, so a
+	 * self-delivered broadcast is harmless.
+	 */
+	async requestReconcile(agentId: string): Promise<void> {
+		await this.registerEnabledForAgent(agentId);
+		this.broadcastTasksChanged(agentId);
+	}
+
+	/**
+	 * Reconcile an agent's cron jobs against its PUBLISHED config. Registers
+	 * enabled tasks (leader only) and stops jobs that are no longer
+	 * enabled/present; deregisters everything when the agent is unpublished or
+	 * gone. Used by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
 		const agent = await this.agentRepository.findOne({
@@ -184,6 +203,28 @@ export class AgentTaskService {
 			return;
 		}
 		await this.reconcileAgent(agent);
+	}
+
+	/**
+	 * Apply a peer main's task reconcile. Registration is leader-only, so on
+	 * followers this only deregisters stale jobs (a no-op when none are held).
+	 */
+	@OnPubSubEvent('agent-tasks-changed', { instanceType: 'main' })
+	async handleTasksChanged(payload: PubSubCommandMap['agent-tasks-changed']): Promise<void> {
+		await this.registerEnabledForAgent(payload.agentId);
+	}
+
+	/** Broadcast a task reconcile to peer mains (no-op outside multi-main). */
+	private broadcastTasksChanged(agentId: string): void {
+		if (!this.globalConfig.multiMainSetup.enabled) return;
+		void this.publisher
+			.publishCommand({ command: 'agent-tasks-changed', payload: { agentId } })
+			.catch((error) =>
+				this.logger.warn('[AgentTaskService] Failed to publish agent-tasks-changed', {
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				}),
+			);
 	}
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/delete. */
@@ -223,6 +264,12 @@ export class AgentTaskService {
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
 	private async reconcileAgent(agent: Agent): Promise<void> {
+		// Only the leader owns task crons — a cron firing on multiple mains would
+		// run the agent twice per tick. Followers skip registration entirely; the
+		// leader applies the change via the `agent-tasks-changed` pubsub reconcile.
+		// Deregistration paths stay ungated so a former leader still stops its jobs.
+		if (!this.instanceSettings.isLeader) return;
+
 		const enabledIds = this.enabledTaskIds(agent);
 
 		for (const [taskId, entry] of this.jobs.entries()) {
