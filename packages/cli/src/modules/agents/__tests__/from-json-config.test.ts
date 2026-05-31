@@ -1296,25 +1296,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
@@ -1386,25 +1381,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',

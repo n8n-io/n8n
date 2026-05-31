@@ -8,16 +8,13 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentCredentialIntegrationSchema,
 	AgentJsonConfigSchema,
 	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
 	isNodeToolsEnabled,
 	AgentModelSchema,
 	type AgentCredentialIntegrationConfig,
-	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
@@ -162,14 +159,6 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
-}
-
-export interface ExecuteForSchedulePublishedConfig {
-	agentId: string;
-	projectId: string;
-	message: string;
-	/** Memory scope — resourceId isolates per-run memory. */
-	memory: AgentMemoryScope;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -632,16 +621,6 @@ export class AgentsService {
 			// and re-publishing the same id would collide with that row.
 			agent.versionId = uuid();
 
-			const hasActiveSchedule = (agent.integrations ?? []).some(
-				(integration) => isAgentScheduleIntegration(integration) && integration.active,
-			);
-
-			if (hasActiveSchedule) {
-				agent.integrations = (agent.integrations ?? []).map((integration) =>
-					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
-				);
-			}
-
 			await trx.save(agent);
 		});
 
@@ -653,9 +632,6 @@ export class AgentsService {
 		// eslint-disable-next-line import-x/no-cycle
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
-
-		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-		Container.get(AgentScheduleService).deregister(agentId);
 
 		// eslint-disable-next-line import-x/no-cycle
 		const { AgentTaskService } = await import('./agent-task.service');
@@ -710,16 +686,6 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
-
-		try {
-			const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-			Container.get(AgentScheduleService).deregister(agentId);
-		} catch (error) {
-			this.logger.warn('Failed to stop schedule on agent delete', {
-				agentId,
-				error: error instanceof Error ? error.message : error,
-			});
-		}
 
 		try {
 			// eslint-disable-next-line import-x/no-cycle
@@ -1285,41 +1251,8 @@ export class AgentsService {
 	}
 
 	/**
-	 * Execute a published agent for the local schedule trigger.
-	 *
-	 * The n8n user identity for RBAC is resolved from
-	 * `activeVersion.publishedById`.  Each scheduled run uses its own
-	 * memory scope so no conversation history is shared across runs.
-	 * `projectId` is resolved from the agent entity.
-	 */
-	async *executeForSchedulePublished(
-		config: ExecuteForSchedulePublishedConfig,
-	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory } = config;
-
-		// One shared compiled runtime per agent for all schedule runs.
-		const runtime = await this.getRuntime({
-			agentId,
-			projectId,
-			integrationType: AGENT_SCHEDULE_TRIGGER_TYPE,
-			usePublishedVersion: true,
-		});
-
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			message,
-			memory,
-			projectId: runtime.projectId,
-			source: AGENT_SCHEDULE_TRIGGER_TYPE,
-		});
-	}
-
-	/**
-	 * Execute a published agent for a scheduled task. Mirrors the schedule run
-	 * path but stamps `source='task'` and the originating `taskId` on the
-	 * recorded session for traceability.
+	 * Execute a published agent for a scheduled task, stamping `source='task'`
+	 * and the originating `taskId` on the recorded session for traceability.
 	 */
 	async *executeForTaskPublished(
 		config: ExecuteForTaskPublishedConfig,
@@ -1888,25 +1821,10 @@ export class AgentsService {
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agent.id,
-			integration as AgentCredentialIntegrationConfig,
+			integration,
 			'disconnect',
 		);
 		return result;
-	}
-
-	/**
-	 * Validate and persist the full integrations array on an agent.
-	 * Used internally by updateConfig and exposed for direct schedule/credential writes.
-	 */
-	private validateIntegrationRefs(integrations: AgentIntegrationConfig[], agent: Agent): void {
-		const activeUnpublishedSchedule = integrations.some(
-			(integration) => isAgentScheduleIntegration(integration) && integration.active,
-		);
-		if (activeUnpublishedSchedule && !agent.activeVersionId) {
-			throw new UserError(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-		}
 	}
 
 	/**
@@ -2073,8 +1991,6 @@ export class AgentsService {
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
 			);
 		}
-
-		this.validateIntegrationRefs(config.integrations ?? [], entity);
 	}
 
 	private getMissingCustomToolIds(

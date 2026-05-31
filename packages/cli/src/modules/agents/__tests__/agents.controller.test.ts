@@ -9,7 +9,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { AgentScheduleService } from '../integrations/agent-schedule.service';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -40,7 +39,6 @@ function makeController({
 	agentsService = mock<AgentsService>(),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
-	agentScheduleService = mock<AgentScheduleService>(),
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	slackAppSetupService = mock<SlackAppSetupService>(),
@@ -49,7 +47,6 @@ function makeController({
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
 	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
-	agentScheduleService?: jest.Mocked<AgentScheduleService>;
 	agentRepository?: jest.Mocked<AgentRepository>;
 	chatIntegrationRegistry?: jest.Mocked<ChatIntegrationRegistry>;
 	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
@@ -71,7 +68,6 @@ function makeController({
 		mock<AgentsBuilderService>(),
 		credentialsService,
 		chatIntegrationService,
-		agentScheduleService,
 		agentRepository,
 		mock<AgentExecutionService>(),
 		chatIntegrationRegistry,
@@ -84,7 +80,6 @@ function makeController({
 		agentsService,
 		credentialsService,
 		chatIntegrationService,
-		agentScheduleService,
 		agentRepository,
 		chatIntegrationRegistry,
 		slackAppSetupService,
@@ -268,7 +263,6 @@ describe('AgentsController integration credentials', () => {
 			mock<AgentsBuilderService>(),
 			credentialsService,
 			chatIntegrationService,
-			mock<AgentScheduleService>(),
 			agentRepository,
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -638,17 +632,9 @@ describe('AgentsController integration credentials', () => {
 			integrations: [],
 		});
 
-		const agentScheduleService = mock<AgentScheduleService>();
-		agentScheduleService.getConfig.mockReturnValue({
-			active: false,
-			cronExpression: '0 0 * * *',
-			wakeUpPrompt: 'tick',
-		});
-
 		const { controller } = makeController({
 			agentRepository,
 			chatIntegrationService,
-			agentScheduleService,
 		});
 
 		await expect(
@@ -820,7 +806,6 @@ describe('AgentsController agent resource', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -865,7 +850,6 @@ describe('AgentsController agent resource', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
@@ -899,7 +883,6 @@ describe('AgentsController chat message history', () => {
 			mock<AgentsBuilderService>(),
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
-			mock<AgentScheduleService>(),
 			mock<AgentRepository>(),
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),

@@ -2,7 +2,6 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
@@ -59,17 +58,14 @@ function triggerIcon(integrationIcon?: string): IconName {
 }
 
 const triggerRows = computed<Array<{ type: string; label: string; icon: IconName }>>(() =>
-	props.connectedTriggers
-		// Drop forgotten legacy schedule triggers; they're no longer configurable.
-		.filter((trigger) => trigger !== AGENT_SCHEDULE_TRIGGER_TYPE)
-		.map((trigger) => {
-			const integration = catalog.value?.find(({ type }) => type === trigger);
-			return {
-				type: trigger,
-				label: integration?.label ?? trigger,
-				icon: triggerIcon(integration?.icon),
-			};
-		}),
+	props.connectedTriggers.map((trigger) => {
+		const integration = catalog.value?.find(({ type }) => type === trigger);
+		return {
+			type: trigger,
+			label: integration?.label ?? trigger,
+			icon: triggerIcon(integration?.icon),
+		};
+	}),
 );
 
 const hasTriggers = computed(() => triggerRows.value.length > 0);

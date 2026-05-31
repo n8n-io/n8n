@@ -18,11 +18,6 @@ export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 }) {}
 
-export class UpdateAgentScheduleDto extends Z.class({
-	cronExpression: z.string(),
-	wakeUpPrompt: z.string().optional(),
-}) {}
-
 export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
 	objective: agentTaskSchema.shape.objective,

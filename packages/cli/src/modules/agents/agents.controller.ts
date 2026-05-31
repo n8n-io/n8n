@@ -1,12 +1,10 @@
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	AgentCredentialIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
-	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
 	type ChatIntegrationDescriptor,
@@ -18,7 +16,6 @@ import {
 	isAgentCredentialIntegration,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
@@ -59,7 +56,6 @@ import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -113,7 +109,6 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
@@ -855,63 +850,6 @@ export class AgentsController {
 		return { status: 'disconnected' };
 	}
 
-	@Get('/:agentId/integrations/schedule')
-	@ProjectScope('agent:read')
-	async getScheduleIntegration(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return this.agentScheduleService.getConfig(agent);
-	}
-
-	@Put('/:agentId/integrations/schedule')
-	@ProjectScope('agent:update')
-	async updateScheduleIntegration(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentScheduleDto,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.saveConfig(
-			agent,
-			payload.cronExpression,
-			payload.wakeUpPrompt,
-		);
-	}
-
-	@Post('/:agentId/integrations/schedule/activate')
-	@ProjectScope('agent:update')
-	async activateScheduleIntegration(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.activate(agent);
-	}
-
-	@Post('/:agentId/integrations/schedule/deactivate')
-	@ProjectScope('agent:update')
-	async deactivateScheduleIntegration(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.deactivate(agent);
-	}
-
 	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -997,13 +935,9 @@ export class AgentsController {
 				credentialId: i.credentialId,
 				...('settings' in i ? { settings: i.settings } : {}),
 			}));
-		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
-
 		return {
-			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
-			integrations: connectedIntegrations,
+			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: chatIntegrations,
 		};
 	}
 
