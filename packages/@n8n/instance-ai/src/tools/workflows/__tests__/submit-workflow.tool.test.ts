@@ -1,12 +1,15 @@
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
-import type { INodeTypes } from 'n8n-workflow';
+import type { INodeTypes, WorkflowStructureIssue } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
+	buildErrorDetails,
+	buildNodeIndex,
 	classifySubmitFailure,
+	extractStructureIssues,
 	normalizeWorkflowNodeParameters,
 	type SubmitWorkflowAttempt,
 	type SubmitWorkflowOutput,
@@ -378,6 +381,292 @@ describe('classifySubmitFailure', () => {
 			reason: 'workflow_save_failed',
 		});
 		expect(remediation.guidance).toContain('credential setup');
+	});
+});
+
+describe('extractStructureIssues', () => {
+	it('returns the issues array when the error carries WorkflowStructureIssue[]', () => {
+		const caused = Object.assign(new Error('boom'), {
+			issues: [{ path: ['nodes', 0, 'parameters'], code: 'invalid_type', message: 'no good' }],
+		});
+		const result = extractStructureIssues(caused);
+		expect(result).toHaveLength(1);
+		expect(result?.[0].path).toEqual(['nodes', 0, 'parameters']);
+	});
+
+	it('returns undefined for a plain Error without issues', () => {
+		expect(extractStructureIssues(new Error('plain'))).toBeUndefined();
+	});
+
+	it('returns undefined when issues is an empty array', () => {
+		const caused = Object.assign(new Error('x'), { issues: [] });
+		expect(extractStructureIssues(caused)).toBeUndefined();
+	});
+
+	it('returns undefined when issue entries have wrong shape', () => {
+		const caused = Object.assign(new Error('x'), {
+			issues: [{ path: 'nope', message: 'wrong shape' }],
+		});
+		expect(extractStructureIssues(caused)).toBeUndefined();
+	});
+
+	it('returns undefined for non-objects', () => {
+		expect(extractStructureIssues(null)).toBeUndefined();
+		expect(extractStructureIssues(undefined)).toBeUndefined();
+		expect(extractStructureIssues('error')).toBeUndefined();
+	});
+});
+
+describe('buildNodeIndex', () => {
+	it('returns one entry per node with stable index ordering', () => {
+		const json = {
+			nodes: [
+				{ name: 'Gmail Trigger', type: 'x', position: [0, 0], parameters: {} },
+				{ name: 'Route', type: 'y', position: [0, 0], parameters: {} },
+				{ name: 'Manual Trigger (temp)', type: 'z', position: [0, 0], parameters: {} },
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		expect(buildNodeIndex(json)).toEqual([
+			{ index: 0, name: 'Gmail Trigger' },
+			{ index: 1, name: 'Route' },
+			{ index: 2, name: 'Manual Trigger (temp)' },
+		]);
+	});
+
+	it('returns an empty array when nodes is missing', () => {
+		expect(buildNodeIndex({ connections: {} } as unknown as WorkflowJSON)).toEqual([]);
+	});
+});
+
+describe('buildErrorDetails', () => {
+	const json = {
+		name: 'Test',
+		nodes: [
+			{
+				id: 'n-0',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { foo: 'bar' },
+			},
+			{
+				id: 'n-1',
+				name: 'Manual Trigger (temp)',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 200],
+				parameters: null,
+			},
+		],
+		connections: {
+			'Gmail Trigger': { main: [[{ node: 'GhostNode', type: 'main', index: 0 }]] },
+		},
+	} as unknown as WorkflowJSON;
+
+	it('attaches nodeJson when the path starts with nodes[N]', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['nodes', 1, 'parameters'],
+				code: 'invalid_type',
+				message: 'Expected object, received null',
+			} as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+
+		expect(detail.path).toBe('nodes[1].parameters');
+		expect(detail.code).toBe('invalid_type');
+		expect(detail.offendingValue).toBeNull();
+		expect(detail.nodeJson).toEqual(json.nodes[1]);
+		expect(detail.connectionSlice).toBeUndefined();
+	});
+
+	it('attaches connectionSlice when the path starts with connections.<sourceName>', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['connections', 'Gmail Trigger', 'main', 0, 0, 'node'],
+				code: 'unknown_connection_target',
+				message: 'Connection target "GhostNode" does not reference an existing node',
+			},
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+
+		expect(detail.path).toBe('connections.Gmail Trigger.main[0][0].node');
+		expect(detail.offendingValue).toBe('GhostNode');
+		expect(detail.connectionSlice).toEqual(json.connections['Gmail Trigger']);
+		expect(detail.nodeJson).toBeUndefined();
+	});
+
+	it('attaches neither slice for workflow-level paths and keeps offendingValue', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['name'],
+				code: 'invalid_type',
+				message: 'Required',
+			} as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+		expect(detail.path).toBe('name');
+		expect(detail.code).toBe('invalid_type');
+		expect(detail.offendingValue).toBe('Test');
+		expect(detail.nodeJson).toBeUndefined();
+		expect(detail.connectionSlice).toBeUndefined();
+	});
+
+	it('uses "workflow" as the path label for root-level issues', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: [],
+				code: 'invalid_type',
+				message: 'root payload bad',
+			} as unknown as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+		expect(detail.path).toBe('workflow');
+	});
+});
+
+describe('createSubmitWorkflowTool — structured save-failure payload', () => {
+	beforeEach(() => {
+		mockedValidateWorkflow.mockReset();
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+	});
+
+	it('returns errorDetails and nodeIndex when the save throws a structured error', async () => {
+		// Mimic WorkflowStructureBadRequestError from packages/cli/src/workflow-helpers.ts:
+		// a regular Error with an `issues` property. Use `position` (not `parameters`)
+		// because `normalizeWorkflowNodeParameters` runs before save and would coerce
+		// a `null` parameters value to `{}` — invalidating any assertion about it.
+		const saveError = Object.assign(
+			new Error(
+				'Workflow structure is invalid. nodes[1].position (invalid_type): Expected tuple, received null',
+			),
+			{
+				issues: [
+					{
+						path: ['nodes', 1, 'position'],
+						code: 'invalid_type',
+						message: 'Expected tuple, received null',
+					},
+				],
+			},
+		);
+
+		const workflowJson = {
+			name: 'Triage workflow',
+			nodes: [
+				{
+					id: 'n-0',
+					name: 'Gmail Trigger',
+					type: 'n8n-nodes-base.gmailTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'n-1',
+					name: 'Manual Trigger (temp)',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: null,
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const workflowService = {
+			createFromWorkflowJSON: jest.fn(async () => {
+				await Promise.resolve();
+				throw saveError;
+			}),
+		};
+
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Triage workflow',
+		});
+
+		expect(output.success).toBe(false);
+		expect(output.errors?.[0]).toContain('nodes[1].position');
+		expect(output.errorDetails).toHaveLength(1);
+		expect(output.errorDetails?.[0]).toMatchObject({
+			path: 'nodes[1].position',
+			code: 'invalid_type',
+			message: 'Expected tuple, received null',
+			offendingValue: null,
+		});
+		expect(output.errorDetails?.[0].nodeJson).toMatchObject({
+			name: 'Manual Trigger (temp)',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		expect(output.nodeIndex).toEqual([
+			{ index: 0, name: 'Gmail Trigger' },
+			{ index: 1, name: 'Manual Trigger (temp)' },
+		]);
+
+		expect(attempts).toHaveLength(1);
+		expect(attempts[0].errorDetails?.[0].path).toBe('nodes[1].position');
+		expect(attempts[0].nodeIndex).toHaveLength(2);
+	});
+
+	it('still emits nodeIndex (but no errorDetails) when the save error is plain', async () => {
+		const workflowService = {
+			createFromWorkflowJSON: jest.fn(async () => {
+				await Promise.resolve();
+				throw new Error('database unavailable');
+			}),
+		};
+
+		const workflowJson = {
+			name: 'Plain failure',
+			nodes: [
+				{
+					id: 'n-0',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Plain failure',
+		});
+
+		expect(output.success).toBe(false);
+		expect(output.errorDetails).toBeUndefined();
+		expect(output.nodeIndex).toEqual([{ index: 0, name: 'A' }]);
 	});
 });
 
