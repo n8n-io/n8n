@@ -3,7 +3,7 @@ import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -55,26 +55,8 @@ const tasks = computed<TaskRow[]>(() => {
 });
 
 const MAX_VISIBLE_TASKS = 5;
-const listRef = ref<HTMLUListElement | null>(null);
-const listMaxHeight = ref<string>();
-let resizeObserver: ResizeObserver | undefined;
-
-// Cap the list at the bottom of the 5th row so any further tasks scroll. Measured
-// from the rendered rows so it stays correct even when rows have different heights.
-function measureListHeight() {
-	const list = listRef.value;
-	if (!list || tasks.value.length <= MAX_VISIBLE_TASKS) {
-		listMaxHeight.value = undefined;
-		return;
-	}
-	const first = list.children.item(0);
-	const fifth = list.children.item(MAX_VISIBLE_TASKS - 1);
-	if (!(first instanceof HTMLElement) || !(fifth instanceof HTMLElement)) {
-		listMaxHeight.value = undefined;
-		return;
-	}
-	listMaxHeight.value = `${fifth.offsetTop - first.offsetTop + fifth.offsetHeight}px`;
-}
+// Beyond 5 tasks the list scrolls; the cap is a CSS max-height (see `.scrollable`).
+const isScrollable = computed(() => tasks.value.length > MAX_VISIBLE_TASKS);
 
 function toErrorMessage(error: unknown, fallbackKey: BaseTextKey): string {
 	return error instanceof Error && error.message ? error.message : i18n.baseText(fallbackKey);
@@ -94,8 +76,6 @@ async function reload() {
 
 onMounted(reload);
 
-onBeforeUnmount(() => resizeObserver?.disconnect());
-
 // Reload the bodies when the parent signals a change (add/edit/delete, or a
 // builder create_task).
 watch(
@@ -104,21 +84,6 @@ watch(
 		void reload();
 	},
 );
-
-// Recompute the cap after the rows render (bodies fetched or refs changed).
-watch(tasks, async () => {
-	await nextTick();
-	measureListHeight();
-});
-
-// Re-measure when row heights change (e.g. the editor column is resized).
-watch(listRef, (list) => {
-	resizeObserver?.disconnect();
-	if (list && typeof ResizeObserver !== 'undefined') {
-		resizeObserver = new ResizeObserver(() => measureListHeight());
-		resizeObserver.observe(list);
-	}
-});
 
 function openModal(task: AgentTaskDto | null) {
 	uiStore.openModalWithData({
@@ -279,12 +244,7 @@ function runSummary(task: TaskRow): string {
 			</N8nText>
 		</div>
 
-		<ul
-			v-else
-			ref="listRef"
-			:class="[$style.list, listMaxHeight && $style.scrollable]"
-			:style="listMaxHeight ? { maxHeight: listMaxHeight } : undefined"
-		>
+		<ul v-else :class="[$style.list, isScrollable && $style.scrollable]">
 			<li
 				v-for="task in tasks"
 				:key="task.id"
@@ -378,10 +338,19 @@ function runSummary(task: TaskRow): string {
 	list-style: none;
 }
 
-/* Applied once there are more than 5 tasks; max-height is set inline from the
-   measured height of the first 5 rows. scrollbar-gutter keeps row widths stable
-   so wrapping (and the measured height) doesn't change when the scrollbar shows. */
+/* Applied once there are more than 5 tasks: cap at ~5 rows, then scroll. The cap
+   is an approximation (a row grows taller when a long name/summary wraps) — exact
+   5-row precision isn't required. Derived from the row anatomy: 3 text lines (one
+   medium + two small at line-height lg), the row's vertical padding and border,
+   plus the inter-row gap. scrollbar-gutter keeps row widths stable so wrapping
+   doesn't shift when the scrollbar appears. */
 .scrollable {
+	--task-row-height: calc(
+		(var(--font-size--sm) + 2 * var(--font-size--2xs)) * var(--line-height--lg) + 2 *
+			var(--spacing--5xs) + 2 * var(--spacing--xs) + 2px
+	);
+
+	max-height: calc(5 * var(--task-row-height) + 4 * var(--spacing--2xs));
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 }
