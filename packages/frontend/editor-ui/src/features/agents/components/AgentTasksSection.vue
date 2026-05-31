@@ -11,7 +11,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { deleteAgentTask, getAgentTasks, runAgentTask } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
-import { getNextScheduleOccurrence, parseCron } from '../utils/scheduleBuilder';
+import {
+	describeSchedule,
+	getNextScheduleOccurrence,
+	parseCron,
+	type ScheduleDescription,
+} from '../utils/scheduleBuilder';
 
 const props = withDefaults(
 	defineProps<{
@@ -161,29 +166,73 @@ function dayName(dayOfWeek: number): string {
 	);
 }
 
-function scheduleSummary(task: TaskRow): string {
-	const parts = parseCron(task.cronExpression);
-	if (!parts) return task.cronExpression;
+function shortDayName(dayOfWeek: number): string {
+	return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(
+		new Date(Date.UTC(2024, 0, 7 + dayOfWeek)),
+	);
+}
 
-	const time = formatTimeOfDay(parts.hour, parts.minute);
-	switch (parts.frequency) {
-		case 'hourly':
-			return i18n.baseText('agents.builder.tasks.schedule.summary.hourly', {
-				interpolate: { minute: String(parts.minute) },
+/** Render the structured description of a non-simple cron to localized text. */
+function describeExtendedSchedule(desc: ScheduleDescription): string {
+	switch (desc.kind) {
+		case 'everyNMinutes':
+			return i18n.baseText('agents.builder.tasks.schedule.summary.everyNMinutes', {
+				interpolate: { minutes: String(desc.minutes) },
 			});
-		case 'daily':
-			return i18n.baseText('agents.builder.tasks.schedule.summary.daily', {
-				interpolate: { time },
+		case 'weekdays':
+			return i18n.baseText('agents.builder.tasks.schedule.summary.weekdays', {
+				interpolate: { time: formatTimeOfDay(desc.hour, desc.minute) },
 			});
-		case 'weekly':
-			return i18n.baseText('agents.builder.tasks.schedule.summary.weekly', {
-				interpolate: { day: dayName(parts.dayOfWeek), time },
+		case 'weekends':
+			return i18n.baseText('agents.builder.tasks.schedule.summary.weekends', {
+				interpolate: { time: formatTimeOfDay(desc.hour, desc.minute) },
 			});
-		case 'monthly':
-			return i18n.baseText('agents.builder.tasks.schedule.summary.monthly', {
-				interpolate: { day: String(parts.dayOfMonth), time },
+		case 'daysOfWeek':
+			return i18n.baseText('agents.builder.tasks.schedule.summary.daysOfWeek', {
+				interpolate: {
+					days: desc.days.map(shortDayName).join(', '),
+					time: formatTimeOfDay(desc.hour, desc.minute),
+				},
+			});
+		case 'daysOfMonth':
+			return i18n.baseText('agents.builder.tasks.schedule.summary.daysOfMonth', {
+				interpolate: {
+					days: desc.days.join(', '),
+					time: formatTimeOfDay(desc.hour, desc.minute),
+				},
 			});
 	}
+}
+
+function scheduleSummary(task: TaskRow): string {
+	const parts = parseCron(task.cronExpression);
+	if (parts) {
+		const time = formatTimeOfDay(parts.hour, parts.minute);
+		switch (parts.frequency) {
+			case 'hourly':
+				return i18n.baseText('agents.builder.tasks.schedule.summary.hourly', {
+					interpolate: { minute: String(parts.minute) },
+				});
+			case 'daily':
+				return i18n.baseText('agents.builder.tasks.schedule.summary.daily', {
+					interpolate: { time },
+				});
+			case 'weekly':
+				return i18n.baseText('agents.builder.tasks.schedule.summary.weekly', {
+					interpolate: { day: dayName(parts.dayOfWeek), time },
+				});
+			case 'monthly':
+				return i18n.baseText('agents.builder.tasks.schedule.summary.monthly', {
+					interpolate: { day: String(parts.dayOfMonth), time },
+				});
+		}
+	}
+
+	// Ranges/lists/steps the simple builder can't model still get a readable label.
+	const extended = describeSchedule(task.cronExpression);
+	if (extended) return describeExtendedSchedule(extended);
+
+	return task.cronExpression;
 }
 
 function formatDate(date: Date): string {

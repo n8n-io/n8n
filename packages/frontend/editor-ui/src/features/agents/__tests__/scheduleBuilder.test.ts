@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCron, parseCron, type ScheduleParts } from '../utils/scheduleBuilder';
+import {
+	buildCron,
+	describeSchedule,
+	expandCronField,
+	parseCron,
+	type ScheduleParts,
+} from '../utils/scheduleBuilder';
 
 const base: ScheduleParts = {
 	frequency: 'daily',
@@ -45,6 +51,58 @@ describe('scheduleBuilder', () => {
 			expect(parseCron('0 9 1-5 * *')).toBeNull(); // range day-of-month
 			expect(parseCron('not a cron')).toBeNull();
 			expect(parseCron('0 9 1 * 1')).toBeNull(); // both dom and dow set
+		});
+	});
+
+	describe('expandCronField', () => {
+		it('expands single values, lists, ranges, and steps', () => {
+			expect(expandCronField('3', 0, 59)).toEqual([3]);
+			expect(expandCronField('1,3,5', 0, 6)).toEqual([1, 3, 5]);
+			expect(expandCronField('1-5', 0, 6)).toEqual([1, 2, 3, 4, 5]);
+			expect(expandCronField('*/15', 0, 59)).toEqual([0, 15, 30, 45]);
+			expect(expandCronField('1-5/2', 0, 6)).toEqual([1, 3, 5]);
+			expect(expandCronField('5,1-3', 0, 6)).toEqual([1, 2, 3, 5]);
+		});
+
+		it('returns null for a bare star, out-of-range, or invalid tokens', () => {
+			expect(expandCronField('*', 0, 6)).toBeNull();
+			expect(expandCronField('7', 0, 6)).toBeNull();
+			expect(expandCronField('5-1', 0, 6)).toBeNull();
+			expect(expandCronField('abc', 0, 6)).toBeNull();
+		});
+	});
+
+	describe('describeSchedule', () => {
+		it('labels weekday and weekend day-of-week sets', () => {
+			expect(describeSchedule('0 8 * * 1-5')).toEqual({ kind: 'weekdays', minute: 0, hour: 8 });
+			expect(describeSchedule('0 9 * * 0,6')).toEqual({ kind: 'weekends', minute: 0, hour: 9 });
+			expect(describeSchedule('0 9 * * 6-7')).toEqual({ kind: 'weekends', minute: 0, hour: 9 });
+		});
+
+		it('describes arbitrary day-of-week lists', () => {
+			expect(describeSchedule('30 7 * * 1,3,5')).toEqual({
+				kind: 'daysOfWeek',
+				minute: 30,
+				hour: 7,
+				days: [1, 3, 5],
+			});
+		});
+
+		it('describes minute steps that divide the hour, and day-of-month lists', () => {
+			expect(describeSchedule('*/30 * * * *')).toEqual({ kind: 'everyNMinutes', minutes: 30 });
+			expect(describeSchedule('0 9 1,15 * *')).toEqual({
+				kind: 'daysOfMonth',
+				minute: 0,
+				hour: 9,
+				days: [1, 15],
+			});
+		});
+
+		it('returns null for shapes it does not summarise', () => {
+			expect(describeSchedule('*/45 * * * *')).toBeNull(); // step that does not divide the hour
+			expect(describeSchedule('0 9 * 1 *')).toBeNull(); // specific month
+			expect(describeSchedule('0 9 * * *')).toBeNull(); // plain daily — parseCron handles it
+			expect(describeSchedule('not a cron')).toBeNull();
 		});
 	});
 });
