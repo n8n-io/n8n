@@ -444,7 +444,7 @@ function updateNodeIssues(): void {
 			nodeType.value,
 		);
 		if (parameterIssues) {
-			ndvStore.updateNodeParameterIssues(parameterIssues);
+			ndvStore.value.updateNodeParameterIssues(parameterIssues);
 		}
 	}
 }

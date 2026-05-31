@@ -520,6 +520,215 @@ describe('parseStoredMessages', () => {
 		});
 	});
 
+	describe('multi-run conversational turn (planned-task follow-ups)', () => {
+		// Mirrors the real flow: user sends a message, orchestrator suspends at a
+		// HITL plan-approval, user approves, planned tasks dispatch a builder, the
+		// orchestrator restarts internally (skipped <planned-task-follow-up> user
+		// rows) for checkpoint and synthesize sub-runs, and a snapshot is saved
+		// per sub-run. Without messageGroupId propagation across the turn, the
+		// intra-turn unpaired text rows survive the dedup loop and render as
+		// duplicates of the final snapshot's tree.textContent.
+		it('collapses intra-turn unpaired assistant rows into the final snapshot', () => {
+			const finalTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent:
+					'On it!The background workflow-builder task finished.The trigger is a manual trigger. **Workflow** is ready.',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'On it!' }],
+			};
+
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-user',
+					role: 'user',
+					content: 'lets build a simple workflow with just a single manual trigger on it',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-plan-toolcall',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'toolu_plan',
+							toolName: 'plan',
+							input: {},
+							state: 'resolved',
+							output: { result: 'Plan approved and 2 tasks dispatched.' },
+						},
+					],
+					createdAt: makeDate(2),
+				},
+				{
+					id: 'msg-on-it',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'On it!' }],
+					createdAt: makeDate(55),
+				},
+				{
+					id: 'msg-followup-checkpoint',
+					role: 'user',
+					content:
+						'<planned-task-follow-up type="checkpoint">\n{}\n</planned-task-follow-up>\n\n(continue)',
+					createdAt: makeDate(104),
+				},
+				{
+					id: 'msg-trigger-text',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'The trigger is a manual trigger.' },
+						{
+							type: 'tool-call',
+							toolCallId: 'toolu_executions',
+							toolName: 'executions',
+							input: { action: 'run', workflowId: 'wf-1' },
+							state: 'resolved',
+							output: { executionId: '1293', status: 'success' },
+						},
+					],
+					createdAt: makeDate(107),
+				},
+				{
+					id: 'msg-complete-checkpoint',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'toolu_complete',
+							toolName: 'complete-checkpoint',
+							input: { taskId: 'chk-1', status: 'succeeded' },
+							state: 'resolved',
+							output: { ok: true },
+						},
+					],
+					createdAt: makeDate(110),
+				},
+				{
+					id: 'msg-followup-synthesize',
+					role: 'user',
+					content:
+						'<planned-task-follow-up type="synthesize">\n{}\n</planned-task-follow-up>\n\n(continue)',
+					createdAt: makeDate(111),
+				},
+				{
+					id: 'msg-final',
+					role: 'assistant',
+					content: [{ type: 'text', text: '**Workflow** is ready.' }],
+					createdAt: makeDate(114),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: makeSnapshotTree('On it! (partial)'),
+					runId: 'run_A',
+					messageGroupId: 'mg_turn',
+					runIds: ['run_A'],
+					createdAt: makeDate(11),
+					updatedAt: makeDate(11),
+				},
+				{
+					tree: makeSnapshotTree('On it! checkpoint done (partial)'),
+					runId: 'run_B',
+					messageGroupId: 'mg_turn',
+					runIds: ['run_A', 'run_B'],
+					createdAt: makeDate(111),
+					updatedAt: makeDate(111),
+				},
+				{
+					tree: finalTree,
+					runId: 'run_C',
+					messageGroupId: 'mg_turn',
+					runIds: ['run_A', 'run_B', 'run_C'],
+					createdAt: makeDate(114),
+					updatedAt: makeDate(114),
+				},
+			]);
+
+			// 1 user + 1 collapsed assistant (the final snapshot).
+			expect(result).toHaveLength(2);
+			expect(result[0]).toMatchObject({ id: 'msg-user', role: 'user' });
+			expect(result[1]).toMatchObject({
+				id: 'msg-final',
+				role: 'assistant',
+				messageGroupId: 'mg_turn',
+				agentTree: finalTree,
+			});
+		});
+
+		it('keeps unpaired assistant rows when no paired snapshot exists in the turn', () => {
+			// A turn with no snapshot at all (e.g. a quick text-only reply) must
+			// not be touched by the propagation — there's no group to inherit.
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Hi',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hello' }],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'World' }],
+					createdAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[1].messageGroupId).toBeUndefined();
+			expect(result[2].messageGroupId).toBeUndefined();
+		});
+
+		it('does not propagate group ids across separate turns', () => {
+			// Turn 1 has a paired snapshot; turn 2 has no snapshot. The turn-2
+			// assistant rows must NOT inherit turn-1's group id.
+			const turn1Tree = makeSnapshotTree('Turn 1 result');
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u1', role: 'user', content: 'First', createdAt: makeDate(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Turn 1 result' }],
+					createdAt: makeDate(1),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'Second', createdAt: makeDate(2) },
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Turn 2 result' }],
+					createdAt: makeDate(3),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: turn1Tree,
+					runId: 'run_turn1',
+					messageGroupId: 'mg_turn1',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			expect(result).toHaveLength(4);
+			expect(result[1]).toMatchObject({ id: 'msg-a1', messageGroupId: 'mg_turn1' });
+			expect(result[3]).toMatchObject({ id: 'msg-a2' });
+			expect(result[3].messageGroupId).toBeUndefined();
+		});
+	});
+
 	describe('edge cases', () => {
 		it('should handle empty message list', () => {
 			const result = parseStoredMessages([]);

@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
+import { matchesGlobalTrigger } from './global-triggers.js';
 import { findWorkspaceRoot, toPosix } from './path-utils.js';
 
 function parseJsonFile<T>(path: string): T {
@@ -33,8 +34,6 @@ export interface AnalyzeOptions {
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
 	changedFiles: string[] | null;
 }
-
-const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
 
 function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	const wsFile = join(rootDir, 'pnpm-workspace.yaml');
@@ -121,7 +120,7 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 	// No signal (local dev, missing env) → safest default: everything.
 	if (options.changedFiles === null) return allNames;
 
-	if (options.changedFiles.some((f) => GLOBAL_TRIGGER_FILES.has(f))) return allNames;
+	if (options.changedFiles.some(matchesGlobalTrigger)) return allNames;
 
 	const direct = new Set<string>();
 	for (const file of options.changedFiles) {
