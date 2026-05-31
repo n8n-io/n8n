@@ -136,7 +136,7 @@ describe('IdleScalingPool', () => {
 		await pool.dispose();
 	});
 
-	it('should not replenish on release while idle', async () => {
+	it('should wait for borrowed bridges to be released before scaling to zero', async () => {
 		const factory = createFactory();
 		const pool = new IdleScalingPool(factory, 2, IDLE_TIMEOUT_MS);
 		await pool.initialize();
@@ -147,12 +147,14 @@ describe('IdleScalingPool', () => {
 
 		vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
 		await flushMicrotasks();
+		expect(bridge.dispose).not.toHaveBeenCalled();
 
-		const callsBeforeRelease = factory.mock.calls.length;
 		await pool.release(bridge);
 		await flushMicrotasks();
 
-		expect(factory.mock.calls.length).toBe(callsBeforeRelease);
+		vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
+		await flushMicrotasks();
+
 		expect(() => pool.acquire()).toThrow(PoolExhaustedError);
 		await pool.dispose();
 	});
