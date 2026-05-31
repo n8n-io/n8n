@@ -823,11 +823,36 @@ export class EvalExecutionService {
  * non-empty and not-sentinel-shaped, satisfying the validator; downstream
  * HTTP traffic still goes through the wire mock.
  */
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+
+/**
+ * Map a placeholder hint to a synthetic mock value shaped for the validator
+ * the parameter is likely to face at runtime. The agent encodes intent in the
+ * hint string (`placeholder('Site owner email address')`, `placeholder('Slack
+ * channel ID')`), so we read it back: keyword matches drive the format choice.
+ * Falls back to a generic non-empty string when no shape is recognisable.
+ */
+function synthesizePlaceholderValue(hint: string): string {
+	const h = hint.toLowerCase();
+	if (h.includes('email')) return 'eval-mock@example.com';
+	if (h.includes('url') || h.includes('endpoint') || h.includes('webhook')) {
+		return 'https://eval-mock.invalid/';
+	}
+	if (h.includes('phone')) return '+10000000000';
+	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
+	if (h.includes('chat') && h.includes('id')) return '100000000';
+	if (h.includes('telegram')) return '100000000';
+	return '__evalMockValue';
+}
+
 function scrubPlaceholderValues(value: unknown): unknown {
 	if (typeof value === 'string') {
-		return value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')
-			? '__evalMockValue'
-			: value;
+		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) {
+			return value;
+		}
+		const hint = value.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
+		return synthesizePlaceholderValue(hint);
 	}
 	if (Array.isArray(value)) return value.map(scrubPlaceholderValues);
 	if (value !== null && typeof value === 'object') {
