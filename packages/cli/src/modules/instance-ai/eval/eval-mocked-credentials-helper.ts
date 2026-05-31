@@ -104,6 +104,30 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// A credential reference with no id can never resolve to a stored
+		// credential. In eval mode that happens two ways: core's bypass passes
+		// `{ id: null }` for a fully-unconfigured node, and the builder attaches
+		// a named placeholder with no id ("I'll set up credentials later") for a
+		// node it knows needs one. In BOTH cases the inner helper throws
+		// `UnexpectedError('Found credential with no ID.')` — not a
+		// `CredentialNotFoundError` — so we must short-circuit and synthesize
+		// before delegating, otherwise the catch below re-throws and the node
+		// crashes. Schema-synthesizing gives the wire-server URL rewrite a real
+		// `url` field to augment; otherwise vendor SDK traffic would escape to
+		// the real provider with placeholder values and 401 at the wire layer.
+		if (!nodeCredentials.id) {
+			this.mockedCredentials.push({
+				nodeName: executeData?.node?.name ?? 'unknown',
+				credentialType: type,
+				credentialId: undefined,
+			});
+			const synthesized = {
+				...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+				[MOCK_MARKER]: true,
+			} as ICredentialDataDecryptedObject;
+			return this.applyServerUrlRewrite(synthesized, type, nodeCredentials, executeData);
+		}
+
 		let credentials: ICredentialDataDecryptedObject;
 		try {
 			credentials = await this.inner.getDecrypted(
@@ -118,28 +142,15 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;
 
+			// id was present but no matching credential exists in the DB. A bare
+			// marker stub is enough; `applyServerUrlRewrite` still injects the
+			// wire-server `url` for vendor LLM credential types.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
 				credentialId: nodeCredentials.id ?? undefined,
 			});
-
-			// When called with no credential id (eval-mode bypass for nodes
-			// with no credentials of any type configured), schema-synthesize
-			// so the wire-server URL rewrite below has a real `url` field to
-			// augment. Otherwise vendor SDK traffic would escape to the real
-			// provider with placeholder values and 401 at the wire layer.
-			// `buildEvalMockCredentials` is typed `Record<string, unknown>` —
-			// schema defaults can be richer than `CredentialInformation`, but
-			// at runtime emits only JSON-shaped values, which is what the
-			// rewrite path consumes.
-			credentials =
-				nodeCredentials.id === null
-					? ({
-							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-							[MOCK_MARKER]: true,
-						} as ICredentialDataDecryptedObject)
-					: { [MOCK_MARKER]: true };
+			credentials = { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);

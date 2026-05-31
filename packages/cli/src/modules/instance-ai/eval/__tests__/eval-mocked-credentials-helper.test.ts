@@ -416,10 +416,11 @@ describe('EvalMockedCredentialsHelper', () => {
 
 	describe('getDecrypted — schema synthesis when id is null', () => {
 		// Core's eval-mode bypass passes `{ id: null, name: type }` when a node
-		// has no credentials configured at all. The inner helper throws
-		// CredentialNotFoundError on a null id; the catch below schema-synthesizes
-		// (and applies the URL rewrite) so vendor SDK traffic stays inside the
-		// wire server instead of escaping to the real provider with 401.
+		// has no credentials configured at all. The helper short-circuits on a
+		// falsy id and schema-synthesizes (and applies the URL rewrite) WITHOUT
+		// delegating to the inner helper — the real inner throws UnexpectedError
+		// (not CredentialNotFoundError) for a missing id, so delegating would
+		// crash. See the "no-id credential references" regression block below.
 		const propsSchema = [
 			{
 				name: 'apiKey',
@@ -441,7 +442,8 @@ describe('EvalMockedCredentialsHelper', () => {
 		function makeSynthesizingInner(): ICredentialsHelper {
 			return makeInner({
 				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
-				// Inner throws on a null-id lookup → catch fires → schema synthesis.
+				// Not reached for a null id — the helper short-circuits before
+				// delegating. Left rejecting so a regression here fails loudly.
 				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
 			});
 		}
@@ -566,6 +568,74 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			expect(result.url).toBe('https://api.openai.com/v1');
 			expect(helper.rewrittenCredentials).toEqual([]);
+		});
+	});
+
+	describe('no-id credential references — regression for "Found credential with no ID."', () => {
+		// The builder attaches a named placeholder credential with no id for
+		// "set up later" nodes, and core's bypass passes `{ id: null }` for
+		// fully-unconfigured nodes. Both reach getDecrypted with a falsy id.
+		// The REAL inner helper throws UnexpectedError('Found credential with no
+		// ID.') — NOT CredentialNotFoundError — for these, so the helper must
+		// short-circuit and synthesize rather than delegate. Delegating is what
+		// crashed every credentialed node in eval (~ -27pp vs baseline).
+		const propsSchema = [
+			{
+				name: 'apiKey',
+				displayName: 'API Key',
+				type: 'string' as const,
+				default: '',
+				typeOptions: { password: true },
+			},
+		];
+
+		it.each([
+			['null id (fully-unconfigured bypass)', { id: null, name: 'telegramApi' }],
+			['empty-string id (placeholder)', { id: '', name: 'Telegram cred' }],
+			['missing id (placeholder)', { name: 'Telegram cred' }],
+		])('synthesizes without delegating to inner — %s', async (_label, creds) => {
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				// Real core throws UnexpectedError for a falsy id — the helper
+				// must never reach it. A plain Error stands in for any
+				// non-CredentialNotFoundError so the test fails loudly if the
+				// short-circuit regresses and delegation resumes.
+				getDecrypted: jest.fn().mockRejectedValue(new Error('Found credential with no ID.')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				creds as INodeCredentialsDetails,
+				'telegramApi',
+				'manual',
+				{ node: fakeNode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(inner.getDecrypted).not.toHaveBeenCalled();
+			expect(helper.mockedCredentials).toEqual([
+				{ nodeName: 'Telegram', credentialType: 'telegramApi', credentialId: undefined },
+			]);
+		});
+
+		it('still delegates (and surfaces the throw) when an id IS present', async () => {
+			// Guards the short-circuit's scope: a present id whose lookup fails
+			// with a non-CredentialNotFoundError must still propagate.
+			const inner = makeInner({
+				getDecrypted: jest.fn().mockRejectedValue(new Error('database is down')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			await expect(
+				helper.getDecrypted(
+					fakeAdditionalData,
+					{ id: 'real-id', name: 'Telegram cred' },
+					'telegramApi',
+					'manual',
+				),
+			).rejects.toThrow('database is down');
+			expect(inner.getDecrypted).toHaveBeenCalled();
 		});
 	});
 
