@@ -27,11 +27,13 @@ const props = withDefaults(
 		agentId: string;
 		disabled?: boolean;
 		isPublished?: boolean;
-		/** Membership + enabled state, the source of truth, from the agent config. */
+		/** Draft membership + enabled state the user edits, from the agent config. */
 		taskRefs?: AgentJsonTaskConfig[];
+		/** Published membership + enabled state — what actually drives scheduling. */
+		publishedTaskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
 	}>(),
-	{ disabled: false, isPublished: false, taskRefs: () => [] },
+	{ disabled: false, isPublished: false, taskRefs: () => [], publishedTaskRefs: () => [] },
 );
 
 const emit = defineEmits<{
@@ -41,7 +43,14 @@ const emit = defineEmits<{
 	changed: [];
 }>();
 
-type TaskRow = AgentTaskDto & { enabled: boolean };
+type TaskRow = AgentTaskDto & {
+	/** Draft enabled flag — what the toggle reflects and edits. */
+	enabled: boolean;
+	/** Enabled in the published config — what actually runs on schedule. */
+	liveEnabled: boolean;
+	/** Draft membership/enabled differs from published, so a publish is needed to apply it. */
+	pendingPublish: boolean;
+};
 
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -58,10 +67,18 @@ const runningTaskIds = ref(new Set<string>());
 /** Join config refs (membership + enabled) with the fetched bodies. */
 const tasks = computed<TaskRow[]>(() => {
 	const bodiesById = new Map(bodies.value.map((body) => [body.id, body]));
+	const publishedById = new Map(props.publishedTaskRefs.map((ref) => [ref.id, ref]));
 	return props.taskRefs
 		.map((ref) => {
 			const body = bodiesById.get(ref.id);
-			return body ? { ...body, enabled: ref.enabled } : null;
+			if (!body) return null;
+			// Scheduling follows the PUBLISHED config, so the live/next-run state
+			// comes from the published ref; `pendingPublish` flags a draft change
+			// (added or toggled) that only takes effect on the next publish.
+			const published = publishedById.get(ref.id);
+			const liveEnabled = published?.enabled ?? false;
+			const pendingPublish = !published || published.enabled !== ref.enabled;
+			return { ...body, enabled: ref.enabled, liveEnabled, pendingPublish };
 		})
 		.filter((task): task is TaskRow => task !== null);
 });
@@ -221,8 +238,9 @@ function scheduleSummary(task: TaskRow): string {
 
 function runSummary(task: TaskRow): string {
 	const parts: string[] = [];
-	// Next run is derived from the schedule + enabled state (the config ref).
-	const nextRun = task.enabled
+	// Next run reflects the live (published) schedule, not the draft — a task only
+	// runs once it's enabled in the published config.
+	const nextRun = task.liveEnabled
 		? getNextScheduleOccurrence(task.cronExpression, rootStore.timezone)
 		: null;
 	if (nextRun) {
@@ -300,14 +318,27 @@ function runSummary(task: TaskRow): string {
 				@keydown.space.prevent="onEdit(task)"
 			>
 				<div :class="$style.rowMain">
-					<N8nText bold>{{ task.name }}</N8nText>
+					<div :class="$style.rowTitle">
+						<N8nText bold>{{ task.name }}</N8nText>
+						<N8nText
+							v-if="task.pendingPublish && isPublished"
+							size="xsmall"
+							color="warning"
+							data-testid="agent-task-pending-publish"
+						>
+							{{ i18n.baseText('agents.builder.tasks.pendingPublish') }}
+						</N8nText>
+					</div>
 					<N8nText size="small" color="text-light">{{ scheduleSummary(task) }}</N8nText>
 					<N8nText size="small" color="text-light">{{ runSummary(task) }}</N8nText>
 				</div>
 				<div :class="$style.rowActions" @click.stop>
 					<N8nTooltip
-						:content="i18n.baseText('agents.builder.tasks.publishHint')"
-						:disabled="isPublished"
+						:content="
+							isPublished
+								? i18n.baseText('agents.builder.tasks.republishHint')
+								: i18n.baseText('agents.builder.tasks.publishHint')
+						"
 						placement="top"
 					>
 						<N8nSwitch2
@@ -434,6 +465,13 @@ function runSummary(task: TaskRow): string {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.rowTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	min-width: 0;
 }
 

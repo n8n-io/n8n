@@ -128,6 +128,7 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							:is-published="Boolean(agent?.activeVersionId)"
 							:task-refs="localConfig?.tasks ?? []"
+							:published-task-refs="agent?.activeVersion?.schema?.tasks ?? []"
 							:reload-key="tasksReloadKey"
 							data-testid="agent-tasks-panel"
 							@toggle="emit('toggle-task', $event)"

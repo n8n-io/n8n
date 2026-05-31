@@ -6266,6 +6266,7 @@
 	"agents.builder.tasks.empty": "No tasks yet.",
 	"agents.builder.tasks.publishHint": "Enabled tasks start running once you publish the agent.",
 	"agents.builder.tasks.republishHint": "Changes take effect the next time you publish the agent.",
+	"agents.builder.tasks.pendingPublish": "Pending publish",
 	"agents.builder.tasks.nextRun": "Next run {time}",
 	"agents.builder.tasks.lastRun": "Last run {time}",
 	"agents.builder.tasks.neverRun": "Not run yet",

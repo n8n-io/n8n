@@ -71,8 +71,13 @@ const stubs = {
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
 	N8nIcon: { template: '<i />' },
-	N8nText: { template: '<span><slot /></span>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
+	// Forward attrs so `data-testid` (e.g. the pending-publish badge) renders.
+	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
+	// Expose `content` so the toggle's publish/republish hint is assertable.
+	N8nTooltip: {
+		props: ['content'],
+		template: '<div :data-tooltip-content="content"><slot /></div>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue'],
 		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
@@ -182,5 +187,79 @@ describe('AgentTasksSection', () => {
 				data: expect.objectContaining({ task: expect.objectContaining({ id: 'task-1' }) }),
 			}),
 		);
+	});
+
+	it('shows a Next run line only when the task is enabled in the published config', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByText } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			publishedTaskRefs: [taskRef('task-1', true)],
+			isPublished: true,
+		});
+
+		expect(await findByText('agents.builder.tasks.nextRun')).toBeTruthy();
+	});
+
+	it('does not show a Next run line when the draft is enabled but the published config is not', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		// Draft enables the task, but it isn't enabled in the published config that drives scheduling.
+		const { findByText, queryByText } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			publishedTaskRefs: [],
+			isPublished: true,
+		});
+
+		expect(await findByText('agents.builder.tasks.neverRun')).toBeTruthy();
+		expect(queryByText('agents.builder.tasks.nextRun')).toBeNull();
+	});
+
+	it('flags a pending publish when the draft enabled flag differs from the published config', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByTestId } = renderSection({
+			taskRefs: [taskRef('task-1', false)],
+			publishedTaskRefs: [taskRef('task-1', true)],
+			isPublished: true,
+		});
+
+		expect(await findByTestId('agent-task-pending-publish')).toBeTruthy();
+	});
+
+	it('does not flag a pending publish when the draft matches the published config', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByTestId, queryByTestId } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			publishedTaskRefs: [taskRef('task-1', true)],
+			isPublished: true,
+		});
+
+		await findByTestId('agent-task-row');
+		expect(queryByTestId('agent-task-pending-publish')).toBeNull();
+	});
+
+	it('shows the republish hint on the toggle when the agent is published', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { container, findByTestId } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			publishedTaskRefs: [taskRef('task-1', true)],
+			isPublished: true,
+		});
+
+		await findByTestId('agent-task-row');
+		expect(
+			container.querySelector('[data-tooltip-content="agents.builder.tasks.republishHint"]'),
+		).toBeTruthy();
+	});
+
+	it('shows the publish hint on the toggle when the agent is not published', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { container, findByTestId } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			isPublished: false,
+		});
+
+		await findByTestId('agent-task-row');
+		expect(
+			container.querySelector('[data-tooltip-content="agents.builder.tasks.publishHint"]'),
+		).toBeTruthy();
 	});
 });
