@@ -271,7 +271,6 @@ export class AgentTaskService {
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runTask(taskId: string): Promise<void> {
-		const startedAt = Date.now();
 		let agentId: string | undefined;
 		let projectId: string | undefined;
 
@@ -321,10 +320,7 @@ export class AgentTaskService {
 				return;
 			}
 
-			const timezone = this.globalConfig.generic.timezone;
-			const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
-			const message = `${task.objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
-			const threadId = `task-${taskId}-${randomUUID()}`;
+			const { message, threadId } = this.buildTaskRunMessage(task);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
@@ -333,24 +329,18 @@ export class AgentTaskService {
 				cronExpression: task.cronExpression,
 			});
 
-			let chunkCount = 0;
-			for await (const _chunk of this.agentsService.executeForTaskPublished({
-				agentId: agent.id,
-				projectId: agent.projectId,
-				message,
-				memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
+			await this.consumeTaskRun(
 				taskId,
-			})) {
-				chunkCount += 1;
-			}
-
-			await this.recordRun(taskId, 'success');
-			this.logger.info('[AgentTaskService] Task run completed', {
-				taskId,
-				agentId,
-				chunkCount,
-				durationMs: Date.now() - startedAt,
-			});
+				'Task run',
+				{ taskId, agentId, projectId },
+				this.agentsService.executeForTaskPublished({
+					agentId: agent.id,
+					projectId: agent.projectId,
+					message,
+					memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
+					taskId,
+				}),
+			);
 		} catch (error) {
 			await this.recordRun(taskId, 'error');
 			this.logger.error('[AgentTaskService] Task run failed', {
@@ -374,6 +364,51 @@ export class AgentTaskService {
 	}
 
 	/**
+	 * Build the single unattended message the agent receives for a task run plus
+	 * a fresh thread id. Shared by the scheduled and manual paths so the wake-up
+	 * format stays in sync.
+	 */
+	private buildTaskRunMessage(task: AgentTask): { message: string; threadId: string } {
+		const timezone = this.globalConfig.generic.timezone;
+		const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
+		const message = `${task.objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
+		const threadId = `task-${task.id}-${randomUUID()}`;
+		return { message, threadId };
+	}
+
+	/**
+	 * Drive a task-run stream to completion, recording the outcome
+	 * (`success`/`error`) on the task and logging it. Shared by the scheduled and
+	 * manual paths; the caller supplies the already-built stream and a log label.
+	 */
+	private async consumeTaskRun(
+		taskId: string,
+		kind: 'Task run' | 'Manual task run',
+		context: Record<string, unknown>,
+		stream: AsyncGenerator<unknown>,
+	): Promise<void> {
+		const startedAt = Date.now();
+		try {
+			let chunkCount = 0;
+			for await (const _chunk of stream) {
+				chunkCount += 1;
+			}
+			await this.recordRun(taskId, 'success');
+			this.logger.info(`[AgentTaskService] ${kind} completed`, {
+				...context,
+				chunkCount,
+				durationMs: Date.now() - startedAt,
+			});
+		} catch (error) {
+			await this.recordRun(taskId, 'error');
+			this.logger.error(`[AgentTaskService] ${kind} failed`, {
+				...context,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
 	 * Execute a task immediately as the requesting user, ignoring publish/enabled
 	 * state (runs the current draft config), for the "Execute task" action. The
 	 * agent run can be long, so it is kicked off in the background and surfaces
@@ -390,46 +425,27 @@ export class AgentTaskService {
 	}
 
 	private async executeNow(task: AgentTask, projectId: string, userId: string): Promise<void> {
-		const startedAt = Date.now();
-		try {
-			const timezone = this.globalConfig.generic.timezone;
-			const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
-			const message = `${task.objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
-			const threadId = `task-${task.id}-${randomUUID()}`;
+		const { message, threadId } = this.buildTaskRunMessage(task);
 
-			this.logger.info('[AgentTaskService] Manual task run started', {
-				taskId: task.id,
-				agentId: task.agentId,
-				projectId,
-			});
+		this.logger.info('[AgentTaskService] Manual task run started', {
+			taskId: task.id,
+			agentId: task.agentId,
+			projectId,
+		});
 
-			let chunkCount = 0;
-			for await (const _chunk of this.agentsService.executeForTaskNow({
+		await this.consumeTaskRun(
+			task.id,
+			'Manual task run',
+			{ taskId: task.id, agentId: task.agentId, projectId },
+			this.agentsService.executeForTaskNow({
 				agentId: task.agentId,
 				projectId,
 				userId,
 				message,
 				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
 				taskId: task.id,
-			})) {
-				chunkCount += 1;
-			}
-
-			await this.recordRun(task.id, 'success');
-			this.logger.info('[AgentTaskService] Manual task run completed', {
-				taskId: task.id,
-				agentId: task.agentId,
-				chunkCount,
-				durationMs: Date.now() - startedAt,
-			});
-		} catch (error) {
-			await this.recordRun(task.id, 'error');
-			this.logger.error('[AgentTaskService] Manual task run failed', {
-				taskId: task.id,
-				agentId: task.agentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+			}),
+		);
 	}
 
 	private async resolveExecutionUserId(agent: Agent): Promise<string | undefined> {
