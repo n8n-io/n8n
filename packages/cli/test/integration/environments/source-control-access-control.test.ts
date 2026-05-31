@@ -14,9 +14,8 @@ import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
 
-// A repository URL with an embedded token, to verify it is withheld from non-managers.
-const EMBEDDED_TOKEN = 'ghp_embedded_token_value';
-const REPO_URL_WITH_TOKEN = `https://x-access-token:${EMBEDDED_TOKEN}@github.com/acme/private-repo.git`;
+const PRIVATE_CONNECTION_MARKER = 'ghp_private_connection_marker';
+const REPO_URL_WITH_PRIVATE_DETAIL = `https://x-access-token:${PRIVATE_CONNECTION_MARKER}@github.com/acme/private-repo.git`;
 
 let owner: User;
 let member: User;
@@ -48,7 +47,10 @@ beforeAll(async () => {
 	const preferences = Container.get(SourceControlPreferencesService);
 	await preferences.setPreferences({
 		connected: true,
-		repositoryUrl: REPO_URL_WITH_TOKEN,
+		repositoryUrl: REPO_URL_WITH_PRIVATE_DETAIL,
+		branchName: 'main',
+		branchColor: '#ff6d5a',
+		branchReadOnly: false,
 		keyGeneratorType: 'rsa',
 	});
 
@@ -71,33 +73,43 @@ beforeAll(async () => {
 
 describe('Source Control read endpoints — access control', () => {
 	describe('GET /source-control/preferences', () => {
-		it('does not return the repository URL to a member without the manage scope', async () => {
+		it('does not return privileged connection fields to a member without the manage scope', async () => {
 			const res = await authMemberAgent.get('/source-control/preferences').expect(200);
 
-			expect(res.body.data.repositoryUrl).toBe('');
+			expect(res.body.data).toEqual({ branchReadOnly: false });
+			expect(res.body.data.repositoryUrl).toBeUndefined();
 			expect(res.body.data.httpsUsername).toBeUndefined();
 			expect(res.body.data.httpsPassword).toBeUndefined();
-			expect(JSON.stringify(res.body)).not.toContain(EMBEDDED_TOKEN);
+			expect(JSON.stringify(res.body)).not.toContain(PRIVATE_CONNECTION_MARKER);
 		});
 
-		it('does not return the repository URL to a project-admin member', async () => {
+		it('does not return privileged connection fields to a project-admin member', async () => {
 			const res = await authProjectAdminAgent.get('/source-control/preferences').expect(200);
 
-			expect(res.body.data.repositoryUrl).toBe('');
-			expect(JSON.stringify(res.body)).not.toContain(EMBEDDED_TOKEN);
+			expect(res.body.data).toMatchObject({
+				connected: true,
+				branchName: 'main',
+				branchColor: '#ff6d5a',
+				branchReadOnly: false,
+			});
+			expect(res.body.data.repositoryUrl).toBeUndefined();
+			expect(res.body.data.httpsUsername).toBeUndefined();
+			expect(res.body.data.httpsPassword).toBeUndefined();
+			expect(JSON.stringify(res.body)).not.toContain(PRIVATE_CONNECTION_MARKER);
 		});
 
-		it('still returns the non-sensitive branch/connection fields to a member', async () => {
-			const res = await authMemberAgent.get('/source-control/preferences').expect(200);
+		it('still returns safe branch metadata to a project-admin member', async () => {
+			const res = await authProjectAdminAgent.get('/source-control/preferences').expect(200);
 
-			expect(res.body.data).toHaveProperty('branchName');
+			expect(res.body.data).toHaveProperty('branchName', 'main');
+			expect(res.body.data).toHaveProperty('branchColor', '#ff6d5a');
 			expect(res.body.data).toHaveProperty('connected', true);
 		});
 
 		it('returns the full repository URL to a manager', async () => {
 			const res = await authOwnerAgent.get('/source-control/preferences').expect(200);
 
-			expect(res.body.data.repositoryUrl).toBe(REPO_URL_WITH_TOKEN);
+			expect(res.body.data.repositoryUrl).toBe(REPO_URL_WITH_PRIVATE_DETAIL);
 		});
 	});
 
