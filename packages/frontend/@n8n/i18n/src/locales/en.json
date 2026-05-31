@@ -6301,7 +6301,7 @@
 	"agents.builder.tasks.executeStarted": "Task started",
 	"agents.builder.tasks.executeError": "Could not start the task",
 	"agents.builder.tasks.validation.nameRequired": "Enter a name.",
-	"agents.builder.tasks.validation.nameMaxLength": "Name must be 128 characters or fewer.",
+	"agents.builder.tasks.validation.nameMaxLength": "Name must be {max} characters or fewer.",
 	"agents.builder.tasks.validation.objectiveRequired": "Enter an objective.",
 	"agents.builder.tasks.validation.cronRequired": "Enter a schedule.",
 	"agents.builder.editor.invalidJson": "Invalid JSON",

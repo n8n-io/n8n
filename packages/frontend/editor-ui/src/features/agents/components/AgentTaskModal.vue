@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentTaskDto } from '@n8n/api-types';
+import { AGENT_TASK_NAME_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
@@ -162,8 +162,10 @@ const errors = computed<{ name?: string; objective?: string; cron?: string }>(()
 	const trimmedName = name.value.trim();
 	if (!trimmedName) {
 		result.name = i18n.baseText('agents.builder.tasks.validation.nameRequired');
-	} else if (trimmedName.length > 128) {
-		result.name = i18n.baseText('agents.builder.tasks.validation.nameMaxLength');
+	} else if (trimmedName.length > AGENT_TASK_NAME_MAX_LENGTH) {
+		result.name = i18n.baseText('agents.builder.tasks.validation.nameMaxLength', {
+			interpolate: { max: String(AGENT_TASK_NAME_MAX_LENGTH) },
+		});
 	}
 	if (!objective.value.trim()) {
 		result.objective = i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
