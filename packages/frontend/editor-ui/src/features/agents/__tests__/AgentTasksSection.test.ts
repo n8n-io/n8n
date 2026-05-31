@@ -28,9 +28,17 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 const getAgentTasksSpy = vi.fn();
 const deleteAgentTaskSpy = vi.fn();
+const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
+	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
+}));
+
+const showMessageSpy = vi.fn();
+const showErrorSpy = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
 }));
 
 const confirmSpy = vi.fn();
@@ -107,6 +115,17 @@ describe('AgentTasksSection', () => {
 
 		await waitFor(() => expect(emitted().toggle).toBeTruthy());
 		expect(emitted().toggle[0]).toEqual([{ id: 'task-1', enabled: false }]);
+	});
+
+	it('running a task calls runAgentTask and shows a success toast', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		runAgentTaskSpy.mockResolvedValue({ success: true });
+		const { findByTestId } = renderSection({ taskRefs: [taskRef()] });
+
+		await fireEvent.click(await findByTestId('agent-task-run'));
+
+		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-1'));
+		expect(showMessageSpy).toHaveBeenCalled();
 	});
 
 	it('deleting a confirmed task calls deleteAgentTask and emits changed', async () => {

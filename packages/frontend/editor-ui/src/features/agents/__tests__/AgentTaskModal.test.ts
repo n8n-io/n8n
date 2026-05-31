@@ -23,17 +23,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 const createAgentTaskSpy = vi.fn();
 const updateAgentTaskSpy = vi.fn();
-const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
-	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
-}));
-
-const showMessageSpy = vi.fn();
-const showErrorSpy = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
 }));
 
 const MODAL_NAME = 'AgentTaskModal';
@@ -164,30 +156,5 @@ describe('AgentTaskModal', () => {
 			'task-9',
 			expect.objectContaining({ name: 'Renamed' }),
 		);
-	});
-
-	it('executes the task immediately when editing', async () => {
-		runAgentTaskSpy.mockResolvedValue({ success: true });
-		const task: AgentTaskDto = {
-			id: 'task-9',
-			name: 'Existing',
-			objective: 'Obj',
-			cronExpression: '0 9 * * *',
-			lastRunAt: null,
-			lastRunStatus: null,
-			createdAt: '2026-01-01T00:00:00.000Z',
-			updatedAt: '2026-01-01T00:00:00.000Z',
-		};
-		const { getByTestId } = renderModal({ task });
-
-		await fireEvent.click(getByTestId('agent-task-execute'));
-
-		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
-		expect(showMessageSpy).toHaveBeenCalled();
-	});
-
-	it('does not show the execute button when creating a task', () => {
-		const { queryByTestId } = renderModal();
-		expect(queryByTestId('agent-task-execute')).toBeNull();
 	});
 });

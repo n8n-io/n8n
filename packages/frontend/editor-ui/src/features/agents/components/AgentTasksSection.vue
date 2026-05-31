@@ -5,9 +5,10 @@ import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
+import { deleteAgentTask, getAgentTasks, runAgentTask } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { getNextScheduleOccurrence, parseCron } from '../utils/scheduleBuilder';
@@ -37,11 +38,14 @@ type TaskRow = AgentTaskDto & { enabled: boolean };
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const toast = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const bodies = ref<AgentTaskDto[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
+// Task ids with an in-flight manual run, so the row's play button can show a spinner.
+const runningTaskIds = ref(new Set<string>());
 
 /** Join config refs (membership + enabled) with the fetched bodies. */
 const tasks = computed<TaskRow[]>(() => {
@@ -108,6 +112,23 @@ function onEdit(task: TaskRow) {
 
 function onToggle(task: TaskRow, enabled: boolean) {
 	emit('toggle', { id: task.id, enabled });
+}
+
+// Run the task now against the draft config, regardless of publish/enabled state.
+async function onRun(task: TaskRow) {
+	if (runningTaskIds.value.has(task.id)) return;
+	runningTaskIds.value.add(task.id);
+	try {
+		await runAgentTask(rootStore.restApiContext, props.projectId, props.agentId, task.id);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.tasks.executeStarted'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.tasks.executeError'));
+	} finally {
+		runningTaskIds.value.delete(task.id);
+	}
 }
 
 async function onDelete(task: TaskRow) {
@@ -273,6 +294,20 @@ function runSummary(task: TaskRow): string {
 							data-testid="agent-task-toggle"
 							@update:model-value="(value) => onToggle(task, Boolean(value))"
 						/>
+					</N8nTooltip>
+					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							icon-only
+							:loading="runningTaskIds.has(task.id)"
+							:disabled="disabled"
+							:aria-label="i18n.baseText('agents.builder.tasks.execute')"
+							data-testid="agent-task-run"
+							@click="onRun(task)"
+						>
+							<template #icon><N8nIcon icon="play" :size="16" /></template>
+						</N8nButton>
 					</N8nTooltip>
 					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.delete')" placement="top">
 						<N8nButton
