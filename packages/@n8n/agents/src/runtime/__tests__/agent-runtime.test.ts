@@ -142,6 +142,60 @@ function makeStreamSuccess(text = 'Hello') {
 	};
 }
 
+/**
+ * streamText response where the model invokes a provider-executed tool (e.g.
+ * native web search): the SDK streams a `tool-call` and its terminal part
+ * (`tool-result` on success, `tool-error` on failure) with `providerExecuted`,
+ * then finishes with `stop` (the provider runs the tool server-side mid-step).
+ */
+function makeStreamWithProviderTool(opts: {
+	toolCallId: string;
+	toolName: string;
+	input: unknown;
+	output?: unknown;
+	error?: unknown;
+	text?: string;
+}) {
+	const terminal =
+		opts.error !== undefined
+			? {
+					type: 'tool-error',
+					toolCallId: opts.toolCallId,
+					toolName: opts.toolName,
+					input: opts.input,
+					error: opts.error,
+					providerExecuted: true,
+				}
+			: {
+					type: 'tool-result',
+					toolCallId: opts.toolCallId,
+					toolName: opts.toolName,
+					input: opts.input,
+					output: opts.output,
+					providerExecuted: true,
+				};
+	const text = opts.text ?? 'done';
+	return {
+		fullStream: makeChunkStream([
+			{
+				type: 'tool-call',
+				toolCallId: opts.toolCallId,
+				toolName: opts.toolName,
+				input: opts.input,
+				providerExecuted: true,
+			},
+			terminal,
+			{ type: 'text-delta', textDelta: text },
+		]),
+		finishReason: Promise.resolve('stop'),
+		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+		response: Promise.resolve({
+			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		}),
+		toolCalls: Promise.resolve([]),
+	};
+}
+
 /** Build a default runtime wired to the shared eventBus for inspection. */
 function createRuntime(eventBus?: AgentEventBus) {
 	const bus = eventBus ?? new AgentEventBus();
@@ -1587,6 +1641,72 @@ describe('AgentRuntime.generate() — structured output', () => {
 
 		expect(result.structuredOutput).toEqual(expected);
 		expect(result.finishReason).toBe('stop');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Provider-executed tool timing — stream()
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — provider-executed tool timing', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('emits tool-execution-start/end for a provider-executed tool result', async () => {
+		streamText.mockReturnValue(
+			makeStreamWithProviderTool({
+				toolCallId: 'tc-ws',
+				toolName: 'web_search',
+				input: { query: 'n8n' },
+				output: [{ url: 'https://n8n.io' }],
+			}),
+		);
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('search please');
+		const chunks = await collectChunks(stream);
+
+		const start = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-start' }> =>
+				c.type === 'tool-execution-start' && c.toolCallId === 'tc-ws',
+		);
+		const end = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-end' }> =>
+				c.type === 'tool-execution-end' && c.toolCallId === 'tc-ws',
+		);
+
+		expect(start).toBeDefined();
+		expect(start?.toolName).toBe('web_search');
+		expect(typeof start?.startTime).toBe('number');
+
+		expect(end).toBeDefined();
+		expect(end?.isError).toBe(false);
+		expect(typeof end?.endTime).toBe('number');
+	});
+
+	it('emits tool-execution-end with isError on a provider-executed tool error', async () => {
+		streamText.mockReturnValue(
+			makeStreamWithProviderTool({
+				toolCallId: 'tc-ws-err',
+				toolName: 'web_search',
+				input: { query: 'n8n' },
+				error: new Error('search failed'),
+			}),
+		);
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('search please');
+		const chunks = await collectChunks(stream);
+
+		const end = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-end' }> =>
+				c.type === 'tool-execution-end' && c.toolCallId === 'tc-ws-err',
+		);
+
+		expect(end).toBeDefined();
+		expect(end?.isError).toBe(true);
+		expect(typeof end?.endTime).toBe('number');
 	});
 });
 

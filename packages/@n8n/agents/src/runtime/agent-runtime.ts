@@ -1416,8 +1416,37 @@ export class AgentRuntime {
 					// `start-step` / `finish-step` are passed through so consumers
 					// can use them as LLM-iteration boundaries.
 					if (chunk.type === 'finish') continue;
+
+					// Provider-executed tools (e.g. native web search) skip the
+					// local execution loop that emits tool-execution lifecycle
+					// events via the event bus. Stamp them here at chunk-arrival
+					// time so live chat and the persisted timeline both show a
+					// duration. A failed call arrives as a `tool-error` part
+					// (never a `tool-result`), so close its timing there too.
+					if (
+						(chunk.type === 'tool-result' || chunk.type === 'tool-error') &&
+						chunk.providerExecuted
+					) {
+						await writeChunk({
+							type: 'tool-execution-end',
+							toolCallId: chunk.toolCallId,
+							toolName: chunk.toolName ?? '',
+							isError: chunk.type === 'tool-error',
+							endTime: Date.now(),
+						});
+					}
+
 					const converted = convertChunk(chunk);
 					if (converted) await writeChunk(converted);
+
+					if (chunk.type === 'tool-call' && chunk.providerExecuted) {
+						await writeChunk({
+							type: 'tool-execution-start',
+							toolCallId: chunk.toolCallId,
+							toolName: chunk.toolName ?? '',
+							startTime: Date.now(),
+						});
+					}
 				}
 			} catch (streamError) {
 				if (await handleAbort()) return;
