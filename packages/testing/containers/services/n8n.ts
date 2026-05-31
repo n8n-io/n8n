@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer } from 'testcontainers';
@@ -188,6 +188,10 @@ async function createContainer(
 		// Reuse must stay off so the process actually exits and flushes.
 		const hostCoverageDir = join(COVERAGE_HOST_DIR, name);
 		mkdirSync(hostCoverageDir, { recursive: true });
+		// The n8n container runs as `node` (uid 1000); on Linux CI the bind mount
+		// is direct (no Docker Desktop uid mapping), so make the dir writable by
+		// the container or NODE_V8_COVERAGE silently fails to flush.
+		chmodSync(hostCoverageDir, 0o777);
 		container = container.withBindMounts([
 			{ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' },
 		]);
