@@ -140,6 +140,15 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
+      # Backend V8 coverage files are written by the n8n container (uid 1000,
+      # mode 0600), which the runner user can't read to zip. Root can.
+      - name: Make backend coverage readable for upload
+        if: always()
+        shell: bash
+        run: |
+          d=packages/testing/playwright/coverage/.backend-v8
+          [ -d "$d" ] && sudo chmod -R a+rwX "$d" 2>/dev/null || true
+
       - name: Upload Shard Artifacts
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
