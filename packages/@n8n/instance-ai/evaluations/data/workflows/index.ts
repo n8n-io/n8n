@@ -71,9 +71,12 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	return getJsonFiles(filter, exclude).map((f) => ({
+	const cases = getJsonFiles(filter, exclude).map((f) => ({
 		testCase: parseTestCaseFile(f),
 		fileSlug: basename(f, '.json'),
 	}));
+	if (!tier) return cases;
+	return cases.filter(({ testCase }) => testCase.datasets.includes(tier));
 }

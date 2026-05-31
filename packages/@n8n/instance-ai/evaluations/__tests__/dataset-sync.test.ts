@@ -26,6 +26,7 @@ function scenarioFixture(testCaseFile: string, scenarioName: string) {
 					successCriteria: `criteria for ${scenarioName}`,
 				},
 			],
+			datasets: ['full'],
 		},
 		fileSlug: testCaseFile,
 	};
@@ -156,6 +157,19 @@ describe('syncDataset', () => {
 		expect(createExamples).not.toHaveBeenCalled();
 		expect(updateExamples).not.toHaveBeenCalled();
 		expect(deleteExamples).not.toHaveBeenCalled();
+	});
+
+	it('writes datasets values into the example split alongside the file slug', async () => {
+		const fixture = scenarioFixture('foo', 'happy-path');
+		fixture.testCase.datasets = ['pr', 'full'];
+		mockedLoad.mockReturnValue([fixture]);
+		const { client, createExamples } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger);
+
+		expect(createExamples).toHaveBeenCalledTimes(1);
+		const created = createExamples.mock.calls[0][0];
+		expect((created[0] as unknown as { split: string[] }).split).toEqual(['foo', 'pr', 'full']);
 	});
 
 	it('creates a fresh example when a previously-deleted scenario is re-added (resurrection path)', async () => {

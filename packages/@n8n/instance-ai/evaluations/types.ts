@@ -184,6 +184,8 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------

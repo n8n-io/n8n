@@ -134,4 +134,56 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 			expect(slugs('weather', 'weather')).toEqual([]);
 		});
 	});
+
+	describe('--tier (datasets-field filter)', () => {
+		it('defaults to ["full"] when a test case omits the datasets field', () => {
+			// STUB_TEST_CASE doesn't declare datasets — Zod default fills it in.
+			const cases = loadWorkflowTestCasesWithFiles();
+			expect(cases.every((c) => c.testCase.datasets.includes('full'))).toBe(true);
+		});
+
+		it('filters to test cases whose datasets array contains the tier', () => {
+			// Re-mock so two cases declare different datasets memberships.
+			mockedReadFile.mockImplementation((p) => {
+				const filename = String(p);
+				if (filename.includes('weather-alert')) {
+					return JSON.stringify({
+						...JSON.parse(STUB_TEST_CASE),
+						datasets: ['pr', 'full'],
+					});
+				}
+				return STUB_TEST_CASE; // default → ['full']
+			});
+
+			const inPr = loadWorkflowTestCasesWithFiles(undefined, undefined, 'pr')
+				.map((c) => c.fileSlug)
+				.sort();
+			const inFull = loadWorkflowTestCasesWithFiles(undefined, undefined, 'full')
+				.map((c) => c.fileSlug)
+				.sort();
+
+			expect(inPr).toEqual(['weather-alert']);
+			expect(inFull.length).toBe(7); // all .json files end up in full
+		});
+
+		it('composes with --filter: tier filter applies after substring filter', () => {
+			mockedReadFile.mockImplementation((p) => {
+				const filename = String(p);
+				if (filename.includes('weather-alert')) {
+					return JSON.stringify({
+						...JSON.parse(STUB_TEST_CASE),
+						datasets: ['pr', 'full'],
+					});
+				}
+				return STUB_TEST_CASE;
+			});
+
+			// `weather` substring matches weather-alert + weather-monitoring;
+			// `--tier pr` keeps only weather-alert (the only one tagged 'pr').
+			const result = loadWorkflowTestCasesWithFiles('weather', undefined, 'pr')
+				.map((c) => c.fileSlug)
+				.sort();
+			expect(result).toEqual(['weather-alert']);
+		});
+	});
 });
