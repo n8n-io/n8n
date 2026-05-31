@@ -7,6 +7,7 @@ export const publicApiCredentialResponseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	type: z.string(),
+	typeVersion: z.number().nullable().optional(),
 	isManaged: z.boolean(),
 	isGlobal: z.boolean(),
 	isResolvable: z.boolean(),

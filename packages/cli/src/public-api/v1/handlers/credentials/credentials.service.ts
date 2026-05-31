@@ -5,13 +5,17 @@ import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import {
 	BaseError,
+	checkConditions,
+	resolveTypeVersionForUpdate,
 	type DisplayCondition,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
+	type IDisplayOptions,
 	type INodeProperties,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	validateAccessToReferencedSecretProviders,
@@ -122,6 +126,7 @@ export async function saveCredential(
 		id: credential.id,
 		name: credential.name,
 		type: credential.type,
+		typeVersion: credential.typeVersion ?? null,
 		isManaged: credential.isManaged,
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
@@ -162,6 +167,18 @@ export async function updateCredential(
 	if (updateData.type !== undefined) {
 		credentialData.type = updateData.type;
 	}
+
+	// Recompute typeVersion against the (possibly new) type. Idempotent
+	// when type is unchanged; re-resolves when type changes so the row
+	// is not left pinned to a version the new type does not declare.
+	credentialData.typeVersion = resolveTypeVersionForUpdate(
+		Container.get(CredentialTypes),
+		updateData.type ?? existingCredential.type,
+		{
+			type: existingCredential.type,
+			typeVersion: existingCredential.typeVersion ?? null,
+		},
+	);
 
 	// If data is provided, encrypt it
 	if (updateData.data !== undefined) {
@@ -283,13 +300,58 @@ export function sanitizeCredentials(
 }
 
 /**
+ * Drops a property when its `@version` condition doesn't match `typeVersion`,
+ * and strips `@version` keys from `show`/`hide` for the survivors. The
+ * existing generator below treats every `displayOptions.show` key as a
+ * payload-field reference; leaving `@version` on a surviving property would
+ * have the generator emit an if/then/else against a field named `@version`
+ * that never appears in the payload — the original bug this RFC fixes.
+ */
+function filterByVersion(properties: INodeProperties[], typeVersion: number): INodeProperties[] {
+	const versionContext = [typeVersion];
+	const survivors: INodeProperties[] = [];
+
+	for (const property of properties) {
+		const show = property.displayOptions?.show;
+		const hide = property.displayOptions?.hide;
+
+		if (show?.['@version'] && !checkConditions(show['@version'], versionContext)) continue;
+		if (hide?.['@version'] && checkConditions(hide['@version'], versionContext)) continue;
+
+		if (!show?.['@version'] && !hide?.['@version']) {
+			survivors.push(property);
+			continue;
+		}
+
+		const stripped: IDisplayOptions = { ...property.displayOptions };
+		if (show) {
+			const { '@version': _, ...rest } = show;
+			if (Object.keys(rest).length > 0) stripped.show = rest;
+			else delete stripped.show;
+		}
+		if (hide) {
+			const { '@version': _, ...rest } = hide;
+			if (Object.keys(rest).length > 0) stripped.hide = rest;
+			else delete stripped.hide;
+		}
+		survivors.push({ ...property, displayOptions: stripped });
+	}
+
+	return survivors;
+}
+
+/**
  * toJsonSchema
  * Take an array of credentials parameter and map it
  * to a JSON Schema (see https://json-schema.org/). With
  * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
+ * @param typeVersion - Resolves `displayOptions['@version']` conditions
+ *   on the input properties. Defaults to v1 — BC for unversioned types.
  */
-export function toJsonSchema(properties: INodeProperties[]): IDataObject {
+export function toJsonSchema(properties: INodeProperties[], typeVersion: number = 1): IDataObject {
+	properties = filterByVersion(properties, typeVersion);
+
 	const jsonSchema: IJsonSchema = {
 		additionalProperties: false,
 		type: 'object',

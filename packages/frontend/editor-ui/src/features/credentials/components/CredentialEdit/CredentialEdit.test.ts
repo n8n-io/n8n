@@ -947,4 +947,155 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
 		});
 	});
+
+	describe('@version gating', () => {
+		const awsLike: ICredentialType = {
+			name: 'awsLike',
+			displayName: 'AWS-like',
+			version: [1, 2],
+			defaultVersion: 2,
+			properties: [
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Region',
+					name: 'region',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+				},
+			],
+		};
+
+		const createPiniaWithCredential = (typeVersion: number | null) => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } },
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+			const credentialsStore = useCredentialsStore(pinia);
+			credentialsStore.getCredentialData = vi.fn().mockResolvedValue({
+				data: {},
+				createdAt: '2026-05-12T10:00:00.000Z',
+				updatedAt: '2026-05-12T10:00:00.000Z',
+				id: 'aws-cred',
+				name: 'AWS-like credential',
+				type: 'awsLike',
+				typeVersion,
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+			});
+			credentialsStore.state.credentials = {
+				'aws-cred': {
+					id: 'aws-cred',
+					name: 'AWS-like credential',
+					type: 'awsLike',
+					typeVersion,
+					isManaged: false,
+				} as ICredentialsResponse,
+			};
+			credentialsStore.state.credentialTypes = { awsLike };
+			return { pinia, credentialsStore };
+		};
+
+		test('shows v2-gated field when saved credential has typeVersion = 2', async () => {
+			const { pinia, credentialsStore } = createPiniaWithCredential(2);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'aws-cred',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByText('Region')).toBeInTheDocument());
+		});
+
+		test('hides v2-gated field when saved credential has typeVersion = 1', async () => {
+			const { pinia, credentialsStore } = createPiniaWithCredential(1);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'aws-cred',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByText('API Key')).toBeInTheDocument());
+			expect(queryByText('Region')).not.toBeInTheDocument();
+		});
+
+		test('hides v2-gated field when saved credential has typeVersion = null (coerces to 1)', async () => {
+			const { pinia, credentialsStore } = createPiniaWithCredential(null);
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'aws-cred',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByText('API Key')).toBeInTheDocument());
+			expect(queryByText('Region')).not.toBeInTheDocument();
+		});
+
+		test("renders new credential against the type's defaultVersion", async () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } },
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: {
+							id: 'personal-project',
+							type: 'personal',
+							scopes: ['credential:create', 'credential:read'],
+						},
+					},
+				},
+			});
+			const credentialsStore = useCredentialsStore(pinia);
+			credentialsStore.state.credentialTypes = { awsLike };
+			credentialsStore.getNewCredentialName = vi.fn().mockResolvedValue('New AWS-like credential');
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'awsLike',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(queryByText('Region')).toBeInTheDocument());
+		});
+	});
 });

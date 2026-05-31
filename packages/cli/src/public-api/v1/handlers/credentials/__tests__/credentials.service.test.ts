@@ -413,6 +413,86 @@ describe('CredentialsService', () => {
 				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
 			).toBe(true);
 		});
+
+		describe('@version gating', () => {
+			const v2OnlyShowProperty: INodeProperties = {
+				name: 'region',
+				type: 'string',
+				required: true,
+				displayName: 'Region',
+				default: '',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+			};
+			const v2HiddenProperty: INodeProperties = {
+				// "deprecated since v2" pattern
+				name: 'legacyEndpoint',
+				type: 'string',
+				required: true,
+				displayName: 'Legacy Endpoint',
+				default: '',
+				displayOptions: { hide: { '@version': [{ _cnd: { gte: 2 } }] } },
+			};
+			const unconditionalRequiredProperty: INodeProperties = {
+				name: 'apiKey',
+				type: 'string',
+				required: true,
+				displayName: 'API Key',
+				default: '',
+			};
+
+			it('omits a `show @version >= 2` property from the v1 schema', () => {
+				const schema = toJsonSchema([unconditionalRequiredProperty, v2OnlyShowProperty], 1);
+
+				const props = schema.properties as IDataObject;
+				expect(props.apiKey).toBeDefined();
+				expect(props.region).toBeUndefined();
+				expect(schema.required).toContain('apiKey');
+				expect(schema.required).not.toContain('region');
+			});
+
+			it('includes a `show @version >= 2` property as required in the v2 schema', () => {
+				const schema = toJsonSchema([unconditionalRequiredProperty, v2OnlyShowProperty], 2);
+
+				const props = schema.properties as IDataObject;
+				expect(props.region).toBeDefined();
+				expect(schema.required).toContain('region');
+			});
+
+			it('includes a `hide @version >= 2` property in the v1 schema (deprecated-field pattern)', () => {
+				const schema = toJsonSchema([unconditionalRequiredProperty, v2HiddenProperty], 1);
+
+				const props = schema.properties as IDataObject;
+				expect(props.legacyEndpoint).toBeDefined();
+				expect(schema.required).toContain('legacyEndpoint');
+			});
+
+			it('omits a `hide @version >= 2` property from the v2 schema', () => {
+				const schema = toJsonSchema([unconditionalRequiredProperty, v2HiddenProperty], 2);
+
+				const props = schema.properties as IDataObject;
+				expect(props.legacyEndpoint).toBeUndefined();
+				expect(schema.required).not.toContain('legacyEndpoint');
+			});
+
+			it('emits no `@version`-referencing if/then/else for surviving properties', () => {
+				const schema = toJsonSchema([v2OnlyShowProperty], 2);
+				// The generator treats `displayOptions.show` keys as payload field names.
+				// `@version` is never a real payload field; surviving properties must
+				// have their `@version` stripped before they reach that path.
+				const allOf = schema.allOf as IDataObject[] | undefined;
+				const referencesVersionKey = (allOf ?? []).some((c) =>
+					JSON.stringify(c).includes('@version'),
+				);
+				expect(referencesVersionKey).toBe(false);
+			});
+
+			it('defaults to v1 when typeVersion is omitted (BC for unversioned types)', () => {
+				const schema = toJsonSchema([unconditionalRequiredProperty, v2OnlyShowProperty]);
+				const props = schema.properties as IDataObject;
+				expect(props.apiKey).toBeDefined();
+				expect(props.region).toBeUndefined();
+			});
+		});
 	});
 
 	describe('updateCredential', () => {

@@ -38,6 +38,9 @@ import {
 	jsonParse,
 	jsonStringify,
 	NodeHelpers,
+	resolveDefaultVersion,
+	resolveTypeVersionForCreate,
+	resolveTypeVersionForUpdate,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
@@ -754,6 +757,14 @@ export class CredentialsService {
 			updateData.type,
 			updateData.data as unknown as ICredentialDataDecryptedObject,
 		);
+
+		// Server-resolved and immutable for a credential of a given type;
+		// re-resolves only when `type` changes on update (RFC §7.3).
+		updateData.typeVersion = resolveTypeVersionForUpdate(this.credentialTypes, updateData.type, {
+			type: existingCredential.type,
+			typeVersion: existingCredential.typeVersion ?? null,
+		});
+
 		return updateData;
 	}
 
@@ -761,6 +772,7 @@ export class CredentialsService {
 		id: string | null;
 		name: string;
 		type: string;
+		typeVersion?: number | null;
 		data: ICredentialDataDecryptedObject;
 	}): Promise<ICredentialsDb> {
 		const credentials = new Credentials(
@@ -771,6 +783,9 @@ export class CredentialsService {
 		await credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
+		if (credential.typeVersion !== undefined) {
+			newCredentialData.typeVersion = credential.typeVersion;
+		}
 
 		// Add special database related data
 		newCredentialData.updatedAt = new Date();
@@ -1335,6 +1350,11 @@ export class CredentialsService {
 		user: User,
 		projectId: string,
 	): Promise<void> {
+		// Resolve to the same default version §7.3 will persist on the new
+		// row, so v2-only required fields are enforced for new v2 credentials.
+		const credentialType = this.credentialTypes.getByName(type);
+		const versionContext = { typeVersion: resolveDefaultVersion(credentialType) };
+
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1346,7 +1366,7 @@ export class CredentialsService {
 			if (
 				property.required &&
 				property.displayOptions !== undefined &&
-				displayParameter(data, property, null, null)
+				displayParameter(data, property, versionContext, null)
 			) {
 				// Check if value is present in data, if not, check if default value exists
 				const value = data[property.name];
@@ -1420,6 +1440,7 @@ export class CredentialsService {
 			id: null,
 			name: opts.name,
 			type: opts.type,
+			typeVersion: resolveTypeVersionForCreate(this.credentialTypes.getByName(opts.type)),
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
@@ -1478,8 +1499,15 @@ export class CredentialsService {
 					id: storedCredential.id,
 					name: storedCredential.name,
 					type: storedCredential.type,
+					typeVersion: storedCredential.typeVersion,
 					data: decryptedData,
 				};
+		// Form-supplied test data may omit typeVersion (the wire format
+		// does not carry it). Fall back to the stored value so the test
+		// path renders against the same version as execution.
+		if (credentialsToTest && mergedCredentials.typeVersion === undefined) {
+			mergedCredentials.typeVersion = storedCredential.typeVersion;
+		}
 
 		if (user && credentialsToTest) {
 			await this.replaceCredentialContentsForSharee(

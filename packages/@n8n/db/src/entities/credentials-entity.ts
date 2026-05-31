@@ -25,6 +25,14 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	})
 	type: string;
 
+	/**
+	 * Schema version this credential was created against. `null` for
+	 * credentials of unversioned types and for rows that predate this
+	 * column — read as v1.
+	 */
+	@Column({ type: 'double precision', nullable: true })
+	typeVersion: number | null;
+
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
 

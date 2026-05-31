@@ -812,6 +812,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Test Credential',
 				type: 'githubApi',
+				typeVersion: null,
 			});
 			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
@@ -831,10 +832,34 @@ describe('CredentialsService', () => {
 					id: storedCredential.id,
 					name: storedCredential.name,
 					type: storedCredential.type,
+					typeVersion: null,
 					data: decryptedData,
 				},
 			);
 			expect(result).toEqual(testResult);
+		});
+
+		it('carries typeVersion from stored credential into the merged test payload', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Versioned Credential',
+				type: 'awsLike',
+				typeVersion: 2,
+			});
+			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'OK' } as const;
+
+			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+
+			await service.testById(ownerUser.id, storedCredential.id);
+
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
+				ownerUser.id,
+				storedCredential.type,
+				expect.objectContaining({ typeVersion: 2 }),
+			);
 		});
 	});
 
@@ -858,6 +883,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				typeVersion: null,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const unredactedData = { accessToken: 'live-token' } as ICredentialDataDecryptedObject;
@@ -888,6 +914,7 @@ describe('CredentialsService', () => {
 			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(ownerUser.id, payload.type, {
 				...payload,
+				typeVersion: null,
 				data: unredactedData,
 			});
 			expect(result).toEqual(testResult);
@@ -2086,6 +2113,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue({ name: 'apiKey' } as ICredentialType);
 			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
@@ -2355,6 +2383,7 @@ describe('CredentialsService', () => {
 				id: 'project-1',
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
+			credentialTypes.getByName.mockReturnValue({ name: 'oauth2' } as ICredentialType);
 		});
 
 		it('should throw BadRequestError when credential is missing required properties', async () => {
@@ -2403,6 +2432,63 @@ describe('CredentialsService', () => {
 			// ASSERT
 			expect(result).toHaveProperty('id', 'new-managed-cred-id');
 			expect(result).toHaveProperty('name', 'Managed Credential');
+		});
+
+		it('persists resolved typeVersion for versioned types', async () => {
+			const payload = { ...credentialData, data: {} };
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ name: 'oauth2', version: [1, 2], defaultVersion: 2 }),
+			);
+			let saved: any;
+			credentialsRepository.create.mockImplementation((data) => {
+				saved = { ...data };
+				return saved;
+			});
+			mockTransactionManager({ credentialId: 'versioned-id' });
+
+			await service.createManagedCredential(payload, ownerUser);
+
+			expect(saved.typeVersion).toBe(2);
+		});
+
+		it('persists null typeVersion for unversioned types', async () => {
+			const payload = { ...credentialData, data: {} };
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue({ name: 'oauth2' } as ICredentialType);
+			let saved: any;
+			credentialsRepository.create.mockImplementation((data) => {
+				saved = { ...data };
+				return saved;
+			});
+			mockTransactionManager({ credentialId: 'unversioned-id' });
+
+			await service.createManagedCredential(payload, ownerUser);
+
+			expect(saved.typeVersion).toBeNull();
+		});
+
+		it('ignores client-supplied typeVersion', async () => {
+			const payload = {
+				...credentialData,
+				data: {},
+				typeVersion: 999 as unknown as undefined,
+			};
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ name: 'oauth2', version: [1, 2], defaultVersion: 2 }),
+			);
+			let saved: any;
+			credentialsRepository.create.mockImplementation((data) => {
+				saved = { ...data };
+				return saved;
+			});
+			mockTransactionManager({ credentialId: 'ignored-id' });
+
+			await service.createManagedCredential(payload as any, ownerUser);
+
+			expect(saved.typeVersion).toBe(2);
+			expect(saved.typeVersion).not.toBe(999);
 		});
 	});
 
@@ -2504,6 +2590,90 @@ describe('CredentialsService', () => {
 				mockTransactionManager();
 
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
+			});
+		});
+
+		describe('typeVersion resolution', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'decrypt').mockResolvedValue({});
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+			});
+
+			it('preserves existing typeVersion when type is unchanged', async () => {
+				const payload = { name: 'Cred', type: 'oauth2' };
+				const existingCredential = mockExistingCredential({
+					type: 'oauth2',
+					typeVersion: 2,
+				} as Record<string, unknown>);
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+
+				expect(result.typeVersion).toBe(2);
+			});
+
+			it('preserves null typeVersion when type is unchanged', async () => {
+				const payload = { name: 'Cred', type: 'oauth2' };
+				const existingCredential = mockExistingCredential({
+					type: 'oauth2',
+					typeVersion: null,
+				} as Record<string, unknown>);
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+
+				expect(result.typeVersion).toBeNull();
+			});
+
+			it('resolves to new type default when type changes to a versioned type', async () => {
+				const payload = { name: 'Cred', type: 'newVersioned' };
+				const existingCredential = mockExistingCredential({
+					type: 'oldType',
+					typeVersion: 2,
+				} as Record<string, unknown>);
+				credentialTypes.getByName.mockReturnValue(
+					mock<ICredentialType>({
+						name: 'newVersioned',
+						version: [1, 3],
+						defaultVersion: 3,
+					}),
+				);
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+
+				expect(result.typeVersion).toBe(3);
+			});
+
+			it('resolves to null when type changes to an unversioned type', async () => {
+				const payload = { name: 'Cred', type: 'plainType' };
+				const existingCredential = mockExistingCredential({
+					type: 'oldType',
+					typeVersion: 2,
+				} as Record<string, unknown>);
+				credentialTypes.getByName.mockReturnValue({ name: 'plainType' } as ICredentialType);
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+
+				expect(result.typeVersion).toBeNull();
+			});
+
+			it('ignores client-supplied typeVersion on update', async () => {
+				const payload = {
+					name: 'Cred',
+					type: 'oauth2',
+					typeVersion: 999 as unknown as undefined,
+				};
+				const existingCredential = mockExistingCredential({
+					type: 'oauth2',
+					typeVersion: 1,
+				} as Record<string, unknown>);
+
+				const result = await service.prepareUpdateData(
+					ownerUser,
+					payload as any,
+					existingCredential,
+				);
+
+				expect(result.typeVersion).toBe(1);
 			});
 		});
 	});
@@ -2690,6 +2860,7 @@ describe('CredentialsService', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
+			credentialTypes.getByName.mockReturnValue({ name: 'apiCredential' } as ICredentialType);
 		});
 
 		it('should pass when all required fields are provided', async () => {
@@ -2922,6 +3093,63 @@ describe('CredentialsService', () => {
 				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
+
+		describe('@version gating', () => {
+			const v2OnlyRequiredField = {
+				displayName: 'Region',
+				name: 'region',
+				type: 'string' as const,
+				required: true,
+				default: '',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+			};
+
+			it('enforces a v2-only required field when defaultVersion is 2', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([v2OnlyRequiredField]);
+				credentialTypes.getByName.mockReturnValue({
+					name: 'apiCredential',
+					version: [1, 2],
+					defaultVersion: 2,
+				} as ICredentialType);
+
+				await expect(
+					service.checkCredentialData('apiCredential', {}, ownerUser, testProjectId),
+				).rejects.toThrow('The field "region" is mandatory');
+			});
+
+			it('does not enforce a v2-only required field when defaultVersion is 1', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([v2OnlyRequiredField]);
+				credentialTypes.getByName.mockReturnValue({
+					name: 'apiCredential',
+					version: [1, 2],
+					defaultVersion: 1,
+				} as ICredentialType);
+
+				await expect(
+					service.checkCredentialData('apiCredential', {}, ownerUser, testProjectId),
+				).resolves.not.toThrow();
+			});
+
+			it('continues enforcing non-version required fields for unversioned types', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: undefined,
+						displayOptions: {},
+					},
+				]);
+				credentialTypes.getByName.mockReturnValue({
+					name: 'apiCredential',
+				} as ICredentialType);
+
+				await expect(
+					service.checkCredentialData('apiCredential', {}, ownerUser, testProjectId),
+				).rejects.toThrow('The field "apiKey" is mandatory');
+			});
+		});
 	});
 
 	describe('validateOAuthCredentialUrls', () => {
@@ -2929,6 +3157,7 @@ describe('CredentialsService', () => {
 
 		beforeEach(() => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialTypes.getByName.mockReturnValue({ name: 'oauth' } as ICredentialType);
 			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
 		});
 

@@ -22,6 +22,7 @@ const mockCredentialsService = (
 			return {
 				name: 'MockCredentialsService',
 				type: 'mock',
+				typeVersion: null,
 				shared: [] as SharedCredentials[],
 				isManaged: false,
 				isGlobal: false,

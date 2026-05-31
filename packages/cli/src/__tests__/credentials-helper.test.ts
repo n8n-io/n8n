@@ -1555,4 +1555,96 @@ describe('CredentialsHelper', () => {
 			expect(resultB.apiKey).toBe('key_account_B_UPDATED');
 		});
 	});
+
+	describe('applyDefaultsAndOverwrites - @version threading', () => {
+		const v2GatedProperty: INodeProperties = {
+			displayName: 'Region',
+			name: 'region',
+			type: 'string',
+			default: 'us-east-1',
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+		};
+		const unconditionalProperty: INodeProperties = {
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			default: 'fallback-key',
+		};
+		const credentialType = {
+			name: 'awsLike',
+			displayName: 'AWS-like',
+			properties: [unconditionalProperty, v2GatedProperty],
+		} as ICredentialType;
+
+		const mockedCredentialTypes = mock<CredentialTypes>();
+		const mockedOverwrites = mock<CredentialsOverwrites>();
+		const helper = new CredentialsHelper(
+			mockedCredentialTypes,
+			mockedOverwrites,
+			credentialsRepository,
+			dynamicCredentialProxy,
+			secretsProviderRepository,
+			licenseState,
+			externalSecretsConfig,
+			mock<AiGatewayService>(),
+		);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+		beforeEach(() => {
+			mockedCredentialTypes.getByName.mockReturnValue(credentialType);
+			mockedOverwrites.applyOverwrite.mockImplementation(
+				(_type: string, data: ICredentialDataDecryptedObject) => data,
+			);
+		});
+
+		it('retains v2-gated property when typeVersion = 2', async () => {
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{ region: 'eu-west-1' },
+				'awsLike',
+				2,
+				'manual',
+			);
+
+			expect(result.region).toBe('eu-west-1');
+		});
+
+		it('drops v2-gated property when typeVersion = 1', async () => {
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{ region: 'eu-west-1' },
+				'awsLike',
+				1,
+				'manual',
+			);
+
+			expect(result.region).toBeUndefined();
+		});
+
+		it('drops v2-gated property when typeVersion = null (coerces to 1)', async () => {
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{ region: 'eu-west-1' },
+				'awsLike',
+				null,
+				'manual',
+			);
+
+			expect(result.region).toBeUndefined();
+		});
+
+		it('passes through unconditional properties regardless of typeVersion', async () => {
+			for (const v of [null, 1, 2] as Array<number | null>) {
+				const result = await helper.applyDefaultsAndOverwrites(
+					additionalData,
+					{ apiKey: 'live-key' },
+					'awsLike',
+					v,
+					'manual',
+				);
+				expect(result.apiKey).toBe('live-key');
+			}
+		});
+	});
 });

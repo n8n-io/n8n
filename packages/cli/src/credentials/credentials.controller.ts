@@ -230,6 +230,7 @@ export class CredentialsController {
 			id: credential.id,
 			name: preparedCredentialData.name,
 			type: preparedCredentialData.type,
+			typeVersion: preparedCredentialData.typeVersion,
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
