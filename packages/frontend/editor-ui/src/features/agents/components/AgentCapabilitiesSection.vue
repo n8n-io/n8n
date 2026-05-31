@@ -53,25 +53,23 @@ function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
 }
 
-function triggerIcon(trigger: string, integrationIcon?: string): IconName {
+function triggerIcon(integrationIcon?: string): IconName {
 	if (isIconName(integrationIcon)) return integrationIcon;
-	if (trigger === AGENT_SCHEDULE_TRIGGER_TYPE) return 'clock';
 	return 'zap';
 }
 
 const triggerRows = computed<Array<{ type: string; label: string; icon: IconName }>>(() =>
-	props.connectedTriggers.map((trigger) => {
-		const integration = catalog.value?.find(({ type }) => type === trigger);
-		return {
-			type: trigger,
-			label:
-				integration?.label ??
-				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE
-					? i18n.baseText('agents.schedule.title')
-					: trigger),
-			icon: triggerIcon(trigger, integration?.icon),
-		};
-	}),
+	props.connectedTriggers
+		// Drop forgotten legacy schedule triggers; they're no longer configurable.
+		.filter((trigger) => trigger !== AGENT_SCHEDULE_TRIGGER_TYPE)
+		.map((trigger) => {
+			const integration = catalog.value?.find(({ type }) => type === trigger);
+			return {
+				type: trigger,
+				label: integration?.label ?? trigger,
+				icon: triggerIcon(integration?.icon),
+			};
+		}),
 );
 
 const hasTriggers = computed(() => triggerRows.value.length > 0);

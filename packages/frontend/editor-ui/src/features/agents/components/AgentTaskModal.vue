@@ -10,10 +10,10 @@ import { computed, ref } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createAgentTask, updateAgentTask } from '../composables/useAgentApi';
-import { getNextScheduleOccurrence } from '../utils/schedulePresets';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
+	getNextScheduleOccurrence,
 	parseCron,
 	type ScheduleFrequency,
 } from '../utils/scheduleBuilder';

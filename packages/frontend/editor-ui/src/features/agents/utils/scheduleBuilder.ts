@@ -1,3 +1,5 @@
+import { CronTime } from 'cron';
+
 /**
  * Structured task schedule <-> cron conversion. Lets the Tasks UI offer a
  * friendly frequency + time builder while still storing a standard 5-field cron.
@@ -83,4 +85,17 @@ export function parseCron(cron: string): ScheduleParts | null {
 	}
 
 	return null;
+}
+
+/** Next fire time for a cron in the given timezone, or null if the cron is empty/invalid. */
+export function getNextScheduleOccurrence(cronExpression: string, timezone: string): Date | null {
+	if (!cronExpression.trim()) {
+		return null;
+	}
+
+	try {
+		return new CronTime(cronExpression, timezone).sendAt().toJSDate();
+	} catch {
+		return null;
+	}
 }

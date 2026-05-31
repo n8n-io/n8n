@@ -3,7 +3,6 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -477,7 +476,7 @@ async function onConfigUpdated() {
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
@@ -593,7 +592,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+		const triggerTypes = integrations.map((i) => i.type);
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
