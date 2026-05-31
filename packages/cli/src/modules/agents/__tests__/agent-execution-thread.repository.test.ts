@@ -51,6 +51,7 @@ describe('AgentExecutionThreadRepository', () => {
 				agentId: 'agent-1',
 				agentName: 'Support agent',
 				projectId: 'project-1',
+				taskId: null,
 				sessionNumber: 8,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
