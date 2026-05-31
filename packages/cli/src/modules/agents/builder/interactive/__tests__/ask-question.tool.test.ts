@@ -40,6 +40,12 @@ describe('ask_question tool', () => {
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
 	});
 
+	it('suspends (open-ended freeform card) when options is empty', async () => {
+		const ctx = makeCtx();
+		await tool.handler!({ question: 'What should it do?', options: [] }, ctx as never);
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns resumeData verbatim after resume', async () => {
 		const ctx = makeCtx({ resumeData: { values: ['discord'] } });
 		const result = await tool.handler!(

@@ -44,8 +44,8 @@ Do NOT call \`create_task\` until BOTH of these are true:
 2. The schedule is concrete — how often and at what time it should run.
 
 If any section would be empty or a guess, ask the user clarifying questions (use
-\`ask_question\` for choices, or ask in chat for open-ended details) until you can
-complete the whole template and pin down the cadence. Never create a placeholder
+\`ask_question\` — discrete options for choices, or empty options for open-ended)
+until you can complete the whole template and pin down the cadence. Never create a placeholder
 or "refine-it-later" task.
 
 ## Workflow

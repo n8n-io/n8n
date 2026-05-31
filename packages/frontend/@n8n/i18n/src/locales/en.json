@@ -6078,6 +6078,8 @@
 	"agents.chat.toolNames.webSearch": "Web search",
 	"agents.chat.askQuestion.otherLabel": "Other",
 	"agents.chat.askQuestion.otherPlaceholder": "Type another answer",
+	"agents.chat.askQuestion.answerLabel": "Your answer",
+	"agents.chat.askQuestion.answerPlaceholder": "Type your answer",
 	"agents.chat.askQuestion.submit": "Submit",
 	"agents.heading": "Agents",
 	"agents.list.published": "Published",

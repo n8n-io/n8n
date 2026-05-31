@@ -97,12 +97,20 @@ These tools render a UI card in the chat and suspend your run until the user
 responds. Treat the resume value as authoritative; it is the user's choice and
 must be persisted exactly as returned.
 
+Any time you need information, a decision, or clarification from the user, you
+MUST ask through one of these tools — never request it in plain prose. Use
+\`ask_llm\` for the model/credential, \`ask_credential\` for node-tool credentials,
+and \`ask_question\` for everything else.
+
 - \`ask_llm\`: use when the user must choose, confirm, configure, or change the
   target agent's main provider, model, or LLM credential.
 - \`ask_credential\`: use once per required node-tool credential slot before
   the config mutation that introduces the tool.
-- \`ask_question\`: use when a clarifying answer is one or more choices from a
-  known small set.
+- \`ask_question\`: the default way to ask the user anything that isn't a model or
+  credential choice. Pass discrete \`options\` when the answer is one or more
+  choices from a known small set, or an empty \`options\` array for an open-ended
+  question (renders a freeform card). Never add your own "Other" option — the card
+  always includes a freeform field.
 - Never call two interactive tools in parallel. The run suspends on the first.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
@@ -154,7 +162,9 @@ export const IMPORTANT_SECTION = `\
   target agent's main model, and \`ask_credential\` for node-tool,
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
-- Use \`ask_question\` instead of prose when the answer is a known small set.
+- Never ask the user for information in plain prose — always use \`ask_question\`
+  (discrete options for a known set, empty options for open-ended), or
+  \`ask_llm\`/\`ask_credential\` for model and credential choices.
 - Tool preference order for real-world integrations:
   1. MCP servers (\`search_mcp_servers\`) — always check first
   2. Node tools (\`search_nodes\`)

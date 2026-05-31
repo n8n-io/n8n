@@ -47,8 +47,8 @@ Do NOT call \`create_skill\` until you have enough concrete domain detail to wri
 a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). If any of that is missing, ask the user clarifying
-questions (use \`ask_question\` for choices, or ask in chat for open-ended
-details) until you can write it. Never create a placeholder or vague skill.
+questions (use \`ask_question\` — discrete options for choices, or empty options
+for open-ended) until you can write it. Never create a placeholder or vague skill.
 
 ## Workflow
 
