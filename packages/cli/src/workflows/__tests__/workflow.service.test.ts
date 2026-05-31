@@ -19,6 +19,7 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 jest.mock('@/permissions.ee/check-access');
@@ -66,7 +67,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				webhookServiceMock, // webhookService
 				mock(), // licenseState
@@ -215,7 +218,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				licenseStateMock, // licenseState
@@ -789,7 +794,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState

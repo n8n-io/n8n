@@ -108,8 +108,23 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
-      - name: Test Integration
-        run: pnpm test:ci:backend:integration --summarize
+      # Only cli is wired into janitor integration scoping today, so the
+      # turbo run filter excludes it from the bulk integration run and a
+      # dedicated step invokes the scoped variant — same shape as the unit
+      # job above. This avoids turbo silently no-op'ing
+      # `test:integration:changed` for backend packages that don't define it.
+      #
+      # --concurrency=1 is preserved from the pre-existing
+      # `test:ci:backend:integration` script: backend integration suites
+      # share state (DB sockets, ports, fixtures) and have historically been
+      # run serially to avoid cross-package interference. Unit jobs above
+      # don't need this because they isolate per-process.
+      - name: Test Integration (backend, except cli)
+        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+
+      - name: Test Integration (cli, scoped)
+        if: ${{ !cancelled() }}
+        run: pnpm turbo test:integration:changed --filter=n8n --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

@@ -215,4 +215,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	getCredentialsProperties(type: string): INodeProperties[] {
 		return this.inner.getCredentialsProperties(type);
 	}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		return this.inner.isCredentialUsableByNode(credentialType, nodeType);
+	}
 }
