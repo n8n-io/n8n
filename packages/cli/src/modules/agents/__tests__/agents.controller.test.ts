@@ -13,6 +13,7 @@ import type { AgentScheduleService } from '../integrations/agent-schedule.servic
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentTaskService } from '../agent-task.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
@@ -43,6 +44,7 @@ function makeController({
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	slackAppSetupService = mock<SlackAppSetupService>(),
+	agentTaskService = mock<AgentTaskService>(),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
@@ -51,6 +53,7 @@ function makeController({
 	agentRepository?: jest.Mocked<AgentRepository>;
 	chatIntegrationRegistry?: jest.Mocked<ChatIntegrationRegistry>;
 	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
+	agentTaskService?: jest.Mocked<AgentTaskService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -73,6 +76,7 @@ function makeController({
 		mock<AgentExecutionService>(),
 		chatIntegrationRegistry,
 		slackAppSetupService,
+		agentTaskService,
 	);
 
 	return {
@@ -84,6 +88,7 @@ function makeController({
 		agentRepository,
 		chatIntegrationRegistry,
 		slackAppSetupService,
+		agentTaskService,
 	};
 }
 
@@ -112,8 +117,96 @@ describe('AgentsController route access scopes', () => {
 		['revertToPublished', 'agent:update'],
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
+		['listTasks', 'agent:read'],
+		['createTask', 'agent:update'],
+		['updateTask', 'agent:update'],
+		['deleteTask', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentsController tasks', () => {
+	const agent = { id: 'agent-1', projectId: 'project-1' } as never;
+	const req = { params: { projectId: 'project-1' } } as never;
+
+	it('lists tasks for the agent', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		const tasks = [{ id: 'task-1' }] as never;
+		agentTaskService.list.mockResolvedValue(tasks);
+
+		const result = await controller.listTasks(req, undefined as never, 'agent-1');
+
+		expect(agentTaskService.list).toHaveBeenCalledWith('agent-1');
+		expect(result).toBe(tasks);
+	});
+
+	it('404s when listing tasks for an agent outside the project', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(controller.listTasks(req, undefined as never, 'agent-1')).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(agentTaskService.list).not.toHaveBeenCalled();
+	});
+
+	it('creates a task', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		const created = { id: 'task-1' } as never;
+		agentTaskService.create.mockResolvedValue(created);
+		const payload = {
+			name: 'Daily',
+			objective: 'Do X',
+			cronExpression: '0 9 * * *',
+			enabled: true,
+		} as never;
+
+		const result = await controller.createTask(req, undefined as never, 'agent-1', payload);
+
+		expect(agentTaskService.create).toHaveBeenCalledWith('agent-1', payload);
+		expect(result).toBe(created);
+	});
+
+	it('updates a task', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		const updated = { id: 'task-1' } as never;
+		agentTaskService.update.mockResolvedValue(updated);
+		const payload = { enabled: false } as never;
+
+		const result = await controller.updateTask(
+			req,
+			undefined as never,
+			'agent-1',
+			'task-1',
+			payload,
+		);
+
+		expect(agentTaskService.update).toHaveBeenCalledWith('agent-1', 'task-1', payload);
+		expect(result).toBe(updated);
+	});
+
+	it('deletes a task and returns success', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await controller.deleteTask(req, undefined as never, 'agent-1', 'task-1');
+
+		expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'task-1');
+		expect(result).toEqual({ success: true });
+	});
+
+	it('404s when deleting a task for an agent outside the project', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(
+			controller.deleteTask(req, undefined as never, 'agent-1', 'task-1'),
+		).rejects.toThrow(NotFoundError);
+		expect(agentTaskService.delete).not.toHaveBeenCalled();
 	});
 });
 
@@ -157,6 +250,7 @@ describe('AgentsController integration credentials', () => {
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
 			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
 		);
 
 		await expect(
@@ -708,6 +802,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
 			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
 		);
 
 		const result = await controller.get(
@@ -752,6 +847,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
 			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
 		);
 
 		const result = await controller.get(
@@ -785,6 +881,7 @@ describe('AgentsController chat message history', () => {
 			mock<AgentExecutionService>(),
 			mock<ChatIntegrationRegistry>(),
 			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
 		);
 
 		return { controller, agentsService };

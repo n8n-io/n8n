@@ -22,6 +22,9 @@ import {
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	CreateAgentTaskDto,
+	UpdateAgentTaskDto,
+	type AgentTaskDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -51,6 +54,7 @@ import {
 	pumpChunks,
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
+import { AgentTaskService } from './agent-task.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
@@ -110,6 +114,7 @@ export class AgentsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly agentTaskService: AgentTaskService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -901,6 +906,61 @@ export class AgentsController {
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		return await this.agentScheduleService.deactivate(agent);
+	}
+
+	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	@Get('/:agentId/tasks')
+	@ProjectScope('agent:read')
+	async listTasks(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentTaskDto[]> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.list(agentId);
+	}
+
+	@Post('/:agentId/tasks')
+	@ProjectScope('agent:update')
+	async createTask(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: CreateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.create(agentId, payload);
+	}
+
+	@Patch('/:agentId/tasks/:taskId')
+	@ProjectScope('agent:update')
+	async updateTask(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('taskId') taskId: string,
+		@Body payload: UpdateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.update(agentId, taskId, payload);
+	}
+
+	@Delete('/:agentId/tasks/:taskId')
+	@ProjectScope('agent:update')
+	async deleteTask(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('taskId') taskId: string,
+	): Promise<{ success: true }> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await this.agentTaskService.delete(agentId, taskId);
+		return { success: true };
 	}
 
 	@Get('/:agentId/integrations/status')
