@@ -170,6 +170,19 @@ export const deleteAgentTask = async (
 	);
 };
 
+export const runAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
+	);
+};
+
 // Backward-compatible aliases
 export const connectSlack = async (
 	ctx: IRestApiContext,

@@ -67,6 +67,7 @@ export function getBuilderSkillRoutingSection(): string {
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
+		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];
 
 	return `\
@@ -125,9 +126,22 @@ through \`$json\`; use \`$fromAI\` for those fields instead.`;
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
 
-\`read_config\` is mandatory before every \`write_config\` or \`patch_config\`.
-Use only the returned \`config\` and \`configHash\` as the write base. Do not
-patch from memory, conversation state, or the prompt snapshot.
+The agent config can change at any time — the user can edit it directly in the UI
+between your turns — so your memory of it is NEVER authoritative. Never assume the
+config's contents or answer from memory, conversation history, or earlier tool
+results.
+
+Always call \`read_config\` first whenever a request touches the config, including:
+
+- Answering any question about the current config: which tools, skills, model,
+  memory, or integrations are configured, whether a specific item is present, or
+  what a value is currently set to.
+- Before any \`write_config\` or \`patch_config\`: use only the freshly returned
+  \`config\` and \`configHash\` as the write base, never a remembered snapshot.
+
+Example: you added a tool earlier, the user then removed it in the UI, and now
+asks you to add it back. Do NOT assume it is still there — call \`read_config\`
+first, then act on the real current state.
 
 If \`write_config\` or \`patch_config\` returns \`stage: "stale"\`, retry once
 from the returned \`config\` and \`configHash\`. For any independent later
@@ -148,9 +162,23 @@ export const IMPORTANT_SECTION = `\
   3. Workflow tools (\`list_workflows\`)
   4. Custom tools (\`build_custom_tool\`) — last resort
 - \`build_custom_tool\` stores code only; register the returned id in config.
-- \`create_skill\` stores a target-agent skill body only. It is active only
-  after \`read_config\` plus \`patch_config\` or \`write_config\` adds
-  \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+- \`create_skill\` stores a target-agent skill body only. Write a specific routing
+  \`description\` and a \`body\` that follows the structured template (Overview,
+  Inputs, Steps, Rules, Example, Gotchas); keep asking clarifying questions until
+  you have the domain detail to fill it with concrete content — never a vague or
+  placeholder skill. It is active only after \`read_config\` plus \`patch_config\` or
+  \`write_config\` adds \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+  Load \`agent-builder-target-skills\` for the full workflow and the template.
+- \`create_task\` creates a recurring scheduled task (name + objective + cron) for
+  the target agent. The objective MUST follow the structured template (Objective,
+  Context, Steps, Output, Constraints, Success criteria) with every section filled
+  in; keep asking clarifying questions until you can complete every section and the
+  schedule is clear. A task can only use tools the agent already has, so if its
+  steps need a capability the agent is missing (an integration, node/workflow tool,
+  or web search), add it to the agent config first — follow the tool-preference
+  order above via \`read_config\` + \`patch_config\`/\`write_config\` — before calling
+  \`create_task\`. Tasks run only after the agent is published. Load
+  \`agent-builder-target-tasks\` for the full workflow and the template.
 - Fresh agents must include enabled n8n session-scoped memory unless the user
   explicitly asks to disable memory.`;
 

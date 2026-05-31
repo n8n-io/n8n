@@ -55,13 +55,17 @@ export class AgentTaskService {
 	async create(agentId: string, dto: CreateAgentTaskDto): Promise<AgentTaskDto> {
 		this.assertValidCron(dto.cronExpression);
 
-		const task = await this.taskRepository.save({
-			agentId,
-			name: dto.name,
-			objective: dto.objective,
-			cronExpression: dto.cronExpression,
-			enabled: dto.enabled,
-		});
+		// `create` instantiates the entity so the `@BeforeInsert` id hook runs;
+		// saving a plain object would skip it and insert a NULL primary key.
+		const task = await this.taskRepository.save(
+			this.taskRepository.create({
+				agentId,
+				name: dto.name,
+				objective: dto.objective,
+				cronExpression: dto.cronExpression,
+				enabled: dto.enabled,
+			}),
+		);
 
 		await this.reconcile(task);
 		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId: task.id });
@@ -169,7 +173,9 @@ export class AgentTaskService {
 		const timezone = this.globalConfig.generic.timezone;
 		const job = new CronJob(
 			task.cronExpression,
-			() => void this.runTask(task.id),
+			() => {
+				void this.runTask(task.id);
+			},
 			null,
 			true,
 			timezone,
@@ -293,6 +299,65 @@ export class AgentTaskService {
 		} catch (error) {
 			this.logger.warn('[AgentTaskService] Failed to record task run metadata', {
 				taskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Execute a task immediately as the requesting user, ignoring publish/enabled
+	 * state (runs the current draft config), for the "Execute task" action. The
+	 * agent run can be long, so it is kicked off in the background and surfaces
+	 * as a session; only the lookup is awaited so a missing task still 404s.
+	 */
+	async runNow(agentId: string, taskId: string, userId: string): Promise<void> {
+		const task = await this.getOrThrow(agentId, taskId);
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		void this.executeNow(task, agent.projectId, userId);
+	}
+
+	private async executeNow(task: AgentTask, projectId: string, userId: string): Promise<void> {
+		const startedAt = Date.now();
+		try {
+			const timezone = this.globalConfig.generic.timezone;
+			const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
+			const message = `${task.objective}\n\nCurrent date and time: ${timestamp} (timezone: ${timezone})`;
+			const threadId = `task-${task.id}-${randomUUID()}`;
+
+			this.logger.info('[AgentTaskService] Manual task run started', {
+				taskId: task.id,
+				agentId: task.agentId,
+				projectId,
+			});
+
+			let chunkCount = 0;
+			for await (const _chunk of this.agentsService.executeForTaskNow({
+				agentId: task.agentId,
+				projectId,
+				userId,
+				message,
+				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
+				taskId: task.id,
+			})) {
+				chunkCount += 1;
+			}
+
+			await this.recordRun(task.id, 'success');
+			this.logger.info('[AgentTaskService] Manual task run completed', {
+				taskId: task.id,
+				agentId: task.agentId,
+				chunkCount,
+				durationMs: Date.now() - startedAt,
+			});
+		} catch (error) {
+			await this.recordRun(task.id, 'error');
+			this.logger.error('[AgentTaskService] Manual task run failed', {
+				taskId: task.id,
+				agentId: task.agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

@@ -1,8 +1,13 @@
 import type { CredentialProvider } from '@n8n/agents';
-import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentTaskDto,
+} from '@n8n/api-types';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { CredentialTypes } from '@/credential-types';
@@ -13,6 +18,7 @@ import {
 import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 
@@ -30,6 +36,8 @@ function makeService() {
 	const builderModelLookupService = mock<BuilderModelLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
+	const agentTaskService = mock<AgentTaskService>();
+	const agentRepository = mock<AgentRepository>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -44,9 +52,11 @@ function makeService() {
 		mcpRegistryService,
 		mock(),
 		credentialTypes,
+		agentTaskService,
+		agentRepository,
 	);
 
-	return { service, agentsService, secureRuntime };
+	return { service, agentsService, secureRuntime, agentTaskService, agentRepository };
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -588,6 +598,28 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('does NOT attach the skill to the agent config');
 			expect(tool.description).toContain('patch_config');
 			expect(tool.description).toContain('when to load it');
+			expect(tool.description).toContain('ask the user clarifying');
+			expect(tool.description).toContain('Gotchas');
+		});
+
+		it('puts the structured body template in the body parameter', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillTool(service);
+			const bodySchema = (
+				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
+			).shape.body;
+
+			for (const heading of [
+				'## Overview',
+				'## Inputs',
+				'## Steps',
+				'## Rules',
+				'## Example',
+				'## Gotchas',
+			]) {
+				expect(bodySchema.description).toContain(heading);
+			}
 		});
 
 		it('creates a skill and returns the generated skill id', async () => {
@@ -647,6 +679,131 @@ describe('AgentsBuilderToolsService', () => {
 				]),
 			});
 			expect(agentsService.createSkill).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('create_task tool', () => {
+		function getCreateTaskTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASK)!;
+		}
+
+		const publishedAgent = { activeVersionId: 'v1' } as unknown as Agent;
+		const unpublishedAgent = { activeVersionId: null } as unknown as Agent;
+
+		const taskInput = {
+			name: 'Daily summary',
+			objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+			cronExpression: '0 9 * * *',
+		};
+
+		function makeTaskDto(enabled: boolean): AgentTaskDto {
+			return {
+				id: 'task-1',
+				...taskInput,
+				enabled,
+				nextRunAt: null,
+				lastRunAt: null,
+				lastRunStatus: null,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			};
+		}
+
+		it('instructs the builder to clarify before creating a task', () => {
+			const { service } = makeService();
+
+			const tool = getCreateTaskTool(service);
+
+			expect(tool).toBeDefined();
+			expect(tool.description).toContain('ask the user clarifying questions');
+			expect(tool.description).toContain('self-contained');
+			expect(tool.description).toContain('MUST NOT');
+			expect(tool.description).toContain('Success criteria');
+		});
+
+		it('puts the structured objective template in the objective parameter', () => {
+			const { service } = makeService();
+
+			const tool = getCreateTaskTool(service);
+			const objectiveSchema = (
+				tool.inputSchema as unknown as { shape: { objective: { description?: string } } }
+			).shape.objective;
+
+			for (const heading of [
+				'## Objective',
+				'## Context',
+				'## Steps',
+				'## Output',
+				'## Constraints',
+				'## Success criteria',
+			]) {
+				expect(objectiveSchema.description).toContain(heading);
+			}
+		});
+
+		it('creates an enabled task when the agent is published', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
+			agentTaskService.create.mockResolvedValue(makeTaskDto(true));
+
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
+				...taskInput,
+				enabled: true,
+			});
+			expect(result).toEqual({ ok: true, task: makeTaskDto(true) });
+		});
+
+		it('creates a disabled task when the agent is not published', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent);
+			agentTaskService.create.mockResolvedValue(makeTaskDto(false));
+
+			await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
+				...taskInput,
+				enabled: false,
+			});
+		});
+
+		it('rejects an empty objective before creating the task', async () => {
+			const { service, agentTaskService } = makeService();
+
+			const result = await getCreateTaskTool(service).handler!(
+				{ name: 'x', objective: '', cronExpression: '0 9 * * *' },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: expect.arrayContaining([expect.objectContaining({ path: 'objective' })]),
+			});
+			expect(agentTaskService.create).not.toHaveBeenCalled();
+		});
+
+		it('surfaces a service error (e.g. invalid cron) to the model', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
+			agentTaskService.create.mockRejectedValue(new Error('Invalid cron expression'));
+
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Invalid cron expression' }] });
+		});
+
+		it('returns an error when the agent is not in the project', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
+			expect(agentTaskService.create).not.toHaveBeenCalled();
 		});
 	});
 });

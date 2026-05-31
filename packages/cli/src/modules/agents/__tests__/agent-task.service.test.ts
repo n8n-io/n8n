@@ -51,12 +51,13 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 async function* emptyStream(): AsyncGenerator<never> {}
 
+// eslint-disable-next-line require-yield
 async function* throwingStream(): AsyncGenerator<never> {
 	throw new Error('execution failed');
 }
 
-function runTaskOf(service: AgentTaskService, taskId: string): Promise<void> {
-	return (service as unknown as { runTask(id: string): Promise<void> }).runTask(taskId);
+async function runTaskOf(service: AgentTaskService, taskId: string): Promise<void> {
+	await (service as unknown as { runTask(id: string): Promise<void> }).runTask(taskId);
 }
 
 describe('AgentTaskService', () => {
@@ -72,6 +73,8 @@ describe('AgentTaskService', () => {
 		jest.clearAllMocks();
 		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
+		// `create` returns its input so `save` (and assertions) see the built entity.
+		(taskRepository.create as unknown as jest.Mock).mockImplementation((data: unknown) => data);
 		agentRepository = mock<AgentRepository>();
 		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentsService = mock<AgentsService>();
@@ -316,6 +319,50 @@ describe('AgentTaskService', () => {
 			expect(taskRepository.update).toHaveBeenCalledWith(
 				'task-1',
 				expect.objectContaining({ lastRunStatus: 'error' }),
+			);
+		});
+	});
+
+	describe('runNow', () => {
+		it('runs the task immediately as the requesting user even when unpublished', async () => {
+			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(makeTask());
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makeAgent({ activeVersionId: null }),
+			);
+			(agentsService.executeForTaskNow as jest.Mock).mockReturnValue(emptyStream());
+
+			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+
+			expect(agentsService.executeForTaskNow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: AGENT_ID,
+					projectId: 'project-1',
+					userId: 'user-9',
+					taskId: 'task-1',
+					message: expect.stringContaining('Summarize messages'),
+					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
+				}),
+			);
+		});
+
+		it('throws NotFoundError when the task does not exist', async () => {
+			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(null);
+
+			await expect(service.runNow(AGENT_ID, 'missing', 'user-9')).rejects.toThrow(NotFoundError);
+			expect(agentsService.executeForTaskNow).not.toHaveBeenCalled();
+		});
+
+		it('records a successful manual run', async () => {
+			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(makeTask());
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
+			(agentsService.executeForTaskNow as jest.Mock).mockReturnValue(emptyStream());
+
+			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(taskRepository.update).toHaveBeenCalledWith(
+				'task-1',
+				expect.objectContaining({ lastRunStatus: 'success' }),
 			);
 		});
 	});

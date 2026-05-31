@@ -130,6 +130,8 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+/** Bumped on builder config-updated so the Tasks panel reloads (e.g. after create_task). */
+const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const isChatFullWidth = ref(false);
 const executionsCount = computed(() => sessionsStore.threads.length);
@@ -479,6 +481,7 @@ async function onConfigUpdated() {
 	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
+	tasksReloadKey.value += 1;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
 }
@@ -1024,6 +1027,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:can-edit-agent="canEditAgent"
+				:tasks-reload-key="tasksReloadKey"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"

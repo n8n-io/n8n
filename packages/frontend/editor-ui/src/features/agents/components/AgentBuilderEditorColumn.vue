@@ -28,6 +28,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
+	tasksReloadKey?: number;
 }>();
 
 const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
@@ -124,6 +125,7 @@ const i18n = useI18n();
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:reload-key="tasksReloadKey"
 							data-testid="agent-tasks-panel"
 						/>
 					</N8nCard>

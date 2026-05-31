@@ -121,6 +121,7 @@ describe('AgentsController route access scopes', () => {
 		['createTask', 'agent:update'],
 		['updateTask', 'agent:update'],
 		['deleteTask', 'agent:update'],
+		['runTaskNow', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -207,6 +208,28 @@ describe('AgentsController tasks', () => {
 			controller.deleteTask(req, undefined as never, 'agent-1', 'task-1'),
 		).rejects.toThrow(NotFoundError);
 		expect(agentTaskService.delete).not.toHaveBeenCalled();
+	});
+
+	it('runs a task now as the requesting user', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		const runReq = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+		const result = await controller.runTaskNow(runReq, undefined as never, 'agent-1', 'task-1');
+
+		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', 'user-1');
+		expect(result).toEqual({ success: true });
+	});
+
+	it('404s when running a task for an agent outside the project', async () => {
+		const { controller, agentTaskService, agentRepository } = makeController();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const runReq = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+		await expect(
+			controller.runTaskNow(runReq, undefined as never, 'agent-1', 'task-1'),
+		).rejects.toThrow(NotFoundError);
+		expect(agentTaskService.runNow).not.toHaveBeenCalled();
 	});
 });
 

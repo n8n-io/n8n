@@ -3,7 +3,7 @@ import type { AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,6 +18,7 @@ const props = withDefaults(
 		agentId: string;
 		disabled?: boolean;
 		isPublished?: boolean;
+		reloadKey?: number;
 	}>(),
 	{ disabled: false, isPublished: false },
 );
@@ -48,6 +49,14 @@ async function reload() {
 }
 
 onMounted(reload);
+
+// Reload when the builder signals a change (e.g. it created a task via create_task).
+watch(
+	() => props.reloadKey,
+	() => {
+		void reload();
+	},
+);
 
 function openModal(task: AgentTaskDto | null) {
 	uiStore.openModalWithData({
@@ -210,13 +219,23 @@ function runSummary(task: AgentTaskDto): string {
 		</div>
 
 		<ul v-else :class="$style.list">
-			<li v-for="task in tasks" :key="task.id" :class="$style.row" data-testid="agent-task-row">
+			<li
+				v-for="task in tasks"
+				:key="task.id"
+				:class="$style.row"
+				role="button"
+				tabindex="0"
+				data-testid="agent-task-row"
+				@click="onEdit(task)"
+				@keydown.enter="onEdit(task)"
+				@keydown.space.prevent="onEdit(task)"
+			>
 				<div :class="$style.rowMain">
 					<N8nText bold>{{ task.name }}</N8nText>
 					<N8nText size="small" color="text-light">{{ scheduleSummary(task) }}</N8nText>
 					<N8nText size="small" color="text-light">{{ runSummary(task) }}</N8nText>
 				</div>
-				<div :class="$style.rowActions">
+				<div :class="$style.rowActions" @click.stop>
 					<N8nTooltip
 						:content="i18n.baseText('agents.builder.tasks.publishRequired')"
 						:disabled="isPublished"
@@ -228,18 +247,6 @@ function runSummary(task: AgentTaskDto): string {
 							data-testid="agent-task-toggle"
 							@update:model-value="(value) => onToggle(task, Boolean(value))"
 						/>
-					</N8nTooltip>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.edit')" placement="top">
-						<N8nButton
-							variant="ghost"
-							size="small"
-							icon-only
-							:disabled="disabled"
-							data-testid="agent-task-edit"
-							@click="onEdit(task)"
-						>
-							<template #icon><N8nIcon icon="square-pen" :size="16" /></template>
-						</N8nButton>
 					</N8nTooltip>
 					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.delete')" placement="top">
 						<N8nButton
@@ -313,6 +320,14 @@ function runSummary(task: AgentTaskDto): string {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius);
+	cursor: pointer;
+	transition: border-color 0.15s ease;
+}
+
+.row:hover,
+.row:focus-visible {
+	border-color: var(--color--primary);
+	outline: none;
 }
 
 .rowMain {

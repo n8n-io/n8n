@@ -8,8 +8,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createAgentTask, updateAgentTask } from '../composables/useAgentApi';
+import { createAgentTask, runAgentTask, updateAgentTask } from '../composables/useAgentApi';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
@@ -36,6 +37,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const toast = useToast();
 
 const task = computed(() => props.data.task ?? null);
 const isEditing = computed(() => Boolean(task.value));
@@ -50,6 +52,7 @@ const dayOfMonth = ref(DEFAULT_SCHEDULE_PARTS.dayOfMonth);
 const customCron = ref('');
 const submitted = ref(false);
 const saving = ref(false);
+const executing = ref(false);
 const errorMessage = ref('');
 
 const cronExpression = computed(() => {
@@ -220,6 +223,29 @@ async function onSave() {
 		saving.value = false;
 	}
 }
+
+async function onExecute() {
+	const current = task.value;
+	if (!current) return;
+
+	executing.value = true;
+	try {
+		await runAgentTask(
+			rootStore.restApiContext,
+			props.data.projectId,
+			props.data.agentId,
+			current.id,
+		);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.tasks.executeStarted'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.tasks.executeError'));
+	} finally {
+		executing.value = false;
+	}
+}
 </script>
 
 <template>
@@ -387,6 +413,17 @@ async function onSave() {
 
 		<template #footer>
 			<div :class="$style.footer">
+				<N8nButton
+					v-if="isEditing"
+					variant="subtle"
+					:class="$style.executeButton"
+					:loading="executing"
+					:disabled="saving"
+					data-testid="agent-task-execute"
+					@click="onExecute"
+				>
+					{{ i18n.baseText('agents.builder.tasks.execute') }}
+				</N8nButton>
 				<N8nButton variant="subtle" @click="closeModal">
 					{{ i18n.baseText('agents.builder.tasks.cancel') }}
 				</N8nButton>
@@ -462,5 +499,9 @@ async function onSave() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.executeButton {
+	margin-right: auto;
 }
 </style>

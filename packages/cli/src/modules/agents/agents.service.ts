@@ -181,6 +181,18 @@ export interface ExecuteForTaskPublishedConfig {
 	taskId: string;
 }
 
+export interface ExecuteForTaskNowConfig {
+	agentId: string;
+	projectId: string;
+	/** n8n user ID — used for RBAC / credential resolution and recorded on the session. */
+	userId: string;
+	message: string;
+	/** Memory scope — resourceId isolates per-run memory. */
+	memory: AgentMemoryScope;
+	/** The task this manual run belongs to; stamped on the session for traceability. */
+	taskId: string;
+}
+
 interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -1319,6 +1331,30 @@ export class AgentsService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			agentId,
+			message,
+			memory,
+			projectId: runtime.projectId,
+			source: 'task',
+			taskId,
+		});
+	}
+
+	/**
+	 * Execute a task on demand against the current (draft) config as the
+	 * requesting user. Unlike `executeForTaskPublished` this does not require a
+	 * published version, so it works while the agent is still being built. The
+	 * run is stamped with `source='task'` + `taskId` for session traceability.
+	 */
+	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, userId, message, memory, taskId } = config;
+
+		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
+
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			userId,
 			message,
 			memory,
 			projectId: runtime.projectId,

@@ -157,11 +157,11 @@ describe('AgentTasksSection', () => {
 		);
 	});
 
-	it('opening edit passes the task to the modal', async () => {
+	it('clicking a task row opens the edit modal with that task', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
 		const { findByTestId } = renderSection({ isPublished: true });
 
-		await fireEvent.click(await findByTestId('agent-task-edit'));
+		await fireEvent.click(await findByTestId('agent-task-row'));
 
 		expect(openModalWithDataSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
