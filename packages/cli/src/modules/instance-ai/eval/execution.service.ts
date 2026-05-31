@@ -24,6 +24,7 @@ import {
 	type IHttpRequestOptions,
 	type INode,
 	type INodeExecutionData,
+	type INodeParameters,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
@@ -320,6 +321,11 @@ export class EvalExecutionService {
 
 			// Check config completeness before execution — detect missing required parameters
 			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+			// Then patch the same parameter issues with synthetic mock values so the
+			// runtime `WorkflowHasIssuesError` gate doesn't abort the whole workflow
+			// for a single empty resource locator. Original issues stay recorded on
+			// `nodeResults.configIssues` (set above) for the verifier.
+			this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 			const executionData = this.buildExecutionData(startNode, pinData);
 
 			// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -416,6 +422,59 @@ export class EvalExecutionService {
 				});
 				entry.configIssues = issues.parameters;
 			}
+		}
+	}
+
+	/**
+	 * Bypass the runtime `WorkflowHasIssuesError` gate for eval execution.
+	 *
+	 * `WorkflowExecute.checkForWorkflowIssues()` aborts the entire workflow
+	 * before any node runs if `NodeHelpers.getNodeParametersIssues` reports
+	 * issues on any node — most commonly an empty required parameter the
+	 * builder forgot to fill (Sheets `sheetName.value: ''`, Slack
+	 * `channelId.value: ''`, BigQuery `projectId: ''`). The verifier sees
+	 * an opaque 'The workflow has issues and cannot be executed for that
+	 * reason' message and classifies the whole scenario as a builder failure
+	 * even when only one parameter on one node is broken.
+	 *
+	 * In eval mode the framework is supposed to be tolerant of unfinished
+	 * configs so the LLM verifier can score the workflow's actual logic.
+	 * This is symmetrical with the credential helper bypass: original
+	 * `configIssues` are still recorded on `nodeResults` (so the verifier
+	 * can flag the misconfiguration as part of its reasoning), but we patch
+	 * the workflow JSON enough to satisfy the gate so per-node execution
+	 * can proceed. When the patched node ultimately needs the value, its
+	 * own HTTP request goes through the LLM wire-mock and the framework
+	 * synthesises a downstream-shaped response — same path real builders
+	 * would have hit if they hadn't shipped an empty parameter.
+	 */
+	private patchParameterIssuesForEval(workflow: Workflow, pinDataNodeNames: string[]): void {
+		for (const node of Object.values(workflow.nodes)) {
+			if (node.disabled) continue;
+			if (pinDataNodeNames.includes(node.name)) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType) continue;
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+				pinDataNodeNames,
+			);
+
+			const paramIssues = issues?.parameters;
+			if (!paramIssues || Object.keys(paramIssues).length === 0) continue;
+
+			const params = node.parameters ?? {};
+			for (const paramName of Object.keys(paramIssues)) {
+				const synthesized = synthesizeMissingParamValue(params[paramName]);
+				// Cast at the assignment boundary only — the synthesised shapes
+				// (string, resource locator, original passthrough) are all valid
+				// `NodeParameterValueType`s, but the function accepts/returns
+				// `unknown` so it stays decoupled from n8n's parameter union.
+				params[paramName] = synthesized as INodeParameters[string];
+			}
+			node.parameters = params;
 		}
 	}
 
@@ -729,4 +788,39 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/**
+ * Build a synthetic value for a parameter the builder left empty, preserving
+ * the runtime shape the validator expects (resource locator stays a resource
+ * locator, plain string stays a string). Caller invokes this only for
+ * parameters that `getNodeParametersIssues` has already flagged — it never
+ * overwrites a non-empty user value.
+ */
+function synthesizeMissingParamValue(current: unknown): unknown {
+	if (
+		current !== null &&
+		typeof current === 'object' &&
+		!Array.isArray(current) &&
+		'__rl' in (current as Record<string, unknown>)
+	) {
+		const rl = current as Record<string, unknown>;
+		const mode = typeof rl.mode === 'string' && rl.mode.length > 0 ? rl.mode : 'id';
+		const rawValue = rl.value;
+		const hasValue =
+			(typeof rawValue === 'string' && rawValue.length > 0) ||
+			(typeof rawValue === 'number' && Number.isFinite(rawValue));
+		return {
+			...rl,
+			mode,
+			value: hasValue ? rawValue : '__evalMockResource',
+		};
+	}
+
+	if (typeof current === 'string' && current.length === 0) return '__evalMockValue';
+	if (current === null || current === undefined) return '__evalMockValue';
+
+	// Leave numbers, booleans, arrays, and non-RL objects alone — those failures
+	// stem from genuinely wrong configurations the verifier should call out.
+	return current;
 }
