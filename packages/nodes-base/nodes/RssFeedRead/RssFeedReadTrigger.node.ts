@@ -17,6 +17,23 @@ interface PollData {
 	lastTimeChecked?: string;
 }
 
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'message' in error &&
+		typeof error.message === 'string'
+	) {
+		return error.message;
+	}
+
+	return String(error);
+}
+
 export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Feed Trigger',
@@ -61,14 +78,25 @@ export class RssFeedReadTrigger implements INodeType {
 		try {
 			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {
-			if (error.code === 'ECONNREFUSED') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
-				);
+			const node = this.getNode();
+			const isConnectionRefusedError =
+				typeof error === 'object' &&
+				error !== null &&
+				'code' in error &&
+				error.code === 'ECONNREFUSED';
+			const errorMessage = isConnectionRefusedError
+				? `It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`
+				: getErrorMessage(error);
+
+			if (node.onError === 'continueErrorOutput') {
+				return [[{ json: { error: errorMessage } }]];
 			}
 
-			throw new NodeOperationError(this.getNode(), error as Error);
+			if (isConnectionRefusedError) {
+				throw new NodeOperationError(node, errorMessage);
+			}
+
+			throw new NodeOperationError(node, error as Error);
 		}
 
 		const returnData: IDataObject[] = [];
