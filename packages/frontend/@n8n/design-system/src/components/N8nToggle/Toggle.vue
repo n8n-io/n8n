@@ -59,6 +59,7 @@ const classes = computed(() =>
 		props.class,
 	),
 );
+
 const uncontrolledPressed = ref(props.modelValue ?? false);
 
 const pressed = computed({

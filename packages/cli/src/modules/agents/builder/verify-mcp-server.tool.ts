@@ -1,5 +1,6 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider, McpClient } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import { z } from 'zod';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -35,7 +36,7 @@ const verifyMcpServerInputSchema = z.object({
 		.default('streamableHttp')
 		.describe('Transport type. Defaults to streamableHttp'),
 	authentication: z
-		.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api'])
+		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
 		.default('none')
 		.describe('Authentication scheme'),
 	credential: z

@@ -1,9 +1,12 @@
 import { Service } from '@n8n/di';
 import { In } from '@n8n/db';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
+import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';
 import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository';
 
 /**
@@ -50,5 +53,14 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		});
 
 		return result.affected ?? 0;
+	}
+
+	async countConnectedUsers(credentialId: string): Promise<number> {
+		return await this.repository.countBy({ credentialId });
+	}
+
+	async deleteAllUserEntries(credentialId: string, em?: EntityManager): Promise<void> {
+		const manager = em ?? this.repository.manager;
+		await manager.delete(DynamicCredentialUserEntry, { credentialId });
 	}
 }
