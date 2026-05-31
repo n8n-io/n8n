@@ -16,6 +16,16 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
+function withoutTelemetryMetadata(
+	event: RelayEventMap['workflow-post-execute'],
+): Omit<RelayEventMap['workflow-post-execute'], 'telemetryMetadata'> {
+	const eventWithoutTelemetryMetadata = { ...event };
+
+	delete eventWithoutTelemetryMetadata.telemetryMetadata;
+
+	return eventWithoutTelemetryMetadata;
+}
+
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
 	constructor(
@@ -58,6 +68,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'variable-created': (event) => this.variableCreated(event),
@@ -106,6 +117,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-dequeued': (event) => this.jobDequeued(event),
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
+			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
 			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
 			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
 			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
@@ -262,7 +274,8 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, projectId, projectName, ...rest } = event;
+		const { runData, workflow, executionId, projectId, projectName, ...rest } =
+			withoutTelemetryMetadata(event);
 
 		const payload = {
 			...rest,
@@ -572,6 +585,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	private credentialsDeleted({ user, ...rest }: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private credentialsUserDisconnected({
+		user,
+		...rest
+	}: RelayEventMap['credentials-user-disconnected']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.userDisconnected',
 			payload: { ...user, ...rest },
 		});
 	}
@@ -1022,6 +1046,18 @@ export class LogStreamingEventRelay extends EventRelay {
 			default:
 				assertNever(settingName);
 		}
+	}
+
+	@Redactable()
+	private redactionEnforcementUpdated({
+		user,
+		before,
+		after,
+	}: RelayEventMap['redaction-enforcement-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.redaction-enforcement.updated',
+			payload: { ...user, before, after },
+		});
 	}
 
 	// #endregion

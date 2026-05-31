@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -75,9 +76,8 @@ export function getConfigRulesSection(): string {
 }
 
 export function getSchemaReferenceSection(): string {
-	const jsonSchemaText = jsonSchemaToCompactText(
-		zodToJsonSchema(BuilderPromptAgentJsonConfigSchema) as JSONSchema7,
-	);
+	const zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
+	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
 	return `\
 #### Config Schema Reference
 

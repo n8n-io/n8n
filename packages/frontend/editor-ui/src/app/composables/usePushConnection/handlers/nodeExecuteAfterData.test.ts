@@ -4,15 +4,13 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { createRunExecutionData } from 'n8n-workflow';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('nodeExecuteAfterData', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
@@ -21,7 +19,9 @@ describe('nodeExecuteAfterData', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-wf'),
+		);
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -49,7 +49,7 @@ describe('nodeExecuteAfterData', () => {
 			}),
 		);
 
-		stateStore.setActiveExecutionId('exec-1');
+		workflowExecutionStateStore.setActiveExecutionId('exec-1');
 	});
 
 	it('should update node execution data with incoming payload', async () => {

@@ -272,6 +272,7 @@ describe('CredentialsController', () => {
 					isGlobal: true,
 				}),
 				expect.any(Object),
+				expect.any(Object),
 			);
 			expect(emitSpy).toHaveBeenCalledWith('credentials-updated', {
 				user: ownerReq.user,
@@ -345,6 +346,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isGlobal: false,
 				}),
+				expect.any(Object),
 				expect.any(Object),
 			);
 		});
@@ -428,7 +430,12 @@ describe('CredentialsController', () => {
 
 			// ASSERT
 			// Should not include isGlobal in update when not provided
-			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object));
+			expect(updateSpy).toHaveBeenCalledWith(
+				credentialId,
+				expect.any(Object),
+				expect.any(Object),
+				expect.any(Object),
+			);
 			const updatePayload = updateSpy.mock.calls[0][1];
 			expect(updatePayload).not.toHaveProperty('isGlobal');
 		});
@@ -471,6 +478,7 @@ describe('CredentialsController', () => {
 					isResolvable: true,
 				}),
 				expect.any(Object),
+				expect.any(Object),
 			);
 		});
 
@@ -510,6 +518,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isResolvable: true, // Should keep the existing value
 				}),
+				expect.any(Object),
 				expect.any(Object),
 			);
 		});

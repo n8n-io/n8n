@@ -49,6 +49,21 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 	return nodeGraphString;
 }
 
+function getExecutionTelemetryProperties(
+	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
+): ITelemetryTrackProperties {
+	const executionSource = telemetryMetadata?.source ?? 'user';
+
+	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
+
+	const { mockDataSources } = telemetryMetadata ?? {};
+
+	return {
+		execution_source: executionSource,
+		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+	};
+}
+
 @Service()
 export class TelemetryEventRelay extends EventRelay {
 	constructor(
@@ -112,6 +127,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'ldap-general-sync-finished': (event) => this.ldapGeneralSyncFinished(event),
 			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
@@ -608,6 +624,19 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private credentialsUserDisconnected({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['credentials-user-disconnected']) {
+		this.telemetry.track('User disconnected own credential connection', {
+			user_id: user.id,
+			user_role: user.role?.slug,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
 	// #endregion
 
 	// #region LDAP
@@ -888,16 +917,20 @@ export class TelemetryEventRelay extends EventRelay {
 		workflow,
 		runData,
 		userId,
+		telemetryMetadata,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}
+
+		const executionTelemetryProperties = getExecutionTelemetryProperties(telemetryMetadata);
 
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
 			version_cli: N8N_VERSION,
 			success: false,
+			...executionTelemetryProperties,
 			used_dynamic_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
 				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
 			),
@@ -998,6 +1031,7 @@ export class TelemetryEventRelay extends EventRelay {
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
 					used_dynamic_credentials: telemetryProperties.used_dynamic_credentials,
+					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
 					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(
