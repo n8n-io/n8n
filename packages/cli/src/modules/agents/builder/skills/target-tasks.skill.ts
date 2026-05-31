@@ -13,7 +13,8 @@ export function targetTasksSkill(): RuntimeSkill {
 
 Use this to create a recurring scheduled task for the target agent with
 \`create_task\`. A task = a name + an objective (what the agent does each run) + a
-cron schedule.
+cron schedule, stored as a \`{ type: "task", id, enabled }\` ref in the agent
+config (\`config.tasks\`) plus a saved body. The config is the source of truth.
 
 ## Use when
 
@@ -70,12 +71,13 @@ or "refine-it-later" task.
 
 ## Gotchas
 
-- Tasks only run after the agent is published AND the task is enabled. A task you
-  create on an unpublished agent is created disabled and starts once the user
-  publishes and enables it; tell the user this when relevant.
-- \`create_task\` does not edit the agent config; it creates a separate task. It
-  does NOT add tools — if the task needs a tool the agent lacks, add it to the
-  config yourself first.
+- \`create_task\` adds a \`{ type: "task", id, enabled }\` ref to \`config.tasks\` and
+  creates the task body. The task is enabled by default and only starts running
+  once the agent is (re)published; tell the user this when relevant.
+- To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
+  \`enabled: false\`, or drop the ref). Changes take effect on the next publish.
+- \`create_task\` does NOT add tools — if the task needs a tool the agent lacks,
+  add it to the config yourself first.
 
 ## Verify
 

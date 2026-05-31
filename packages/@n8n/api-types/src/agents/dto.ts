@@ -27,6 +27,7 @@ export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
 	objective: agentTaskSchema.shape.objective,
 	cronExpression: agentTaskSchema.shape.cronExpression,
+	// Seeds the config ref's enabled flag; the task body itself has no enabled.
 	enabled: z.boolean().optional().default(true),
 }) {}
 
@@ -34,7 +35,6 @@ export class UpdateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name.optional(),
 	objective: agentTaskSchema.shape.objective.optional(),
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
-	enabled: agentTaskSchema.shape.enabled.optional(),
 }) {}
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 10_000;

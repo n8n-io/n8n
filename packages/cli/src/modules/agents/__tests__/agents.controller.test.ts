@@ -176,7 +176,7 @@ describe('AgentsController tasks', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		const updated = { id: 'task-1' } as never;
 		agentTaskService.update.mockResolvedValue(updated);
-		const payload = { enabled: false } as never;
+		const payload = { name: 'Renamed' } as never;
 
 		const result = await controller.updateTask(
 			req,

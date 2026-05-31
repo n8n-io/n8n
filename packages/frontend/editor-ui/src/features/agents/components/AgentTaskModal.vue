@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
@@ -204,13 +204,12 @@ async function onSave() {
 				base,
 			);
 		} else {
-			const payload: AgentTaskConfig = { ...base, enabled: props.data.isPublished };
-			await createAgentTask(
-				rootStore.restApiContext,
-				props.data.projectId,
-				props.data.agentId,
-				payload,
-			);
+			// New tasks are enabled by default; the config ref carries the flag and
+			// the task starts running once the agent is published.
+			await createAgentTask(rootStore.restApiContext, props.data.projectId, props.data.agentId, {
+				...base,
+				enabled: true,
+			});
 		}
 		props.data.onSaved();
 		closeModal();

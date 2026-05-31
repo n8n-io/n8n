@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { AgentTaskDto } from '@n8n/api-types';
+import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { deleteAgentTask, getAgentTasks, updateAgentTask } from '../composables/useAgentApi';
+import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
-import { parseCron } from '../utils/scheduleBuilder';
+import { getNextScheduleOccurrence, parseCron } from '../utils/scheduleBuilder';
 
 const props = withDefaults(
 	defineProps<{
@@ -18,19 +18,63 @@ const props = withDefaults(
 		agentId: string;
 		disabled?: boolean;
 		isPublished?: boolean;
+		/** Membership + enabled state, the source of truth, from the agent config. */
+		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
 	}>(),
-	{ disabled: false, isPublished: false },
+	{ disabled: false, isPublished: false, taskRefs: () => [] },
 );
+
+const emit = defineEmits<{
+	/** Toggle a task's enabled flag — handled by the parent as a config edit. */
+	toggle: [payload: { id: string; enabled: boolean }];
+	/** A body mutation landed (add/edit/delete); the parent re-syncs config + bodies. */
+	changed: [];
+}>();
+
+type TaskRow = AgentTaskDto & { enabled: boolean };
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
-const tasks = ref<AgentTaskDto[]>([]);
+const bodies = ref<AgentTaskDto[]>([]);
 const loading = ref(false);
 const errorMessage = ref('');
+
+/** Join config refs (membership + enabled) with the fetched bodies. */
+const tasks = computed<TaskRow[]>(() => {
+	const bodiesById = new Map(bodies.value.map((body) => [body.id, body]));
+	return props.taskRefs
+		.map((ref) => {
+			const body = bodiesById.get(ref.id);
+			return body ? { ...body, enabled: ref.enabled } : null;
+		})
+		.filter((task): task is TaskRow => task !== null);
+});
+
+const MAX_VISIBLE_TASKS = 5;
+const listRef = ref<HTMLUListElement | null>(null);
+const listMaxHeight = ref<string>();
+let resizeObserver: ResizeObserver | undefined;
+
+// Cap the list at the bottom of the 5th row so any further tasks scroll. Measured
+// from the rendered rows so it stays correct even when rows have different heights.
+function measureListHeight() {
+	const list = listRef.value;
+	if (!list || tasks.value.length <= MAX_VISIBLE_TASKS) {
+		listMaxHeight.value = undefined;
+		return;
+	}
+	const first = list.children.item(0);
+	const fifth = list.children.item(MAX_VISIBLE_TASKS - 1);
+	if (!(first instanceof HTMLElement) || !(fifth instanceof HTMLElement)) {
+		listMaxHeight.value = undefined;
+		return;
+	}
+	listMaxHeight.value = `${fifth.offsetTop - first.offsetTop + fifth.offsetHeight}px`;
+}
 
 function toErrorMessage(error: unknown, fallbackKey: BaseTextKey): string {
 	return error instanceof Error && error.message ? error.message : i18n.baseText(fallbackKey);
@@ -40,7 +84,7 @@ async function reload() {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
-		tasks.value = await getAgentTasks(rootStore.restApiContext, props.projectId, props.agentId);
+		bodies.value = await getAgentTasks(rootStore.restApiContext, props.projectId, props.agentId);
 	} catch (error) {
 		errorMessage.value = toErrorMessage(error, 'agents.builder.tasks.loadError');
 	} finally {
@@ -50,13 +94,31 @@ async function reload() {
 
 onMounted(reload);
 
-// Reload when the builder signals a change (e.g. it created a task via create_task).
+onBeforeUnmount(() => resizeObserver?.disconnect());
+
+// Reload the bodies when the parent signals a change (add/edit/delete, or a
+// builder create_task).
 watch(
 	() => props.reloadKey,
 	() => {
 		void reload();
 	},
 );
+
+// Recompute the cap after the rows render (bodies fetched or refs changed).
+watch(tasks, async () => {
+	await nextTick();
+	measureListHeight();
+});
+
+// Re-measure when row heights change (e.g. the editor column is resized).
+watch(listRef, (list) => {
+	resizeObserver?.disconnect();
+	if (list && typeof ResizeObserver !== 'undefined') {
+		resizeObserver = new ResizeObserver(() => measureListHeight());
+		resizeObserver.observe(list);
+	}
+});
 
 function openModal(task: AgentTaskDto | null) {
 	uiStore.openModalWithData({
@@ -66,7 +128,7 @@ function openModal(task: AgentTaskDto | null) {
 			agentId: props.agentId,
 			task,
 			isPublished: props.isPublished,
-			onSaved: reload,
+			onSaved: () => emit('changed'),
 		},
 	});
 }
@@ -75,22 +137,15 @@ function onAdd() {
 	openModal(null);
 }
 
-function onEdit(task: AgentTaskDto) {
+function onEdit(task: TaskRow) {
 	openModal(task);
 }
 
-async function onToggle(task: AgentTaskDto, enabled: boolean) {
-	try {
-		await updateAgentTask(rootStore.restApiContext, props.projectId, props.agentId, task.id, {
-			enabled,
-		});
-		await reload();
-	} catch (error) {
-		errorMessage.value = toErrorMessage(error, 'agents.builder.tasks.saveError');
-	}
+function onToggle(task: TaskRow, enabled: boolean) {
+	emit('toggle', { id: task.id, enabled });
 }
 
-async function onDelete(task: AgentTaskDto) {
+async function onDelete(task: TaskRow) {
 	const confirmed = await openAgentConfirmationModal({
 		title: i18n.baseText('agents.builder.tasks.deleteConfirm.title'),
 		description: i18n.baseText('agents.builder.tasks.deleteConfirm.description'),
@@ -101,7 +156,7 @@ async function onDelete(task: AgentTaskDto) {
 
 	try {
 		await deleteAgentTask(rootStore.restApiContext, props.projectId, props.agentId, task.id);
-		await reload();
+		emit('changed');
 	} catch (error) {
 		errorMessage.value = toErrorMessage(error, 'agents.builder.tasks.deleteError');
 	}
@@ -120,7 +175,7 @@ function dayName(dayOfWeek: number): string {
 	);
 }
 
-function scheduleSummary(task: AgentTaskDto): string {
+function scheduleSummary(task: TaskRow): string {
 	const parts = parseCron(task.cronExpression);
 	if (!parts) return task.cronExpression;
 
@@ -145,7 +200,7 @@ function scheduleSummary(task: AgentTaskDto): string {
 	}
 }
 
-function formatDate(iso: string): string {
+function formatDate(date: Date): string {
 	return new Intl.DateTimeFormat(undefined, {
 		timeZone: rootStore.timezone,
 		weekday: 'short',
@@ -153,15 +208,19 @@ function formatDate(iso: string): string {
 		month: 'short',
 		hour: 'numeric',
 		minute: '2-digit',
-	}).format(new Date(iso));
+	}).format(date);
 }
 
-function runSummary(task: AgentTaskDto): string {
+function runSummary(task: TaskRow): string {
 	const parts: string[] = [];
-	if (task.nextRunAt) {
+	// Next run is derived from the schedule + enabled state (the config ref).
+	const nextRun = task.enabled
+		? getNextScheduleOccurrence(task.cronExpression, rootStore.timezone)
+		: null;
+	if (nextRun) {
 		parts.push(
 			i18n.baseText('agents.builder.tasks.nextRun', {
-				interpolate: { time: formatDate(task.nextRunAt) },
+				interpolate: { time: formatDate(nextRun) },
 			}),
 		);
 	}
@@ -172,7 +231,9 @@ function runSummary(task: AgentTaskDto): string {
 				: 'agents.builder.tasks.status.success';
 		parts.push(
 			i18n.baseText('agents.builder.tasks.lastRun', {
-				interpolate: { time: `${formatDate(task.lastRunAt)} (${i18n.baseText(statusKey)})` },
+				interpolate: {
+					time: `${formatDate(new Date(task.lastRunAt))} (${i18n.baseText(statusKey)})`,
+				},
 			}),
 		);
 	}
@@ -218,7 +279,12 @@ function runSummary(task: AgentTaskDto): string {
 			</N8nText>
 		</div>
 
-		<ul v-else :class="$style.list">
+		<ul
+			v-else
+			ref="listRef"
+			:class="[$style.list, listMaxHeight && $style.scrollable]"
+			:style="listMaxHeight ? { maxHeight: listMaxHeight } : undefined"
+		>
 			<li
 				v-for="task in tasks"
 				:key="task.id"
@@ -237,13 +303,13 @@ function runSummary(task: AgentTaskDto): string {
 				</div>
 				<div :class="$style.rowActions" @click.stop>
 					<N8nTooltip
-						:content="i18n.baseText('agents.builder.tasks.publishRequired')"
+						:content="i18n.baseText('agents.builder.tasks.publishHint')"
 						:disabled="isPublished"
 						placement="top"
 					>
 						<N8nSwitch2
 							:model-value="task.enabled"
-							:disabled="disabled || !isPublished"
+							:disabled="disabled"
 							data-testid="agent-task-toggle"
 							@update:model-value="(value) => onToggle(task, Boolean(value))"
 						/>
@@ -310,6 +376,14 @@ function runSummary(task: AgentTaskDto): string {
 	margin: 0;
 	padding: 0;
 	list-style: none;
+}
+
+/* Applied once there are more than 5 tasks; max-height is set inline from the
+   measured height of the first 5 rows. scrollbar-gutter keeps row widths stable
+   so wrapping (and the measured height) doesn't change when the scrollbar shows. */
+.scrollable {
+	overflow-y: auto;
+	scrollbar-gutter: stable;
 }
 
 .row {

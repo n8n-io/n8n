@@ -46,6 +46,8 @@ const emit = defineEmits<{
 	'remove-skill': [id: string];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -125,8 +127,11 @@ const i18n = useI18n();
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
 							:reload-key="tasksReloadKey"
 							data-testid="agent-tasks-panel"
+							@toggle="emit('toggle-task', $event)"
+							@changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 

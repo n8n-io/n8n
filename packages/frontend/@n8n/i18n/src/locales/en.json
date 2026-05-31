@@ -6260,7 +6260,7 @@
 	"agents.builder.tasks.description": "Scheduled objectives the agent runs on its own once it's published.",
 	"agents.builder.tasks.add": "Add task",
 	"agents.builder.tasks.empty": "No tasks yet.",
-	"agents.builder.tasks.publishRequired": "Publish the agent to enable tasks.",
+	"agents.builder.tasks.publishHint": "Enabled tasks start running once you publish the agent.",
 	"agents.builder.tasks.nextRun": "Next run {time}",
 	"agents.builder.tasks.lastRun": "Last run {time}",
 	"agents.builder.tasks.neverRun": "Not run yet",

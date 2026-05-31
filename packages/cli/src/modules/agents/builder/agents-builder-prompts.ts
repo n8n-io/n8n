@@ -177,7 +177,9 @@ export const IMPORTANT_SECTION = `\
   steps need a capability the agent is missing (an integration, node/workflow tool,
   or web search), add it to the agent config first — follow the tool-preference
   order above via \`read_config\` + \`patch_config\`/\`write_config\` — before calling
-  \`create_task\`. Tasks run only after the agent is published. Load
+  \`create_task\`. \`create_task\` adds a \`{ type: "task", id, enabled }\` ref to
+  \`config.tasks\` (the config is the source of truth) and the task runs once the
+  agent is published; disable or remove a task by editing \`config.tasks\`. Load
   \`agent-builder-target-tasks\` for the full workflow and the template.
 - Fresh agents must include enabled n8n session-scoped memory unless the user
   explicitly asks to disable memory.`;

@@ -75,6 +75,7 @@ function makeService(
 		mock<AgentExecutionService>(),
 		mock<AgentHistoryRepository>(),
 		mock<AgentSkillsService>(),
+		mock(), // AgentTaskRepository
 		mock(),
 		{ modules } as unknown as AgentsConfig,
 		mock(),

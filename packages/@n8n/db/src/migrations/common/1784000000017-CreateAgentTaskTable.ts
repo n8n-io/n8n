@@ -18,7 +18,6 @@ export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 				column('name').varchar(128).notNull,
 				column('objective').text.notNull,
 				column('cronExpression').varchar(255).notNull,
-				column('enabled').bool.notNull.default(false),
 				column('lastRunAt').timestampTimezone(3),
 				column('lastRunStatus')
 					.varchar(16)

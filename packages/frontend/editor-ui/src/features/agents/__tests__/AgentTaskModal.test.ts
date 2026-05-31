@@ -114,7 +114,7 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('creates a disabled task when the agent is not published', async () => {
+	it('creates the task ref enabled even when the agent is not published', async () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId } = renderModal({ isPublished: false });
 
@@ -127,7 +127,7 @@ describe('AgentTaskModal', () => {
 			{},
 			'p1',
 			'a1',
-			expect.objectContaining({ enabled: false }),
+			expect.objectContaining({ enabled: true }),
 		);
 	});
 
@@ -146,8 +146,6 @@ describe('AgentTaskModal', () => {
 			name: 'Existing',
 			objective: 'Obj',
 			cronExpression: '0 9 * * *',
-			enabled: true,
-			nextRunAt: null,
 			lastRunAt: null,
 			lastRunStatus: null,
 			createdAt: '2026-01-01T00:00:00.000Z',
@@ -175,8 +173,6 @@ describe('AgentTaskModal', () => {
 			name: 'Existing',
 			objective: 'Obj',
 			cronExpression: '0 9 * * *',
-			enabled: true,
-			nextRunAt: null,
 			lastRunAt: null,
 			lastRunStatus: null,
 			createdAt: '2026-01-01T00:00:00.000Z',

@@ -18,6 +18,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentSkillsService } from '../agent-skills.service';
+import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -35,6 +36,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
@@ -73,9 +75,18 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
+// Publish/unpublish call into AgentTaskService via the DI container; the publish
+// hook awaits `registerEnabledForAgent(...).catch(...)`, so the mock must resolve.
+function mockAgentTaskService(): ReturnType<typeof mock<AgentTaskService>> {
+	const taskService = mock<AgentTaskService>();
+	taskService.registerEnabledForAgent.mockResolvedValue(undefined);
+	return taskService;
+}
+
 describe('AgentsService', () => {
 	let service: AgentsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
+	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
 	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
 	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
@@ -92,6 +103,7 @@ describe('AgentsService', () => {
 		jest.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
+		agentTaskRepository = mock<AgentTaskRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
@@ -129,6 +141,7 @@ describe('AgentsService', () => {
 			agentExecutionService,
 			agentHistoryRepository,
 			new AgentSkillsService(logger, agentRepository),
+			agentTaskRepository,
 			publisher,
 			agentsConfig,
 			globalConfig,
@@ -307,6 +320,48 @@ describe('AgentsService', () => {
 				service.updateConfig(agentId, projectId, configWithMissingSkill),
 			).rejects.toThrow('Invalid agent config: Missing skill bodies: missing_skill');
 			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects config saves that reference a missing task body', async () => {
+			const configWithMissingTask = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithMissingTask,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([]);
+
+			await expect(service.updateConfig(agentId, projectId, configWithMissingTask)).rejects.toThrow(
+				'Invalid agent config: Missing task body: missing_task',
+			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('prunes task bodies whose config ref was removed', async () => {
+			const configWithOneTask = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithOneTask,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentTaskRepository.findByAgentId.mockResolvedValue([
+				{ id: 'task-1' },
+				{ id: 'task-2' },
+			] as never);
+
+			await service.updateConfig(agentId, projectId, configWithOneTask);
+
+			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 		});
 
 		it('preserves existing integrations when the inbound config omits the integrations field', async () => {
@@ -554,6 +609,10 @@ describe('AgentsService', () => {
 				value: { transaction: mockTransaction },
 				configurable: true,
 			});
+			// The publish hook awaits AgentTaskService.registerEnabledForAgent via the
+			// DI container; provide a resolving mock so it doesn't instantiate the real
+			// service (which needs a DataSource).
+			Container.set(AgentTaskService, mockAgentTaskService());
 		});
 
 		it('throws NotFoundError when the agent does not exist', async () => {
@@ -677,6 +736,7 @@ describe('AgentsService', () => {
 			);
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
 			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, mockAgentTaskService());
 
 			await service.publishAgent(agentId, projectId, testUser);
 			expect(agent.activeVersionId).toBe('v1');
@@ -1289,6 +1349,7 @@ describe('AgentsService', () => {
 			// service (which would fail resolving DataSource in unit tests).
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
 			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, mockAgentTaskService());
 		});
 
 		it('throws NotFoundError when the agent does not exist', async () => {
@@ -2081,6 +2142,7 @@ describe('AgentsService', () => {
 	describe('delete — chat cleanup', () => {
 		beforeEach(() => {
 			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, mockAgentTaskService());
 		});
 
 		it('removes the test-chat thread + messages after removing the agent', async () => {
@@ -2126,6 +2188,7 @@ describe('AgentsService', () => {
 			});
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
 			Container.set(AgentScheduleService, scheduleService);
+			Container.set(AgentTaskService, mockAgentTaskService());
 		});
 
 		const enableMultiMain = () => {

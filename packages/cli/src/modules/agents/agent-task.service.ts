@@ -9,7 +9,8 @@ import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { CronJob, CronTime } from 'cron';
+import { IsNull, Not } from '@n8n/typeorm';
+import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 
@@ -22,14 +23,19 @@ import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 
 /**
- * Owns an agent's scheduled tasks: CRUD + the entity -> DTO mapping (including
- * the computed `nextRunAt`), plus the cron runtime. One `CronJob` is registered
- * per enabled task of a published agent (leader-only); when it fires, the
- * published agent runs with the task objective and the run is recorded with
- * `source='task'` and the originating `taskId`.
+ * Owns an agent's scheduled tasks. Task bodies (name/objective/cron + run
+ * metadata) live in the `agent_task` table; membership and the `enabled` flag
+ * live in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
+ * skills). The config is the source of truth, so the cron runtime is driven by
+ * the PUBLISHED snapshot (`activeVersion.schema.tasks`): a `CronJob` is
+ * registered per enabled ref of a published agent (leader-only). Adding,
+ * removing, or toggling a task is a draft change that only affects scheduling
+ * once the agent is (re)published.
  */
 @Service()
 export class AgentTaskService {
@@ -52,26 +58,43 @@ export class AgentTaskService {
 		return tasks.map((task) => this.toDto(task));
 	}
 
+	/**
+	 * Create a task body and attach a `{ type:'task', id, enabled }` ref to the
+	 * agent's draft config in one transaction. Does not register a cron job —
+	 * scheduling follows the published config (see `registerEnabledForAgent`).
+	 */
 	async create(agentId: string, dto: CreateAgentTaskDto): Promise<AgentTaskDto> {
 		this.assertValidCron(dto.cronExpression);
 
-		// `create` instantiates the entity so the `@BeforeInsert` id hook runs;
-		// saving a plain object would skip it and insert a NULL primary key.
-		const task = await this.taskRepository.save(
-			this.taskRepository.create({
-				agentId,
-				name: dto.name,
-				objective: dto.objective,
-				cronExpression: dto.cronExpression,
-				enabled: dto.enabled,
-			}),
-		);
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
-		await this.reconcile(task);
-		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId: task.id });
+		const taskId = generateAgentResourceId(
+			'task',
+			(agent.schema.tasks ?? []).map((ref) => ref.id),
+		);
+		const task = this.taskRepository.create({
+			id: taskId,
+			agentId,
+			name: dto.name,
+			objective: dto.objective,
+			cronExpression: dto.cronExpression,
+		});
+
+		this.attachTaskRef(agent, taskId, dto.enabled ?? true);
+		markAgentDraftDirty(agent);
+
+		await this.agentRepository.manager.transaction(async (em) => {
+			await em.save(task);
+			await em.save(agent);
+		});
+
+		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId });
 		return this.toDto(task);
 	}
 
+	/** Update a task body (name/objective/cron); marks the agent draft dirty so the change publishes. */
 	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
 
@@ -81,36 +104,64 @@ export class AgentTaskService {
 		}
 		if (dto.name !== undefined) task.name = dto.name;
 		if (dto.objective !== undefined) task.objective = dto.objective;
-		if (dto.enabled !== undefined) task.enabled = dto.enabled;
 
-		const saved = await this.taskRepository.save(task);
-		await this.reconcile(saved);
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+
+		const saved = await this.agentRepository.manager.transaction(async (em) => {
+			const savedTask = await em.save(task);
+			if (agent) {
+				markAgentDraftDirty(agent);
+				await em.save(agent);
+			}
+			return savedTask;
+		});
+
 		return this.toDto(saved);
 	}
 
-	async setEnabled(agentId: string, taskId: string, enabled: boolean): Promise<AgentTaskDto> {
-		const task = await this.getOrThrow(agentId, taskId);
-		task.enabled = enabled;
-		const saved = await this.taskRepository.save(task);
-		await this.reconcile(saved);
-		return this.toDto(saved);
-	}
-
+	/** Delete a task body and remove its config ref in one transaction. */
 	async delete(agentId: string, taskId: string): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
-		await this.taskRepository.remove(task);
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+
+		if (agent?.schema?.tasks) {
+			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
+			markAgentDraftDirty(agent);
+		}
+
+		await this.agentRepository.manager.transaction(async (em) => {
+			await em.remove(task);
+			if (agent) await em.save(agent);
+		});
+
 		this.deregister(taskId);
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });
 	}
 
+	private attachTaskRef(agent: Agent, taskId: string, enabled: boolean): void {
+		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
+		agent.schema.tasks = [
+			...(agent.schema.tasks ?? []).filter((ref) => ref.id !== taskId),
+			{ type: 'task', id: taskId, enabled },
+		];
+	}
+
 	// ── Scheduling lifecycle ──────────────────────────────────────────────
 
-	/** Register every enabled task of an agent — called when the agent is published. */
+	/**
+	 * Reconcile an agent's cron jobs against its PUBLISHED config — called when
+	 * the agent is published or reverted. Stops jobs no longer enabled/present.
+	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
-		const tasks = await this.taskRepository.findByAgentId(agentId);
-		for (const task of tasks) {
-			if (task.enabled) this.registerOrRefresh(task);
+		const agent = await this.agentRepository.findOne({
+			where: { id: agentId },
+			relations: { activeVersion: true },
+		});
+		if (!agent?.activeVersionId) {
+			this.deregisterAgentTasks(agentId);
+			return;
 		}
+		await this.reconcileAgent(agent);
 	}
 
 	/** Stop all cron jobs belonging to an agent — called on unpublish/delete. */
@@ -123,14 +174,17 @@ export class AgentTaskService {
 
 	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
-		const tasks = await this.taskRepository.findSchedulable();
-		this.logger.debug('[AgentTaskService] Reconnecting schedulable tasks', { count: tasks.length });
-		for (const task of tasks) {
+		const agents = await this.agentRepository.find({
+			where: { activeVersionId: Not(IsNull()) },
+			relations: { activeVersion: true },
+		});
+		this.logger.debug('[AgentTaskService] Reconnecting published agents', { count: agents.length });
+		for (const agent of agents) {
 			try {
-				this.registerOrRefresh(task);
+				await this.reconcileAgent(agent);
 			} catch (error) {
-				this.logger.error('[AgentTaskService] Failed to reconnect task', {
-					taskId: task.id,
+				this.logger.error('[AgentTaskService] Failed to reconnect agent tasks', {
+					agentId: agent.id,
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
@@ -145,20 +199,37 @@ export class AgentTaskService {
 		}
 	}
 
-	/** Reconcile a single task's cron job against its enabled + published state. Never throws. */
-	private async reconcile(task: AgentTask): Promise<void> {
-		try {
-			if (task.enabled && (await this.isAgentPublished(task.agentId))) {
-				this.registerOrRefresh(task);
-			} else {
-				this.deregister(task.id);
-			}
-		} catch (error) {
-			this.logger.warn('[AgentTaskService] Failed to reconcile task schedule', {
-				taskId: task.id,
-				error: error instanceof Error ? error.message : String(error),
-			});
+	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
+	private async reconcileAgent(agent: Agent): Promise<void> {
+		const enabledIds = this.enabledTaskIds(agent);
+
+		for (const [taskId, entry] of this.jobs.entries()) {
+			if (entry.agentId === agent.id && !enabledIds.has(taskId)) this.deregister(taskId);
 		}
+
+		if (enabledIds.size === 0) return;
+
+		const bodies = await this.taskRepository.findByAgentId(agent.id);
+		const byId = new Map(bodies.map((body) => [body.id, body]));
+		for (const taskId of enabledIds) {
+			const body = byId.get(taskId);
+			if (body) {
+				this.registerOrRefresh(body);
+			} else {
+				this.logger.warn('[AgentTaskService] Enabled task ref has no body', {
+					agentId: agent.id,
+					taskId,
+				});
+			}
+		}
+	}
+
+	/** Ids of tasks enabled in the agent's PUBLISHED config snapshot. */
+	private enabledTaskIds(agent: Agent): Set<string> {
+		const publishedConfig = agent.activeVersion?.schema;
+		return new Set(
+			(publishedConfig?.tasks ?? []).filter((ref) => ref.enabled).map((ref) => ref.id),
+		);
 	}
 
 	private registerOrRefresh(task: AgentTask): void {
@@ -197,11 +268,6 @@ export class AgentTaskService {
 		this.logger.info('[AgentTaskService] Deregistered task', { taskId });
 	}
 
-	private async isAgentPublished(agentId: string): Promise<boolean> {
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		return Boolean(agent?.activeVersionId);
-	}
-
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runTask(taskId: string): Promise<void> {
@@ -236,8 +302,11 @@ export class AgentTaskService {
 				this.deregister(taskId);
 				return;
 			}
-			if (!task.enabled) {
-				this.logger.warn('[AgentTaskService] Task fired while disabled', { taskId, agentId });
+			if (!this.enabledTaskIds(agent).has(taskId)) {
+				this.logger.warn('[AgentTaskService] Task fired but not enabled in published config', {
+					taskId,
+					agentId,
+				});
 				this.deregister(taskId);
 				return;
 			}
@@ -391,30 +460,12 @@ export class AgentTaskService {
 		}
 	}
 
-	/**
-	 * Next fire time as an ISO string, or null when the task is disabled or the
-	 * cron can't be parsed. Computed in the instance timezone.
-	 */
-	private computeNextRunAt(cronExpression: string, enabled: boolean): string | null {
-		if (!enabled) return null;
-		try {
-			return new CronTime(cronExpression, this.globalConfig.generic.timezone)
-				.sendAt()
-				.toJSDate()
-				.toISOString();
-		} catch {
-			return null;
-		}
-	}
-
 	private toDto(task: AgentTask): AgentTaskDto {
 		return {
 			id: task.id,
 			name: task.name,
 			objective: task.objective,
 			cronExpression: task.cronExpression,
-			enabled: task.enabled,
-			nextRunAt: this.computeNextRunAt(task.cronExpression, task.enabled),
 			lastRunAt: task.lastRunAt ? task.lastRunAt.toISOString() : null,
 			lastRunStatus: task.lastRunStatus,
 			createdAt: task.createdAt.toISOString(),

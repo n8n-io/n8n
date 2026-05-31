@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import type { AgentTaskDto } from '@n8n/api-types';
+import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,13 +27,10 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 const getAgentTasksSpy = vi.fn();
-const updateAgentTaskSpy = vi.fn();
 const deleteAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
-	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
-	createAgentTask: vi.fn(),
 }));
 
 const confirmSpy = vi.fn();
@@ -41,20 +38,23 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirmSpy }),
 }));
 
-function makeTask(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
+/** Body DTO (no enabled / nextRunAt — those come from the config ref). */
+function makeBody(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
 	return {
 		id: 'task-1',
 		name: 'Daily summary',
 		objective: 'Do X',
 		cronExpression: '0 9 * * *',
-		enabled: true,
-		nextRunAt: '2026-06-01T09:00:00.000Z',
 		lastRunAt: null,
 		lastRunStatus: null,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 		...overrides,
 	};
+}
+
+function taskRef(id = 'task-1', enabled = true): AgentJsonTaskConfig {
+	return { type: 'task', id, enabled };
 }
 
 const stubs = {
@@ -74,7 +74,7 @@ const stubs = {
 function renderSection(props: Record<string, unknown> = {}) {
 	const renderComponent = createComponentRenderer(AgentTasksSection, { global: { stubs } });
 	return renderComponent({
-		props: { projectId: 'p1', agentId: 'a1', ...props },
+		props: { projectId: 'p1', agentId: 'a1', taskRefs: [], ...props },
 	});
 }
 
@@ -85,52 +85,46 @@ describe('AgentTasksSection', () => {
 		getAgentTasksSpy.mockResolvedValue([]);
 	});
 
-	it('renders tasks from the API', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-		const { findByText } = renderSection();
+	it('renders tasks by joining config refs with fetched bodies', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByText } = renderSection({ taskRefs: [taskRef()] });
 		expect(await findByText('Daily summary')).toBeTruthy();
 	});
 
-	it('shows the empty state when there are no tasks', async () => {
-		const { findByTestId } = renderSection();
+	it('shows the empty state when there are no task refs', async () => {
+		const { findByTestId } = renderSection({ taskRefs: [] });
 		expect(await findByTestId('agent-tasks-empty')).toBeTruthy();
 	});
 
-	it('toggling a task calls updateAgentTask with the new enabled value', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask({ enabled: true })]);
-		updateAgentTaskSpy.mockResolvedValue(makeTask({ enabled: false }));
-		const { findByTestId } = renderSection({ isPublished: true });
+	it('toggling a task emits toggle with the new enabled value', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByTestId, emitted } = renderSection({
+			taskRefs: [taskRef('task-1', true)],
+			isPublished: true,
+		});
 
 		await fireEvent.click(await findByTestId('agent-task-toggle'));
 
-		await waitFor(() =>
-			expect(updateAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-1', { enabled: false }),
-		);
+		await waitFor(() => expect(emitted().toggle).toBeTruthy());
+		expect(emitted().toggle[0]).toEqual([{ id: 'task-1', enabled: false }]);
 	});
 
-	it('disables the toggle when the agent is not published', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask({ enabled: false })]);
-		const { findByTestId } = renderSection({ isPublished: false });
-
-		const toggle = await findByTestId('agent-task-toggle');
-		expect(toggle.hasAttribute('disabled')).toBe(true);
-	});
-
-	it('deleting a confirmed task calls deleteAgentTask', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+	it('deleting a confirmed task calls deleteAgentTask and emits changed', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
 		confirmSpy.mockResolvedValue(MODAL_CONFIRM);
 		deleteAgentTaskSpy.mockResolvedValue({ success: true });
-		const { findByTestId } = renderSection();
+		const { findByTestId, emitted } = renderSection({ taskRefs: [taskRef()] });
 
 		await fireEvent.click(await findByTestId('agent-task-delete'));
 
 		await waitFor(() => expect(deleteAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-1'));
+		await waitFor(() => expect(emitted().changed).toBeTruthy());
 	});
 
 	it('does not delete when the confirmation is cancelled', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
 		confirmSpy.mockResolvedValue('cancel');
-		const { findByTestId } = renderSection();
+		const { findByTestId } = renderSection({ taskRefs: [taskRef()] });
 
 		await fireEvent.click(await findByTestId('agent-task-delete'));
 
@@ -139,7 +133,7 @@ describe('AgentTasksSection', () => {
 	});
 
 	it('opening "Add task" opens the task modal via the modal registry', async () => {
-		const { findByTestId } = renderSection({ isPublished: true });
+		const { findByTestId } = renderSection({ taskRefs: [], isPublished: true });
 		await findByTestId('agent-tasks-empty');
 
 		await fireEvent.click(await findByTestId('agent-tasks-add'));
@@ -158,8 +152,8 @@ describe('AgentTasksSection', () => {
 	});
 
 	it('clicking a task row opens the edit modal with that task', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-		const { findByTestId } = renderSection({ isPublished: true });
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByTestId } = renderSection({ taskRefs: [taskRef()], isPublished: true });
 
 		await fireEvent.click(await findByTestId('agent-task-row'));
 

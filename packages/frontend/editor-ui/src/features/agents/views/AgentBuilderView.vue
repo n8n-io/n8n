@@ -829,6 +829,13 @@ function onRemoveSkill(id: string) {
 	onConfigFieldUpdate({ skills: nextSkills });
 }
 
+function onToggleTask(payload: { id: string; enabled: boolean }) {
+	const nextTasks = (localConfig.value?.tasks ?? []).map((taskRef) =>
+		taskRef.id === payload.id ? { ...taskRef, enabled: payload.enabled } : taskRef,
+	);
+	onConfigFieldUpdate({ tasks: nextTasks });
+}
+
 function onOpenAddSkillModal() {
 	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
@@ -1041,6 +1048,8 @@ function onSwitchAgent(nextAgentId: string) {
 				@remove-skill="onRemoveSkill"
 				@update:connected-triggers="onConnectedTriggersUpdate"
 				@trigger-added="onTriggerAdded"
+				@toggle-task="onToggleTask"
+				@tasks-changed="onConfigUpdated"
 			/>
 		</div>
 	</div>

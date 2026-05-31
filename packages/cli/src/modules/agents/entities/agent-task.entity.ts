@@ -24,9 +24,6 @@ export class AgentTask extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	cronExpression: string;
 
-	@Column({ type: 'boolean', default: false })
-	enabled: boolean;
-
 	@DateTimeColumn({ precision: 3, nullable: true })
 	lastRunAt: Date | null;
 

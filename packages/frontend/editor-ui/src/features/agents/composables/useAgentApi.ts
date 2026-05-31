@@ -132,7 +132,7 @@ export const createAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	payload: AgentTaskConfig,
+	payload: AgentTaskConfig & { enabled?: boolean },
 ): Promise<AgentTaskDto> => {
 	return await makeRestApiRequest<AgentTaskDto>(
 		context,

@@ -99,6 +99,7 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -327,6 +328,7 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentSkillsService: AgentSkillsService,
+		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
@@ -689,6 +691,10 @@ export class AgentsService {
 		});
 
 		this.clearRuntimes(agentId);
+
+		// No task reconcile needed: revert restores the draft to the published
+		// config without changing `activeVersion`, so the published task refs that
+		// drive scheduling are unchanged.
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
@@ -1689,6 +1695,22 @@ export class AgentsService {
 
 		this.validateConfigRefs(result.config, entity);
 
+		// Task refs resolve against `agent_task` bodies (a separate table), so
+		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// after the save below. `tasksProvided` also gates the schema overlay.
+		const tasksProvided = result.config.tasks !== undefined;
+		const existingTaskIds = tasksProvided
+			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
+			: [];
+		if (tasksProvided) {
+			const existingTaskIdSet = new Set(existingTaskIds);
+			for (const ref of result.config.tasks ?? []) {
+				if (!existingTaskIdSet.has(ref.id)) {
+					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
+				}
+			}
+		}
+
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
 		// inbound config means "the client isn't touching this", not "clear
@@ -1732,6 +1754,7 @@ export class AgentsService {
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
+			...(tasksProvided ? { tasks: decomposedSchema.tasks } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
@@ -1773,6 +1796,16 @@ export class AgentsService {
 
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
+
+		// Prune task bodies whose ref the client removed. Done after the save so a
+		// failure leaves an orphan row (harmless) rather than a dangling ref.
+		if (tasksProvided) {
+			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
+			if (orphanTaskIds.length > 0) {
+				await this.agentTaskRepository.delete(orphanTaskIds);
+			}
+		}
 
 		// Skip integration reconciliation entirely when the client didn't send
 		// an `integrations` field — `previousIntegrations` and `nextIntegrations`

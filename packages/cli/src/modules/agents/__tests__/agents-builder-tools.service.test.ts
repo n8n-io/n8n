@@ -698,12 +698,10 @@ describe('AgentsBuilderToolsService', () => {
 			cronExpression: '0 9 * * *',
 		};
 
-		function makeTaskDto(enabled: boolean): AgentTaskDto {
+		function makeTaskDto(): AgentTaskDto {
 			return {
 				id: 'task-1',
 				...taskInput,
-				enabled,
-				nextRunAt: null,
 				lastRunAt: null,
 				lastRunStatus: null,
 				createdAt: '2026-01-01T00:00:00.000Z',
@@ -743,10 +741,10 @@ describe('AgentsBuilderToolsService', () => {
 			}
 		});
 
-		it('creates an enabled task when the agent is published', async () => {
+		it('creates a task with the config ref enabled by default', async () => {
 			const { service, agentTaskService, agentRepository } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
-			agentTaskService.create.mockResolvedValue(makeTaskDto(true));
+			agentTaskService.create.mockResolvedValue(makeTaskDto());
 
 			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
 
@@ -755,19 +753,19 @@ describe('AgentsBuilderToolsService', () => {
 				...taskInput,
 				enabled: true,
 			});
-			expect(result).toEqual({ ok: true, task: makeTaskDto(true) });
+			expect(result).toEqual({ ok: true, task: makeTaskDto() });
 		});
 
-		it('creates a disabled task when the agent is not published', async () => {
+		it('enables the task even when the agent is not published', async () => {
 			const { service, agentTaskService, agentRepository } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent);
-			agentTaskService.create.mockResolvedValue(makeTaskDto(false));
+			agentTaskService.create.mockResolvedValue(makeTaskDto());
 
 			await getCreateTaskTool(service).handler!(taskInput, ctx);
 
 			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
 				...taskInput,
-				enabled: false,
+				enabled: true,
 			});
 		});
 

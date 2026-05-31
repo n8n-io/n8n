@@ -77,6 +77,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<AgentExecutionService>(),
 			mock(),
 			mock<AgentSkillsService>(),
+			mock(), // AgentTaskRepository
 			mock(),
 			{ modules: [] } as unknown as AgentsConfig,
 			mock(),

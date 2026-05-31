@@ -563,7 +563,8 @@ export class AgentsBuilderToolsService {
 					'fill every section of the template and know how often/when it should run; if anything is ' +
 					'ambiguous, ask the user clarifying questions (ask_question for choices, or ask in chat for ' +
 					'open-ended details) and only call create_task once the objective is complete and the cadence ' +
-					'is known. Tasks run only after the agent is published. Returns { ok: true, task } or ' +
+					'is known. This adds a `{ type: "task", id, enabled }` ref to the agent config (config.tasks) ' +
+					'and the task starts running once the agent is (re)published. Returns { ok: true, task } or ' +
 					'{ ok: false, errors }.',
 			)
 			.systemInstruction(
@@ -608,12 +609,14 @@ export class AgentsBuilderToolsService {
 					}
 
 					try {
+						// Adds a `{ type:'task', id, enabled }` ref to the agent config and
+						// creates the body. Enabled by default; it starts running once the
+						// agent is (re)published.
 						const task = await this.agentTaskService.create(agentId, {
 							name,
 							objective,
 							cronExpression,
-							// Mirror the Tasks UI: a task can only be enabled once the agent is published.
-							enabled: Boolean(agent.activeVersionId),
+							enabled: true,
 						});
 						return { ok: true, task };
 					} catch (e) {
