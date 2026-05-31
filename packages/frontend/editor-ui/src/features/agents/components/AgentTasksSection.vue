@@ -332,7 +332,7 @@ function runSummary(task: TaskRow): string {
 					<N8nText size="small" color="text-light">{{ scheduleSummary(task) }}</N8nText>
 					<N8nText size="small" color="text-light">{{ runSummary(task) }}</N8nText>
 				</div>
-				<div :class="$style.rowActions" @click.stop>
+				<div :class="$style.rowActions" @click.stop @keydown.stop>
 					<N8nTooltip
 						:content="
 							isPublished

@@ -44,6 +44,16 @@ describe('scheduleBuilder', () => {
 			}
 		});
 
+		it('accepts cron 7 for Sunday and normalizes it to 0', () => {
+			expect(parseCron('0 9 * * 7')).toMatchObject({
+				frequency: 'weekly',
+				dayOfWeek: 0,
+				hour: 9,
+				minute: 0,
+			});
+			expect(parseCron('0 9 * * 0')).toMatchObject({ frequency: 'weekly', dayOfWeek: 0 });
+		});
+
 		it('returns null for crons the builder cannot represent', () => {
 			expect(parseCron('*/5 * * * *')).toBeNull();
 			expect(parseCron('0 9 * 1 *')).toBeNull(); // specific month

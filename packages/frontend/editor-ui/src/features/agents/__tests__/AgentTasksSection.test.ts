@@ -189,6 +189,15 @@ describe('AgentTasksSection', () => {
 		);
 	});
 
+	it('does not open the edit modal when a key is pressed on a row action', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeBody()]);
+		const { findByTestId } = renderSection({ taskRefs: [taskRef()], isPublished: true });
+
+		await fireEvent.keyDown(await findByTestId('agent-task-toggle'), { key: 'Enter' });
+
+		expect(openModalWithDataSpy).not.toHaveBeenCalled();
+	});
+
 	it('shows a Next run line only when the task is enabled in the published config', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeBody()]);
 		const { findByText } = renderSection({

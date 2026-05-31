@@ -73,9 +73,17 @@ export function parseCron(cron: string): ScheduleParts | null {
 	}
 
 	if (domField === '*') {
-		const dayOfWeek = toIntInRange(dowField, 0, 6);
+		// cron allows 7 for Sunday; accept it and normalize to 0 so a valid weekly
+		// schedule doesn't fall back to custom mode.
+		const dayOfWeek = toIntInRange(dowField, 0, 7);
 		if (dayOfWeek === null) return null;
-		return { ...DEFAULT_SCHEDULE_PARTS, frequency: 'weekly', minute, hour, dayOfWeek };
+		return {
+			...DEFAULT_SCHEDULE_PARTS,
+			frequency: 'weekly',
+			minute,
+			hour,
+			dayOfWeek: dayOfWeek === 7 ? 0 : dayOfWeek,
+		};
 	}
 
 	if (dowField === '*') {
@@ -215,8 +223,10 @@ export function describeSchedule(cron: string): ScheduleDescription | null {
 
 /** Localized weekday name. 0 = Sunday .. 6 = Saturday. */
 export function weekdayLabel(dayOfWeek: number, format: 'long' | 'short' = 'long'): string {
-	// 2024-01-07 is a Sunday, so dayOfWeek 0..6 maps to Sun..Sat.
-	return new Intl.DateTimeFormat(undefined, { weekday: format }).format(
+	// 2024-01-07 is a Sunday, so dayOfWeek 0..6 maps to Sun..Sat. Format in UTC to
+	// match the UTC reference date — otherwise negative-offset timezones render
+	// the previous day's name.
+	return new Intl.DateTimeFormat(undefined, { weekday: format, timeZone: 'UTC' }).format(
 		new Date(Date.UTC(2024, 0, 7 + dayOfWeek)),
 	);
 }
