@@ -80,7 +80,7 @@ export class Rocketchat implements INodeType {
 						value: 'subscriptions',
 					},
 					{
-						name: 'Direct Message',
+						name: 'Incoming Message',
 						value: 'im',
 					},
 				],
