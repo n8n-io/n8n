@@ -355,10 +355,15 @@ async function stopN8NStack(
 	uniqueProjectName: string,
 ): Promise<void> {
 	const errors: Error[] = [];
+	// testcontainers stops with timeout:0 (immediate SIGKILL). When collecting
+	// Node V8 coverage we need a graceful SIGTERM + grace so n8n flushes
+	// NODE_V8_COVERAGE to the bind-mounted dir before exit (~1s in practice).
+	// testcontainers `timeout` is in milliseconds (→ docker stop -t seconds).
+	const stopOptions = process.env.N8N_COVERAGE_DIR ? { timeout: 30_000 } : undefined;
 	try {
 		const stopPromises = containers.reverse().map(async (container) => {
 			try {
-				await container.stop();
+				await container.stop(stopOptions);
 			} catch (error) {
 				errors.push(
 					new Error(`Failed to stop container ${container.getId()}: ${getErrorMessage(error)}`),

@@ -15,6 +15,7 @@ import {
 	type QuarantineTestFixtures,
 	type QuarantineWorkerFixtures,
 } from '../fixtures/quarantine';
+import { v8CoverageFixtures } from '../fixtures/v8-coverage';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
@@ -79,7 +80,7 @@ export const test = base.extend<
 	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
-	...currentsFixtures.coverageFixtures,
+	...v8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,

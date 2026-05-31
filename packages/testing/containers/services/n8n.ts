@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer } from 'testcontainers';
 
@@ -12,6 +14,14 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
+
+// When set, each n8n container writes Node V8 coverage (NODE_V8_COVERAGE) to a
+// per-container bind-mounted host dir under N8N_COVERAGE_DIR. The raw V8 (with
+// in-container dist paths) is rewritten to repo dist paths + merged by
+// scripts/collect-backend-coverage.ts. Reuse is disabled in this mode so the
+// process exits and flushes V8 when the stack stops.
+const COVERAGE_HOST_DIR = process.env.N8N_COVERAGE_DIR;
+const CONTAINER_COVERAGE_DIR = '/cov';
 // Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 const N8N_READINESS_PORT = 5678;
 const N8N_STARTUP_TIMEOUT_MS = 60_000;
@@ -157,8 +167,12 @@ async function createContainer(
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);
 
+	const containerEnvironment = COVERAGE_HOST_DIR
+		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
+		: environment;
+
 	let container = new GenericContainer(N8N_IMAGE)
-		.withEnvironment(environment)
+		.withEnvironment(containerEnvironment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
@@ -167,8 +181,19 @@ async function createContainer(
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withLogConsumer(consumer)
-		.withReuse()
 		.withNetwork(network);
+
+	if (COVERAGE_HOST_DIR) {
+		// Per-container host dir → /cov; n8n flushes V8 here on graceful stop.
+		// Reuse must stay off so the process actually exits and flushes.
+		const hostCoverageDir = join(COVERAGE_HOST_DIR, name);
+		mkdirSync(hostCoverageDir, { recursive: true });
+		container = container.withBindMounts([
+			{ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' },
+		]);
+	} else {
+		container = container.withReuse();
+	}
 
 	if (filesToMount?.length) {
 		container = container.withCopyContentToContainer(filesToMount);

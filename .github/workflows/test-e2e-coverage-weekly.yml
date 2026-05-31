@@ -47,15 +47,15 @@ jobs:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Collect coverage JSON
+      - name: Collect raw V8 coverage
         shell: bash
         run: |
-          mkdir -p packages/testing/playwright/.nyc_output/coverage
-          found=$(find /tmp/shards -path '*/.nyc_output/coverage/*.json' 2>/dev/null | wc -l)
-          echo "Found $found coverage JSON files across shards"
-          find /tmp/shards -path '*/.nyc_output/coverage/*.json' \
-            -exec cp {} packages/testing/playwright/.nyc_output/coverage/ \;
-          ls -la packages/testing/playwright/.nyc_output/coverage/ || true
+          mkdir -p packages/testing/playwright/coverage/.cache
+          found=$(find /tmp/shards -path '*/coverage/.cache/*' -type f 2>/dev/null | wc -l)
+          echo "Found $found raw V8 coverage files across shards"
+          find /tmp/shards -path '*/coverage/.cache/*' -type f \
+            -exec cp {} packages/testing/playwright/coverage/.cache/ \;
+          ls -la packages/testing/playwright/coverage/.cache/ || true
 
       - name: Generate Coverage Report
         run: pnpm --filter n8n-playwright coverage:report
