@@ -57,6 +57,7 @@ async function mountColumn() {
 				AgentInfoPanel: true,
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
+				AgentTasksSection: true,
 				AgentSessionsListView: true,
 			},
 		},

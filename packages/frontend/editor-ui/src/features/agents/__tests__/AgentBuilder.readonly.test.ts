@@ -77,6 +77,11 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 						template: '<div data-testid="stub-json" />',
 						props: ['value', 'readOnly', 'copyButtonTestId'],
 					},
+					AgentTasksSection: {
+						name: 'AgentTasksSection',
+						template: '<div data-testid="stub-tasks" />',
+						props: ['projectId', 'agentId', 'disabled', 'isPublished'],
+					},
 					AgentSessionsListView: { template: '<div />' },
 					AgentPanelHeader: { template: '<div />', props: ['title', 'description'] },
 				},

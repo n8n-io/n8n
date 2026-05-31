@@ -14,6 +14,7 @@ import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
+import AgentTasksSection from './AgentTasksSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -114,6 +115,16 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentTasksSection
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:is-published="Boolean(agent?.activeVersionId)"
+							data-testid="agent-tasks-panel"
 						/>
 					</N8nCard>
 
