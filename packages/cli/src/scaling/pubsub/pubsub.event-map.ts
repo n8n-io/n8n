@@ -1,5 +1,5 @@
 import type {
-	AgentCredentialIntegrationConfig,
+	AgentIntegrationConfig,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -202,7 +202,7 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		integration: AgentCredentialIntegrationConfig;
+		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
 	};
 

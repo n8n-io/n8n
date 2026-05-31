@@ -105,7 +105,7 @@ export function getNextScheduleOccurrence(cronExpression: string, timezone: stri
  * explicit sorted set of values it matches, or null when it can't be parsed. A
  * bare `*` returns null so callers decide what "every value" means in context.
  */
-export function expandCronField(field: string, min: number, max: number): number[] | null {
+function expandCronField(field: string, min: number, max: number): number[] | null {
 	const values = new Set<number>();
 
 	for (const token of field.split(',')) {

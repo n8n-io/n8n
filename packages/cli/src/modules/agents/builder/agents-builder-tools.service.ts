@@ -410,8 +410,8 @@ export class AgentsBuilderToolsService {
 
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
-				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every available chat platform with the list of ' +
+				"List integration types that can be added to the agent's `integrations` array. " +
+					'Returns every available chat platform with the list of ' +
 					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
 					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
 					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
@@ -420,13 +420,7 @@ export class AgentsBuilderToolsService {
 					'`credentialType` arg.',
 			)
 			.input(z.object({}))
-			.handler(async () => {
-				const chat = this.agentsService.listChatIntegrations();
-				return [
-					{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
-					...chat,
-				];
-			})
+			.handler(async () => this.agentsService.listChatIntegrations())
 			.build();
 
 		const modelLookup: ModelLookup = {

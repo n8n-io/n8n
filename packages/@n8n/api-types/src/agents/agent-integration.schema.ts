@@ -62,21 +62,6 @@ const credentialIntegrations = [
 	createSimpleIntegrationSchema('linear'),
 ] as const;
 
-export const AgentCredentialIntegrationSchema = z.discriminatedUnion(
-	'type',
-	credentialIntegrations,
-);
-
-export const AgentIntegrationSchema = AgentCredentialIntegrationSchema;
+export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationSchema>;
-export type AgentCredentialIntegrationConfig = AgentIntegrationConfig;
-
-export type AgentCredentialIntegrationDto = AgentCredentialIntegrationConfig;
-export type AgentIntegration = AgentIntegrationConfig;
-
-export function isAgentCredentialIntegration(
-	integration: AgentIntegrationConfig | null | undefined,
-): integration is AgentCredentialIntegrationConfig {
-	return integration !== null && integration !== undefined;
-}

@@ -207,6 +207,21 @@ describe('AgentTaskService', () => {
 			expect(CronJobMock).not.toHaveBeenCalled();
 		});
 
+		it('is a no-op when no field changes (skips the agent write)', async () => {
+			const task = makeTask();
+			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(task);
+
+			const dto = await service.update(AGENT_ID, 'task-1', {
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+			});
+
+			expect(dto.cronExpression).toBe(task.cronExpression);
+			expect(agentRepository.findOne).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
 		it('throws NotFoundError when updating a missing task', async () => {
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(null);
 			await expect(service.update(AGENT_ID, 'missing', { name: 'x' })).rejects.toThrow(

@@ -9,12 +9,11 @@ import type {
 } from '@n8n/agents';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
-	AgentCredentialIntegrationSchema,
+	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
-	isAgentCredentialIntegration,
 	isNodeToolsEnabled,
 	AgentModelSchema,
-	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
@@ -110,7 +109,7 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
-	credentialIntegrations: AgentCredentialIntegrationConfig[];
+	credentialIntegrations: AgentIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
 }
@@ -579,7 +578,7 @@ export class AgentsService {
 		// was a draft. ChatIntegrationService.syncToConfig gates connect on
 		// publish, so the entries sat dormant on agent.integrations; passing
 		// previous=[] makes every persisted integration an addition.
-		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
+		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
 			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
@@ -1762,10 +1761,10 @@ export class AgentsService {
 	 */
 	async saveCredentialIntegration(
 		agent: Agent,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		options: SaveCredentialIntegrationOptions = {},
 	): Promise<Agent> {
-		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
+		const parseResult = AgentIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
 			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
 		}
@@ -1773,15 +1772,11 @@ export class AgentsService {
 		const { type, credentialId } = validated;
 
 		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
-		);
+		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
 
 		agent.integrations = alreadyExists
 			? existing.map((existingIntegration) =>
-					isAgentCredentialIntegration(existingIntegration) &&
-					existingIntegration.type === type &&
-					existingIntegration.credentialId === credentialId
+					existingIntegration.type === type && existingIntegration.credentialId === credentialId
 						? validated
 						: existingIntegration,
 				)
@@ -1810,7 +1805,7 @@ export class AgentsService {
 	): Promise<Agent> {
 		if (!agent.integrations?.length) return agent;
 		const integration = agent.integrations.find(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+			(i) => i.type === type && i.credentialId === credentialId,
 		);
 		if (!integration) return agent;
 		// filter by ref
@@ -2090,7 +2085,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
+			credentialIntegrations: agentEntity.integrations ?? [],
 			integrationType,
 		});
 

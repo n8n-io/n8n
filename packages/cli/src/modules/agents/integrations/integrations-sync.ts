@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { type AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import { type AgentIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
 import type { Agent } from '../entities/agent.entity';
@@ -17,8 +17,8 @@ import type { Agent } from '../entities/agent.entity';
  */
 export async function syncAgentIntegrations(
 	agent: Agent,
-	previous: AgentCredentialIntegrationConfig[],
-	next: AgentCredentialIntegrationConfig[],
+	previous: AgentIntegrationConfig[],
+	next: AgentIntegrationConfig[],
 	logger: Logger,
 ): Promise<void> {
 	try {

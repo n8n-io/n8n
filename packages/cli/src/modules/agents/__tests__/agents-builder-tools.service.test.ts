@@ -140,7 +140,6 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(result).toEqual([
-				{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
 				{
 					type: 'linear',
 					label: 'Linear',

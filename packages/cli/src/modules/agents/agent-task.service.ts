@@ -98,12 +98,25 @@ export class AgentTaskService {
 	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
 
+		let changed = false;
 		if (dto.cronExpression !== undefined) {
 			this.assertValidCron(dto.cronExpression);
-			task.cronExpression = dto.cronExpression;
+			if (dto.cronExpression !== task.cronExpression) {
+				task.cronExpression = dto.cronExpression;
+				changed = true;
+			}
 		}
-		if (dto.name !== undefined) task.name = dto.name;
-		if (dto.objective !== undefined) task.objective = dto.objective;
+		if (dto.name !== undefined && dto.name !== task.name) {
+			task.name = dto.name;
+			changed = true;
+		}
+		if (dto.objective !== undefined && dto.objective !== task.objective) {
+			task.objective = dto.objective;
+			changed = true;
+		}
+
+		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
+		if (!changed) return this.toDto(task);
 
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
 

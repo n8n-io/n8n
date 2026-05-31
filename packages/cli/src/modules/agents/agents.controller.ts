@@ -1,7 +1,7 @@
 import {
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
-	AgentCredentialIntegrationSchema,
+	AgentIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
@@ -13,7 +13,6 @@ import {
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
 	CreateAgentSkillDto,
-	isAgentCredentialIntegration,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 	UpdateAgentSkillDto,
@@ -117,7 +116,7 @@ export class AgentsController {
 	) {}
 
 	private async validateIntegration(dto: unknown) {
-		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
+		const integrationParseResult = await AgentIntegrationSchema.safeParseAsync(dto);
 		if (!integrationParseResult.success) {
 			throw new BadRequestError(integrationParseResult.error.message);
 		}
@@ -928,13 +927,11 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? [])
-			.filter(isAgentCredentialIntegration)
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...('settings' in i ? { settings: i.settings } : {}),
-			}));
+		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
+			type: i.type,
+			credentialId: i.credentialId,
+			...('settings' in i ? { settings: i.settings } : {}),
+		}));
 		return {
 			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
 			integrations: chatIntegrations,

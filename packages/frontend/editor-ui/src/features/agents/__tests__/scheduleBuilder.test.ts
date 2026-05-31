@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildCron,
 	describeSchedule,
-	expandCronField,
 	parseCron,
 	type ScheduleParts,
 } from '../utils/scheduleBuilder';
@@ -54,24 +53,6 @@ describe('scheduleBuilder', () => {
 		});
 	});
 
-	describe('expandCronField', () => {
-		it('expands single values, lists, ranges, and steps', () => {
-			expect(expandCronField('3', 0, 59)).toEqual([3]);
-			expect(expandCronField('1,3,5', 0, 6)).toEqual([1, 3, 5]);
-			expect(expandCronField('1-5', 0, 6)).toEqual([1, 2, 3, 4, 5]);
-			expect(expandCronField('*/15', 0, 59)).toEqual([0, 15, 30, 45]);
-			expect(expandCronField('1-5/2', 0, 6)).toEqual([1, 3, 5]);
-			expect(expandCronField('5,1-3', 0, 6)).toEqual([1, 2, 3, 5]);
-		});
-
-		it('returns null for a bare star, out-of-range, or invalid tokens', () => {
-			expect(expandCronField('*', 0, 6)).toBeNull();
-			expect(expandCronField('7', 0, 6)).toBeNull();
-			expect(expandCronField('5-1', 0, 6)).toBeNull();
-			expect(expandCronField('abc', 0, 6)).toBeNull();
-		});
-	});
-
 	describe('describeSchedule', () => {
 		it('labels weekday and weekend day-of-week sets', () => {
 			expect(describeSchedule('0 8 * * 1-5')).toEqual({ kind: 'weekdays', minute: 0, hour: 8 });
@@ -81,6 +62,21 @@ describe('scheduleBuilder', () => {
 
 		it('describes arbitrary day-of-week lists', () => {
 			expect(describeSchedule('30 7 * * 1,3,5')).toEqual({
+				kind: 'daysOfWeek',
+				minute: 30,
+				hour: 7,
+				days: [1, 3, 5],
+			});
+		});
+
+		it('expands day-of-week ranges and steps when describing', () => {
+			expect(describeSchedule('0 9 * * */2')).toEqual({
+				kind: 'daysOfWeek',
+				minute: 0,
+				hour: 9,
+				days: [0, 2, 4, 6],
+			});
+			expect(describeSchedule('30 7 * * 1-5/2')).toEqual({
 				kind: 'daysOfWeek',
 				minute: 30,
 				hour: 7,
@@ -103,6 +99,8 @@ describe('scheduleBuilder', () => {
 			expect(describeSchedule('0 9 * 1 *')).toBeNull(); // specific month
 			expect(describeSchedule('0 9 * * *')).toBeNull(); // plain daily — parseCron handles it
 			expect(describeSchedule('not a cron')).toBeNull();
+			expect(describeSchedule('0 9 * * 8')).toBeNull(); // day-of-week out of range
+			expect(describeSchedule('0 9 * * abc')).toBeNull(); // invalid day-of-week token
 		});
 	});
 });
