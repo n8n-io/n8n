@@ -75,6 +75,14 @@ export class Rocketchat implements INodeType {
 						name: 'Chat',
 						value: 'chat',
 					},
+					{
+						name: 'Subscription',
+						value: 'subscriptions',
+					},
+					{
+						name: 'Direct Message',
+						value: 'im',
+					},
 				],
 				default: 'chat',
 			},
@@ -97,6 +105,66 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'postMessage',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['subscriptions'],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'get',
+						description: 'Retrieve a list of subscriptions',
+						action: 'Get Subscriptions',
+					},
+					{
+						name: 'Mark As Read',
+						value: 'read',
+						description: 'Mark a message as read',
+						action: 'Mark As Read',
+					},
+				],
+				default: 'get',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['im'],
+					},
+				},
+				options: [
+					{
+						name: 'Get Messages',
+						value: 'messages',
+						description: 'Retrieve a list of messages',
+						action: 'Get Messages',
+					},
+				],
+				default: 'messages',
+			},
+			{
+				displayName: 'Room ID',
+				name: 'roomId',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['subscriptions', 'im'],
+						operation: ['read', 'messages'],
+					},
+				},
+				default: '',
+				description: 'The channel name with the prefix in front of it',
 			},
 			{
 				displayName: 'Channel',
@@ -476,6 +544,33 @@ export class Rocketchat implements INodeType {
 							'POST',
 							'postMessage',
 							body,
+						);
+					}
+				} else if (resource === 'subscriptions') {
+					if (operation === 'get') {
+						responseData = await rocketchatApiRequest.call(
+							this,
+							'/subscriptions',
+							'GET',
+							'get',
+							{},
+						);
+					} else if (operation === 'read') {
+						const roomId = this.getNodeParameter('roomId', i) as string;
+						responseData = await rocketchatApiRequest.call(this, '/subscriptions', 'POST', 'read', {
+							rid: roomId,
+						});
+					}
+				} else if (resource === 'im') {
+					if (operation === 'messages') {
+						const roomId = this.getNodeParameter('roomId', i) as string;
+						responseData = await rocketchatApiRequest.call(
+							this,
+							'/im',
+							'GET',
+							'messages',
+							{},
+							{ roomId },
 						);
 					}
 				}
