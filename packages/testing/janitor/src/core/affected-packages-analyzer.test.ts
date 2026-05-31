@@ -76,18 +76,41 @@ describe('affectedPackages', () => {
 	});
 
 	it('includes transitive downstream packages', () => {
+		// Uses non-global-trigger package names so this exercises the dep-graph
+		// walk, not the workspace-wide bailout (workflow/core ARE global triggers).
 		const rootDir = makeFixture({
 			patterns: ['packages/*'],
 			packages: {
-				'packages/workflow': { name: 'workflow' },
-				'packages/core': { name: 'core', deps: ['workflow'] },
-				'packages/cli': { name: 'cli', deps: ['core'] },
+				'packages/lib': { name: 'lib' },
+				'packages/mid': { name: 'mid', deps: ['lib'] },
+				'packages/app': { name: 'app', deps: ['mid'] },
 				'packages/unrelated': { name: 'unrelated' },
 			},
 		});
-		expect(affectedPackages({ rootDir, changedFiles: ['packages/workflow/src/index.ts'] })).toEqual(
-			['cli', 'core', 'workflow'],
-		);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/lib/src/index.ts'] })).toEqual([
+			'app',
+			'lib',
+			'mid',
+		]);
+	});
+
+	it('expands all packages when a universal sink (workflow/core) changes', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/workflow': { name: 'n8n-workflow' },
+				'packages/core': { name: 'n8n-core' },
+				'packages/unrelated': { name: 'unrelated' },
+			},
+		});
+		expect(
+			affectedPackages({ rootDir, changedFiles: ['packages/workflow/src/Workflow.ts'] }),
+		).toEqual(['n8n-core', 'n8n-workflow', 'unrelated']);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/core/src/x.ts'] })).toEqual([
+			'n8n-core',
+			'n8n-workflow',
+			'unrelated',
+		]);
 	});
 
 	it('expands all packages when pnpm-lock.yaml changes', () => {

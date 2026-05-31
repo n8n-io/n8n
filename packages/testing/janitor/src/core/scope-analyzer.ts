@@ -8,6 +8,7 @@
 import { existsSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
+import { matchesGlobalTrigger } from './global-triggers.js';
 import { toPosix } from './path-utils.js';
 
 export type Runner = 'jest' | 'vitest';
@@ -93,6 +94,16 @@ export type ScopeResult =
 export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	if (options.changedFiles === null) {
 		return { kind: 'full', reason: 'No CHANGED_FILES signal (local dev)' };
+	}
+
+	// Workspace-wide triggers (lockfile, root manifest, universal sinks like
+	// @n8n/db / workflow / core) force RUN_FULL regardless of which package we
+	// are scoping. The dep-graph in affected-packages lists the package as
+	// affected, but the in-package filter below would otherwise SKIP it because
+	// the trigger file lives outside the package — a silent false green.
+	const globalTrigger = options.changedFiles.find(matchesGlobalTrigger);
+	if (globalTrigger) {
+		return { kind: 'full', reason: 'Global trigger changed', trigger: globalTrigger };
 	}
 
 	const absolute = isAbsolute(options.packageDir)
