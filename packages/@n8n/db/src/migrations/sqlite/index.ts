@@ -186,6 +186,7 @@ import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/17
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import type { Migration } from '../migration-types';
+import { CreateAgentTaskTable1784000000017 } from './1784000000017-CreateAgentTaskTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -375,6 +376,7 @@ const sqliteMigrations: Migration[] = [
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	CreateAgentTaskTable1784000000017,
 ];
 
 export { sqliteMigrations };

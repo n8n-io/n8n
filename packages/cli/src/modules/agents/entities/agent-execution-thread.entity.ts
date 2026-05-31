@@ -1,6 +1,7 @@
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
+import { AgentTask } from './agent-task.entity';
 import { Agent } from './agent.entity';
 
 /**
@@ -45,6 +46,15 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Index()
 	@Column({ type: 'varchar', length: 255 })
 	projectId: string;
+
+	@ManyToOne(() => AgentTask, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'taskId' })
+	task?: Relation<AgentTask> | null;
+
+	/** Set when this session was triggered by a scheduled task; null otherwise. */
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	taskId: string | null;
 
 	/** Stable, project-scoped incrementing counter assigned at creation. */
 	@Column({ type: 'int', default: 0 })
