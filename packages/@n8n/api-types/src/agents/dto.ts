@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { interactiveResumeDataSchema } from '../agent-builder-interactive';
 import { Z } from '../zod-class';
+import { agentTaskSchema } from './agent-task.schema';
 
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
@@ -20,6 +21,20 @@ export class UpdateAgentConfigDto extends Z.class({
 export class UpdateAgentScheduleDto extends Z.class({
 	cronExpression: z.string(),
 	wakeUpPrompt: z.string().optional(),
+}) {}
+
+export class CreateAgentTaskDto extends Z.class({
+	name: agentTaskSchema.shape.name,
+	objective: agentTaskSchema.shape.objective,
+	cronExpression: agentTaskSchema.shape.cronExpression,
+	enabled: z.boolean().optional().default(true),
+}) {}
+
+export class UpdateAgentTaskDto extends Z.class({
+	name: agentTaskSchema.shape.name.optional(),
+	objective: agentTaskSchema.shape.objective.optional(),
+	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+	enabled: agentTaskSchema.shape.enabled.optional(),
 }) {}
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 10_000;
