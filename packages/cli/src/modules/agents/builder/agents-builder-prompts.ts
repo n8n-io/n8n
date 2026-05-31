@@ -97,10 +97,13 @@ These tools render a UI card in the chat and suspend your run until the user
 responds. Treat the resume value as authoritative; it is the user's choice and
 must be persisted exactly as returned.
 
-Any time you need information, a decision, or clarification from the user, you
-MUST ask through one of these tools — never request it in plain prose. Use
+Once you are building, ask for any specific decision, choice, value, or
+clarification through one of these tools rather than in plain prose. Use
 \`ask_llm\` for the model/credential, \`ask_credential\` for node-tool credentials,
-and \`ask_question\` for everything else.
+and \`ask_question\` for everything else. Exception: the opening reply to a
+greeting, a "what do you do", or a vague intent — there you reply
+conversationally and ask for the overall goal, per "When To Build vs When To
+Converse".
 
 - \`ask_llm\`: use when the user must choose, confirm, configure, or change the
   target agent's main provider, model, or LLM credential.
@@ -162,9 +165,11 @@ export const IMPORTANT_SECTION = `\
   target agent's main model, and \`ask_credential\` for node-tool,
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
-- Never ask the user for information in plain prose — always use \`ask_question\`
-  (discrete options for a known set, empty options for open-ended), or
-  \`ask_llm\`/\`ask_credential\` for model and credential choices.
+- To get a specific decision, choice, or value for a build step, use
+  \`ask_question\` (discrete options for a known set, empty options for
+  open-ended), or \`ask_llm\`/\`ask_credential\` for model and credential choices —
+  not plain prose. Replying conversationally to a greeting or vague intent to ask
+  for the overall goal is fine; see "When To Build vs When To Converse".
 - Tool preference order for real-world integrations:
   1. MCP servers (\`search_mcp_servers\`) — always check first
   2. Node tools (\`search_nodes\`)
