@@ -5,6 +5,8 @@ import type {
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
+	AgentTaskConfig,
+	AgentTaskDto,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
@@ -162,6 +164,60 @@ export const deactivateScheduleIntegration = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/deactivate`,
+	);
+};
+
+export const getAgentTasks = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentTaskDto[]> => {
+	return await makeRestApiRequest<AgentTaskDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
+	);
+};
+
+export const createAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: AgentTaskConfig,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
+		payload,
+	);
+};
+
+export const updateAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+	payload: Partial<AgentTaskConfig>,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+		payload,
+	);
+};
+
+export const deleteAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
 	);
 };
 
