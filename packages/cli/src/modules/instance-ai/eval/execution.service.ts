@@ -452,6 +452,22 @@ export class EvalExecutionService {
 		for (const node of Object.values(workflow.nodes)) {
 			if (node.disabled) continue;
 			if (pinDataNodeNames.includes(node.name)) continue;
+
+			// First pass: scrub unresolved `placeholder("hint")` sentinels emitted
+			// by the SDK. These serialise as `<__PLACEHOLDER_VALUE__hint__>` and
+			// pass the static `getNodeParametersIssues` check (non-empty string),
+			// but individual nodes' own validators (Slack channel ID format,
+			// resource-locator regex, etc.) reject them at execution time and
+			// the workflow aborts with 'The workflow has issues and cannot be
+			// executed for that reason' — same opaque message as an empty
+			// required parameter. The agent uses `placeholder()` intentionally
+			// for values the user is expected to fill via setup; in eval mode no
+			// setup runs, so we synthesise a value just like we do for any other
+			// mocked credential.
+			if (node.parameters) {
+				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+			}
+
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType) continue;
 
@@ -797,6 +813,33 @@ export class EvalExecutionService {
  * parameters that `getNodeParametersIssues` has already flagged — it never
  * overwrites a non-empty user value.
  */
+/**
+ * Deep-walk a parameter value tree and replace SDK `placeholder("hint")`
+ * sentinel strings (`<__PLACEHOLDER_VALUE__hint__>`) with a synthetic mock
+ * value. Eval mode never reaches the setup wizard that would normally fill
+ * these in — leaving them in place causes individual node validators to fire
+ * 'invalid Channel ID', 'invalid sheet name', etc., which aborts the whole
+ * workflow before any node runs. The mock string keeps the parameter
+ * non-empty and not-sentinel-shaped, satisfying the validator; downstream
+ * HTTP traffic still goes through the wire mock.
+ */
+function scrubPlaceholderValues(value: unknown): unknown {
+	if (typeof value === 'string') {
+		return value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')
+			? '__evalMockValue'
+			: value;
+	}
+	if (Array.isArray(value)) return value.map(scrubPlaceholderValues);
+	if (value !== null && typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			out[key] = scrubPlaceholderValues(child);
+		}
+		return out;
+	}
+	return value;
+}
+
 function synthesizeMissingParamValue(current: unknown): unknown {
 	if (
 		current !== null &&
