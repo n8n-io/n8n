@@ -55,8 +55,10 @@ export class AgentsModule implements ModuleInterface {
 		// mains would run the agent twice for the same tick.
 		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+		const { AgentTaskService } = await import('./agent-task.service');
 		const scheduleService = Container.get(AgentScheduleService);
 		const chatService = Container.get(ChatIntegrationService);
+		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		void chatService.reconnectAll().catch((error) => {
@@ -67,6 +69,11 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.isLeader) {
 			void scheduleService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect schedules on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+			void taskService.reconnectAll().catch((error) => {
+				logger.error('[Agents] Failed to reconnect tasks on startup', {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});

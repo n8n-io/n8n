@@ -171,6 +171,16 @@ export interface ExecuteForSchedulePublishedConfig {
 	memory: AgentMemoryScope;
 }
 
+export interface ExecuteForTaskPublishedConfig {
+	agentId: string;
+	projectId: string;
+	message: string;
+	/** Memory scope — resourceId isolates per-run memory. */
+	memory: AgentMemoryScope;
+	/** The scheduled task this run belongs to; stamped on the session for traceability. */
+	taskId: string;
+}
+
 interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -180,6 +190,7 @@ interface StreamChatResponseConfig {
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
+	taskId?: string;
 }
 
 interface GetRuntimeParams {
@@ -579,6 +590,15 @@ export class AgentsService {
 				);
 		}
 
+		// Register any enabled tasks now that the agent is published and can run.
+		// eslint-disable-next-line import-x/no-cycle
+		const { AgentTaskService } = await import('./agent-task.service');
+		await Container.get(AgentTaskService)
+			.registerEnabledForAgent(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
+			);
+
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return agent;
@@ -622,6 +642,10 @@ export class AgentsService {
 
 		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		Container.get(AgentScheduleService).deregister(agentId);
+
+		// eslint-disable-next-line import-x/no-cycle
+		const { AgentTaskService } = await import('./agent-task.service');
+		Container.get(AgentTaskService).deregisterAgentTasks(agentId);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -674,6 +698,17 @@ export class AgentsService {
 			Container.get(AgentScheduleService).deregister(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop schedule on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
+		try {
+			// eslint-disable-next-line import-x/no-cycle
+			const { AgentTaskService } = await import('./agent-task.service');
+			Container.get(AgentTaskService).deregisterAgentTasks(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to stop tasks on agent delete', {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
@@ -1264,6 +1299,35 @@ export class AgentsService {
 	}
 
 	/**
+	 * Execute a published agent for a scheduled task. Mirrors the schedule run
+	 * path but stamps `source='task'` and the originating `taskId` on the
+	 * recorded session for traceability.
+	 */
+	async *executeForTaskPublished(
+		config: ExecuteForTaskPublishedConfig,
+	): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, message, memory, taskId } = config;
+
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			integrationType: 'task',
+			usePublishedVersion: true,
+		});
+
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			message,
+			memory,
+			projectId: runtime.projectId,
+			source: 'task',
+			taskId,
+		});
+	}
+
+	/**
 	 * Stream an agent response, record it, and yield each chunk.
 	 *
 	 * `config.memory.resourceId` is passed as `persistence.resourceId` to
@@ -1271,8 +1335,17 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, userId, message, memory, projectId, source } =
-			config;
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			userId,
+			message,
+			memory,
+			projectId,
+			source,
+			taskId,
+		} = config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -1319,6 +1392,7 @@ export class AgentsService {
 				record: messageRecord,
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
 				source,
+				taskId,
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution', {

@@ -9,3 +9,7 @@ export function scheduledRunMemoryResourceId(executionUserId: string): string {
 export function integrationMemoryResourceId(integrationType: string, threadId: string): string {
 	return `integration:${integrationType}:${threadId}`;
 }
+
+export function taskRunMemoryResourceId(taskId: string): string {
+	return `task:${taskId}`;
+}

@@ -17,8 +17,10 @@ export interface RecordMessageParams {
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
-	/** Where the message originated from, e.g. 'chat', 'slack'. */
+	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
+	/** When the run was triggered by a scheduled task, the task's id (stamped on the session). */
+	taskId?: string;
 }
 
 export interface ThreadDetail {
@@ -44,7 +46,7 @@ export class AgentExecutionService {
 	 * Creates or updates the thread, then inserts one row into agent_execution.
 	 */
 	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, agentName, projectId, record, source, hitlStatus } = params;
+		const { threadId, agentId, agentName, projectId, record, source, hitlStatus, taskId } = params;
 
 		// Ensure the thread exists and bump its updatedAt
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
@@ -52,6 +54,7 @@ export class AgentExecutionService {
 			agentId,
 			agentName,
 			projectId,
+			taskId,
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
