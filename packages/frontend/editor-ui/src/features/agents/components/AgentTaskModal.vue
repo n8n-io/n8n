@@ -13,9 +13,12 @@ import { createAgentTask, updateAgentTask } from '../composables/useAgentApi';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
+	formatScheduleDateTime,
+	formatTimeOfDay,
 	getNextScheduleOccurrence,
 	parseCron,
 	type ScheduleFrequency,
+	weekdayLabel,
 } from '../utils/scheduleBuilder';
 
 export type AgentTaskModalData = {
@@ -39,6 +42,9 @@ const uiStore = useUIStore();
 
 const task = computed(() => props.data.task ?? null);
 const isEditing = computed(() => Boolean(task.value));
+// Editing a task on a published agent only changes the live schedule on the
+// next publish (see AgentTaskService), so warn before the edit silently no-ops.
+const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
 
 const name = ref('');
 const objective = ref('');
@@ -99,13 +105,7 @@ function onFrequencyChange(value: unknown) {
 }
 
 const dayOfWeekOptions = computed(() =>
-	// 2024-01-07 is a Sunday, so index 0..6 maps to Sun..Sat.
-	Array.from({ length: 7 }, (_, index) => ({
-		value: index,
-		label: new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(
-			new Date(Date.UTC(2024, 0, 7 + index)),
-		),
-	})),
+	Array.from({ length: 7 }, (_, index) => ({ value: index, label: weekdayLabel(index) })),
 );
 
 const dayOfMonthOptions = computed(() =>
@@ -130,9 +130,7 @@ const timeOptions = computed(() => {
 		: [...steps, selectedTime.value].sort((a, b) => a - b);
 	return values.map((totalMinutes) => ({
 		value: totalMinutes,
-		label: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
-			new Date(2024, 0, 1, Math.floor(totalMinutes / 60), totalMinutes % 60),
-		),
+		label: formatTimeOfDay(Math.floor(totalMinutes / 60), totalMinutes % 60),
 	}));
 });
 
@@ -144,14 +142,7 @@ function onMinuteInput(value: string) {
 const nextOccurrenceText = computed(() => {
 	const next = getNextScheduleOccurrence(cronExpression.value, rootStore.timezone);
 	if (!next) return '';
-	return new Intl.DateTimeFormat(undefined, {
-		timeZone: rootStore.timezone,
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short',
-		hour: 'numeric',
-		minute: '2-digit',
-	}).format(next);
+	return formatScheduleDateTime(next, rootStore.timezone);
 });
 
 const errors = computed<{ name?: string; objective?: string; cron?: string }>(() => {
@@ -379,6 +370,15 @@ async function onSave() {
 						{{ visibleErrors.cron }}
 					</N8nText>
 				</div>
+
+				<N8nText
+					v-if="showRepublishHint"
+					:class="$style.help"
+					size="small"
+					data-testid="agent-task-republish-hint"
+				>
+					{{ i18n.baseText('agents.builder.tasks.republishHint') }}
+				</N8nText>
 
 				<N8nText v-if="errorMessage" :class="$style.error" size="small">
 					{{ errorMessage }}

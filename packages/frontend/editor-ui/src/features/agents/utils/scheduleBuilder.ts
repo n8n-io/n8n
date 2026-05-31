@@ -208,3 +208,34 @@ export function describeSchedule(cron: string): ScheduleDescription | null {
 
 	return null;
 }
+
+// ── Display formatting ──────────────────────────────────────────────────────
+// Pure, locale-aware helpers (locale `undefined`, timezone passed in) shared by
+// the Tasks list and modal so schedule rendering stays consistent.
+
+/** Localized weekday name. 0 = Sunday .. 6 = Saturday. */
+export function weekdayLabel(dayOfWeek: number, format: 'long' | 'short' = 'long'): string {
+	// 2024-01-07 is a Sunday, so dayOfWeek 0..6 maps to Sun..Sat.
+	return new Intl.DateTimeFormat(undefined, { weekday: format }).format(
+		new Date(Date.UTC(2024, 0, 7 + dayOfWeek)),
+	);
+}
+
+/** Localized time-of-day, e.g. "9:00 AM". */
+export function formatTimeOfDay(hour: number, minute: number): string {
+	return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
+		new Date(2024, 0, 1, hour, minute),
+	);
+}
+
+/** Localized run timestamp (weekday + date + time) in the given timezone. */
+export function formatScheduleDateTime(date: Date, timezone: string): string {
+	return new Intl.DateTimeFormat(undefined, {
+		timeZone: timezone,
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		hour: 'numeric',
+		minute: '2-digit',
+	}).format(date);
+}

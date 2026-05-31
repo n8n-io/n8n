@@ -35,7 +35,9 @@ import { generateAgentResourceId } from './utils/agent-resource-id';
  * the PUBLISHED snapshot (`activeVersion.schema.tasks`): a `CronJob` is
  * registered per enabled ref of a published agent (leader-only). Adding,
  * removing, or toggling a task is a draft change that only affects scheduling
- * once the agent is (re)published.
+ * once the agent is (re)published. The same contract applies to editing a task
+ * body (name/objective/cron): a live `CronJob` is only (re)registered on
+ * (re)publish, so the source of truth is "republish to apply".
  */
 @Service()
 export class AgentTaskService {
@@ -94,7 +96,14 @@ export class AgentTaskService {
 		return this.toDto(task);
 	}
 
-	/** Update a task body (name/objective/cron); marks the agent draft dirty so the change publishes. */
+	/**
+	 * Update a task body (name/objective/cron). Marks the agent draft dirty but
+	 * deliberately does NOT re-register the live `CronJob`: a running task keeps
+	 * its current schedule until the agent is (re)published (which reconciles via
+	 * `registerEnabledForAgent` -> `registerOrRefresh`). So a cron edit only
+	 * takes effect on the next publish — the documented "republish to apply"
+	 * contract.
+	 */
 	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
 
@@ -288,6 +297,9 @@ export class AgentTaskService {
 		let projectId: string | undefined;
 
 		try {
+			// Body is read fresh each fire, so name/objective edits apply on the
+			// next run. The cron itself is fixed in the live CronJob, so schedule
+			// edits only apply after a republish re-registers the job.
 			const task = await this.taskRepository.findOne({ where: { id: taskId } });
 			if (!task) {
 				this.logger.warn('[AgentTaskService] Task fired for missing task', { taskId });

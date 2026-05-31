@@ -13,9 +13,12 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import {
 	describeSchedule,
+	formatScheduleDateTime,
+	formatTimeOfDay,
 	getNextScheduleOccurrence,
 	parseCron,
 	type ScheduleDescription,
+	weekdayLabel,
 } from '../utils/scheduleBuilder';
 
 const props = withDefaults(
@@ -153,25 +156,6 @@ async function onDelete(task: TaskRow) {
 	}
 }
 
-function formatTimeOfDay(hour: number, minuteValue: number): string {
-	return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(
-		new Date(2024, 0, 1, hour, minuteValue),
-	);
-}
-
-function dayName(dayOfWeek: number): string {
-	// 2024-01-07 is a Sunday, so dayOfWeek 0..6 maps to Sun..Sat.
-	return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(
-		new Date(Date.UTC(2024, 0, 7 + dayOfWeek)),
-	);
-}
-
-function shortDayName(dayOfWeek: number): string {
-	return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(
-		new Date(Date.UTC(2024, 0, 7 + dayOfWeek)),
-	);
-}
-
 /** Render the structured description of a non-simple cron to localized text. */
 function describeExtendedSchedule(desc: ScheduleDescription): string {
 	switch (desc.kind) {
@@ -190,7 +174,7 @@ function describeExtendedSchedule(desc: ScheduleDescription): string {
 		case 'daysOfWeek':
 			return i18n.baseText('agents.builder.tasks.schedule.summary.daysOfWeek', {
 				interpolate: {
-					days: desc.days.map(shortDayName).join(', '),
+					days: desc.days.map((day) => weekdayLabel(day, 'short')).join(', '),
 					time: formatTimeOfDay(desc.hour, desc.minute),
 				},
 			});
@@ -219,7 +203,7 @@ function scheduleSummary(task: TaskRow): string {
 				});
 			case 'weekly':
 				return i18n.baseText('agents.builder.tasks.schedule.summary.weekly', {
-					interpolate: { day: dayName(parts.dayOfWeek), time },
+					interpolate: { day: weekdayLabel(parts.dayOfWeek), time },
 				});
 			case 'monthly':
 				return i18n.baseText('agents.builder.tasks.schedule.summary.monthly', {
@@ -235,17 +219,6 @@ function scheduleSummary(task: TaskRow): string {
 	return task.cronExpression;
 }
 
-function formatDate(date: Date): string {
-	return new Intl.DateTimeFormat(undefined, {
-		timeZone: rootStore.timezone,
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short',
-		hour: 'numeric',
-		minute: '2-digit',
-	}).format(date);
-}
-
 function runSummary(task: TaskRow): string {
 	const parts: string[] = [];
 	// Next run is derived from the schedule + enabled state (the config ref).
@@ -255,7 +228,7 @@ function runSummary(task: TaskRow): string {
 	if (nextRun) {
 		parts.push(
 			i18n.baseText('agents.builder.tasks.nextRun', {
-				interpolate: { time: formatDate(nextRun) },
+				interpolate: { time: formatScheduleDateTime(nextRun, rootStore.timezone) },
 			}),
 		);
 	}
@@ -267,7 +240,7 @@ function runSummary(task: TaskRow): string {
 		parts.push(
 			i18n.baseText('agents.builder.tasks.lastRun', {
 				interpolate: {
-					time: `${formatDate(new Date(task.lastRunAt))} (${i18n.baseText(statusKey)})`,
+					time: `${formatScheduleDateTime(new Date(task.lastRunAt), rootStore.timezone)} (${i18n.baseText(statusKey)})`,
 				},
 			}),
 		);
