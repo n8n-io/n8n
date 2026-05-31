@@ -33,6 +33,10 @@ import {
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { OauthService } from '@/oauth/oauth.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -176,6 +180,8 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly mcpRegistryService: McpRegistryService,
+		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
 	) {}
 
@@ -398,8 +404,10 @@ export class AgentsBuilderToolsService {
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
 				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`). ' +
+					'Returns the schedule trigger plus every available chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
+					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
+					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
 					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
 					'`credentialType` arg.',
@@ -419,7 +427,7 @@ export class AgentsBuilderToolsService {
 				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
 		};
 
-		return [
+		const tools: BuiltTool[] = [
 			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
@@ -431,7 +439,15 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
+			buildVerifyMcpServerTool({
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId,
+			}),
+			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
+
+		return tools;
 	}
 
 	private getSharedTools(

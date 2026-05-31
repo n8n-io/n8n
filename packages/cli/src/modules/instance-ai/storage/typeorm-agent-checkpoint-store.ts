@@ -1,15 +1,15 @@
 import { Service } from '@n8n/di';
 import type { CheckpointStore, SerializableAgentState } from '@n8n/instance-ai';
-import { LessThan, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { LessThan } from '@n8n/typeorm';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
+
+const EXPIRED_CHECKPOINT_MESSAGE =
+	'This action has expired and cannot be resumed. Please start a new turn.';
 
 @Service()
 export class TypeORMAgentCheckpointStore implements CheckpointStore {
-	private readonly loadQueues = new Map<string, Promise<SerializableAgentState | undefined>>();
-
 	constructor(private readonly checkpointRepo: InstanceAiCheckpointRepository) {}
 
 	async save(key: string, state: SerializableAgentState): Promise<void> {
@@ -20,71 +20,76 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			});
 		}
 
+		const existing = await this.checkpointRepo.findOne({ where: { key } });
+		if (existing) {
+			existing.runId = this.getRunId(key);
+			existing.threadId = threadId;
+			existing.resourceId = state.persistence?.resourceId ?? null;
+			existing.state = state;
+			existing.expiredAt = null;
+			await this.checkpointRepo.save(existing);
+			return;
+		}
+
 		const checkpoint = this.checkpointRepo.create({
 			key,
 			runId: this.getRunId(key),
 			threadId,
 			resourceId: state.persistence?.resourceId ?? null,
 			state,
+			expiredAt: null,
 		});
-
 		await this.checkpointRepo.save(checkpoint);
 	}
 
 	async load(key: string): Promise<SerializableAgentState | undefined> {
-		return await this.serializeLoad(key, async () => await this.loadAndDelete(key));
+		const checkpoint = await this.checkpointRepo.findOne({ where: { key } });
+		if (!checkpoint) return undefined;
+		if (checkpoint.expiredAt !== null || checkpoint.state === null) {
+			throw new UserError(EXPIRED_CHECKPOINT_MESSAGE);
+		}
+		return checkpoint.state;
 	}
 
 	async delete(key: string): Promise<void> {
-		await this.checkpointRepo.delete({ key });
+		// Soft-delete: keep the row as a tombstone (mirrors the first-class
+		// agents' N8NCheckpointStorage) so a stale resume gets a clear
+		// "expired" error instead of an indistinguishable "not found".
+		// The heavy state blob is released so the row stays cheap.
+		await this.checkpointRepo.update({ key }, { expiredAt: new Date(), state: null });
 	}
 
-	async deleteOlderThan(olderThan: Date): Promise<number> {
-		const result = await this.checkpointRepo.delete({ updatedAt: LessThan(olderThan) });
+	async markExpiredOlderThan(olderThan: Date): Promise<number> {
+		const result = await this.checkpointRepo
+			.createQueryBuilder()
+			.update()
+			.set({ expiredAt: new Date(), state: null })
+			.where('updatedAt < :olderThan', { olderThan })
+			.andWhere('expiredAt IS NULL')
+			.execute();
 		return result.affected ?? 0;
 	}
 
-	private async loadAndDelete(key: string): Promise<SerializableAgentState | undefined> {
-		return await this.checkpointRepo.manager.transaction(async (manager) => {
-			const repo = manager.getRepository(InstanceAiCheckpoint);
-			const checkpoint = await repo.findOne({
-				where: { key },
-				...(this.supportsPessimisticWriteLock(manager)
-					? { lock: { mode: 'pessimistic_write' as const } }
-					: {}),
-			});
-			if (!checkpoint) return undefined;
+	/**
+	 * Backwards-compat shim for the SDK's `CheckpointStore`-style pruning
+	 * helper that pre-dates the soft-delete switch. The semantics now match
+	 * `markExpiredOlderThan` — the row stays, the blob does not.
+	 */
+	async deleteOlderThan(olderThan: Date): Promise<number> {
+		return await this.markExpiredOlderThan(olderThan);
+	}
 
-			const result = await repo.delete({ key });
-			if (result.affected === 0) return undefined;
-			return checkpoint.state ?? undefined;
+	/** Drop expired tombstones outright once they're past the GC horizon. */
+	async hardDeleteExpiredOlderThan(olderThan: Date): Promise<number> {
+		const result = await this.checkpointRepo.delete({
+			expiredAt: LessThan(olderThan),
 		});
+		return result.affected ?? 0;
 	}
 
 	private getRunId(key: string): string | null {
 		const separatorIndex = key.lastIndexOf(':');
 		if (separatorIndex < 0 || separatorIndex === key.length - 1) return null;
 		return key.slice(separatorIndex + 1);
-	}
-
-	private supportsPessimisticWriteLock(manager: EntityManager): boolean {
-		return manager.connection.options.type === 'postgres';
-	}
-
-	private async serializeLoad(
-		key: string,
-		load: () => Promise<SerializableAgentState | undefined>,
-	): Promise<SerializableAgentState | undefined> {
-		const previous = this.loadQueues.get(key) ?? Promise.resolve(undefined);
-		const next = previous.catch(() => undefined).then(load);
-		this.loadQueues.set(key, next);
-
-		try {
-			return await next;
-		} finally {
-			if (this.loadQueues.get(key) === next) {
-				this.loadQueues.delete(key);
-			}
-		}
 	}
 }

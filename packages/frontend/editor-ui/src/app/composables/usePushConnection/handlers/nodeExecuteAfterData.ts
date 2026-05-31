@@ -2,10 +2,7 @@ import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	createWorkflowDocumentId,
@@ -17,15 +14,15 @@ import {
  */
 export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterData) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
-	);
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		workflowDocumentStore.value.documentId,
+	);
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
 			pushData,

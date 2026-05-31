@@ -155,6 +155,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
 
+			// Pipedrive v2 activities API renamed `user_id` to `owner_id`; remap so the existing
+			// `user_id` parameter (kept for backward compatibility with saved workflows) is accepted.
+			if (body.user_id !== undefined) {
+				body.owner_id = body.user_id;
+				delete body.user_id;
+			}
+
 			// Coerce done to boolean for v2 API
 			if (body.done !== undefined) {
 				body.done = coerceToBoolean(body.done);
