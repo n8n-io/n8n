@@ -1,13 +1,31 @@
 name: 'CI: Instance AI Evals'
 
-# Auto-trigger disabled — run manually via workflow_dispatch.
+# Triggers:
+#   - pull_request (opened / reopened / ready_for_review) with path filter →
+#     auto-runs the `pr` dataset (~6 cases) once per PR state-change. No
+#     `synchronize` event, so subsequent pushes don't re-fire automatically;
+#     this is the cost-bounding choice. To re-run after pushing a fix, use
+#     `workflow_dispatch` below.
+#   - workflow_dispatch → manual trigger; defaults to the `full` suite,
+#     `tier` input lets the operator pick.
 on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    paths:
+      - 'packages/@n8n/instance-ai/src/**'
+      - 'packages/@n8n/instance-ai/evaluations/**'
+      - 'packages/cli/src/modules/instance-ai/**'
+      - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
   workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test'
         required: false
         default: 'master'
+      tier:
+        description: 'Test-case dataset to run (e.g. `pr`, `full`)'
+        required: false
+        default: 'full'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
@@ -23,6 +41,9 @@ jobs:
     if: github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
-      branch: ${{ inputs.branch }}
-      sandbox-provider: ${{ inputs.sandbox-provider }}
+      branch: ${{ inputs.branch || github.head_ref || github.ref_name }}
+      # PR events default to the `pr` dataset (cost-bounded); manual dispatch
+      # respects the operator's choice (default `full`).
+      tier: ${{ inputs.tier || 'pr' }}
+      sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
     secrets: inherit

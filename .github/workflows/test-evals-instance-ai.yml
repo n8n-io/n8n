@@ -9,7 +9,12 @@ on:
         type: string
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         type: string
         default: ''
@@ -25,7 +30,11 @@ on:
         required: false
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         default: ''
       sandbox-provider:
@@ -207,6 +216,7 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
+          TIER: ${{ inputs.tier }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
@@ -214,20 +224,15 @@ jobs:
             URLS+=("http://localhost:$port")
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
-          if [ -n "$FILTER" ]; then
-            pnpm eval:instance-ai \
-              --base-url "$BASE_URLS" \
-              --concurrency 32 \
-              --verbose \
-              --iterations 3 \
-              --filter "$FILTER"
-          else
-            pnpm eval:instance-ai \
-              --base-url "$BASE_URLS" \
-              --concurrency 32 \
-              --verbose \
-              --iterations 3
-          fi
+          ARGS=(
+            --base-url "$BASE_URLS"
+            --concurrency 32
+            --verbose
+            --iterations 3
+          )
+          [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
+          [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
+          pnpm eval:instance-ai "${ARGS[@]}"
 
       # Captures sandbox/builder diagnostic signals that surface during the
       # eval (after migrations finish). Two layers of secret-leak defense:
