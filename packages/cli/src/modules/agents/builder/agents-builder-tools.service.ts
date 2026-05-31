@@ -533,11 +533,9 @@ export class AgentsBuilderToolsService {
 					description: string;
 					body: string;
 				}) => {
+					// Input is already validated against `.input()` (agentSkillSchema
+					// shapes) by the tool runtime before the handler runs.
 					const skill = { name, description, instructions: body };
-					const validation = agentSkillSchema.safeParse(skill);
-					if (!validation.success) {
-						return { ok: false, errors: formatZodErrors(validation.error) };
-					}
 
 					try {
 						const created = await this.agentsService.createSkill(agentId, projectId, skill);
@@ -596,13 +594,8 @@ export class AgentsBuilderToolsService {
 					objective: string;
 					cronExpression: string;
 				}) => {
-					const validation = agentTaskSchema
-						.pick({ name: true, objective: true, cronExpression: true })
-						.safeParse({ name, objective, cronExpression });
-					if (!validation.success) {
-						return { ok: false, errors: formatZodErrors(validation.error) };
-					}
-
+					// Input is already validated against `.input()` (agentTaskSchema
+					// shapes) by the tool runtime before the handler runs.
 					const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 					if (!agent) {
 						return { ok: false, errors: [{ message: 'Agent not found' }] };

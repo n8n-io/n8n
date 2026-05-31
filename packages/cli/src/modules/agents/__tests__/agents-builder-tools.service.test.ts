@@ -659,26 +659,20 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('rejects oversized names and skill bodies before creating the skill', async () => {
-			const { service, agentsService } = makeService();
+		it('enforces name and body size limits via the input schema', () => {
+			const { service } = makeService();
 
-			const result = await getCreateSkillTool(service).handler!(
-				{
-					name: 'a'.repeat(129),
-					description: 'Use when summarizing meeting notes',
-					body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
-				},
-				ctx,
-			);
-
-			expect(result).toEqual({
-				ok: false,
-				errors: expect.arrayContaining([
-					expect.objectContaining({ path: 'name' }),
-					expect.objectContaining({ path: 'instructions' }),
-				]),
+			const result = (
+				getCreateSkillTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({
+				name: 'a'.repeat(129),
+				description: 'Use when summarizing meeting notes',
+				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
-			expect(agentsService.createSkill).not.toHaveBeenCalled();
+
+			expect(result.success).toBe(false);
 		});
 	});
 
@@ -769,19 +763,16 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('rejects an empty objective before creating the task', async () => {
-			const { service, agentTaskService } = makeService();
+		it('requires a non-empty objective via the input schema', () => {
+			const { service } = makeService();
 
-			const result = await getCreateTaskTool(service).handler!(
-				{ name: 'x', objective: '', cronExpression: '0 9 * * *' },
-				ctx,
-			);
+			const result = (
+				getCreateTaskTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ name: 'x', objective: '', cronExpression: '0 9 * * *' });
 
-			expect(result).toEqual({
-				ok: false,
-				errors: expect.arrayContaining([expect.objectContaining({ path: 'objective' })]),
-			});
-			expect(agentTaskService.create).not.toHaveBeenCalled();
+			expect(result.success).toBe(false);
 		});
 
 		it('surfaces a service error (e.g. invalid cron) to the model', async () => {
