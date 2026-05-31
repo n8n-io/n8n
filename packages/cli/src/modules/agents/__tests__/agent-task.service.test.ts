@@ -483,6 +483,20 @@ describe('AgentTaskService', () => {
 			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
+		it('records an error run when no project member is available', async () => {
+			seedJob(service, 'task-1', AGENT_ID);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue([]);
+
+			await runTaskOf(service, 'task-1');
+
+			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(taskRepository.update).toHaveBeenCalledWith(
+				'task-1',
+				expect.objectContaining({ lastRunStatus: 'error' }),
+			);
+		});
+
 		it('skips when the ref is not enabled in the published config', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(false));

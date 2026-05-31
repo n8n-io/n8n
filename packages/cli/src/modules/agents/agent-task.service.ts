@@ -392,6 +392,9 @@ export class AgentTaskService {
 
 			const executionUserId = await this.resolveExecutionUserId(agent);
 			if (!executionUserId) {
+				// Record an error so the misconfiguration surfaces in the UI instead of
+				// the cron silently failing the same way on every tick.
+				await this.recordRun(taskId, 'error');
 				this.logger.warn('[AgentTaskService] No project member available for task run', {
 					taskId,
 					agentId,
