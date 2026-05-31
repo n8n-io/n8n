@@ -176,6 +176,73 @@ export const getNodeItemMessage = z
 	.strict();
 
 /**
+ * `$evaluateExpression(expression, itemIndex?)` — evaluate a nested
+ * expression string at runtime against the same execution context.
+ *
+ * The host recursively invokes the expression engine on the `expression`
+ * string — under the VM engine this re-enters the bridge with a fresh
+ * evaluation. `itemIndex` is optional and defaults to the current item;
+ * the schema mirrors the existing "nonnegative int" constraint used by
+ * the node-data RPCs.
+ */
+export const evaluateExpressionMessage = z
+	.object({
+		type: z.literal('evaluateExpression'),
+		expression: z.string(),
+		itemIndex: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
+ * `ISourceData` — the source record that accompanies a paired-item
+ * traversal step. Mirrors the host interface used by
+ * `WorkflowDataProxy.getPairedItem`.
+ */
+const sourceDataSchema = z
+	.object({
+		previousNode: z.string(),
+		previousNodeOutput: z.number().int().nonnegative().optional(),
+		previousNodeRun: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+/**
+ * `IPairedItemData` — one paired-item record. `sourceOverwrite` lets a
+ * node override the upstream source while the helper walks the ancestry
+ * chain; the field is optional and recurses through the same schema.
+ */
+const pairedItemDataSchema = z
+	.object({
+		item: z.number().int().nonnegative(),
+		input: z.number().int().nonnegative().optional(),
+		sourceOverwrite: sourceDataSchema.optional(),
+	})
+	.strict();
+
+/**
+ * `$getPairedItem(destinationNodeName, incomingSourceData, initialPairedItem)` —
+ * traverse the paired-item ancestry chain back to the named upstream node
+ * and return the matching execution item.
+ *
+ * Two host-side fields are deliberately omitted from the schema:
+ * - `usedMethodName` defaults to `$getPairedItem` on the host; the isolate
+ *   has no reason to spoof a different method name in the error path.
+ * - `nodeBeforeLast` is an internal recursion argument; only the host
+ *   itself sets it during the recursive walk.
+ *
+ * `incomingSourceData` is nullable because the host's signature accepts
+ * `ISourceData | null` (and throws a paired-item-not-found error when null).
+ */
+export const getPairedItemMessage = z
+	.object({
+		type: z.literal('getPairedItem'),
+		destinationNodeName: z.string(),
+		incomingSourceData: sourceDataSchema.nullable(),
+		initialPairedItem: pairedItemDataSchema,
+	})
+	.strict();
+
+/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -194,6 +261,8 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getNodePairedItemMessage,
 	getNodeItemMatchingMessage,
 	getNodeItemMessage,
+	evaluateExpressionMessage,
+	getPairedItemMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

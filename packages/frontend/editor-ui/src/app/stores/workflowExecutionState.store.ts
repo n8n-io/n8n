@@ -13,16 +13,14 @@ import {
 	disposeExecutionDataStore,
 	useExecutionDataStore,
 } from './executionData.store';
-import { createWorkflowDocumentId, useWorkflowDocumentStore } from './workflowDocument.store';
+import { useWorkflowDocumentStore, type WorkflowDocumentId } from './workflowDocument.store';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 
-export type WorkflowExecutionStateId = string;
-
 export type WorkflowExecutionStateChangePayload = {
-	workflowId: WorkflowExecutionStateId;
+	documentId: WorkflowDocumentId;
 	field: WorkflowExecutionStateField;
 };
 
@@ -42,19 +40,18 @@ export type WorkflowExecutionStateField =
 
 export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionStateChangePayload>;
 
-export function createWorkflowExecutionStateId(workflowId: string): WorkflowExecutionStateId {
-	return workflowId;
-}
-
 /**
  * Gets the Pinia store id for a workflow-execution-state store.
  */
-export function getWorkflowExecutionStateStoreId(id: WorkflowExecutionStateId) {
+export function getWorkflowExecutionStateStoreId(id: WorkflowDocumentId) {
 	return `${STORES.WORKFLOW_EXECUTION_STATES}/${id}`;
 }
 
 /**
- * Creates a workflow-execution-state store keyed by workflow id.
+ * Creates a workflow-execution-state store keyed by the workflow document id.
+ * One execution-state store exists per workflow-document store, so the two
+ * share an identity — pass the same `WorkflowDocumentId` (constructed via
+ * `createWorkflowDocumentId`) to both factories.
  *
  * Owns per-workflow execution UI state — active/displayed/previous
  * execution ids, the pending-execution scaffold, chat, debug, webhook wait,
@@ -62,9 +59,10 @@ export function getWorkflowExecutionStateStoreId(id: WorkflowExecutionStateId) {
  * reference. Reads route through `useExecutionDataStore` for execution payloads
  * (or fall back to `pendingExecution` while `activeExecutionId === null`).
  */
-export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
+export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
-		const workflowId = id;
+		const documentId = id;
+		const [workflowId] = id.split('@');
 
 		// --- State ---
 
@@ -104,7 +102,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		function fireChange(action: ChangeAction, field: WorkflowExecutionStateField) {
 			void onWorkflowExecutionStateChange.trigger({
 				action,
-				payload: { workflowId, field },
+				payload: { documentId, field },
 			});
 		}
 
@@ -561,9 +559,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 			}
 
 			if (workflowId) {
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(workflowId),
-				);
+				const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 				workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
 				workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 			}
@@ -595,6 +591,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
 		}
 
 		return {
+			documentId,
 			workflowId,
 			// Read API
 			activeExecutionId: readonly(activeExecutionId),

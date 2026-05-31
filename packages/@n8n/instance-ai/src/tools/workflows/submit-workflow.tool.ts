@@ -10,6 +10,7 @@ import { Tool } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';
+import type { WorkflowStructureIssue } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -58,6 +59,8 @@ export interface SubmitWorkflowAttempt {
 	hasUnresolvedPlaceholders?: boolean;
 	remediation?: RemediationMetadata;
 	errors?: string[];
+	errorDetails?: SubmitWorkflowErrorDetail[];
+	nodeIndex?: Array<{ index: number; name: string }>;
 }
 
 function hashContent(content: string | null): string {
@@ -84,6 +87,100 @@ export function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
 			node.parameters = {};
 		}
 	}
+}
+
+/**
+ * Recover a WorkflowStructureIssue[] from a caught save error by duck typing.
+ *
+ * The CLI adapter throws `WorkflowStructureBadRequestError` (defined in
+ * packages/cli/src/workflow-helpers.ts) which carries `issues: WorkflowStructureIssue[]`.
+ * We can't import the class here without taking a dep on `cli`, so we recognise
+ * the shape: `issues` is a non-empty array whose entries each have an array
+ * `path` and a string `message`.
+ */
+export function extractStructureIssues(error: unknown): WorkflowStructureIssue[] | undefined {
+	if (!error || typeof error !== 'object') return undefined;
+	const candidate = (error as { issues?: unknown }).issues;
+	if (!Array.isArray(candidate) || candidate.length === 0) return undefined;
+	for (const issue of candidate) {
+		if (!issue || typeof issue !== 'object') return undefined;
+		const { path, message } = issue as { path?: unknown; message?: unknown };
+		if (!Array.isArray(path) || typeof message !== 'string') return undefined;
+	}
+	return candidate as WorkflowStructureIssue[];
+}
+
+/**
+ * Build the `nodeIndex` map (cheap — ~10-20 tokens per node) so the AI can
+ * resolve a `nodes[N]` Zod path back to its source-code node by name without
+ * counting entries in its own SDK-builder code.
+ */
+export function buildNodeIndex(json: WorkflowJSON): Array<{ index: number; name: string }> {
+	return (json.nodes ?? []).map((node, index) => ({ index, name: node.name ?? '' }));
+}
+
+/**
+ * Traverse `root` following the Zod issue `path`. Returns whatever lives at
+ * the path, or `undefined` if any segment is missing / out of range.
+ */
+function valueAtPath(root: unknown, path: ReadonlyArray<string | number>): unknown {
+	let cursor: unknown = root;
+	for (const segment of path) {
+		if (cursor === null || cursor === undefined) return undefined;
+		if (typeof segment === 'number') {
+			if (!Array.isArray(cursor)) return undefined;
+			cursor = cursor[segment];
+		} else {
+			if (typeof cursor !== 'object') return undefined;
+			cursor = (cursor as Record<string, unknown>)[segment];
+		}
+	}
+	return cursor;
+}
+
+/**
+ * Format a Zod issue path (mixed string|number segments) as the same bracketed
+ * string the server's error message uses — e.g. `nodes[9].parameters`. Mirrors
+ * `formatWorkflowStructureIssuePath` in `n8n-workflow` but kept inline so we
+ * don't take a runtime dep on it from the tool layer.
+ */
+function formatIssuePath(path: ReadonlyArray<string | number>): string {
+	if (path.length === 0) return 'workflow';
+	return path.reduce<string>((acc, segment) => {
+		if (typeof segment === 'number') return `${acc}[${segment}]`;
+		return acc ? `${acc}.${segment}` : segment;
+	}, '');
+}
+
+/**
+ * Build the per-issue diagnostic array surfaced as `errorDetails` on save
+ * failure. For each issue, attach the smallest sufficient slice of `json`:
+ *   - `nodes[N].*` paths → full `nodeJson` so the AI sees the offending node
+ *   - `connections.<sourceName>.*` paths → the source's `connectionSlice`
+ *   - everything else → no slice; `offendingValue` and `path` carry the signal
+ */
+export function buildErrorDetails(
+	issues: WorkflowStructureIssue[],
+	json: WorkflowJSON,
+): SubmitWorkflowErrorDetail[] {
+	return issues.map((issue) => {
+		const path = issue.path;
+		const detail: SubmitWorkflowErrorDetail = {
+			path: formatIssuePath(path),
+			code: issue.code,
+			message: issue.message,
+			offendingValue: valueAtPath(json, path),
+		};
+
+		const [head, second] = path;
+		if (head === 'nodes' && typeof second === 'number') {
+			detail.nodeJson = json.nodes?.[second];
+		} else if (head === 'connections' && typeof second === 'string') {
+			detail.connectionSlice = json.connections?.[second];
+		}
+
+		return detail;
+	});
 }
 
 /**
@@ -182,6 +279,25 @@ export const submitWorkflowInputSchema = z.object({
 	name: z.string().optional().describe('Workflow name (required for new workflows)'),
 });
 
+/**
+ * Per-issue diagnostic returned alongside `errors[]` when a save fails with a
+ * structured workflow-structure validation error. Carries the smallest sufficient
+ * slice of the submitted JSON so the AI can map a Zod path back to its source code
+ * without counting nodes manually:
+ *   - `path` / `code` / `message` come from the server's Zod issue
+ *   - `offendingValue` is the value found at `path` inside the submitted JSON
+ *   - `nodeJson` is populated when the path is `nodes[N].*` — the full node object
+ *   - `connectionSlice` is populated when the path is `connections.<sourceName>.*`
+ */
+export const submitWorkflowErrorDetailSchema = z.object({
+	path: z.string(),
+	code: z.string(),
+	message: z.string(),
+	offendingValue: z.unknown().optional(),
+	nodeJson: z.unknown().optional(),
+	connectionSlice: z.unknown().optional(),
+});
+
 export const submitWorkflowOutputSchema = z.object({
 	success: z.boolean(),
 	workflowId: z.string().optional(),
@@ -209,11 +325,23 @@ export const submitWorkflowOutputSchema = z.object({
 		})
 		.optional(),
 	errors: z.array(z.string()).optional(),
+	/**
+	 * Structured per-issue diagnostics emitted on save failure. One entry per Zod
+	 * issue, ordered to match `errors[]`.
+	 */
+	errorDetails: z.array(submitWorkflowErrorDetailSchema).optional(),
+	/**
+	 * Index-to-name map for the submitted workflow's nodes. Always emitted when
+	 * `json` reached the save step. Lets the AI translate `nodes[N]` paths in
+	 * error messages back to the named node in its source code in one step.
+	 */
+	nodeIndex: z.array(z.object({ index: z.number().int().min(0), name: z.string() })).optional(),
 	warnings: z.array(z.string()).optional(),
 });
 
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+export type SubmitWorkflowErrorDetail = z.infer<typeof submitWorkflowErrorDetailSchema>;
 
 export interface SubmitWorkflowToolOptions {
 	root?: string;
@@ -512,11 +640,22 @@ export function createSubmitWorkflowTool(
 						`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 					];
 					const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
-					await reportAttempt({ success: false, errors, remediation });
+					const issues = extractStructureIssues(error);
+					const errorDetails = issues ? buildErrorDetails(issues, json) : undefined;
+					const nodeIndex = buildNodeIndex(json);
+					await reportAttempt({
+						success: false,
+						errors,
+						remediation,
+						errorDetails,
+						nodeIndex,
+					});
 					return {
 						success: false,
 						errors,
 						remediation,
+						errorDetails,
+						nodeIndex,
 					};
 				}
 

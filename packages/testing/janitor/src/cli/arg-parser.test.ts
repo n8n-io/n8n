@@ -209,6 +209,23 @@ describe('arg-parser', () => {
 			const result = parseArgs();
 			expect(result.testCommand).toBe('pnpm test');
 		});
+
+		it('parses --jest-variant=unit', () => {
+			setArgs(['--jest-variant=unit']);
+			const result = parseArgs();
+			expect(result.jestVariant).toBe('unit');
+		});
+
+		it('parses --jest-variant=integration', () => {
+			setArgs(['--jest-variant=integration']);
+			const result = parseArgs();
+			expect(result.jestVariant).toBe('integration');
+		});
+
+		it('throws on unknown --jest-variant value', () => {
+			setArgs(['--jest-variant=e2e']);
+			expect(() => parseArgs()).toThrow(/Unknown --jest-variant=e2e/);
+		});
 	});
 
 	describe('combined arguments', () => {
