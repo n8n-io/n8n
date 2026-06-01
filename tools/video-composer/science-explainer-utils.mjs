@@ -85,3 +85,39 @@ export function buildSciencePromptPageBriefs({ pages, analysisPages }) {
 		].join('\n');
 	}).join('\n\n');
 }
+
+export function buildScienceExplainerPrompt({
+	pagesManifest,
+	visualAnalysis,
+	viewpoint = '',
+	narrationMode = 'single_speaker',
+	aspectRatio = '9:16',
+}) {
+	const pageBriefs = buildSciencePromptPageBriefs({
+		pages: pagesManifest.pages,
+		analysisPages: visualAnalysis.pages,
+	});
+	const hasViewpoint = String(viewpoint || '').trim().length > 0;
+
+	return [
+		'你是中文科普短视频脚本作者。',
+		'请遵循 pdf-science-explainer-script skill：观点主导，PDF 文本和页面截图视觉信息负责校验、支持、限制和纠偏。',
+		hasViewpoint
+			? '用户已经提供观点/看法。脚本要围绕这个观点组织，但每个结论都必须被当前 PDF 页面文本或页面截图视觉信息约束。'
+			: '用户没有提供明确观点。请从 PDF 页面中提炼一个克制、适合短视频的科普主线。',
+		'不要把 PDF 逐字读出来。每页只选择 1 到 3 个最适合口播的重点。',
+		'视觉理解只能描述页面可见的标题层级、重点框、图表、表格、示意图、标签或趋势。不要编造页面外数据和科学结论。',
+		'如果页面证据不足，必须用“这一页只能说明”“还不能直接证明”“更像是在提示”等谨慎表达。',
+		'返回严格 JSON，不要 Markdown，不要解释。',
+		'JSON 字段必须是 title, summary, mode, pages。',
+		'pages 中每一项必须包含 pageNumber, pageTitle, visualNotes, evidenceNotes, speakerPrompt, spokenSummary, targetSeconds。',
+		'narration_mode 为 single_speaker 时，speakerPrompt 写成单人口播，不要角色标签。',
+		'narration_mode 为 two_speaker 时，speakerPrompt 可以写成短问答，但必须保持短视频节奏。',
+		'targetSeconds 必须在 12 到 60 秒之间。',
+		`输出比例：${aspectRatio}`,
+		`narration_mode：${narrationMode}`,
+		`用户观点：${viewpoint || '无'}`,
+		'逐页材料：',
+		pageBriefs,
+	].join('\n');
+}
