@@ -304,9 +304,13 @@ export async function execute(
 	if (nodeVersion >= 4) {
 		// `columns.matchingColumns` is required for update — see
 		// `appendOrUpdate.operation.ts` for the matching guard rationale.
-		const matchingColumns = this.getNodeParameter('columns.matchingColumns', 0, undefined) as
-			| string[]
-			| undefined;
+		// Pass an empty-array fallback so `getNodeParameter` doesn't throw the
+		// generic 'Could not get parameter' before our targeted guard fires.
+		const matchingColumns = this.getNodeParameter(
+			'columns.matchingColumns',
+			0,
+			[] as string[],
+		) as string[];
 		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
 			throw new NodeOperationError(
 				this.getNode(),

@@ -334,9 +334,13 @@ export async function execute(
 		// the framework's generic `Could not get parameter` masks the actual
 		// problem. Surface a clear, actionable error instead so the builder can
 		// (re)submit with the right shape.
-		const matchingColumns = this.getNodeParameter('columns.matchingColumns', 0, undefined) as
-			| string[]
-			| undefined;
+		// Pass an empty-array fallback so `getNodeParameter` doesn't throw the
+		// generic 'Could not get parameter' before our targeted guard fires.
+		const matchingColumns = this.getNodeParameter(
+			'columns.matchingColumns',
+			0,
+			[] as string[],
+		) as string[];
 		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
 			throw new NodeOperationError(
 				this.getNode(),
