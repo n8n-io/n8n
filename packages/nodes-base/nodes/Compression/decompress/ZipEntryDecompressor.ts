@@ -54,8 +54,13 @@ export class ZipEntryDecompressor {
 
 	private reject(error: unknown): void {
 		this.entry.terminate();
-		const cause = ensureError(error);
 
+		if (error instanceof UserError) {
+			this.callbacks.onError(error);
+			return;
+		}
+
+		const cause = ensureError(error);
 		this.callbacks.onError(
 			new UserError(
 				`ZIP entry "${this.entry.name}" couldn't be decompressed. Check the archive and try again. Original error: ${cause.message}`,
