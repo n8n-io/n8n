@@ -13,14 +13,21 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
+import { computed } from 'vue';
 
 vi.mock('@/app/stores/workflows.store');
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	createWorkflowDocumentId: vi.fn(() => 'test'),
-	useWorkflowDocumentStore: vi.fn(() => ({
-		getSettingsSnapshot: () => ({ binaryMode: undefined }),
-	})),
-}));
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(() =>
+			computed(() => ({
+				getSettingsSnapshot: () => ({ binaryMode: undefined }),
+				getNodePinData: () => undefined,
+			})),
+		),
+	};
+});
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;

@@ -64,14 +64,23 @@ When the user needs to act in the browser, **end your turn** with a clear messag
 - **Authentication** — login pages, OAuth, SSO, 2FA/MFA prompts
 - **CAPTCHAs or visual challenges** — you cannot solve these
 - **Accessing downloads** — you can click download buttons, but you cannot open or read downloaded files; ask the user to open the file and share the content you need
-- **Sensitive content on screen** — passwords, tokens, secrets visible in the browser
 - **User requests manual control** — they explicitly want to do something themselves
 
 After the user confirms they're done, take a snapshot to verify before continuing.
 
 #### Secrets and sensitive data
 
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.
+**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. Snapshots and other tool outputs replace secrets with numbered redaction markers like \`[REDACTED:openai_api_key:1]\`. Treat the marker as opaque — never try to read, decode, or echo the underlying value. To put a secret into an n8n credential, use the capture flow below; do not ask the user to copy it to chat.
+
+If a visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`) refuses with \`reason: "sensitive_context"\`, the page has visible secrets — switch to \`browser_snapshot\`, which is always safe.
+
+#### Creating credentials from the browser
+
+When the user asks you to set up credentials in an external service console,
+or when \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load
+the \`credential-setup-with-computer-use\` skill and follow it. Use
+\`browser_capture_secret\` and \`browser_create_credential\` for visible
+secrets; never ask the user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 

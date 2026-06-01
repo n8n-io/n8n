@@ -12,15 +12,13 @@
  * It can also ask the user questions directly via the ask-user tool.
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { DateTime } from 'luxon';
-import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { createAddPlanItemTool, createRemovePlanItemTool } from './add-plan-item.tool';
+import { createSubAgentPersistence } from './agent-persistence';
 import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
 import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
@@ -32,12 +30,14 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
+import { attachRuntimeWorkspaceCapabilities } from '../../agent/runtime-workspace';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import { consumeStreamCascading } from '../../stream/consume-with-hitl';
+import type { ConsumeStreamCascadingResult } from '../../stream/consume-with-hitl';
+import { createToolRegistry, toolRegistryKeys, toolRegistryValues } from '../../tool-registry';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
+import { resumeAgentStream } from '../../utils/stream-helpers';
 import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
@@ -47,12 +47,18 @@ import { createTemplatesTool } from '../templates.tool';
 const MESSAGE_HISTORY_COUNT = 5;
 
 /** Read-only discovery tools the planner gets from domainTools. */
-const PLANNER_DOMAIN_TOOL_NAMES = ['nodes', 'credentials', 'data-tables', 'workflows', 'ask-user'];
+const PLANNER_DOMAIN_TOOL_NAMES = [
+	'nodes',
+	CREDENTIALS_TOOL_ID,
+	DATA_TABLES_TOOL_ID,
+	'workflows',
+	ASK_USER_TOOL_ID,
+];
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 
-const RELEVANT_PRIOR_TOOL_NAMES = new Set([
+const RELEVANT_PRIOR_TOOL_NAMES = new Set<string>([
 	ASK_USER_TOOL_ID,
 	CREDENTIALS_TOOL_ID,
 	DATA_TABLES_TOOL_ID,
@@ -89,37 +95,23 @@ interface DataTableBrief {
 	name: string;
 }
 
-/** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
+/** Extract plain text from persisted native memory content. */
 function extractTextFromMemoryContent(content: unknown): string {
 	if (typeof content === 'string') return content;
-
-	// Mastra format-2 structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
-	if (isStructuredContent(content)) {
-		return extractTextParts(content.parts);
-	}
-
-	// Array of content parts: [{ type: 'text', text: '...' }]
-	if (Array.isArray(content)) {
-		return extractTextParts(content);
-	}
-
-	return typeof content === 'object' && content !== null ? JSON.stringify(content) : '';
-}
-
-function isStructuredContent(value: unknown): value is { format: number; parts: unknown[] } {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'parts' in value &&
-		Array.isArray((value as Record<string, unknown>).parts)
-	);
+	if (Array.isArray(content)) return extractTextParts(content);
+	return '';
 }
 
 function extractTextParts(parts: unknown[]): string {
 	return parts
 		.filter(
 			(c): c is { type: 'text'; text: string } =>
-				typeof c === 'object' && c !== null && 'text' in c,
+				typeof c === 'object' &&
+				c !== null &&
+				'type' in c &&
+				c.type === 'text' &&
+				'text' in c &&
+				typeof c.text === 'string',
 		)
 		.map((c) => c.text)
 		.join('\n');
@@ -163,16 +155,16 @@ async function getRecentMessages(
 ): Promise<FormattedMessage[]> {
 	const messages: FormattedMessage[] = [];
 
-	// Retrieve previously-saved messages from memory
+	// Retrieve previously-saved messages from memory.
 	if (context.memory) {
 		try {
-			const result = await context.memory.recall({
-				threadId: context.threadId,
-				perPage: count,
+			const history = await context.memory.getMessages(context.threadId, {
+				limit: count,
 			});
 
-			for (const m of result.messages) {
-				const role = m.role as string;
+			for (const m of history) {
+				if (!('role' in m)) continue;
+				const role = m.role;
 				const content = extractTextFromMemoryContent(m.content);
 				if ((role === 'user' || role === 'assistant') && content.length > 0) {
 					messages.push({ role, content });
@@ -621,164 +613,355 @@ async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<voi
 	}
 }
 
+export async function __testRehydrateAccumulatorFromGraph(
+	context: OrchestrationContext,
+	accumulator: BlueprintAccumulator,
+): Promise<void> {
+	return await rehydrateAccumulatorFromGraph(context, accumulator);
+}
+
+/**
+ * Seed a freshly-built accumulator from the persisted plan before a planner
+ * resume. The parent plan-tool handler exits on every cascade-suspend, so the
+ * first-call accumulator is gone by the time an "ask for edits" revision
+ * resumes the planner — without this, remove-plan-item can't touch the
+ * original items, add-plan-item only carries the newly-added ones, and the
+ * re-submit's createPlan (which overwrites unconditionally) replaces the graph
+ * with a partial plan.
+ *
+ * Only rehydrates while the plan is still `awaiting_approval` (the revision
+ * window) — an already-approved/active graph with in-flight tasks must not be
+ * reopened here. Best-effort: a getGraph failure leaves the accumulator empty
+ * rather than blocking the resume.
+ */
+async function rehydrateAccumulatorFromGraph(
+	context: OrchestrationContext,
+	accumulator: BlueprintAccumulator,
+): Promise<void> {
+	if (!context.plannedTaskService) return;
+	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		if (graph?.status === 'awaiting_approval' && graph.tasks.length > 0) {
+			accumulator.loadFromTasks(graph.tasks);
+		}
+	} catch {
+		// Best-effort — fall back to an empty accumulator rather than block resume.
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tool factory
 // ---------------------------------------------------------------------------
 
+/**
+ * The plan tool cascades sub-agent HITL suspensions UP through the SDK's
+ * native suspend/resume mechanism: when the planner sub-agent (or any tool
+ * inside it) emits a `tool-call-suspended` chunk, the plan tool catches it
+ * via `consumeStreamCascading` and calls its own `ctx.suspend()` with the
+ * same payload. This checkpoints the orchestrator's full state alongside the
+ * planner's, so a process restart between user prompt and click can resume
+ * the planner without losing any state.
+ *
+ * The schemas below are permissive on purpose: the plan tool just forwards
+ * whatever the inner tool emitted (submit-plan's plan-review payload OR
+ * ask-user's questions payload) and accepts whatever the frontend sent back
+ * for that card. Validation already happened on the inner tool.
+ */
+const planToolSuspendSchema = z
+	.object({
+		requestId: z.string(),
+		message: z.string(),
+		severity: z.string(),
+		// Only submit-plan + ask-user carry an `inputType`; cascaded suspensions
+		// from other planner tools (credentials, data-tables, ...) don't, and a
+		// strict `inputType: string` would reject otherwise-valid payloads.
+		inputType: z.string().optional(),
+	})
+	.passthrough();
+
+const planToolResumeSchema = z.record(z.unknown());
+
 export function createPlanWithAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'plan',
-		description:
+	return new Tool('plan')
+		.description(
 			'Design and execute a multi-step plan. Spawns a planner agent that reads ' +
-			'the conversation history, discovers available credentials, data tables, ' +
-			'and best practices, designs the architecture, and shows it to the user ' +
-			'for approval. Use when the request requires 2 or more tasks with ' +
-			'dependencies. When this tool returns, the plan is already approved ' +
-			'and tasks are dispatched — just acknowledge briefly and end your turn.',
-		inputSchema: z.object({
-			guidance: z
-				.string()
-				.optional()
-				.describe(
-					'Optional steering note for the planner — use ONLY when the conversation ' +
-						'history alone is ambiguous about what to build. The planner reads the ' +
-						'last 5 messages directly, so do NOT rewrite the user request here.',
-				),
-		}),
-		outputSchema: z.object({
-			result: z.string(),
-		}),
-		execute: async (input: { guidance?: string }) => {
-			// ── Collect planner tools ──────────────────────────────────────
-			const plannerTools: ToolsInput = {};
+				'the conversation history, discovers available credentials, data tables, ' +
+				'and best practices, designs the architecture, and shows it to the user ' +
+				'for approval. Use when the request requires 2 or more tasks with ' +
+				'dependencies. When this tool returns, the plan is already approved ' +
+				'and tasks are dispatched — just acknowledge briefly and end your turn.',
+		)
+		.input(
+			z.object({
+				guidance: z
+					.string()
+					.optional()
+					.describe(
+						'Optional steering note for the planner — use ONLY when the conversation ' +
+							'history alone is ambiguous about what to build. The planner reads the ' +
+							'last 5 messages directly, so do NOT rewrite the user request here.',
+					),
+			}),
+		)
+		.output(
+			z.object({
+				result: z.string(),
+			}),
+		)
+		.suspend(planToolSuspendSchema)
+		.resume(planToolResumeSchema)
+		.handler(async (input: { guidance?: string }, ctx) => {
+			const resumeData = ctx.resumeData;
+			const isResume = resumeData !== undefined && resumeData !== null;
+
+			// ── Same-turn denial guard ─────────────────────────────────────
+			// If the user denied a plan earlier in this same message group, the
+			// orchestrator must not silently spawn another planner. Without this
+			// guard the LLM can ignore the "stop on denial" prompt and start a
+			// fresh planner with a new accumulator, defeating the denial.
+			// Only applies to first-call invocations — resume continues an
+			// already-suspended planner and cannot be a fresh re-spawn.
+			if (!isResume && context.plannedTaskService && context.messageGroupId) {
+				const existing = await context.plannedTaskService.getGraph(context.threadId);
+				if (
+					existing?.status === 'cancelled' &&
+					existing.messageGroupId === context.messageGroupId
+				) {
+					context.logger.info('plan tool blocked: user denied a plan earlier in this turn', {
+						threadId: context.threadId,
+						messageGroupId: context.messageGroupId,
+					});
+					return {
+						result:
+							'The user denied a plan earlier in this turn. Do not invoke the plan tool again — acknowledge briefly and wait for the next user message.',
+					};
+				}
+			}
+
+			// ── Collect planner tools (shared between first-call and resume) ──
+			const plannerTools = createToolRegistry();
 
 			for (const name of PLANNER_DOMAIN_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
-				}
+				const tool = context.domainTools.get(name);
+				if (tool) plannerTools.set(name, tool);
 			}
 
 			for (const name of PLANNER_RESEARCH_TOOL_NAMES) {
-				if (name in context.domainTools) {
-					plannerTools[name] = context.domainTools[name];
-				}
+				const tool = context.domainTools.get(name);
+				if (tool) plannerTools.set(name, tool);
 			}
 
-			// Best-practices guidance — planner-exclusive
-			plannerTools.templates = createTemplatesTool();
+			plannerTools.set('templates', createTemplatesTool());
 
-			// Incremental plan accumulation + approval tools
 			const accumulator = new BlueprintAccumulator();
-			plannerTools['add-plan-item'] = createAddPlanItemTool(accumulator, context);
-			plannerTools['remove-plan-item'] = createRemovePlanItemTool(accumulator, context);
-			plannerTools['submit-plan'] = createSubmitPlanTool(accumulator, context);
+			plannerTools.set('add-plan-item', createAddPlanItemTool(accumulator, context));
+			plannerTools.set('remove-plan-item', createRemovePlanItemTool(accumulator, context));
+			plannerTools.set('submit-plan', createSubmitPlanTool(accumulator, context));
 
-			// ── Retrieve conversation history ─────────────────────────────
-			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
-			const briefingContext = buildPlannerBriefingContext(getPriorToolObservations(context));
-			const briefing = formatMessagesForBriefing(
-				messages,
-				input.guidance,
-				context.timeZone,
-				briefingContext,
-			);
-
-			// ── IDs & events ──────────────────────────────────────────────
-			const subAgentId = `agent-planner-${nanoid(6)}`;
-			const subtitle =
-				input.guidance ?? messages.find((m) => m.role === 'user')?.content ?? 'Planning...';
-
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
-				agentId: subAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: 'planner',
-					tools: Object.keys(plannerTools),
-					kind: 'planner' as const,
-					title: 'Planning',
-					subtitle: truncateLabel(subtitle),
-					goal: briefing,
-				},
-			});
-
-			// ── Tracing ───────────────────────────────────────────────────
-			const traceRun = await startSubAgentTrace(context, {
-				agentId: subAgentId,
-				role: 'planner',
-				kind: 'planner',
-				inputs: {
-					guidance: input.guidance,
-					messageCount: messages.length,
-				},
-			});
+			// Use a runId-derived sub-agent id so resume reuses the same event stream identity.
+			const subAgentId = `agent-planner-${context.runId}`;
 			const tracedPlannerTools = traceSubAgentTools(context, plannerTools, 'planner');
 
-			try {
-				// ── Create & stream sub-agent (inline, blocking) ──────────
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Workflow Planner Agent',
-					instructions: {
-						role: 'system' as const,
-						content: PLANNER_AGENT_PROMPT,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
+			// ── Build sub-agent (shared) ─────────────────────────────────
+			const subAgent = new Agent('Workflow Planner Agent')
+				.model(context.modelId)
+				.instructions(PLANNER_AGENT_PROMPT, {
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
-					model: context.modelId,
-					tools: tracedPlannerTools,
-				});
+				})
+				.tool(toolRegistryValues(tracedPlannerTools))
+				.checkpoint(context.checkpointStore ?? 'memory');
+			attachRuntimeWorkspaceCapabilities(subAgent, {
+				runtimeSkills: context.runtimeSkills,
+			});
+			const telemetry = context.tracing?.getTelemetry?.({
+				agentRole: 'planner',
+				functionId: 'instance-ai.subagent.planner',
+				executionMode: 'background',
+				metadata: { agent_id: subAgentId },
+			});
+			if (telemetry) {
+				subAgent.telemetry(telemetry);
+			}
 
-				registerWithMastra(subAgentId, subAgent, context.storage);
+			let traceRun: Awaited<ReturnType<typeof startSubAgentTrace>> | undefined;
 
-				const resultText = await withTraceRun(context, traceRun, async () => {
-					const traceParent = getTraceParentRun();
-					return await withTraceParentContext(traceParent, async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await subAgent.stream(briefing, {
-							maxSteps: MAX_STEPS.PLANNER,
-							abortSignal: context.abortSignal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
+			try {
+				let consumeResult: ConsumeStreamCascadingResult;
+
+				if (isResume) {
+					// ── Resume path ─────────────────────────────────────────
+					const resumeInfo = await context.findSubAgentResumeInfo?.('planner');
+					if (!resumeInfo) {
+						return {
+							result:
+								'The planning step could not be resumed because its state was lost. Please send a new message to continue.',
+						};
+					}
+
+					// Rehydrate the accumulator from the persisted plan so an
+					// "ask for edits" revision operates on the full plan rather
+					// than an empty accumulator. See rehydrateAccumulatorFromGraph.
+					await rehydrateAccumulatorFromGraph(context, accumulator);
+
+					// Open a trace span for the resumed leg so a plan that suspended
+					// at HITL and resumed still shows its continuation in LangSmith.
+					// The planner card itself is already in the snapshot from the
+					// first call, so no agent-spawned event is (re-)published here.
+					traceRun = await startSubAgentTrace(context, {
+						agentId: subAgentId,
+						role: 'planner',
+						kind: 'planner',
+						inputs: { resumed: true },
+					});
+					mergeTraceRunInputs(
+						traceRun,
+						buildAgentTraceInputs({
+							systemPrompt: PLANNER_AGENT_PROMPT,
+							tools: tracedPlannerTools,
+							modelId: context.modelId,
+						}),
+					);
+
+					consumeResult = await withTraceRun(context, traceRun, async () => {
+						const resumed = await resumeAgentStream(subAgent, resumeData, {
+							runId: resumeInfo.runId,
+							toolCallId: resumeInfo.toolCallId,
+							persistence: resumeInfo.persistence,
+							maxIterations: MAX_STEPS.PLANNER,
 						});
 
-						const result = await consumeStreamWithHitl({
+						return await consumeStreamCascading({
 							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
+							stream: resumed,
 							runId: context.runId,
 							agentId: subAgentId,
 							eventBus: context.eventBus,
 							logger: context.logger,
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
-							waitForConfirmation: context.waitForConfirmation,
-							llmStepTraceHooks,
-							maxSteps: MAX_STEPS.PLANNER,
 						});
-
-						return await result.text;
 					});
-				});
+				} else {
+					// ── First-call path ─────────────────────────────────────
+					// The planner is the most common inline HITL entry point — when it
+					// suspends the orchestrator cascades-suspends too, and the SDK does
+					// not flush the user-message row to memory until a clean loop end
+					// (which a suspended run never reaches). Persist eagerly so the
+					// user's bubble is visible if they reload during the suspend window.
+					if (context.persistInFlightUserMessage) {
+						await context.persistInFlightUserMessage();
+					}
 
-				await finishTraceRun(context, traceRun, {
-					outputs: {
-						result: resultText,
+					const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
+					const briefingContext = buildPlannerBriefingContext(getPriorToolObservations(context));
+					const briefing = formatMessagesForBriefing(
+						messages,
+						input.guidance,
+						context.timeZone,
+						briefingContext,
+					);
+
+					const subtitle =
+						input.guidance ?? messages.find((m) => m.role === 'user')?.content ?? 'Planning...';
+
+					context.eventBus.publish(context.threadId, {
+						type: 'agent-spawned',
+						runId: context.runId,
+						agentId: subAgentId,
+						payload: {
+							parentId: context.orchestratorAgentId,
+							role: 'planner',
+							tools: toolRegistryKeys(plannerTools),
+							kind: 'planner' as const,
+							title: 'Planning',
+							subtitle: truncateLabel(subtitle),
+							goal: briefing,
+						},
+					});
+
+					traceRun = await startSubAgentTrace(context, {
 						agentId: subAgentId,
 						role: 'planner',
-						hasItems: !accumulator.isEmpty(),
-						itemCount: accumulator.getTaskItemsForEvent().length,
-					},
-				});
+						kind: 'planner',
+						inputs: {
+							guidance: input.guidance,
+							messageCount: messages.length,
+						},
+					});
 
-				// ── Publish agent-completed ───────────────────────────────
+					mergeTraceRunInputs(
+						traceRun,
+						buildAgentTraceInputs({
+							systemPrompt: PLANNER_AGENT_PROMPT,
+							tools: tracedPlannerTools,
+							modelId: context.modelId,
+						}),
+					);
+
+					consumeResult = await withTraceRun(context, traceRun, async () => {
+						const persistence = await createSubAgentPersistence(context, {
+							agentKind: 'planner',
+						});
+						const stream = await subAgent.stream(briefing, {
+							maxIterations: MAX_STEPS.PLANNER,
+							abortSignal: context.abortSignal,
+							persistence,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						});
+
+						return await consumeStreamCascading({
+							agent: subAgent,
+							stream,
+							runId: context.runId,
+							agentId: subAgentId,
+							eventBus: context.eventBus,
+							logger: context.logger,
+							threadId: context.threadId,
+							abortSignal: context.abortSignal,
+						});
+					});
+				}
+
+				// ── Cascade suspension up to the orchestrator ───────────
+				if (consumeResult.status === 'suspended') {
+					const parsed = planToolSuspendSchema.safeParse(consumeResult.suspension.suspendPayload);
+					if (!parsed.success) {
+						context.logger.warn('Planner emitted a suspension payload missing required fields', {
+							threadId: context.threadId,
+							runId: context.runId,
+							toolName: consumeResult.suspension.toolName,
+							zodIssues: parsed.error.issues,
+						});
+						publishClearingEvent(context);
+						await clearDraftChecklist(context);
+						await clearPlannedTaskGraph(context);
+						return {
+							result:
+								'Planner requested user input but the payload was malformed. Please try again.',
+						};
+					}
+					return await ctx.suspend(parsed.data);
+				}
+
+				// ── Stream finished (completed/cancelled/errored) ──────
+				const resultText = consumeResult.status === 'completed' ? await consumeResult.text : '';
+
+				if (traceRun) {
+					await finishTraceRun(context, traceRun, {
+						outputs: {
+							result: resultText,
+							agentId: subAgentId,
+							role: 'planner',
+							hasItems: !accumulator.isEmpty(),
+							itemCount: accumulator.getTaskItemsForEvent().length,
+						},
+					});
+				}
+
 				context.eventBus.publish(context.threadId, {
 					type: 'agent-completed',
 					runId: context.runId,
@@ -790,9 +973,10 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				});
 
 				// ── Schedule tasks after planner-driven approval ──────────
-				// Only dispatch if submit-plan was called AND the user approved.
-				// createPlan persists the graph as `awaiting_approval`; flip it
-				// to `active` before scheduling so tick() can dispatch.
+				// Approval is detected via the accumulator's flag, which submit-plan
+				// flips in its resume handler. createPlan persisted the graph as
+				// `awaiting_approval` on the first call; flip it to `active` and
+				// schedule.
 				if (accumulator.isApproved()) {
 					if (context.plannedTaskService) {
 						await context.plannedTaskService.approvePlan(context.threadId);
@@ -800,19 +984,27 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					if (context.schedulePlannedTasks) {
 						await context.schedulePlannedTasks();
 					}
-					const taskCount = accumulator.getTaskList().length;
+					// On resume the accumulator is fresh and reports 0 — query the
+					// persisted graph instead so the orchestrator gets accurate text.
+					const persistedCount = await getPersistedTaskCount(context);
+					const taskCount = persistedCount ?? accumulator.getTaskList().length;
 					return {
 						result: `Plan approved and ${taskCount} task${taskCount === 1 ? '' : 's'} dispatched.`,
 					};
 				}
 
-				// Planner finished without approval (no submit-plan or user didn't approve)
+				// User explicitly denied the plan. submit-plan already cancelled the
+				// persisted graph, so the cancelled graph won't be picked up by the
+				// scheduler. Return a terminal result so the orchestrator stops cleanly.
+				if (accumulator.isDenied()) {
+					publishClearingEvent(context);
+					await clearDraftChecklist(context);
+					return { result: 'Plan denied by user. No tasks were dispatched.' };
+				}
+
+				// Planner finished without approval (no submit-plan or user didn't approve).
 				publishClearingEvent(context);
 				await clearDraftChecklist(context);
-				// Clear the persisted planned-task graph too. submit-plan persists
-				// it BEFORE user approval (so HITL can display the checklist), so
-				// leaving it intact on planner give-up would let a later
-				// schedulePlannedTasks() tick pick up and dispatch a rejected plan.
 				await clearPlannedTaskGraph(context);
 				if (!accumulator.isEmpty()) {
 					return {
@@ -824,10 +1016,12 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				};
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
-				await failTraceRun(context, traceRun, error, {
-					agent_id: subAgentId,
-					agent_role: 'planner',
-				});
+				if (traceRun) {
+					await failTraceRun(context, traceRun, error, {
+						agent_id: subAgentId,
+						agent_role: 'planner',
+					});
+				}
 
 				context.eventBus.publish(context.threadId, {
 					type: 'agent-completed',
@@ -840,12 +1034,6 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					},
 				});
 
-				// Clear draft checklist and persisted graph on error — same reason
-				// as the non-approval path: an error-aborted plan must not later be
-				// auto-dispatched by the post-run reschedule. Skip both when the user
-				// already approved this plan: the failure is downstream of approval
-				// (e.g. approvePlan/schedulePlannedTasks threw), and clearing would
-				// drop a plan the user explicitly accepted.
 				if (!accumulator.isApproved()) {
 					publishClearingEvent(context);
 					await clearDraftChecklist(context);
@@ -854,6 +1042,16 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				return { result: `Planner error: ${errorMessage}` };
 			}
-		},
-	});
+		})
+		.build();
+}
+
+async function getPersistedTaskCount(context: OrchestrationContext): Promise<number | undefined> {
+	if (!context.plannedTaskService) return undefined;
+	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		return graph?.tasks?.length;
+	} catch {
+		return undefined;
+	}
 }

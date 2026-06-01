@@ -1,6 +1,6 @@
 import type { TestInfo } from '@playwright/test';
 
-import { test, expect, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig, getInstanceAiTestSlug } from './fixtures';
 import type { ApiHelpers } from '../../../services/api-helper';
 
 test.use({
@@ -35,15 +35,8 @@ type RemediationTraceSummary = {
 	submitCallsAfterTerminalSetup: number;
 };
 
-function slugify(text: string): string {
-	return text
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/(^-|-$)/g, '');
-}
-
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
-	return (await api.getInstanceAiToolTraceEvents(slugify(testInfo.title))) as TraceEvent[];
+	return (await api.getInstanceAiToolTraceEvents(getInstanceAiTestSlug(testInfo))) as TraceEvent[];
 }
 
 function getToolCalls(events: TraceEvent[], toolName: string): TraceEvent[] {
@@ -140,50 +133,58 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
-		test('should preserve a submitted workflow when mocked credential verification needs setup', async ({
-			api,
-			n8nContainer,
-			n8n,
-		}, testInfo) => {
-			test.setTimeout(600_000);
-			test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Trace replay state is process-local and not stable in multi-main mode',
-			);
+		test(
+			'should preserve a submitted workflow when mocked credential verification needs setup',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description:
+							'should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup',
+					},
+				],
+			},
+			async ({ api, n8nContainer, n8n }, testInfo) => {
+				test.setTimeout(600_000);
+				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
+				test.skip(
+					testInfo.project.name.includes('multi-main'),
+					'Trace replay state is process-local and not stable in multi-main mode',
+				);
 
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(
-				'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
-					'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
-					'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-					'The builder agent must submit it and verify it with verify-built-workflow. ' +
-					'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
-			);
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(
+					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
+						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
+						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
+						'The builder agent must submit it and verify it with verify-built-workflow. ' +
+						'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
+				);
 
-			await expect(n8n.instanceAi.getWorkflowSetupCard()).toBeVisible({ timeout: 540_000 });
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 
-			const events = await getTraceEvents(api, testInfo);
-			const summary = summarizeRemediationTrace(events);
-			const submitCalls = getToolCalls(events, 'submit-workflow');
-			const verifyCalls = getToolCalls(events, 'verify-built-workflow');
+				const events = await getTraceEvents(api, testInfo);
+				const summary = summarizeRemediationTrace(events);
+				const submitCalls = getToolCalls(events, 'submit-workflow');
+				const verifyCalls = getToolCalls(events, 'verify-built-workflow');
 
-			expect(summary).toMatchObject({
-				submitted: true,
-				workflowId: expect.any(String),
-				needsUserInput: true,
-				mockedSlackCredential: true,
-				submitCallsAfterTerminalSetup: 0,
-			});
-			expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
-			expect(submitCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-				agentRole: 'workflow-builder',
-				stepId: expect.any(Number),
-			});
-			expect(verifyCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-				agentRole: 'workflow-builder',
-				stepId: expect.any(Number),
-			});
-		});
+				expect(summary).toMatchObject({
+					submitted: true,
+					workflowId: expect.any(String),
+					needsUserInput: true,
+					mockedSlackCredential: true,
+					submitCallsAfterTerminalSetup: 0,
+				});
+				expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
+				expect(submitCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
+					agentRole: 'workflow-builder',
+					stepId: expect.any(Number),
+				});
+				expect(verifyCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
+					agentRole: 'workflow-builder',
+					stepId: expect.any(Number),
+				});
+			},
+		);
 	},
 );

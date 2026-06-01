@@ -5,7 +5,28 @@ import type { AgentMessage } from './message';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
+export interface ToolExecutionContext {
+	/** Agent run ID for the current execution. */
+	runId?: string;
+	/**
+	 * Current persisted thread scope when the run is backed by memory.
+	 * The runtime owns these IDs so tools can read/update data tied to the
+	 * current agent thread without asking the model for thread identifiers.
+	 * Integration tools use it for message context and the latest response target.
+	 */
+	persistence?: {
+		threadId: string;
+		resourceId: string;
+	};
+}
+
 export interface ToolContext {
+	/** AI SDK tool call ID for the current local tool execution. */
+	toolCallId?: string;
+	/** Agent run ID and persistence scope for the current execution. */
+	runId?: string;
+	/** Current persisted thread scope when the run is backed by memory. */
+	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent, for sub-agent propagation. */
 	parentTelemetry?: BuiltTelemetry;
 }
@@ -19,6 +40,12 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	suspend: (payload: S) => Promise<never>;
 	/** Data from the consumer after resume. Undefined on first invocation. */
 	resumeData: R | undefined;
+	/** AI SDK tool call ID for the current local tool execution. */
+	toolCallId?: string;
+	/** Agent run ID for the current execution. */
+	runId?: string;
+	/** Current persisted thread scope when the run is backed by memory. */
+	persistence?: ToolExecutionContext['persistence'];
 	/** Telemetry config from the parent agent, for sub-agent propagation. */
 	parentTelemetry?: BuiltTelemetry;
 }

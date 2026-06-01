@@ -12,7 +12,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
@@ -27,12 +27,12 @@ import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
-import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets();
@@ -53,14 +53,12 @@ const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 const workflowId = useWorkflowId();
-const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
-	null,
-);
+const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
-useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
+useTelemetryContext({ ndv_source: computed(() => ndvStore.value.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();
@@ -114,7 +112,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		</AppLayout>
 		<AppModals />
 		<AppCommandBar />
-		<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		<template #overlays>
+			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
 		</template>

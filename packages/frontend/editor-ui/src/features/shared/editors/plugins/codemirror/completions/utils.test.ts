@@ -1,10 +1,8 @@
 import { createTestNode } from '@/__tests__/mocks';
-import * as ndvStore from '@/features/ndv/shared/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import type { MockInstance } from 'vitest';
 import {
 	autocompletableNodeNames,
 	expressionWithFirstItem,
@@ -16,6 +14,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { NDVStore } from '@/features/ndv/shared/ndv.store';
 
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
@@ -32,7 +32,11 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		settings: {},
 		getPinDataSnapshot: () => ({}),
 		workflowTriggerNodes: [],
-	},
+	} as Partial<WorkflowDocumentStore> as WorkflowDocumentStore,
+}));
+
+const { mockNdvStore } = vi.hoisted(() => ({
+	mockNdvStore: { activeNode: null } as unknown as NDVStore,
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -40,6 +44,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
+vi.mock('@/features/ndv/shared/ndv.store', () => ({
+	useNDVStore: vi.fn().mockReturnValue(mockNdvStore),
+}));
+
+const editors: EditorView[] = [];
 const editorFromString = (docWithCursor: string) => {
 	const cursorPosition = docWithCursor.indexOf('|');
 
@@ -50,11 +59,18 @@ const editorFromString = (docWithCursor: string) => {
 		selection: { anchor: cursorPosition },
 	});
 
+	const view = new EditorView({ state, doc });
+	editors.push(view);
+
 	return {
 		context: new CompletionContext(state, cursorPosition, false),
-		view: new EditorView({ state, doc }),
+		view,
 	};
 };
+
+afterEach(() => {
+	editors.splice(0).forEach((editor) => editor.destroy());
+});
 
 describe('completion utils', () => {
 	describe('expressionWithFirstItem', () => {
@@ -113,16 +129,15 @@ describe('completion utils', () => {
 			];
 
 			mockedStore(useWorkflowsStore);
-			mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
-			mockWorkflowDocumentStore.getParentNodesByDepth.mockReturnValue([
-				{ name: 'Node 2', depth: 1 },
-				{ name: 'Node 1', depth: 2 },
+			vi.mocked(mockWorkflowDocumentStore.getChildNodes).mockReturnValue([]);
+			vi.mocked(mockWorkflowDocumentStore.getParentNodesByDepth).mockReturnValue([
+				{ name: 'Node 2', depth: 1, indicies: [] },
+				{ name: 'Node 1', depth: 2, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			mockNdvStore.activeNode = nodes[2];
 
-			expect(autocompletableNodeNames()).toEqual(['Node 2', 'Node 1']);
+			expect(autocompletableNodeNames('test@latest')).toEqual(['Node 2', 'Node 1']);
 		});
 
 		it('should work for AI tool nodes', () => {
@@ -133,15 +148,14 @@ describe('completion utils', () => {
 			];
 
 			mockedStore(useWorkflowsStore);
-			mockWorkflowDocumentStore.getChildNodes.mockReturnValue(['Agent']);
-			mockWorkflowDocumentStore.getParentNodesByDepth.mockReturnValue([
-				{ name: 'Normal Node', depth: 1 },
+			vi.mocked(mockWorkflowDocumentStore.getChildNodes).mockReturnValue(['Agent']);
+			vi.mocked(mockWorkflowDocumentStore.getParentNodesByDepth).mockReturnValue([
+				{ name: 'Normal Node', depth: 1, indicies: [] },
 			]);
 
-			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
-			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
+			mockNdvStore.activeNode = nodes[2];
 
-			expect(autocompletableNodeNames()).toEqual(['Normal Node']);
+			expect(autocompletableNodeNames('test@latest')).toEqual(['Normal Node']);
 		});
 	});
 

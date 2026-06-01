@@ -115,10 +115,15 @@ test.describe(
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(prompt);
 				await n8n.instanceAi.waitForResponseComplete();
-				await expect(
-					n8n.instanceAi.getAssistantMessageText('Restored the archived workflow.'),
-				).toBeVisible();
-				await expect(n8n.instanceAi.getToolCallsButton('2 tool calls')).toBeVisible();
+				await expect(n8n.instanceAi.getAssistantMessageText(/restored/i)).toBeVisible();
+				await expect
+					.poll(async () => {
+						const restoredWorkflow = (await n8n.api.workflows.getWorkflow(
+							workflow.id,
+						)) as WorkflowWithArchiveState;
+						return restoredWorkflow.isArchived;
+					})
+					.toBe(false);
 			} finally {
 				// Settings are merged, not replaced — reset deleteWorkflow so the
 				// override does not leak into later tests in this describe block.
@@ -183,9 +188,7 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(
-					`Edit existing workflow "${APPROVE_EDIT_WORKFLOW_NAME}"`,
-				),
+				n8n.instanceAi.getConfirmationText(`Edit ${APPROVE_EDIT_WORKFLOW_NAME}`),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			const whileAwaitingApproval = await n8n.api.workflows.getWorkflow(workflow.id);
@@ -219,7 +222,7 @@ test.describe(
 			);
 
 			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit existing workflow "${DENY_EDIT_WORKFLOW_NAME}"`),
+				n8n.instanceAi.getConfirmationText(`Edit ${DENY_EDIT_WORKFLOW_NAME}`),
 			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();

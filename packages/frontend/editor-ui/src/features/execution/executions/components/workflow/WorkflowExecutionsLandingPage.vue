@@ -9,10 +9,7 @@ import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.v
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -20,9 +17,7 @@ const locale = useI18n();
 const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
 const containsTrigger = computed(() => workflowDocumentStore.value.workflowTriggerNodes.length > 0);

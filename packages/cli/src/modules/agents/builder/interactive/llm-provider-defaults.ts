@@ -1,7 +1,7 @@
 /**
  * Canonical "if you have one of THIS credential type, this is the LLM provider
- * + safe default model to seed the agent with." Used by the ask_llm tool to
- * auto-resolve when there's exactly one LLM-provider credential available.
+ * + model the builder may select when auto-resolving." Used by the ask_llm tool
+ * when there's exactly one LLM-provider credential available.
  *
  * Provider strings match the catalog IDs used by `@n8n/agents`'s
  * `.model(provider, model)` call (see editor-ui's provider-mapping.ts for the

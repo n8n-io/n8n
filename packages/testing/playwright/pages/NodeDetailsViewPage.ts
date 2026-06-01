@@ -30,6 +30,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-credentials-empty-state');
 	}
 
+	getNodeCredentialsQuickConnectEmptyState() {
+		return this.container.getByTestId('quick-connect-empty-state');
+	}
+
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -137,6 +141,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getOutputDataContainer() {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
+	}
+
+	getOutputDataValues() {
+		return this.getOutputDataContainer().locator('[class*=value_]');
 	}
 
 	async setPinnedData(data: object | string) {
@@ -862,6 +870,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAddResourceItem() {
 		return this.page.getByTestId('rlc-item-add-resource');
+	}
+
+	getAddResourceCreateOption() {
+		return this.getAddResourceItem().getByText(/Create a/);
 	}
 
 	getExpressionModeToggle(index: number = 1) {

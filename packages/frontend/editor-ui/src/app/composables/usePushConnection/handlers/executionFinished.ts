@@ -18,6 +18,8 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -74,8 +76,12 @@ export async function executionFinished(
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -254,9 +260,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: workflowExecutionStateStore.activeExecutionId ?? '' },
 		});
 	}
 
@@ -349,7 +358,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 			const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
 
 			if (node) {
-				eventData.is_pinned = !!workflowDocumentStore.pinData?.[node.name];
+				eventData.is_pinned = !!workflowDocumentStore.pinnedDataByNodeName?.[node.name];
 				eventData.mode = node.parameters.mode;
 				eventData.node_type = node.type;
 				eventData.operation = node.parameters.operation;
@@ -475,24 +484,29 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const workflowExecution = workflowsStore.getWorkflowExecution;
 
 	workflowState.executingNode.clearNodeExecutionQueue();
+
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
+	const workflowExecution = executionDataStore.getExecutionSnapshot();
 
 	if (workflowExecution === null) {
 		return;
 	}
 
-	workflowState.setWorkflowExecutionData({
+	executionDataStore.setExecution({
 		...workflowExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
-	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
-	workflowState.setActiveExecutionId(undefined);
+	executionDataStore.setExecutionRunData(runExecutionData);
+	workflowExecutionStateStore.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
 	// it can be displayed in the node-view
@@ -509,7 +523,7 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
-	workflowState.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setActiveExecutionId(undefined);
 
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,

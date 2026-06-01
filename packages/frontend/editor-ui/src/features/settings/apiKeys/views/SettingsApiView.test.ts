@@ -108,6 +108,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -117,6 +118,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -126,6 +128,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -167,6 +170,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -176,6 +180,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -185,6 +190,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -219,6 +225,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 

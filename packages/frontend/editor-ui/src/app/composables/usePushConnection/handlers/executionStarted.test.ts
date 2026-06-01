@@ -1,20 +1,17 @@
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { executionStarted } from './executionStarted';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { mockedStore } from '@/__tests__/utils';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
-import { mock } from 'vitest-mock-extended';
-import type { Mocked } from 'vitest';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('executionStarted', () => {
-	let mockOptions: { workflowState: Mocked<WorkflowState> };
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 	function makeEvent(executionId = 'exec-1'): ExecutionStarted {
 		return {
@@ -24,55 +21,72 @@ describe('executionStarted', () => {
 	}
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: false });
-		setActivePinia(pinia);
+		setActivePinia(createPinia());
 
-		workflowsStore = mockedStore(useWorkflowsStore);
-
-		mockOptions = {
-			workflowState: mock<WorkflowState>(),
-		};
-	});
-
-	it('should skip when activeExecutionId is undefined', async () => {
-		workflowsStore.activeExecutionId = undefined;
-
-		await executionStarted(makeEvent(), mockOptions);
-
-		expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-		expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
-	});
-
-	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
-		workflowsStore.activeExecutionId = null;
+		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('wf-123');
-		workflowsStore.setWorkflowExecutionData(null);
+
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 
-		await executionStarted(makeEvent('exec-1'), mockOptions);
-
-		expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-1');
-		expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: 'exec-1',
-				status: 'running',
-				workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
-			}),
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('wf-123'),
 		);
 	});
 
-	it('should not reinitialize when same execution ID arrives', async () => {
-		workflowsStore.activeExecutionId = 'exec-1';
-		workflowsStore.setWorkflowExecutionData({
+	it('should skip when activeExecutionId is undefined', async () => {
+		// activeExecutionId defaults to undefined, no need to set it
+		await executionStarted(makeEvent());
+
+		// workflowExecutionStateStore.activeExecutionId should remain undefined
+		expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
+
+		// No execution data store should have been created for exec-1
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution).toBeNull();
+	});
+
+	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
+		workflowExecutionStateStore.setActiveExecutionId(null);
+
+		await executionStarted(makeEvent('exec-1'));
+
+		expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution).toMatchObject({
 			id: 'exec-1',
-			data: { resultData: { runData: {} } },
-		} as never);
+			status: 'running',
+			workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
+		});
+	});
 
-		await executionStarted(makeEvent('exec-1'), mockOptions);
+	it('should not reinitialize when same execution ID arrives', async () => {
+		// Set up an active execution with existing data
+		workflowExecutionStateStore.promotePendingExecution('exec-1');
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		executionDataStore.setExecution({
+			id: 'exec-1',
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			workflowData: { id: 'wf-123', name: 'My Workflow', nodes: [], connections: {} } as never,
+			data: { resultData: { runData: {} } } as never,
+		});
 
-		expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-		expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
+		const executionBefore = executionDataStore.execution;
+
+		await executionStarted(makeEvent('exec-1'));
+
+		// workflowExecutionStateStore.activeExecutionId should remain 'exec-1' without change
+		expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
+
+		// execution data should not have been overwritten (same reference or same id)
+		expect(executionDataStore.execution?.id).toBe('exec-1');
+		// status should remain the same (not reinitialised)
+		expect(executionDataStore.execution?.status).toBe(executionBefore?.status);
 	});
 
 	describe('iframe re-execution', () => {
@@ -96,46 +110,65 @@ describe('executionStarted', () => {
 		});
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
-			workflowsStore.activeExecutionId = undefined;
-			workflowsStore.setWorkflowExecutionData({
-				id: 'old-exec',
-				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
-			} as never);
+			// activeExecutionId defaults to undefined; in iframe context this should still accept
+			await executionStarted(makeEvent('exec-2'));
 
-			await executionStarted(makeEvent('exec-2'), mockOptions);
+			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-2');
 
-			expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-2');
-			expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'exec-2', status: 'running' }),
-			);
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-2'));
+			expect(executionDataStore.execution).toMatchObject({
+				id: 'exec-2',
+				status: 'running',
+			});
 		});
 
 		it('should accept new execution and reset state when re-executing in iframe', async () => {
-			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.setWorkflowExecutionData({
+			// Set up an existing active execution
+			workflowExecutionStateStore.promotePendingExecution('exec-1');
+			const oldExecStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+			oldExecStore.setExecution({
 				id: 'exec-1',
-				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
-			} as never);
+				finished: false,
+				mode: 'manual',
+				status: 'running',
+				createdAt: new Date(),
+				startedAt: new Date(),
+				workflowData: { id: 'wf-123', name: 'My Workflow', nodes: [], connections: {} } as never,
+				data: {
+					resultData: { runData: { Node1: [{ executionTime: 100 }] } },
+				} as never,
+			});
 
-			await executionStarted(makeEvent('exec-2'), mockOptions);
+			await executionStarted(makeEvent('exec-2'));
 
-			expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-2');
-			expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'exec-2', status: 'running' }),
-			);
+			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-2');
+
+			const newExecStore = useExecutionDataStore(createExecutionDataId('exec-2'));
+			expect(newExecStore.execution).toMatchObject({
+				id: 'exec-2',
+				status: 'running',
+			});
 		});
 
 		it('should not reset when same execution ID arrives in iframe', async () => {
-			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.setWorkflowExecutionData({
+			// Set up an existing active execution with data
+			workflowExecutionStateStore.promotePendingExecution('exec-1');
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+			executionDataStore.setExecution({
 				id: 'exec-1',
-				data: { resultData: { runData: {} } },
-			} as never);
+				finished: false,
+				mode: 'manual',
+				status: 'running',
+				createdAt: new Date(),
+				startedAt: new Date(),
+				workflowData: { id: 'wf-123', name: 'My Workflow', nodes: [], connections: {} } as never,
+				data: { resultData: { runData: {} } } as never,
+			});
 
-			await executionStarted(makeEvent('exec-1'), mockOptions);
+			await executionStarted(makeEvent('exec-1'));
 
-			expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-			expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
+			// Should remain exec-1 without reinitializing
+			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
 		});
 	});
 });

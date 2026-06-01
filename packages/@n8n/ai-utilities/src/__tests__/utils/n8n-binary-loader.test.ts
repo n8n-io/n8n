@@ -42,8 +42,8 @@ jest.mock('@langchain/community/document_loaders/fs/epub', () => ({
 	})),
 }));
 
-jest.mock('@langchain/community/document_loaders/fs/pdf', () => ({
-	PDFLoader: jest.fn().mockImplementation(() => ({
+jest.mock('src/utils/loaders/n8n-pdf-loader', () => ({
+	N8nPdfLoader: jest.fn().mockImplementation(() => ({
 		load: jest.fn().mockResolvedValue([{ pageContent: 'pdf content', metadata: {} }]),
 	})),
 }));

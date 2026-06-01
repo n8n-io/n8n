@@ -129,7 +129,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 					},
 				},
 				default: 0,
-				description: 'The minute of the day to trigger',
+				description: 'The minute past the hour to trigger (0-59)',
 			},
 			{
 				displayName: 'Day of Month',
@@ -929,20 +929,19 @@ export function getNodeParameters(
 					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
 						continue;
 					}
+
+					nodePropertyOptions = nodeProperties.options!.find(
+						(nodePropertyOptions) => nodePropertyOptions.name === itemName,
+					) as INodePropertyCollection;
+
+					if (nodePropertyOptions === undefined) {
+						continue;
+					}
+
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
 					] as INodeParameters[]) {
-						nodePropertyOptions = nodeProperties.options!.find(
-							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
-						) as INodePropertyCollection;
-
-						if (nodePropertyOptions === undefined) {
-							throw new ApplicationError('Could not find property option', {
-								extra: { propertyOption: itemName, property: nodeProperties.name },
-							});
-						}
-
 						tempNodePropertiesArray = nodePropertyOptions.values!;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,

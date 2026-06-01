@@ -2,6 +2,7 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
 import {
 	createPreSaveBudgetTracker,
+	withDefaultWorkflowFilePath,
 	wrapSubmitExecuteWithIdentity,
 } from '../submit-workflow-identity';
 import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workflow.tool';
@@ -9,6 +10,7 @@ import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workfl
 const ROOT = '/home/daytona/workspace';
 const MAIN_PATH = `${ROOT}/src/workflow.ts`;
 const CHUNK_PATH = `${ROOT}/src/chunk.ts`;
+const TASK_MAIN_PATH = `${ROOT}/builder-work-items/wi-one/src/workflow.ts`;
 
 function resolvePath(rawFilePath: string | undefined): string {
 	if (!rawFilePath) return MAIN_PATH;
@@ -40,6 +42,24 @@ function makeUnderlying(opts: { idPrefix?: string; gate?: Promise<void> } = {}) 
 
 	return { execute, calls };
 }
+
+describe('withDefaultWorkflowFilePath', () => {
+	it('uses the task main workflow file when submit-workflow omits filePath', () => {
+		expect(withDefaultWorkflowFilePath({ name: 'Workflow' }, TASK_MAIN_PATH)).toEqual({
+			name: 'Workflow',
+			filePath: TASK_MAIN_PATH,
+		});
+	});
+
+	it('preserves explicit filePath values for chunks and follow-up submits', () => {
+		expect(
+			withDefaultWorkflowFilePath({ filePath: CHUNK_PATH, name: 'Chunk' }, TASK_MAIN_PATH),
+		).toEqual({
+			filePath: CHUNK_PATH,
+			name: 'Chunk',
+		});
+	});
+});
 
 describe('wrapSubmitExecuteWithIdentity', () => {
 	it('parallel submits for the same filePath produce one create and N-1 updates sharing the workflowId', async () => {
@@ -230,6 +250,82 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 				reason: 'mocked_credentials_or_placeholders',
 			}),
 		);
+	});
+
+	it('records terminal submit output and blocks later submits in-process', async () => {
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const execute = jest
+			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+			.mockResolvedValueOnce({
+				success: false,
+				errors: ['Workflow save failed.'],
+				remediation,
+			})
+			.mockResolvedValueOnce({ success: true, workflowId: 'wf_should_not_save' });
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		const first = await wrapped({});
+		const second = await wrapped({});
+
+		expect(first.remediation).toBe(remediation);
+		expect(second).toMatchObject({
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns terminal remediation to concurrent submit waiters when the first submit stops editing', async () => {
+		let release: () => void = () => {};
+		const gate = new Promise<void>((res) => {
+			release = res;
+		});
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await gate;
+			return {
+				success: false,
+				errors: ['Workflow save failed.'],
+				remediation,
+			};
+		});
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		const first = wrapped({});
+		const second = wrapped({});
+		await Promise.resolve();
+		release();
+
+		await expect(first).resolves.toMatchObject({ success: false, remediation });
+		await expect(second).resolves.toMatchObject({
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
 	});
 
 	it('ignores terminal remediation from a previous run', async () => {

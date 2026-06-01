@@ -78,13 +78,13 @@ export function usePushConnection({
 			case 'nodeExecuteAfterData':
 				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
-				return await executionStarted(event, options);
+				return await executionStarted(event);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
 				return await sendConsoleMessage(event);
 			case 'workflowFailedToActivate':
-				return await workflowFailedToActivate(event, options);
+				return await workflowFailedToActivate(event);
 			case 'executionFinished':
 				return await executionFinished(event, options);
 			case 'executionRecovered':

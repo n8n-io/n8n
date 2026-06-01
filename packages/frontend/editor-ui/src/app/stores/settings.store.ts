@@ -170,11 +170,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
 
+	const isOtelEnabled = computed(
+		() => isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true,
+	);
+
 	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
 	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
 	const isAgentsNodeToolsFeatureEnabled = computed(() =>
 		isAgentModuleActive('node-tools-searcher'),
 	);
+
+	// Opt-in flag: the `knowledge-base` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(() => isAgentModuleActive('knowledge-base'));
 
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
@@ -469,7 +477,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isOtelEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};
 });

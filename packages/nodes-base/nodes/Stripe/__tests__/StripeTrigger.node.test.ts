@@ -18,6 +18,11 @@ const mockedVerifySignature = jest.mocked(verifySignature);
 describe('Stripe Trigger Node', () => {
 	let node: StripeTrigger;
 	let mockNodeFunctions: IHookFunctions;
+	let mockResponse: {
+		status: jest.Mock;
+		send: jest.Mock;
+		end: jest.Mock;
+	};
 
 	beforeEach(() => {
 		node = new StripeTrigger();
@@ -109,17 +114,18 @@ describe('Stripe Trigger Node', () => {
 		const rawBody = JSON.stringify(testBody);
 
 		beforeEach(() => {
+			mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn().mockReturnThis(),
+				end: jest.fn(),
+			};
 			mockWebhookFunctions = {
 				getBodyData: jest.fn().mockReturnValue(testBody),
 				getRequestObject: jest.fn().mockReturnValue({
 					rawBody: Buffer.from(rawBody),
 					body: testBody,
 				}),
-				getResponseObject: jest.fn().mockReturnValue({
-					status: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
-					end: jest.fn(),
-				}),
+				getResponseObject: jest.fn().mockReturnValue(mockResponse),
 				getNodeParameter: jest.fn().mockReturnValue(['*']),
 				helpers: {
 					returnJsonArray: jest.fn().mockImplementation((data) => [data]),
@@ -141,6 +147,17 @@ describe('Stripe Trigger Node', () => {
 			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 
+		it('should process webhook when verification is skipped because no secret is configured', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				workflowData: [[testBody]],
+			});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
+		});
+
 		it('should reject webhook with invalid signature', async () => {
 			mockedVerifySignature.mockResolvedValue(false);
 
@@ -149,6 +166,9 @@ describe('Stripe Trigger Node', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+			expect(mockResponse.end).toHaveBeenCalledWith();
 			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 

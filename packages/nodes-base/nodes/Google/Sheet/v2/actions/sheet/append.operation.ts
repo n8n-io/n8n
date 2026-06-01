@@ -6,7 +6,12 @@ import {
 	type ResourceMapperField,
 } from 'n8n-workflow';
 
-import { cellFormat, handlingExtraData, useAppendOption } from './commonDescription';
+import {
+	cellFormat,
+	columnsResourceMapperBuilderHint,
+	handlingExtraData,
+	useAppendOption,
+} from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import {
@@ -127,6 +132,7 @@ export const description: SheetProperties = [
 			value: null,
 		},
 		required: true,
+		builderHint: columnsResourceMapperBuilderHint,
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {

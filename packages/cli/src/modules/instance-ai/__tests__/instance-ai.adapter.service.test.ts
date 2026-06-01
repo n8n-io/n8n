@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -7,9 +7,28 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
-import type { ExecutionError, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type {
+	ExecutionError,
+	IConnections,
+	INode,
+	INodeParameters,
+	IRunExecutionData,
+	ITaskData,
+} from 'n8n-workflow';
+
+import type { NodeTypes } from '@/node-types';
 
 import {
 	extractExecutionResult,
@@ -742,6 +761,231 @@ describe('extractExecutionDebugInfo', () => {
 		expect(trace.startedAt).toBe(new Date(1704067200000).toISOString());
 		expect(trace.finishedAt).toBe(new Date(1704067200000 + 5000).toISOString());
 	});
+
+	// ── resolvedParameters on failedNode ──────────────────────────────────────
+
+	describe('failedNode.resolvedParameters', () => {
+		const debugNodeTypes = mock<NodeTypes>();
+
+		/** Build an execution that has a full workflow snapshot + a failed node entry. */
+		function makeFailedExecution(opts: {
+			nodes: INode[];
+			connections: IConnections;
+			failedNodeName: string;
+			parentRunData: Record<string, ITaskData[]>;
+			error?: Error | Partial<ExecutionError>;
+		}) {
+			return {
+				id: 'exec-1',
+				mode: 'manual',
+				status: 'error',
+				startedAt: new Date('2026-01-01T00:00:00Z'),
+				stoppedAt: new Date('2026-01-01T00:00:01Z'),
+				workflowData: {
+					id: 'wf-1',
+					name: 'Test Workflow',
+					nodes: opts.nodes,
+					connections: opts.connections,
+					settings: {},
+				},
+				data: {
+					resultData: {
+						runData: {
+							...opts.parentRunData,
+							[opts.failedNodeName]: [
+								makeTaskData([], {
+									error: opts.error ?? new Error("Referenced node doesn't exist"),
+									startTime: 2000,
+									executionTime: 10,
+								}),
+							],
+						},
+					},
+				} as unknown as IRunExecutionData,
+			};
+		}
+
+		it('surfaces the offending expression in failedExpressions when resolution itself threw', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				assignments: {
+					assignments: [
+						{ name: 'foo', value: 'bar', type: 'string' },
+						{ name: 'baz', value: '={{ $node["DoesNotExist"].json.x }}', type: 'string' },
+					],
+				},
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Edit Fields');
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle).toBeDefined();
+			expect(bundle?.failedExpressions).toHaveLength(1);
+			expect(bundle?.failedExpressions[0]).toMatchObject({
+				path: 'assignments.assignments[1].value',
+				raw: '={{ $node["DoesNotExist"].json.x }}',
+				reason: 'expression-error',
+			});
+			// `nodeName` is intentionally omitted — `failedNode.name` already has it.
+			expect((bundle as Record<string, unknown>)?.nodeName).toBeUndefined();
+		});
+
+		it('surfaces silent empty-resolution expressions even when runtime threw a different error', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('HTTP', 'n8n-nodes-base.httpRequest', {
+				// Pure expression that resolves to undefined — caught by the empty-resolution
+				// heuristic. (Template concatenations like `={{ $json.missing }}/api` resolve
+				// to a non-empty string "undefined/api" and are NOT flagged today.)
+				url: '={{ $json.missing }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'HTTP'),
+				failedNodeName: 'HTTP',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.emptyResolutions).toEqual([
+				expect.objectContaining({ path: 'url', raw: '={{ $json.missing }}' }),
+			]);
+		});
+
+		it('omits resolvedParameters when allowSendingParameterValues is false', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.x }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				false,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('omits resolvedParameters when nodeTypes is not passed (caller opted out)', async () => {
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', { value: '={{ $json.x }}' });
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				// nodeTypes intentionally omitted
+			);
+
+			expect(result.failedNode).toBeDefined();
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('still returns debug info when the resolution helper itself throws', async () => {
+			// Failed node is present in runData but missing from the workflow snapshot →
+			// extractResolvedNodeParameters throws "Node X not found in execution snapshot".
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const execution = makeFailedExecution({
+				nodes: [trigger], // failed node intentionally missing
+				connections: {},
+				failedNodeName: 'Missing Node',
+				parentRunData: { Trigger: [makeTaskData([{}])] },
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			expect(result.failedNode?.name).toBe('Missing Node');
+			expect(result.failedNode?.resolvedParameters).toBeUndefined();
+		});
+
+		it('resolves against the item index the runtime tagged on the error (not item 0)', async () => {
+			// Failure on item 3 of the parent's output — ExpressionError records
+			// `context.itemIndex: 3` so the resolution view should target item 3,
+			// not the default of 0.
+			const trigger = makeNode('Trigger', 'n8n-nodes-base.manualTrigger');
+			const failed = makeNode('Edit Fields', 'n8n-nodes-base.set', {
+				value: '={{ $json.label }}',
+			});
+			const execution = makeFailedExecution({
+				nodes: [trigger, failed],
+				connections: connect('Trigger', 'Edit Fields'),
+				failedNodeName: 'Edit Fields',
+				parentRunData: {
+					Trigger: [
+						makeTaskData([
+							{ label: 'item-0' },
+							{ label: 'item-1' },
+							{ label: 'item-2' },
+							{ label: 'item-3-the-culprit' },
+						]),
+					],
+				},
+				error: {
+					name: 'ExpressionError',
+					message: 'boom on item 3',
+					context: { itemIndex: 3 },
+				},
+			});
+			const repo = createMockExecutionRepository(execution);
+
+			const result = await extractExecutionDebugInfo(
+				repo as unknown as ExecutionRepository,
+				'exec-1',
+				true,
+				debugNodeTypes,
+			);
+
+			const bundle = result.failedNode?.resolvedParameters;
+			expect(bundle?.itemIndex).toBe(3);
+			// `value` was `={{ $json.label }}`; against item 3 it should resolve to
+			// 'item-3-the-culprit', proving we used the runtime-tagged index.
+			const resolved = bundle?.resolved;
+			expect(typeof resolved).toBe('string');
+			expect(resolved as string).toContain('item-3-the-culprit');
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -922,6 +1166,24 @@ describe('extractNodeOutput', () => {
 	});
 });
 
+function makeNode(name: string, type: string, parameters: INodeParameters = {}): INode {
+	return {
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters,
+	};
+}
+
+/** Connect `from` → `to` on the `main` connection (output index 0 → input index 0). */
+function connect(from: string, to: string): IConnections {
+	return {
+		[from]: { main: [[{ node: to, type: 'main', index: 0 }]] },
+	};
+}
+
 // ---------------------------------------------------------------------------
 // createDataTableAdapter – access control
 // ---------------------------------------------------------------------------
@@ -973,7 +1235,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{ staticCacheDir: '/tmp' } as unknown as ConstructorParameters<
+		{ staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
@@ -1110,7 +1372,7 @@ function createDataTableAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1200,6 +1462,24 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+
+		it('resolves table references with the requested permission scope', async () => {
+			const { adapter } = createDataTableAdapterForTests();
+
+			const result = await adapter.resolveTableReference?.('dt-1', { permission: 'readRow' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['dataTable:readRow'],
+				false,
+				{ dataTableId: 'dt-1' },
+			);
+			expect(result).toEqual({
+				id: 'dt-1',
+				name: 'Orders',
+				projectId: 'team-project-id',
+			});
 		});
 	});
 
@@ -1299,6 +1579,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
+	sharingEnabled?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1357,14 +1638,21 @@ function createWorkflowAdapterForTests(overrides?: {
 		activateWorkflow: jest.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
+	const mockEnterpriseWorkflowService = {
+		preventTampering: jest.fn(async (data: unknown) => data),
+	};
 	const mockTelemetry = { track: jest.fn() };
+	const mockLogger = {
+		error: jest.fn(),
+		warn: jest.fn(),
+		scoped: jest.fn(),
+	};
+	mockLogger.scoped.mockReturnValue(mockLogger);
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[0],
+		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[1],
@@ -1384,7 +1672,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -1398,14 +1686,16 @@ function createWorkflowAdapterForTests(overrides?: {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		mockEnterpriseWorkflowService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[24],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
-			isSharingEnabled: jest.fn().mockReturnValue(false),
+			isSharingEnabled: jest.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
@@ -1427,7 +1717,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockSharedWorkflowRepository,
 		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
+		mockEnterpriseWorkflowService,
 		mockTelemetry,
+		mockLogger,
 		mockUser,
 	};
 }
@@ -1442,6 +1734,51 @@ describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('preserves node-level execution options when returning WorkflowJSON', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-settings',
+			name: 'Debug Workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: { category: 'randomData' },
+					notes: 'Keep execution settings',
+					notesInFlow: true,
+					executeOnce: true,
+					retryOnFail: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-settings');
+
+		expect(result.nodes[0]).toEqual(
+			expect.objectContaining({
+				notes: 'Keep execution settings',
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+			}),
+		);
 	});
 
 	it('lists active workflows by default', async () => {
@@ -1569,6 +1906,73 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('archives and unmarks the temporary shell when create update fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService, mockUser } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('archives and unmarks the temporary shell when credential tamper protection fails', async () => {
+		const {
+			adapter,
+			mockAiBuilderTemporaryWorkflowRepository,
+			mockEnterpriseWorkflowService,
+			mockWorkflowService,
+			mockUser,
+		} = createWorkflowAdapterForTests({ sharingEnabled: true });
+		const saveError = new Error('credential access denied');
+		mockEnterpriseWorkflowService.preventTampering.mockRejectedValueOnce(saveError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(mockUser, 'wf-new', {
+			skipArchived: true,
+		});
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('preserves the original create error when shell cleanup fails', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockLogger, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		const saveError = new Error('save failed');
+		const cleanupError = new Error('cleanup failed');
+		mockWorkflowService.update.mockRejectedValueOnce(saveError);
+		mockWorkflowService.archive.mockRejectedValueOnce(cleanupError);
+
+		await expect(
+			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+				markAsAiTemporary: true,
+			}),
+		).rejects.toBe(saveError);
+
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
+		expect(mockLogger.warn).toHaveBeenCalledWith(
+			'Failed to clean up AI-builder workflow shell after create failure',
+			{
+				threadId: 'thread-1',
+				workflowId: 'wf-new',
+				error: 'cleanup failed',
+			},
+		);
+	});
+
 	it('does not mark the workflow as AI-builder temporary when markAsAiTemporary is omitted', async () => {
 		const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
@@ -1576,6 +1980,22 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
 			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
+	it('persists pinData as an empty object (not undefined) when the SDK workflow has no pinData', async () => {
+		// Regression: explicit `pinData: undefined` round-tripped as SQL NULL,
+		// which then crashed `getDataLastExecutedNodeData` on test-webhook runs.
+		// Match the manual UI path, which stores `{}`.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ pinData: {} }),
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 
@@ -1808,7 +2228,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -2074,7 +2494,7 @@ function createRunAdapterForTests(
 		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{ n8nFolder: '/tmp' } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
@@ -2145,6 +2565,42 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+		});
+	});
+
+	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+			pinData: {
+				Existing: [{ json: { id: 'existing' } }],
+			},
+		});
+
+		await adapter.run(
+			'wf-1',
+			{ id: 'input' },
+			{
+				pinData: {
+					Mocked: [{ id: 'mocked' }],
+				},
+			},
+		);
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+
+		expect(runData.telemetryMetadata).toEqual({
+			source: 'instance_ai',
+			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
 		});
 	});
 
