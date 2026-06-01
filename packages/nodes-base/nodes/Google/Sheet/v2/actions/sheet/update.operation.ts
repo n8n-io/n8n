@@ -300,9 +300,25 @@ export async function execute(
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
-		nodeVersion < 4
-			? [this.getNodeParameter('columnToMatchOn', 0) as string]
-			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', 0) as string] : [];
+	if (nodeVersion >= 4) {
+		// `columns.matchingColumns` is required for update — see
+		// `appendOrUpdate.operation.ts` for the matching guard rationale.
+		const matchingColumns = this.getNodeParameter('columns.matchingColumns', 0, undefined) as
+			| string[]
+			| undefined;
+		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'`columns.matchingColumns` is required for the Update Row operation',
+				{
+					description:
+						'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`).',
+				},
+			);
+		}
+		columnsToMatchOn.push(...matchingColumns);
+	}
 
 	const dataMode =
 		nodeVersion < 4
