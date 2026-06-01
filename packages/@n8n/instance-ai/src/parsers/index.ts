@@ -2,7 +2,7 @@
  * Public parser surface for downstream packages (`packages/cli/...`).
  *
  * This entry point intentionally avoids importing anything from `../agent`
- * or other Mastra-tainted modules so it remains safe to consume from
+ * or other native agent-tainted modules so it remains safe to consume from
  * Jest CJS test environments.
  */
 

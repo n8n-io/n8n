@@ -13,9 +13,15 @@ import type { CloudPlanState } from '@/Interface';
 
 import { VIEWS } from '@/app/constants';
 import { NEW_AGENT_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
@@ -54,6 +60,7 @@ vi.mock('vue-router', async (importOriginal) => {
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	routerPushMock.mockReset();
+	vi.mocked(hasPermission).mockReturnValue(false);
 });
 
 describe('useGlobalEntityCreation', () => {
@@ -400,6 +407,120 @@ describe('useGlobalEntityCreation', () => {
 			const agentEntry = menu.value.find((item) => item.id === 'agent');
 			expect(agentEntry?.disabled).toBe(true);
 			expect(agentEntry?.submenu).toBeUndefined();
+		});
+	});
+
+	describe('instance-ai module', () => {
+		const INSTANCE_AI_SETTINGS = {
+			enabled: true,
+			localGatewayDisabled: false,
+			proxyEnabled: false,
+			cloudManaged: false,
+		};
+
+		const enableInstanceAi = () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation((name: string) => name === 'instance-ai');
+			settingsStore.moduleSettings = { 'instance-ai': { ...INSTANCE_AI_SETTINGS } };
+			vi.mocked(hasPermission).mockReturnValue(true);
+			return settingsStore;
+		};
+
+		it('omits the instance-ai entry when the module is inactive', () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'instance-ai-thread')).toBeUndefined();
+		});
+
+		it('omits the instance-ai entry when the module is active but disabled in settings', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation((name: string) => name === 'instance-ai');
+			settingsStore.moduleSettings = {
+				'instance-ai': { ...INSTANCE_AI_SETTINGS, enabled: false },
+			};
+			vi.mocked(hasPermission).mockReturnValue(true);
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'instance-ai-thread')).toBeUndefined();
+		});
+
+		it('omits the instance-ai entry when the user lacks the instanceAi:message scope', () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation((name: string) => name === 'instance-ai');
+			settingsStore.moduleSettings = { 'instance-ai': { ...INSTANCE_AI_SETTINGS } };
+			vi.mocked(hasPermission).mockReturnValue(false);
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.find((item) => item.id === 'instance-ai-thread')).toBeUndefined();
+		});
+
+		it('appends the instance-ai entry as the last item in the community shape', () => {
+			enableInstanceAi();
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.isTeamProjectFeatureEnabled = false;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.at(-1)).toStrictEqual(
+				expect.objectContaining({
+					id: 'instance-ai-thread',
+					route: { name: INSTANCE_AI_VIEW },
+				}),
+			);
+		});
+
+		it('appends the instance-ai entry as the last item when team feature is enabled but no team projects exist', () => {
+			enableInstanceAi();
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+			projectsStore.myProjects = [];
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.at(-1)).toStrictEqual(
+				expect.objectContaining({
+					id: 'instance-ai-thread',
+					route: { name: INSTANCE_AI_VIEW },
+				}),
+			);
+		});
+
+		it('appends the instance-ai entry as the last item in the global shape', () => {
+			enableInstanceAi();
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.teamProjectsLimit = -1;
+			projectsStore.isTeamProjectFeatureEnabled = true;
+			projectsStore.personalProject = { id: 'personal-project' } as Project;
+			projectsStore.myProjects = [{ id: '1', name: '1', type: 'team' }] as ProjectListItem[];
+
+			const { menu } = useGlobalEntityCreation();
+
+			expect(menu.value.at(-1)).toStrictEqual(
+				expect.objectContaining({
+					id: 'instance-ai-thread',
+					route: { name: INSTANCE_AI_VIEW },
+				}),
+			);
 		});
 	});
 });

@@ -1,11 +1,4 @@
-export type EventKind =
-	| 'user'
-	| 'agent'
-	| 'tool'
-	| 'node'
-	| 'workflow'
-	| 'working-memory'
-	| 'suspension';
+export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
 
 export interface TimelineItem {
 	kind: EventKind;

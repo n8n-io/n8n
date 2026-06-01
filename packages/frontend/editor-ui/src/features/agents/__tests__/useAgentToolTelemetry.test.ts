@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const trackMock = vi.fn();
 
@@ -9,12 +9,19 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
-function nodeRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonToolRef {
+function nodeRef(
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
 	return {
 		type: 'node',
 		name: 'Slack',
 		requireApproval: false,
-		node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, ...overrides },
+		node: {
+			nodeType: 'n8n-nodes-base.slack',
+			nodeTypeVersion: 1,
+			nodeParameters: {},
+			...overrides,
+		},
 	};
 }
 
@@ -60,6 +67,25 @@ describe('useAgentToolTelemetry', () => {
 			tool_type: 'workflow',
 			has_approval: true,
 			workflow: 'Daily digest',
+			agent_id: 'agent-42',
+		});
+	});
+
+	it('fires "User added agent tool" with MCP server details', () => {
+		const t = useAgentToolTelemetry('agent-42');
+		const server: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.com',
+			transport: 'streamableHttp',
+			authentication: 'none',
+		};
+		t.trackAddedMcpServer(server);
+
+		expect(trackMock).toHaveBeenCalledWith('User added agent tool', {
+			tool_type: 'mcpServer',
+			has_approval: false,
+			server_name: 'github',
+			authentication: 'none',
 			agent_id: 'agent-42',
 		});
 	});

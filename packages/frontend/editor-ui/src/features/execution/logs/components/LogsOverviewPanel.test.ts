@@ -44,7 +44,7 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 			getParentNodesByDepth: vi.fn().mockReturnValue([]),
 		}),
 		connectionsBySourceNode: {},
-		pinData: {},
+		pinnedDataByNodeName: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},

@@ -77,7 +77,7 @@ function makeSession(overrides: Partial<GatewaySession> = {}): jest.Mocked<Gatew
 		setDir: jest.fn(),
 		getGroupMode: jest.fn().mockReturnValue('allow'),
 		allowForSession: jest.fn(),
-		clearSessionRules: jest.fn(),
+		clearSession: jest.fn(),
 		alwaysAllow: jest.fn(),
 		alwaysDeny: jest.fn(),
 		flush: jest.fn().mockResolvedValue(undefined),

@@ -11,11 +11,8 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { readFileSync } from 'fs';
-import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
-import type { INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
-import path from 'path';
 
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
@@ -25,37 +22,8 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { WorkflowRunner } from '@/workflow-runner';
 
 import * as utils from '../shared/utils';
+import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
-
-// ============================================================
-// Helper to load nodes from dist folder
-// ============================================================
-
-const BASE_DIR = path.resolve(__dirname, '../../../..');
-
-function loadNodesFromDist(nodeNames: string[]): INodeTypeData {
-	const nodeTypes: INodeTypeData = {};
-
-	const knownNodes = JSON.parse(
-		readFileSync(path.join(BASE_DIR, 'nodes-base/dist/known/nodes.json'), 'utf-8'),
-	) as Record<string, NodeLoadingDetails>;
-
-	for (const nodeName of nodeNames) {
-		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
-		if (!loadInfo) {
-			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
-		}
-		// Load from dist .js files (sourcePath already includes 'dist/')
-		const nodeDistPath = path.join(BASE_DIR, 'nodes-base', loadInfo.sourcePath);
-		const node = new (require(nodeDistPath)[loadInfo.className])() as INodeType;
-		nodeTypes[nodeName] = {
-			sourcePath: '',
-			type: node,
-		};
-	}
-
-	return nodeTypes;
-}
 
 describe('Insights vs Workflow Statistics Integration', () => {
 	beforeAll(async () => {

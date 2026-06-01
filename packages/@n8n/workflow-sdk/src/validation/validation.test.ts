@@ -1,6 +1,6 @@
 import { validateWorkflow, ValidationError } from '.';
 import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
-import type { NodeInstance } from '../types/base';
+import type { NodeInstance, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../workflow-builder/node-builders/node-builder';
 import { languageModel, tool } from '../workflow-builder/node-builders/subnode-builders';
@@ -2984,6 +2984,154 @@ describe('Validation', () => {
 				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
 			});
 			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+	});
+
+	describe('SWITCH_FALLBACK_OUTPUT_DISABLED validation', () => {
+		const switchRules = {
+			values: [
+				{
+					outputKey: 'Urgent',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.priority }}',
+								rightValue: 'urgent',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+				{
+					outputKey: 'Normal',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.priority }}',
+								rightValue: 'normal',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+			],
+		};
+
+		function createSwitchWorkflow(args: {
+			switchOptions?: Record<string, unknown>;
+			switchOnError?: 'continueErrorOutput';
+			fallbackOutputIndex?: number;
+		}): WorkflowJSON {
+			const fallbackOutputIndex = args.fallbackOutputIndex ?? 2;
+
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'switch-1',
+						name: 'Route Priority',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: {
+							mode: 'rules',
+							rules: switchRules,
+							...(args.switchOptions ? { options: args.switchOptions } : {}),
+						},
+						...(args.switchOnError ? { onError: args.switchOnError } : {}),
+					},
+					{
+						id: 'case-1',
+						name: 'Handle Urgent',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+						parameters: {},
+					},
+					{
+						id: 'case-2',
+						name: 'Handle Normal',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+					},
+					{
+						id: 'fallback-1',
+						name: 'Handle Fallback',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Route Priority', type: 'main', index: 0 }]],
+					},
+					'Route Priority': {
+						main: [
+							[{ node: 'Handle Urgent', type: 'main', index: 0 }],
+							[{ node: 'Handle Normal', type: 'main', index: 0 }],
+							...Array.from({ length: Math.max(0, fallbackOutputIndex - 2) }, () => []),
+							[{ node: 'Handle Fallback', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+		}
+
+		function getSwitchFallbackWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter(
+				(w) => w.code === 'SWITCH_FALLBACK_OUTPUT_DISABLED',
+			);
+		}
+
+		it('warns when the fallback output is connected without fallbackOutput extra', () => {
+			const warnings = getSwitchFallbackWarnings(createSwitchWorkflow({}));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Route Priority');
+			expect(warnings[0].parameterPath).toBe('options.fallbackOutput');
+			expect(warnings[0].message).toContain("options.fallbackOutput is set to 'extra'");
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when fallbackOutput extra creates the fallback output', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOptions: { fallbackOutput: 'extra' } }),
+			);
+
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('warns when numeric fallbackOutput is used with an extra fallback connection', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOptions: { fallbackOutput: 1 } }),
+			);
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it('does not mistake the error output for a fallback branch', () => {
+			const warnings = getSwitchFallbackWarnings(
+				createSwitchWorkflow({ switchOnError: 'continueErrorOutput' }),
+			);
+
 			expect(warnings).toHaveLength(0);
 		});
 	});

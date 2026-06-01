@@ -70,7 +70,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		type: z.literal('removeNode'),
 		nodeName: z
 			.string()
-			.describe('Name of the node to remove. All inbound and outbound connections are removed.'),
+			.describe(
+				'Name of the node to remove. All inbound and outbound connections are removed, including any sub-node attachments (LLM models, memory, tools) — the sub-nodes themselves remain in the workflow but become disconnected and will not be re-attached automatically. To modify a node, use updateNodeParameters or setNodeParameter instead.',
+			),
 	}),
 	z.object({
 		type: z.literal('renameNode'),
@@ -124,6 +126,42 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		type: z.literal('setNodeDisabled'),
 		nodeName: z.string(),
 		disabled: z.boolean(),
+	}),
+	z.object({
+		type: z.literal('setNodeSettings'),
+		nodeName: z.string().describe('Name of the existing node to update.'),
+		settings: z
+			.object({
+				onError: z
+					.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
+					.optional()
+					.describe(
+						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output. Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
+					),
+				retryOnFail: z.boolean().optional(),
+				maxTries: z
+					.number()
+					.int()
+					.min(2)
+					.max(5)
+					.optional()
+					.describe('Number of attempts when retryOnFail is true (2–5).'),
+				waitBetweenTries: z
+					.number()
+					.int()
+					.min(0)
+					.max(5000)
+					.optional()
+					.describe('Milliseconds to wait between retry attempts (0–5000).'),
+				alwaysOutputData: z.boolean().optional(),
+				executeOnce: z.boolean().optional(),
+			})
+			.refine((s) => Object.keys(s).length > 0, {
+				message: 'settings must specify at least one field',
+			})
+			.describe(
+				'Node-level execution settings. Only the keys you include are written; omitted keys are left unchanged.',
+			),
 	}),
 	z.object({
 		type: z.literal('setWorkflowMetadata'),
@@ -506,6 +544,19 @@ export function applyOperations(
 				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
 				node.disabled = op.disabled;
+				break;
+			}
+
+			case 'setNodeSettings': {
+				const node = nodeByName.get(op.nodeName);
+				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				const s = op.settings;
+				if (s.onError !== undefined) node.onError = s.onError;
+				if (s.retryOnFail !== undefined) node.retryOnFail = s.retryOnFail;
+				if (s.maxTries !== undefined) node.maxTries = s.maxTries;
+				if (s.waitBetweenTries !== undefined) node.waitBetweenTries = s.waitBetweenTries;
+				if (s.alwaysOutputData !== undefined) node.alwaysOutputData = s.alwaysOutputData;
+				if (s.executeOnce !== undefined) node.executeOnce = s.executeOnce;
 				break;
 			}
 

@@ -259,7 +259,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',

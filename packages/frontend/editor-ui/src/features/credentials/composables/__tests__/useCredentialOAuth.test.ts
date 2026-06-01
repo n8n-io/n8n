@@ -96,6 +96,31 @@ const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
 			type: 'hidden',
 			default: 'https://mcp.example.com/mcp',
 		},
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'none',
+		},
+	],
+};
+
+const oauth2ApiWithVisibleAllowedHttpRequestDomains: ICredentialType = {
+	name: 'customOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Custom OAuth2 API',
+	properties: [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Specific Domains', value: 'domains' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'all',
+		},
 	],
 };
 
@@ -559,6 +584,43 @@ describe('useCredentialOAuth', () => {
 
 			return credentialsStore;
 		}
+
+		it('should not set allowedHttpRequestDomains for hidden property', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('mcpOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'mcpOAuth2Api',
+					data: {},
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.customOAuth2Api =
+				oauth2ApiWithVisibleAllowedHttpRequestDomains;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('customOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'customOAuth2Api',
+					data: { allowedHttpRequestDomains: 'none' },
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
 
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();

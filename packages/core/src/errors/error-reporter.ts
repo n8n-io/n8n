@@ -26,6 +26,9 @@ type ErrorReporterInitOptions = {
 	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
 	eventLoopBlockThreshold?: number;
 
+	/** Max event loop block events per hour per instance. Only used if `withEventLoopBlockDetection` is true. */
+	eventLoopBlockMaxEventsPerHour?: number;
+
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
 
@@ -52,6 +55,21 @@ const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
+
+const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
+const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
+
+/**
+ * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
+ * paths and the n8n CLI install prefix become stable `app:///` roots. This
+ * lets Sentry code mappings match `n8n-core`, `n8n-nodes-base`, and cli
+ * frames without depending on the per-release pnpm peer-deps hash segment.
+ */
+export function normalizeFrameFilename(filename: string): string {
+	return filename
+		.replace(PNPM_NESTED_FRAME_RE, 'app:///')
+		.replace(N8N_CLI_INSTALL_PREFIX, 'app:///');
+}
 
 @Service()
 export class ErrorReporter {
@@ -116,6 +134,7 @@ export class ErrorReporter {
 		releaseDate,
 		withEventLoopBlockDetection,
 		eventLoopBlockThreshold,
+		eventLoopBlockMaxEventsPerHour,
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
@@ -196,6 +215,7 @@ export class ErrorReporter {
 						server_type: serverType,
 					},
 					eventLoopBlockThreshold,
+					eventLoopBlockMaxEventsPerHour,
 				)
 			: [];
 
@@ -213,7 +233,15 @@ export class ErrorReporter {
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
-				rewriteFramesIntegration({ root: '/' }),
+				rewriteFramesIntegration({
+					root: '/',
+					iteratee: (frame) => {
+						if (frame.filename) {
+							frame.filename = normalizeFrameFilename(frame.filename);
+						}
+						return frame;
+					},
+				}),
 				requestDataIntegration({
 					include: {
 						cookies: false,
@@ -335,12 +363,17 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
+	private async getEventLoopBlockIntegration(
+		tags: Record<string, string>,
+		threshold?: number,
+		maxEventsPerHour?: number,
+	) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
 					...(threshold ? { threshold } : {}),
+					...(maxEventsPerHour ? { maxEventsPerHour } : {}),
 					staticTags: tags,
 				}),
 			];
