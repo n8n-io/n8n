@@ -43,6 +43,7 @@
 	"devDependencies": {
 		"@types/node": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
