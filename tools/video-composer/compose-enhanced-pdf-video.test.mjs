@@ -34,7 +34,16 @@ const baseJob = {
 };
 
 test('validateEnhancedJob returns defaults and required fields', () => {
-	const job = validateEnhancedJob(baseJob);
+	const {
+		introCoverSeconds,
+		introIllustrationSeconds,
+		overlayWidth,
+		width,
+		height,
+		fps,
+		...jobWithoutOptionalDefaults
+	} = baseJob;
+	const job = validateEnhancedJob(jobWithoutOptionalDefaults);
 
 	assert.equal(job.introCoverSeconds, 4);
 	assert.equal(job.introIllustrationSeconds, 4);
