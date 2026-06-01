@@ -21,8 +21,8 @@ export type ApiKey = {
 	scopes: ApiKeyScope[];
 	/** ISO timestamp of the last time the key authenticated a request, or null if never used. */
 	lastUsedAt: string | null;
-	/** The user who owns this key. Populated on list endpoints. */
-	owner: ApiKeyOwner;
+	/** The user who owns this key. Populated on list endpoints; absent on create. */
+	owner?: ApiKeyOwner;
 };
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
