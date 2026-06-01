@@ -39,6 +39,7 @@ import {
 	InstanceAiLivenessPolicy,
 	McpClientManager,
 	createDomainAccessTracker,
+	createSubAgentResourceId,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
@@ -2353,7 +2354,6 @@ export class InstanceAiService {
 
 	private createAgentMemoryOptions() {
 		return {
-			lastMessages: this.instanceAiConfig.lastMessages,
 			observationalMemory: {
 				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
@@ -3071,6 +3071,13 @@ export class InstanceAiService {
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			findSubAgentResumeInfo: async (agentKind) =>
+				await this.checkpointStore.findSuspendedSubAgentResumeInfo(
+					createSubAgentResourceId(threadId, agentKind),
+				),
+			persistInFlightUserMessage: async () => {
+				await this.persistUserMessageOnFirstSuspend(threadId, runId);
+			},
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
