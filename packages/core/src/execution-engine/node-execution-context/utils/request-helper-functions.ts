@@ -103,7 +103,13 @@ export async function invokeAxios(
 		if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
 			throw error;
 		}
-		const { auth } = axiosConfig;
+		// Credentials are withheld from the initial request so the server issues its
+		// challenge. Build the digest response from the caller-supplied auth options,
+		// accepting both user/pass and username/password spellings.
+		const auth = {
+			username: (authOptions.user ?? authOptions.username) as string,
+			password: (authOptions.password ?? authOptions.pass) as string,
+		};
 		delete axiosConfig.auth;
 		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
 		return await axios(axiosConfig);
@@ -289,12 +295,15 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 	}
 
 	if (requestObject.auth !== undefined) {
-		// Check support for sendImmediately
 		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
-		} else {
+		} else if (requestObject.auth.sendImmediately !== false) {
+			// Attach credentials up front only when they should be sent immediately.
+			// For challenge-response schemes (e.g. Digest, sendImmediately: false) the
+			// credentials are withheld here so the server issues its challenge;
+			// invokeAxios then answers it using the auth options.
 			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
@@ -523,7 +532,10 @@ export function convertN8nRequestToAxios(
 		headers: headers ?? {},
 		method,
 		timeout,
-		auth,
+		// Withhold credentials on the first request for challenge-response schemes
+		// (e.g. Digest, sendImmediately: false). invokeAxios applies them after the
+		// server returns its challenge.
+		auth: auth?.sendImmediately === false ? undefined : auth,
 		url,
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,

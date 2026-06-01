@@ -281,9 +281,9 @@ describe('Request Helper Functions', () => {
 		});
 
 		it('should handle digest auth when receiving 401 with nonce', async () => {
-			nock(baseUrl)
+			// The initial request must not carry credentials so the server issues its challenge
+			nock(baseUrl, { badheaders: ['authorization'] })
 				.get('/test')
-				.matchHeader('authorization', 'Basic dXNlcjpwYXNz')
 				.once()
 				.reply(401, {}, { 'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"' });
 
@@ -298,12 +298,8 @@ describe('Request Helper Functions', () => {
 			const response = await invokeAxios(
 				{
 					url: `${baseUrl}/test`,
-					auth: {
-						username: 'user',
-						password: 'pass',
-					},
 				},
-				{ sendImmediately: false },
+				{ user: 'user', pass: 'pass', sendImmediately: false },
 			);
 
 			expect(response.status).toBe(200);
@@ -387,6 +383,28 @@ describe('Request Helper Functions', () => {
 					maxRedirects: 0,
 				}),
 			);
+		});
+
+		test('should attach basic credentials when sendImmediately is not false', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass' },
+			});
+
+			expect(axiosOptions.auth).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		test('should withhold credentials on the first request when sendImmediately is false', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass', sendImmediately: false },
+			});
+
+			// Digest and other challenge-response schemes must not send credentials
+			// up front; invokeAxios applies them after the 401 challenge.
+			expect(axiosOptions.auth).toBeUndefined();
 		});
 
 		test('should set default User-Agent when none provided', async () => {
@@ -575,6 +593,28 @@ describe('Request Helper Functions', () => {
 					params: { param1: 'value1' },
 				}),
 			);
+		});
+
+		test('should pass credentials through when sendImmediately is not false', () => {
+			const axiosConfig = convertN8nRequestToAxios({
+				method: 'GET',
+				url: 'https://example.com',
+				auth: { username: 'user', password: 'pass' },
+			});
+
+			expect(axiosConfig.auth).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		test('should withhold credentials on the first request when sendImmediately is false', () => {
+			const axiosConfig = convertN8nRequestToAxios({
+				method: 'GET',
+				url: 'https://example.com',
+				auth: { username: 'user', password: 'pass', sendImmediately: false },
+			});
+
+			// Digest and other challenge-response schemes must not send credentials
+			// up front; invokeAxios applies them after the 401 challenge.
+			expect(axiosConfig.auth).toBeUndefined();
 		});
 
 		test('should handle body and content type', () => {
