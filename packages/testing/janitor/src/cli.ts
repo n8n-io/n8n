@@ -675,14 +675,16 @@ function runMergeCoverage(options: CliOptions): void {
 	);
 }
 
-/** select-e2e: changed files + impact map → spec list (JSON). Default-broad when
- *  any changed file is unmapped (new/never-covered) — never under-selects. */
+/** select-e2e: changed files + impact map → spec list (JSON).
+ *
+ *  Two layers of safety, both biased to OVER-select (never miss a regression):
+ *   - FAIL-OPEN on the map source: a missing/unreadable/corrupt map → broad
+ *     (run everything). This is what makes swapping the committed file for a
+ *     remote webhook safe — a fetch failure degrades to running the full suite,
+ *     never to skipping tests.
+ *   - DEFAULT-BROAD on content: any changed file absent from a loaded map → broad.
+ */
 function runSelectE2e(options: CliOptions): void {
-	if (!options.mapFile) {
-		console.error('Error: --map=<impact-map.json> is required');
-		process.exit(1);
-	}
-	const map = JSON.parse(fs.readFileSync(options.mapFile, 'utf8')) as ImpactMap;
 	const changed = (readChangedFiles(options) ?? []).map((file) => ({ file }));
 	const allSpecs = options.allSpecsFile
 		? fs
@@ -691,8 +693,23 @@ function runSelectE2e(options: CliOptions): void {
 				.map((s) => s.trim())
 				.filter(Boolean)
 		: undefined;
+
+	let map: ImpactMap = {};
+	let failOpen: string | undefined;
+	if (options.mapFile && fs.existsSync(options.mapFile)) {
+		try {
+			map = JSON.parse(fs.readFileSync(options.mapFile, 'utf8')) as ImpactMap;
+		} catch (error) {
+			failOpen = `unreadable map: ${String(error)}`;
+		}
+	} else {
+		failOpen = options.mapFile ? `map not found: ${options.mapFile}` : 'no --map provided';
+	}
+
+	// With an empty map every changed file is "unmapped" → resolveImpact returns
+	// broad, so fail-open falls out of the same code path — no special-casing.
 	const result = resolveImpact(changed, map, { allSpecs });
-	console.log(JSON.stringify(result));
+	console.log(JSON.stringify({ ...result, failOpen }));
 }
 
 async function main(): Promise<void> {
