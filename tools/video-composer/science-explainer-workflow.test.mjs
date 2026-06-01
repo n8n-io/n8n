@@ -58,7 +58,7 @@ test('science explainer workflow calls the science composer script', () => {
 
 	assert.match(composerCode, /compose-science-explainer-video\.mjs/);
 	assert.match(composerCode, /item\.composerJobPath/);
-	assert.match(composerCode, /managed-job-runner\.mjs/);
+	assert.doesNotMatch(composerCode, /managed-job-runner\.mjs/);
 });
 
 test('science explainer code nodes avoid modules blocked by n8n task runner', () => {

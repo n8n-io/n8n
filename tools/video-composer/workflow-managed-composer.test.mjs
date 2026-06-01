@@ -22,30 +22,28 @@ function getNode(workflow, name) {
 	return node;
 }
 
-test('long-running composer workflows use managed background jobs', () => {
+test('composer workflows run in a direct linear chain without polling loops', () => {
 	for (const workflowPath of workflowPaths) {
 		const workflow = loadWorkflow(workflowPath);
 		const composerNode = workflow.nodes.find((node) => /Composer/.test(node.name));
 		assert.ok(composerNode, `${workflowPath} should have a composer node`);
 		const code = composerNode.parameters?.jsCode || '';
-		assert.match(code, /managed-job-runner\.mjs/, `${composerNode.name} should use managed runner`);
-		assert.doesNotMatch(code, /child\.on\('close'/, `${composerNode.name} should not wait on child close`);
-		assert.match(code, /detached:\s*true/, `${composerNode.name} should detach the runner`);
-
-		const waitNode = getNode(workflow, 'Wait For Composer');
-		assert.equal(waitNode.type, 'n8n-nodes-base.wait');
-		assert.equal(waitNode.parameters.amount, 30);
-
-		const checkNode = getNode(workflow, 'Check Composer Status');
-		assert.equal(checkNode.type, 'n8n-nodes-base.code');
-		assert.match(checkNode.parameters.jsCode, /composerStatusPath/);
-
-		const ifNode = getNode(workflow, 'Composer Complete?');
-		assert.equal(ifNode.type, 'n8n-nodes-base.if');
+		assert.doesNotMatch(code, /managed-job-runner\.mjs/, `${composerNode.name} should not use managed runner`);
+		assert.doesNotMatch(code, /detached:\s*true/, `${composerNode.name} should not detach a background runner`);
+		assert.equal(
+			workflow.nodes.some((node) => ['Wait For Composer', 'Check Composer Status', 'Composer Complete?'].includes(node.name)),
+			false,
+			`${workflowPath} should not contain composer polling nodes`,
+		);
+		assert.equal(
+			Object.keys(workflow.connections || {}).some((name) => ['Wait For Composer', 'Check Composer Status', 'Composer Complete?'].includes(name)),
+			false,
+			`${workflowPath} should not contain composer polling connections`,
+		);
 	}
 });
 
-test('managed composer workflow code nodes compile', () => {
+test('direct composer workflow code nodes compile', () => {
 	for (const workflowPath of workflowPaths) {
 		const workflow = loadWorkflow(workflowPath);
 		for (const node of workflow.nodes) {
