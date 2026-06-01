@@ -27,7 +27,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
+import type {
+	ICustomTelemetryTag,
+	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
+} from 'n8n-workflow';
 import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -57,6 +61,7 @@ import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforce
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -94,6 +99,7 @@ const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
 const isLoading = ref(true);
+const hasCustomTelemetryTagErrors = ref(false);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
 	{
@@ -287,6 +293,10 @@ function goToDataRedactionUpgrade() {
 
 const workflowHasDynamicCredentials = computed(
 	() => isCredentialResolverEnabled.value && !!workflowSettings.value.credentialResolverId,
+);
+
+const isWorkflowSettingsReadOnly = computed(
+	() => readOnlyEnv.value || !workflowPermissions.value.update,
 );
 
 /**
@@ -645,7 +655,22 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 	return { hours: 0, minutes: 0, seconds: 0 };
 };
 
+const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[]) => {
+	try {
+		await workflowsStore.updateWorkflow(String(route.params.workflowId), {
+			settings: { customTelemetryTags },
+			expectedChecksum: workflowDocumentStore.value.checksum,
+		});
+		workflowDocumentStore.value.mergeSettings({ customTelemetryTags });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
+		throw error;
+	}
+};
+
 const saveSettings = async () => {
+	if (hasCustomTelemetryTagErrors.value) return;
+
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
@@ -1682,12 +1707,19 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
+				<WorkflowCustomTelemetryTags
+					v-if="settingsStore.isOtelEnabled"
+					v-model="workflowSettings.customTelemetryTags"
+					:is-read-only="isWorkflowSettingsReadOnly"
+					:save-tags="saveCustomTelemetryTags"
+					@validity-change="hasCustomTelemetryTagErrors = $event"
+				/>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style['action-buttons']" data-test-id="workflow-settings-save-button">
 				<N8nButton
-					:disabled="readOnlyEnv || !workflowPermissions.update"
+					:disabled="readOnlyEnv || !workflowPermissions.update || hasCustomTelemetryTagErrors"
 					:label="i18n.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
