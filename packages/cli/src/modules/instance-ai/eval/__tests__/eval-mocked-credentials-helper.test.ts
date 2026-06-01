@@ -99,6 +99,54 @@ describe('EvalMockedCredentialsHelper', () => {
 			expect(helper.mockedCredentials[0].nodeName).toBe('unknown');
 		});
 
+		it('tolerates an undefined credential id without ever touching the inner helper', async () => {
+			// Builder workflows for outbound-service nodes sometimes save with
+			// `credentials = undefined` (resolveCredentials deleted the unresolved
+			// entry pre-save). Core's eval-mode bypass routes those through here
+			// with `{ id: null, name: type }`, but the LLM also occasionally emits
+			// `credentials[type] = { name: 'X' }` directly, which lands here as
+			// `{ id: undefined, name: 'X' }`. Both must synthesise a mock without
+			// hitting the inner helper — production's `getCredentialsEntity`
+			// throws an `UnexpectedError` (NOT a `CredentialNotFoundError`) on
+			// any falsy id, which the catch below would re-raise and crash the
+			// node before the wire-server ever sees the HTTP request.
+			const innerGetDecrypted = jest.fn();
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue([
+					{
+						name: 'apiKey',
+						displayName: 'API Key',
+						type: 'string' as const,
+						default: '',
+					},
+				]),
+				getDecrypted: innerGetDecrypted,
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+			const undefinedIdCreds: INodeCredentialsDetails = {
+				id: undefined as unknown as string,
+				name: 'OpenWeatherMap API',
+			};
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				undefinedIdCreds,
+				'openWeatherMapApi',
+				'manual',
+				{ node: { name: 'Get London Weather' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(innerGetDecrypted).not.toHaveBeenCalled();
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'Get London Weather',
+					credentialType: 'openWeatherMapApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
 		describe('server URL rewrite', () => {
 			const serverUrl = 'http://127.0.0.1:55555';
 			const openAiCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
