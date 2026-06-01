@@ -7,19 +7,19 @@ import type { CredentialBindingRequest, CredentialResolution } from './credentia
 @Service()
 export class CredentialImporter {
 	constructor(
-		private readonly matcherFactory: CredentialMatcherFactory,
-		private readonly missingModeFactory: CredentialMissingModeFactory,
+		private readonly credentialMatcherFactory: CredentialMatcherFactory,
+		private readonly credentialMissingModeFactory: CredentialMissingModeFactory,
 	) {}
 
 	async resolveForImport(request: CredentialBindingRequest): Promise<CredentialResolution> {
-		const matched = await this.matcherFactory
+		const matched = await this.credentialMatcherFactory
 			.getMatcher(request.matchingMode)
 			.match(request.requirements, {
 				targetProject: request.targetProject,
 				user: request.user,
 			});
 
-		return await this.missingModeFactory.getHandler(request.missingMode).handle(matched, {
+		return await this.credentialMissingModeFactory.getHandler(request.missingMode).handle(matched, {
 			requirements: request.requirements,
 			targetProject: request.targetProject,
 			user: request.user,
