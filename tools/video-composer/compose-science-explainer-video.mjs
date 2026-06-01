@@ -76,7 +76,7 @@ export function calculateScienceLayout({
 		height,
 		bottomVideoHeight,
 		bottomVideoY,
-		subtitleMarginV: bottomVideoHeight + 60,
+		subtitleMarginV: Math.max(72, Math.round(height * 0.05)),
 	};
 }
 
@@ -98,7 +98,7 @@ function silentAudioInput() {
 	return ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000'];
 }
 
-export function createAssSubtitle({ width = 1080, height = 1920, events = [], marginV = 444 }) {
+export function createAssSubtitle({ width = 1080, height = 1920, events = [], marginV = 96 }) {
 	const lines = [
 		'[Script Info]',
 		'ScriptType: v4.00+',

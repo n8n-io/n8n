@@ -306,7 +306,7 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 	assert.equal(timing.pages.length, 1);
 	assert.equal(timing.subtitles[0].text, '这页的重点是七小时附近的低点。');
 	const subtitle = fs.readFileSync(paths.subtitlePath, 'utf8');
-	assert.match(subtitle, /,80,80,188,1/);
+	assert.match(subtitle, /,80,80,72,1/);
 	assert.match(subtitle, /这页的重点是七小时附近的低点。/);
 });
 

@@ -85,7 +85,7 @@ test('validateScienceJob rejects unsupported aspect ratios', () => {
 	);
 });
 
-test('calculateScienceLayout computes bottom video overlay and subtitle safe area', () => {
+test('calculateScienceLayout keeps subtitles near the final video bottom', () => {
 	assert.deepEqual(
 		calculateScienceLayout({ width: 1080, height: 1920, bottomVideoHeightRatio: 0.2 }),
 		{
@@ -93,7 +93,7 @@ test('calculateScienceLayout computes bottom video overlay and subtitle safe are
 			height: 1920,
 			bottomVideoHeight: 384,
 			bottomVideoY: 1536,
-			subtitleMarginV: 444,
+			subtitleMarginV: 96,
 		},
 	);
 });
@@ -167,21 +167,21 @@ test('buildSubtitleEventsForSegment returns segment-relative subtitle times', ()
 	assert.deepEqual(events, [{ start: 0.5, end: 2, text: '这一页先看结论。' }]);
 });
 
-test('createAssSubtitle uses the computed subtitle margin', () => {
+test('createAssSubtitle uses the bottom subtitle margin', () => {
 	const subtitle = createAssSubtitle({
 		width: 1080,
 		height: 1920,
-		marginV: 444,
-		events: [{ start: 0, end: 1.5, text: '字幕在视频浮层上方。' }],
+		marginV: 96,
+		events: [{ start: 0, end: 1.5, text: '字幕贴近画面底部。' }],
 	});
 
 	assert.match(subtitle, /PlayResX: 1080/);
 	assert.match(subtitle, /PlayResY: 1920/);
 	assert.match(subtitle, /Style: Default,Arial,64,/);
-	assert.match(subtitle, /,80,80,444,1/);
+	assert.match(subtitle, /,80,80,96,1/);
 	assert.match(
 		subtitle,
-		/Dialogue: 0,0:00:00.00,0:00:01.50,Default,,0,0,0,,字幕在视频浮层上方。/,
+		/Dialogue: 0,0:00:00.00,0:00:01.50,Default,,0,0,0,,字幕贴近画面底部。/,
 	);
 });
 
