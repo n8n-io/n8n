@@ -1,3 +1,11 @@
+## [1.123.50](https://github.com/n8n-io/n8n/compare/n8n@1.123.49...n8n@1.123.50) (2026-06-01)
+
+
+### Bug Fixes
+
+* **core:** Add configurable retries and error details to S3 ([#29810](https://github.com/n8n-io/n8n/issues/29810)) ([83023cc](https://github.com/n8n-io/n8n/commit/83023cce28ecec4baa6ca499635cd4ecd9c4d88b))
+
+
 ## [1.123.49](https://github.com/n8n-io/n8n/compare/n8n@1.123.48...n8n@1.123.49) (2026-05-28)
 
 
