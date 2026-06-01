@@ -58,3 +58,20 @@ test('science explainer workflow calls the science composer script', () => {
 	assert.match(composerCode, /compose-science-explainer-video\.mjs/);
 	assert.match(composerCode, /science-video-job\.json/);
 });
+
+test('science explainer code nodes avoid modules blocked by n8n task runner', () => {
+	const disallowedModules = ['path'];
+
+	for (const node of workflow.nodes) {
+		const jsCode = node.parameters?.jsCode;
+		if (!jsCode) continue;
+
+		for (const moduleName of disallowedModules) {
+			assert.doesNotMatch(
+				jsCode,
+				new RegExp(`require\\(['"]${moduleName}['"]\\)`),
+				`${node.name} must not require ${moduleName}`,
+			);
+		}
+	}
+});
