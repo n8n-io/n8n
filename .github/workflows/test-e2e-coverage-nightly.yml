@@ -65,7 +65,10 @@ jobs:
     name: Aggregate Coverage
     needs: e2e
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    # 8vcpu (32GB) — merging the full-suite raw V8 (~130k backend script entries
+    # across 8 shards) needs the headroom. The structural fix is shard-side
+    # compaction (DEVP-205); until then, give the merge memory to work in.
+    runs-on: blacksmith-8vcpu-ubuntu-2204
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -101,6 +104,7 @@ jobs:
       - name: Generate Coverage Report
         env:
           N8N_COVERAGE_DIR: ${{ github.workspace }}/packages/testing/playwright/coverage/.backend-v8
+          NODE_OPTIONS: --max-old-space-size=24576
         run: pnpm --filter n8n-playwright coverage:report
 
       - name: Upload Coverage Report Artifact
