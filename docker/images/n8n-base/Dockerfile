@@ -1,5 +1,7 @@
 ARG NODE_VERSION=24.15.0
 
+# Smoke to trigger backport label appliance
+
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
 ARG NODE_VERSION
