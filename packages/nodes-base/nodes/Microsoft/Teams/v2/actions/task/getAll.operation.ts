@@ -1,5 +1,4 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -27,6 +26,11 @@ const properties: INodeProperties[] = [
 				description: 'Tasks in group plan',
 			},
 		],
+		displayOptions: {
+			hide: {
+				'/authentication': ['servicePrincipal'],
+			},
+		},
 	},
 	groupRLC,
 	{
@@ -34,6 +38,14 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				tasksFor: ['plan'],
+			},
+		},
+	},
+	{
+		...planRLC,
+		displayOptions: {
+			show: {
+				'/authentication': ['servicePrincipal'],
 			},
 		},
 	},
@@ -50,18 +62,14 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
-	const tasksFor = this.getNodeParameter('tasksFor', i) as string;
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+	const tasksFor =
+		authentication === 'servicePrincipal'
+			? 'plan'
+			: (this.getNodeParameter('tasksFor', i) as string);
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (tasksFor === 'member') {
-		const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
-		if (authentication === 'servicePrincipal') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Retrieving tasks for "Group Member" is not supported with Service Principal authentication. Use "Plan" instead, or switch to OAuth2.',
-				{ itemIndex: i },
-			);
-		}
 		//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
 		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
 			.id;
