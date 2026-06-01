@@ -6,7 +6,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * publication request that the outbox consumer will process asynchronously.
  */
 export class CreateWorkflowPublicationOutboxTable1784000000020 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, createIndex, column } }: MigrationContext) {
 		await createTable('workflow_publication_outbox').withColumns(
 			column('id').int.primary.autoGenerate2,
 			// No foreign keys on workflowId or publishedVersionId: this is a
@@ -34,6 +34,16 @@ export class CreateWorkflowPublicationOutboxTable1784000000020 implements Revers
 				'Error details for surfacing failed publications to the user.',
 			),
 		).withTimestamps;
+
+		// At most one pending record per workflow: enqueueing a newer version
+		// while one is still pending supersedes the older publishedVersionId.
+		await createIndex(
+			'workflow_publication_outbox',
+			['workflowId'],
+			true,
+			'IDX_workflow_publication_outbox_pending_workflow',
+			"status = 'pending'",
+		);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
