@@ -42,6 +42,8 @@ export class AgentTaskService {
 	/** Live cron jobs keyed by taskId; the agentId is kept so a whole agent's jobs can be stopped. */
 	private readonly jobs = new Map<string, { agentId: string; job: CronJob }>();
 
+	private readonly runningTaskIds = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
@@ -254,6 +256,7 @@ export class AgentTaskService {
 		for (const taskId of [...this.jobs.keys()]) {
 			this.deregister(taskId);
 		}
+		this.runningTaskIds.clear();
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
@@ -300,7 +303,7 @@ export class AgentTaskService {
 		const job = new CronJob(
 			cronExpression,
 			() => {
-				void this.runTask(taskId);
+				void this.runScheduledTask(taskId);
 			},
 			null,
 			true,
@@ -324,6 +327,23 @@ export class AgentTaskService {
 	}
 
 	// ── Run ───────────────────────────────────────────────────────────────
+
+	private async runScheduledTask(taskId: string): Promise<void> {
+		if (this.runningTaskIds.has(taskId)) {
+			this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
+				taskId,
+				agentId: this.jobs.get(taskId)?.agentId,
+			});
+			return;
+		}
+
+		this.runningTaskIds.add(taskId);
+		try {
+			await this.runTask(taskId);
+		} finally {
+			this.runningTaskIds.delete(taskId);
+		}
+	}
 
 	private async runTask(taskId: string): Promise<void> {
 		// agentId comes from the live job entry (set at registration), so a task

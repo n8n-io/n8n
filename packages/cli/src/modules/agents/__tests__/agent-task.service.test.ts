@@ -95,6 +95,16 @@ async function runTaskOf(service: AgentTaskService, taskId: string): Promise<voi
 	await (service as unknown as { runTask(id: string): Promise<void> }).runTask(taskId);
 }
 
+async function runScheduledTaskOf(service: AgentTaskService, taskId: string): Promise<void> {
+	await (service as unknown as { runScheduledTask(id: string): Promise<void> }).runScheduledTask(
+		taskId,
+	);
+}
+
+async function flushAsyncWork(): Promise<void> {
+	await new Promise((resolve) => setImmediate(resolve));
+}
+
 /** Seed the live jobs map so `runTask` can resolve the agentId without registering. */
 function seedJob(service: AgentTaskService, taskId: string, agentId: string): { stop: jest.Mock } {
 	const job = { stop: jest.fn() };
@@ -380,6 +390,49 @@ describe('AgentTaskService', () => {
 
 			expect(CronJobMock).not.toHaveBeenCalled();
 		});
+
+		it('skips a cron tick while the same task is already running', async () => {
+			let finishRun!: () => void;
+			async function* blockingStream(): AsyncGenerator<never> {
+				await new Promise<void>((resolve) => {
+					finishRun = resolve;
+				});
+			}
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
+			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
+			(agentsService.executeForTaskPublished as jest.Mock)
+				.mockReturnValueOnce(blockingStream())
+				.mockReturnValueOnce(emptyStream());
+
+			await service.registerEnabledForAgent(AGENT_ID);
+			const onTick = CronJobMock.mock.calls[0][1] as () => void;
+
+			onTick();
+			await flushAsyncWork();
+			onTick();
+			await flushAsyncWork();
+
+			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(
+				'[AgentTaskService] Skipping task because previous run is still active',
+				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID }),
+			);
+
+			finishRun();
+			await flushAsyncWork();
+			onTick();
+			await flushAsyncWork();
+
+			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('requestReconcile', () => {
@@ -554,6 +607,45 @@ describe('AgentTaskService', () => {
 				'[AgentTaskService] Task run failed',
 				expect.objectContaining({ taskId: 'task-1' }),
 			);
+		});
+
+		it('allows a later scheduled run after a failed execution completes', async () => {
+			seedJob(service, 'task-1', AGENT_ID);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
+			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
+			(agentsService.executeForTaskPublished as jest.Mock)
+				.mockReturnValueOnce(throwingStream())
+				.mockReturnValueOnce(emptyStream());
+
+			await runScheduledTaskOf(service, 'task-1');
+			await runScheduledTaskOf(service, 'task-1');
+
+			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('stopAll', () => {
+		it('clears stale running state as well as cron jobs', async () => {
+			const job = seedJob(service, 'task-1', AGENT_ID);
+			(
+				service as unknown as {
+					runningTaskIds: Set<string>;
+				}
+			).runningTaskIds.add('task-1');
+
+			service.stopAll();
+
+			expect(job.stop).toHaveBeenCalled();
+			expect(
+				(
+					service as unknown as {
+						runningTaskIds: Set<string>;
+					}
+				).runningTaskIds.has('task-1'),
+			).toBe(false);
 		});
 	});
 

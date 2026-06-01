@@ -77,14 +77,6 @@ or "refine-it-later" task.
 - To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
   \`enabled: false\`, or drop the ref). Changes take effect on the next publish.
 - \`create_task\` does NOT add tools — if the task needs a tool the agent lacks,
-  add it to the config yourself first.
-
-## Verify
-
-- Every section of the objective template is present and filled with concrete
-  content (no placeholders or angle-bracket text).
-- The objective reads as a complete brief the agent could act on with no other
-  context, including where to deliver the result.
-- The cron matches the cadence the user asked for.`,
+  add it to the config yourself first.`,
 	};
 }
