@@ -42,6 +42,7 @@ const defaultProps = {
 	projectId: 'p1',
 	agentId: 'a1',
 	connectedTriggers: [] as string[],
+	isPublished: false,
 };
 
 describe('AgentChatQuickActions', () => {
