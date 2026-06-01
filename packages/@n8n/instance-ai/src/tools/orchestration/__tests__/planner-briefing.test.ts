@@ -1,195 +1,10 @@
-import type {
-	OrchestrationContext,
-	PlannedTaskGraph,
-	PlannedTaskRecord,
-	PlannedTaskService,
-} from '../../../types';
-import { BlueprintAccumulator } from '../blueprint-accumulator';
-
-const {
-	__testBuildPlannerBriefingContext,
-	__testClearPlannedTaskGraph,
-	__testFormatMessagesForBriefing,
-	__testGetRecentMessages,
-	__testGetPriorToolObservations,
-	__testRehydrateAccumulatorFromGraph,
-} =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
-
-function makeContext(overrides: {
-	graph: PlannedTaskGraph | null;
-	runId?: string;
-}): {
-	context: OrchestrationContext;
-	clear: jest.Mock;
-	getGraph: jest.Mock;
-} {
-	const clear = jest.fn(async () => {
-		await Promise.resolve();
-	});
-	const getGraph = jest.fn(async () => {
-		await Promise.resolve();
-		return overrides.graph;
-	});
-	const plannedTaskService: Partial<PlannedTaskService> = {
-		getGraph,
-		clear,
-	};
-	const context = {
-		threadId: 't-1',
-		runId: overrides.runId ?? 'run-current',
-		plannedTaskService: plannedTaskService as PlannedTaskService,
-	} as unknown as OrchestrationContext;
-	return { context, clear, getGraph };
-}
-
-describe('clearPlannedTaskGraph', () => {
-	it('clears the graph when it belongs to this run and is awaiting approval', async () => {
-		const { context, clear } = makeContext({
-			graph: {
-				planRunId: 'run-current',
-				status: 'awaiting_approval',
-				tasks: [],
-			},
-		});
-
-		await __testClearPlannedTaskGraph(context);
-
-		expect(clear).toHaveBeenCalledWith('t-1');
-	});
-
-	it('does not clear an active graph from a prior approved plan', async () => {
-		// A previous `/plan` call already succeeded; its graph is `active` with
-		// pending checkpoints. A new planner error must not wipe it.
-		const { context, clear } = makeContext({
-			graph: {
-				planRunId: 'run-previous',
-				status: 'active',
-				tasks: [],
-			},
-		});
-
-		await __testClearPlannedTaskGraph(context);
-
-		expect(clear).not.toHaveBeenCalled();
-	});
-
-	it('does not clear an awaiting-approval graph that was created by a different planner run', async () => {
-		// Defensive: a concurrent plan for a different run should not have its
-		// unapproved graph wiped by this run's error-path cleanup.
-		const { context, clear } = makeContext({
-			graph: {
-				planRunId: 'run-other',
-				status: 'awaiting_approval',
-				tasks: [],
-			},
-		});
-
-		await __testClearPlannedTaskGraph(context);
-
-		expect(clear).not.toHaveBeenCalled();
-	});
-
-	it('is a no-op when no graph exists', async () => {
-		const { context, clear, getGraph } = makeContext({ graph: null });
-
-		await __testClearPlannedTaskGraph(context);
-
-		expect(getGraph).toHaveBeenCalled();
-		expect(clear).not.toHaveBeenCalled();
-	});
-
-	it('swallows getGraph errors so the caller can return its own error', async () => {
-		const { context, getGraph } = makeContext({
-			graph: { planRunId: 'run-current', status: 'awaiting_approval', tasks: [] },
-		});
-		getGraph.mockRejectedValueOnce(new Error('db down'));
-
-		await expect(__testClearPlannedTaskGraph(context)).resolves.toBeUndefined();
-	});
-});
-
-describe('rehydrateAccumulatorFromGraph (resume revision flow)', () => {
-	const persistedTasks: PlannedTaskRecord[] = [
-		{
-			id: 'wf-1',
-			title: "Build 'A' workflow",
-			kind: 'build-workflow',
-			spec: 'A',
-			deps: [],
-			status: 'planned',
-		},
-		{
-			id: 'wf-2',
-			title: "Build 'B' workflow",
-			kind: 'build-workflow',
-			spec: 'B',
-			deps: [],
-			status: 'planned',
-		},
-	];
-
-	it('seeds the accumulator from an awaiting-approval graph so a revision keeps originals', async () => {
-		// Reproduces "ask for edits -> revise existing plan -> submit again":
-		// on resume the parent rebuilt a fresh accumulator; without rehydration
-		// the planner's remove/add would operate on an empty plan and the
-		// re-submit would drop every original item.
-		const { context } = makeContext({
-			graph: { planRunId: 'run-current', status: 'awaiting_approval', tasks: persistedTasks },
-		});
-		const accumulator = new BlueprintAccumulator();
-
-		await __testRehydrateAccumulatorFromGraph(context, accumulator);
-
-		// Planner revises: drop one original, add a new one, then resubmits.
-		expect(accumulator.removeItem('wf-2')).toBe(true);
-		accumulator.addItem({
-			kind: 'workflow',
-			id: 'wf-3',
-			name: 'C',
-			purpose: 'C',
-			integrations: [],
-			dependsOn: [],
-		});
-
-		expect(accumulator.getTaskList().map((t) => t.id)).toEqual(['wf-1', 'wf-3']);
-	});
-
-	it('does not reopen an already-approved/active graph', async () => {
-		const { context } = makeContext({
-			graph: { planRunId: 'run-current', status: 'active', tasks: persistedTasks },
-		});
-		const accumulator = new BlueprintAccumulator();
-
-		await __testRehydrateAccumulatorFromGraph(context, accumulator);
-
-		expect(accumulator.isEmpty()).toBe(true);
-	});
-
-	it('is a no-op when no graph exists', async () => {
-		const { context, getGraph } = makeContext({ graph: null });
-		const accumulator = new BlueprintAccumulator();
-
-		await __testRehydrateAccumulatorFromGraph(context, accumulator);
-
-		expect(getGraph).toHaveBeenCalledWith('t-1');
-		expect(accumulator.isEmpty()).toBe(true);
-	});
-
-	it('leaves the accumulator empty when getGraph throws', async () => {
-		const { context, getGraph } = makeContext({
-			graph: { planRunId: 'run-current', status: 'awaiting_approval', tasks: persistedTasks },
-		});
-		getGraph.mockRejectedValueOnce(new Error('db down'));
-		const accumulator = new BlueprintAccumulator();
-
-		await expect(
-			__testRehydrateAccumulatorFromGraph(context, accumulator),
-		).resolves.toBeUndefined();
-		expect(accumulator.isEmpty()).toBe(true);
-	});
-});
+import type { OrchestrationContext } from '../../../types';
+import {
+	buildPlannerBriefingContext,
+	formatMessagesForBriefing,
+	getPriorToolObservations,
+	getRecentMessages,
+} from '../planner-briefing';
 
 describe('formatMessagesForBriefing', () => {
 	// The planner system prompt (plan-agent-prompt.ts) treats <current-datetime>
@@ -197,7 +12,7 @@ describe('formatMessagesForBriefing', () => {
 	// both. Emitting only one drops half the contract.
 
 	it('emits <current-datetime> alongside <user-timezone> when a zone is provided', () => {
-		const briefing = __testFormatMessagesForBriefing(
+		const briefing = formatMessagesForBriefing(
 			[{ role: 'user', content: 'schedule me a daily digest' }],
 			undefined,
 			'America/New_York',
@@ -208,14 +23,14 @@ describe('formatMessagesForBriefing', () => {
 	});
 
 	it('still emits <current-datetime> when no zone is provided', () => {
-		const briefing = __testFormatMessagesForBriefing([], undefined, undefined);
+		const briefing = formatMessagesForBriefing([], undefined, undefined);
 
 		expect(briefing).toMatch(/<current-datetime>[^<]+<\/current-datetime>/);
 		expect(briefing).not.toContain('<user-timezone>');
 	});
 
 	it('renders already-collected answers and discovered resources as dedicated sections', () => {
-		const briefing = __testFormatMessagesForBriefing(
+		const briefing = formatMessagesForBriefing(
 			[{ role: 'user', content: 'Build a Slack to-do agent' }],
 			undefined,
 			'America/New_York',
@@ -238,7 +53,7 @@ describe('formatMessagesForBriefing', () => {
 
 describe('buildPlannerBriefingContext', () => {
 	it('extracts ask-user answers and credential selections from prior tool results', () => {
-		const context = __testBuildPlannerBriefingContext([
+		const context = buildPlannerBriefingContext([
 			{
 				toolName: 'credentials',
 				args: { action: 'list' },
@@ -290,7 +105,7 @@ describe('buildPlannerBriefingContext', () => {
 	});
 
 	it('ignores unanswered and skipped ask-user answers', () => {
-		const context = __testBuildPlannerBriefingContext([
+		const context = buildPlannerBriefingContext([
 			{
 				toolName: 'ask-user',
 				args: {
@@ -399,7 +214,7 @@ describe('getPriorToolObservations', () => {
 			},
 		} as unknown as OrchestrationContext;
 
-		const observations = __testGetPriorToolObservations(context);
+		const observations = getPriorToolObservations(context);
 
 		expect(getEventsForRuns).toHaveBeenCalledWith('thread-1', ['run-prior', 'run-current']);
 		expect(getEventsForRun).not.toHaveBeenCalled();
@@ -436,9 +251,7 @@ describe('getPriorToolObservations', () => {
 			},
 		} as unknown as OrchestrationContext;
 
-		expect(__testGetPriorToolObservations(context)).toEqual([
-			{ toolName: 'credentials', args, result },
-		]);
+		expect(getPriorToolObservations(context)).toEqual([{ toolName: 'credentials', args, result }]);
 	});
 
 	it('returns no observations when event lookup fails', () => {
@@ -452,7 +265,7 @@ describe('getPriorToolObservations', () => {
 			},
 		} as unknown as OrchestrationContext;
 
-		expect(__testGetPriorToolObservations(context)).toEqual([]);
+		expect(getPriorToolObservations(context)).toEqual([]);
 	});
 });
 
@@ -468,7 +281,7 @@ describe('getRecentMessages', () => {
 			},
 		} as unknown as OrchestrationContext;
 
-		const messages = await __testGetRecentMessages(context, 5);
+		const messages = await getRecentMessages(context, 5);
 
 		expect(messages).toEqual([{ role: 'user', content: 'Build a Slack to-do agent' }]);
 	});
