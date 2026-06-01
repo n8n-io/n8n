@@ -4,6 +4,7 @@ jest.mock('fs', () => ({
 }));
 
 import { readdirSync, readFileSync } from 'fs';
+import { jsonParse } from 'n8n-workflow';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 
@@ -122,8 +123,6 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 
 	describe('--filter combined with --exclude', () => {
 		it('applies exclude after filter', () => {
-			// filter narrows to weather-* and form-to-hubspot, then exclude
-			// removes weather-monitoring
 			expect(slugs('weather,form-to-hubspot', 'monitoring')).toEqual([
 				'form-to-hubspot',
 				'weather-alert',
@@ -137,22 +136,20 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 
 	describe('--tier (datasets-field filter)', () => {
 		it('defaults to ["full"] when a test case omits the datasets field', () => {
-			// STUB_TEST_CASE doesn't declare datasets — Zod default fills it in.
 			const cases = loadWorkflowTestCasesWithFiles();
 			expect(cases.every((c) => c.testCase.datasets.includes('full'))).toBe(true);
 		});
 
 		it('filters to test cases whose datasets array contains the tier', () => {
-			// Re-mock so two cases declare different datasets memberships.
 			mockedReadFile.mockImplementation((p) => {
 				const filename = String(p);
 				if (filename.includes('weather-alert')) {
 					return JSON.stringify({
-						...JSON.parse(STUB_TEST_CASE),
+						...jsonParse(STUB_TEST_CASE),
 						datasets: ['pr', 'full'],
 					});
 				}
-				return STUB_TEST_CASE; // default → ['full']
+				return STUB_TEST_CASE;
 			});
 
 			const inPr = loadWorkflowTestCasesWithFiles(undefined, undefined, 'pr')
@@ -171,15 +168,13 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				const filename = String(p);
 				if (filename.includes('weather-alert')) {
 					return JSON.stringify({
-						...JSON.parse(STUB_TEST_CASE),
+						...jsonParse(STUB_TEST_CASE),
 						datasets: ['pr', 'full'],
 					});
 				}
 				return STUB_TEST_CASE;
 			});
 
-			// `weather` substring matches weather-alert + weather-monitoring;
-			// `--tier pr` keeps only weather-alert (the only one tagged 'pr').
 			const result = loadWorkflowTestCasesWithFiles('weather', undefined, 'pr')
 				.map((c) => c.fileSlug)
 				.sort();
