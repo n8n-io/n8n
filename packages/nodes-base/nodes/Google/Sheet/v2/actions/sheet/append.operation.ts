@@ -251,7 +251,23 @@ export async function execute(
 			);
 		}
 
-		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
+		// `columns.schema` is required when mappingMode = defineBelow on v4.4+.
+		// When the builder forgets it, the framework's generic 'Could not get
+		// parameter "columns.schema"' message is opaque; surface an actionable
+		// NodeOperationError that tells the builder how to fix it.
+		const schema = this.getNodeParameter('columns.schema', 0, undefined) as
+			| ResourceMapperField[]
+			| undefined;
+		if (!Array.isArray(schema)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'`columns.schema` is required when `columns.mappingMode` is `defineBelow`',
+				{
+					description:
+						'Provide a `columns.schema` array describing each sheet column (`{ id, displayName, required, defaultMatch, display, type, canBeUsedToMatch }` per entry) alongside `columns.value`. Switch to `mappingMode: "autoMapInputData"` and `value: {}` if you want n8n to map input fields to columns by name instead.',
+				},
+			);
+		}
 		checkForSchemaChanges(this.getNode(), headerRow, schema);
 	}
 
