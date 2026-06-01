@@ -13,10 +13,13 @@ import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { McpService } from '../mcp.service';
-import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-builder-tools.service';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -26,7 +29,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { ExecutionService } from '@/executions/execution.service';
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -61,7 +63,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
-			mockInstance(WorkflowBuilderToolsService),
+			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
 			mockInstance(ProjectRepository),
@@ -69,6 +71,8 @@ describe('McpService', () => {
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
+			mockInstance(DataTableProxyService),
+			mockInstance(CollaborationService),
 		);
 	});
 
@@ -99,7 +103,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
-				mockInstance(WorkflowBuilderToolsService),
+				mockInstance(NodeCatalogService),
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
@@ -107,6 +111,8 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -280,7 +286,7 @@ describe('McpService', () => {
 
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
-			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
 				mockLogger(),
@@ -302,7 +308,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
-				workflowBuilderToolsService,
+				nodeCatalogService,
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
@@ -310,17 +316,19 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			const server = await service.getServer(user);
 			expect(server).toBeDefined();
 			// Builder tools service should NOT have been initialized
-			expect(workflowBuilderToolsService.initialize).not.toHaveBeenCalled();
+			expect(nodeCatalogService.initialize).not.toHaveBeenCalled();
 		});
 
 		it('should register builder tools when mcpBuilderEnabled is true', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
-			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
 				mockLogger(),
@@ -342,7 +350,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
-				workflowBuilderToolsService,
+				nodeCatalogService,
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
@@ -350,12 +358,14 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			const server = await service.getServer(user);
 			expect(server).toBeDefined();
 			// Builder tools service should have been initialized
-			expect(workflowBuilderToolsService.initialize).toHaveBeenCalled();
+			expect(nodeCatalogService.initialize).toHaveBeenCalled();
 		});
 	});
 });

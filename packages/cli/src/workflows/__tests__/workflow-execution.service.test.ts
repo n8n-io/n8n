@@ -100,10 +100,14 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mockOwnershipService(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+	beforeEach(() => {
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+	});
 
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
@@ -119,6 +123,35 @@ describe('WorkflowExecutionService', () => {
 			await workflowExecutionService.runWorkflow(workflow, node, [[]], mock(), 'trigger');
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		test('should forward deduplicationKey to `WorkflowRunner.run()`', async () => {
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
+
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.runWorkflow(
+				workflow,
+				node,
+				[[]],
+				mock(),
+				'trigger',
+				undefined,
+				'wf-1:node-1:1700000000000',
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ deduplicationKey: 'wf-1:node-1:1700000000000' }),
+				true,
+				undefined,
+				undefined,
+				undefined,
+			);
 		});
 	});
 
@@ -428,6 +461,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -449,6 +483,63 @@ describe('WorkflowExecutionService', () => {
 					workflowIsActive: true,
 				}),
 			);
+		});
+	});
+
+	describe('chat trigger with pinned data', () => {
+		test('should register webhook when chatSessionId is present even if trigger has pinned data', async () => {
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const testWebhooks = mock<TestWebhooks>();
+			const chatTrigger: INode = {
+				id: 'chat-trigger-id',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'Chat Trigger',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			};
+			const workflowData: IWorkflowBase = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: { [chatTrigger.name]: [{ json: { chatInput: 'old pinned message' } }] },
+				nodes: [chatTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+				triggerToStartFrom: { name: chatTrigger.name },
+				chatSessionId: 'test-session-123',
+			};
+
+			testWebhooks.needsWebhook.mockResolvedValue(true);
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				testWebhooks,
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+			);
+
+			const result = await service.executeManually(workflowData, runPayload, user);
+
+			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect.objectContaining({ chatSessionId: 'test-session-123' }),
+			);
+			expect(result).toEqual({ waitingForWebhook: true });
 		});
 	});
 
@@ -609,6 +700,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 		});
 
@@ -761,6 +853,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -890,6 +983,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 				mock(),

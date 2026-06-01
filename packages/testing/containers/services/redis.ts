@@ -1,6 +1,7 @@
 import { RedisContainer } from '@testcontainers/redis';
 import type { StartedNetwork } from 'testcontainers';
 
+import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
@@ -18,7 +19,8 @@ export const redis: Service<RedisResult> = {
 	shouldStart: (ctx) => ctx.isQueueMode,
 
 	async start(network: StartedNetwork, projectName: string): Promise<RedisResult> {
-		const container = await new RedisContainer(TEST_CONTAINER_IMAGES.redis)
+		const { consumer, throwWithLogs } = createSilentLogConsumer();
+		const builder = new RedisContainer(TEST_CONTAINER_IMAGES.redis)
 			.withNetwork(network)
 			.withNetworkAliases(HOSTNAME)
 			.withLabels({
@@ -27,15 +29,20 @@ export const redis: Service<RedisResult> = {
 			})
 			.withName(`${projectName}-${HOSTNAME}`)
 			.withReuse()
-			.start();
+			.withLogConsumer(consumer);
 
-		return {
-			container,
-			meta: {
-				host: HOSTNAME,
-				port: 6379,
-			},
-		};
+		try {
+			const container = await builder.start();
+			return {
+				container,
+				meta: {
+					host: HOSTNAME,
+					port: 6379,
+				},
+			};
+		} catch (error: unknown) {
+			return throwWithLogs(error);
+		}
 	},
 
 	env(result: RedisResult, external?: boolean): Record<string, string> {

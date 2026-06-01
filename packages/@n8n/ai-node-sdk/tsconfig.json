@@ -4,8 +4,6 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"rootDir": ".",
-		"baseUrl": ".",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"]

@@ -117,6 +117,14 @@ export const mainProperties: INodeProperties[] = [
 				authentication: ['genericCredentialType'],
 			},
 		},
+		builderHint: {
+			propertyHint: `Pick by how the API authenticates, not by what the user calls it:
+- "Authorization: Bearer <token>" → httpBearerAuth (single token field, best UX). Use this for OpenAI, Anthropic, GitHub PATs, Stripe, Notion, and any service whose docs say "Bearer".
+- Custom header like X-API-Key, apikey, X-Auth-Token, or non-Bearer Authorization schemes → httpHeaderAuth (user must enter the header name and/or full value).
+- API key in the query string (?api_key=...) → httpQueryAuth.
+- username + password → httpBasicAuth.
+A user saying "API key" or "header auth" usually means httpBearerAuth only when the docs use the Authorization: Bearer <token> scheme. Use httpHeaderAuth for custom header names or non-Bearer Authorization schemes where the full header value/prefix must be user-controlled.`,
+		},
 	},
 	{
 		displayName: 'SSL Certificates',
@@ -207,7 +215,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'parameters',
 				displayName: 'Query Parameter',
 				builderHint: {
-					message: `NEVER put static authentication values (API keys, tokens, PATs) in queryParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpQueryAuth", and add credentials: { httpQueryAuth:
+					propertyHint: `NEVER put static authentication values (API keys, tokens, PATs) in queryParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpQueryAuth", and add credentials: { httpQueryAuth:
  newCredential("Name") }. Only use queryParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
 				},
 				values: [
@@ -298,7 +306,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'parameters',
 				displayName: 'Header',
 				builderHint: {
-					message: `NEVER put static authentication values (API keys, tokens, PATs) in headerParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpHeaderAuth", and add credentials: { httpHeaderAuth:
+					propertyHint: `NEVER put static authentication values (API keys, tokens, PATs) in headerParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpHeaderAuth", and add credentials: { httpHeaderAuth:
  newCredential("Name") }. Only use headerParameters for non-auth headers like Content-Type or Accept. Dynamic values from previous nodes via expr() are acceptable.`,
 				},
 				values: [
@@ -403,7 +411,7 @@ export const mainProperties: INodeProperties[] = [
 		name: 'bodyParameters',
 		type: 'fixedCollection',
 		builderHint: {
-			message: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
+			propertyHint: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
  newCredential("Name") }. Only use bodyParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
 		},
 		displayOptions: {
@@ -457,7 +465,7 @@ export const mainProperties: INodeProperties[] = [
 		name: 'jsonBody',
 		type: 'json',
 		builderHint: {
-			message: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
+			propertyHint: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
  newCredential("Name") }. Only use bodyParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
 		},
 		displayOptions: {

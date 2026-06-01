@@ -1,0 +1,50 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a workflow that monitors weather hourly for three cities and alerts me if it gets too hot anywhere."
+		},
+		{
+			"role": "assistant",
+			"text": "Which cities, what defines 'too hot', and where should the alert go?"
+		},
+		{
+			"role": "user",
+			"text": "London, New York, Tokyo. Alert if any city is above 30°C. Send the alert via Telegram to chat ID -1001234567890."
+		},
+		{
+			"role": "assistant",
+			"text": "I'll use OpenWeatherMap, one HTTP Request per city. Should I log every reading anywhere, or only the hot ones?"
+		},
+		{
+			"role": "user",
+			"text": "Log all of them to Airtable — base ID 'appK2xGfGNOIrl2gT', table ID 'tbl8xK3nP5mQ7rS9W'. Columns: city, temperature, humidity, timestamp."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"schedule",
+		"http-request",
+		"telegram",
+		"airtable",
+		"conditional",
+		"multi-request"
+	],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "All 3 cities return weather data, one is above 30°C",
+			"dataSetup": "London returns: temp=18.5, humidity=72. New York returns: temp=32.1, humidity=65. Tokyo returns: temp=28.3, humidity=80. The Telegram node returns a success response. The Airtable node returns success for each row created.",
+			"successCriteria": "The workflow executes without errors. All 3 weather API calls succeed. The Telegram alert is sent mentioning New York (32.1°C). All 3 readings are logged to Airtable with city, temperature, humidity, and timestamp."
+		},
+		{
+			"name": "no-alerts",
+			"description": "All cities are below 30°C — no alert needed",
+			"dataSetup": "London returns: temp=15.2, humidity=68. New York returns: temp=22.7, humidity=55. Tokyo returns: temp=19.8, humidity=75. The Airtable node returns success for each row created.",
+			"successCriteria": "The workflow executes without errors. No Telegram alert is sent (all temps below 30°C). All 3 readings are still logged to Airtable."
+		}
+	]
+}

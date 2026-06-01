@@ -61,10 +61,6 @@ export class ChatExecutionManager {
 			unflattenData: true,
 		});
 	}
-	async checkIfExecutionExists(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId);
-	}
-
 	private getWorkflow(execution: IExecutionResponse) {
 		const { workflowData } = execution;
 		return new Workflow({
@@ -136,7 +132,12 @@ export class ChatExecutionManager {
 		}
 
 		if (nodeType.onMessage) {
-			return await nodeType.onMessage(context, nodeExecutionData);
+			await workflow.expression.acquireIsolate();
+			try {
+				return await nodeType.onMessage(context, nodeExecutionData);
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		}
 
 		return [[nodeExecutionData]];

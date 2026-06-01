@@ -1,6 +1,4 @@
-import type { Basic } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { IConnections, IWorkflowDataProxyAdditionalKeys, Workflow } from 'n8n-workflow';
+import type { IWorkflowDataProxyAdditionalKeys } from 'n8n-workflow';
 
 type Range = { from: number; to: number };
 
@@ -38,11 +36,7 @@ export namespace ColoringStateEffect {
  */
 export interface ExpressionLocalResolveContext {
 	localResolve: true;
-	envVars: Record<string, Basic>;
 	additionalKeys: IWorkflowDataProxyAdditionalKeys;
-	workflow: Workflow;
-	connections: IConnections;
-	execution: IExecutionResponse | null;
 	nodeName: string;
 	/**
 	 * Allowed to be undefined (e.g., trigger node, partial execution)

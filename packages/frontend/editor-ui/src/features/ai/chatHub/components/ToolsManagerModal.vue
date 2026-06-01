@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import Modal from '@/app/components/Modal.vue';
 import ToolListItem from './ToolListItem.vue';
-import ToolSettingsContent from './ToolSettingsContent.vue';
+import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import {
 	N8nButton,
 	N8nHeading,
@@ -85,7 +85,7 @@ const currentView = ref<ManagerView>('list');
 const settingsNode = ref<INode | null>(null);
 const settingsExistingToolNames = ref<string[]>([]);
 const settingsOnConfirm = ref<((node: INode) => void) | null>(null);
-const settingsContentRef = ref<InstanceType<typeof ToolSettingsContent> | null>(null);
+const settingsContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const settingsNodeName = ref('');
 const settingsIsValid = ref(false);
 
@@ -364,9 +364,9 @@ function handleSettingsChangeName(name: string) {
 				</div>
 			</div>
 
-			<!-- Settings view: doesn't scroll, lets ToolSettingsContent.tabContent scroll -->
+			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
 			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
-				<ToolSettingsContent
+				<NodeToolSettingsContent
 					ref="settingsContentRef"
 					:initial-node="settingsNode"
 					:existing-tool-names="settingsExistingToolNames"

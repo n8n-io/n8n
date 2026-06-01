@@ -8,6 +8,7 @@
 	"files": {
 		"ignore": [
 			"**/.turbo",
+			"**/bin/.cache",
 			"**/components.d.ts",
 			"**/coverage",
 			"**/dist",
@@ -16,7 +17,8 @@
 			"**/CHANGELOG.md",
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
-			"**/*.generated.ts"
+			"**/*.generated.ts",
+			"**/expectations/**"
 		]
 	},
 	"formatter": {

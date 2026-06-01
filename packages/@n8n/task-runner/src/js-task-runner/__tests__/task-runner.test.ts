@@ -339,6 +339,41 @@ describe('TestRunner', () => {
 		});
 	});
 
+	describe('offerAccepted during shutdown', () => {
+		it('should reject task offer when runner is shutting down', () => {
+			runner = newTestRunner({ maxConcurrency: 2 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+
+			runner.sendOffers();
+			const offerId = [...runner.openOffers.keys()][0];
+
+			void runner.stop();
+
+			const sendSpy = jest.spyOn(runner, 'send');
+
+			runner.offerAccepted(offerId, 'task-1');
+
+			expect(sendSpy).toHaveBeenCalledWith({
+				type: 'runner:taskrejected',
+				taskId: 'task-1',
+				reason: 'Runner is shutting down',
+			});
+			expect(runner.runningTasks.size).toBe(0);
+		});
+
+		it('should clear open offers on stop', () => {
+			runner = newTestRunner({ maxConcurrency: 2 });
+			runner.onMessage({ type: 'broker:runnerregistered' });
+
+			runner.sendOffers();
+			expect(runner.openOffers.size).toBeGreaterThan(0);
+
+			void runner.stop();
+
+			expect(runner.openOffers.size).toBe(0);
+		});
+	});
+
 	describe('drain', () => {
 		it('should stop sending offers on drain message', () => {
 			runner = newTestRunner();

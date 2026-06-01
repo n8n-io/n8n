@@ -1,8 +1,32 @@
 import crypto from 'crypto';
 
-import { getConnectionOptions } from '../GenericFunctions';
+import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
 
 jest.mock('crypto');
+
+describe('escapeSnowflakeObjectIdentifier', () => {
+	it('quotes a single-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('orders')).toBe('"ORDERS"');
+	});
+
+	it('quotes each segment of a two-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('schema.orders')).toBe('"SCHEMA"."ORDERS"');
+	});
+
+	it('quotes each segment of a three-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('db.schema.orders')).toBe('"DB"."SCHEMA"."ORDERS"');
+	});
+
+	it('preserves case for pre-quoted identifiers', () => {
+		expect(escapeSnowflakeObjectIdentifier('"myTable"')).toBe('"myTable"');
+	});
+
+	it('does not split on dots inside quoted segments', () => {
+		expect(escapeSnowflakeObjectIdentifier('"my.schema"."my.table"')).toBe(
+			'"my.schema"."my.table"',
+		);
+	});
+});
 
 describe('getConnectionOptions', () => {
 	const commonOptions = {
@@ -43,6 +67,20 @@ describe('getConnectionOptions', () => {
 				username: 'test-username',
 				authenticator: 'SNOWFLAKE_JWT',
 				privateKey: 'test-private-key',
+			});
+		});
+
+		it('with oauth token for oauth2 authentication', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'oauth2',
+				token: 'test-oauth-token',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				authenticator: 'OAUTH',
+				token: 'test-oauth-token',
 			});
 		});
 

@@ -119,6 +119,21 @@ describe('ActiveExecutions', () => {
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
+	test('Should forward deduplicationKey to executionPersistence.create', async () => {
+		const executionDataWithKey: IWorkflowExecutionDataProcess = {
+			...executionData,
+			deduplicationKey: 'wf-1:node-1:1700000000000',
+		};
+
+		await activeExecutions.add(executionDataWithKey);
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				deduplicationKey: 'wf-1:node-1:1700000000000',
+			}),
+		);
+	});
+
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
 		executionRepository.updateExistingExecution.mockResolvedValue(false);

@@ -9,6 +9,7 @@ import { nextTick } from 'vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import type { FeatureFlags } from 'n8n-workflow';
 
 export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
@@ -22,6 +23,7 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';
 const CURRENT_VERSION_CLI = '1.100.0';
+let onFeatureFlagsCallback: ((keys: string[], map: FeatureFlags) => void) | undefined;
 
 function setSettings(overrides?: Partial<FrontendSettings>) {
 	useSettingsStore().setSettings({
@@ -63,6 +65,9 @@ function setup() {
 	window.posthog = {
 		init: () => {},
 		identify: () => {},
+		onFeatureFlags: (callback) => {
+			onFeatureFlagsCallback = callback;
+		},
 	};
 
 	const telemetry = useTelemetry();
@@ -105,6 +110,7 @@ describe('Posthog store', () => {
 			setup();
 			setSettings();
 			setCurrentUser();
+			onFeatureFlagsCallback = undefined;
 		});
 
 		it('should init store with serverside flags', () => {
@@ -152,6 +158,28 @@ describe('Posthog store', () => {
 			expect(window.localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES)).toEqual(
 				JSON.stringify({ test: 'override', other_test: 'override' }),
 			);
+		});
+
+		it('waits for client-side flag evaluation when server flags are unavailable', async () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(posthog.hasPendingFeatureFlags()).toBe(true);
+			expect(onFeatureFlagsCallback).toBeDefined();
+
+			let resolved = false;
+			const waitForFlags = posthog.waitForFeatureFlags().then(() => {
+				resolved = true;
+			});
+
+			await Promise.resolve();
+			expect(resolved).toBe(false);
+
+			onFeatureFlagsCallback?.([], { test: 'variant' });
+			await waitForFlags;
+
+			expect(posthog.hasPendingFeatureFlags()).toBe(false);
+			expect(posthog.getVariant('test')).toEqual('variant');
 		});
 
 		afterEach(() => {

@@ -28,6 +28,7 @@ const props = defineProps<{
 	executions: ExecutionSummary[];
 	loading: boolean;
 	loadingMore: boolean;
+	hasMore: boolean;
 	temporaryExecution?: ExecutionSummary;
 }>();
 
@@ -54,12 +55,26 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 });
 const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
 const executionListRef = ref<HTMLElement | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: executionListRef,
 	threshold: 0.01,
 	onIntersect: () => emit('loadMore', 20),
 });
+
+// Re-attach the observer whenever the items array grows or hasMore/loadingMore flips.
+// This handles tall screens where the sentinel may already be visible and the previous
+// observer has disconnected itself after firing once.
+watch(
+	[loadMoreSentinel, () => props.hasMore, () => props.loadingMore, () => props.executions.length],
+	([sentinel, hasMore, loadingMore]) => {
+		if (sentinel && hasMore && !loadingMore) {
+			observeForLoadMore(sentinel);
+		}
+	},
+	{ immediate: true, flush: 'post' },
+);
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
@@ -108,30 +123,9 @@ function addCurrentWorkflowExecutionsCardRef(
 }
 
 function onItemMounted(id: string): void {
-	const index = props.executions.findIndex((execution) => execution.id === id);
-
 	if (executionsStore.activeExecution?.id === id) {
 		autoScrollDeps.value.activeExecutionSet = true;
 		autoScrollDeps.value.cardsMounted = true;
-	}
-
-	// Observe the last item to trigger loading more executions
-	if (index === props.executions.length - 1 && !props.loading && !props.loadingMore) {
-		const cardElement = currentWorkflowExecutionsCardRefs.value[id]?.$el;
-		observeForLoadMore(cardElement);
-	}
-}
-
-function loadMore(limit = 20): void {
-	if (!props.loading) {
-		if (executionListRef.value) {
-			const diff =
-				executionListRef.value.offsetHeight -
-				(executionListRef.value.scrollHeight - executionListRef.value.scrollTop);
-			if (diff > -10 && diff < 10) {
-				emit('loadMore', limit);
-			}
-		}
 	}
 }
 
@@ -209,7 +203,6 @@ const goToUpgrade = () => {
 			ref="executionListRef"
 			:class="$style.executionList"
 			data-test-id="current-executions-list"
-			@scroll="loadMore(20)"
 		>
 			<div v-if="loading" class="mr-l">
 				<N8nLoading variant="rect" />
@@ -244,6 +237,13 @@ const goToUpgrade = () => {
 					@mounted="onItemMounted"
 				/>
 			</TransitionGroup>
+			<div
+				v-if="executions.length && hasMore"
+				ref="loadMoreSentinel"
+				:class="$style.loadMoreSentinel"
+				aria-hidden="true"
+				data-test-id="executions-load-more-sentinel"
+			/>
 			<div v-if="loadingMore" class="mr-m">
 				<N8nLoading variant="p" :rows="1" />
 			</div>
@@ -322,6 +322,11 @@ const goToUpgrade = () => {
 	width: 100%;
 	margin-top: var(--spacing--2xl);
 	text-align: center;
+}
+
+.loadMoreSentinel {
+	height: 1px;
+	width: 100%;
 }
 </style>
 

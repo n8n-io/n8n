@@ -2,8 +2,6 @@
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type {
 	ISupplyDataFunctions,
@@ -11,6 +9,8 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type {
 	N8nOutputFixingParser,
@@ -53,12 +53,12 @@ describe('OutputParserAutofixing', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getMockedRetryChain(output: string) {
-		return jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue({
+		return vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue({
 				content: output,
 			}),
 		});
@@ -73,11 +73,11 @@ describe('OutputParserAutofixing', () => {
 				throw new ApplicationError('Not implemented');
 			});
 
+			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toBeInstanceOf(
+				NodeOperationError,
+			);
 			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-				new NodeOperationError(
-					thisArg.getNode(),
-					'Auto-fixing parser prompt has to contain {error} placeholder',
-				),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
 			);
 		});
 
@@ -89,11 +89,11 @@ describe('OutputParserAutofixing', () => {
 				throw new ApplicationError('Not implemented');
 			});
 
-			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-				new NodeOperationError(
-					thisArg.getNode(),
-					'Auto-fixing parser prompt has to contain {error} placeholder',
-				),
+			const execution = outputParser.supplyData.call(thisArg, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Auto-fixing parser prompt has to contain {error} placeholder',
 			);
 		});
 
@@ -177,7 +177,7 @@ describe('OutputParserAutofixing', () => {
 
 		it('should throw non-OutputParserException errors immediately without retry', async () => {
 			const customError = new Error('Database connection error');
-			const retryChainSpy = jest.fn();
+			const retryChainSpy = vi.fn();
 
 			mockStructuredOutputParser.parse.mockRejectedValueOnce(customError);
 

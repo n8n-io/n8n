@@ -464,6 +464,151 @@ describe('SlackTrigger Node', () => {
 		});
 	});
 
+	describe('webhook method - reaction emoji filter', () => {
+		const reactionRequest = (reaction: string) => ({
+			body: {
+				type: 'event_callback',
+				event: {
+					type: 'reaction_added',
+					user: 'U456',
+					item: { channel: 'C123', ts: '1234567890.123456' },
+					reaction,
+				},
+			},
+		});
+
+		beforeEach(() => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					switch (paramName) {
+						case 'trigger':
+							return ['reaction_added'];
+						case 'watchWorkspace':
+							return false;
+						case 'channelId':
+							return 'C123';
+						case 'downloadFiles':
+							return false;
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+		});
+
+		it('should trigger when no emoji filter is set', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('thumbsup') as any);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should trigger when reaction matches the filter', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('thumbsup') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: 'thumbsup' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should not trigger when reaction does not match the filter', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('eyes') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: 'thumbsup' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should support multiple comma-separated emoji names', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('eyes') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: 'thumbsup, eyes' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should match emoji names case-insensitively', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('thumbsup') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: 'ThumbsUp' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should trim whitespace around emoji names', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('thumbsup') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: ' thumbsup , eyes ' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should not trigger when filter has entries but reaction is an empty string', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(reactionRequest('') as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					if (paramName === 'options') return { reactionEmojis: 'thumbsup' };
+					if (paramName === 'trigger') return ['reaction_added'];
+					if (paramName === 'watchWorkspace') return false;
+					if (paramName === 'channelId') return 'C123';
+					return defaultValue;
+				},
+			);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+	});
+
 	describe('webhook method - other event scenarios', () => {
 		it('should handle team_join event (no channel extraction needed)', async () => {
 			const mockRequest = {
@@ -504,6 +649,43 @@ describe('SlackTrigger Node', () => {
 			expect(resultResolve.workflowData).toBeDefined();
 			const out = resultResolve.workflowData![0][0].json as { user_resolved?: string };
 			expect(out.user_resolved).toBe(mockRequest.body.event.user.name);
+		});
+
+		it('should trigger on app_home_opened event without channel validation', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					switch (paramName) {
+						case 'trigger':
+							return ['app_home_opened'];
+						case 'watchWorkspace':
+							return false;
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'app_home_opened',
+						user: 'U061F7AUR',
+						channel: 'D0LAN2Q65',
+						tab: 'home',
+						event_ts: '1515449522000016',
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+			expect(result.workflowData![0][0].json).toEqual(mockRequest.body.event);
 		});
 
 		it('should handle url_verification challenge', async () => {

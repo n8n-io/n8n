@@ -218,17 +218,52 @@ export async function handleMessage(
 
 		let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 		let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined = undefined;
-		if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
-			responsePromise = this.helpers.createDeferredPromise();
-		} else if (acknowledgeMode === 'laterMessageNode') {
+		if (acknowledgeMode === 'laterMessageNode') {
 			responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
+			// Also await execution end so we can nack when the run errors
+			// before the Delete-from-Queue node fires sendResponse. The engine
+			// unconditionally resolves the hook at teardown via
+			// resolveExecutionResponsePromise with an empty {} — the payload
+			// shape is what tells a real sendResponse apart from that cleanup.
+			responsePromise = this.helpers.createDeferredPromise<IRun>();
+		} else if (acknowledgeMode !== 'immediately') {
+			responsePromise = this.helpers.createDeferredPromise();
 		}
-		if (responsePromiseHook) {
-			this.emit([[item]], responsePromiseHook, undefined);
-		} else {
-			this.emit([[item]], undefined, responsePromise);
-		}
-		if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
+		this.emit([[item]], responsePromiseHook, responsePromise);
+		if (acknowledgeMode === 'laterMessageNode' && responsePromise && responsePromiseHook) {
+			// The hook resolves both from a node calling sendResponse
+			// (mid-execution, carries the item JSON) AND from teardown cleanup
+			// (resolves with {}). Treat only a non-empty payload as a real
+			// sendResponse from Delete-from-Queue — that's the fast-ack path.
+			// For the empty cleanup, fall through to the final IRun and decide
+			// ack vs nack based on error state.
+			type RaceResult = { kind: 'hook'; isRealSendResponse: boolean } | { kind: 'run'; data: IRun };
+			const hookRace: Promise<RaceResult> = responsePromiseHook.promise.then((data) => ({
+				kind: 'hook',
+				isRealSendResponse:
+					data !== null &&
+					data !== undefined &&
+					typeof data === 'object' &&
+					Object.keys(data as object).length > 0,
+			}));
+			const runRace: Promise<RaceResult> = responsePromise.promise.then((data) => ({
+				kind: 'run',
+				data,
+			}));
+			const first = await Promise.race([hookRace, runRace]);
+
+			if (first.kind === 'hook' && first.isRealSendResponse) {
+				channel.ack(message);
+			} else {
+				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
+				if (runData?.data?.resultData?.error) {
+					channel.nack(message);
+				} else {
+					channel.ack(message);
+				}
+			}
+			messageTracker.answered(message);
+		} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 			// Acknowledge message after the execution finished
 			await responsePromise.promise.then(async (data: IRun) => {
 				if (data.data.resultData.error) {
@@ -239,11 +274,6 @@ export async function handleMessage(
 						return;
 					}
 				}
-				channel.ack(message);
-				messageTracker.answered(message);
-			});
-		} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
-			await responsePromiseHook.promise.then(() => {
 				channel.ack(message);
 				messageTracker.answered(message);
 			});

@@ -20,6 +20,13 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
+## Claude Code Plugin
+
+n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
+(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
+See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+
 ## Essential Commands
 
 ### Building
@@ -74,6 +81,7 @@ The monorepo is organized into these key packages:
 - **`packages/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
+- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
@@ -138,14 +146,11 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - Import from appropriate error classes in each package
 
 ### Frontend Development
+- Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- For style changes and design-system updates, follow
-  `.agents/design-system-style-rules.md`
-
-When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
-CSS variables and styling conventions.
+- Always use `design-system-rules` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
@@ -154,6 +159,7 @@ CSS variables and styling conventions.
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
+- **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
 - For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
@@ -161,6 +167,9 @@ What we use for testing and writing tests:
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
+- **To iterate on a feature without docker rebuilds**, boot service containers
+  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
 - **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks

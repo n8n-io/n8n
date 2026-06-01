@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { createLimitSchema } from './schemas';
 
 import type { ProjectService } from '@/services/project.service.ee';
 import type { Telemetry } from '@/telemetry';
@@ -12,13 +13,7 @@ const MAX_RESULTS = 100;
 const inputSchema = {
 	projectId: z.string().describe('The ID of the project to search folders in'),
 	query: z.string().optional().describe('Filter folders by name (case-insensitive partial match)'),
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(MAX_RESULTS)
-		.optional()
-		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
+	limit: createLimitSchema(MAX_RESULTS),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {

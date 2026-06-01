@@ -1,5 +1,10 @@
 import set from 'lodash/set';
-import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	isResourceMapperValue,
+	type IDataObject,
+	type NodeApiError,
+} from 'n8n-workflow';
 
 import type { UpdateRecord } from './interfaces';
 
@@ -90,4 +95,31 @@ export function legacyFlattenOutput(record: IDataObject, nodeVersion: number): I
 		...rest,
 		...(fields as IDataObject),
 	};
+}
+
+function isIDataObjectArray(value: unknown): value is IDataObject[] {
+	return Array.isArray(value);
+}
+
+/**
+ * When typecast is enabled, `skipValidation: true` is passed to `getNodeParameter`, which bypasses
+ * the type coercion step in `validateResourceMapperValue`. For `array`-type fields (e.g.
+ * multipleAttachments), values may be stored as JSON strings and need to be parsed into actual
+ * arrays before being sent to the Airtable API.
+ */
+export function coerceArrayTypeFields(fields: IDataObject, columnsParam: unknown): void {
+	if (!isResourceMapperValue(columnsParam)) return;
+	for (const schemaField of columnsParam.schema) {
+		if (schemaField.type !== 'array') continue;
+		const value = fields[schemaField.id];
+		if (typeof value !== 'string') continue;
+		try {
+			const parsed: unknown = JSON.parse(value);
+			if (isIDataObjectArray(parsed)) {
+				fields[schemaField.id] = parsed;
+			}
+		} catch {
+			// Keep original string value if not parseable as array
+		}
+	}
 }

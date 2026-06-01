@@ -65,16 +65,19 @@ describe('input index validation', () => {
 		expect(result.warnings.filter((w) => w.code === 'INVALID_INPUT_INDEX')).toHaveLength(0);
 	});
 
-	it('skips validation for dynamic input nodes like Merge', () => {
+	it('warns when a Merge input index exceeds numberInputs even though inputs are dynamic', () => {
 		const myTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 		const mergeNode = merge({ version: 3 });
 
-		// Dynamic inputs - can't validate statically
+		// checkNodeInputIndices can't resolve dynamic inputs, but the Merge-specific
+		// check uses the numberInputs parameter (default 2) and catches the overflow.
 		const wf = workflow('test-id', 'Test').add(myTrigger.to(mergeNode.input(5)));
 
 		const result = validateWorkflow(wf, { nodeTypesProvider: mockNodeTypesProvider });
 
-		expect(result.warnings.filter((w) => w.code === 'INVALID_INPUT_INDEX')).toHaveLength(0);
+		const mergeWarnings = result.warnings.filter((w) => w.code === 'INVALID_INPUT_INDEX');
+		expect(mergeWarnings).toHaveLength(1);
+		expect(mergeWarnings[0].message).toContain("'numberInputs' is 2");
 	});
 
 	it('reports warning with node name and input index in message', () => {
@@ -121,5 +124,140 @@ describe('input index validation', () => {
 
 		const invalidInputWarnings = result.warnings.filter((w) => w.code === 'INVALID_INPUT_INDEX');
 		expect(invalidInputWarnings.length).toBe(2);
+	});
+});
+
+describe('merge node input-count validation', () => {
+	it('warns when connections exceed the default numberInputs of 2', () => {
+		const result = validateWorkflow({
+			id: 'test-id',
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{ id: 'a', name: 'A', type: 'n8n-nodes-base.set', typeVersion: 3, position: [100, 0] },
+				{ id: 'b', name: 'B', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+				{ id: 'c', name: 'C', type: 'n8n-nodes-base.set', typeVersion: 3, position: [300, 0] },
+				// Merge has no parameters → numberInputs defaults to 2, but three branches connect.
+				{
+					id: 'm',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [500, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+				A: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				B: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+				C: { main: [[{ node: 'Merge', type: 'main', index: 2 }]] },
+			},
+		});
+
+		const warning = result.warnings.find(
+			(w) => w.code === 'INVALID_INPUT_INDEX' && w.nodeName === 'Merge',
+		);
+		expect(warning).toBeDefined();
+		expect(warning?.message).toContain("'numberInputs' is 2");
+		expect(warning?.message).toContain('input index 2');
+		expect(warning?.parameterPath).toBe('numberInputs');
+	});
+
+	it('does not warn when numberInputs matches connection count', () => {
+		const result = validateWorkflow({
+			id: 'test-id',
+			name: 'Test',
+			nodes: [
+				{ id: 'a', name: 'A', type: 'n8n-nodes-base.set', typeVersion: 3, position: [100, 0] },
+				{ id: 'b', name: 'B', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+				{ id: 'c', name: 'C', type: 'n8n-nodes-base.set', typeVersion: 3, position: [300, 0] },
+				{
+					id: 'm',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [500, 0],
+					parameters: { numberInputs: 3 },
+				},
+			],
+			connections: {
+				A: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				B: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+				C: { main: [[{ node: 'Merge', type: 'main', index: 2 }]] },
+			},
+		});
+
+		const warning = result.warnings.find(
+			(w) => w.code === 'INVALID_INPUT_INDEX' && w.nodeName === 'Merge',
+		);
+		expect(warning).toBeUndefined();
+	});
+
+	it('does not warn on the default 2-branch merge case', () => {
+		const result = validateWorkflow({
+			id: 'test-id',
+			name: 'Test',
+			nodes: [
+				{ id: 'a', name: 'A', type: 'n8n-nodes-base.set', typeVersion: 3, position: [100, 0] },
+				{ id: 'b', name: 'B', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+				{
+					id: 'm',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [500, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				A: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				B: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		});
+
+		const warning = result.warnings.find(
+			(w) => w.code === 'INVALID_INPUT_INDEX' && w.nodeName === 'Merge',
+		);
+		expect(warning).toBeUndefined();
+	});
+
+	it('suggests the correct numberInputs value in the message', () => {
+		const result = validateWorkflow({
+			id: 'test-id',
+			name: 'Test',
+			nodes: [
+				{ id: 'a', name: 'A', type: 'n8n-nodes-base.set', typeVersion: 3, position: [100, 0] },
+				{ id: 'b', name: 'B', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+				{ id: 'c', name: 'C', type: 'n8n-nodes-base.set', typeVersion: 3, position: [300, 0] },
+				{ id: 'd', name: 'D', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
+				{
+					id: 'm',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [500, 0],
+					parameters: { numberInputs: 2 },
+				},
+			],
+			connections: {
+				A: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				B: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+				C: { main: [[{ node: 'Merge', type: 'main', index: 2 }]] },
+				D: { main: [[{ node: 'Merge', type: 'main', index: 3 }]] },
+			},
+		});
+
+		const warning = result.warnings.find(
+			(w) => w.code === 'INVALID_INPUT_INDEX' && w.nodeName === 'Merge',
+		);
+		expect(warning).toBeDefined();
+		expect(warning?.message).toContain("'numberInputs' to 4");
 	});
 });

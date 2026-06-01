@@ -38,6 +38,8 @@ export class WorkflowBuilderSessionRepository
 			messages,
 			previousSummary: entity.previousSummary ?? undefined,
 			updatedAt: entity.updatedAt,
+			activeVersionCardId: entity.activeVersionCardId,
+			resumeAfterRestoreMessageId: entity.resumeAfterRestoreMessageId,
 		};
 	}
 
@@ -46,11 +48,25 @@ export class WorkflowBuilderSessionRepository
 		const messages = mapChatMessagesToStoredMessages(data.messages);
 		const previousSummary = data.previousSummary ?? null;
 
+		const activeVersionCardId = data.activeVersionCardId ?? null;
+		const resumeAfterRestoreMessageId = data.resumeAfterRestoreMessageId ?? null;
+
 		await this.createQueryBuilder()
 			.insert()
 			.into(WorkflowBuilderSession)
-			.values({ id: randomUUID(), workflowId, userId, messages, previousSummary })
-			.orUpdate(['messages', 'previousSummary'], ['workflowId', 'userId'])
+			.values({
+				id: randomUUID(),
+				workflowId,
+				userId,
+				messages,
+				previousSummary,
+				activeVersionCardId,
+				resumeAfterRestoreMessageId,
+			})
+			.orUpdate(
+				['messages', 'previousSummary', 'activeVersionCardId', 'resumeAfterRestoreMessageId'],
+				['workflowId', 'userId'],
+			)
 			.execute();
 	}
 
@@ -60,8 +76,11 @@ export class WorkflowBuilderSessionRepository
 	}
 
 	private parseThreadId(threadId: string): { workflowId: string; userId: string } {
-		// Format: "workflow-{workflowId}-user-{userId}"
-		const match = threadId.match(/^workflow-(.+)-user-(.+)$/);
+		// Format: "workflow-{workflowId}-user-{userId}" with an optional "-code" suffix
+		// for the code-builder agent thread variant. Strip the suffix before parsing so
+		// the greedy userId capture doesn't swallow it (userId is a uuid column in PG).
+		const normalized = threadId.endsWith('-code') ? threadId.slice(0, -'-code'.length) : threadId;
+		const match = normalized.match(/^workflow-(.+)-user-(.+)$/);
 		if (!match) {
 			throw new Error(`Invalid thread ID format: ${threadId}`);
 		}

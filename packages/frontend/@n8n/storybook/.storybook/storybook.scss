@@ -20,3 +20,21 @@ body {
 	display: flex;
 	gap: 1rem;
 }
+
+.sbdocs .sbdocs-content table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	margin-block: var(--spacing--2xl);
+}
+
+.sbdocs .sbdocs-content th,
+.sbdocs .sbdocs-content td {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	text-align: left;
+	border-bottom: 1px solid var(--color--neutral-300);
+}
+
+.sbdocs .sbdocs-content th {
+	font-weight: var(--font-weight--bold);
+}

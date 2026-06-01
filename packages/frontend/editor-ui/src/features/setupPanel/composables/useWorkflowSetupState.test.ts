@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 import { createTestNode } from '@/__tests__/mocks';
@@ -10,8 +10,17 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 let mockOnCredentialDeleted: ((credentialId: string) => void) | undefined;
+const mockProjectsStore = {
+	currentProjectId: undefined as string | undefined,
+	personalProject: null as { id: string } | null,
+};
+const mockRoute = {
+	params: {} as Record<string, string>,
+	query: {} as Record<string, string>,
+};
 
 vi.mock('@/features/credentials/credentials.store', async () => {
 	const actual = await vi.importActual('@/features/credentials/credentials.store');
@@ -28,11 +37,17 @@ const mockUpdateNodeProperties = vi.fn();
 const mockUpdateNodeCredentialIssuesByName = vi.fn();
 const mockUpdateNodesCredentialsIssues = vi.fn();
 
-const mockWorkflowDocumentStore = {
-	allNodes: [] as INodeUi[],
-	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
-	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+
+const mockWorkflowDocumentStore: Writable<Partial<ReturnType<typeof useWorkflowDocumentStore>>> = {
+	allNodes: [],
 	updateNodeProperties: mockUpdateNodeProperties,
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	connectionsBySourceNode: {},
+	connectionsByDestinationNode: {},
+	workflowTriggerNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -40,6 +55,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	};
 });
@@ -77,6 +93,18 @@ vi.mock('@/app/utils/workflowUtils', async () => {
 	};
 });
 
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: vi.fn(() => mockProjectsStore),
+}));
+
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+	return {
+		...actual,
+		useRoute: vi.fn(() => mockRoute),
+	};
+});
+
 const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	createTestNode({
 		name: 'TestNode',
@@ -104,18 +132,25 @@ describe('useWorkflowSetupState', () => {
 		credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 		credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(false);
 		credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
 		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.getNodeByName = vi.fn();
-		mockWorkflowDocumentStore.getNodes = vi.fn();
+		mockWorkflowDocumentStore.connectionsBySourceNode = {};
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {};
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
 		mockGetNodeParametersIssues.mockReset().mockReturnValue({});
 		mockOnCredentialDeleted = undefined;
+		mockProjectsStore.currentProjectId = undefined;
+		mockProjectsStore.personalProject = null;
+		mockRoute.params = {};
+		mockRoute.query = {};
 	});
 
 	describe('setupCards', () => {
@@ -139,9 +174,9 @@ describe('useWorkflowSetupState', () => {
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].state.isTrigger).toBe(true);
-			expect(setupCards.value[0].state.credentialType).toBeUndefined();
-			expect(setupCards.value[0].state).toMatchObject({
+			expect(setupCards.value[0].state!.isTrigger).toBe(true);
+			expect(setupCards.value[0].state!.credentialType).toBeUndefined();
+			expect(setupCards.value[0].state!).toMatchObject({
 				node: expect.objectContaining({ name: 'WebhookTrigger' }),
 			});
 		});
@@ -158,8 +193,8 @@ describe('useWorkflowSetupState', () => {
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].state.credentialType).toBe('openAiApi');
-			expect(setupCards.value[0].state.credentialDisplayName).toBe('OpenAI API');
+			expect(setupCards.value[0].state!.credentialType).toBe('openAiApi');
+			expect(setupCards.value[0].state!.credentialDisplayName).toBe('OpenAI API');
 		});
 
 		it('should group multiple nodes needing same credential into one credential card', () => {
@@ -179,7 +214,8 @@ describe('useWorkflowSetupState', () => {
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			const nodeNames = setupCards.value[0].state.allNodesUsingCredential?.map((n) => n.name) ?? [];
+			const nodeNames =
+				setupCards.value[0].state!.allNodesUsingCredential?.map((n) => n.name) ?? [];
 			expect(nodeNames).toContain('OpenAI1');
 			expect(nodeNames).toContain('OpenAI2');
 		});
@@ -204,7 +240,7 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			expect(credCards).toHaveLength(2);
 		});
 
@@ -224,13 +260,13 @@ describe('useWorkflowSetupState', () => {
 			const { setupCards } = useWorkflowSetupState();
 
 			const triggerOnlyCards = setupCards.value.filter(
-				(c) => c.state.isTrigger && !c.state.credentialType,
+				(c) => c.state?.isTrigger && !c.state?.credentialType,
 			);
-			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			expect(triggerOnlyCards).toHaveLength(0);
 			expect(credCards).toHaveLength(1);
-			expect(credCards[0].state.isTrigger).toBe(true);
-			expect(credCards[0].state.node.name).toBe('SlackTrigger');
+			expect(credCards[0].state!.isTrigger).toBe(true);
+			expect(credCards[0].state!.node.name).toBe('SlackTrigger');
 		});
 
 		it('should only allow executing first trigger; other triggers get no standalone cards', () => {
@@ -258,14 +294,14 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			const triggerOnlyCards = setupCards.value.filter(
-				(c) => c.state.isTrigger && !c.state.credentialType,
+				(c) => c.state?.isTrigger && !c.state?.credentialType,
 			);
 
 			// One credential card with ALL nodes (both triggers included for display)
 			expect(credCards).toHaveLength(1);
-			const allNodes = credCards[0].state.allNodesUsingCredential ?? [];
+			const allNodes = credCards[0].state!.allNodesUsingCredential ?? [];
 			expect(allNodes).toHaveLength(2);
 			expect(allNodes.map((n) => n.name)).toEqual(['SlackTrigger1', 'SlackTrigger2']);
 
@@ -286,8 +322,8 @@ describe('useWorkflowSetupState', () => {
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].state.isTrigger).toBe(true);
-			expect(setupCards.value[0].state.credentialType).toBeUndefined();
+			expect(setupCards.value[0].state!.isTrigger).toBe(true);
+			expect(setupCards.value[0].state!.credentialType).toBeUndefined();
 		});
 
 		it('should sort cards by primary node execution order, interleaving credential and trigger cards', () => {
@@ -327,9 +363,9 @@ describe('useWorkflowSetupState', () => {
 
 			// then credential card (Regular at index 1)
 			expect(setupCards.value).toHaveLength(2);
-			expect(setupCards.value[0].state.isTrigger).toBe(true);
-			expect(setupCards.value[0].state.credentialType).toBeUndefined();
-			expect(setupCards.value[1].state.credentialType).toBeDefined();
+			expect(setupCards.value[0].state!.isTrigger).toBe(true);
+			expect(setupCards.value[0].state!.credentialType).toBeUndefined();
+			expect(setupCards.value[1].state!.credentialType).toBeDefined();
 		});
 
 		it('should exclude disabled nodes', () => {
@@ -1231,9 +1267,9 @@ describe('useWorkflowSetupState', () => {
 			const nodesRef = ref<INodeUi[]>([customNode]);
 			const { setupCards } = useWorkflowSetupState(nodesRef);
 
-			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			const credCards = setupCards.value.filter((c) => !!c.state?.credentialType);
 			expect(credCards).toHaveLength(1);
-			const nodeNames = credCards[0].state.allNodesUsingCredential?.map((n) => n.name) ?? [];
+			const nodeNames = credCards[0].state!.allNodesUsingCredential?.map((n) => n.name) ?? [];
 			expect(nodeNames).toContain('CustomNode');
 			expect(nodeNames).not.toContain('StoreNode');
 		});
@@ -1854,9 +1890,9 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			expect(state.setupCards.value).toHaveLength(2);
-			const nodeCredCard = state.setupCards.value.find((c) => c.state.node === node1);
+			const nodeCredCard = state.setupCards.value.find((c) => c.state?.node === node1);
 			expect(nodeCredCard).toBeDefined();
-			expect(nodeCredCard?.state.credentialType).toBe('httpHeaderAuth');
+			expect(nodeCredCard?.state?.credentialType).toBe('httpHeaderAuth');
 		});
 	});
 });

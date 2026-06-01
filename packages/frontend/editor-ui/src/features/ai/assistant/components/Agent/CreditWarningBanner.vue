@@ -71,7 +71,7 @@ const tooltipContent = computed(() => {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background--light-3);
+	background: light-dark(var(--color--neutral-125), var(--color--neutral-850));
 	border: var(--border);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	border-bottom: none;

@@ -37,6 +37,7 @@ describe('N8nLlmTracing', () => {
 			addOutputData: jest.fn(),
 			addInputData: jest.fn().mockReturnValue({ index: 0 }),
 			getNextRunIndex: jest.fn().mockReturnValue(0),
+			setMetadata: jest.fn(),
 		} as unknown as jest.Mocked<ISupplyDataFunctions>;
 	});
 
@@ -229,6 +230,17 @@ describe('N8nLlmTracing', () => {
 				'ai-llm-generated-output',
 				expect.any(Object),
 			);
+
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 50,
+					'llm.tokens.out': 30,
+					'llm.tokens.total': 80,
+					'llm.tokens.estimated': false,
+				},
+			});
 		});
 
 		it('should use token estimates when actual tokens not available', async () => {
@@ -258,6 +270,16 @@ describe('N8nLlmTracing', () => {
 			expect(outputData.tokenUsageEstimate.completionTokens).toBe(25);
 			expect(outputData.tokenUsageEstimate.promptTokens).toBe(50);
 			expect(outputData.tokenUsageEstimate.totalTokens).toBe(75);
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 50,
+					'llm.tokens.out': 25,
+					'llm.tokens.total': 75,
+					'llm.tokens.estimated': true,
+				},
+			});
 		});
 
 		it('should handle string messages', async () => {
@@ -543,6 +565,7 @@ describe('N8nLlmTracing', () => {
 				completionTokens: 100,
 				promptTokens: 50,
 				totalTokens: 150,
+				cost: 0.0042,
 			});
 
 			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
@@ -572,7 +595,157 @@ describe('N8nLlmTracing', () => {
 				completionTokens: 100,
 				promptTokens: 50,
 				totalTokens: 150,
+				cost: 0.0042,
 			});
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 50,
+					'llm.tokens.out': 100,
+					'llm.tokens.total': 150,
+					'llm.tokens.estimated': false,
+					'llm.cost.total': 0.0042,
+				},
+			});
+		});
+	});
+
+	describe('tracing metadata', () => {
+		it('default parser surfaces cost from llmOutput.tokenUsage.cost', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const runId = 'run-cost';
+			tracer.runsMap[runId] = {
+				index: 0,
+				messages: ['Test'],
+				options: {},
+			};
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response' }]],
+				llmOutput: {
+					tokenUsage: {
+						completionTokens: 10,
+						promptTokens: 5,
+						totalTokens: 15,
+						cost: 0.123,
+					},
+				},
+			};
+
+			await tracer.handleLLMEnd(output, runId);
+
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 5,
+					'llm.tokens.out': 10,
+					'llm.tokens.total': 15,
+					'llm.tokens.estimated': false,
+					'llm.cost.total': 0.123,
+				},
+			});
+		});
+
+		it('default parser falls back to totalCost when cost is absent', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			const runId = 'run-totalcost';
+			tracer.runsMap[runId] = {
+				index: 0,
+				messages: ['Test'],
+				options: {},
+			};
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response' }]],
+				llmOutput: {
+					tokenUsage: {
+						completionTokens: 10,
+						promptTokens: 5,
+						totalTokens: 15,
+						totalCost: 0.456,
+					},
+				},
+			};
+
+			await tracer.handleLLMEnd(output, runId);
+
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: jest.Mock }).setMetadata,
+			).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tracing: expect.objectContaining({
+						'llm.cost.total': 0.456,
+					}),
+				}),
+			);
+		});
+
+		it('does not throw when the execution context has no setMetadata', async () => {
+			const ctxWithoutSetMetadata = {
+				getNode: jest.fn().mockReturnValue(mockNode),
+				addOutputData: jest.fn(),
+				addInputData: jest.fn().mockReturnValue({ index: 0 }),
+				getNextRunIndex: jest.fn().mockReturnValue(0),
+			} as unknown as jest.Mocked<ISupplyDataFunctions>;
+
+			const tracer = new N8nLlmTracing(ctxWithoutSetMetadata);
+
+			const runId = 'run-no-setmetadata';
+			tracer.runsMap[runId] = {
+				index: 0,
+				messages: ['Test'],
+				options: {},
+			};
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response' }]],
+				llmOutput: {
+					tokenUsage: {
+						completionTokens: 10,
+						promptTokens: 5,
+						totalTokens: 15,
+					},
+				},
+			};
+
+			await expect(tracer.handleLLMEnd(output, runId)).resolves.not.toThrow();
+			expect(ctxWithoutSetMetadata.addOutputData).toHaveBeenCalled();
+		});
+
+		it('omits llm.cost.total when the parsed cost is not finite', async () => {
+			const customParser = jest.fn().mockReturnValue({
+				completionTokens: 10,
+				promptTokens: 5,
+				totalTokens: 15,
+				cost: Number.NaN,
+			});
+
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: customParser,
+			});
+
+			const runId = 'run-nan-cost';
+			tracer.runsMap[runId] = {
+				index: 0,
+				messages: ['Test'],
+				options: {},
+			};
+
+			const output: LLMResult = {
+				generations: [[{ text: 'Response' }]],
+				llmOutput: {},
+			};
+
+			await tracer.handleLLMEnd(output, runId);
+
+			const setMetadataMock = (mockExecutionFunctions as unknown as { setMetadata: jest.Mock })
+				.setMetadata;
+			const tracingArg = setMetadataMock.mock.calls[0][0].tracing as Record<string, unknown>;
+			expect(tracingArg).not.toHaveProperty('llm.cost.total');
 		});
 	});
 

@@ -395,15 +395,9 @@ defineExpose({ focus, blur, select });
 	--input--shadow: 0 0 0 0 transparent;
 	--input--shadow--hover: 0 0 0 0 transparent;
 	--input--shadow--focus: 0 0 0 0 transparent;
-	--input--border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
-	--input--border-color--hover: light-dark(
-		var(--color--black-alpha-200),
-		var(--color--white-alpha-200)
-	);
-	--input--border-color--focus: light-dark(
-		var(--color--black-alpha-300),
-		var(--color--white-alpha-300)
-	);
+	--input--border-color: var(--border-color);
+	--input--border-color--hover: var(--border-color--strong);
+	--input--border-color--focus: var(--focus--border-color);
 	--input--border--shadow: 0 0 0 1px var(--input--border-color);
 	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
 	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);

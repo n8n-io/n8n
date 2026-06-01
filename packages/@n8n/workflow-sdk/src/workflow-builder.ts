@@ -1,3 +1,4 @@
+import { isIfNodeType, isSwitchNodeType } from './constants/node-types';
 import type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
@@ -10,12 +11,17 @@ import type {
 	NodeChain,
 	GeneratePinDataOptions,
 	WorkflowBuilderOptions,
+	ToJSONOptions,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import type { ValidationOptions, ValidationResult, ValidationErrorCode } from './validation/index';
 import { ValidationError, ValidationWarning } from './validation/index';
 import { resolveTargetNodeName as resolveTargetNodeNameUtil } from './workflow-builder/connection-utils';
-import { isInputTarget, cloneNodeWithId } from './workflow-builder/node-builders/node-builder';
+import {
+	isInputTarget,
+	isOutputSelector,
+	cloneNodeWithId,
+} from './workflow-builder/node-builders/node-builder';
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
@@ -170,10 +176,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	add(node: unknown): WorkflowBuilder {
+		assertNotOutputSelector(node, 'add');
+
 		// Handle plain array (fan-out)
 		// This adds all targets without creating a primary connection
 		if (Array.isArray(node)) {
 			for (const target of node) {
+				assertNotOutputSelector(target, 'add');
 				if (isInputTarget(target)) {
 					// InputTarget - add the target node
 					const inputTargetNode = target.node;
@@ -262,6 +271,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	to(nodeOrComposite: unknown): WorkflowBuilder {
+		assertNotOutputSelector(nodeOrComposite, 'to');
+
 		// Handle InputTarget (e.g., mergeNode.input(0))
 		if (isInputTarget(nodeOrComposite)) {
 			const actualNode = nodeOrComposite.node;
@@ -370,6 +381,62 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	onTrue(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(0, target, 'onTrue');
+	}
+
+	onFalse(target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(1, target, 'onFalse');
+	}
+
+	onCase(index: number, target: unknown): WorkflowBuilder {
+		return this.branchFromCurrent(index, target, 'onCase');
+	}
+
+	/**
+	 * Connect a branch output of the node the cursor is on (the last node added
+	 * via `.to()`/`.add()`) to `target`, without advancing the cursor — so
+	 * sibling branches (`.onTrue().onFalse()`, `.onCase(0).onCase(1)`) all attach
+	 * to the same branching node.
+	 */
+	private branchFromCurrent(
+		outputIndex: number,
+		target: unknown,
+		methodName: 'onTrue' | 'onFalse' | 'onCase',
+	): WorkflowBuilder {
+		const sourceKey = this._currentNode;
+		const sourceType = sourceKey ? this._nodes.get(sourceKey)?.instance.type : undefined;
+		const wantsSwitch = methodName === 'onCase';
+		const matches = sourceType
+			? wantsSwitch
+				? isSwitchNodeType(sourceType)
+				: isIfNodeType(sourceType)
+			: false;
+		if (!matches) {
+			const expected = wantsSwitch ? 'Switch' : 'IF';
+			const usage = wantsSwitch
+				? 'workflow.add(trigger).to(switchNode).onCase(0, a).onCase(1, b)'
+				: 'workflow.add(trigger).to(ifNode).onTrue(a).onFalse(b)';
+			throw new Error(
+				`.${methodName}() must immediately follow adding a ${expected} node. Use it as ${usage}.`,
+			);
+		}
+
+		if (target === null || target === undefined) {
+			this._currentNode = sourceKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
+		this._currentNode = sourceKey;
+		this._currentOutput = outputIndex;
+		this.to(target as NodeInstance<string, string, unknown>);
+		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
+		this._currentNode = sourceKey;
+		this._currentOutput = 0;
+		return this;
+	}
+
 	output(): never {
 		throw new Error(
 			'Cannot call .output() on the workflow builder. ' +
@@ -439,7 +506,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return undefined;
 	}
 
-	toJSON(): WorkflowJSON {
+	toJSON(options?: ToJSONOptions): WorkflowJSON {
 		// Ensure composite targets from .onError() connections are added to the graph.
 		// This handles cases where a chain node has .onError(ifElseBuilder) — the composite
 		// isn't in the chain's allNodes, so it wasn't dispatched during chain processing.
@@ -456,6 +523,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			settings: this._settings,
 			pinData: this._pinData,
 			meta: this._meta,
+			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
 		};
 
@@ -898,6 +966,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				return;
 			}
 
+			assertNotOutputSelector(node, 'to');
+
 			// Use addBranchToGraph to handle NodeChains properly
 			// This returns the head node name for connection
 			const headNodeName = this.addBranchToGraph(
@@ -1160,6 +1230,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 }
 
+function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
+	if (!isOutputSelector(value)) return;
+	const sourceName = value.node.name;
+	throw new TypeError(
+		`Cannot pass an OutputSelector to .${method}(). ` +
+			`${sourceName}.output(${value.outputIndex}) by itself does not connect anything; ` +
+			'chain `.to(target)` on the selector first to produce a connection. ' +
+			`Example: .add(${sourceName}.output(${value.outputIndex}).to(targetNode)) ` +
+			`— not .add(${sourceName}.output(${value.outputIndex})).to(targetNode).`,
+	);
+}
+
 /**
  * Helper to check if options is a WorkflowBuilderOptions object
  */
@@ -1180,6 +1262,37 @@ function createWorkflow(
 	name: string,
 	options?: WorkflowSettings | WorkflowBuilderOptions,
 ): WorkflowBuilder {
+	if (typeof id !== 'string') {
+		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string id as first argument, but received ${receivedId}. ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (typeof name !== 'string') {
+		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string name as second argument, but received ${receivedName}. ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (
+		options !== undefined &&
+		(Array.isArray(options) ||
+			(typeof options === 'object' &&
+				options !== null &&
+				('nodes' in options || 'connections' in options)))
+	) {
+		throw new TypeError(
+			'workflow() third argument is settings, not workflow structure. ' +
+				'Do not pass nodes or connections here — use .add() and .to() to build the workflow. ' +
+				"Example: workflow('id', 'Name').add(trigger({...})).to(node({...}))",
+		);
+	}
 	if (isWorkflowBuilderOptions(options)) {
 		return new WorkflowBuilderImpl(
 			id,

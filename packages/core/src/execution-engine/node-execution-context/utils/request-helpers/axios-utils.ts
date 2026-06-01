@@ -6,8 +6,7 @@ import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
 import {
-	ApplicationError,
-	isDomainAllowed,
+	assertUrlAllowed,
 	type IHttpRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
@@ -20,11 +19,7 @@ export function throwIfDomainNotAllowed(
 	allowedDomains?: string,
 ): void {
 	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
-	if (allowedDomains && !isDomainAllowed(url, { allowedDomains })) {
-		throw new ApplicationError(
-			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
-		);
-	}
+	assertUrlAllowed({ url, allowedDomains });
 }
 
 /** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */
@@ -212,9 +207,27 @@ export const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
+/**
+ * Duck-type check for FormData instances. Using `instanceof` fails when
+ * multiple copies of the `form-data` package are installed
+ * (e.g. one instance in one package, another in another package),
+ * because each copy has its own constructor reference.
+ */
+export function isFormDataInstance(data: unknown): data is FormData {
+	return (
+		data instanceof FormData ||
+		(typeof data === 'object' &&
+			data !== null &&
+			'getHeaders' in data &&
+			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			'append' in data &&
+			typeof (data as { append: unknown }).append === 'function')
+	);
+}
+
 /** Sets the `content-length` header by measuring the FormData stream length. */
 export async function generateContentLengthHeader(config: AxiosRequestConfig) {
-	if (!(config.data instanceof FormData)) {
+	if (!isFormDataInstance(config.data)) {
 		return;
 	}
 

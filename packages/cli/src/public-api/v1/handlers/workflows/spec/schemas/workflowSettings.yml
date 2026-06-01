@@ -28,9 +28,9 @@ properties:
   callerPolicy:
     type: string
     enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
-    default: workflowsFromSameOwner
     description: |
       Controls which workflows are allowed to call this workflow using the Execute Workflow node.
+      Defaults to workflowsFromSameOwner.
 
       Available options:
       - `any`: Any workflow can call this workflow (no restrictions)
@@ -51,9 +51,9 @@ properties:
     description: Estimated time saved per execution in minutes
   availableInMCP:
     type: boolean
-    default: false
     description: |
       Controls whether this workflow is accessible via the Model Context Protocol (MCP).
+      Defaults to false.
 
       When enabled, this workflow can be called by MCP clients (AI assistants and other tools
       that support MCP). This allows external AI tools to discover and execute this workflow

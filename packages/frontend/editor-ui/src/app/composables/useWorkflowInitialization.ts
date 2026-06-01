@@ -1,12 +1,14 @@
-import { ref, computed, shallowRef } from 'vue';
+import { ref, computed } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -29,6 +31,10 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const route = useRoute();
@@ -51,6 +57,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
+	const workflowId = useWorkflowId();
+	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
 
 	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
 
@@ -68,22 +76,17 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
 
-	// Track the current workflow document store for cleanup and provide to children
-	const currentWorkflowDocumentStore = shallowRef<ReturnType<
-		typeof useWorkflowDocumentStore
-	> | null>(null);
-
 	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
-		if (currentWorkflowDocumentStore.value) {
-			const storeId = createWorkflowDocumentId(
-				currentWorkflowDocumentStore.value.workflowId,
-				currentWorkflowDocumentStore.value.workflowVersion,
-			);
-			disposeWorkflowDocumentStore(storeId);
-			currentWorkflowDocumentStore.value = null;
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+
+		if (workflowDocumentStore) {
+			disposeNDVStore(useNDVStore(workflowDocumentStore.documentId));
+			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
+
+		currentWorkflowDocumentStore.value = null;
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
@@ -91,13 +94,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
-
-	const workflowId = computed(() => {
-		if (isDemoRoute.value) return 'demo';
-
-		const name = route.params.name;
-		return (Array.isArray(name) ? name[0] : name) ?? '';
-	});
 
 	async function loadCredentials() {
 		let options: { workflowId: string } | { projectId: string };
@@ -136,11 +132,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		try {
 			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
@@ -156,6 +150,20 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				return true;
 			}
 
+			const templateValidation = safeParseWorkflowStructure({
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+			});
+
+			if (!templateValidation.success) {
+				toast.showError(
+					new WorkflowStructureValidationError(templateValidation.issues),
+					i18n.baseText('nodeView.showError.openWorkflow.title'),
+					{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+				);
+				return true;
+			}
+
 			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
@@ -167,6 +175,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
 		}
 
 		return true;
@@ -179,13 +188,16 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	async function handleDebugModeRoute() {
 		if (!isDebugRoute.value) return;
 
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.isInDebugMode = true;
+				executionStateStore.setIsInDebugMode(true);
 			}
 		}
 	}
@@ -222,15 +234,26 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 			await Promise.all(loadPromises);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 	}
 
 	async function openWorkflow(data: IWorkflowDb) {
+		const validationResult = safeParseWorkflowStructure({
+			nodes: data.nodes,
+			connections: data.connections,
+		});
+
+		if (!validationResult.success) {
+			toast.showError(
+				new WorkflowStructureValidationError(validationResult.issues),
+				i18n.baseText('nodeView.showError.openWorkflow.title'),
+				{ message: i18n.baseText('openWorkflow.workflowDataInvalidError') },
+			);
+		}
+
 		disposeCurrentWorkflowDocumentStore();
 		resetWorkspace();
 
@@ -240,8 +263,26 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			documentTitle.setDocumentTitle(data.name, 'IDLE');
 		}
 
-		const { workflowDocumentStore } = await initializeWorkspace(data);
-		currentWorkflowDocumentStore.value = workflowDocumentStore;
+		try {
+			const { workflowDocumentStore } = await initializeWorkspace(data);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+		} catch (error) {
+			// Using error instead of warn so that unexpected errors are captured by Sentry
+			console.error('Failed to initialize workspace for workflow', {
+				workflowId: data.id,
+				error,
+			});
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+
+			// Set up a minimal document store so the UI stays functional
+			workflowsStore.setWorkflowId(data.id);
+			const workflowDocumentId = createWorkflowDocumentId(data.id);
+			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value.setName(data.name);
+			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
+			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
+			return;
+		}
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
@@ -257,17 +298,23 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowData(
+		workflowsStore.setWorkflowId(workflowId.value);
+
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+
+		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
+		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
+			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
+		});
+
+		const workflowData = await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
 		);
-
-		workflowState.setWorkflowId(workflowId.value);
-
-		// Create document store for new workflow
-		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
-		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setName(workflowData.name);
+		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 

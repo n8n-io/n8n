@@ -6,6 +6,7 @@ import {
 	N8nSelect2,
 	N8nSelect2Item,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -178,9 +179,15 @@ const onAddCustomRoleClick = () => {
 		>
 			<!-- Custom trigger to match original styling -->
 			<template #default>
-				<span :class="$style.triggerContent">
-					{{ selectedRole?.displayName }}
-				</span>
+				<N8nTooltip
+					:content="selectedRole?.displayName"
+					:disabled="!selectedRole || dropdownOpen"
+					placement="top"
+				>
+					<span :class="$style.triggerContent">
+						{{ selectedRole?.displayName }}
+					</span>
+				</N8nTooltip>
 			</template>
 
 			<!-- Search input header -->

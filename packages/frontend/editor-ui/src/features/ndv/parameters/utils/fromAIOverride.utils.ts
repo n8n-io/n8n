@@ -50,11 +50,14 @@ const NODE_DENYLIST = [
 	'@n8n/n8n-nodes-langchain.toolCode',
 	'@n8n/n8n-nodes-langchain.toolHttpRequest',
 	'@n8n/n8n-nodes-langchain.mcpClientTool',
-	['@n8n/n8n-nodes-langchain.toolWorkflow', 1.2],
+	// Legacy versions read `parameters.name` at runtime as the tool's identity;
+	// newer versions derive it from the node name, so $fromAI on that field would
+	// produce an invalid tool name. Keep these ranges in sync when bumping versions.
+	['@n8n/n8n-nodes-langchain.toolWorkflow', 2.1],
+	['@n8n/n8n-nodes-langchain.toolVectorStore', 1],
 ] as const;
 
 const PATH_DENYLIST = [
-	'parameters.name',
 	// this is used in vector store tools
 	'parameters.toolName',
 	'parameters.description',

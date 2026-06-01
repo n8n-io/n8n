@@ -6,10 +6,15 @@ import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { EventService } from '@/events/event.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
-import { DynamicCredentialResolverRegistry } from '@/modules/dynamic-credentials.ee/services';
+import {
+	CredentialConnectionStatusService,
+	DynamicCredentialResolverRegistry,
+} from '@/modules/dynamic-credentials.ee/services';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
@@ -26,6 +31,9 @@ describe('DynamicCredentialsController', () => {
 	const resolverRegistry = mockInstance(DynamicCredentialResolverRegistry);
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
+	mockInstance(CredentialsFinderService);
+	mockInstance(CredentialConnectionStatusService);
+	mockInstance(EventService);
 
 	mockInstance(Logger);
 
@@ -265,14 +273,16 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolverWithValidation);
-			cipher.decrypt.mockReturnValueOnce('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValueOnce(
+				'{"introspectionUrl":"https://example.com/introspect"}',
+			);
 			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
 				'https://example.domain/oauth2/auth',
 			);
 
 			await controller.authorizeCredential(req, res);
 
-			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-config');
+			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-config');
 			expect(mockResolverWithValidation.validateIdentity).toHaveBeenCalledWith(expectedContext, {
 				resolverId: 'resolver-123',
 				resolverName: 'oauth2-introspection-identifier',
@@ -301,7 +311,7 @@ describe('DynamicCredentialsController', () => {
 
 			await controller.authorizeCredential(req, res);
 
-			expect(cipher.decrypt).not.toHaveBeenCalled();
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
 		});
 	});
 
@@ -378,7 +388,7 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValue('{"introspectionUrl":"https://example.com/introspect"}');
 
 			await controller.revokeCredential(req, res);
 
@@ -392,7 +402,7 @@ describe('DynamicCredentialsController', () => {
 					resolverName: 'oauth2-introspection-identifier',
 				},
 			);
-			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-config');
+			expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-config');
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(res.send).toHaveBeenCalled();
 		});
@@ -426,7 +436,7 @@ describe('DynamicCredentialsController', () => {
 
 			await controller.revokeCredential(req, res);
 
-			expect(cipher.decrypt).not.toHaveBeenCalled();
+			expect(cipher.decryptV2).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(res.send).toHaveBeenCalled();
 		});
@@ -465,7 +475,7 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"key":"value","url":"https://test.com"}');
+			cipher.decryptV2.mockResolvedValue('{"key":"value","url":"https://test.com"}');
 
 			// Act
 			await controller.revokeCredential(req, res);
@@ -509,7 +519,7 @@ describe('DynamicCredentialsController', () => {
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-			cipher.decrypt.mockReturnValue('{"introspectionUrl":"https://example.com/introspect"}');
+			cipher.decryptV2.mockResolvedValue('{"introspectionUrl":"https://example.com/introspect"}');
 
 			// Act
 			await controller.revokeCredential(req, res);

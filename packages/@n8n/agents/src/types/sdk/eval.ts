@@ -37,6 +37,9 @@ export type JudgeHandlerFn = (input: JudgeInput) => EvalScore | Promise<EvalScor
 export interface BuiltEval {
 	readonly name: string;
 	readonly description?: string;
+	readonly evalType: 'check' | 'judge';
+	readonly modelId: string | null;
+	readonly credentialName: string | null;
 	/** @internal */ readonly _run: (input: EvalInput) => Promise<EvalScore>;
 }
 

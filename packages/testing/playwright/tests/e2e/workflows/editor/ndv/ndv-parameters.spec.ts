@@ -53,7 +53,7 @@ test.describe(
 				});
 
 				await n8n.canvas.addNode('E2E Test', { action: 'Remote Options' });
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await n8n.ndv.fillFirstAvailableTextParameterMultipleTimes(['test1', 'test2', 'test3']);
 
@@ -69,7 +69,7 @@ test.describe(
 
 				await n8n.canvas.addNode('Manual Trigger');
 				await n8n.canvas.addNode('Notion', { action: 'Update a database page', closeNDV: false });
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await n8n.ndv.addItemToFixedCollection('propertiesUi');
 				await expect(
@@ -84,7 +84,7 @@ test.describe(
 
 				await n8n.canvas.addNode('Manual Trigger');
 				await n8n.canvas.addNode('Notion', { action: 'Update a database page', closeNDV: false });
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await n8n.credentialsComposer.createFromNdv({
 					apiKey: 'sk_test_123',
@@ -100,7 +100,7 @@ test.describe(
 			test('Should clear mismatched collection parameters', async ({ n8n }) => {
 				await n8n.canvas.addNode('Manual Trigger');
 				await n8n.canvas.addNode('Notion', { action: 'Create a database page', closeNDV: false });
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await n8n.ndv.addItemToFixedCollection('propertiesUi');
 				await n8n.ndv.changeNodeOperation('Update');
@@ -116,18 +116,18 @@ test.describe(
 					closeNDV: false,
 					action: 'Append row in sheet',
 				});
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await n8n.ndv.setRLCValue('documentId', TEST_DOC_ID);
 				await n8n.ndv.changeNodeOperation('Append or Update Row');
-				const input = n8n.ndv.getResourceLocatorInput('documentId').locator('input');
+				const input = n8n.ndv.getResourceLocatorInputField('documentId');
 				await expect(input).toHaveValue(TEST_DOC_ID);
 			});
 
 			test('Should not clear resource/operation after credential change', async ({ n8n }) => {
 				await n8n.canvas.addNode('Manual Trigger');
 				await n8n.canvas.addNode('Discord', { closeNDV: false, action: 'Delete a message' });
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await n8n.credentialsComposer.createFromNdv({
 					botToken: 'sk_test_123',
 				});
@@ -181,7 +181,7 @@ test.describe(
 
 				await n8n.canvas.openNode('Set');
 
-				await n8n.ndv.getAssignmentValue('assignments').getByText('Expression').click();
+				await n8n.ndv.getAssignmentExpressionToggle('assignments').click();
 
 				const expressionInput = n8n.ndv.getInlineExpressionEditorInput();
 				await expressionInput.click();

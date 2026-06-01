@@ -22,4 +22,5 @@ export const EnterpriseEditionFeature: Record<
 	Provisioning: 'provisioning',
 	PersonalSpacePolicy: 'personalSpacePolicy',
 	CustomRoles: 'customRoles',
+	DataRedaction: 'dataRedaction',
 };

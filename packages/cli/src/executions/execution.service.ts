@@ -1,5 +1,5 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -17,6 +17,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -43,12 +44,14 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -119,10 +122,30 @@ export class ExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
+		private readonly licenseState: LicenseState,
+		private readonly roleService: RoleService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
+
+	/**
+	 * Build sharing options for execution queries based on whether sharing is licensed.
+	 */
+	async buildSharingOptions(
+		scope: Scope,
+	): Promise<ExecutionSummaries.RangeQuery['sharingOptions']> {
+		if (this.licenseState.isSharingLicensed()) {
+			const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
+			const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
+			return { scopes: [scope], projectRoles, workflowRoles };
+		}
+
+		return {
+			workflowRoles: ['workflow:owner'],
+			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+		};
+	}
 
 	async findOne(
 		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
@@ -223,7 +246,7 @@ export class ExecutionService {
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
 		if (execution.finished) {
-			throw new UnexpectedError('The execution succeeded, so it cannot be retried.');
+			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';

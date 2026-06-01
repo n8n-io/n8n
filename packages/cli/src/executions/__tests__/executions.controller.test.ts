@@ -87,7 +87,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -105,7 +108,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -121,7 +127,10 @@ describe('ExecutionsController', () => {
 
 		describe('if both status and range provided', () => {
 			it('should fetch executions per query', async () => {
-				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+				executionService.buildSharingOptions.mockResolvedValue({
+					workflowRoles: [],
+					projectRoles: [],
+				});
 				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 				const rangeQuery: ExecutionSummaries.RangeQuery = {

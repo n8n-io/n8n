@@ -14,24 +14,15 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
+import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
@@ -59,6 +50,12 @@ const isLicensed = computed((): boolean => {
 const canManageLogStreaming = computed((): boolean => {
 	return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 });
+
+const isManagedByEnv = computed((): boolean => {
+	return settingsStore.settings.logStreaming?.managedByEnv ?? false;
+});
+
+const isReadonly = computed((): boolean => isManagedByEnv.value || !canManageLogStreaming.value);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.log-streaming.heading'));
@@ -104,7 +101,7 @@ function forceUpdateInstance() {
 }
 
 function onBusClosing() {
-	workflowDocumentStore?.value?.removeAllNodes();
+	workflowDocumentStore.value.removeAllNodes();
 	uiStore.markStateClean();
 }
 
@@ -155,9 +152,9 @@ async function addDestination() {
 async function onRemove(destinationId?: string) {
 	if (!destinationId) return;
 	await logStreamingStore.deleteDestination(destinationId);
-	const foundNode = workflowDocumentStore?.value?.getNodeByName(destinationId);
+	const foundNode = workflowDocumentStore.value.getNodeByName(destinationId);
 	if (foundNode) {
-		workflowDocumentStore?.value?.removeNode(foundNode);
+		workflowDocumentStore.value.removeNode(foundNode);
 	}
 }
 
@@ -196,6 +193,12 @@ async function onEdit(destinationId?: string) {
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</N8nInfoTip>
 			</div>
+			<N8nNotice
+				v-if="isManagedByEnv"
+				class="mb-l"
+				:content="i18n.baseText('settings.log-streaming.managedByEnv')"
+				data-test-id="log-streaming-managed-by-env"
+			/>
 			<template v-if="storeHasItems()">
 				<ElRow
 					v-for="item in sortedItemKeysByLabel"
@@ -207,19 +210,19 @@ async function onEdit(destinationId?: string) {
 						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:event-bus="eventBus"
-							:readonly="!canManageLogStreaming"
+							:readonly="isReadonly"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</ElCol>
 				</ElRow>
-				<div class="mt-m text-right">
-					<N8nButton v-if="canManageLogStreaming" size="large" @click="addDestination">
+				<div v-if="!isReadonly" class="mt-m text-right">
+					<N8nButton size="large" @click="addDestination">
 						{{ i18n.baseText(`settings.log-streaming.add`) }}
 					</N8nButton>
 				</div>
 			</template>
-			<div v-else data-test-id="action-box-licensed">
+			<div v-else-if="!isManagedByEnv" data-test-id="action-box-licensed">
 				<N8nActionBox
 					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"

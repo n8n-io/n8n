@@ -4,6 +4,10 @@ import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
 
 export class TemplateCredentialSetupPage extends BasePage {
+	async goto(templateId: number) {
+		await this.page.goto(`/templates/${templateId}/setup`);
+	}
+
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 
 	getTitle(titleText: string): Locator {

@@ -6,6 +6,7 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
+import { afterAll } from 'vitest';
 import { Expression } from 'n8n-workflow';
 
 import {
@@ -24,6 +25,9 @@ if (Expression.getActiveImplementation() !== 'vm') {
 }
 
 const workflow = createWorkflow();
+await workflow.expression.acquireIsolate();
+
+afterAll(() => workflow.expression.releaseIsolate());
 
 definePatternBenchmarks(
 	'vm',

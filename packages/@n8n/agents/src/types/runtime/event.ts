@@ -1,4 +1,4 @@
-import type { AgentMessage, ContentToolResult } from '../sdk/message';
+import type { AgentMessage, ContentToolCall } from '../sdk/message';
 
 export const enum AgentEvent {
 	AgentStart = 'agent_start',
@@ -14,7 +14,7 @@ export type AgentEventData =
 	| { type: AgentEvent.AgentStart }
 	| { type: AgentEvent.AgentEnd; messages: AgentMessage[] }
 	| { type: AgentEvent.TurnStart }
-	| { type: AgentEvent.TurnEnd; message: AgentMessage; toolResults: ContentToolResult[] }
+	| { type: AgentEvent.TurnEnd; message: AgentMessage; toolResults: ContentToolCall[] }
 	| { type: AgentEvent.ToolExecutionStart; toolCallId: string; toolName: string; args: unknown }
 	| {
 			type: AgentEvent.ToolExecutionEnd;
@@ -23,7 +23,12 @@ export type AgentEventData =
 			result: unknown;
 			isError: boolean;
 	  }
-	| { type: AgentEvent.Error; message: string; error: unknown };
+	| {
+			type: AgentEvent.Error;
+			message: string;
+			error: unknown;
+			source?: 'observer' | 'reflector' | 'episodic-memory';
+	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;
 

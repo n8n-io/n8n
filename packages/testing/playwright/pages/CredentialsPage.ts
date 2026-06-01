@@ -4,6 +4,10 @@ import { CredentialModal } from './components/CredentialModal';
 import { ResourceCards } from './components/ResourceCards';
 
 export class CredentialsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/credentials');
+	}
+
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);

@@ -1,4 +1,6 @@
 import { jsonSerializer } from './json-serializer';
+import type { GraphNode } from '../../../types/base';
+import { trigger } from '../../node-builders/node-builder';
 import type { SerializerContext } from '../types';
 
 // Helper to create a mock serializer context
@@ -91,6 +93,23 @@ describe('jsonSerializer', () => {
 			const result = jsonSerializer.serialize(ctx);
 
 			expect(result.connections).toEqual({});
+		});
+
+		it('serializes nodes without configured parameters with an empty parameters object', () => {
+			const manualTrigger = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Manual Trigger' },
+			});
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([
+					['Manual Trigger', { instance: manualTrigger, connections: new Map() }],
+				]),
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			expect(result.nodes[0]?.parameters).toEqual({});
 		});
 	});
 });

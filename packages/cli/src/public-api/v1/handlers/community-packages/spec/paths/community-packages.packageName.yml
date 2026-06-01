@@ -1,0 +1,71 @@
+patch:
+  x-eov-operation-id: updatePackage
+  x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
+  tags:
+    - CommunityPackage
+  summary: Update a community package
+  description: Update an installed community package to a new version.
+  parameters:
+    - name: name
+      in: path
+      description: npm package name
+      required: true
+      schema:
+        type: string
+  requestBody:
+    description: Update options.
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            version:
+              type: string
+              description: Specific semver version to update to
+            verify:
+              type: boolean
+              description: >
+                Whether to verify the package against the n8n-vetted package list.
+                Setting to false will allow installing or updating to an unverified version.
+                Default is true.
+  responses:
+    '200':
+      description: Package updated successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/communityPackage.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []
+delete:
+  x-eov-operation-id: uninstallPackage
+  x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
+  tags:
+    - CommunityPackage
+  summary: Uninstall a community package
+  description: Uninstall a community package by name.
+  parameters:
+    - name: name
+      in: path
+      description: npm package name
+      required: true
+      schema:
+        type: string
+  responses:
+    '204':
+      description: Package uninstalled successfully.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

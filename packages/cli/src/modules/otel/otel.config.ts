@@ -22,4 +22,14 @@ export class OtelConfig {
 
 	@Env('N8N_OTEL_STARTUP_CONNECTIVITY_TIMEOUT_MS')
 	startupConnectivityTimeoutMs: number = 2_000;
+
+	@Env('N8N_OTEL_TRACES_INCLUDE_NODE_SPANS')
+	includeNodeSpans: boolean = true;
+
+	@Env('N8N_OTEL_TRACES_INJECT_OUTBOUND')
+	injectOutbound: boolean = true;
+
+	/** When true, only traces executions of published (active) workflows. */
+	@Env('N8N_OTEL_TRACES_PUBLISHED_ONLY')
+	publishedOnly: boolean = true;
 }

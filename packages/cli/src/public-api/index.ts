@@ -1,16 +1,24 @@
 import { GlobalConfig } from '@n8n/config';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
-import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { Logger } from '@n8n/backend-common';
+
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
+
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
+
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,
@@ -24,8 +32,9 @@ function createLazySwaggerMiddleware(
 			const globalConfig = Container.get(GlobalConfig);
 			const n8nPath = globalConfig.path;
 
-			const { default: YAML } = await import('yamljs');
-			const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+			const YAML = await import('yaml');
+			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
+			const swaggerDocument = YAML.parse(spec) as JsonObject;
 			// add the server depending on the config so the user can interact with the API
 			// from the Swagger UI
 			swaggerDocument.server = [
@@ -67,6 +76,31 @@ function createLazyValidatorMiddleware(
 				const { middleware: openApiValidatorMiddleware } = await import(
 					'express-openapi-validator'
 				);
+
+				const authenticate = async (req: AuthenticatedRequest) => {
+					const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
+
+					if (authenticated) {
+						Container.get(LastActiveAtService)
+							.updateLastActiveIfStale(req.user.id)
+							.catch((error: unknown) => {
+								Container.get(Logger).error('Failed to update last active timestamp', {
+									error,
+								});
+							});
+						Container.get(EventService).emit('public-api-invoked', {
+							userId: req.user.id,
+							path: req.path,
+							method: req.method,
+							apiVersion: version,
+							userAgent: req.headers['user-agent'],
+						});
+					}
+
+					return authenticated;
+				};
+
+				const globalConfig = Container.get(GlobalConfig);
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
@@ -74,6 +108,7 @@ function createLazyValidatorMiddleware(
 						operationHandlers: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,
+						fileUploader: createN8nPackageMulterOptions(globalConfig),
 						formats: {
 							email: {
 								type: 'string',
@@ -103,7 +138,8 @@ function createLazyValidatorMiddleware(
 						},
 						validateSecurity: {
 							handlers: {
-								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
+								ApiKeyAuth: authenticate,
+								BearerAuth: authenticate,
 							},
 						},
 					}),
@@ -124,6 +160,7 @@ function createApiRouter(
 	publicApiEndpoint: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
+	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
@@ -150,23 +187,21 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		express.json(),
+		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
-	apiController.use(
-		(
-			error: HttpError,
-			_req: express.Request,
-			res: express.Response,
-			_next: express.NextFunction,
-		) => {
-			res.status(error.status || 400).json({
-				message: error.message,
-			});
-		},
-	);
+	const publicApiErrorHandler: ErrorRequestHandler = (
+		error: Error,
+		_req: express.Request,
+		res: express.Response,
+		_next: express.NextFunction,
+	) => {
+		sendPublicApiErrorResponse(res, error);
+	};
+
+	apiController.use(publicApiErrorHandler);
 
 	return apiController;
 }

@@ -1,12 +1,8 @@
+import { shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-	NodeConnectionTypes,
-	NodeHelpers,
-	type INodeInputConfiguration,
-	type Workflow,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, type INodeInputConfiguration } from 'n8n-workflow';
 import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, INodeCreateElement } from '@/Interface';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -15,11 +11,30 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useGetNodeCreatorFilter } from './useGetNodeCreatorFilter';
 
+const mockGetNodeByName = vi.fn();
+const mockGetExpressionHandler = vi.fn().mockReturnValue({});
+
+const mockWorkflowDocumentStore = {
+	getNodeByName: mockGetNodeByName,
+	getExpressionHandler: mockGetExpressionHandler,
+	workflowTriggerNodes: [],
+	allNodes: [],
+};
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return {
+		...actual,
+		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
+		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	};
+});
+
 describe('useGetNodeCreatorFilter', () => {
 	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let mockUseWorkflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let getNodeCreatorFilter: ReturnType<typeof useGetNodeCreatorFilter>['getNodeCreatorFilter'];
-	let mockWorkflow: Workflow;
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -27,12 +42,7 @@ describe('useGetNodeCreatorFilter', () => {
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
 
-		const getNodeMock = vi.fn();
-		mockWorkflow = {
-			getNode: getNodeMock,
-		} as unknown as Workflow;
-
-		mockUseWorkflowsStore.workflowObject = mockWorkflow;
+		mockUseWorkflowsStore.workflowId = 'test-workflow-id';
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 
@@ -42,7 +52,7 @@ describe('useGetNodeCreatorFilter', () => {
 
 	describe('when workflow node does not exist', () => {
 		it('should return { nodes: [] }', () => {
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(null);
+			mockGetNodeByName.mockReturnValue(null);
 
 			const result = getNodeCreatorFilter(
 				'non-existent-node',
@@ -57,7 +67,7 @@ describe('useGetNodeCreatorFilter', () => {
 	describe('when node type does not exist', () => {
 		it('should return undefined filter', () => {
 			const workflowNode = { type: 'test-node', typeVersion: 1 } as INodeUi;
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn().mockReturnValue(undefined);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
@@ -82,7 +92,7 @@ describe('useGetNodeCreatorFilter', () => {
 				inputs: [NodeConnectionTypes.Main],
 			});
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([NodeConnectionTypes.Main]);
 
@@ -106,7 +116,7 @@ describe('useGetNodeCreatorFilter', () => {
 				filter: { nodes: ['tool1'] },
 			};
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -129,7 +139,7 @@ describe('useGetNodeCreatorFilter', () => {
 				type: NodeConnectionTypes.Main,
 			};
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -156,7 +166,7 @@ describe('useGetNodeCreatorFilter', () => {
 				filter,
 			};
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -186,7 +196,7 @@ describe('useGetNodeCreatorFilter', () => {
 				filter: filter2,
 			};
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig1, inputConfig2]);
 
@@ -216,7 +226,7 @@ describe('useGetNodeCreatorFilter', () => {
 				};
 				const sourceNode = mockNode({ name: 'agent', type: sourceNodeType });
 
-				vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+				mockGetNodeByName.mockReturnValue(workflowNode);
 				mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 				vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -253,7 +263,7 @@ describe('useGetNodeCreatorFilter', () => {
 			};
 			const sourceNode = mockNode({ name: 'regular-node', type: 'n8n-nodes-base.set' });
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -292,7 +302,7 @@ describe('useGetNodeCreatorFilter', () => {
 			};
 			const sourceNode = mockNode({ name: 'regular-node', type: 'n8n-nodes-base.set' });
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -317,7 +327,7 @@ describe('useGetNodeCreatorFilter', () => {
 			};
 			const sourceNode = mockNode({ name: 'regular-node', type: 'n8n-nodes-base.set' });
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);
 
@@ -346,7 +356,7 @@ describe('useGetNodeCreatorFilter', () => {
 				filter,
 			};
 
-			vi.mocked(mockWorkflow.getNode).mockReturnValue(workflowNode);
+			mockGetNodeByName.mockReturnValue(workflowNode);
 			mockUseNodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn().mockReturnValue(communityNodeType);
 			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([inputConfig]);

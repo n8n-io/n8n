@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { extension } from 'mime-types';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
@@ -34,6 +35,18 @@ interface UploadStreamConfig {
 }
 
 const CHUNK_SIZE = 256 * 1024;
+
+export function getFilenameFromMimeType(
+	mimeType: string | undefined,
+	baseName: string,
+	fallbackExtension: string,
+): string {
+	if (!mimeType) {
+		return `${baseName}.${fallbackExtension}`;
+	}
+
+	return `${baseName}.${extension(mimeType) || fallbackExtension}`;
+}
 
 export async function downloadFile(
 	this: IExecuteFunctions,

@@ -24,6 +24,7 @@ import {
 	removeCircularRefs,
 	sleep,
 	ensureError,
+	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -55,6 +56,15 @@ function toText<T>(data: T) {
 	}
 	return data;
 }
+
+function isEmptyResponseBody(body: unknown): body is string {
+	return typeof body === 'string' && body.trim().length === 0;
+}
+
+function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
+	return value === 'body' || value === 'headers' || value === 'qs';
+}
+
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -159,6 +169,7 @@ export class HttpRequestV3 implements INodeType {
 			options: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
+			responseFileName?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
@@ -208,7 +219,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
-				const url = this.getNodeParameter('url', itemIndex);
+				let url = this.getNodeParameter('url', itemIndex);
 
 				if (typeof url !== 'string') {
 					const actualType = url === null ? 'null' : typeof url;
@@ -216,6 +227,12 @@ export class HttpRequestV3 implements INodeType {
 						this.getNode(),
 						`URL parameter must be a string, got ${actualType}`,
 					);
+				}
+
+				url = url.trim();
+
+				if (!url) {
+					throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
 				}
 
 				if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -377,9 +394,12 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
+						let knownLength: number | undefined;
 
 						if (binaryData.id) {
 							uploadData = await this.helpers.getBinaryStream(binaryData.id);
+							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+							knownLength = metadata.fileSize;
 						} else {
 							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
@@ -389,6 +409,7 @@ export class HttpRequestV3 implements INodeType {
 							options: {
 								filename: binaryData.fileName,
 								contentType: binaryData.mimeType,
+								...(knownLength !== undefined && { knownLength }),
 							},
 						};
 						return accumulator;
@@ -597,6 +618,7 @@ export class HttpRequestV3 implements INodeType {
 					options: requestOptions,
 					authKeys: authDataKeys,
 					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -630,13 +652,12 @@ export class HttpRequestV3 implements INodeType {
 
 					const paginationData: PaginationOptions = {
 						continue: continueExpression,
-						request: {},
+						request: Object.create(null) as Record<string, unknown>,
 						requestInterval: pagination.requestInterval,
 					};
 
 					if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 						// Iterate over all parameters and add them to the request
-						paginationData.request = {};
 						const { parameters } = pagination.parameters;
 						if (
 							parameters.length === 1 &&
@@ -649,9 +670,6 @@ export class HttpRequestV3 implements INodeType {
 							);
 						}
 						pagination.parameters.parameters.forEach((parameter, index) => {
-							if (!paginationData.request[parameter.type]) {
-								paginationData.request[parameter.type] = {};
-							}
 							const parameterName = parameter.name;
 							if (parameterName === '') {
 								throw new NodeOperationError(
@@ -659,6 +677,18 @@ export class HttpRequestV3 implements INodeType {
 									`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
 								);
 							}
+
+							if (!isPaginationRequestType(parameter.type)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter type must be one of: body, headers, qs for parameter [${
+										index + 1
+									}] in pagination settings`,
+								);
+							}
+
+							paginationData.request[parameter.type] ??= Object.create(null);
+
 							const parameterValue = parameter.value;
 							if (parameterValue === '') {
 								throw new NodeOperationError(
@@ -668,7 +698,12 @@ export class HttpRequestV3 implements INodeType {
 									}] in pagination settings, omitting it will result in an infinite loop`,
 								);
 							}
-							paginationData.request[parameter.type]![parameterName] = parameterValue;
+
+							setSafeObjectProperty(
+								paginationData.request[parameter.type]!,
+								parameterName,
+								parameterValue,
+							);
 						});
 					} else if (pagination.paginationMode === 'responseContainsNextURL') {
 						paginationData.request.url = pagination.nextURL;
@@ -750,6 +785,18 @@ export class HttpRequestV3 implements INodeType {
 
 				errorItems[itemIndex] = error.message;
 
+				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
+				// If an item failed during request building, its slot may be empty.
+				// Assign a placeholder at the exact index so later items don't shift.
+				// Assign a placeholder with an empty options object to keep types happy.
+				// Error items are skipped before options is ever read.
+				if (!requests[itemIndex]) {
+					requests[itemIndex] = {
+						options: {} as IRequestOptions,
+						authKeys: {},
+					};
+				}
+
 				continue;
 			}
 		}
@@ -792,6 +839,8 @@ export class HttpRequestV3 implements INodeType {
 
 					continue;
 				}
+
+				const { responseFileName } = requests[itemIndex];
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -885,11 +934,13 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								response.body = jsonParse(data, {
-									...(neverError
-										? { fallbackValue: {} }
-										: { errorMessage: 'Invalid JSON in response body' }),
-								});
+								response.body = isEmptyResponseBody(data)
+									? {}
+									: jsonParse(data, {
+											...(neverError
+												? { fallbackValue: {} }
+												: { errorMessage: 'Invalid JSON in response body' }),
+										});
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
@@ -964,7 +1015,8 @@ export class HttpRequestV3 implements INodeType {
 
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
-							requestOptions,
+							// options is always set here: error items are skipped before this branch
+							requests[itemIndex].options,
 							responseFileName,
 						);
 
@@ -1011,14 +1063,18 @@ export class HttpRequestV3 implements INodeType {
 							}
 
 							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-								try {
-									returnItem.body = JSON.parse(returnItem.body);
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
+								if (isEmptyResponseBody(returnItem.body)) {
+									returnItem.body = {};
+								} else {
+									try {
+										returnItem.body = JSON.parse(returnItem.body);
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
+									}
 								}
 							}
 
@@ -1030,16 +1086,20 @@ export class HttpRequestV3 implements INodeType {
 							});
 						} else {
 							if (responseFormat === 'json' && typeof response === 'string') {
-								try {
-									if (typeof response !== 'object') {
-										response = JSON.parse(response);
+								if (isEmptyResponseBody(response)) {
+									response = {};
+								} else {
+									try {
+										if (typeof response !== 'object') {
+											response = JSON.parse(response);
+										}
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
 									}
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
 								}
 							}
 

@@ -8,9 +8,6 @@ import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
 
-const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
-const LOVABLE_CLIENTS = ['lovable'];
-
 const consentStore = useConsentStore();
 
 const i18n = useI18n();
@@ -25,17 +22,6 @@ const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 
-const clientIcon = computed(() => {
-	const clientName = clentDetails.value?.clientName?.toLowerCase() ?? '';
-	if (ANTHROPIC_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'anthropic';
-	} else if (LOVABLE_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'lovable';
-	} else {
-		return 'mcp';
-	}
-});
-
 const handleAllow = async () => {
 	try {
 		const response = await consentStore.approveConsent(true);
@@ -48,8 +34,8 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		const response = await consentStore.approveConsent(false);
-		window.location.href = response.redirectUrl;
+		await consentStore.approveConsent(false);
+		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
@@ -76,7 +62,7 @@ onMounted(async () => {
 					<N8nIcon icon="arrow-right" size="large" color="text-light" />
 				</div>
 				<div :class="$style.logo">
-					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
+					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -109,6 +95,10 @@ onMounted(async () => {
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executionDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createUpdateWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span

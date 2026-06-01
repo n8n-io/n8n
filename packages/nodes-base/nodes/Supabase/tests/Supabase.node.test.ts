@@ -1,6 +1,7 @@
-import { mock } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import get from 'lodash/get';
 import {
+	type ILoadOptionsFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
@@ -16,6 +17,10 @@ describe('Test Supabase Node', () => {
 	const node = new Supabase();
 	const input = [{ json: {} }];
 	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
+	const mockGetCredentials = jest.fn().mockResolvedValue({
+		host: 'https://api.supabase.io',
+		serviceRole: 'service_role',
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -26,10 +31,7 @@ describe('Test Supabase Node', () => {
 		continueOnFail: boolean = false,
 	) => {
 		const fakeExecuteFunction = {
-			getCredentials: jest.fn().mockResolvedValue({
-				host: 'https://api.supabase.io',
-				serviceRole: 'service_role',
-			}),
+			getCredentials: mockGetCredentials,
 			getNodeParameter(
 				parameterName: string,
 				itemIndex: number,
@@ -59,6 +61,109 @@ describe('Test Supabase Node', () => {
 		} as unknown as IExecuteFunctions;
 		return fakeExecuteFunction;
 	};
+
+	describe('getAll pagination', () => {
+		it('should make exactly one request when limit is less than 1000', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ id: i })));
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 50,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(1);
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should make exactly one request when limit equals 1000', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ id: i })));
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 1000,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(1);
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should paginate and request only remaining rows on the last page when limit > 1000', async () => {
+			const capturedQs: IDataObject[] = [];
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockImplementation(async (_method, _endpoint, _body, qs) => {
+					capturedQs.push({ ...qs });
+					return capturedQs.length === 1
+						? Array.from({ length: 1000 }, (_, i) => ({ id: i }))
+						: Array.from({ length: 500 }, (_, i) => ({ id: i + 1000 }));
+				});
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 1500,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(2);
+			expect(capturedQs[0]).toMatchObject({ limit: 1000 });
+			expect(capturedQs[0]).not.toHaveProperty('offset');
+			expect(capturedQs[1]).toMatchObject({ limit: 500, offset: 1000 });
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should include order parameter in the request when orderBy is set', async () => {
+			const supabaseApiRequest = jest.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: true,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: 'id',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/my_table',
+				{},
+				expect.objectContaining({ order: 'id' }),
+				undefined,
+				{},
+			);
+
+			supabaseApiRequest.mockRestore();
+		});
+	});
 
 	it('should allow filtering on the same field multiple times', async () => {
 		const supabaseApiRequest = jest
@@ -330,6 +435,92 @@ describe('Test Supabase Node', () => {
 
 			expect(result).toEqual({ 'Accept-Profile': 'public' });
 			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('schema', 0, 'public');
+		});
+	});
+
+	describe('loadOptions', () => {
+		describe('getTables', () => {
+			it('should return the tables and skip RPCs', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockRequestWithAuthentication.mockResolvedValue({
+					paths: {
+						'/': {
+							get: {},
+						},
+						'/table': {
+							get: {},
+						},
+						'/rpc/some': {
+							get: {},
+						},
+					},
+				});
+
+				const tables = await node.methods.loadOptions.getTables.call(mockLoadOptionsFunctions);
+
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				expect(tables).toEqual([{ name: 'table', value: 'table' }]);
+			});
+		});
+
+		describe('getTableColumns', () => {
+			it('should return table columns with their types', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {
+							properties: {
+								id: { type: 'integer' },
+								email: { type: 'string' },
+							},
+						},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-miscased-id
+					{ name: 'id - (integer)', value: 'id' },
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					{ name: 'email - (string)', value: 'email' },
+				]);
+			});
+
+			it('should return empty array when table definition has no properties', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([]);
+			});
 		});
 	});
 });

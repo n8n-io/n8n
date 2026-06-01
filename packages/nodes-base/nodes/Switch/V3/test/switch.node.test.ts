@@ -67,6 +67,30 @@ describe('SwitchV3 Node', () => {
 			const switchNode = new SwitchV3(baseDescription);
 			expect(switchNode.description.version).toContain(3.3);
 		});
+
+		it('should document SDK-discoverable fallback output metadata', () => {
+			const switchNode = new SwitchV3(baseDescription);
+			const sdkExample = switchNode.description.builderHint?.extraTypeDefContent?.[0].content ?? '';
+			const optionsProperty = switchNode.description.properties.find(
+				(prop) => prop.name === 'options',
+			);
+			const optionParameters = (optionsProperty?.options ?? []) as Array<{
+				name: string;
+				builderHint?: { propertyHint?: string };
+			}>;
+			const fallbackOutput = optionParameters.find((option) => option.name === 'fallbackOutput');
+			const renameFallbackOutput = optionParameters.find(
+				(option) => option.name === 'renameFallbackOutput',
+			);
+
+			expect(sdkExample).toContain("fallbackOutput: 'extra'");
+			expect(sdkExample).toContain('.onCase(2, archive)');
+			expect(sdkExample).not.toContain('.onDefault(');
+			expect(sdkExample).not.toMatch(/\.onCase\(['"]/);
+			expect(fallbackOutput?.builderHint?.propertyHint).toContain('rules.values.length');
+			expect(fallbackOutput?.builderHint?.propertyHint).toContain('Numeric values');
+			expect(renameFallbackOutput?.builderHint?.propertyHint).toContain("fallbackOutput: 'extra'");
+		});
 	});
 
 	describe('Expression Mode Execution', () => {

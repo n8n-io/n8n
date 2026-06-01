@@ -52,13 +52,14 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key. Do not confuse with `hostId`.
+	 * Derived from encryption key on first boot, then read from DB.
+	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
 	 */
-	readonly instanceId: string;
+	instanceId: string;
 
-	readonly hmacSignatureSecret: string;
+	hmacSignatureSecret: string;
 
 	readonly instanceType: InstanceType;
 
@@ -73,6 +74,73 @@ export class InstanceSettings {
 		this.settings = this.loadOrCreate();
 		this.instanceId = this.generateInstanceId();
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
+	}
+
+	/**
+	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Must be called after DB migrations complete, before license init.
+	 *
+	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 *
+	 * The repo parameter is typed inline rather than imported from @n8n/db to
+	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
+	 */
+	async initialize(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<void>;
+	}): Promise<void> {
+		await this.initSecret(
+			repo,
+			'instance.id',
+			process.env.N8N_INSTANCE_ID,
+			() => this.instanceId,
+			(v) => {
+				this.instanceId = v;
+			},
+		);
+		await this.initSecret(
+			repo,
+			'signing.hmac',
+			process.env.N8N_HMAC_SIGNATURE_SECRET,
+			() => this.hmacSignatureSecret,
+			(v) => {
+				this.hmacSignatureSecret = v;
+			},
+		);
+	}
+
+	private async initSecret(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		type: string,
+		envValue: string | undefined,
+		get: () => string,
+		set: (v: string) => void,
+	): Promise<void> {
+		if (envValue) {
+			set(envValue);
+			return;
+		}
+		const existing = await repo.findActiveByType(type);
+		if (existing) {
+			set(existing.value);
+			return;
+		}
+		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
+		const winner = await repo.findActiveByType(type);
+		if (winner) set(winner.value);
 	}
 
 	/**

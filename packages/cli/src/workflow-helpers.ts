@@ -1,29 +1,76 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type {
-	IDataObject,
-	INodeCredentialsDetails,
-	INodeTypes,
-	IRun,
-	ITaskData,
-	IWorkflowBase,
-	IWorkflowSettings,
-	RelatedExecution,
+import {
+	formatWorkflowStructureIssuePath,
+	resolveNodeWebhookId,
+	safeParseWorkflowStructure,
+	type IDataObject,
+	type INodeCredentialsDetails,
+	type INodeTypes,
+	type IRun,
+	type ITaskData,
+	type IWorkflowBase,
+	type IWorkflowSettings,
+	type RelatedExecution,
+	type WorkflowStructureIssue,
 } from 'n8n-workflow';
-import { resolveNodeWebhookId } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { OwnershipService } from './services/ownership.service';
 
 /**
- * Returns the data of the last executed node
+ * Validates that pinned data does not exceed size limits.
+ * (Backend counterpart of the frontend's `usePinnedData.isValidSize()`).
+ * Check 1: pinData alone must not exceed MAX_PINNED_DATA_SIZE (12 MB).
+ * Check 2: workflow (without pinData) + pinData must not exceed MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE (~16 MB - 2 KB).
  */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, pinData = {} } = inputData.data.resultData;
-	const { lastNodeExecuted } = inputData.data.resultData;
+export function validatePinDataSize(workflow: IWorkflowBase): void {
+	if (!workflow.pinData) return;
+
+	const pinDataStr = JSON.stringify(workflow.pinData);
+	const pinDataSize = Buffer.byteLength(pinDataStr, 'utf8');
+
+	if (pinDataSize > MAX_PINNED_DATA_SIZE) {
+		throw new BadRequestError(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
+	}
+
+	const { pinData: _, ...workflowWithoutPinData } = workflow;
+	const workflowSize =
+		Buffer.byteLength(JSON.stringify(workflowWithoutPinData), 'utf8') + pinDataSize;
+	const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+	if (workflowSize > limit) {
+		const limitMB = Math.floor(limit / (1024 * 1024));
+		throw new BadRequestError(
+			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
+		);
+	}
+}
+
+/**
+ * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
+ */
+export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	if (lastNodeExecuted === undefined) {
+		return [];
+	}
+	const runs = runData[lastNodeExecuted];
+	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
+}
+
+/**
+ * Final-run output of the last executed node, with pinData substituted in manual mode.
+ */
+export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	const pinData = inputData.data.resultData.pinData ?? {};
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -87,6 +134,86 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 			// node type not found, skip
 		}
 	}
+}
+
+/**
+ * Validates nodeGroups: unique group names, all referenced node IDs exist,
+ * and each node belongs to at most one group.
+ * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
+ * may not have IDs until that step assigns them.
+ */
+export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
+	const { nodeGroups, nodes } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0) return;
+
+	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const seenGroupNames = new Set<string>();
+	const nodeToGroup = new Map<string, string>();
+
+	for (const group of nodeGroups) {
+		// Unique group names
+		if (seenGroupNames.has(group.name)) {
+			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
+		}
+		seenGroupNames.add(group.name);
+
+		for (const nodeId of group.nodeIds) {
+			// All referenced nodes must exist
+			if (!nodeIds.has(nodeId)) {
+				throw new BadRequestError(
+					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
+				);
+			}
+			// A node can only belong to one group
+			const existingGroup = nodeToGroup.get(nodeId);
+			if (existingGroup) {
+				throw new BadRequestError(
+					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+				);
+			}
+			nodeToGroup.set(nodeId, group.name);
+		}
+	}
+}
+
+/**
+ * BadRequestError thrown by validateWorkflowStructure when a workflow fails
+ * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
+ * so downstream consumers (e.g. the Instance AI submit-workflow tool) can build
+ * rich diagnostics — node JSON at the offending path, value at the path, and a
+ * full nodes[] name map — without reparsing the flattened message string.
+ *
+ * The status code (400) and `Workflow structure is invalid. <details>` message
+ * are unchanged from before this class existed, so REST clients are unaffected.
+ */
+export class WorkflowStructureBadRequestError extends BadRequestError {
+	constructor(
+		message: string,
+		readonly issues: WorkflowStructureIssue[],
+	) {
+		super(message);
+	}
+}
+
+export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
+	const result = safeParseWorkflowStructure(workflow);
+
+	if (result.success) return;
+
+	const details = result.issues
+		.map(({ path, message, code }) => {
+			const formattedPath = Array.isArray(path)
+				? formatWorkflowStructureIssuePath(path)
+				: 'workflow';
+
+			return `${formattedPath} (${code}): ${message}`;
+		})
+		.join('; ');
+
+	throw new WorkflowStructureBadRequestError(
+		`Workflow structure is invalid. ${details}`,
+		result.issues,
+	);
 }
 
 /**
@@ -158,6 +285,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
 			}
+			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
+			if (nodeCredentials.__aiGatewayManaged) continue;
+
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
@@ -314,7 +444,7 @@ export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 ): Promise<void> {
-	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
 	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
 		includeData: true,

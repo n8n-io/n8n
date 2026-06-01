@@ -348,6 +348,7 @@ export class CredentialsTester {
 
 		let response: INodeExecutionData[][] | null | undefined;
 		try {
+			await workflow.expression.acquireIsolate();
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -393,6 +394,7 @@ export class CredentialsTester {
 				message: error.message.toString(),
 			};
 		} finally {
+			await workflow.expression.releaseIsolate();
 			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 

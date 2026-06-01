@@ -1,5 +1,6 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as audio from './audio';
 import * as document from './document';
@@ -12,16 +13,16 @@ import * as video from './video';
 
 describe('Google Gemini router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockAudio = jest.spyOn(audio.analyze, 'execute');
-	const mockDocument = jest.spyOn(document.analyze, 'execute');
-	const mockFile = jest.spyOn(file.upload, 'execute');
-	const mockFileSearchCreateStore = jest.spyOn(fileSearch.createStore, 'execute');
-	const mockFileSearchDeleteStore = jest.spyOn(fileSearch.deleteStore, 'execute');
-	const mockFileSearchListStores = jest.spyOn(fileSearch.listStores, 'execute');
-	const mockFileSearchUploadToStore = jest.spyOn(fileSearch.uploadToStore, 'execute');
-	const mockImage = jest.spyOn(image.analyze, 'execute');
-	const mockText = jest.spyOn(text.message, 'execute');
-	const mockVideo = jest.spyOn(video.analyze, 'execute');
+	const mockAudio = vi.spyOn(audio.analyze, 'execute');
+	const mockDocument = vi.spyOn(document.analyze, 'execute');
+	const mockFile = vi.spyOn(file.upload, 'execute');
+	const mockFileSearchCreateStore = vi.spyOn(fileSearch.createStore, 'execute');
+	const mockFileSearchDeleteStore = vi.spyOn(fileSearch.deleteStore, 'execute');
+	const mockFileSearchListStores = vi.spyOn(fileSearch.listStores, 'execute');
+	const mockFileSearchUploadToStore = vi.spyOn(fileSearch.uploadToStore, 'execute');
+	const mockImage = vi.spyOn(image.analyze, 'execute');
+	const mockText = vi.spyOn(text.message, 'execute');
+	const mockVideo = vi.spyOn(video.analyze, 'execute');
 	const operationMocks = [
 		[mockAudio, 'audio', 'analyze'],
 		[mockDocument, 'document', 'analyze'],
@@ -36,7 +37,7 @@ describe('Google Gemini router', () => {
 	];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
@@ -48,7 +49,7 @@ describe('Google Gemini router', () => {
 				json: {},
 			},
 		]);
-		(mock as jest.Mock).mockResolvedValue([
+		(mock as Mock).mockResolvedValue([
 			{
 				json: {
 					foo: 'bar',

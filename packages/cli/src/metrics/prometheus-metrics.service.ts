@@ -35,6 +35,8 @@ export class PrometheusMetricsService {
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
+	private tokenExchangeListenersRegistered = false;
+
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
 	private readonly histograms: Record<string, Histogram<string>> = {};
@@ -76,6 +78,7 @@ export class PrometheusMetricsService {
 		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
 		this.initWorkflowStatisticsMetrics();
+		this.initTokenExchangeMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -616,6 +619,97 @@ export class PrometheusMetricsService {
 				licenseMetricsRepository,
 				cacheTtl,
 			);
+		});
+	}
+
+	/**
+	 * Set up counters for token exchange and embed login flows.
+	 *
+	 * These metrics are always registered when the `/metrics` endpoint is active
+	 * and require no additional configuration flag.
+	 *
+	 * Counters:
+	 * - `n8n_token_exchange_requests_total{result}` - success/failure rate
+	 * - `n8n_token_exchange_failures_total{reason}` - failure breakdown by reason
+	 * - `n8n_embed_login_requests_total{result}` - embed login success/failure rate
+	 * - `n8n_embed_login_failures_total{reason}` - embed login failure breakdown
+	 * - `n8n_token_exchange_jit_provisioning_total` - JIT-provisioned users
+	 * - `n8n_token_exchange_identity_linked_total` - identities linked to existing users
+	 */
+	private initTokenExchangeMetrics() {
+		// Token exchange (RFC 8693 flow)
+		this.counters.tokenExchangeRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_requests_total',
+			help: 'Total number of token exchange requests.',
+			labelNames: ['result'],
+		});
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.tokenExchangeFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_failures_total',
+			help: 'Total number of token exchange failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// Embed login flow
+		this.counters.embedLoginRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_requests_total',
+			help: 'Total number of embed login requests.',
+			labelNames: ['result'],
+		});
+		this.counters.embedLoginRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.embedLoginRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.embedLoginFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_failures_total',
+			help: 'Total number of embed login failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// JIT provisioning and identity linking
+		this.counters.tokenExchangeJitProvisioningTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_jit_provisioning_total',
+			help: 'Total number of users JIT-provisioned via token exchange.',
+		});
+		this.counters.tokenExchangeJitProvisioningTotal.inc(0);
+
+		this.counters.tokenExchangeIdentityLinkedTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_identity_linked_total',
+			help: 'Total number of external identities linked to existing users via token exchange.',
+		});
+		this.counters.tokenExchangeIdentityLinkedTotal.inc(0);
+
+		// Listeners reference `this.counters.*` via `this`, so they automatically
+		// pick up newly created counter objects after a re-init. Register them only
+		// once to prevent double-counting if `init()` is called more than once.
+		if (this.tokenExchangeListenersRegistered) return;
+		this.tokenExchangeListenersRegistered = true;
+
+		this.eventService.on('token-exchange-succeeded', () => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('token-exchange-failed', ({ failureReason }) => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.tokenExchangeFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('embed-login', () => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('embed-login-failed', ({ failureReason }) => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.embedLoginFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('token-exchange-user-provisioned', () => {
+			this.counters.tokenExchangeJitProvisioningTotal?.inc(1);
+		});
+
+		this.eventService.on('token-exchange-identity-linked', () => {
+			this.counters.tokenExchangeIdentityLinkedTotal?.inc(1);
 		});
 	}
 }

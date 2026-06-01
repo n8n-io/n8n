@@ -908,6 +908,7 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...makeWorkflow(), projectId: teamProject.id });
 
+		expect(response.statusCode).toBe(400);
 		expect(response.body).toMatchObject({
 			code: 400,
 			message: "You don't have the permissions to save the workflow in this project.",

@@ -2,69 +2,31 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
-import { toDbMessage } from '../sdk/message';
 import type { GenerateResult, StreamChunk, TokenUsage } from '../types';
 import { toTokenUsage } from './stream';
-import type { AgentDbMessage, AgentMessage, ContentToolResult } from '../types/sdk/message';
-import type { JSONValue } from '../types/utils/json';
-
-/** Normalize a string input to an AgentDbMessage array, assigning ids where missing. */
-export function normalizeInput(input: AgentMessage[] | string): AgentDbMessage[] {
-	if (typeof input === 'string') {
-		return [toDbMessage({ role: 'user', content: [{ type: 'text', text: input }] })];
-	}
-	return input.map(toDbMessage);
-}
-
-/** Build an AI SDK tool ModelMessage for a tool execution result. */
-export function makeToolResultMessage(
-	toolCallId: string,
-	toolName: string,
-	result: unknown,
-): AgentDbMessage {
-	return toDbMessage({
-		role: 'tool',
-		content: [
-			{
-				type: 'tool-result',
-				toolCallId,
-				toolName,
-				result: result as JSONValue,
-			},
-		],
-	});
-}
+import type { AgentMessage, ContentToolCall } from '../types/sdk/message';
 
 /**
- * Build an AI SDK tool ModelMessage for a tool execution error.
- * The LLM receives this as a tool result so it can self-correct on the next iteration.
- * The error is surfaced via the output json value so the LLM can read and reason about it.
+ * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
+ * single user message.
  */
-export function makeErrorToolResultMessage(
-	toolCallId: string,
-	toolName: string,
-	error: unknown,
-): AgentDbMessage {
-	const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-	return toDbMessage({
-		role: 'tool',
-		content: [
-			{
-				type: 'tool-result',
-				toolCallId,
-				toolName,
-				result: { error: message } as JSONValue,
-				isError: true,
-			},
-		],
-	});
+export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
+	if (typeof input === 'string') {
+		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
+	}
+	return input;
 }
 
-/** Extract all tool-result content parts from a flat list of agent messages. */
-export function extractToolResults(messages: AgentDbMessage[]): ContentToolResult[] {
+/** Stringify an error value for use in a rejected tool-call block. */
+export function stringifyError(error: unknown): string {
+	return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+/** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */
+export function extractSettledToolCalls(messages: AgentMessage[]): ContentToolCall[] {
 	return messages
 		.flatMap((m) => ('content' in m ? m.content : []))
-		.filter((c): c is ContentToolResult => c.type === 'tool-result');
+		.filter((c): c is ContentToolCall => c.type === 'tool-call' && c.state !== 'pending');
 }
 
 /**
