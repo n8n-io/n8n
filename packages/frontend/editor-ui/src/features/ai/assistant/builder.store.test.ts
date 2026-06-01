@@ -4089,7 +4089,7 @@ describe('AI Builder store', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(workflowDocumentStore.pinData).toEqual({});
+			expect(workflowDocumentStore.pinnedDataByNodeName).toEqual({});
 		});
 
 		it('storeGeneratedPinData merges multiple calls', () => {
@@ -4117,7 +4117,7 @@ describe('AI Builder store', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(workflowDocumentStore.pinData).toEqual(pinData);
+			expect(workflowDocumentStore.pinnedDataByNodeName).toEqual(pinData);
 			expect(uiStore.stateIsDirty).toBe(true);
 			expect(builderStore.hasDeferredPinData).toBe(false);
 			expect(builderStore.pinDataApplied).toBe(true);

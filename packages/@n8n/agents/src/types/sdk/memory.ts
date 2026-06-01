@@ -1,6 +1,6 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { ModelConfig, SerializableAgentState } from './agent';
+import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -185,6 +185,20 @@ export interface EpisodicMemorySearchOptions {
 	includeStatuses?: EpisodicMemoryStatus[];
 }
 
+export interface EpisodicMemoryTaskLockHandle {
+	resourceId: string;
+	holderId: string;
+	heldUntil: Date;
+}
+
+export interface EpisodicMemoryTaskLockMethods {
+	acquire(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null>;
+	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
+}
+
 export interface EpisodicMemoryMethods {
 	saveEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
@@ -202,6 +216,7 @@ export interface EpisodicMemoryMethods {
 	): Promise<EpisodicMemoryReflectionResult>;
 	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
 	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
 export interface BuiltEpisodicMemoryStore {
@@ -223,6 +238,7 @@ export interface EpisodicMemoryExtractorInput {
 	observations: ObservationLogEntry[];
 	renderedObservations: string;
 	existingEntries: RetrievedEpisodicMemoryEntry[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface EpisodicMemoryExtraction {
@@ -249,6 +265,7 @@ export interface EpisodicMemoryReflectorInput {
 	seedEntryIds: string[];
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type EpisodicMemoryReflectFn = (
@@ -328,7 +345,6 @@ export interface ObservationalMemoryConfig {
 }
 
 interface MemoryConfigBase {
-	lastMessages: number;
 	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	episodicMemory?: EpisodicMemoryConfig;

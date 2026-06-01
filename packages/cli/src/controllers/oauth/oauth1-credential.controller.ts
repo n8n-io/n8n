@@ -4,19 +4,17 @@ import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { OAuthRequest } from '@/requests';
 
-import {
-	OauthService,
-	skipAuthOnOAuthCallback,
-	type OAuth1CredentialData,
-} from '@/oauth/oauth.service';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	/** Get Authorization url */
@@ -35,7 +33,7 @@ export class OAuth1CredentialController {
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
-	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
+	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth1Credential.Callback, res: Response) {
 		try {
 			const { oauth_verifier, oauth_token, state: encodedState } = req.query;
@@ -93,6 +91,15 @@ export class OAuth1CredentialController {
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},
 				);
+
+				if (typeof state.userId === 'string') {
+					this.eventService.emit('private-credential-user-connected', {
+						user: { id: state.userId },
+						credentialType: credential.type,
+						credentialId: credential.id,
+					});
+				}
+
 				return res.render('oauth-callback');
 			}
 		} catch (e) {

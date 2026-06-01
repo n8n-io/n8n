@@ -2,6 +2,7 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
 import {
 	createPreSaveBudgetTracker,
+	withDefaultWorkflowFilePath,
 	wrapSubmitExecuteWithIdentity,
 } from '../submit-workflow-identity';
 import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workflow.tool';
@@ -9,6 +10,7 @@ import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workfl
 const ROOT = '/home/daytona/workspace';
 const MAIN_PATH = `${ROOT}/src/workflow.ts`;
 const CHUNK_PATH = `${ROOT}/src/chunk.ts`;
+const TASK_MAIN_PATH = `${ROOT}/builder-work-items/wi-one/src/workflow.ts`;
 
 function resolvePath(rawFilePath: string | undefined): string {
 	if (!rawFilePath) return MAIN_PATH;
@@ -40,6 +42,24 @@ function makeUnderlying(opts: { idPrefix?: string; gate?: Promise<void> } = {}) 
 
 	return { execute, calls };
 }
+
+describe('withDefaultWorkflowFilePath', () => {
+	it('uses the task main workflow file when submit-workflow omits filePath', () => {
+		expect(withDefaultWorkflowFilePath({ name: 'Workflow' }, TASK_MAIN_PATH)).toEqual({
+			name: 'Workflow',
+			filePath: TASK_MAIN_PATH,
+		});
+	});
+
+	it('preserves explicit filePath values for chunks and follow-up submits', () => {
+		expect(
+			withDefaultWorkflowFilePath({ filePath: CHUNK_PATH, name: 'Chunk' }, TASK_MAIN_PATH),
+		).toEqual({
+			filePath: CHUNK_PATH,
+			name: 'Chunk',
+		});
+	});
+});
 
 describe('wrapSubmitExecuteWithIdentity', () => {
 	it('parallel submits for the same filePath produce one create and N-1 updates sharing the workflowId', async () => {

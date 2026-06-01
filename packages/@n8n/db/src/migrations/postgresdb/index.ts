@@ -184,6 +184,17 @@ import { CreateMcpRegistryServerTable1784000000005 } from '../common/17840000000
 import { AddNodeGroupsColumnToWorkflowAndHistory1784000000006 } from '../common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory';
 import { CreateInstanceAiCheckpointTable1784000000007 } from '../common/1784000000007-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1784000000008 } from '../common/1784000000008-ResetInstanceAiNativePersistence';
+import { CreateAgentMemoryEntryTables1784000000009 } from '../common/1784000000009-CreateAgentMemoryEntryTables';
+import { RefactorAgentObservationScope1784000000010 } from '../common/1784000000010-RefactorAgentObservationScope';
+import { CreateAgentHistoryTable1784000000011 } from '../common/1784000000011-CreateAgentHistoryTable';
+import { CreateInstanceAiObservationTables1784000000012 } from '../common/1784000000012-CreateInstanceAiObservationTables';
+import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
+import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
+import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -373,4 +384,15 @@ export const postgresMigrations: Migration[] = [
 	AddNodeGroupsColumnToWorkflowAndHistory1784000000006,
 	CreateInstanceAiCheckpointTable1784000000007,
 	ResetInstanceAiNativePersistence1784000000008,
+	CreateAgentMemoryEntryTables1784000000009,
+	RefactorAgentObservationScope1784000000010,
+	CreateAgentHistoryTable1784000000011,
+	CreateInstanceAiObservationTables1784000000012,
+	SplitRedactionScopeInCustomRoles1784000000013,
+	PersistInstanceAiPendingConfirmations1784000000014,
+	AddSourceWorkflowIdToWorkflow1784000000015,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
 ];

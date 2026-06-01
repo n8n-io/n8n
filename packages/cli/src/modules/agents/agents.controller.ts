@@ -9,6 +9,7 @@ import {
 	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -16,11 +17,14 @@ import {
 	CreateAgentDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
+	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
+	PublishAgentDto,
+	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -32,19 +36,23 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
+import multer from 'multer';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
+import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -59,7 +67,10 @@ import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
+
+const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -109,6 +120,7 @@ export class AgentsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -127,19 +139,21 @@ export class AgentsController {
 		agent: Agent,
 		projectId: string,
 		user: User,
-	): Promise<Agent & { isRunnable: boolean }> {
+	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
-			agent.id,
-			projectId,
-			credentialProvider,
-		);
+		const [{ missing }, hasPublishHistory] = await Promise.all([
+			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentsService.hasPublishHistory(agent.id),
+		]);
 
-		return Object.assign(agent, { isRunnable: missing.length === 0 });
+		return Object.assign(agent, {
+			isRunnable: missing.length === 0,
+			hasPublishHistory,
+		});
 	}
 
 	@Post('/')
@@ -380,6 +394,77 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
+	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
+	private assertKnowledgeBaseEnabled() {
+		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
+			throw new NotFoundError('Agent knowledge base is not enabled');
+		}
+	}
+
+	@Get('/:agentId/files')
+	@ProjectScope('agent:read')
+	async listFiles(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		this.assertKnowledgeBaseEnabled();
+		return await this.agentKnowledgeService.listFiles(agentId, projectId);
+	}
+
+	@Post('/:agentId/files', {
+		middlewares: [agentUploadMiddleware.array('files')],
+	})
+	@ProjectScope('agent:update')
+	async uploadFiles(
+		req: AuthenticatedRequest<{ projectId: string }> & {
+			files?: Express.Multer.File[];
+			fileUploadError?: Error;
+		},
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		const files = req.files ?? [];
+		try {
+			this.assertKnowledgeBaseEnabled();
+			if (req.fileUploadError) {
+				const error = req.fileUploadError;
+				if (error instanceof multer.MulterError) {
+					throw new BadRequestError(`File upload error: ${error.message}`);
+				}
+				throw error;
+			}
+
+			if (files.length === 0) {
+				throw new BadRequestError('No files uploaded');
+			}
+
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+		} catch (error) {
+			// Multer wrote temp files to disk before this handler ran. The success
+			// path hands them to AgentKnowledgeService (which cleans up its own temp
+			// files), but these early bail-outs return first, so clean up here.
+			await cleanupUploadedTempFiles(files);
+			throw error;
+		}
+	}
+
+	@Delete('/:agentId/files/:fileId')
+	@ProjectScope('agent:update')
+	async deleteFile(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('fileId') fileId: string,
+	) {
+		this.assertKnowledgeBaseEnabled();
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		return { success: true };
+	}
+
 	@Delete('/:agentId')
 	@ProjectScope('agent:delete')
 	async delete(
@@ -402,8 +487,14 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Body payload: PublishAgentDto,
 	) {
-		const agent = await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+		const agent = await this.agentsService.publishAgent(
+			agentId,
+			req.params.projectId,
+			req.user,
+			payload?.versionId,
+		);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
@@ -427,6 +518,38 @@ export class AgentsController {
 	) {
 		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Post('/:agentId/revert-to-version')
+	@ProjectScope('agent:update')
+	async revertToVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: RevertAgentToVersionDto,
+	) {
+		const agent = await this.agentsService.revertToVersion(
+			agentId,
+			req.params.projectId,
+			payload.versionId,
+		);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ProjectScope('agent:read')
+	async listVersions(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentsService.listPublishHistory(
+			agentId,
+			req.params.projectId,
+			query.take,
+			query.skip,
+		);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -486,7 +609,10 @@ export class AgentsController {
 					projectId,
 					message,
 					userId: req.user.id,
-					memory: { threadId, resourceId: req.user.id },
+					memory: {
+						threadId,
+						resourceId: draftChatMemoryResourceId(req.user.id),
+					},
 				}),
 				send,
 			);
@@ -705,10 +831,6 @@ export class AgentsController {
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.publishedVersion)
-			throw new ConflictError(
-				`Agent "${agentId}" must be published before connecting an integration`,
-			);
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			req.user,
@@ -722,6 +844,23 @@ export class AgentsController {
 			throw new BadRequestError(
 				`${integrationImpl.displayLabel} integrations do not support ${credential.type} credentials`,
 			);
+		}
+
+		if (!agent.activeVersionId) {
+			await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+			const publishedAgent = await this.agentsService.publishAgent(
+				agentId,
+				agent.projectId,
+				req.user,
+				undefined,
+				{ syncIntegrations: false },
+			);
+			await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+			await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
+			return {
+				status: 'connected',
+				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+			};
 		}
 
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);

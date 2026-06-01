@@ -213,6 +213,16 @@ export interface IHttpRequestHelper {
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
+	/**
+	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
+	 * and `nodeType` is not in its `supportedNodes` list. Returns true otherwise
+	 * — including when the credential type is unknown (caller will fail later).
+	 *
+	 * Used by both the execution-engine runtime guard and the workflow-save
+	 * validator so the policy is defined in exactly one place.
+	 */
+	abstract isCredentialUsableByNode(credentialType: string, nodeType: string): boolean;
+
 	abstract authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
@@ -379,6 +389,16 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+
+	/**
+	 * If `true`, this credential can ONLY be used at runtime by nodes listed in
+	 * `supportedNodes`. The execution engine will refuse to decrypt the credential
+	 * for any other node — including the HTTP Request node and its tool variants,
+	 * which normally have full access to all credential types.
+	 *
+	 * Opt-in. Existing credentials without this flag are unaffected.
+	 */
+	restrictToSupportedNodes?: true;
 }
 
 export interface ICredentialTypes {
@@ -1094,6 +1114,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
 				executionMode?: WorkflowExecuteMode;
+				returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 			},
 		): Promise<ExecuteWorkflowData>;
 		executeAgent(
@@ -1346,7 +1367,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	validateCookieAuth(cookieValue: string): Promise<void>;
+	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1390,7 +1411,6 @@ export interface INode {
 	webhookId?: string;
 	extendsCredential?: string;
 	rewireOutputLogTo?: NodeConnectionType;
-
 	// forces the node to execute a particular custom operation
 	// based on resource and operation
 	// instead of calling default execute function
@@ -1964,6 +1984,7 @@ export interface ITriggerResponse {
 
 export interface ExecuteWorkflowData {
 	executionId: string;
+	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
 }
@@ -3090,6 +3111,18 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
+export type WorkflowExecutionSource = 'user' | 'instance_ai';
+
+export type WorkflowExecutionMockDataSource =
+	| 'trigger_input'
+	| 'verification_pin_data'
+	| 'workflow_pin_data';
+
+export interface IWorkflowExecutionTelemetryMetadata {
+	source: WorkflowExecutionSource;
+	mockDataSources?: WorkflowExecutionMockDataSource[];
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
@@ -3113,6 +3146,7 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3142,6 +3176,8 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
+	/** Encrypted credential context for a manual editor-triggered execution. */
+	encryptedRunnerIdentity?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3155,6 +3191,7 @@ export interface ExecuteWorkflowOptions {
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
+	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
 }
 
 export type AiEvent =
@@ -3259,7 +3296,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
-	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.
@@ -3570,16 +3607,27 @@ export interface WorkflowInputsData {
 }
 
 export interface ResourceMapperField {
+	/** Field key sent to/received from the API (e.g. "name", "email"). Becomes the key in the mapped value object at runtime. */
 	id: string;
+	/** Human-readable label shown in the mapping form. */
 	displayName: string;
+	/** When true the field is pre-selected as a matching column for update/upsert. If only one field exists in the schema it becomes the match regardless. */
 	defaultMatch: boolean;
+	/** Allows the field to appear in the "Matching Columns" dropdown. Set false for fields that can never uniquely identify a record. */
 	canBeUsedToMatch?: boolean;
+	/** When true the field cannot be removed in 'add' mode and is labelled "mandatory field". Fields hidden by addAllFields=false are still shown when required=true. */
 	required: boolean;
+	/** When false the field is completely excluded from the UI, the "Add field" dropdown, and matching selectors. Use for computed/read-only fields the user must never touch. */
 	display: boolean;
+	/** Controls the input widget: 'options' → dropdown (requires `options`), 'boolean' → toggle, 'number' → numeric, 'dateTime' → date picker, 'array'/'object' → JSON editor. */
 	type?: FieldType;
+	/** When true the field is hidden by default but still accessible via the "Add field" dropdown so the user can opt in. Toggled by user add/remove actions. */
 	removed?: boolean;
+	/** Enumerated choices for fields of type 'options'. Each entry: { name (label), value }. */
 	options?: INodePropertyOptions[];
+	/** Disables the input so the user cannot edit the value. Matching columns are always forced read-only by the UI regardless of this flag. */
 	readOnly?: boolean;
+	/** Pre-filled value applied when the field is first shown or re-added. Omit to leave the input empty. */
 	defaultValue?: string | number | boolean | null;
 }
 

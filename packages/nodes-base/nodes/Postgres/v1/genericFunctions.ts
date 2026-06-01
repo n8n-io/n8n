@@ -21,7 +21,7 @@ export function getItemsCopy(
 ): IDataObject[] {
 	let newItem: IDataObject;
 	return items.map((item) => {
-		newItem = {};
+		newItem = Object.create(null) as IDataObject;
 		if (guardedColumns) {
 			Object.keys(guardedColumns).forEach((column) => {
 				newItem[column] = item.json[guardedColumns[column]];
@@ -47,7 +47,7 @@ export function getItemCopy(
 	properties: string[],
 	guardedColumns?: { [key: string]: string },
 ): IDataObject {
-	const newItem: IDataObject = {};
+	const newItem: IDataObject = Object.create(null) as IDataObject;
 	if (guardedColumns) {
 		Object.keys(guardedColumns).forEach((column) => {
 			newItem[column] = item.json[guardedColumns[column]];
