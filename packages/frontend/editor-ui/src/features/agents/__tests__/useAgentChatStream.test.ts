@@ -44,13 +44,19 @@ function buildHook() {
 
 describe('useAgentChatStream — SDK-aligned event handling', () => {
 	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
 
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn(() => ''),
+		});
 	});
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
 	});
 

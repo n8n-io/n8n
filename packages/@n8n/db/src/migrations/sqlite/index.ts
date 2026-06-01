@@ -185,6 +185,8 @@ import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -375,6 +377,8 @@ const sqliteMigrations: Migration[] = [
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
 ];
 
 export { sqliteMigrations };

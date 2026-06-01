@@ -274,7 +274,6 @@ describe('GlobalConfig', () => {
 			modelApiKey: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
-			lastMessages: 20,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,

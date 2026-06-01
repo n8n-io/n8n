@@ -15,6 +15,7 @@ import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
 import { ISessionStorage } from '@/types/session-storage';
@@ -46,6 +47,7 @@ export class AiWorkflowBuilderService {
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 		private readonly nodeDefinitionDirs?: string[],
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
+		private readonly ssrf?: SsrfGuard,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
@@ -233,6 +235,7 @@ export class AiWorkflowBuilderService {
 			resourceLocatorCallback,
 			onTelemetryEvent: this.onTelemetryEvent,
 			assistantHandler,
+			ssrf: this.ssrf,
 		});
 
 		return { agent };

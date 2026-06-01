@@ -201,7 +201,7 @@ export class AgentsBuilderService {
 
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
-			.lastMessages(40);
+			.observationalMemory();
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
