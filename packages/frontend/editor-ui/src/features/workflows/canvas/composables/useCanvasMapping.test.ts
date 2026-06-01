@@ -26,6 +26,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IPinData } from 'n8n-workflow';
 import {
 	CanvasConnectionMode,
@@ -163,6 +164,14 @@ function setPinData(pinData: IPinData) {
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	workflowDocumentStore.setPinData(pinData);
+}
+
+function setWorkflowRunning(running: boolean) {
+	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	vi.spyOn(workflowExecutionStateStore, 'isWorkflowRunning', 'get').mockReturnValue(running);
 }
 
 /**
@@ -1766,7 +1775,6 @@ describe('useCanvasMapping', () => {
 
 	describe('nodeExecutionWaitingForNextById', () => {
 		it('should be true when already executed node is waiting for next', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1783,7 +1791,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.isWorkflowRunning = true;
+			setWorkflowRunning(true);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1797,7 +1805,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should be false when workflow is not executing', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1814,7 +1821,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.isWorkflowRunning = false;
+			setWorkflowRunning(false);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1828,7 +1835,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should be false when there are nodes that are executing', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1845,7 +1851,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [node2.name];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.isWorkflowRunning = false;
+			setWorkflowRunning(false);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1874,7 +1880,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.isWorkflowRunning = true;
+			setWorkflowRunning(true);
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({});
 
@@ -1904,7 +1910,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.isWorkflowRunning = true;
+				setWorkflowRunning(true);
 				workflowsStore.getWorkflowRunData = {};
 				setPinData({});
 
@@ -1934,7 +1940,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.isWorkflowRunning = true;
+			setWorkflowRunning(true);
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({ 'Manual Trigger': [{ json: {} }] }); // Node has pinned data
 
@@ -1963,7 +1969,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.isWorkflowRunning = false;
+			setWorkflowRunning(false);
 			workflowsStore.getWorkflowRunData = {};
 			setPinData({});
 

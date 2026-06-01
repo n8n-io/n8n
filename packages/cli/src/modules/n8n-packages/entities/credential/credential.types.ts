@@ -1,9 +1,13 @@
 import type { Project, User } from '@n8n/db';
 
-import type { ManifestCredentialRequirement } from '../../spec/manifest.schema';
 import type { CredentialMatchingMode, CredentialMissingMode } from '../../n8n-packages.types';
 
-export type WorkflowCredentialRequirement = ManifestCredentialRequirement;
+export interface WorkflowCredentialRequirement {
+	workflowId: string;
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+}
 
 export type CredentialResolutionFailureKind = 'not_found' | 'unknown_type';
 

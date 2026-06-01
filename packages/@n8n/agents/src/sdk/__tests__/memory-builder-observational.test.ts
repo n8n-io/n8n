@@ -106,7 +106,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: {},
 			} as MemoryConfig,
@@ -121,7 +120,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: { renderTokenBudget: 456 },
 			} as MemoryConfig,

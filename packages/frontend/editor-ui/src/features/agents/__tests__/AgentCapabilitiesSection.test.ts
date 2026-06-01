@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
-import type { AgentJsonToolRef, CustomToolEntry } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef, CustomToolEntry } from '../types';
 
 const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
 	() => null,
@@ -46,10 +46,11 @@ vi.mock('@n8n/i18n', () => ({
 function mountSection(
 	tools: AgentJsonToolRef[],
 	customTools: Record<string, CustomToolEntry> = {},
+	config: AgentJsonConfig | null = null,
 ) {
 	return mount(AgentCapabilitiesSection, {
 		props: {
-			config: null,
+			config,
 			tools,
 			customTools,
 			skills: [],
@@ -75,6 +76,18 @@ function mountSection(
 			},
 		},
 	});
+}
+
+function configWithMcpServers(
+	mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
+): AgentJsonConfig {
+	return {
+		name: 'Test Agent',
+		model: '',
+		instructions: '',
+		tools: [],
+		mcpServers,
+	};
 }
 
 describe('AgentCapabilitiesSection', () => {
@@ -223,5 +236,31 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.text()).not.toContain('Inbox triage');
 		expect(wrapper.text()).not.toContain('Send follow up');
 		expect(wrapper.text()).not.toContain('Archive message');
+	});
+
+	it('shows MCP servers in the tools row even without regular tools', () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.mcpClientTool') {
+				return createNodeType('@n8n/n8n-nodes-langchain.mcpClientTool', 'MCP Client Tool');
+			}
+
+			return null;
+		});
+
+		const wrapper = mountSection(
+			[],
+			{},
+			configWithMcpServers([
+				{
+					name: 'github',
+					url: 'https://mcp.github.com',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			]),
+		);
+
+		expect(wrapper.text()).toContain('Github');
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(1);
 	});
 });
