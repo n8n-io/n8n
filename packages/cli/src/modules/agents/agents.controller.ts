@@ -9,6 +9,7 @@ import {
 	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -16,12 +17,14 @@ import {
 	CreateAgentDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
+	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -33,6 +36,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -135,19 +139,21 @@ export class AgentsController {
 		agent: Agent,
 		projectId: string,
 		user: User,
-	): Promise<Agent & { isRunnable: boolean }> {
+	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
-			agent.id,
-			projectId,
-			credentialProvider,
-		);
+		const [{ missing }, hasPublishHistory] = await Promise.all([
+			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentsService.hasPublishHistory(agent.id),
+		]);
 
-		return Object.assign(agent, { isRunnable: missing.length === 0 });
+		return Object.assign(agent, {
+			isRunnable: missing.length === 0,
+			hasPublishHistory,
+		});
 	}
 
 	@Post('/')
@@ -509,6 +515,38 @@ export class AgentsController {
 	) {
 		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Post('/:agentId/revert-to-version')
+	@ProjectScope('agent:update')
+	async revertToVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: RevertAgentToVersionDto,
+	) {
+		const agent = await this.agentsService.revertToVersion(
+			agentId,
+			req.params.projectId,
+			payload.versionId,
+		);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ProjectScope('agent:read')
+	async listVersions(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentsService.listPublishHistory(
+			agentId,
+			req.params.projectId,
+			query.take,
+			query.skip,
+		);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })

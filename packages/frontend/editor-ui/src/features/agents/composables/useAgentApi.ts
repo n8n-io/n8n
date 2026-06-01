@@ -7,6 +7,7 @@ import type {
 	AgentSkillMutationResponse,
 	AgentScheduleConfig,
 	AgentIntegrationSettings,
+	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
@@ -295,11 +296,13 @@ export const publishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	versionId?: string,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
+		versionId ? { versionId } : undefined,
 	);
 };
 
@@ -324,6 +327,34 @@ export const revertAgentToPublished = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/revert-to-published`,
+	);
+};
+
+export const revertAgentToVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/revert-to-version`,
+		{ versionId },
+	);
+};
+
+export const listAgentVersions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentVersionListItemDto[]> => {
+	return await makeRestApiRequest<AgentVersionListItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions`,
+		params,
 	);
 };
 
