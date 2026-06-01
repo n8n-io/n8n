@@ -8,11 +8,8 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
-import {
-	createSuccessBinding,
-	type CredentialBinding,
-	type WorkflowCredentialRequirement,
-} from './credential.types';
+import { createSuccessBinding, type CredentialBinding } from './credential.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 const READ_SCOPE: Scope[] = ['credential:read'];
 
@@ -28,7 +25,7 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	}
 
 	protected async resolve(
-		known: WorkflowCredentialRequirement[],
+		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
 	): Promise<CredentialBinding[]> {
 		const resolvableIds = await this.findResolvableCredentialIds(

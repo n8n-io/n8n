@@ -2,7 +2,8 @@ import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-te
 
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
-import type { ManifestCredentialRequirement, PackageManifest } from '../../spec/manifest.schema';
+import type { PackageManifest } from '../../spec/manifest.schema';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 
 import { streamToBuffer } from '../utils/tar-support';
@@ -75,8 +76,8 @@ export function serializedWorkflowWithCredential(options: {
 /** Builds manifest credential requirements from workflow node refs (simulates export). */
 export function credentialRequirementsFromWorkflows(
 	workflows: SerializedWorkflow[],
-): ManifestCredentialRequirement[] {
-	const byId = new Map<string, ManifestCredentialRequirement>();
+): PackageCredentialRequirement[] {
+	const byId = new Map<string, PackageCredentialRequirement>();
 
 	for (const workflow of workflows) {
 		for (const node of workflow.nodes) {

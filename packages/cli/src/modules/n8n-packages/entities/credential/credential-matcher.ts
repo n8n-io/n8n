@@ -8,8 +8,8 @@ import {
 	type CredentialBinding,
 	type CredentialResolution,
 	type CredentialResolutionFailure,
-	type WorkflowCredentialRequirement,
 } from './credential.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface CredentialMatcherContext {
 	targetProject: Project;
@@ -24,7 +24,7 @@ export abstract class CredentialMatcher {
 	) {}
 
 	async match(
-		requirements: WorkflowCredentialRequirement[] | undefined,
+		requirements: PackageCredentialRequirement[] | undefined,
 		context: CredentialMatcherContext,
 	): Promise<CredentialResolution> {
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
@@ -40,19 +40,19 @@ export abstract class CredentialMatcher {
 	}
 
 	protected abstract resolve(
-		known: WorkflowCredentialRequirement[],
+		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
 	): Promise<CredentialBinding[]>;
 }
 
 function partitionByKnownType(
-	requirements: WorkflowCredentialRequirement[] | undefined,
+	requirements: PackageCredentialRequirement[] | undefined,
 	credentialTypes: CredentialTypes,
 ): {
-	known: WorkflowCredentialRequirement[];
+	known: PackageCredentialRequirement[];
 	unknownTypeFailures: CredentialResolutionFailure[];
 } {
-	const known: WorkflowCredentialRequirement[] = [];
+	const known: PackageCredentialRequirement[] = [];
 	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {

@@ -3,9 +3,10 @@ import { Container } from '@n8n/di';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { CredentialMatcher, CredentialMatcherContext } from './credential-matcher';
-import type { CredentialResolution, WorkflowCredentialRequirement } from './credential.types';
+import type { CredentialResolution } from './credential.types';
 import { IdBasedCredentialMatcher } from './id-based-credential-matcher';
 import type { CredentialMatchingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export function createCredentialMatcher(mode: CredentialMatchingMode): CredentialMatcher {
 	if (!(mode in matcherByMode)) {
@@ -18,7 +19,7 @@ export function createCredentialMatcher(mode: CredentialMatchingMode): Credentia
 
 export async function applyCredentialMatching(
 	mode: CredentialMatchingMode,
-	requirements: WorkflowCredentialRequirement[] | undefined,
+	requirements: PackageCredentialRequirement[] | undefined,
 	context: CredentialMatcherContext,
 ): Promise<CredentialResolution> {
 	return await createCredentialMatcher(mode).match(requirements, context);

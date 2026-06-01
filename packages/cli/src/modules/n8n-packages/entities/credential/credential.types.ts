@@ -1,6 +1,7 @@
 import type { Project, User } from '@n8n/db';
 
 import type { CredentialMatchingMode, CredentialMissingMode } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowCredentialRequirement {
 	workflowId: string;
@@ -17,11 +18,9 @@ export type CredentialResolutionFailure = {
 	usedByWorkflows: string[];
 };
 
-export type CredentialId = string;
-
 export interface CredentialBinding {
-	sourceId: CredentialId;
-	targetId: CredentialId;
+	sourceId: string;
+	targetId: string;
 }
 
 export interface CredentialResolution {
@@ -30,7 +29,7 @@ export interface CredentialResolution {
 }
 
 export interface CredentialBindingRequest {
-	requirements: WorkflowCredentialRequirement[] | undefined;
+	requirements: PackageCredentialRequirement[] | undefined;
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	targetProject: Project;
@@ -42,20 +41,17 @@ export interface CredentialBindingRequest {
  * `create-stubs` reads `requirements` for credential type/name and owns new stubs in `targetProject`.
  */
 export interface CredentialMissingModeContext {
-	requirements: WorkflowCredentialRequirement[] | undefined;
+	requirements: PackageCredentialRequirement[] | undefined;
 	targetProject: Project;
 	user: User;
 }
 
-export function createSuccessBinding(
-	sourceId: CredentialId,
-	targetId: CredentialId,
-): CredentialBinding {
+export function createSuccessBinding(sourceId: string, targetId: string): CredentialBinding {
 	return { sourceId, targetId };
 }
 
 export function createFailure(
-	reference: WorkflowCredentialRequirement,
+	reference: PackageCredentialRequirement,
 	kind: CredentialResolutionFailureKind,
 ): CredentialResolutionFailure {
 	return {
