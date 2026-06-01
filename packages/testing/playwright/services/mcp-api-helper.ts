@@ -91,6 +91,7 @@ export interface SearchWorkflowsResult {
 		scopes: string[];
 		canExecute: boolean;
 		availableInMCP: boolean;
+		tags: Array<{ id: string; name: string }>;
 	}>;
 	count: number;
 }

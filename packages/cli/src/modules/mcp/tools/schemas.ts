@@ -10,6 +10,9 @@ export const nodeSchema = z
 
 export const tagSchema = z.object({ id: z.string(), name: z.string() }).passthrough();
 
+export const toTagSummary = (tags: Array<{ id: string; name: string }> | undefined | null) =>
+	(tags ?? []).map((tag) => ({ id: tag.id, name: tag.name }));
+
 export const workflowSettingsSchema = z
 	.custom<IWorkflowSettings>((_value): _value is IWorkflowSettings => true)
 	.nullable();

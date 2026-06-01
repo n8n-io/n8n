@@ -7,7 +7,7 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { workflowDetailsOutputSchema } from './schemas';
+import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -164,7 +164,7 @@ export async function getWorkflowDetails(
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
 		activeVersion,
-		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
+		tags: toTagSummary(workflow.tags),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
 		description: workflow.description ?? undefined,
