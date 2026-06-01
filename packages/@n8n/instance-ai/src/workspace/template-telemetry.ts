@@ -14,9 +14,9 @@
  * calls `observe()` after each command — no caller-side threading required.
  */
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils';
 
 import type { OrchestrationContext } from '../types';
-import { scrubSecretsInText } from '../utils/scrub-secrets';
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_USER_REQUEST_LENGTH = 120;
