@@ -21,7 +21,6 @@ import type {
 } from 'n8n-workflow';
 import { ICredentialsHelper } from 'n8n-workflow';
 
-import { CredentialMissingIdError } from '@/errors/credential-missing-id.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 const MOCK_MARKER = '__evalMockedCredential' as const;
@@ -31,10 +30,6 @@ const MOCK_MARKER = '__evalMockedCredential' as const;
 export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix: string }> = {
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
-
-function isMockableMissingCredentialError(error: unknown): boolean {
-	return error instanceof CredentialNotFoundError || error instanceof CredentialMissingIdError;
-}
 
 function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
 	return nodeCredentials.id ? nodeCredentials.id : undefined;
@@ -113,6 +108,21 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
+		// which the catch below won't handle — synthesize a mock here instead of delegating.
+		if (!nodeCredentials.id) {
+			this.mockedCredentials.push({
+				nodeName: executeData?.node?.name ?? 'unknown',
+				credentialType: type,
+				credentialId: undefined,
+			});
+			const synthesized = {
+				...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+				[MOCK_MARKER]: true,
+			} as ICredentialDataDecryptedObject;
+			return this.applyServerUrlRewrite(synthesized, type, nodeCredentials, executeData);
+		}
+
 		let credentials: ICredentialDataDecryptedObject;
 		try {
 			credentials = await this.inner.getDecrypted(
@@ -125,32 +135,15 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 				expressionResolveValues,
 			);
 		} catch (error) {
-			if (!isMockableMissingCredentialError(error)) throw error;
+			if (!(error instanceof CredentialNotFoundError)) throw error;
 
+			// id present but absent from the DB — a bare marker stub is enough; URL rewrite still runs below.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
 				credentialId: getCredentialId(nodeCredentials),
 			});
-
-			const credentialId = getCredentialId(nodeCredentials);
-
-			// When called with no credential id (eval-mode bypass for nodes
-			// with no credentials of any type configured), schema-synthesize
-			// so the wire-server URL rewrite below has a real `url` field to
-			// augment. Otherwise vendor SDK traffic would escape to the real
-			// provider with placeholder values and 401 at the wire layer.
-			// `buildEvalMockCredentials` is typed `Record<string, unknown>` —
-			// schema defaults can be richer than `CredentialInformation`, but
-			// at runtime emits only JSON-shaped values, which is what the
-			// rewrite path consumes.
-			credentials =
-				credentialId === undefined
-					? ({
-							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-							[MOCK_MARKER]: true,
-						} as ICredentialDataDecryptedObject)
-					: { [MOCK_MARKER]: true };
+			credentials = { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);

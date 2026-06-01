@@ -44,8 +44,13 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockAgentMemory as never,
 		mockDbSnapshotStorage as never,
 		mockCheckpointRepository as never,
+		mockPendingConfirmationRepository as never,
 	);
 }
+
+const mockPendingConfirmationRepository = {
+	findLiveRequestIds: jest.fn(async () => new Set<string>()),
+};
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
 	return {
@@ -132,11 +137,12 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 					content: [
 						{ type: 'text', text: 'Here are your workflows' },
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-1',
 							toolName: 'list-workflows',
 							input: {},
-							result: { workflows: [] },
+							state: 'resolved',
+							output: { workflows: [] },
 						},
 					],
 					createdAt: new Date('2026-01-01T00:00:01.000Z'),

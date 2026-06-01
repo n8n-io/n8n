@@ -50,6 +50,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
 			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
 		});
 	});
 
@@ -67,6 +68,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
 			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
 		});
 	});
 
@@ -83,6 +85,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 
@@ -116,6 +119,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 });
