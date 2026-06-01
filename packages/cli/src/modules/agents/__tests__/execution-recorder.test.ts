@@ -151,6 +151,31 @@ describe('ExecutionRecorder', () => {
 			});
 		});
 
+		it('pairs same-name flat tool calls by toolCallId when results arrive out of order', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('search_knowledge', { file: 'first.md' }, 'call-1'));
+			recorder.record(makeToolCallChunk('search_knowledge', { file: 'second.md' }, 'call-2'));
+			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'second.md' }, 'call-2'));
+			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'first.md' }, 'call-1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.toolCalls).toEqual([
+				{
+					name: 'search_knowledge',
+					input: { file: 'first.md' },
+					output: { fileName: 'first.md' },
+				},
+				{
+					name: 'search_knowledge',
+					input: { file: 'second.md' },
+					output: { fileName: 'second.md' },
+				},
+			]);
+		});
+
 		it('still concatenates assistantResponse from all text deltas', () => {
 			const recorder = new ExecutionRecorder();
 

@@ -41,6 +41,7 @@ export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
+export { default as N8nHoverCard } from './N8nHoverCard';
 export {
 	default as N8nIcon,
 	type IconName,
