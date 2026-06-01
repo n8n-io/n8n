@@ -3886,7 +3886,7 @@
 	"workflowSettings.customTelemetryTags.displayName": "Custom telemetry tags",
 	"workflowSettings.customTelemetryTags.description": "Add custom tags to this workflow's OpenTelemetry spans.",
 	"workflowSettings.customTelemetryTags.configure": "Configure",
-	"workflowSettings.customTelemetryTags.configuredCount": "No tags configured | {count} tag configured | {count} tags configured",
+	"workflowSettings.customTelemetryTags.configuredCount": "{count} tag configured | {count} tags configured",
 	"workflowSettings.customTelemetryTags.placeholder": "Add tag",
 	"workflowSettings.customTelemetryTags.modal.title": "Custom telemetry tags",
 	"workflowSettings.customTelemetryTags.modal.learnMore": "Learn more in the",

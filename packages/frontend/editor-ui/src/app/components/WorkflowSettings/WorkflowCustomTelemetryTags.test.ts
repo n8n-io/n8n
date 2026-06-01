@@ -52,10 +52,6 @@ describe('WorkflowCustomTelemetryTags', () => {
 	describe('summary', () => {
 		it.each([
 			{
-				modelValue: undefined,
-				expectedCount: 'No tags configured',
-			},
-			{
 				modelValue: [{ key: 'team', value: 'platform' }],
 				expectedCount: '1 tag configured',
 			},
@@ -75,6 +71,22 @@ describe('WorkflowCustomTelemetryTags', () => {
 
 			expect(getByTestId('workflow-settings-custom-telemetry-tags-count')).toHaveTextContent(
 				expectedCount,
+			);
+		});
+
+		it('does not render the configured tag count when there are no tags', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(
+				queryByTestId('workflow-settings-custom-telemetry-tags-count'),
+			).not.toBeInTheDocument();
+		});
+
+		it('does not include a hidden zero count in the configure button accessible name', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
+				'Configure custom telemetry tags',
 			);
 		});
 

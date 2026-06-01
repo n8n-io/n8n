@@ -83,18 +83,22 @@ const hasTagErrors = computed(() => validationError.value !== null);
 const hasDraftErrors = computed(() => draftValidationError.value !== null);
 const areControlsDisabled = computed(() => props.isReadOnly || isSaving.value);
 const configuredTagsCount = computed(() => tags.value.length);
+const hasConfiguredTags = computed(() => configuredTagsCount.value > 0);
 const configuredTagsCountLabel = computed(() =>
 	i18n.baseText('workflowSettings.customTelemetryTags.configuredCount' as BaseTextKey, {
 		adjustToNumber: configuredTagsCount.value,
 		interpolate: { count: configuredTagsCount.value },
 	}),
 );
-const configureButtonAriaLabel = computed(
-	() =>
-		`${i18n.baseText('workflowSettings.customTelemetryTags.configure')} ${i18n
-			.baseText('workflowSettings.customTelemetryTags.displayName')
-			.toLowerCase()}, ${configuredTagsCountLabel.value.toLowerCase()}`,
-);
+const configureButtonAriaLabel = computed(() => {
+	const label = `${i18n.baseText('workflowSettings.customTelemetryTags.configure')} ${i18n
+		.baseText('workflowSettings.customTelemetryTags.displayName')
+		.toLowerCase()}`;
+
+	return hasConfiguredTags.value
+		? `${label}, ${configuredTagsCountLabel.value.toLowerCase()}`
+		: label;
+});
 
 watch(
 	hasTagErrors,
@@ -192,6 +196,7 @@ const onModalOpenChange = (open: boolean) => {
 						{{ i18n.baseText('workflowSettings.customTelemetryTags.configure') }}
 					</N8nButton>
 					<span
+						v-if="hasConfiguredTags"
 						:class="$style.customTelemetryTagsCount"
 						data-test-id="workflow-settings-custom-telemetry-tags-count"
 					>
@@ -401,7 +406,10 @@ const onModalOpenChange = (open: boolean) => {
 }
 
 .customTelemetryTagsCount {
-	color: var(--text-color);
+	color: inherit;
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .customTelemetryTagsConfigure {
