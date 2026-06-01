@@ -10,7 +10,7 @@
  * Both are merged by a single generate() into one lcov/html keyed on
  * `packages/.../src/...`.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -115,9 +115,33 @@ async function addBackendCoverage(report: CoverageReport): Promise<number> {
 	return added;
 }
 
+/**
+ * MCR's generate() hard-aborts on the first unparseable raw JSON. A test or
+ * container killed mid-write (e.g. a failed shard) can leave a coverage file
+ * truncated at a buffer boundary, so drop any raw cache file that won't parse —
+ * one corrupt file from one failed shard must not sink the whole report.
+ */
+function pruneCorruptRaw(dir: string): number {
+	if (!existsSync(dir)) return 0;
+	let dropped = 0;
+	for (const file of listJsonFiles(dir)) {
+		try {
+			JSON.parse(readFileSync(file, 'utf8'));
+		} catch {
+			unlinkSync(file);
+			dropped++;
+		}
+	}
+	return dropped;
+}
+
 async function main() {
 	console.log('🔍 Generating unified V8 coverage report...');
 	const report = new CoverageReport(coverageOptions);
+
+	const dropped = pruneCorruptRaw(join(coverageOptions.outputDir ?? './coverage', '.cache'));
+	if (dropped)
+		console.warn(`  ⚠ dropped ${dropped} corrupt raw coverage file(s) (truncated mid-write)`);
 
 	const backend = await addBackendCoverage(report);
 	if (backend) console.log(`  + ${backend} backend V8 script entries (rewritten to repo dist)`);
