@@ -329,13 +329,7 @@ export async function execute(
 	if (nodeVersion < 4) {
 		columnsToMatchOn = [this.getNodeParameter('columnToMatchOn', 0) as string];
 	} else {
-		// `columns.matchingColumns` is required for appendOrUpdate — it tells the
-		// node which header to use as the upsert key. When the builder forgets it,
-		// the framework's generic `Could not get parameter` masks the actual
-		// problem. Surface a clear, actionable error instead so the builder can
-		// (re)submit with the right shape.
-		// Pass an empty-array fallback so `getNodeParameter` doesn't throw the
-		// generic 'Could not get parameter' before our targeted guard fires.
+		// Use a fallback so the missing upsert key gets an operation-specific error.
 		const matchingColumns = this.getNodeParameter(
 			'columns.matchingColumns',
 			0,

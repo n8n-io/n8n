@@ -302,10 +302,7 @@ export async function execute(
 	const columnsToMatchOn: string[] =
 		nodeVersion < 4 ? [this.getNodeParameter('columnToMatchOn', 0) as string] : [];
 	if (nodeVersion >= 4) {
-		// `columns.matchingColumns` is required for update — see
-		// `appendOrUpdate.operation.ts` for the matching guard rationale.
-		// Pass an empty-array fallback so `getNodeParameter` doesn't throw the
-		// generic 'Could not get parameter' before our targeted guard fires.
+		// Use a fallback so the missing update key gets an operation-specific error.
 		const matchingColumns = this.getNodeParameter(
 			'columns.matchingColumns',
 			0,

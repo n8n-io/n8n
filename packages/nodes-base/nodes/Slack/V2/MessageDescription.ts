@@ -97,11 +97,7 @@ export const channelRLC: INodeProperties = {
 			validation: [
 				{
 					type: 'regex',
-					// Slack's chat.postMessage accepts both encoded channel IDs
-					// (e.g. `C0122KQ70S7E`) and channel names (e.g. `#general` /
-					// `general`), so the validator accepts both shapes — the API
-					// resolves names server-side. Without this, builders pasting a
-					// `#channel-name` into the ID field were silently bounced.
+					// chat.postMessage accepts public channel names as well as IDs.
 					properties: {
 						regex: '#?[A-Za-z0-9_\\-]{2,}',
 						errorMessage: 'Not a valid Slack Channel ID or name',

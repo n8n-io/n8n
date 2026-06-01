@@ -251,12 +251,7 @@ export async function execute(
 			);
 		}
 
-		// `columns.schema` is required when mappingMode = defineBelow on v4.4+.
-		// When the builder forgets it, the framework's generic 'Could not get
-		// parameter "columns.schema"' message is opaque; surface an actionable
-		// NodeOperationError that tells the builder how to fix it.
-		// Pass an empty-array fallback so `getNodeParameter` doesn't throw
-		// before we can inspect the missing/malformed value.
+		// Use a fallback so the missing schema gets an operation-specific error.
 		const schema = this.getNodeParameter(
 			'columns.schema',
 			0,

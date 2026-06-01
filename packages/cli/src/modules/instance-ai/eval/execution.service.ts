@@ -90,12 +90,7 @@ export class EvalExecutionService {
 	): Promise<InstanceAiEvalExecutionResult> {
 		const executionId = randomUUID();
 
-		// Retry the workflow lookup with exponential backoff. Concurrent eval
-		// scenarios share the build's workflowId; under contention the index or
-		// permission cache occasionally serves a stale 'not found' for a second
-		// or two even though the row exists. Three short retries (200ms, 500ms,
-		// 1000ms) absorb the race without slowing the happy path — the lookup
-		// either returns immediately or the first retry typically wins.
+		// Retry transient lookup misses from concurrent eval runs.
 		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
@@ -334,12 +329,7 @@ export class EvalExecutionService {
 			const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 			const pinDataNodeNames = Object.keys(pinData);
 
-			// Check config completeness before execution — detect missing required parameters
 			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
-			// Then patch the same parameter issues with synthetic mock values so the
-			// runtime `WorkflowHasIssuesError` gate doesn't abort the whole workflow
-			// for a single empty resource locator. Original issues stay recorded on
-			// `nodeResults.configIssues` (set above) for the verifier.
 			this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 			const executionData = this.buildExecutionData(startNode, pinData);
 
@@ -441,44 +431,14 @@ export class EvalExecutionService {
 	}
 
 	/**
-	 * Bypass the runtime `WorkflowHasIssuesError` gate for eval execution.
-	 *
-	 * `WorkflowExecute.checkForWorkflowIssues()` aborts the entire workflow
-	 * before any node runs if `NodeHelpers.getNodeParametersIssues` reports
-	 * issues on any node — most commonly an empty required parameter the
-	 * builder forgot to fill (Sheets `sheetName.value: ''`, Slack
-	 * `channelId.value: ''`, BigQuery `projectId: ''`). The verifier sees
-	 * an opaque 'The workflow has issues and cannot be executed for that
-	 * reason' message and classifies the whole scenario as a builder failure
-	 * even when only one parameter on one node is broken.
-	 *
-	 * In eval mode the framework is supposed to be tolerant of unfinished
-	 * configs so the LLM verifier can score the workflow's actual logic.
-	 * This is symmetrical with the credential helper bypass: original
-	 * `configIssues` are still recorded on `nodeResults` (so the verifier
-	 * can flag the misconfiguration as part of its reasoning), but we patch
-	 * the workflow JSON enough to satisfy the gate so per-node execution
-	 * can proceed. When the patched node ultimately needs the value, its
-	 * own HTTP request goes through the LLM wire-mock and the framework
-	 * synthesises a downstream-shaped response — same path real builders
-	 * would have hit if they hadn't shipped an empty parameter.
+	 * Keep recorded config issues, but patch eval-only placeholders and empty
+	 * params so one incomplete node does not stop the entire mocked execution.
 	 */
 	private patchParameterIssuesForEval(workflow: Workflow, pinDataNodeNames: string[]): void {
 		for (const node of Object.values(workflow.nodes)) {
 			if (node.disabled) continue;
 			if (pinDataNodeNames.includes(node.name)) continue;
 
-			// First pass: scrub unresolved `placeholder("hint")` sentinels emitted
-			// by the SDK. These serialise as `<__PLACEHOLDER_VALUE__hint__>` and
-			// pass the static `getNodeParametersIssues` check (non-empty string),
-			// but individual nodes' own validators (Slack channel ID format,
-			// resource-locator regex, etc.) reject them at execution time and
-			// the workflow aborts with 'The workflow has issues and cannot be
-			// executed for that reason' — same opaque message as an empty
-			// required parameter. The agent uses `placeholder()` intentionally
-			// for values the user is expected to fill via setup; in eval mode no
-			// setup runs, so we synthesise a value just like we do for any other
-			// mocked credential.
 			if (node.parameters) {
 				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
 			}
@@ -498,12 +458,9 @@ export class EvalExecutionService {
 
 			const params = node.parameters ?? {};
 			for (const paramName of Object.keys(paramIssues)) {
-				const synthesized = synthesizeMissingParamValue(params[paramName]);
-				// Cast at the assignment boundary only — the synthesised shapes
-				// (string, resource locator, original passthrough) are all valid
-				// `NodeParameterValueType`s, but the function accepts/returns
-				// `unknown` so it stays decoupled from n8n's parameter union.
-				params[paramName] = synthesized as INodeParameters[string];
+				params[paramName] = synthesizeMissingParamValue(
+					params[paramName],
+				) as INodeParameters[string];
 			}
 			node.parameters = params;
 		}
@@ -821,33 +778,9 @@ export class EvalExecutionService {
 	}
 }
 
-/**
- * Build a synthetic value for a parameter the builder left empty, preserving
- * the runtime shape the validator expects (resource locator stays a resource
- * locator, plain string stays a string). Caller invokes this only for
- * parameters that `getNodeParametersIssues` has already flagged — it never
- * overwrites a non-empty user value.
- */
-/**
- * Deep-walk a parameter value tree and replace SDK `placeholder("hint")`
- * sentinel strings (`<__PLACEHOLDER_VALUE__hint__>`) with a synthetic mock
- * value. Eval mode never reaches the setup wizard that would normally fill
- * these in — leaving them in place causes individual node validators to fire
- * 'invalid Channel ID', 'invalid sheet name', etc., which aborts the whole
- * workflow before any node runs. The mock string keeps the parameter
- * non-empty and not-sentinel-shaped, satisfying the validator; downstream
- * HTTP traffic still goes through the wire mock.
- */
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
 const PLACEHOLDER_SUFFIX = '__>';
 
-/**
- * Map a placeholder hint to a synthetic mock value shaped for the validator
- * the parameter is likely to face at runtime. The agent encodes intent in the
- * hint string (`placeholder('Site owner email address')`, `placeholder('Slack
- * channel ID')`), so we read it back: keyword matches drive the format choice.
- * Falls back to a generic non-empty string when no shape is recognisable.
- */
 function synthesizePlaceholderValue(hint: string): string {
 	const h = hint.toLowerCase();
 	if (h.includes('email')) return 'eval-mock@example.com';
@@ -903,7 +836,5 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (typeof current === 'string' && current.length === 0) return '__evalMockValue';
 	if (current === null || current === undefined) return '__evalMockValue';
 
-	// Leave numbers, booleans, arrays, and non-RL objects alone — those failures
-	// stem from genuinely wrong configurations the verifier should call out.
 	return current;
 }

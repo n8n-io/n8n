@@ -100,16 +100,7 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 
 		it('tolerates an undefined credential id without ever touching the inner helper', async () => {
-			// Builder workflows for outbound-service nodes sometimes save with
-			// `credentials = undefined` (resolveCredentials deleted the unresolved
-			// entry pre-save). Core's eval-mode bypass routes those through here
-			// with `{ id: null, name: type }`, but the LLM also occasionally emits
-			// `credentials[type] = { name: 'X' }` directly, which lands here as
-			// `{ id: undefined, name: 'X' }`. Both must synthesise a mock without
-			// hitting the inner helper — production's `getCredentialsEntity`
-			// throws an `UnexpectedError` (NOT a `CredentialNotFoundError`) on
-			// any falsy id, which the catch below would re-raise and crash the
-			// node before the wire-server ever sees the HTTP request.
+			// Falsy ids must be mocked before the inner helper can throw.
 			const innerGetDecrypted = jest.fn();
 			const inner = makeInner({
 				getCredentialsProperties: jest.fn().mockReturnValue([
