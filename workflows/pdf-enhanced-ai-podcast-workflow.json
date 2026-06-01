@@ -1,0 +1,303 @@
+{
+  "id": "pdf-enhanced-ai-podcast-workflow",
+  "name": "MVP - Enhanced PDF AI Podcast Video Composer",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "pdf-enhanced-ai-podcast-upload",
+        "formTitle": "Enhanced PDF AI Podcast Video Composer",
+        "formDescription": "Upload a cover image, an illustration image, and a PDF to generate a rigorous page-by-page AI podcast explanation video.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "cover_image",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "illustration_image",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "pdf_file",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "extra_context",
+              "fieldType": "textarea",
+              "requiredField": false,
+              "placeholder": "可选：补充受众、观点、讲解重点或语气要求。论文/科普内容会默认采用严谨逐页讲解。"
+            },
+            {
+              "fieldLabel": "podcast_speaker_a",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 渊博小叔｜zh_male_yuanboxiaoshu_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_speaker_b",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  },
+                  {
+                    "option": "男嘉宾 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_style",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "podcast_interview",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "podcast_interview"
+                  },
+                  {
+                    "option": "short_video_podcast"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "10c98d8a-0de0-4101-9fe4-b3cf109d5f10",
+      "name": "Upload Enhanced PDF Assets",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "webhookId": "pdf-enhanced-ai-podcast-upload",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst item = $input.first();\nconst binary = item.binary || {};\nfunction trimTrailingSlash(value) { let text = String(value || ''); while (text.endsWith('/')) text = text.slice(0, -1); return text; }\nfunction cleanText(value) { const lf = String.fromCharCode(10); const cr = String.fromCharCode(13); let text = String(value || '').split(String.fromCharCode(0)).join('').split(cr + lf).join(lf).split(cr).join(lf); while (text.includes(lf + lf + lf)) text = text.split(lf + lf + lf).join(lf + lf); return text.trim(); }\nfunction normalizeChoice(value, fallback) { const text = String(value || '').trim(); if (!text) return fallback; const separatorIndex = text.lastIndexOf('｜'); return separatorIndex >= 0 ? text.slice(separatorIndex + 1).trim() : text; }\nfunction extensionFromUpload(key) {\n  const meta = binary[key] || {};\n  const name = String(meta.fileName || '').toLowerCase();\n  for (const extension of ['.png', '.jpg', '.jpeg', '.webp', '.pdf']) {\n    if (name.endsWith(extension)) return extension;\n  }\n  const mime = String(meta.mimeType || '').toLowerCase();\n  if (mime.includes('png')) return '.png';\n  if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';\n  if (mime.includes('webp')) return '.webp';\n  if (mime.includes('pdf')) return '.pdf';\n  return '';\n}\nfunction requireUpload(key) {\n  if (!binary[key]) throw new Error('Missing uploaded file: ' + key);\n  return key;\n}\nfunction requireImageExtension(key) {\n  const extension = extensionFromUpload(key);\n  if (!['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) throw new Error(key + ' must be a PNG, JPG, JPEG, or WEBP image.');\n  return extension;\n}\nconst coverKey = requireUpload('cover_image');\nconst illustrationKey = requireUpload('illustration_image');\nconst pdfKey = requireUpload('pdf_file');\nconst coverExtension = requireImageExtension(coverKey);\nconst illustrationExtension = requireImageExtension(illustrationKey);\nconst pdfExtension = extensionFromUpload(pdfKey);\nif (pdfExtension !== '.pdf') throw new Error('pdf_file must be a PDF file.');\nconst now = new Date();\nconst stamp = now.toISOString().slice(0, 19).split('-').join('').split(':').join('').split('T').join('-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = stamp + '-' + random;\nconst repoDir = trimTrailingSlash(item.json.repo_dir || '/Users/stephenqiu/Desktop/Repository/n8n');\nconst baseDir = trimTrailingSlash(item.json.jobs_dir || repoDir + '/tmp/n8n-video-jobs');\nconst jobDir = baseDir + '/' + jobId;\nconst inputsDir = jobDir + '/inputs';\nconst presentationDir = jobDir + '/presentation';\nconst pagesDir = jobDir + '/pages';\nconst scriptDir = jobDir + '/script';\nconst audioDir = jobDir + '/audio';\nconst timingDir = jobDir + '/timing';\nconst transcriptDir = jobDir + '/transcript';\nconst renderDir = jobDir + '/render';\nfor (const dir of [inputsDir, presentationDir, pagesDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir]) fs.mkdirSync(dir, { recursive: true });\nconst coverImagePath = path.join(inputsDir, 'cover' + coverExtension);\nconst illustrationImagePath = path.join(inputsDir, 'illustration' + illustrationExtension);\nconst sourcePath = path.join(presentationDir, 'source.pdf');\nfs.writeFileSync(coverImagePath, await this.helpers.getBinaryDataBuffer(0, coverKey));\nfs.writeFileSync(illustrationImagePath, await this.helpers.getBinaryDataBuffer(0, illustrationKey));\nfs.writeFileSync(sourcePath, await this.helpers.getBinaryDataBuffer(0, pdfKey));\nconst paths = {\n  coverImagePath,\n  illustrationImagePath,\n  sourcePath,\n  pagesManifestPath: jobDir + '/pages.json',\n  pageScriptPath: scriptDir + '/page-script.json',\n  llmPromptPath: scriptDir + '/prompt.txt',\n  llmResponsePath: scriptDir + '/response.json',\n  pageAudioManifestPath: audioDir + '/page-audio.json',\n  pageTimingPath: timingDir + '/page-timing.json',\n  subtitlePath: renderDir + '/subtitles.ass',\n  outputVideoPath: renderDir + '/final.mp4',\n  outputAudioPath: audioDir + '/merged-audio.mp3',\n  ffmpegLogPath: renderDir + '/ffmpeg.log',\n  costPath: jobDir + '/cost.json'\n};\nconst podcastSpeakerA = normalizeChoice(item.json.podcast_speaker_a, 'zh_male_wennuanahu_uranus_bigtts');\nconst podcastSpeakerB = normalizeChoice(item.json.podcast_speaker_b, 'zh_female_yingyujiaoxue_uranus_bigtts');\nconst podcastStyle = item.json.podcast_style || 'podcast_interview';\nconst userContext = cleanText(item.json.extra_context);\nconst rigorousScienceContext = [\n  '请采用严谨科普/论文逐页讲解方式。',\n  '每页只解释当前页面可验证的信息、术语、图表标签、公式、主张和轻微上下文。',\n  '讲清楚这一页支持什么，以及不能单独证明什么。',\n  userContext\n].filter(Boolean).join('\\n');\nconst extractJobPath = jobDir + '/extract-job.json';\nconst scriptJobPath = jobDir + '/script-job.json';\nconst podcastJobPath = jobDir + '/podcast-job.json';\nconst composerJobPath = jobDir + '/composer-job.json';\nfs.writeFileSync(extractJobPath, JSON.stringify({ jobId, sourcePath, presentationDir, pagesDir, pagesManifestPath: paths.pagesManifestPath }, null, 2));\nfs.writeFileSync(scriptJobPath, JSON.stringify({ jobId, pagesManifestPath: paths.pagesManifestPath, pageScriptPath: paths.pageScriptPath, llmPromptPath: paths.llmPromptPath, llmResponsePath: paths.llmResponsePath, extraContext: rigorousScienceContext, podcastStyle }, null, 2));\nfs.writeFileSync(podcastJobPath, JSON.stringify({ jobId, pageScriptPath: paths.pageScriptPath, audioDir, timingDir, transcriptDir, pageAudioManifestPath: paths.pageAudioManifestPath, costPath: paths.costPath, podcastSpeakerA, podcastSpeakerB }, null, 2));\nreturn [{ json: { ...item.json, jobId, repoDir, baseDir, jobDir, inputsDir, presentationDir, pagesDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir, ...paths, extractJobPath, scriptJobPath, podcastJobPath, composerJobPath, extraContext: rigorousScienceContext, podcastSpeakerA, podcastSpeakerB, podcastStyle } }];"
+      },
+      "id": "2f245e7c-48fb-412d-8a74-1d1029c6b428",
+      "name": "Prepare Enhanced PDF Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Presentation extraction failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/extract-presentation.mjs', [item.extractJobPath]);\nreturn [{ json: { ...item, extractStdout: result.stdout, extractStderr: result.stderr } }];"
+      },
+      "id": "60ed204b-b770-4cdb-9b1d-97ba4ddcdcc2",
+      "name": "Extract PDF Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Page script generation failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/presentation-script-client.mjs', [item.scriptJobPath]);\nreturn [{ json: { ...item, scriptStdout: result.stdout, scriptStderr: result.stderr } }];"
+      },
+      "id": "10926d4e-12a7-4051-b33b-9e18b185fd1e",
+      "name": "Generate Page Podcast Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Per-page AI podcast failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/presentation-podcast-client.mjs', [item.podcastJobPath]);\nreturn [{ json: { ...item, podcastStdout: result.stdout, podcastStderr: result.stderr } }];"
+      },
+      "id": "8636cacc-82f4-435e-9b7f-7a3cc58479f8",
+      "name": "Run Page AI Podcast",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst job = {\n  jobId: item.jobId,\n  coverImagePath: item.coverImagePath,\n  illustrationImagePath: item.illustrationImagePath,\n  pagesManifestPath: item.pagesManifestPath,\n  pageAudioManifestPath: item.pageAudioManifestPath,\n  pageTimingPath: item.pageTimingPath,\n  subtitlePath: item.subtitlePath,\n  renderDir: item.renderDir,\n  outputVideoPath: item.outputVideoPath,\n  outputAudioPath: item.outputAudioPath,\n  ffmpegLogPath: item.ffmpegLogPath,\n  introCoverSeconds: Number(item.intro_cover_seconds || 4),\n  introIllustrationSeconds: Number(item.intro_illustration_seconds || 4),\n  pagePauseSeconds: Number(item.page_pause_seconds || 0.3),\n  overlayWidth: Number(item.overlay_width || 260),\n  width: Number(item.video_width || 1920),\n  height: Number(item.video_height || 1080),\n  fps: Number(item.video_fps || 30)\n};\nfs.writeFileSync(item.composerJobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, composerJob: job } }];"
+      },
+      "id": "fb0445bf-f75b-4433-8fd7-038fd65fd917",
+      "name": "Build Enhanced PDF Video Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Enhanced PDF composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/compose-enhanced-pdf-video.mjs', [item.composerJobPath]);\nreturn [{ json: { ...item, composerStdout: result.stdout, composerStderr: result.stderr } }];"
+      },
+      "id": "20f90b94-a1ce-4502-a018-42bd38779e3e",
+      "name": "Run Enhanced PDF Composer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nif (!fs.existsSync(item.outputVideoPath)) throw new Error('Final video was not created: ' + item.outputVideoPath);\nif (!fs.existsSync(item.outputAudioPath)) throw new Error('Merged audio was not created: ' + item.outputAudioPath);\nconst video = fs.readFileSync(item.outputVideoPath);\nconst audio = fs.readFileSync(item.outputAudioPath);\nif (video.length === 0) throw new Error('Final video is empty: ' + item.outputVideoPath);\nif (audio.length === 0) throw new Error('Merged audio is empty: ' + item.outputAudioPath);\nconst pageScript = fs.existsSync(item.pageScriptPath) ? JSON.parse(fs.readFileSync(item.pageScriptPath, 'utf8')) : null;\nconst pageTiming = fs.existsSync(item.pageTimingPath) ? JSON.parse(fs.readFileSync(item.pageTimingPath, 'utf8')) : null;\nconst cost = item.costPath && fs.existsSync(item.costPath) ? JSON.parse(fs.readFileSync(item.costPath, 'utf8')) : null;\nreturn [{ json: { jobId: item.jobId, reviewDir: item.jobDir, videoPath: item.outputVideoPath, audioPath: item.outputAudioPath, coverImagePath: item.coverImagePath, illustrationImagePath: item.illustrationImagePath, pagesManifestPath: item.pagesManifestPath, pageScriptPath: item.pageScriptPath, pageTimingPath: item.pageTimingPath, subtitlePath: item.subtitlePath, costPath: item.costPath, ffmpegLog: item.ffmpegLogPath, size: video.length, pageCount: pageTiming ? pageTiming.pages.length : 0, totalDuration: pageTiming ? pageTiming.totalDuration : null, generatedScriptTitle: pageScript ? pageScript.title : '', generatedScriptSummary: pageScript ? pageScript.summary : '', cost }, binary: { finalVideo: await this.helpers.prepareBinaryData(video, 'final.mp4', 'video/mp4'), podcastAudio: await this.helpers.prepareBinaryData(audio, 'merged-audio.mp3', 'audio/mpeg') } }];"
+      },
+      "id": "701b8386-4821-4c0a-ab90-1e30623e0348",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, jobId: $json.jobId, reviewDir: $json.reviewDir, videoPath: $json.videoPath, audioPath: $json.audioPath, coverImagePath: $json.coverImagePath, illustrationImagePath: $json.illustrationImagePath, pagesManifestPath: $json.pagesManifestPath, pageScriptPath: $json.pageScriptPath, pageTimingPath: $json.pageTimingPath, subtitlePath: $json.subtitlePath, costPath: $json.costPath, ffmpegLog: $json.ffmpegLog, size: $json.size, pageCount: $json.pageCount, totalDuration: $json.totalDuration, generatedScriptTitle: $json.generatedScriptTitle, generatedScriptSummary: $json.generatedScriptSummary, cost: $json.cost } }}"
+      },
+      "id": "e7def9b6-ee3e-4986-825d-bd1c7123e542",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Upload Enhanced PDF Assets": {
+      "main": [
+        [
+          {
+            "node": "Prepare Enhanced PDF Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Enhanced PDF Job": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Pages": {
+      "main": [
+        [
+          {
+            "node": "Generate Page Podcast Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Page Podcast Script": {
+      "main": [
+        [
+          {
+            "node": "Run Page AI Podcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Page AI Podcast": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced PDF Video Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enhanced PDF Video Job": {
+      "main": [
+        [
+          {
+            "node": "Run Enhanced PDF Composer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Enhanced PDF Composer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "versionId": "pdf-enhanced-ai-podcast-workflow-v1",
+  "tags": []
+}
