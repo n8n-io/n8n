@@ -14,7 +14,11 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
-import { notionMockServer } from '../registry/mock-servers';
+import {
+	gmailDirectExtendMockServer,
+	notionMockServer,
+	slackExtendingMockServer,
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -58,6 +62,7 @@ function createBaseNodeClass() {
 function createLoadNodesAndCredentials(options?: {
 	withLangchainLoader?: boolean;
 	withBaseNode?: boolean;
+	knownCredentialTypes?: string[];
 }): {
 	loadNodesAndCredentials: LoadNodesAndCredentials;
 	baseNode: INodeType;
@@ -77,8 +82,14 @@ function createLoadNodesAndCredentials(options?: {
 	const loaders =
 		options?.withLangchainLoader === false ? {} : { [LANGCHAIN_PACKAGE_NAME]: langchainLoader };
 
+	const knownCredentials: Record<string, unknown> = {};
+	for (const name of options?.knownCredentialTypes ?? []) {
+		knownCredentials[name] = {};
+	}
+
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders,
+		knownCredentials: knownCredentials as never,
 	});
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
@@ -204,6 +215,82 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.credentials).toHaveLength(1);
+		});
+
+		it('registers a synthetic credential extending an existing one when extendsCredential is set', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['slackOAuth2Api'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([slackExtendingMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'slack',
+				credentials: [{ name: 'slackMcpOAuth2Api', required: true }],
+			});
+
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0]).toMatchObject({
+				name: 'slackMcpOAuth2Api',
+				extends: ['slackOAuth2Api'],
+			});
+
+			expect(loader.known.credentials.slackMcpOAuth2Api).toMatchObject({
+				className: 'McpRegistryApi',
+				extends: ['slackOAuth2Api'],
+				supportedNodes: ['slack'],
+			});
+		});
+
+		it('registers the node but no synthetic credential when extendsCredential has no overrides', async () => {
+			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['gmailOAuth2'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([gmailDirectExtendMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gmail',
+				credentials: [{ name: 'gmailOAuth2', required: true }],
+			});
+
+			expect(loader.types.credentials).toHaveLength(0);
+			expect(loader.known.credentials).toEqual({});
+
+			const loadedNode = loader.getNode('gmail');
+			expect(loadedNode.sourcePath).toBe(sourcePath);
+		});
+
+		it('skips direct-extend servers whose parent credential type is not registered', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: [],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([gmailDirectExtendMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
+		});
+
+		it('skips servers whose extendsCredential parent type is not registered', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: [],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([slackExtendingMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
 		});
 
 		it('loads deprecated servers when passed through setServers', async () => {

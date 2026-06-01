@@ -7,7 +7,11 @@ import type {
 	Themed,
 } from 'n8n-workflow';
 
-import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types';
+import {
+	mcpRegistryExtendsCredentialSchema,
+	type McpRegistryIcon,
+	type McpRegistryServer,
+} from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -30,6 +34,21 @@ function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
 }
 
 /**
+ * Shared identity fields for every synthetic credential the registry produces.
+ */
+function getMcpRegistryCredentialHeader(server: McpRegistryServer): {
+	name: string;
+	icon: string;
+	displayName: string;
+} {
+	return {
+		name: getMcpRegistryCredentialTypeName(server),
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} MCP OAuth2`,
+	};
+}
+
+/**
  * Registry MCP server → service-specific credential type for OAuth2 auth type
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
@@ -45,10 +64,8 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 	}
 
 	return {
-		name: getMcpRegistryCredentialTypeName(server),
+		...getMcpRegistryCredentialHeader(server),
 		extends: [MCP_BASE_OAUTH2_CREDENTIAL_NAME],
-		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
-		displayName: `${server.title} MCP OAuth2`,
 		properties: [
 			{
 				displayName: 'Use Dynamic Client Registration',
@@ -79,12 +96,78 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 }
 
 /**
+ * Parses and validates `server.extendsCredential`, applies the
+ * known-credential predicate, and strips null/undefined override values.
+ * Returns null when the payload is missing, fails validation, or the parent
+ * type is not registered.
+ */
+function classifyExtendsCredential(
+	server: McpRegistryServer,
+	isKnownCredentialType?: (name: string) => boolean,
+): { parentType: string; overrides: Record<string, unknown>; hasOverrides: boolean } | null {
+	if (!server.extendsCredential) return null;
+
+	const parseResult = mcpRegistryExtendsCredentialSchema.safeParse(server.extendsCredential);
+	if (!parseResult.success) return null;
+
+	const { extends: parentType, ...rawOverrides } = parseResult.data;
+	if (isKnownCredentialType && !isKnownCredentialType(parentType)) return null;
+
+	const overrides: Record<string, unknown> = {};
+	for (const [name, value] of Object.entries(rawOverrides)) {
+		if (value !== null && value !== undefined) overrides[name] = value;
+	}
+
+	return { parentType, overrides, hasOverrides: Object.keys(overrides).length > 0 };
+}
+
+/**
+ * Registry MCP server → credential extending a known n8n credential type with
+ * the values supplied by `extendsCredential`. Returns `null` when the payload
+ * is invalid, the parent isn't registered, or there are no overrides to apply
+ * (in which case the parent credential is used as-is by the node description).
+ */
+function serverToExtendedCredentialDescription(
+	server: McpRegistryServer,
+	isKnownCredentialType?: (name: string) => boolean,
+): ICredentialType | null {
+	const classified = classifyExtendsCredential(server, isKnownCredentialType);
+	if (!classified || !classified.hasOverrides) return null;
+
+	const properties: INodeProperties[] = Object.entries(classified.overrides).map(
+		([name, value]) => ({
+			displayName: name,
+			name,
+			type: 'hidden',
+			default: value,
+		}),
+	);
+
+	return {
+		...getMcpRegistryCredentialHeader(server),
+		extends: [classified.parentType],
+		properties,
+	};
+}
+
+/**
  * Get the `credentials` property for node description based on the server's auth type
  */
-function getNodeDescriptionCredentials(server: McpRegistryServer): INodeCredentialDescription[] {
+function getNodeDescriptionCredentials(
+	server: McpRegistryServer,
+	isKnownCredentialType?: (name: string) => boolean,
+): INodeCredentialDescription[] {
 	switch (server.authType) {
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
+		case 'extendsCredential': {
+			const classified = classifyExtendsCredential(server, isKnownCredentialType);
+			if (!classified) return [];
+			const name = classified.hasOverrides
+				? getMcpRegistryCredentialTypeName(server)
+				: classified.parentType;
+			return [{ name, required: true }];
+		}
 		default:
 			return [];
 	}
@@ -157,10 +240,15 @@ function withRemoteDefaults(
 /**
  * Registry MCP server → service-specific credential type depending on auth type for the server
  */
-export function serverToCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+export function serverToCredentialDescription(
+	server: McpRegistryServer,
+	isKnownCredentialType?: (name: string) => boolean,
+): ICredentialType | null {
 	switch (server.authType) {
 		case 'oauth2':
 			return serverToOAuth2CredentialDescription(server);
+		case 'extendsCredential':
+			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
 		default:
 			return null;
 	}
@@ -172,8 +260,9 @@ export function serverToCredentialDescription(server: McpRegistryServer): ICrede
 export function serverToNodeDescription(
 	server: McpRegistryServer,
 	baseDescription: INodeTypeDescription,
+	isKnownCredentialType?: (name: string) => boolean,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2') return null;
+	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
 
 	const remote = pickRemote(server);
 	if (!remote) return null;
@@ -191,7 +280,7 @@ export function serverToNodeDescription(
 	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.tagline;
 	description.defaults = { name: displayName };
-	description.credentials = getNodeDescriptionCredentials(server);
+	description.credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
 	if (description.codex) {
 		description.codex.alias?.push(server.title, displayName);
 		if (server.websiteUrl) {

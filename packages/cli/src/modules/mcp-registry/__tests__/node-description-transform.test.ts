@@ -5,7 +5,11 @@ import {
 	serverToCredentialDescription,
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
-import { notionMockServer } from '../registry/mock-servers';
+import {
+	gmailDirectExtendMockServer,
+	notionMockServer,
+	slackExtendingMockServer,
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -278,6 +282,36 @@ describe('serverToNodeDescription', () => {
 }
 `);
 	});
+
+	describe('with extendsCredential', () => {
+		it('wires the synthetic credential name into the node description when overrides are present', () => {
+			const description = serverToNodeDescription(slackExtendingMockServer, baseDescription);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([{ name: 'slackMcpOAuth2Api', required: true }]);
+		});
+
+		it('wires the parent credential directly when no overrides are present', () => {
+			const description = serverToNodeDescription(
+				gmailDirectExtendMockServer,
+				baseDescription,
+				(name) => name === 'gmailOAuth2',
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([{ name: 'gmailOAuth2', required: true }]);
+		});
+
+		it('omits credentials when the parent type is not registered', () => {
+			const description = serverToNodeDescription(
+				gmailDirectExtendMockServer,
+				baseDescription,
+				() => false,
+			);
+
+			expect(description?.credentials).toEqual([]);
+		});
+	});
 });
 
 describe('serverToCredentialDescription', () => {
@@ -344,5 +378,128 @@ describe('serverToCredentialDescription', () => {
 		};
 
 		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
+	});
+
+	describe('with extendsCredential', () => {
+		const isKnownCredentialType = (name: string) => name === 'slackOAuth2Api';
+
+		it('extends the named credential and emits hidden override properties for non-null values', () => {
+			const description = serverToCredentialDescription(
+				slackExtendingMockServer,
+				isKnownCredentialType,
+			);
+
+			expect(description).toEqual({
+				name: 'slackMcpOAuth2Api',
+				displayName: 'Slack MCP OAuth2',
+				extends: ['slackOAuth2Api'],
+				icon: 'node:@n8n/mcp-registry.slack',
+				properties: [
+					{
+						displayName: 'authUrl',
+						name: 'authUrl',
+						type: 'hidden',
+						default: 'https://slack.com/oauth/v2_user/authorize',
+					},
+					{
+						displayName: 'accessTokenUrl',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: 'https://slack.com/api/oauth.v2.user.access',
+					},
+					{
+						displayName: 'scope',
+						name: 'scope',
+						type: 'hidden',
+						default: 'channels:read chat:write',
+					},
+					{
+						displayName: 'authQueryParameters',
+						name: 'authQueryParameters',
+						type: 'hidden',
+						default: '',
+					},
+				],
+			});
+		});
+
+		it('drops override keys whose value is null', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'slackOAuth2Api',
+					authUrl: 'https://slack.com/oauth/v2_user/authorize',
+					accessTokenUrl: null as unknown as string,
+					scope: null as unknown as string,
+				},
+			};
+
+			const description = serverToCredentialDescription(server, isKnownCredentialType);
+
+			expect(description?.properties).toEqual([
+				{
+					displayName: 'authUrl',
+					name: 'authUrl',
+					type: 'hidden',
+					default: 'https://slack.com/oauth/v2_user/authorize',
+				},
+			]);
+		});
+
+		it('returns null when the parent credential type is not registered', () => {
+			const description = serverToCredentialDescription(
+				slackExtendingMockServer,
+				(name) => name === 'somethingElse',
+			);
+
+			expect(description).toBeNull();
+		});
+
+		it('returns null when the extendsCredential payload fails schema validation', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'slackOAuth2Api',
+					grantType: 'invalidGrant' as never,
+				},
+			};
+
+			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+		});
+
+		it('returns null when authType is "extendsCredential" but the extendsCredential field is missing', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: undefined,
+			};
+
+			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+		});
+
+		it('skips the parent-type registration check when no predicate is provided', () => {
+			const description = serverToCredentialDescription(slackExtendingMockServer);
+
+			expect(description?.extends).toEqual(['slackOAuth2Api']);
+		});
+
+		it('returns null when extendsCredential has no overrides (direct-extend path uses the parent as-is)', () => {
+			const description = serverToCredentialDescription(
+				gmailDirectExtendMockServer,
+				(name) => name === 'gmailOAuth2',
+			);
+
+			expect(description).toBeNull();
+		});
+
+		it('is ignored when authType is "oauth2"', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				authType: 'oauth2',
+			};
+
+			const description = serverToCredentialDescription(server, isKnownCredentialType);
+
+			expect(description?.extends).toEqual(['mcpOAuth2Api']);
+		});
 	});
 });
