@@ -28,6 +28,7 @@ import { execute as imageGenerateExecute } from '../actions/image/generate.opera
 import { execute as textMessageExecute } from '../actions/text/message.operation';
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
 import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
+import { clearModelCatalogCache } from '../helpers/modelCatalog';
 import { apiRequest, pollTaskResult } from '../transport';
 
 import type { Mock } from 'vitest';
@@ -41,6 +42,7 @@ describe('AlicloudModelStudio Operations', () => {
 	let mockNode: { typeVersion: number };
 
 	beforeEach(() => {
+		clearModelCatalogCache();
 		mockNode = { typeVersion: 1 };
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode as any);
@@ -174,6 +176,54 @@ describe('AlicloudModelStudio Operations', () => {
 				},
 			);
 			expect(result.json).toEqual({ content: '4' });
+		});
+
+		it('should route a text-only model to text-generation based on catalogue modality', async () => {
+			// qwen3.7-max is not matched by the name-based heuristic, so only the
+			// catalogue's modality data routes it to text-generation (not multimodal).
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				url: 'https://dashscope-intl.aliyuncs.com',
+				apiKey: 'test-key',
+			});
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId: 'qwen3.7-max',
+						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
+						options: {},
+						simplify: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+			mockApiRequest.mockImplementation(async (method: string, endpoint: string) => {
+				if (method === 'GET' && endpoint === '/api/v1/models') {
+					return {
+						output: {
+							total: 1,
+							models: [
+								{
+									model: 'qwen3.7-max',
+									inference_metadata: {
+										request_modality: ['Text'],
+										response_modality: ['Text'],
+									},
+								},
+							],
+						},
+					};
+				}
+				return { output: { text: 'Hi!' }, usage: { input_tokens: 1, output_tokens: 1 } };
+			});
+
+			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/text-generation/generation',
+				expect.anything(),
+			);
+			expect(result.json).toEqual({ content: 'Hi!' });
 		});
 
 		it('should return full response object when simplify is false', async () => {
