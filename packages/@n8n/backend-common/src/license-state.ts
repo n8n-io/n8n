@@ -234,6 +234,11 @@ export class LicenseState {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
 	}
 
+	isTeamProjectsLicensed() {
+		const quota = this.getMaxTeamProjects();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
+	}
+
 	getMaxWorkflowsWithEvaluations() {
 		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
 	}

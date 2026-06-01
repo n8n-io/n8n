@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import z from 'zod';
 
@@ -44,23 +45,30 @@ const outputSchema = {
 			'List of projects matching the query, sorted with exact case-insensitive matches first.',
 		),
 	count: z.number().int().min(0).describe('Total number of matching projects'),
+	teamProjectsEnabled: z
+		.boolean()
+		.optional()
+		.describe(
+			"Whether team projects are enabled on this n8n instance. When false, only the caller's personal project exists — do not ask the user to pick a project, and omit projectId on create_workflow_from_code so the workflow lands in their personal project. Omitted on error responses.",
+		),
 	hint: z
 		.string()
 		.optional()
 		.describe(
-			'Guidance for picking a result. Present when the match is ambiguous — for example when no exact match was found but multiple partials were returned. When present, follow it before calling create_workflow_from_code.',
+			'Guidance for picking a result. Present when the match is ambiguous — for example when no exact match was found but multiple partials were returned, or when team projects are not enabled on this instance. When present, follow it before calling create_workflow_from_code.',
 		),
 } satisfies z.ZodRawShape;
 
 export const createSearchProjectsTool = (
 	user: User,
 	projectRepository: ProjectRepository,
+	licenseState: LicenseState,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'search_projects',
 	config: {
 		description:
-			'Search for projects accessible to the current user. Call this whenever the user names a project — pass the name as the query, then use the resolved ID with create_workflow_from_code or update_workflow. Results are ranked with exact case-insensitive name matches first. If no exact match is found but multiple partials are returned, the response includes a `hint` field telling you to clarify with the user before acting; follow it instead of guessing.',
+			"Search for projects accessible to the current user. Call this whenever the user names a project — pass the name as the query, then use the resolved ID with create_workflow_from_code or update_workflow. Results are ranked with exact case-insensitive name matches first. If no exact match is found but multiple partials are returned, the response includes a `hint` field telling you to clarify with the user before acting; follow it instead of guessing. The response also includes `teamProjectsEnabled` — when false, team projects are not licensed on this instance and only the caller's personal project exists, so do not prompt the user to pick a project.",
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -85,6 +93,8 @@ export const createSearchProjectsTool = (
 			tool_name: 'search_projects',
 			parameters: { query, type, limit },
 		};
+
+		const teamProjectsEnabled = licenseState.isTeamProjectsLicensed();
 
 		try {
 			const effectiveLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
@@ -131,7 +141,10 @@ export const createSearchProjectsTool = (
 
 			const exactMatchCount = scoredProjects.reduce((acc, p) => acc + (p.isExact ? 1 : 0), 0);
 			let hint: string | undefined;
-			if (normalizedQuery) {
+			if (!teamProjectsEnabled) {
+				hint =
+					"Team projects are not enabled on this instance — only the caller's personal project exists. Do not ask the user to pick a project; omit projectId when calling create_workflow_from_code so the workflow lands in their personal project.";
+			} else if (normalizedQuery) {
 				if (exactMatchCount === 0 && count > 1) {
 					hint = `No exact match for "${query}". ${count} partial matches are available — ask the user to clarify which project they meant before creating or updating a workflow.`;
 				} else if (exactMatchCount > 1) {
@@ -145,7 +158,7 @@ export const createSearchProjectsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data, count, ...(hint ? { hint } : {}) };
+			const output = { data, count, teamProjectsEnabled, ...(hint ? { hint } : {}) };
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,

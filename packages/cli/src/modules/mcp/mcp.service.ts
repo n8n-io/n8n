@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
@@ -106,6 +106,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async getServer(user: User) {
@@ -366,6 +367,7 @@ export class McpService {
 		const searchProjectsTool = createSearchProjectsTool(
 			user,
 			this.projectRepository,
+			this.licenseState,
 			this.telemetry,
 		);
 		server.registerTool(
