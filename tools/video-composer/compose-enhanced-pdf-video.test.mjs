@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 import {
 	buildCoverIntroFfmpegArgs,
@@ -98,7 +102,7 @@ test('scaleImageToCanvasFilter centers images on white canvas without cropping',
 test('scaleOverlayFilter creates a stable lower-corner overlay image', () => {
 	assert.equal(
 		scaleOverlayFilter('[1:v]', 260, 324, '[coverOverlay]'),
-		'[1:v]scale=260:324:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1[coverOverlay]',
+		'[1:v]scale=260:324:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,format=rgba,pad=260:324:floor((ow-iw)/2):floor((oh-ih)/2):color=black@0[coverOverlay]',
 	);
 });
 
@@ -135,7 +139,8 @@ test('buildIllustrationIntroFfmpegArgs uses PDF page 1 as background', () => {
 	assert.equal(args.includes('/tmp/illustration.png'), true);
 	assert.equal(args.includes('/tmp/render/intro-illustration.mp4'), true);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1056:702/);
-	assert.match(args[args.indexOf('-filter_complex') + 1], /overlay=\(W-w\)\/2:\(H-h\)\/2/);
+	assert.match(args[args.indexOf('-filter_complex') + 1], /overlay=432:189/);
+	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -158,6 +163,7 @@ test('buildEnhancedSegmentFfmpegArgs omits overlays for page 1', () => {
 	assert.equal(args.includes('/tmp/cover.png'), false);
 	assert.equal(args.includes('/tmp/illustration.png'), false);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /subtitles=filename=/);
+	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -181,8 +187,10 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 	assert.equal(args.includes('/tmp/illustration.png'), true);
 	const filter = args[args.indexOf('-filter_complex') + 1];
 	assert.match(filter, /scale=260:324/);
-	assert.match(filter, /overlay=40:H-h-40/);
-	assert.match(filter, /overlay=W-w-40:H-h-40/);
+	assert.match(filter, /pad=260:324:floor\(\(ow-iw\)\/2\):oh-ih:color=black@0\[coverOverlay\]/);
+	assert.match(filter, /overlay=40:716/);
+	assert.match(filter, /overlay=1620:716/);
+	assert.match(filter, /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -282,4 +290,120 @@ test('buildFinalConcatFfmpegArgs re-encodes concatenated segments', () => {
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 	assert.equal(args.at(-1), '/tmp/final.mp4');
+});
+
+function run(command, args, options = {}) {
+	const result = spawnSync(command, args, { encoding: 'utf8', ...options });
+	if (result.status !== 0) {
+		throw new Error(`${command} ${args.join(' ')} failed\n${result.stdout}\n${result.stderr}`);
+	}
+	return result.stdout.trim();
+}
+
+function makePng(filePath, size, color) {
+	run('ffmpeg', [
+		'-y',
+		'-f',
+		'lavfi',
+		'-i',
+		`color=c=${color}:s=${size}:d=0.1`,
+		'-frames:v',
+		'1',
+		filePath,
+	]);
+}
+
+test('enhanced PDF composer renders a real video with portrait PDF page and wide illustration', { timeout: 120_000 }, () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'enhanced-pdf-composer-smoke-'));
+	const inputsDir = path.join(root, 'inputs');
+	const pagesDir = path.join(root, 'pages');
+	const audioDir = path.join(root, 'audio');
+	const timingDir = path.join(root, 'timing');
+	const renderDir = path.join(root, 'render');
+	for (const dir of [inputsDir, pagesDir, audioDir, timingDir, renderDir]) fs.mkdirSync(dir, { recursive: true });
+
+	const coverImagePath = path.join(inputsDir, 'cover.png');
+	const illustrationImagePath = path.join(inputsDir, 'illustration.png');
+	const pageImagePath = path.join(pagesDir, 'page-001.png');
+	const pageTwoImagePath = path.join(pagesDir, 'page-002.png');
+	const audioPath = path.join(audioDir, 'page-001.mp3');
+	const pageTwoAudioPath = path.join(audioDir, 'page-002.mp3');
+	makePng(coverImagePath, '2730x1535', 'red');
+	makePng(pageImagePath, '1191x1582', 'green');
+	makePng(pageTwoImagePath, '1191x1582', 'yellow');
+	makePng(illustrationImagePath, '1792x918', 'blue');
+	for (const outputAudioPath of [audioPath, pageTwoAudioPath]) {
+		run('ffmpeg', [
+			'-y',
+			'-f',
+			'lavfi',
+			'-i',
+			'anullsrc=channel_layout=stereo:sample_rate=48000',
+			'-t',
+			'0.5',
+			'-c:a',
+			'libmp3lame',
+			outputAudioPath,
+		]);
+	}
+
+	const pagesManifestPath = path.join(root, 'pages.json');
+	const pageAudioManifestPath = path.join(audioDir, 'page-audio.json');
+	const pageTimingPath = path.join(timingDir, 'page-timing.json');
+	const jobPath = path.join(root, 'composer-job.json');
+	const outputVideoPath = path.join(renderDir, 'final.mp4');
+	fs.writeFileSync(pagesManifestPath, JSON.stringify({
+		sourceType: 'pdf',
+		pageCount: 2,
+		pages: [
+			{ pageNumber: 1, imagePath: pageImagePath, textPath: path.join(pagesDir, 'page-001.txt'), text: '第一页', isTextSparse: false },
+			{ pageNumber: 2, imagePath: pageTwoImagePath, textPath: path.join(pagesDir, 'page-002.txt'), text: '第二页', isTextSparse: false },
+		],
+	}, null, 2));
+	fs.writeFileSync(pageAudioManifestPath, JSON.stringify({
+		pages: [
+			{ pageNumber: 1, audioPath, duration: 0.5, transcript: '第一页', subtitleEvents: [{ start: 0, end: 0.5, text: '第一页' }] },
+			{ pageNumber: 2, audioPath: pageTwoAudioPath, duration: 0.5, transcript: '第二页', subtitleEvents: [{ start: 0, end: 0.5, text: '第二页' }] },
+		],
+	}, null, 2));
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'smoke',
+		coverImagePath,
+		illustrationImagePath,
+		pagesManifestPath,
+		pageAudioManifestPath,
+		pageTimingPath,
+		subtitlePath: path.join(renderDir, 'subtitles.ass'),
+		renderDir,
+		outputVideoPath,
+		outputAudioPath: path.join(audioDir, 'merged-audio.mp3'),
+		ffmpegLogPath: path.join(renderDir, 'ffmpeg.log'),
+		introCoverSeconds: 0.2,
+		introIllustrationSeconds: 0.2,
+		pagePauseSeconds: 0.1,
+		width: 1920,
+		height: 1080,
+		fps: 30,
+	}, null, 2));
+
+	run('node', ['tools/video-composer/compose-enhanced-pdf-video.mjs', jobPath], {
+		cwd: process.cwd(),
+	});
+
+	const dimensions = run('ffprobe', [
+		'-v',
+		'error',
+		'-select_streams',
+		'v:0',
+		'-show_entries',
+		'stream=width,height',
+		'-of',
+		'csv=p=0:s=x',
+		outputVideoPath,
+	]);
+	assert.equal(dimensions, '1920x1080');
+	assert.equal(fs.existsSync(path.join(renderDir, 'intro-illustration.mp4')), true);
+	assert.equal(fs.existsSync(path.join(renderDir, 'segment-002.mp4')), true);
+	assert.equal(fs.existsSync(path.join(renderDir, 'pause-001.mp4')), true);
+	assert.ok(fs.statSync(outputVideoPath).size > 0);
 });

@@ -52,8 +52,13 @@ export function scaleImageToCanvasFilter(input, width, height, label) {
 	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
 
-export function scaleOverlayFilter(input, overlayWidth, maxHeight, label) {
-	return `${input}scale=${overlayWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1${label}`;
+export function scaleOverlayFilter(input, overlayWidth, maxHeight, label, { verticalAlign = 'center' } = {}) {
+	const y = verticalAlign === 'bottom' ? 'oh-ih' : 'floor((oh-ih)/2)';
+	return `${input}scale=${overlayWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,format=rgba,pad=${overlayWidth}:${maxHeight}:floor((ow-iw)/2):${y}:color=black@0${label}`;
+}
+
+function normalizeCanvasFilter(input, width, height, label) {
+	return `${input}scale=${width}:${height}:force_original_aspect_ratio=disable:reset_sar=1${label}`;
 }
 
 function escapeForFilterPath(filePath) {
@@ -138,10 +143,13 @@ export function buildIllustrationIntroFfmpegArgs({
 }) {
 	const illustrationWidth = Math.round(width * 0.55);
 	const illustrationMaxHeight = Math.round(height * 0.65);
+	const illustrationX = Math.floor((width - illustrationWidth) / 2);
+	const illustrationY = Math.floor((height - illustrationMaxHeight) / 2);
 	const filter = [
 		scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
 		scaleOverlayFilter('[1:v]', illustrationWidth, illustrationMaxHeight, '[illustrationv]'),
-		'[pagev][illustrationv]overlay=(W-w)/2:(H-h)/2[vout]',
+		`[pagev][illustrationv]overlay=${illustrationX}:${illustrationY}[overlayv]`,
+		normalizeCanvasFilter('[overlayv]', width, height, '[vout]'),
 	].join(';');
 
 	return [
@@ -190,7 +198,11 @@ export function buildEnhancedSegmentFfmpegArgs({
 	const subtitles = `subtitles=filename=${escapeForFilterPath(subtitlePath)}`;
 	const baseInputs = ['-y', '-loop', '1', '-i', pageImage, '-i', audioPath];
 	if (Number(pageNumber) === 1) {
-		const filter = `${scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]')};[pagev]${subtitles}[vout]`;
+		const filter = [
+			scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
+			`[pagev]${subtitles}[subtitlev]`,
+			normalizeCanvasFilter('[subtitlev]', width, height, '[vout]'),
+		].join(';');
 
 		return [
 			...baseInputs,
@@ -213,13 +225,18 @@ export function buildEnhancedSegmentFfmpegArgs({
 	}
 
 	const overlayMaxHeight = Math.round(height * 0.3);
+	const overlayY = height - overlayMaxHeight - 40;
+	const illustrationX = width - overlayWidth - 40;
 	const filter = [
 		scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
-		scaleOverlayFilter('[2:v]', overlayWidth, overlayMaxHeight, '[coverOverlay]'),
-		scaleOverlayFilter('[3:v]', overlayWidth, overlayMaxHeight, '[illustrationOverlay]'),
-		'[pagev][coverOverlay]overlay=40:H-h-40[leftv]',
-		'[leftv][illustrationOverlay]overlay=W-w-40:H-h-40[overlayv]',
-		`[overlayv]${subtitles}[vout]`,
+		scaleOverlayFilter('[2:v]', overlayWidth, overlayMaxHeight, '[coverOverlay]', { verticalAlign: 'bottom' }),
+		scaleOverlayFilter('[3:v]', overlayWidth, overlayMaxHeight, '[illustrationOverlay]', { verticalAlign: 'bottom' }),
+		`[pagev][coverOverlay]overlay=40:${overlayY}[leftraw]`,
+		normalizeCanvasFilter('[leftraw]', width, height, '[leftv]'),
+		`[leftv][illustrationOverlay]overlay=${illustrationX}:${overlayY}[overlayraw]`,
+		normalizeCanvasFilter('[overlayraw]', width, height, '[overlayv]'),
+		`[overlayv]${subtitles}[subtitlev]`,
+		normalizeCanvasFilter('[subtitlev]', width, height, '[vout]'),
 	].join(';');
 
 	return [
