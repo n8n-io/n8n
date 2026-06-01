@@ -20,19 +20,19 @@ const browserCapableOptions: {
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('orchestrator → browser-credential-setup dispatch', () => {
-		it('routes needsBrowserSetup=true credential responses to the browser-credential-setup tool', () => {
+	describe('orchestrator → Computer Use credential setup skill', () => {
+		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('needsBrowserSetup=true');
-			expect(prompt).toContain('browser-credential-setup');
-			expect(prompt).toMatch(/call `browser-credential-setup` directly/);
+			expect(prompt).toContain('credential-setup-with-computer-use');
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 
 		it('does not route browser credential setup through delegate', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/call `browser-credential-setup` directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly \(not `delegate`\)/);
 		});
 	});
 

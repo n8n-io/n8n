@@ -24,6 +24,7 @@ import {
 	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -78,9 +79,19 @@ import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaul
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import {
+	createIntegrationActionTool,
+	createIntegrationContextTool,
+	getIntegrationToolConnectionDescriptors,
+} from './integrations/integration-tools';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { createGetEnvironmentTool } from './tools/environment-tool';
+import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	buildFromJson,
@@ -93,6 +104,8 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -179,6 +192,14 @@ interface GetRuntimeParams {
 	integrationType?: string;
 	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
 	usePublishedVersion?: boolean;
+}
+
+interface PublishAgentOptions {
+	syncIntegrations?: boolean;
+}
+
+interface SaveCredentialIntegrationOptions {
+	broadcast?: boolean;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -291,6 +312,8 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
 		private readonly oauthService: OauthService,
 	) {}
 
@@ -298,8 +321,13 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isMcpModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('mcp');
+	/**
+	 * Whether the agent knowledge base sub-feature is enabled via
+	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
+	 * runtime tool. Public so the controller can guard its file endpoints.
+	 */
+	isKnowledgeBaseModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('knowledge-base');
 	}
 
 	/**
@@ -362,6 +390,13 @@ export class AgentsService {
 				label: i.displayLabel,
 				icon: i.displayIcon,
 				credentialTypes: i.credentialTypes,
+				...(i.builderGuidance
+					? {
+							capabilities: i.builderGuidance.capabilities,
+							useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+							useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+						}
+					: {}),
 			}));
 	}
 
@@ -483,6 +518,7 @@ export class AgentsService {
 		projectId: string,
 		user: User,
 		versionId?: string,
+		options: PublishAgentOptions = {},
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -498,6 +534,12 @@ export class AgentsService {
 			return agent;
 		}
 
+		// Idempotent fast-path for re-publishing the already-active version —
+		// no pointer to flip, no need to disturb the draft's versionId.
+		if (versionId !== undefined && versionId === agent.activeVersionId) {
+			return agent;
+		}
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
 				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -510,6 +552,11 @@ export class AgentsService {
 				}
 				agent.activeVersionId = existing.versionId;
 				agent.activeVersion = existing;
+				// The previously-active versionId may already own a history row
+				// (e.g. the draft was in sync with the old active version). Bump
+				// to a fresh UUID so the next regular publish writes a new row
+				// instead of colliding on that PK.
+				agent.versionId = uuid();
 			} else {
 				// Snapshot the current draft. agent.versionId is the snapshot's PK,
 				// so make sure it's set before inserting.
@@ -544,7 +591,7 @@ export class AgentsService {
 		// publish, so the entries sat dormant on agent.integrations; passing
 		// previous=[] makes every persisted integration an addition.
 		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
-		if (credentialIntegrations.length > 0) {
+		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
 			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 			await Container.get(ChatIntegrationService)
@@ -636,6 +683,82 @@ export class AgentsService {
 		return agent;
 	}
 
+	async revertToVersion(agentId: string, projectId: string, versionId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
+				versionId,
+				agentId,
+				trx,
+			);
+			if (!target) {
+				throw new NotFoundError(`Version "${versionId}" not found`);
+			}
+
+			agent.schema = target.schema ? deepCopy(target.schema) : null;
+			agent.tools = deepCopy(target.tools ?? {});
+			agent.skills = deepCopy(target.skills ?? {});
+			// Fresh UUID so a follow-up publish writes a new history row.
+			// Re-using target.versionId would collide on the snapshot insert
+			// (target already owns that PK), and leaving the previous
+			// versionId in place could equal activeVersionId — that hits the
+			// idempotent fast-path in publishAgent and silently discards the
+			// revert.
+			agent.versionId = uuid();
+
+			if (agent.schema) {
+				agent.name = agent.schema.name;
+				agent.description = agent.schema.description ?? null;
+			}
+
+			await trx.save(agent);
+		});
+
+		this.clearRuntimes(agentId);
+
+		this.logger.debug('Reverted SDK agent to a specific version', {
+			agentId,
+			projectId,
+			versionId,
+		});
+		return agent;
+	}
+
+	/**
+	 * Cheap existence check used by the editor to gate the version-history
+	 * panel button. Survives unpublish, unlike `agent.activeVersionId`.
+	 */
+	async hasPublishHistory(agentId: string): Promise<boolean> {
+		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	async listPublishHistory(
+		agentId: string,
+		projectId: string,
+		take: number,
+		skip: number,
+	): Promise<AgentVersionListItemDto[]> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
+
+		return versions.map((v) => ({
+			versionId: v.versionId,
+			agentId: v.agentId,
+			createdAt: v.createdAt.toISOString(),
+			updatedAt: v.updatedAt.toISOString(),
+			author: v.author,
+			isActive: v.versionId === agent.activeVersionId,
+		}));
+	}
+
 	async delete(agentId: string, projectId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
@@ -643,6 +766,19 @@ export class AgentsService {
 			return false;
 		}
 
+		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
+		// binary blobs from the filesystem/object store, which a DB transaction
+		// can't roll back. The agent_files rows are removed via the agentId FK's
+		// ON DELETE CASCADE when the agent is removed below, so a failure here
+		// only risks orphaned blobs (logged) and must not block agent deletion.
+		try {
+			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete knowledge files on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
@@ -821,14 +957,30 @@ export class AgentsService {
 		// can't know on its own (current date, instance timezone, day of week)
 		// via a tool call rather than the system prompt — so values that change
 		// per request don't bust system-prompt prompt caching.
-		try {
-			const { createGetEnvironmentTool } = await import('./tools/environment-tool');
-			agent.tool(createGetEnvironmentTool());
-		} catch (toolError) {
-			this.logger.warn('Failed to inject get_environment tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+		agent.tool(createGetEnvironmentTool());
+
+		// search_knowledge is gated behind the `knowledge-base` agents module.
+		// It's also an optional capability: if wiring it up fails (e.g. dynamic
+		// import or service construction error), degrade gracefully and keep the
+		// rest of the runtime usable rather than failing the whole agent. The
+		// failure is logged so it stays observable.
+		if (this.isKnowledgeBaseModuleEnabled()) {
+			try {
+				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+				agent.tool(
+					createSearchKnowledgeTool({
+						agentId,
+						projectId,
+						knowledgeService: this.agentKnowledgeService,
+						commandService: this.agentKnowledgeCommandService,
+					}),
+				);
+			} catch (toolError) {
+				this.logger.warn('Failed to inject search_knowledge tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		// Inject the rich_interaction tool only for platforms that can actually
@@ -842,74 +994,34 @@ export class AgentsService {
 		//   - The integration must declare `supportedComponents`. Platforms
 		//     that omit it (e.g. Linear) have explicitly opted out of
 		//     rich_interaction.
-		const integration = integrationType
-			? Container.get(ChatIntegrationRegistry).get(integrationType)
-			: undefined;
+		const integrationRegistry = Container.get(ChatIntegrationRegistry);
+		const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
 		if (integration?.supportedComponents !== undefined) {
-			try {
-				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-				agent.tool(createRichInteractionTool(integrationType));
-			} catch (toolError) {
-				this.logger.warn('Failed to inject rich_interaction tool', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
+			agent.tool(createRichInteractionTool(integrationType));
 		}
 
 		if (credentialIntegrations.length > 0) {
-			try {
-				const {
-					createIntegrationActionTool,
-					createIntegrationContextTool,
-					getIntegrationToolConnectionDescriptors,
-				} = await import('./integrations/integration-tools');
-				const { IntegrationMessageContextService } = await import(
-					'./integrations/integration-message-context.service'
-				);
-				const { ChatIntegrationActionExecutor } = await import(
-					'./integrations/integration-action-executor'
-				);
-				const { ChatIntegrationContextQueryExecutor } = await import(
-					'./integrations/integration-context-query-executor'
-				);
+			const messageContextStore = Container.get(IntegrationMessageContextService);
+			const actionExecutor = Container.get(ChatIntegrationActionExecutor);
+			const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
 
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
-				const integrationRegistry = Container.get(ChatIntegrationRegistry);
-
-				for (const descriptor of getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integration = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integration?.contextQueries,
-							actions: integration?.actions,
-						};
-					},
-				)) {
-					agent.tool(
-						createIntegrationContextTool({
-							descriptor,
-							messageContextStore,
-							queryExecutor,
-						}),
-					);
-					agent.tool(
-						createIntegrationActionTool({
-							descriptor,
-							messageContextStore,
-							actionExecutor,
-						}),
-					);
-				}
-			} catch (toolError) {
-				this.logger.warn('Failed to inject integration context/action tools', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
+			for (const descriptor of getIntegrationToolConnectionDescriptors(
+				credentialIntegrations,
+				agentId,
+				(integrationConfig) => {
+					const integrationDef = integrationRegistry.get(integrationConfig.type);
+					return {
+						contextQueries: integrationDef?.contextQueries,
+						actions: integrationDef?.actions,
+					};
+				},
+			)) {
+				agent.tool(
+					createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
+				);
+				agent.tool(
+					createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }),
+				);
 			}
 		}
 
@@ -1552,12 +1664,6 @@ export class AgentsService {
 		}
 
 		const mcpServers = config.mcpServers ?? [];
-		if (mcpServers.length > 0 && !this.isMcpModuleEnabled()) {
-			return {
-				valid: false,
-				error: 'MCP servers require the "mcp" agents module to be enabled.',
-			};
-		}
 		for (const server of mcpServers) {
 			if (server.authentication !== 'none' && !server.credential) {
 				return {
@@ -1719,6 +1825,7 @@ export class AgentsService {
 	async saveCredentialIntegration(
 		agent: Agent,
 		integration: AgentCredentialIntegrationConfig,
+		options: SaveCredentialIntegrationOptions = {},
 	): Promise<Agent> {
 		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
@@ -1742,8 +1849,16 @@ export class AgentsService {
 				)
 			: [...existing, validated];
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
-		await this.chatIntegrationService.broadcastIntegrationChange(agent.id, integration, 'connect');
+		if (options.broadcast !== false) {
+			await this.chatIntegrationService.broadcastIntegrationChange(
+				agent.id,
+				integration,
+				'connect',
+			);
+		}
 		return result;
 	}
 
@@ -1763,6 +1878,8 @@ export class AgentsService {
 		// filter by ref
 		agent.integrations = agent.integrations.filter((i) => i !== integration);
 
+		markAgentDraftDirty(agent);
+		this.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agent.id,
@@ -2026,18 +2143,12 @@ export class AgentsService {
 
 		const resolvedTools: BuiltTool[] = [];
 
-		// Only attach MCP clients when the module is enabled. Without the gate
-		// a previously-configured agent would still build live MCP connections
-		// after the operator removes the token from N8N_AGENTS_MODULES, which
-		// undermines the kill-switch.
-		const buildMcpClient = this.isMcpModuleEnabled()
-			? async (server: AgentJsonMcpServerConfig) =>
-					await buildMcpClientForServer(server, {
-						credentialProvider,
-						oauthService: this.oauthService,
-						projectId: agentEntity.projectId,
-					})
-			: undefined;
+		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
+			await buildMcpClientForServer(server, {
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId: agentEntity.projectId,
+			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,

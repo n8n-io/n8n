@@ -137,27 +137,6 @@ describe('McpClientManager', () => {
 			);
 		});
 
-		it('skips browser MCP configs with unsafe names', async () => {
-			const logger: LoggerMock = { warn: jest.fn() };
-			const manager = new McpClientManager();
-
-			await expect(
-				manager.getBrowserTools(
-					{ name: 'bad name', url: 'https://browser.example.com/mcp' },
-					logger as never,
-				),
-			).resolves.toEqual(new Map());
-
-			expect(mockedMcpClient).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped MCP server with unsafe name',
-				expect.objectContaining({
-					serverName: 'bad name',
-					source: 'browser MCP',
-				}),
-			);
-		});
-
 		it('logs tools skipped during schema sanitization', async () => {
 			const logger: LoggerMock = { warn: jest.fn() };
 			mockedSanitizeMcpToolSchemas.mockImplementationOnce(
@@ -239,23 +218,13 @@ describe('McpClientManager', () => {
 			await manager.getRegularTools([{ name: 'stdio', command: '/usr/bin/mcp' }]);
 			expect(validator.validateUrl).not.toHaveBeenCalled();
 		});
-
-		it('applies validation to browser MCP config too', async () => {
-			const validator = createValidatorMock();
-			validator.validateUrl.mockResolvedValue(createResultError(new Error('blocked')));
-			const manager = new McpClientManager(validator);
-			await expect(
-				manager.getBrowserTools({ name: 'browser', url: 'http://internal/' }),
-			).rejects.toThrow(UserError);
-		});
 	});
 
 	describe('disconnect', () => {
 		it('disconnects every tracked client and clears caches', async () => {
 			const manager = new McpClientManager();
 			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }]);
-			await manager.getBrowserTools({ name: 'b', url: 'https://b.example.com/' });
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 
 			const disconnectMocks = mockedMcpClient.mock.results.map(
 				(r) => (r.value as { close: jest.Mock }).close,
@@ -277,14 +246,6 @@ describe('McpClientManager', () => {
 			await manager.getRegularTools(configs);
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
-
-		it('keeps regular and browser caches separate', async () => {
-			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'shared', url: 'https://shared.example.com/' }]);
-			await manager.getBrowserTools({ name: 'shared', url: 'https://shared.example.com/' });
-			// Same config shape but different bucket → two clients
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
-		});
 	});
 
 	describe('concurrent dedup', () => {
@@ -299,15 +260,6 @@ describe('McpClientManager', () => {
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 			expect(tools1).toBe(tools2);
-		});
-
-		it('coalesces concurrent browser-tool calls with the same config into one client', async () => {
-			const manager = new McpClientManager();
-			const config = { name: 'browser', url: 'https://browser.example.com/' };
-
-			await Promise.all([manager.getBrowserTools(config), manager.getBrowserTools(config)]);
-
-			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
 
 		it('lets the next call retry after an in-flight failure', async () => {

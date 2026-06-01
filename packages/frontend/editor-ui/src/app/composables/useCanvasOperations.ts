@@ -48,7 +48,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -56,6 +56,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -139,6 +140,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
+	createWorkflowDocumentId,
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
@@ -179,7 +181,7 @@ export function useCanvasOperations() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
 	const settingsStore = useSettingsStore();
@@ -388,9 +390,9 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
 
-		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
+		const isRenamingActiveNode = ndvStore.value.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.setActiveNodeName(newName, 'other');
+			ndvStore.value.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -483,6 +485,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const wasTrigger = nodeTypesStore.isTriggerNode(node.type);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -503,6 +507,12 @@ export function useCanvasOperations() {
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
 			}
+		}
+
+		// Removing a trigger node can flip private-credential validity on every
+		// other node — re-evaluate credential issues across the workflow.
+		if (wasTrigger) {
+			nodeHelpers.updateNodesCredentialsIssues();
 		}
 
 		trackDeleteNode(id);
@@ -635,11 +645,11 @@ export function useCanvasOperations() {
 	}
 
 	function setNodeActiveByName(name: string, source: TelemetryNdvSource) {
-		ndvStore.setActiveNodeName(name, source);
+		ndvStore.value.setActiveNodeName(name, source);
 	}
 
 	function clearNodeActive() {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -904,6 +914,12 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
 
+			// Adding a trigger node can flip private-credential validity on every
+			// other node — re-evaluate credential issues across the workflow.
+			if (nodeTypesStore.isTriggerNode(nodeData.type)) {
+				nodeHelpers.updateNodesCredentialsIssues();
+			}
+
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
 			const nextView =
 				isStickyNode || !options.openNDV || preventOpeningNDV
@@ -928,7 +944,7 @@ export function useCanvasOperations() {
 				} else if (nextView === 'zoomed_view') {
 					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 				} else if (nextView === 'ndv') {
-					ndvStore.setActiveNodeName(nodeData.name, 'added_new_node');
+					ndvStore.value.setActiveNodeName(nodeData.name, 'added_new_node');
 				}
 			}
 		});
@@ -2311,7 +2327,10 @@ export function useCanvasOperations() {
 		});
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (executionStateStore.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}
@@ -3075,7 +3094,7 @@ export function useCanvasOperations() {
 		if (nodeId) {
 			const node = workflowDocumentStore.value.getNodeById(nodeId);
 			if (node) {
-				ndvStore.setActiveNodeName(node.name, 'other');
+				ndvStore.value.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),
