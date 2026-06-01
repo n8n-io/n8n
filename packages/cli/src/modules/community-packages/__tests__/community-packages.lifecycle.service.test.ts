@@ -33,6 +33,8 @@ describe('CommunityPackagesLifecycleService', () => {
 	});
 	const communityPackagesConfig = mock<CommunityPackagesConfig>({
 		unverifiedEnabled: true,
+		registry: 'https://registry.npmjs.org',
+		authToken: '',
 	});
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		communityPackagesManagedByEnv: false,
@@ -145,7 +147,30 @@ describe('CommunityPackagesLifecycleService', () => {
 			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(['outdated', '--json'], {
 				doNotHandleError: true,
 				cwd: '/tmp/n8n-nodes-download',
+				registry: communityPackagesConfig.registry,
+				authToken: communityPackagesConfig.authToken || undefined,
 			});
+		});
+
+		it('should pass custom registry and auth token to npm outdated', async () => {
+			communityPackagesConfig.unverifiedEnabled = true;
+			communityPackagesConfig.registry = 'http://localhost:4873';
+			communityPackagesConfig.authToken = 'my-secret-token';
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([installedPackage]);
+			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([installedPackage]);
+			Object.defineProperty(communityPackagesService, 'hasMissingPackages', { value: false });
+
+			await lifecycle.listInstalledPackages();
+
+			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(['outdated', '--json'], {
+				doNotHandleError: true,
+				cwd: '/tmp/n8n-nodes-download',
+				registry: 'http://localhost:4873',
+				authToken: 'my-secret-token',
+			});
+
+			communityPackagesConfig.registry = 'https://registry.npmjs.org';
+			communityPackagesConfig.authToken = '';
 		});
 
 		it('should not run npm outdated when unverifiedEnabled is false', async () => {
