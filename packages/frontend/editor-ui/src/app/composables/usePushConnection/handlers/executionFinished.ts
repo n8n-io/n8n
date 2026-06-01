@@ -6,7 +6,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
@@ -15,9 +15,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
@@ -47,38 +49,29 @@ import {
 	TelemetryHelpers,
 	createRunExecutionData,
 } from 'n8n-workflow';
-import type { useRouter } from 'vue-router';
-import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import type { PushHandlerOptions } from './types';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
 	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
 >;
 
-export type ExecutionFinishedOptions = {
-	router: ReturnType<typeof useRouter>;
-	workflowState: WorkflowState;
-};
-
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
  */
-export async function executionFinished(
-	{ data }: ExecutionFinished,
-	options: ExecutionFinishedOptions,
-) {
+export async function executionFinished({ data }: ExecutionFinished, options: PushHandlerOptions) {
+	const { documentId } = options;
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunStore = useReadyToRunStore();
+	const workflowStateStore = useWorkflowStateStore();
 
-	options.workflowState.executingNode.lastAddedExecutingNode = null;
-	options.workflowState.executingNode.clearNodeExecutionQueue();
+	workflowStateStore.executingNode.lastAddedExecutingNode = null;
+	workflowStateStore.executingNode.clearNodeExecutionQueue();
 
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
@@ -126,15 +119,11 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
-			data.status,
-			successToastAlreadyShown,
-		);
+		handleExecutionFinishedWithSuccessOrOther(documentId, data.status, successToastAlreadyShown);
 		successToastAlreadyShown = true;
 	}
 
-	const execution = await fetchExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId, documentId);
 
 	/**
 	 * This accounts for the case where the execution is not stored.
@@ -142,7 +131,7 @@ export async function executionFinished(
 	 * Returning early presists existing run data up to this point.
 	 */
 	if (!execution) {
-		options.workflowState.setActiveExecutionId(undefined);
+		workflowExecutionStateStore.setActiveExecutionId(undefined);
 		uiStore.setProcessingExecutionResults(false);
 		return;
 	}
@@ -153,16 +142,16 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, documentId);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
+			documentId,
 			execution.status,
 			successToastAlreadyShown,
 		);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData, documentId);
 
 	continueEvaluationLoop(execution, options);
 }
@@ -170,12 +159,9 @@ export async function executionFinished(
 /**
  * Implicit looping: This will re-trigger the evaluation trigger if it exists on a successful execution of the workflow.
  * @param execution
- * @param router
+ * @param opts
  */
-export function continueEvaluationLoop(
-	execution: SimplifiedExecution,
-	opts: ExecutionFinishedOptions,
-) {
+export function continueEvaluationLoop(execution: SimplifiedExecution, opts: PushHandlerOptions) {
 	if (execution.status !== 'success' || execution.data?.startData?.destinationNode !== undefined) {
 		return;
 	}
@@ -196,7 +182,12 @@ export function continueEvaluationLoop(
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		const { runWorkflow } = useRunWorkflow(opts);
+		// useRunWorkflow needs a workflowState; inject() doesn't resolve in this async,
+		// non-setup context, so construct one explicitly.
+		const { runWorkflow } = useRunWorkflow({
+			router: opts.router,
+			workflowState: useWorkflowState(),
+		});
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,
 			// pass output of previous node run to trigger next run
@@ -211,11 +202,10 @@ export function continueEvaluationLoop(
  */
 export async function fetchExecutionData(
 	executionId: string,
+	documentId: WorkflowDocumentId,
 ): Promise<SimplifiedExecution | undefined> {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
 	try {
 		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
@@ -253,15 +243,16 @@ export function getRunExecutionData(execution: SimplifiedExecution): IRunExecuti
  * Returns the error message for the execution run data if the execution status is crashed or canceled,
  * or a fallback error message otherwise
  */
-export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
+export function getRunDataExecutedErrorMessage(
+	execution: SimplifiedExecution,
+	documentId: WorkflowDocumentId,
+) {
 	const i18n = useI18n();
 
 	if (execution.status === 'crashed') {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(getCurrentWorkflowId()),
-		);
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
 			interpolate: { activeExecutionId: workflowExecutionStateStore.activeExecutionId ?? '' },
@@ -280,13 +271,11 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
  */
 export function handleExecutionFinishedWithWaitTill(
 	workflowId: string,
-	options: {
-		router: ReturnType<typeof useRouter>;
-	},
+	options: PushHandlerOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
-	const workflowSaving = useWorkflowSaving(options);
+	const workflowSaving = useWorkflowSaving({ router: options.router });
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	const workflowSettings = workflowDocumentStore.settings;
@@ -299,7 +288,9 @@ export function handleExecutionFinishedWithWaitTill(
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (!workflowsStore.isWorkflowSaved[getCurrentWorkflowId()])
+				if (
+					!workflowsStore.isWorkflowSaved[useWorkflowDocumentStore(options.documentId).workflowId]
+				)
 					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
@@ -316,12 +307,12 @@ export function handleExecutionFinishedWithWaitTill(
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	documentId: WorkflowDocumentId,
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const workflowId = getCurrentWorkflowId();
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
 
@@ -345,7 +336,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					workflowHelpers.getNodeTypes(),
 				).nodeGraph,
 			),
-			workflow_id: workflowId,
+			workflow_id: workflowDocumentStore.workflowId,
 		};
 
 		if (
@@ -394,12 +385,12 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 function handleExecutionFinishedSuccessfully(
 	workflowName: string,
 	message: string,
-	workflowState: WorkflowState,
+	documentId: WorkflowDocumentId,
 ) {
 	const toast = useToast();
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
-	workflowState.setActiveExecutionId(undefined);
+	useWorkflowExecutionStateStore(documentId).setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
 		type: 'success',
@@ -410,7 +401,7 @@ function handleExecutionFinishedSuccessfully(
  * Handle the case when the workflow execution finished successfully.
  */
 export function handleExecutionFinishedWithSuccessOrOther(
-	workflowState: WorkflowState,
+	documentId: WorkflowDocumentId,
 	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
 ) {
@@ -419,9 +410,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	const workflowName = workflowDocumentStore.name;
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
@@ -457,14 +446,14 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			handleExecutionFinishedSuccessfully(
 				workflowName,
 				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
-				workflowState,
+				documentId,
 			);
 		}
 	} else if (!successToastAlreadyShown) {
 		handleExecutionFinishedSuccessfully(
 			workflowName,
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
-			workflowState,
+			documentId,
 		);
 	}
 
@@ -478,15 +467,13 @@ export function handleExecutionFinishedWithSuccessOrOther(
 export function setRunExecutionData(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
-	workflowState: WorkflowState,
+	documentId: WorkflowDocumentId,
 ) {
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const nodeHelpers = useNodeHelpers();
-	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
+	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution, documentId);
 
-	workflowState.executingNode.clearNodeExecutionQueue();
+	useWorkflowStateStore().executingNode.clearNodeExecutionQueue();
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
 	const workflowExecution = executionDataStore.getExecutionSnapshot();

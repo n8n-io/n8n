@@ -1,33 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { nodeExecuteAfter } from './nodeExecuteAfter';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
-import type { Mocked } from 'vitest';
+import type { Router } from 'vue-router';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-
-// Migration bridge: the handler reads the current workflow id via
-// getCurrentWorkflowId() (router singleton). Mirror it onto
-// workflowsStore.workflowId so the existing per-test id setup keeps driving the
-// handler. Replaced with direct route setup once workflowsStore.workflowId is removed.
-vi.mock('@/app/router', async () => {
-	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
-	return {
-		default: {
-			currentRoute: {
-				get value() {
-					return { params: { workflowId: useWorkflowsStore().workflowId } };
-				},
-			},
-		},
-	};
-});
+import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
+import type { PushHandlerOptions } from './types';
 
 vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	useAssistantStore: vi.fn().mockReturnValue({
@@ -44,8 +27,9 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 
 describe('nodeExecuteAfter', () => {
-	let mockOptions: { workflowState: Mocked<WorkflowState> };
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	const documentId = createWorkflowDocumentId('test-wf');
+	let options: PushHandlerOptions;
+	let workflowStateStore: ReturnType<typeof useWorkflowStateStore>;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
@@ -53,12 +37,12 @@ describe('nodeExecuteAfter', () => {
 		vi.mocked(openFormPopupWindow).mockClear();
 		setActivePinia(createPinia());
 
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('test-wf');
+		options = { router: mock<Router>(), documentId };
 
-		workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId('test-wf'),
-		);
+		workflowStateStore = useWorkflowStateStore();
+		vi.spyOn(workflowStateStore.executingNode, 'removeExecutingNode');
+
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -71,14 +55,6 @@ describe('nodeExecuteAfter', () => {
 		);
 
 		workflowExecutionStateStore.setActiveExecutionId('exec-1');
-
-		mockOptions = {
-			workflowState: mock<WorkflowState>({
-				executingNode: {
-					removeExecutingNode: vi.fn(),
-				},
-			}),
-		};
 	});
 
 	it('should update node execution data with placeholder and remove executing node', async () => {
@@ -99,12 +75,10 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
-		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
-		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
-			'Test Node',
-		);
+		expect(workflowStateStore.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
+		expect(workflowStateStore.executingNode.removeExecutingNode).toHaveBeenCalledWith('Test Node');
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
@@ -139,7 +113,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
@@ -172,7 +146,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		expect(runData?.['Test Node'][0].data).toEqual({
@@ -196,7 +170,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		const taskData = runData?.['Test Node'][0];
@@ -233,7 +207,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		const runData = executionDataStore.execution?.data?.resultData.runData;
 		// Should only contain main connection, invalid_connection should be filtered out
@@ -264,7 +238,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		expect(openFormPopupWindow).toHaveBeenCalledWith(formUrl);
 	});
@@ -286,7 +260,7 @@ describe('nodeExecuteAfter', () => {
 			},
 		};
 
-		await nodeExecuteAfter(event, mockOptions);
+		await nodeExecuteAfter(event, options);
 
 		expect(openFormPopupWindow).not.toHaveBeenCalled();
 	});

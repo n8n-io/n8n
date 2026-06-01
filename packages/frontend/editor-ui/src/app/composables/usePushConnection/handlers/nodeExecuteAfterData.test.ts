@@ -1,44 +1,27 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import type { Router } from 'vue-router';
 import { nodeExecuteAfterData } from './nodeExecuteAfterData';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { createRunExecutionData } from 'n8n-workflow';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-
-// Migration bridge: the handler reads the current workflow id via
-// getCurrentWorkflowId() (router singleton). Mirror it onto
-// workflowsStore.workflowId so the existing per-test id setup keeps driving the
-// handler. Replaced with direct route setup once workflowsStore.workflowId is removed.
-vi.mock('@/app/router', async () => {
-	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
-	return {
-		default: {
-			currentRoute: {
-				get value() {
-					return { params: { workflowId: useWorkflowsStore().workflowId } };
-				},
-			},
-		},
-	};
-});
+import type { PushHandlerOptions } from './types';
 
 describe('nodeExecuteAfterData', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	const documentId = createWorkflowDocumentId('test-wf');
+	let options: PushHandlerOptions;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('test-wf');
+		options = { router: mock<Router>(), documentId };
 
-		workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId('test-wf'),
-		);
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -88,7 +71,7 @@ describe('nodeExecuteAfterData', () => {
 			},
 		};
 
-		await nodeExecuteAfterData(event);
+		await nodeExecuteAfterData(event, options);
 
 		// The exec store's run data for 'Test Node' should now have the real data
 		const runData = executionDataStore.execution?.data?.resultData.runData;

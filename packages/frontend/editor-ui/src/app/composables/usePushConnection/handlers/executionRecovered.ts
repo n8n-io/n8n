@@ -8,19 +8,15 @@ import {
 	handleExecutionFinishedWithWaitTill,
 	setRunExecutionData,
 } from './executionFinished';
-import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import type { useRouter } from 'vue-router';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import type { PushHandlerOptions } from './types';
 
 export async function executionRecovered(
 	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: PushHandlerOptions,
 ) {
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const { documentId } = options;
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const uiStore = useUIStore();
 
 	// No workflow is actively running, therefore we ignore this event
@@ -30,7 +26,7 @@ export async function executionRecovered(
 
 	uiStore.setProcessingExecutionResults(true);
 
-	const execution = await fetchExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId, documentId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
 		return;
@@ -42,10 +38,10 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, documentId);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
+		handleExecutionFinishedWithSuccessOrOther(documentId, execution.status, false);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData, documentId);
 }

@@ -186,13 +186,13 @@ pointer). Pick the replacement by context:
 |---|---|---|
 | Components / composables inside `WorkflowLayout` | `injectWorkflowDocumentStore()` (`ShallowRef<Store \| null>`) | `workflowDocumentStore.value?.workflowId ?? ''` |
 | Out-of-tree Pinia stores / standalone composables | `computed(() => useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowId().value)))` | `workflowDocumentStore.value.workflowId` |
-| Non-reactive functions (push handlers) | `getCurrentWorkflowId()` from `@/app/composables/useWorkflowId` — the non-reactive twin of `useWorkflowId()`, reading the router singleton | the id directly for equality guards; construct the doc store from it where document fields are needed |
+| Non-reactive functions (push handlers) | receive `documentId` via `options`, resolved per event in `usePushConnection.processEvent` from the injected document store | `useWorkflowDocumentStore(documentId)` / `useWorkflowExecutionStateStore(documentId)`, and their `.workflowId` for equality guards |
 | Lifecycle snapshot (e.g. collaboration) | capture the id into a local/ref at the start of the operation | the captured value |
 
 Notes:
 - `useWorkflowId()` (`@/app/composables/useWorkflowId`) resolves `inject(WorkflowIdKey)` first, then the route — use it in any setup context.
 - Replace `watch(() => workflowsStore.workflowId, …)` with `watch(workflowId, …)` where `workflowId = useWorkflowId()` (or the route-derived computed).
-- Tests that set `workflowsStore.workflowId = 'x'` (or `workflow.id`) move to providing `WorkflowIdKey` / the route param. Component/composable tests already `provide` `WorkflowIdKey`; push-handler tests mock `@/app/router`'s `currentRoute`.
+- Tests that set `workflowsStore.workflowId = 'x'` (or `workflow.id`) move to providing `WorkflowIdKey` / the route param. Component/composable tests already `provide` `WorkflowIdKey`; push-handler tests pass `documentId` in the handler `options` argument.
 
 ## What NOT to migrate
 

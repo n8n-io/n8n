@@ -45,7 +45,7 @@ useReportWorkflowFailuresToParent();
 // from the parent) are processed for node highlighting, execution state, etc.
 // When canExecute is enabled, the iframe also establishes its own WebSocket
 // connection for user-triggered executions (pushConnect below).
-const pushConnection = usePushConnection({ router: useRouter(), workflowState });
+const pushConnection = usePushConnection({ router: useRouter() });
 const pushConnectionStore = usePushConnectionStore();
 
 // When canExecute is disabled (read-only preview), set activeExecutionId to null

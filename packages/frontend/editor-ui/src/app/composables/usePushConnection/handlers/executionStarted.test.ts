@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import type { Router } from 'vue-router';
 import { executionStarted } from './executionStarted';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -8,26 +9,11 @@ import {
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-
-// Migration bridge: the handler reads the current workflow id via
-// getCurrentWorkflowId() (router singleton). Mirror it onto
-// workflowsStore.workflowId so the existing per-test id setup keeps driving the
-// handler. Replaced with direct route setup once workflowsStore.workflowId is removed.
-vi.mock('@/app/router', async () => {
-	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
-	return {
-		default: {
-			currentRoute: {
-				get value() {
-					return { params: { workflowId: useWorkflowsStore().workflowId } };
-				},
-			},
-		},
-	};
-});
+import type { PushHandlerOptions } from './types';
 
 describe('executionStarted', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	const documentId = createWorkflowDocumentId('wf-123');
+	let options: PushHandlerOptions;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 	function makeEvent(executionId = 'exec-1'): ExecutionStarted {
@@ -40,20 +26,17 @@ describe('executionStarted', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
-		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowId('wf-123');
+		options = { router: mock<Router>(), documentId };
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
+		const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 		workflowDocumentStore.setName('My Workflow');
 
-		workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId('wf-123'),
-		);
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {
 		// activeExecutionId defaults to undefined, no need to set it
-		await executionStarted(makeEvent());
+		await executionStarted(makeEvent(), options);
 
 		// workflowExecutionStateStore.activeExecutionId should remain undefined
 		expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
@@ -66,7 +49,7 @@ describe('executionStarted', () => {
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		workflowExecutionStateStore.setActiveExecutionId(null);
 
-		await executionStarted(makeEvent('exec-1'));
+		await executionStarted(makeEvent('exec-1'), options);
 
 		expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
 
@@ -95,7 +78,7 @@ describe('executionStarted', () => {
 
 		const executionBefore = executionDataStore.execution;
 
-		await executionStarted(makeEvent('exec-1'));
+		await executionStarted(makeEvent('exec-1'), options);
 
 		// workflowExecutionStateStore.activeExecutionId should remain 'exec-1' without change
 		expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
@@ -128,7 +111,7 @@ describe('executionStarted', () => {
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
 			// activeExecutionId defaults to undefined; in iframe context this should still accept
-			await executionStarted(makeEvent('exec-2'));
+			await executionStarted(makeEvent('exec-2'), options);
 
 			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-2');
 
@@ -156,7 +139,7 @@ describe('executionStarted', () => {
 				} as never,
 			});
 
-			await executionStarted(makeEvent('exec-2'));
+			await executionStarted(makeEvent('exec-2'), options);
 
 			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-2');
 
@@ -182,7 +165,7 @@ describe('executionStarted', () => {
 				data: { resultData: { runData: {} } } as never,
 			});
 
-			await executionStarted(makeEvent('exec-1'));
+			await executionStarted(makeEvent('exec-1'), options);
 
 			// Should remain exec-1 without reinitializing
 			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');

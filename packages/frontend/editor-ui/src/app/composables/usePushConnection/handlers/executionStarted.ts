@@ -1,25 +1,21 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
+import type { PushHandlerOptions } from './types';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
  */
-export async function executionStarted({ data }: ExecutionStarted) {
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		workflowDocumentStore.documentId,
-	);
+export async function executionStarted(
+	{ data }: ExecutionStarted,
+	{ documentId }: PushHandlerOptions,
+) {
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const isIframe = window !== window.parent;
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.

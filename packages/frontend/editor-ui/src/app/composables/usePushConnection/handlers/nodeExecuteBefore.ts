@@ -1,22 +1,19 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
+import type { PushHandlerOptions } from './types';
 
 /**
  * Handles the 'nodeExecuteBefore' event, which happens before a node is executed.
  */
 export async function nodeExecuteBefore(
 	{ data }: NodeExecuteBefore,
-	{ workflowState }: { workflowState: WorkflowState },
+	{ documentId }: PushHandlerOptions,
 ) {
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(getCurrentWorkflowId()),
-	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	workflowState.executingNode.addExecutingNode(data.nodeName);
+	useWorkflowStateStore().executingNode.addExecutingNode(data.nodeName);
 
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
