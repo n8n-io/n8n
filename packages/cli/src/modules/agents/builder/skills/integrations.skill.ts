@@ -13,14 +13,13 @@ Use this to decide whether the target agent needs an entry in \`integrations\`
 or a normal node/workflow tool for an external product, then configure
 \`integrations\` only when the integration is the right surface.
 
-## Boundaries
+## Use when
 
-- The user is asking for Build chat or Preview chat behavior.
-- The external product is only a backend API capability and the agent will be
-  triggered or chatted with somewhere else; follow Tool Guidance and use node
-  or workflow tools instead.
-- The user only needs model, memory, or config-schema guidance.
-- Built-in Preview chat does not need an \`integrations\` entry.
+- The user asks to add, update, or remove entries in the target agent's
+  \`integrations\` array.
+- The user asks to configure a schedule trigger for the target agent.
+- The user asks to connect the target agent to an external chat platform with
+  credentials.
 
 ## Integration vs Node Tool Decision
 

@@ -183,7 +183,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `browser-credential-setup`
+- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
@@ -385,9 +385,7 @@ The processor is configurable via `disableDeferredTools` flag.
 External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
 The cli's `InstanceAiService` holds one manager instance and passes it to
 `createInstanceAgent` via options; the agent factory calls
-`mcpManager.getRegularTools(mcpServers)` and
-`mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig)`. Tool
-descriptions are:
+`mcpManager.getRegularTools(mcpServers)`. Tool descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
@@ -398,9 +396,10 @@ descriptions are:
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
 
-Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
-context bloat from screenshots. They're available to `browser-credential-setup`
-sub-agents.
+The local Computer Use server is separate from external MCP configuration. Its
+browser tools are available directly to the orchestrator and are guided by the
+`credential-setup-with-computer-use` skill when credential setup requires a
+browser.
 
 ## Tracing & Observability
 

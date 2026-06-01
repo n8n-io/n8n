@@ -203,6 +203,24 @@ describe('AgentsService', () => {
 
 			expect(result.valid).toBe(true);
 		});
+
+		it('allows MCP servers', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+
+			expect(result.valid).toBe(true);
+		});
 	});
 
 	describe('create', () => {
@@ -700,8 +718,8 @@ describe('AgentsService', () => {
 		});
 
 		describe('with explicit versionId', () => {
-			it('flips activeVersionId to an existing history row without creating a new one', async () => {
-				const agent = makeAgent({ versionId: 'v2' });
+			it('flips activeVersionId to an existing history row and bumps draft versionId', async () => {
+				const agent = makeAgent({ versionId: 'v2', activeVersionId: 'v2' });
 				const existingHistory = makeAgentHistory({ versionId: 'v1' });
 				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 				agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(existingHistory);
@@ -716,7 +734,28 @@ describe('AgentsService', () => {
 				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 				expect(agent.activeVersionId).toBe('v1');
 				expect(agent.activeVersion).toBe(existingHistory);
+				// Draft versionId was v2 (a history-row PK). Bumping to a fresh
+				// UUID lets the next regular publish snapshot cleanly.
+				expect(agent.versionId).not.toBe('v2');
+				expect(agent.versionId).not.toBe('v1');
+				expect(agent.versionId).toMatch(
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+				);
 				expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			});
+
+			it('is a no-op when the requested version is already active', async () => {
+				const agent = makeAgent({ versionId: 'v1', activeVersionId: 'v1' });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				const result = await service.publishAgent(agentId, projectId, testUser, 'v1');
+
+				expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+				expect(mockTrx.save).not.toHaveBeenCalled();
+				expect(agent.versionId).toBe('v1');
+				expect(agent.activeVersionId).toBe('v1');
+				expect(result).toBe(agent);
 			});
 
 			it('throws NotFoundError when the versionId does not belong to the agent', async () => {
@@ -1440,6 +1479,222 @@ describe('AgentsService', () => {
 			expect(mockTrx.save).toHaveBeenCalledWith(agent);
 			expect(result).toBe(agent);
 			expect(result.activeVersion).toBe(activeVersion);
+		});
+	});
+
+	describe('revertToVersion', () => {
+		let mockTrx: { save: jest.Mock };
+		let mockTransaction: jest.Mock;
+
+		beforeEach(() => {
+			mockTrx = { save: jest.fn() };
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
+			Object.defineProperty(agentRepository, 'manager', {
+				value: { transaction: mockTransaction },
+				configurable: true,
+			});
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'v1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the version does not exist for the agent', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'foreign-version')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+				'foreign-version',
+				agentId,
+				mockTrx,
+			);
+			expect(mockTrx.save).not.toHaveBeenCalled();
+		});
+
+		it('restores the draft fields from the targeted snapshot and leaves activeVersionId untouched', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Old Agent',
+				description: 'Old description',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-old',
+				instructions: 'Old instructions',
+				tools: [{ type: 'custom', id: 'old_tool' }],
+				skills: [{ type: 'skill', id: 'old_skill' }],
+			};
+			const snapshotTools = {
+				old_tool: {
+					code: 'return "old";',
+					descriptor: { name: 'old_tool' },
+				},
+			} as unknown as Agent['tools'];
+			const snapshotSkills = {
+				old_skill: {
+					name: 'Old skill',
+					description: 'Old skill description',
+					instructions: 'Old skill instructions',
+				},
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: snapshotTools,
+				skills: snapshotSkills,
+			});
+			const activeVersion = makeAgentHistory({ versionId: 'v2' });
+			const agent = makeAgent({
+				name: 'Current Agent',
+				description: 'Current description',
+				versionId: 'v3',
+				schema: {
+					name: 'Current Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Current instructions',
+				},
+				tools: {},
+				skills: {},
+				activeVersionId: 'v2',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			const result = await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.schema).toEqual(snapshotSchema);
+			expect(agent.schema).not.toBe(snapshotSchema);
+			expect(agent.tools).toEqual(snapshotTools);
+			expect(agent.skills).toEqual(snapshotSkills);
+			// Fresh UUID so the next publish snapshot doesn't collide with the
+			// targeted history row's PK and doesn't fast-path past the revert.
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).not.toBe('v3');
+			expect(agent.versionId).not.toBe(agent.activeVersionId);
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(agent.name).toBe('Old Agent');
+			expect(agent.description).toBe('Old description');
+			expect(agent.activeVersionId).toBe('v2');
+			expect(agent.activeVersion).toBe(activeVersion);
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			expect(result).toBe(agent);
+		});
+
+		it('reverts successfully when the agent is currently unpublished', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Restored Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Restored instructions',
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: {},
+				skills: {},
+			});
+			const agent = makeAgent({ activeVersionId: null, activeVersion: null });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.activeVersionId).toBeNull();
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(agent.name).toBe('Restored Agent');
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+		});
+	});
+
+	describe('listPublishHistory', () => {
+		it('throws NotFoundError when the agent does not exist in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listPublishHistory(agentId, projectId, 20, 0)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('forwards take and skip to the repository', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([]);
+
+			await service.listPublishHistory(agentId, projectId, 5, 10);
+
+			expect(agentHistoryRepository.findByAgentId).toHaveBeenCalledWith(agentId, 5, 10);
+		});
+
+		it('maps history rows to DTOs and marks the active version', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2026-01-02T00:00:00.000Z');
+			const activeRow = {
+				versionId: 'v2',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Ada Lovelace',
+			} as unknown as AgentHistory;
+			const inactiveRow = {
+				versionId: 'v1',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Unknown',
+			} as unknown as AgentHistory;
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: 'v2' }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([activeRow, inactiveRow]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result).toEqual([
+				{
+					versionId: 'v2',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Ada Lovelace',
+					isActive: true,
+				},
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Unknown',
+					isActive: false,
+				},
+			]);
+		});
+
+		it('marks every row as inactive when the agent is unpublished', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt,
+					updatedAt: createdAt,
+					author: 'Ada Lovelace',
+				} as unknown as AgentHistory,
+			]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result[0].isActive).toBe(false);
 		});
 	});
 

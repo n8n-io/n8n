@@ -92,6 +92,7 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
+	onPendingConfirmationRejected?: (requestId: string) => void;
 	logger: InstanceAiLivenessLogger;
 };
 
@@ -187,6 +188,7 @@ export class InstanceAiLivenessService<
 				}
 			}
 			this.options.runState.rejectPendingConfirmation(reqId);
+			this.options.onPendingConfirmationRejected?.(reqId);
 		}
 
 		try {

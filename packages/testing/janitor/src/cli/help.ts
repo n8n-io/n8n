@@ -231,7 +231,9 @@ Usage:
 When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
 (safe default for local dev).
 
-Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json.
+Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
+anything under packages/@n8n/db/ (entities and migrations resolved at
+runtime via the DI container by every consuming package's integration tests).
 `);
 }
 
@@ -240,11 +242,15 @@ export function showScopeHelp(): void {
 Scope - Per-package jest/vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
 
 Output (single line on stdout):
   SKIP        No in-package files changed
@@ -258,11 +264,15 @@ export function showTestScopedHelp(): void {
 Test-Scoped - Compute scope and spawn jest/vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
   --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
 CI: scopes via jest --findRelatedTests / vitest related --run, or skips
