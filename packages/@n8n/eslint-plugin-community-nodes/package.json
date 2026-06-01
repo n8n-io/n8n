@@ -17,7 +17,7 @@
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint src",
+    "lint": "eslint src && pnpm lint:docs",
     "lint:fix": "eslint src --fix",
     "lint:docs": "pnpm build && eslint-doc-generator --check",
     "test": "vitest run",
