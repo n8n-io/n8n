@@ -1,6 +1,8 @@
 import { createResultError, createResultOk, type Result, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
+
 /**
  * Tracks per-file decompressed chunks across a zip archive while enforcing
  * a shared cumulative size limit and a maximum entry count.
@@ -45,10 +47,7 @@ export class ZipOutputAccumulator {
 			if (this.isLimitExceeded) return;
 			this.totalSize += chunk.length;
 			if (this.totalSize > this.maxSize) {
-				const limitMb = Math.round(this.maxSize / (1024 * 1024));
-				this.error = new UserError(
-					`The decompressed output exceeds the maximum allowed size of ${limitMb} MB`,
-				);
+				this.error = new DecompressedSizeExceededError(this.maxSize);
 				return;
 			}
 			chunks.push(chunk.slice());

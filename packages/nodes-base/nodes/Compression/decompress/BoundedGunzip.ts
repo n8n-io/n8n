@@ -1,8 +1,9 @@
 import * as fflate from 'fflate';
-import { ensureError, UserError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 
-import { GunzipOutputAccumulator } from './GunzipOutputAccumulator';
+import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 import { feedInChunks } from './FeedInChunks';
+import { GunzipOutputAccumulator } from './GunzipOutputAccumulator';
 
 /**
  * Decompress gzip data with an upper bound on total output size.
@@ -20,7 +21,7 @@ export async function boundedGunzip(data: Buffer, maxOutputSize: number): Promis
 			}
 
 			if (outputAccumulator.write(chunk)) {
-				rejectOnce(makeDecompressedSizeError(maxOutputSize));
+				rejectOnce(new DecompressedSizeExceededError(maxOutputSize));
 				return;
 			}
 
@@ -47,9 +48,4 @@ export async function boundedGunzip(data: Buffer, maxOutputSize: number): Promis
 			rejectOnce(ensureError(error));
 		}
 	});
-}
-
-function makeDecompressedSizeError(maxOutputSize: number): UserError {
-	const limitMb = Math.round(maxOutputSize / (1024 * 1024));
-	return new UserError(`The decompressed output exceeds the maximum allowed size of ${limitMb} MB`);
 }

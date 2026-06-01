@@ -1,9 +1,9 @@
 import * as fflate from 'fflate';
 import { ensureError } from 'n8n-workflow';
 
+import { feedInChunks } from './FeedInChunks';
 import { ZipEntryDecompressor } from './ZipEntryDecompressor';
 import { ZipOutputAccumulator } from './ZipOutputAccumulator';
-import { feedInChunks } from './FeedInChunks';
 
 /**
  * Decompress a zip archive with upper bounds on total output size

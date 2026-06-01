@@ -20,7 +20,10 @@ export class ZipEntryDecompressor {
 
 	start(): void {
 		this.entry.ondata = (error, chunk, final) => {
-			if (this.callbacks.isSettled()) return;
+			if (this.callbacks.isSettled()) {
+				this.entry.terminate();
+				return;
+			}
 			if (error) {
 				this.reject(error);
 				return;
@@ -29,8 +32,7 @@ export class ZipEntryDecompressor {
 			this.writeChunk(chunk);
 
 			if (this.accumulator.isLimitExceeded) {
-				this.entry.terminate();
-				this.callbacks.onError(this.accumulator.exceededError);
+				this.reject(this.accumulator.exceededError);
 				return;
 			}
 
