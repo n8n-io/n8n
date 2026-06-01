@@ -3,10 +3,12 @@ import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
+	type McpToolSettings,
 	type PickableCredential,
 	type ToolConnectionCredentialAdapter,
 	type ToolConnectionItem,
@@ -241,5 +243,14 @@ async function handleDisconnect(item: ToolConnectionItem) {
 		@select-credential="handleSelectCredential"
 		@save="handleSave"
 		@disconnect="handleDisconnect"
-	/>
+	>
+		<template #settings-body="{ item, onSave, onDisconnect }">
+			<McpToolSettingsContent
+				v-if="item.kind === 'mcp-server'"
+				:item="item as McpServerConnectionItem"
+				@save="(settings: McpToolSettings) => onSave(settings)"
+				@disconnect="onDisconnect"
+			/>
+		</template>
+	</ToolsConnectionModal>
 </template>
