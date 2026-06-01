@@ -28,3 +28,15 @@ test('enhanced PDF workflow avoids disallowed Code node modules', () => {
 		assert.doesNotMatch(node.parameters.jsCode, /require\(['"]path['"]\)/, node.name);
 	}
 });
+
+test('enhanced PDF workflow defaults to execution binary previews for final video and audio', () => {
+	const formFields = getNode('Upload Enhanced PDF Assets').parameters.formFields.values;
+	const previewField = formFields.find((field) => field.fieldLabel === 'include_execution_binary_preview');
+	const prepareJobCode = getNode('Prepare Enhanced PDF Job').parameters.jsCode;
+	const responseCode = getNode('Prepare Response').parameters.jsCode;
+
+	assert.equal(previewField.defaultValue, 'include_execution_binary_preview');
+	assert.match(prepareJobCode, /normalizeChoice\(item\.json\.include_execution_binary_preview, 'include_execution_binary_preview'\)/);
+	assert.match(responseCode, /finalVideo: await this\.helpers\.prepareBinaryData\(video, 'final\.mp4', 'video\/mp4'\)/);
+	assert.match(responseCode, /podcastAudio: await this\.helpers\.prepareBinaryData\(audio, 'merged-audio\.mp3', 'audio\/mpeg'\)/);
+});

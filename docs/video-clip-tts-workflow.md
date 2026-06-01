@@ -58,8 +58,10 @@ The form also accepts optional context and podcast settings:
 - `podcast_speaker_a`
 - `podcast_speaker_b`
 - `podcast_style`
-- `include_execution_binary_preview`: defaults to metadata-only output. Select it
-  only when n8n execution data should include attached binary previews.
+- `include_execution_binary_preview`: defaults to attached binary previews so
+  the n8n execution view can preview `final.mp4` and `merged-audio.mp3`.
+  Select `metadata_only` only when the execution should avoid storing those
+  binary previews.
 
 The output timeline is:
 
