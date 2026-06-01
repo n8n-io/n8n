@@ -48,6 +48,8 @@ test('validateScienceJob defaults to vertical 9:16 output', () => {
 	assert.equal(job.width, 1080);
 	assert.equal(job.height, 1920);
 	assert.equal(job.fps, 30);
+	assert.equal(job.encoderCodec, 'libx264');
+	assert.equal(job.encoderPreset, '');
 	assert.equal(job.pagePauseSeconds, 0.3);
 	assert.equal(job.bottomVideoHeightRatio, 0.2);
 });
@@ -131,11 +133,27 @@ test('buildScienceSegmentFfmpegArgs overlays looping background video at the bot
 	assert.match(filter, /overlay=0:1536/);
 	assert.match(filter, /subtitles=filename=/);
 	assert.equal(args[args.indexOf('-c:v') + 1], 'libx264');
+	assert.equal(args.includes('-preset'), false);
 	assert.equal(args[args.indexOf('-pix_fmt') + 1], 'yuv420p');
 	assert.equal(args[args.indexOf('-c:a') + 1], 'aac');
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 	assert.equal(args.at(-1), '/tmp/render/segment-001.mp4');
+});
+
+test('buildScienceSegmentFfmpegArgs supports libx264 preset override', () => {
+	const args = buildScienceSegmentFfmpegArgs({
+		pageImage: '/tmp/page-001.png',
+		backgroundVideoPath: '/tmp/background.mp4',
+		audioPath: '/tmp/page-001.mp3',
+		subtitlePath: '/tmp/page-001.ass',
+		outputPath: '/tmp/render/segment-001.mp4',
+		encoderCodec: 'libx264',
+		encoderPreset: 'ultrafast',
+	});
+
+	assert.equal(args[args.indexOf('-c:v') + 1], 'libx264');
+	assert.equal(args[args.indexOf('-preset') + 1], 'ultrafast');
 });
 
 test('buildSubtitleEventsForSegment returns segment-relative subtitle times', () => {
@@ -191,19 +209,13 @@ test('buildScienceConcatList places pauses only between page segments', () => {
 	);
 });
 
-test('buildScienceFinalConcatFfmpegArgs re-encodes the final video', () => {
+test('buildScienceFinalConcatFfmpegArgs stream-copies matching segments', () => {
 	const args = buildScienceFinalConcatFfmpegArgs({
 		concatListPath: '/tmp/render/segments.txt',
 		outputVideoPath: '/tmp/final.mp4',
 	});
 
 	assert.deepEqual(args.slice(0, 7), ['-y', '-f', 'concat', '-safe', '0', '-i', '/tmp/render/segments.txt']);
-	assert.equal(args.includes('copy'), false);
-	assert.equal(args[args.indexOf('-c:v') + 1], 'libx264');
-	assert.equal(args[args.indexOf('-pix_fmt') + 1], 'yuv420p');
-	assert.equal(args[args.indexOf('-c:a') + 1], 'aac');
-	assert.equal(args[args.indexOf('-b:a') + 1], '192k');
-	assert.equal(args[args.indexOf('-ar') + 1], '48000');
-	assert.equal(args[args.indexOf('-ac') + 1], '2');
+	assert.equal(args[args.indexOf('-c') + 1], 'copy');
 	assert.equal(args.at(-1), '/tmp/final.mp4');
 });

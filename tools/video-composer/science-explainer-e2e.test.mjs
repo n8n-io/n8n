@@ -412,11 +412,19 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 			'Run Page TTS',
 			'Build Science Explainer Video Job',
 			'Run Science Explainer Composer',
-			'Prepare Response',
 		]) {
 			item = await runCodeNode({ name, item, uploadBuffers, nodeResults });
 			nodeResults[name] = item;
 		}
+		for (let attempt = 0; attempt < 30; attempt += 1) {
+			item = await runCodeNode({ name: 'Check Composer Status', item, uploadBuffers, nodeResults });
+			nodeResults['Check Composer Status'] = item;
+			if (item.json.composerDone) break;
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+		assert.equal(item.json.composerDone, true, 'composer background job should finish');
+		item = await runCodeNode({ name: 'Prepare Response', item, uploadBuffers, nodeResults });
+		nodeResults['Prepare Response'] = item;
 
 		const finalVideo = item.json.finalVideo;
 		assert.equal(fs.existsSync(finalVideo), true, `${finalVideo} should exist`);

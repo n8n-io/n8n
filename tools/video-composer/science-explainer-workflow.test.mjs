@@ -57,7 +57,8 @@ test('science explainer workflow calls the science composer script', () => {
 	const composerCode = getNode('Run Science Explainer Composer').parameters.jsCode;
 
 	assert.match(composerCode, /compose-science-explainer-video\.mjs/);
-	assert.match(composerCode, /science-video-job\.json/);
+	assert.match(composerCode, /item\.composerJobPath/);
+	assert.match(composerCode, /managed-job-runner\.mjs/);
 });
 
 test('science explainer code nodes avoid modules blocked by n8n task runner', () => {

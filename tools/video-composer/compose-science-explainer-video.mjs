@@ -27,6 +27,12 @@ function optionalNumber(value, defaultValue, minimum) {
 	return parsed;
 }
 
+function optionalString(value, defaultValue) {
+	const text = String(value ?? '').trim();
+
+	return text || defaultValue;
+}
+
 function dimensionsForAspectRatio(aspectRatio) {
 	if (aspectRatio === '16:9') return { width: 1920, height: 1080 };
 	if (aspectRatio === '9:16') return { width: 1080, height: 1920 };
@@ -52,6 +58,8 @@ export function validateScienceJob(raw) {
 		width: optionalNumber(raw.width, defaults.width, 320),
 		height: optionalNumber(raw.height, defaults.height, 320),
 		fps: optionalNumber(raw.fps, 30, 1),
+		encoderCodec: optionalString(raw.encoderCodec, 'libx264'),
+		encoderPreset: optionalString(raw.encoderPreset, ''),
 	};
 }
 
@@ -131,6 +139,8 @@ export function buildScienceSegmentFfmpegArgs({
 	height = 1920,
 	fps = 30,
 	bottomVideoHeightRatio = 0.2,
+	encoderCodec = 'libx264',
+	encoderPreset = '',
 }) {
 	const layout = calculateScienceLayout({ width, height, bottomVideoHeightRatio });
 	const subtitles = `subtitles=filename=${escapeForFilterPath(subtitlePath)}`;
@@ -141,7 +151,7 @@ export function buildScienceSegmentFfmpegArgs({
 		`[overlayv]${subtitles}[vout]`,
 	].join(';');
 
-	return [
+	const args = [
 		'-y',
 		'-loop',
 		'1',
@@ -162,7 +172,10 @@ export function buildScienceSegmentFfmpegArgs({
 		'-r',
 		String(fps),
 		'-c:v',
-		'libx264',
+		encoderCodec,
+	];
+	if (encoderCodec === 'libx264' && encoderPreset) args.push('-preset', encoderPreset);
+	args.push(
 		'-pix_fmt',
 		'yuv420p',
 		'-c:a',
@@ -175,7 +188,9 @@ export function buildScienceSegmentFfmpegArgs({
 		'2',
 		'-shortest',
 		outputPath,
-	];
+	);
+
+	return args;
 }
 
 export function buildPauseSegmentFfmpegArgs({
@@ -187,6 +202,8 @@ export function buildPauseSegmentFfmpegArgs({
 	height = 1920,
 	fps = 30,
 	bottomVideoHeightRatio = 0.2,
+	encoderCodec = 'libx264',
+	encoderPreset = '',
 }) {
 	const layout = calculateScienceLayout({ width, height, bottomVideoHeightRatio });
 	const filter = [
@@ -195,7 +212,7 @@ export function buildPauseSegmentFfmpegArgs({
 		`[pagev][bgv]overlay=0:${layout.bottomVideoY}[vout]`,
 	].join(';');
 
-	return [
+	const args = [
 		'-y',
 		'-loop',
 		'1',
@@ -217,7 +234,10 @@ export function buildPauseSegmentFfmpegArgs({
 		'-r',
 		String(fps),
 		'-c:v',
-		'libx264',
+		encoderCodec,
+	];
+	if (encoderCodec === 'libx264' && encoderPreset) args.push('-preset', encoderPreset);
+	args.push(
 		'-pix_fmt',
 		'yuv420p',
 		'-c:a',
@@ -229,7 +249,9 @@ export function buildPauseSegmentFfmpegArgs({
 		'-ac',
 		'2',
 		outputPath,
-	];
+	);
+
+	return args;
 }
 
 export function buildScienceConcatList({ segmentPaths = [], pausePaths = [] }) {
@@ -255,18 +277,8 @@ export function buildScienceFinalConcatFfmpegArgs({ concatListPath, outputVideoP
 		'0',
 		'-i',
 		concatListPath,
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
-		'-c:a',
-		'aac',
-		'-b:a',
-		'192k',
-		'-ar',
-		'48000',
-		'-ac',
-		'2',
+		'-c',
+		'copy',
 		outputVideoPath,
 	];
 }
@@ -332,6 +344,8 @@ function render() {
 			height: job.height,
 			fps: job.fps,
 			bottomVideoHeightRatio: job.bottomVideoHeightRatio,
+			encoderCodec: job.encoderCodec,
+			encoderPreset: job.encoderPreset,
 		}), job.ffmpegLogPath);
 		segmentPaths.push(segmentPath);
 
@@ -346,6 +360,8 @@ function render() {
 				height: job.height,
 				fps: job.fps,
 				bottomVideoHeightRatio: job.bottomVideoHeightRatio,
+				encoderCodec: job.encoderCodec,
+				encoderPreset: job.encoderPreset,
 			}), job.ffmpegLogPath);
 			pausePaths.push(pausePath);
 		}

@@ -221,7 +221,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst dimensions = item.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };\nconst job = { jobId: item.jobId, aspectRatio: item.aspectRatio, backgroundVideoPath: item.backgroundVideoPath, pagesManifestPath: item.pagesManifestPath, pageAudioManifestPath: item.pageAudioManifestPath, pageTimingPath: item.pageTimingPath, subtitlePath: item.subtitlePath, renderDir: item.renderDir, outputVideoPath: item.outputVideoPath, outputAudioPath: item.outputAudioPath, ffmpegLogPath: item.ffmpegLogPath, pagePauseSeconds: Number(item.page_pause_seconds || 0.3), bottomVideoHeightRatio: Number(item.bottom_video_height_ratio || 0.2), width: Number(item.video_width || dimensions.width), height: Number(item.video_height || dimensions.height), fps: Number(item.video_fps || 30) };\nfs.writeFileSync(item.composerJobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, composerJob: job } }];"
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst dimensions = item.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };\nconst job = { jobId: item.jobId, aspectRatio: item.aspectRatio, backgroundVideoPath: item.backgroundVideoPath, pagesManifestPath: item.pagesManifestPath, pageAudioManifestPath: item.pageAudioManifestPath, pageTimingPath: item.pageTimingPath, subtitlePath: item.subtitlePath, renderDir: item.renderDir, outputVideoPath: item.outputVideoPath, outputAudioPath: item.outputAudioPath, ffmpegLogPath: item.ffmpegLogPath, pagePauseSeconds: Number(item.page_pause_seconds || 0.3), bottomVideoHeightRatio: Number(item.bottom_video_height_ratio || 0.2), width: Number(item.video_width || dimensions.width), height: Number(item.video_height || dimensions.height), fps: Number(item.video_fps || 30), encoderCodec: String(item.encoder_codec || 'libx264'), encoderPreset: String(item.encoder_preset || '') };\nfs.writeFileSync(item.composerJobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, composerJob: job } }];"
       },
       "id": "build-science-explainer-video-job",
       "name": "Build Science Explainer Video Job",
@@ -234,7 +234,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nif (!String(item.composerJobPath || '').endsWith('science-video-job.json')) throw new Error('Expected composer job file science-video-job.json');\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join(String.fromCharCode(10)).trim();\n      reject(new Error('Science explainer composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':' + String.fromCharCode(10) + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/compose-science-explainer-video.mjs', [item.composerJobPath]);\nreturn [{ json: { ...item, composerStdout: result.stdout, composerStderr: result.stderr } }];"
+        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nconst runnerPath = item.repoDir + '/tools/video-composer/managed-job-runner.mjs';\nconst scriptPath = item.repoDir + '/tools/video-composer/compose-science-explainer-video.mjs';\nconst jobPath = item.composerJobPath;\nconst statusPath = item.renderDir + '/composer-status.json';\nconst stdoutPath = item.renderDir + '/composer-stdout.log';\nconst stderrPath = item.renderDir + '/composer-stderr.log';\nif (!fs.existsSync(runnerPath)) throw new Error('Managed job runner not found: ' + runnerPath);\nif (!fs.existsSync(scriptPath)) throw new Error('Composer script not found: ' + scriptPath);\nif (!fs.existsSync(jobPath)) throw new Error('Composer job file not found: ' + jobPath);\nlet existingStatus = null;\nif (fs.existsSync(statusPath)) {\n  try { existingStatus = JSON.parse(fs.readFileSync(statusPath, 'utf8')); } catch {}\n}\nif (!existingStatus || !['running', 'done'].includes(existingStatus.state)) {\n  const runnerJob = { statusPath, stdoutPath, stderrPath, cwd: item.repoDir, command: 'node', args: [scriptPath, jobPath] };\n  const child = spawn('node', [runnerPath, JSON.stringify(runnerJob)], { cwd: item.repoDir, detached: true, stdio: 'ignore' });\n  child.unref();\n  existingStatus = { state: 'running', pid: child.pid, startedAt: new Date().toISOString(), statusPath, stdoutPath, stderrPath };\n  fs.writeFileSync(statusPath, JSON.stringify(existingStatus, null, 2));\n}\nreturn [{ json: { ...item, composerStatusPath: statusPath, composerStdoutPath: stdoutPath, composerStderrPath: stderrPath, composerStatus: existingStatus, composerDone: existingStatus.state === 'done' } }];"
       },
       "id": "run-science-explainer-composer",
       "name": "Run Science Explainer Composer",
@@ -269,6 +269,69 @@
       "typeVersion": 1.1,
       "position": [
         2340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "wait-for-composer",
+      "name": "Wait For Composer",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2040,
+        0
+      ],
+      "webhookId": "wait-for-composer"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst statusPath = item.composerStatusPath || item.renderDir + '/composer-status.json';\nconst stdoutPath = item.composerStdoutPath || item.renderDir + '/composer-stdout.log';\nconst stderrPath = item.composerStderrPath || item.renderDir + '/composer-stderr.log';\nlet status = { state: 'running', statusPath, stdoutPath, stderrPath };\nif (fs.existsSync(statusPath)) status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));\nconst stdout = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8').slice(-1024 * 1024) : '';\nconst stderr = fs.existsSync(stderrPath) ? fs.readFileSync(stderrPath, 'utf8').slice(-1024 * 1024) : '';\nif (status.state === 'error') {\n  const detail = [stderr, stdout].filter(Boolean).join(String.fromCharCode(10)).trim();\n  throw new Error('Composer background job failed' + (detail ? ':' + String.fromCharCode(10) + detail : ''));\n}\nreturn [{ json: { ...item, composerStatusPath: statusPath, composerStdoutPath: stdoutPath, composerStderrPath: stderrPath, composerStatus: status, composerDone: status.state === 'done', composerStdout: stdout, composerStderr: stderr } }];"
+      },
+      "id": "check-composer-status",
+      "name": "Check Composer Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "composer-done",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.composerDone }}",
+              "rightValue": ""
+            }
+          ]
+        }
+      },
+      "id": "composer-complete",
+      "name": "Composer Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2480,
         0
       ]
     }
@@ -355,7 +418,7 @@
       "main": [
         [
           {
-            "node": "Prepare Response",
+            "node": "Wait For Composer",
             "type": "main",
             "index": 0
           }
@@ -367,6 +430,46 @@
         [
           {
             "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Composer": {
+      "main": [
+        [
+          {
+            "node": "Check Composer Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Composer Status": {
+      "main": [
+        [
+          {
+            "node": "Composer Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Composer Complete?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait For Composer",
             "type": "main",
             "index": 0
           }
