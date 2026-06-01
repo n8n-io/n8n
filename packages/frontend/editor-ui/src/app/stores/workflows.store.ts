@@ -548,7 +548,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 
 		if (isCurrentWorkflow) {
-			currentSettings = workflowDocumentStore.settings;
+			currentSettings = workflowDocumentStore.getSettingsSnapshot();
 			currentVersionId = workflowDocumentStore.versionId;
 			currentChecksum = workflowDocumentStore.checksum;
 		} else {
