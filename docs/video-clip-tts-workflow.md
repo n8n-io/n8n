@@ -69,8 +69,10 @@ The output timeline is:
 - page 2 and later explanations: current PDF page with cover lower-left and
   illustration lower-right
 
-Review artifacts are written to `tmp/n8n-video-jobs/{jobId}`. The most useful
-files are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`,
+Review artifacts and generated temporary files are written under the project
+root `tmp/` directory by default: `tmp/n8n-video-jobs/{jobId}`. This matches
+the existing video composer workflow storage convention. The most useful files
+are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`,
 `timing/page-timing.json`, `render/intro-cover.mp4`,
 `render/intro-illustration.mp4`, `render/segment-*.mp4`, `render/final.mp4`,
 and `cost.json`.
