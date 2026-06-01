@@ -27,6 +27,7 @@ export type Agent = {
 	projectId: string;
 	isCompiled: boolean;
 	isRunnable?: boolean;
+	hasPublishHistory?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;

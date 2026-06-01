@@ -104,6 +104,21 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
+		// which the catch below won't handle — synthesize a mock here instead of delegating.
+		if (!nodeCredentials.id) {
+			this.mockedCredentials.push({
+				nodeName: executeData?.node?.name ?? 'unknown',
+				credentialType: type,
+				credentialId: undefined,
+			});
+			const synthesized = {
+				...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+				[MOCK_MARKER]: true,
+			} as ICredentialDataDecryptedObject;
+			return this.applyServerUrlRewrite(synthesized, type, nodeCredentials, executeData);
+		}
+
 		let credentials: ICredentialDataDecryptedObject;
 		try {
 			credentials = await this.inner.getDecrypted(
@@ -118,28 +133,13 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;
 
+			// id present but absent from the DB — a bare marker stub is enough; URL rewrite still runs below.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
 				credentialId: nodeCredentials.id ?? undefined,
 			});
-
-			// When called with no credential id (eval-mode bypass for nodes
-			// with no credentials of any type configured), schema-synthesize
-			// so the wire-server URL rewrite below has a real `url` field to
-			// augment. Otherwise vendor SDK traffic would escape to the real
-			// provider with placeholder values and 401 at the wire layer.
-			// `buildEvalMockCredentials` is typed `Record<string, unknown>` —
-			// schema defaults can be richer than `CredentialInformation`, but
-			// at runtime emits only JSON-shaped values, which is what the
-			// rewrite path consumes.
-			credentials =
-				nodeCredentials.id === null
-					? ({
-							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-							[MOCK_MARKER]: true,
-						} as ICredentialDataDecryptedObject)
-					: { [MOCK_MARKER]: true };
+			credentials = { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);

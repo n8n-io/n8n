@@ -8,7 +8,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -23,7 +22,7 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -161,10 +160,6 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
 
-const hasWorkflowResolver = computed(() => {
-	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
-});
-
 function isCredentialResolvable(credentialType: string): boolean {
 	if (!isDynamicCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
@@ -183,17 +178,6 @@ function getSelectedPrivateCredential(credentialType: string): ICredentialsRespo
 
 function isPrivateConnected(credentialType: string): boolean {
 	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
-}
-
-function showResolvableWarning(credentialType: string): boolean {
-	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
-}
-
-// TODO: use actual docs link when available
-const dynamicCredentialsDocsUrl = '';
-
-function openWorkflowSettings() {
-	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 }
 
 watch(
@@ -904,10 +888,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div
-					v-if="getSelectedPrivateCredential(type.name) || showResolvableWarning(type.name)"
-					:class="$style.noticesContainer"
-				>
+				<div v-if="getSelectedPrivateCredential(type.name)" :class="$style.noticesContainer">
 					<N8nNotice
 						v-if="getSelectedPrivateCredential(type.name)"
 						:theme="isPrivateConnected(type.name) ? 'info' : 'warning'"
@@ -938,24 +919,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								</div>
 							</div>
 						</div>
-					</N8nNotice>
-					<N8nNotice
-						v-if="showResolvableWarning(type.name)"
-						theme="warning"
-						data-test-id="node-credential-resolver-warning"
-					>
-						<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
-							<template #workflowSettings>
-								<N8nLink @click="openWorkflowSettings">
-									{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
-								</N8nLink>
-							</template>
-							<template v-if="dynamicCredentialsDocsUrl" #documentation>
-								<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
-									{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
-								</N8nLink>
-							</template>
-						</I18nT>
 					</N8nNotice>
 				</div>
 			</N8nInputLabel>
