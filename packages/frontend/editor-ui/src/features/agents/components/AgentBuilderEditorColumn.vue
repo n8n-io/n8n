@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
@@ -12,6 +13,7 @@ import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -22,6 +24,11 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;
 	agentId: string;
+	agentFiles: AgentFileDto[];
+	agentFilesLoading: boolean;
+	agentFilesUploading: boolean;
+	knowledgeBaseEnabled: boolean;
+	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
@@ -43,6 +50,8 @@ const emit = defineEmits<{
 	'add-trigger': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'upload-files': [files: File[]];
+	'delete-file': [file: AgentFileDto];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
@@ -131,6 +140,19 @@ const i18n = useI18n();
 							embedded
 							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
+						<AgentFilesPanel
+							:files="agentFiles"
+							:disabled="childrenDisabled"
+							:loading="agentFilesLoading"
+							:uploading="agentFilesUploading"
+							:deleting-file-id="deletingAgentFileId"
+							data-testid="agent-files-card"
+							@upload-files="emit('upload-files', $event)"
+							@delete-file="emit('delete-file', $event)"
 						/>
 					</N8nCard>
 

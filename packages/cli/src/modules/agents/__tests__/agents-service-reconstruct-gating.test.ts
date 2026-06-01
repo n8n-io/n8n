@@ -82,6 +82,8 @@ function makeService(
 		mock<Telemetry>(),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 	);
 }
 

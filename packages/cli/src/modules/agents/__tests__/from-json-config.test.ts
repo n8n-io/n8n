@@ -81,7 +81,6 @@ describe('buildFromJson()', () => {
 		(
 			agent as {
 				memoryConfig?: {
-					lastMessages: number;
 					observationLog?: {
 						renderTokenBudget?: number;
 					};
@@ -749,7 +748,6 @@ describe('buildFromJson()', () => {
 			memory: {
 				enabled: true,
 				storage: 'n8n',
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 4_000,
 					reflectorThresholdTokens: 12_000,
@@ -774,7 +772,6 @@ describe('buildFromJson()', () => {
 
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
-		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
 		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 4_000 });
 		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
 			observerThresholdTokens: 4_000,

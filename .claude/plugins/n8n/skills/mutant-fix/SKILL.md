@@ -1,41 +1,45 @@
 ---
-description: Take a Stryker summary.json (from n8n:mutation-test), triage the surviving mutants by user-reachable-behaviour risk, write minimal assertion changes to kill the top 3-5 highest-leverage survivors, then verify by re-running n8n:mutation-test. Use when the user has just run mutation testing and wants to strengthen the test suite, or says "kill the survivors / strengthen tests / fix the red." Pairs with n8n:mutation-test as the inner write side of a single iteration.
+description: Take a Stryker summary.json (from n8n:mutant-score), triage the surviving mutants by user-reachable-behaviour risk, write minimal assertion changes to kill the top 3-5 highest-leverage survivors, then verify by re-running n8n:mutant-score. Use when the user has just run mutation testing and wants to strengthen the test suite, or says "kill the survivors / strengthen tests / fix the red." Pairs with n8n:mutant-score as the inner write side of a single iteration.
 ---
 
 # Strengthen tests — kill the highest-leverage survivors
 
-The other half of the local mutation-testing loop. `n8n:mutation-test` reports which mutations escaped the tests; this skill picks the ones that matter and writes minimal assertion changes to kill them.
+The other half of the local mutation-testing loop. `n8n:mutant-score` reports which mutations escaped the tests; this skill picks the ones that matter and writes minimal assertion changes to kill them.
 
 ## When to use
 
-- User has just run `/n8n:mutation-test <file>` and the verdict was `red`
+- User has just run `/n8n:mutant-score <file>` and the verdict was `red`
 - User says: "strengthen tests", "kill the survivors", "fix the red", "iterate on the tests for X"
-- Mid-loop: this skill's verify step calls `n8n:mutation-test` again, so the loop closes here
+- Mid-loop: this skill's verify step calls `n8n:mutant-score` again, so the loop closes here
 
 **Don't** use this skill:
-- Before any mutation testing has been run for the target file (no `summary.json` to triage)
 - For a `green` verdict — there's nothing to strengthen; if user insists, push back and ask which file actually needs work
 - To bulk-kill every survivor — explicitly capped at 5 per invocation. Re-invoke for more.
 
 ## Inputs
 
-- **Default**: read `packages/workflow/reports/mutation/summary.json` (the last `n8n:mutation-test` run's output).
-- **Override**: `--summary <path>` to point at a different summary file.
+Accepts **either** a source file or an existing summary — whichever you have:
+
+- **A source file** (a repo-relative path, e.g. `packages/workflow/src/workflow-checksum.ts` — package inferred): self-bootstrapping — there's no summary yet, so step 1 runs `n8n:mutant-score` to produce one, then proceeds. This is the entry point for unattended callers (e.g. cat-bot acting on a ledger gap).
+- **An existing summary**: `--summary <path>`. A prior `n8n:mutant-score` run wrote it to that package's `reports/mutation/summary.json` (e.g. `packages/workflow/reports/mutation/summary.json`). Skips the bootstrap.
 
 ## Steps
 
-### 1. Read the summary
+### 1. Get a summary (bootstrap if needed)
 
-`packages/workflow/reports/mutation/summary.json`. Already compact (~50 KB). Pull:
+- **Given a source file** (or no usable summary on disk): run `n8n:mutant-score` on the file first to generate `<package-dir>/reports/mutation/summary.json`. Then read it.
+- **Given/defaulting to a summary path**: read it directly.
+
+Read the summary (already compact, ~50 KB) and pull:
 - `files[0].file` — the source file under test
 - `files[0].score` — current mutation score
 - `files[0].survivors[]` — every surviving (and no-coverage) mutant with location, replacement, covering test names
 
-If `summary.json` is missing, stop. Tell the user to run `n8n:mutation-test` first.
+If the verdict is already `green`, stop — nothing to strengthen.
 
 ### 2. Read the source under test, sparingly
 
-Read the source file referenced in `summary.json`. Read **once**, the whole file (typical n8n-workflow source files are 50-500 lines; the cost is bounded). This is the only file read; don't load test files yet.
+Read the source file referenced in `summary.json`. Read **once**, the whole file (typical source files are 50-500 lines; the cost is bounded). This is the only file read; don't load test files yet.
 
 ### 3. Triage the survivors
 
@@ -102,13 +106,13 @@ Use `Edit` with exact-string matches. Never rewrite entire test files.
 
 ### 7. Verify
 
-Re-invoke `n8n:mutation-test` on the same source file. Report:
+Re-invoke `n8n:mutant-score` on the same source file. Report:
 
 ```
 Before:  red 76.74% (28 survivors)
 After:   green 82.34% (22 survivors)
 Killed:  6 of 5 targeted (1 bonus — fix for #77 also killed #78)
-Still surviving: 22 — re-invoke /n8n:strengthen-tests for another batch.
+Still surviving: 22 — re-invoke /n8n:mutant-fix for another batch.
 ```
 
 If the score went UP but threshold still not met: the iteration is working, recommend another pass.
@@ -131,7 +135,7 @@ Keep prose minimal between sections. The plan and verify steps are the structure
 - **Never fabricate assertions.** If the source doesn't clearly do X, don't claim it does.
 - **No new test files unless absolutely necessary.** Extend the existing covering test file.
 - **No reverting other people's tests.** Only edit tests in the package being mutated.
-- **No re-running mutation-test more than once per invocation.** That's the verify step. Don't loop within a single invocation; let the user re-invoke.
+- **No re-running mutant-score more than once per invocation.** That's the verify step. Don't loop within a single invocation; let the user re-invoke.
 - **No commits.** Edits land in the working tree; user reviews and commits.
 
 ## Common follow-ups
@@ -143,5 +147,5 @@ Keep prose minimal between sections. The plan and verify steps are the structure
 
 ## Related
 
-- `n8n:mutation-test` — the read side of this loop
+- `n8n:mutant-score` — the read side of this loop
 - `scripts/mutation-health/README.md` — the BQ-backed observability story this slots into

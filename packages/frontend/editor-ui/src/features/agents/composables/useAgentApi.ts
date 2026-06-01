@@ -1,5 +1,6 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentFileDto,
 	AgentIntegrationStatusResponse,
 	AgentPersistedMessageDto,
 	AgentSkill,
@@ -7,6 +8,7 @@ import type {
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
@@ -71,6 +73,50 @@ export const deleteAgent = async (
 	agentId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
+};
+
+export const listAgentFiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentFileDto[]> => {
+	return await makeRestApiRequest<AgentFileDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/files`,
+	);
+};
+
+export const uploadAgentFiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	files: File[],
+): Promise<AgentFileDto[]> => {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append('files', file);
+	}
+
+	return await makeRestApiRequest<AgentFileDto[]>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/files`,
+		formData,
+	);
+};
+
+export const deleteAgentFile = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	fileId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
 };
 
 export const connectIntegration = async (
@@ -268,11 +314,13 @@ export const publishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	versionId?: string,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
+		versionId ? { versionId } : undefined,
 	);
 };
 
@@ -297,6 +345,34 @@ export const revertAgentToPublished = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/revert-to-published`,
+	);
+};
+
+export const revertAgentToVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/revert-to-version`,
+		{ versionId },
+	);
+};
+
+export const listAgentVersions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentVersionListItemDto[]> => {
+	return await makeRestApiRequest<AgentVersionListItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions`,
+		params,
 	);
 };
 
