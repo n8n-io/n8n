@@ -87,9 +87,9 @@ const LINKED_FILE_GROUPS = [
 	'examples',
 	'other',
 ] as const satisfies readonly RuntimeSkillLinkedFileGroup[];
-const N8N_SKILL_DIR_TEMPLATE = '${N8N_SKILL_DIR}';
-const N8N_SKILLS_DIR_TEMPLATE = '${N8N_SKILLS_DIR}';
-const N8N_WORKSPACE_DIR_TEMPLATE = '${N8N_WORKSPACE_DIR}';
+const N8N_SKILL_DIR_TEMPLATE = `${N8N_SKILL_DIR}`;
+const N8N_SKILLS_DIR_TEMPLATE = `${N8N_SKILLS_DIR}`;
+const N8N_WORKSPACE_DIR_TEMPLATE = `${N8N_WORKSPACE_DIR}`;
 const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
@@ -352,19 +352,19 @@ function createMaterializedRuntimeSkillSource(
 
 const RUNTIME_SKILL_FILE_LABEL = 'Runtime skill file';
 
-function loadPrebakedRuntimeSkillsBundle({
+export async function loadPrebakedRuntimeSkillsBundle({
 	source,
 	workspace,
 	root,
 	workspaceRoot = root,
 	logger,
 }: MaterializeRuntimeSkillsOptions): Promise<RuntimeSkillWorkspaceBundle | undefined> {
-	if (source.registry.skills.length === 0) return Promise.resolve(undefined);
+	if (source.registry.skills.length === 0) return undefined;
 
 	const skillsRoot = posixJoin(root, SANDBOX_RUNTIME_SKILLS_DIR);
 	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
 
-	return loadPrebakedWorkspaceBundle({
+	return await loadPrebakedWorkspaceBundle({
 		workspace,
 		manifestPath,
 		expectedHash: source.registry.skillsHash,
@@ -387,8 +387,8 @@ function loadPrebakedRuntimeSkillsBundle({
 			skillsHash: bundle.skillsHash,
 			count: bundle.skills.length,
 		}),
-		buildBundle: () =>
-			buildRuntimeSkillWorkspaceBundle({
+		buildBundle: async () =>
+			await buildRuntimeSkillWorkspaceBundle({
 				source,
 				root,
 				workspaceRoot,
@@ -550,8 +550,6 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	});
 }
 
-export const createPrebakedRuntimeSkillsFromWorkspace = loadPrebakedRuntimeSkillsBundle;
-
 export function createLazyWorkspaceRuntimeSkillSource({
 	source,
 	workspace,
@@ -568,7 +566,7 @@ export function createLazyWorkspaceRuntimeSkillSource({
 		prepare: async () => {
 			await ensureMaterialized();
 		},
-		loadSkill: async (skillId) => await (await ensureSource()).loadSkill(skillId),
+		loadSkill: async (skillId: string) => await (await ensureSource()).loadSkill(skillId),
 		...(source.loadFile
 			? {
 					loadFile: async (skillId: string, filePath: string) => {

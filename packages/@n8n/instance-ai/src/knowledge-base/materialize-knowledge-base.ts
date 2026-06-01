@@ -103,14 +103,14 @@ export function buildKnowledgeBaseWorkspaceBundle({
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 
-export function loadPrebakedKnowledgeBaseBundle({
+export async function loadPrebakedKnowledgeBaseBundle({
 	workspace,
 	root,
 	logger,
 }: MaterializeKnowledgeBaseOptions): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
 	const bundle = buildKnowledgeBaseWorkspaceBundle({ root });
 
-	return loadPrebakedWorkspaceBundle({
+	return await loadPrebakedWorkspaceBundle({
 		workspace,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
@@ -142,7 +142,7 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		workspace: options.workspace,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
-		loadPrebaked: () => loadPrebakedKnowledgeBaseBundle(options),
+		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
 		buildBundle: () => buildKnowledgeBaseWorkspaceBundle({ root: options.root }),
 		materializedLogMessage: 'Materialized knowledge base into workspace',
 		materializedLogContext: (bundle) => ({

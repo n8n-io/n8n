@@ -11,10 +11,11 @@ function createWorkspaceTarget(files: Map<string, string>): {
 			readFile: jest.fn(async (path: string) => {
 				const content = files.get(path);
 				if (content === undefined) throw new Error('missing');
-				return content;
+				return await Promise.resolve(content);
 			}),
 			writeFile: jest.fn(async (path: string, content: string | Buffer) => {
 				writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+				await Promise.resolve();
 			}),
 		},
 		sandbox: {
@@ -22,12 +23,14 @@ function createWorkspaceTarget(files: Map<string, string>): {
 				const readMatch = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
 				if (readMatch) {
 					const content = files.get(readMatch[1]);
-					return content === undefined
-						? { exitCode: 1, stdout: '', stderr: 'missing' }
-						: { exitCode: 0, stdout: content, stderr: '' };
+					return await Promise.resolve(
+						content === undefined
+							? { exitCode: 1, stdout: '', stderr: 'missing' }
+							: { exitCode: 0, stdout: content, stderr: '' },
+					);
 				}
 
-				return { exitCode: 0, stdout: '', stderr: '' };
+				return await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
 			}),
 		},
 	};

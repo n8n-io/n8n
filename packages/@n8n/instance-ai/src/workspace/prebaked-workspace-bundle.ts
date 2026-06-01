@@ -1,10 +1,10 @@
 import type { Logger } from '../logger';
-import { parseVersionedWorkspaceManifest } from './workspace-manifest';
 import {
 	readWorkspaceFile,
 	writeWorkspaceFileMap,
 	type WorkspaceFileTarget,
 } from './workspace-files';
+import { parseVersionedWorkspaceManifest } from './workspace-manifest';
 
 export interface LoadPrebakedWorkspaceBundleOptions<TBundle> {
 	workspace: WorkspaceFileTarget;
