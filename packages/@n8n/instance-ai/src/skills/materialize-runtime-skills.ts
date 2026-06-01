@@ -87,9 +87,9 @@ const LINKED_FILE_GROUPS = [
 	'examples',
 	'other',
 ] as const satisfies readonly RuntimeSkillLinkedFileGroup[];
-const N8N_SKILL_DIR_TEMPLATE = `${N8N_SKILL_DIR}`;
-const N8N_SKILLS_DIR_TEMPLATE = `${N8N_SKILLS_DIR}`;
-const N8N_WORKSPACE_DIR_TEMPLATE = `${N8N_WORKSPACE_DIR}`;
+const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
+const N8N_SKILLS_DIR_TEMPLATE = '$' + '{N8N_SKILLS_DIR}';
+const N8N_WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
 const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
