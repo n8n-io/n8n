@@ -29,11 +29,6 @@ export class InstanceRedactionEnforcementService {
 		return await this.load();
 	}
 
-	async buildContext(): Promise<{ enforcement: RedactionEnforcementSettings } | undefined> {
-		if (!isRedactionEnforcementEnabled()) return undefined;
-		return { enforcement: await this.load() };
-	}
-
 	/**
 	 * Resolves the instance redaction floor as a `RedactionFloor` enum.
 	 * Returns `'off'` when enforcement is disabled. Normalizes any stored

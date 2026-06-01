@@ -43,6 +43,13 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 		const manual = workflow.manual || floorEnforcesManual;
 		// Manual redaction implies production redaction (IAM-697 + floor normalization
 		// already guarantee this; the clamp keeps the captured snapshot valid regardless).
+		//
+		// Migration note: a legacy workflow persisted with the now-disallowed
+		// `manual-only` policy (manual without production) is captured here as
+		// `{ production: true, manual: true }`, i.e. upgraded to `all`. New executions of
+		// such a workflow therefore redact production data that the old `manual-only`
+		// resolution left revealable. This is the intended fail-safe direction of the
+		// manual-implies-production invariant; past executions keep their V1 snapshot.
 		const production = workflow.production || floorEnforcesProduction || manual;
 
 		return {

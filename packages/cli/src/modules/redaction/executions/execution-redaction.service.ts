@@ -13,7 +13,6 @@ import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { channelsToPolicy } from '../redaction-channels';
-
 import type {
 	IExecutionRedactionStrategy,
 	RedactionContext,
