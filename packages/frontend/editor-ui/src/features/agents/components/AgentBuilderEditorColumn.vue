@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
+import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -33,7 +34,7 @@ const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.can
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>];
-	'open-tool': [index: number];
+	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'open-trigger': [triggerType: string];
 	'add-tool': [];

@@ -100,59 +100,59 @@ const AgentJsonSkillConfigSchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
+export const McpAuthenticationSchemaTypes = z.enum([
+	'none',
+	'bearerAuth',
+	'headerAuth',
+	'multipleHeadersAuth',
+	'mcpOAuth2Api',
+]);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
  * `tools[]` array — the SDK's `McpClient` prefixes each tool name with the
  * server name to avoid collisions.
  */
-const McpServerConfigSchema = z
+export const McpServerConfigSchema = z
 	.object({
-		/**
-		 * Unique-per-agent server name. Also used as the SDK tool-name prefix
-		 * (e.g. a server named `github` exposes its `create_issue` tool as
-		 * `github_create_issue` to the LLM).
-		 */
 		name: z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(/^[a-zA-Z0-9_-]+$/),
-		description: z.string().max(512).optional(),
-		url: z.string().min(1),
-		transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
-		/**
-		 * Authentication method. In addition to the five named variants, any string
-		 * ending in `McpOAuth2Api` is accepted to accommodate registry-specific
-		 * credential types (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
-		 */
+			.regex(/^[a-zA-Z0-9_-]+$/)
+			.describe(
+				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
+			),
+		description: z.string().max(512).optional().describe('Human-readable server description'),
+		url: z.string().min(1).describe('MCP server endpoint URL'),
+		transport: z
+			.enum(['sse', 'streamableHttp'])
+			.default('streamableHttp')
+			.describe('Transport protocol'),
 		authentication: z
-			.union([
-				z.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api']),
-				z.string().endsWith('McpOAuth2Api'),
-			])
-			.default('none'),
-		/** Credential id required when `authentication` is anything other than `none`. */
-		credential: z.string().optional(),
+			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.default('none')
+			.describe(
+				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+			),
+		credential: z
+			.string()
+			.optional()
+			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
 		metadata: z
 			.object({
-				/**
-				 * The node-type name this server was created from (e.g. `@n8n/mcp-registry.github`).
-				 * When present the config modal renders with the registry node type's form
-				 * (correct credential selector, preset field visibility) instead of the generic
-				 * MCP Client Tool form.
-				 */
-				nodeTypeName: z.string().optional(),
+				nodeTypeName: z
+					.string()
+					.optional()
+					.describe(
+						'Source node type for registry servers (e.g. @n8n/mcp-registry.github). Enables correct UI form',
+					),
 			})
-			.optional(),
-		/**
-		 * Restricts which tools from this server are surfaced to the agent.
-		 * Tools are matched by their original (un-prefixed) name.
-		 *
-		 * - `{ mode: 'allow', tools: [...] }` — only the listed tools are surfaced.
-		 * - `{ mode: 'exclude', tools: [...] }` — every tool except the listed ones is surfaced.
-		 * - absent — every tool the server advertises is surfaced.
-		 */
+			.optional()
+			.describe(
+				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+			),
 		toolFilter: z
 			.discriminatedUnion('mode', [
 				z
@@ -168,18 +168,8 @@ const McpServerConfigSchema = z
 					})
 					.strict(),
 			])
-			.optional(),
-		/**
-		 * Human-in-the-loop approval requirements.
-		 *
-		 * - absent — no approval required (default).
-		 * - `{ mode: 'global' }` — every tool from this server requires approval.
-		 * - `{ mode: 'selected', tools: [...] }` — only listed tool names
-		 *   (un-prefixed) require approval; non-empty.
-		 *
-		 * Maps onto the SDK's `McpServerConfig.requireApproval`
-		 * (`true` / `string[]`) at reconstruction time.
-		 */
+			.optional()
+			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
 		approval: z
 			.discriminatedUnion('mode', [
 				z.object({ mode: z.literal('global') }).strict(),
@@ -190,8 +180,15 @@ const McpServerConfigSchema = z
 					})
 					.strict(),
 			])
-			.optional(),
-		connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
+			.optional()
+			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		connectionTimeoutMs: z
+			.number()
+			.int()
+			.min(1)
+			.max(120_000)
+			.optional()
+			.describe('Connection timeout in milliseconds'),
 	})
 	.strict();
 
@@ -287,6 +284,7 @@ export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 
 export interface ConfigValidationError {
 	path: string;

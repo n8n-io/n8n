@@ -70,7 +70,6 @@ export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
 	'delegate',
-	'browser-setup',
 	'planner',
 	'eval-setup',
 ]);
@@ -764,8 +763,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate,
-	 * browser-setup, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -998,7 +996,6 @@ export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	lastMessages: number;
 	subAgentMaxSteps: number;
-	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
@@ -1015,7 +1012,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
-	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
