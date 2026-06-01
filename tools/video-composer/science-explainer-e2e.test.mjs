@@ -111,6 +111,11 @@ async function runCodeNode({ name, item, uploadBuffers = {}, nodeResults = {} })
 
 					return buffer;
 				},
+				prepareBinaryData: async (buffer, fileName, mimeType) => ({
+					data: Buffer.from(buffer).toString('base64'),
+					fileName,
+					mimeType,
+				}),
 			},
 		},
 		$env: process.env,
@@ -400,6 +405,7 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 				video_height: 640,
 				video_fps: 12,
 				page_pause_seconds: 0,
+				include_execution_binary_preview: 'include_execution_binary_preview',
 			},
 			binary: {
 				background_video: {
@@ -443,6 +449,10 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 		assert.ok(fs.statSync(finalVideo).size > 0, `${finalVideo} should be non-empty`);
 		assert.equal(fs.existsSync(item.json.audioPath), true);
 		assert.equal(fs.existsSync(item.json.subtitlePath), true);
+		assert.equal(item.binary.finalVideo.fileName, 'final.mp4');
+		assert.equal(item.binary.finalVideo.mimeType, 'video/mp4');
+		assert.equal(item.binary.scienceExplainerAudio.fileName, 'merged-audio.mp3');
+		assert.equal(item.binary.scienceExplainerAudio.mimeType, 'audio/mpeg');
 		const ffprobe = run('ffprobe', [
 			'-v',
 			'error',

@@ -43,6 +43,19 @@ test('science explainer workflow defaults to vertical single-speaker output', ()
 	assert.equal(narrationMode.defaultValue, 'single_speaker');
 });
 
+test('science explainer workflow defaults to execution binary previews for final video and audio', () => {
+	const formFields = getNode('Upload Science Explainer Assets').parameters.formFields.values;
+	const previewField = formFields.find((field) => field.fieldLabel === 'include_execution_binary_preview');
+	const prepareJobCode = getNode('Prepare Science Explainer Job').parameters.jsCode;
+	const responseCode = getNode('Prepare Response').parameters.jsCode;
+
+	assert.equal(previewField.defaultValue, 'include_execution_binary_preview');
+	assert.match(prepareJobCode, /const includeBinaryPreview = normalizeChoice\(item\.json\.include_execution_binary_preview, 'include_execution_binary_preview'\)/);
+	assert.match(prepareJobCode, /voiceB, includeBinaryPreview/);
+	assert.match(responseCode, /finalVideo: await this\.helpers\.prepareBinaryData\(video, 'final\.mp4', 'video\/mp4'\)/);
+	assert.match(responseCode, /scienceExplainerAudio: await this\.helpers\.prepareBinaryData\(audio, 'merged-audio\.mp3', 'audio\/mpeg'\)/);
+});
+
 test('science explainer workflow stores generated files under project tmp by default', () => {
 	const prepareJobCode = getNode('Prepare Science Explainer Job').parameters.jsCode;
 
