@@ -229,6 +229,53 @@ function validateColumnNames(
 }
 
 /**
+ * Builds the PGVectorStore config shared by the retrieve and insert paths:
+ * the connection pool plus the validated table/collection names and columns.
+ * Centralising it keeps the identifier policy in one place.
+ */
+async function buildPgVectorStoreConfig(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+): Promise<PGVectorStoreArgs> {
+	// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
+	const tableName =
+		(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
+		'n8n_vectors';
+	validateTableName(context, tableName, 'table name');
+
+	const credentials = await context.getCredentials('postgres');
+	const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
+	const pool = pgConf.db.$pool as unknown as pg.Pool;
+
+	const config: PGVectorStoreArgs = { pool, tableName };
+
+	const collectionOptions = context.getNodeParameter(
+		'options.collection.values',
+		0,
+		{},
+	) as CollectionOptions;
+
+	if (collectionOptions?.useCollection) {
+		if (collectionOptions.collectionTableName) {
+			validateTableName(context, collectionOptions.collectionTableName, 'collection table name');
+		}
+		config.collectionName = collectionOptions.collectionName;
+		config.collectionTableName = collectionOptions.collectionTableName;
+	}
+
+	const columns = context.getNodeParameter('options.columnNames.values', 0, {
+		idColumnName: 'id',
+		vectorColumnName: 'embedding',
+		contentColumnName: 'text',
+		metadataColumnName: 'metadata',
+	}) as ColumnOptions;
+	validateColumnNames(context, columns);
+	config.columns = columns;
+
+	return config;
+}
+
+/**
  * Extended PGVectorStore class to handle custom filtering.
  * This wrapper is necessary because when used as a retriever,
  * similaritySearchVectorWithScore should use this.filter instead of
@@ -350,44 +397,8 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
-		const tableName =
-			(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
-			'n8n_vectors';
-		validateTableName(context, tableName, 'table name');
-		const credentials = await context.getCredentials('postgres');
-		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
-		const pool = pgConf.db.$pool as unknown as pg.Pool;
-
-		const config: PGVectorStoreArgs = {
-			pool,
-			tableName,
-			filter,
-		};
-
-		const collectionOptions = context.getNodeParameter(
-			'options.collection.values',
-			0,
-			{},
-		) as CollectionOptions;
-
-		if (collectionOptions?.useCollection) {
-			if (collectionOptions.collectionTableName) {
-				validateTableName(context, collectionOptions.collectionTableName, 'collection table name');
-			}
-			config.collectionName = collectionOptions.collectionName;
-			config.collectionTableName = collectionOptions.collectionTableName;
-		}
-
-		const columns = context.getNodeParameter('options.columnNames.values', 0, {
-			idColumnName: 'id',
-			vectorColumnName: 'embedding',
-			contentColumnName: 'text',
-			metadataColumnName: 'metadata',
-		}) as ColumnOptions;
-		validateColumnNames(context, columns);
-		config.columns = columns;
-
+		const config = await buildPgVectorStoreConfig(context, itemIndex);
+		config.filter = filter;
 		config.distanceStrategy = context.getNodeParameter(
 			'options.distanceStrategy',
 			0,
@@ -403,42 +414,7 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
 		// shared fields, because you need that strategy when creating the index.
-		// An expression-bound Table Name can resolve to an empty value, so fall back to the default.
-		const tableName =
-			(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
-			'n8n_vectors';
-		validateTableName(context, tableName, 'table name');
-		const credentials = await context.getCredentials('postgres');
-		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
-		const pool = pgConf.db.$pool as unknown as pg.Pool;
-
-		const config: PGVectorStoreArgs = {
-			pool,
-			tableName,
-		};
-
-		const collectionOptions = context.getNodeParameter(
-			'options.collection.values',
-			0,
-			{},
-		) as CollectionOptions;
-
-		if (collectionOptions?.useCollection) {
-			if (collectionOptions.collectionTableName) {
-				validateTableName(context, collectionOptions.collectionTableName, 'collection table name');
-			}
-			config.collectionName = collectionOptions.collectionName;
-			config.collectionTableName = collectionOptions.collectionTableName;
-		}
-
-		const columns = context.getNodeParameter('options.columnNames.values', 0, {
-			idColumnName: 'id',
-			vectorColumnName: 'embedding',
-			contentColumnName: 'text',
-			metadataColumnName: 'metadata',
-		}) as ColumnOptions;
-		validateColumnNames(context, columns);
-		config.columns = columns;
+		const config = await buildPgVectorStoreConfig(context, itemIndex);
 
 		// Use ExtendedPGVectorStore (not PGVectorStore.fromDocuments, whose static
 		// helpers construct a plain PGVectorStore) so the identifier-quoting
@@ -447,8 +423,11 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			...config,
 			n8nNode: context.getNode(),
 		});
-		await vectorStore.addDocuments(documents);
-		vectorStore.client?.release();
+		try {
+			await vectorStore.addDocuments(documents);
+		} finally {
+			vectorStore.client?.release();
+		}
 	},
 
 	releaseVectorStoreClient(vectorStore) {

@@ -72,6 +72,7 @@ describe('sqlIdentifier', () => {
 			'a.',
 			'.a',
 			'a..b',
+			'a.b.c',
 			'',
 		])('rejects %s', (value) => {
 			expect(isSafeQualifiedSqlIdentifier(value)).toBe(false);

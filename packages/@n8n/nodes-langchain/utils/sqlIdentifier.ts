@@ -41,12 +41,16 @@ export function isSafeSqlIdentifier(name: string): boolean {
 }
 
 /**
- * Returns true when the value is a plain identifier or a schema-qualified
- * identifier (`schema.table`) where every dot-separated part is itself a plain
- * identifier. Non-string, empty values and empty segments are rejected.
+ * Returns true when the value is either a plain identifier (`name`) or a
+ * schema-qualified one (`schema.name`) — at most two dot-separated parts, each a
+ * plain identifier. Non-strings, empty values, empty segments and anything with
+ * more than two parts (e.g. `a.b.c`) are rejected, matching the documented
+ * "plain name or optional schema. prefix" contract.
  */
 export function isSafeQualifiedSqlIdentifier(name: unknown): boolean {
-	return typeof name === 'string' && name.split('.').every(isSafeSqlIdentifier);
+	if (typeof name !== 'string') return false;
+	const parts = name.split('.');
+	return parts.length <= 2 && parts.every(isSafeSqlIdentifier);
 }
 
 /**
