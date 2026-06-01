@@ -119,7 +119,11 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
 
-			await expect(service.updateAdminSettings({ lastMessages: 50 })).resolves.toBeDefined();
+			await expect(
+				service.updateAdminSettings({ localGatewayDisabled: true }),
+			).resolves.toMatchObject({
+				localGatewayDisabled: true,
+			});
 		});
 
 		it('should allow disabling n8n sandbox when the service URL is missing', async () => {
