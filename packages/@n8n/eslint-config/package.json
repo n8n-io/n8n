@@ -53,6 +53,6 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
+    "eslint": "catalog:"
   }
 }

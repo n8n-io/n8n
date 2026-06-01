@@ -26,6 +26,11 @@ export class UrlService {
 		return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 	}
 
+	/** Returns the absolute URL of this instance's JWKS endpoint. */
+	getInstanceJwksUri(): string {
+		return `${this.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+	}
+
 	private generateBaseUrl(): string {
 		const { path, port, host, protocol } = this.globalConfig;
 

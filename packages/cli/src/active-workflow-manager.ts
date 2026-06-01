@@ -65,6 +65,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
@@ -100,6 +101,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly eventBus: MessageEventBus,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
@@ -308,6 +310,11 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// TODO(CAT-3202): this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const __emit = (
@@ -317,13 +324,20 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
+
+				// TODO(CAT-3202): resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
+				const executePromise = resolveWorkflowData().then(
+					async (freshWorkflowData) =>
+						await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						),
 				);
 
 				if (donePromise) {
@@ -359,6 +373,11 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// TODO(CAT-3202): this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -370,15 +389,21 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService
-					.runWorkflow(
-						workflowData,
-						node,
-						data,
-						additionalData,
-						mode,
-						responsePromise,
-						deduplicationKey,
+				// TODO(CAT-3202): resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
+				const executePromise = resolveWorkflowData()
+					.then(
+						async (freshWorkflowData) =>
+							await this.workflowExecutionService.runWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								additionalData,
+								mode,
+								responsePromise,
+								deduplicationKey,
+							),
 					)
 					.catch((error: unknown) => {
 						if (error instanceof DuplicateExecutionError) {
@@ -498,6 +523,30 @@ export class ActiveWorkflowManager {
 		};
 
 		executeErrorWorkflow(workflowData, fullRunData, mode);
+	}
+
+	/**
+	 * Load the published workflow nodes/connections from the
+	 * `workflow_published_version` table. The passed-in workflow is used
+	 * for all other fields (staticData, settings, etc.).
+	 *
+	 * TODO: Add error handling / fallback strategy for transient DB failures.
+	 */
+	private async loadPublishedWorkflowData(
+		initialWorkflowData: IWorkflowDb,
+	): Promise<IWorkflowBase> {
+		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+			initialWorkflowData.id,
+		);
+
+		if (!publishedData) {
+			throw new UnexpectedError('Published version not found for workflow', {
+				extra: { workflowId: initialWorkflowData.id },
+			});
+		}
+
+		const { nodes, connections } = publishedData.publishedVersion;
+		return { ...initialWorkflowData, nodes, connections };
 	}
 
 	private isActivationInProgress = false;
@@ -652,6 +701,11 @@ export class ActiveWorkflowManager {
 			});
 		}
 
+		if (dbWorkflow.isArchived) {
+			this.logger.debug('Cannot publish archived Workflow', { workflowId: dbWorkflow.id });
+			return added;
+		}
+
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			if (!dbWorkflow?.activeVersionId) {
 				throw new UnexpectedError('Active version ID not found for workflow', {
@@ -690,6 +744,7 @@ export class ActiveWorkflowManager {
 			}
 
 			const { nodes, connections } = dbWorkflow.activeVersion;
+
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 
@@ -734,11 +789,25 @@ export class ActiveWorkflowManager {
 					);
 				}
 
+				// When the flag is on, trigger/poller emit callbacks re-read the published
+				// version from the DB so they pick up updates without deactivate/reactivate.
+				// When the flag is off, they use the in-memory workflowData (same as before).
+				//
+				// Note: we intentionally load the latest published version when the trigger
+				// fires so all triggers are updated at the same time without any downtime.
+				// The workflow publication service is responsible for ensuring that
+				// removed/disabled triggers in a new workflow version are deactivated before
+				// updating the published version.
+				const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
+					? async () => await this.loadPublishedWorkflowData(dbWorkflow)
+					: async () => dbWorkflow as IWorkflowBase;
+
 				if (shouldAddTriggersAndPollers) {
 					added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
 						activationMode,
 						executionMode: 'trigger',
 						additionalData,
+						resolveWorkflowData,
 					});
 				}
 
@@ -1059,10 +1128,12 @@ export class ActiveWorkflowManager {
 			activationMode,
 			executionMode,
 			additionalData,
+			resolveWorkflowData,
 		}: {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
+			resolveWorkflowData: () => Promise<IWorkflowBase>;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
@@ -1070,6 +1141,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		const getPollFunctions = this.getExecutePollFunctions(
@@ -1077,6 +1149,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		if (workflow.getTriggerNodes().length === 0 && workflow.getPollNodes().length === 0) {

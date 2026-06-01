@@ -23,7 +23,7 @@ function makeRouter(): Router {
 		history: createMemoryHistory(),
 		routes: [
 			{
-				path: '/workflow/:name/executions/:executionId',
+				path: '/workflow/:workflowId/executions/:executionId',
 				name: 'ExecutionPreview',
 				component: { template: '<div/>' },
 			},
@@ -154,6 +154,61 @@ describe('SessionDetailPanel — other kinds', () => {
 			toolOutput: { status: 200 },
 		});
 		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(true);
+	});
+
+	it('shows the error callout with the output message when a node tool call fails', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'telegram-tool',
+			nodeType: 'n8n-nodes-base.telegramTool',
+			nodeTypeVersion: 1.2,
+			nodeDisplayName: 'Telegram',
+			toolInput: { chatId: '1' },
+			toolOutput: { error: 'Node does not have any credentials set' },
+			toolSuccess: false,
+		});
+		const callout = w.find('[data-test-id="node-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain(
+			'Tool experienced an error: Node does not have any credentials set',
+		);
+	});
+
+	it('falls back to the prefix-only message when the failed node output has no error string', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'telegram-tool',
+			nodeType: 'n8n-nodes-base.telegramTool',
+			nodeTypeVersion: 1.2,
+			nodeDisplayName: 'Telegram',
+			toolInput: { chatId: '1' },
+			toolOutput: {},
+			toolSuccess: false,
+		});
+		const callout = w.find('[data-test-id="node-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Tool experienced an error');
+		expect(callout.text()).not.toContain(':');
+	});
+
+	it('does not show the error callout when the node tool call succeeded', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http-tool',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			nodeTypeVersion: 4.2,
+			nodeDisplayName: 'HTTP Request',
+			toolInput: { url: 'https://x' },
+			toolOutput: { status: 200 },
+			toolSuccess: true,
+		});
+		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
 	});
 
 	it('renders markdown for user messages', () => {

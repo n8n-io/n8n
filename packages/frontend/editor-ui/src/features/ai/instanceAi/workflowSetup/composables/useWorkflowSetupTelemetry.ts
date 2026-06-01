@@ -58,7 +58,7 @@ export function useWorkflowSetupTelemetry(deps: {
 	function getSetupTelemetryContext(): SetupTelemetryContext {
 		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
-			thread_id: deps.thread.currentThreadId,
+			thread_id: deps.thread.id,
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',

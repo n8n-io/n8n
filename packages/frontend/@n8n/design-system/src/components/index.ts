@@ -41,6 +41,7 @@ export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
+export { default as N8nHoverCard } from './N8nHoverCard';
 export {
 	default as N8nIcon,
 	type IconName,
@@ -90,6 +91,8 @@ export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
 export { default as N8nTooltip } from './N8nTooltip';
+export { default as N8nToggle } from './N8nToggle';
+export { default as N8nToggleGroup } from './N8nToggleGroup';
 export { default as N8nTree } from './N8nTree';
 export { default as N8nUserStack } from './N8nUserStack';
 export { default as N8nUserInfo } from './N8nUserInfo';

@@ -1,9 +1,31 @@
 {
-	"prompt": "Fetch the latest posts from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts). Filter out any posts where the title contains the word 'qui'. Then post a summary message to a Slack channel called #api-digest that says how many posts remain and lists their titles. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Daily, fetch posts from an API, filter some out, and post the rest to a Slack channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Which API endpoint, what's the filter, and which Slack channel?"
+		},
+		{
+			"role": "user",
+			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post to #api-digest."
+		},
+		{
+			"role": "assistant",
+			"text": "What should the Slack message look like?"
+		},
+		{
+			"role": "user",
+			"text": "It should say how many posts remain after filtering and list each remaining post's title."
+		}
+	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "API returns posts, some contain 'qui' and get filtered, summary posted to Slack",

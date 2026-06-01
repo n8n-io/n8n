@@ -22,6 +22,7 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
+		canEditAgent?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
@@ -31,6 +32,7 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
+		canEditAgent: true,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
@@ -111,10 +113,14 @@ const hasOpenInteractiveQuestion = computed(() =>
 	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
 );
 
+const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
+
 const chatPlaceholder = computed(() =>
-	hasOpenInteractiveQuestion.value
-		? locale.baseText('agents.chat.answerQuestionPlaceholder')
-		: locale.baseText('agents.chat.input.placeholder'),
+	isBuilderReadOnly.value
+		? locale.baseText('agents.builder.readonly.placeholder')
+		: hasOpenInteractiveQuestion.value
+			? locale.baseText('agents.chat.answerQuestionPlaceholder')
+			: locale.baseText('agents.chat.input.placeholder'),
 );
 
 function onOpenBuild() {
@@ -126,9 +132,14 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenInteractiveQuestion.value) {
+	if (
+		!text ||
+		isStreaming.value ||
+		isPreparingToSend.value ||
+		isBuilderReadOnly.value ||
+		hasOpenInteractiveQuestion.value
+	)
 		return;
-	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -192,17 +203,19 @@ async function sendSeedMessage(message: string): Promise<void> {
 	}
 }
 
-if (seedMessage) {
-	void sendSeedMessage(seedMessage);
+// Skip the seed when the build chat is read-only
+const consumesSeed = !!seedMessage && !isBuilderReadOnly.value;
+if (consumesSeed) {
+	void sendSeedMessage(seedMessage as string);
 }
 
 onMounted(() => {
-	// A supplied `initialMessage` means the parent just minted a fresh session
-	// and wants us to seed it with the first message — there's no thread to
-	// load yet, and hitting the history endpoint would 404. The seed was
-	// already sent synchronously during setup (see the `seedMessage` block
-	// above).
-	if (seedMessage) {
+	// When we actually seeded a message, there's no prior thread to load —
+	// the agent was just created in this panel and the history endpoint
+	// would 404. Otherwise (including the read-only suppression path) load
+	// whatever history exists so the panel shows real content instead of a
+	// misleading "describe your agent" empty state.
+	if (consumesSeed) {
 		return;
 	}
 	void loadHistory();
@@ -276,9 +289,11 @@ onBeforeUnmount(() => {
 					!hasOpenInteractiveQuestion &&
 					!isStreaming &&
 					!isPreparingToSend &&
+					!isBuilderReadOnly &&
 					inputText.trim().length > 0
 				"
 				:disabled="
+					isBuilderReadOnly ||
 					hasOpenInteractiveQuestion ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')

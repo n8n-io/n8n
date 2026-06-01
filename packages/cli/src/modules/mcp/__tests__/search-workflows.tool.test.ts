@@ -145,6 +145,28 @@ describe('search-workflows MCP tool', () => {
 			});
 		});
 
+		test('defaults to sorting by most recently updated first', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+			});
+			await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.sortBy).toBe('updatedAt:desc');
+		});
+
+		test('passes through explicit sortBy option', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+			});
+			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				sortBy: 'name:asc',
+			});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.sortBy).toBe('name:asc');
+		});
+
 		test('clamps non-positive limit up to 1', async () => {
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),

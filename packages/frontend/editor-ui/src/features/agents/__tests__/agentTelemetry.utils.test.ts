@@ -11,7 +11,16 @@ describe('buildAgentConfigFingerprint', () => {
 		model: 'gpt-4',
 		instructions: 'do things',
 		tools: [
-			{ type: 'node', name: 'zulu' },
+			{
+				type: 'node',
+				name: 'zulu',
+				node: {
+					nodeType: 'n8n-nodes-base.zulu',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: {},
+				},
+			},
 			{ type: 'custom', id: 'alpha' },
 		],
 		skills: [{ type: 'skill', id: 'summarize_notes' }],
@@ -47,7 +56,19 @@ describe('buildAgentConfigFingerprint', () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const withExtra: AgentJsonConfig = {
 			...baseConfig,
-			tools: [...(baseConfig.tools ?? []), { type: 'node', name: 'new-tool' }],
+			tools: [
+				...(baseConfig.tools ?? []),
+				{
+					type: 'node',
+					name: 'new-tool',
+					node: {
+						nodeType: 'n8n-nodes-base.new-tool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {},
+					},
+				},
+			],
 		};
 		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
 			a.config_version,
@@ -86,23 +107,23 @@ describe('buildAgentConfigFingerprint', () => {
 });
 
 describe('deriveAgentStatus', () => {
-	it('returns draft when agent has no published version', () => {
-		const agent = { publishedVersion: null, versionId: 'v1' } as unknown as AgentResource;
+	it('returns draft when agent has no active version', () => {
+		const agent = { activeVersionId: null, versionId: 'v1' } as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('draft');
 	});
 
-	it('returns draft when published version differs from current versionId', () => {
+	it('returns draft when active version differs from current versionId', () => {
 		const agent = {
 			versionId: 'v2',
-			publishedVersion: { publishedFromVersionId: 'v1' },
+			activeVersionId: 'v1',
 		} as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('draft');
 	});
 
-	it('returns production when current versionId matches published version', () => {
+	it('returns production when current versionId matches active version', () => {
 		const agent = {
 			versionId: 'v1',
-			publishedVersion: { publishedFromVersionId: 'v1' },
+			activeVersionId: 'v1',
 		} as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('production');
 	});

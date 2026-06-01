@@ -2,7 +2,7 @@ import type { Driver, QueryRunner, Table } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { Column } from '../column';
-import { AddColumns, CreateTable } from '../table';
+import { AddColumns, AddEnumCheck, CreateTable, DropEnumCheck } from '../table';
 
 const createMocks = (escapeChar = '"') => {
 	const driver = mock<Driver>();
@@ -121,6 +121,30 @@ describe('CreateTable with column-level enum checks', () => {
 	});
 });
 
+describe('DropEnumCheck', () => {
+	it('should drop the check constraint with correct name', async () => {
+		const { queryRunner } = createMocks();
+
+		await new DropEnumCheck('test_table', 'status', 'n8n_', queryRunner);
+
+		expect(queryRunner.dropCheckConstraint).toHaveBeenCalledWith(
+			'n8n_test_table',
+			'CHK_n8n_test_table_status',
+		);
+	});
+
+	it('should work without a table prefix', async () => {
+		const { queryRunner } = createMocks();
+
+		await new DropEnumCheck('test_table', 'role', '', queryRunner);
+
+		expect(queryRunner.dropCheckConstraint).toHaveBeenCalledWith(
+			'test_table',
+			'CHK_test_table_role',
+		);
+	});
+});
+
 describe('AddColumns with column-level enum checks', () => {
 	it('should call createCheckConstraints for columns with enum checks', async () => {
 		const { queryRunner } = createMocks();
@@ -173,6 +197,46 @@ describe('AddColumns with column-level enum checks', () => {
 			expect.objectContaining({
 				name: 'CHK_test_table_role',
 				expression: "\"role\" IN ('admin', 'user')",
+			}),
+		]);
+	});
+});
+
+describe('AddEnumCheck', () => {
+	it('should create the check constraint with correct name and expression', async () => {
+		const { queryRunner } = createMocks();
+
+		await new AddEnumCheck('test_table', 'status', ['active', 'inactive'], 'n8n_', queryRunner);
+
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledWith('n8n_test_table', [
+			expect.objectContaining({
+				name: 'CHK_n8n_test_table_status',
+				expression: "\"status\" IN ('active', 'inactive')",
+			}),
+		]);
+	});
+
+	it('should work without a table prefix', async () => {
+		const { queryRunner } = createMocks();
+
+		await new AddEnumCheck('test_table', 'role', ['admin', 'user', 'guest'], '', queryRunner);
+
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledWith('test_table', [
+			expect.objectContaining({
+				name: 'CHK_test_table_role',
+				expression: "\"role\" IN ('admin', 'user', 'guest')",
+			}),
+		]);
+	});
+
+	it('should escape single quotes in enum values', async () => {
+		const { queryRunner } = createMocks();
+
+		await new AddEnumCheck('test_table', 'label', ["it's", "they're"], '', queryRunner);
+
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledWith('test_table', [
+			expect.objectContaining({
+				expression: "\"label\" IN ('it''s', 'they''re')",
 			}),
 		]);
 	});

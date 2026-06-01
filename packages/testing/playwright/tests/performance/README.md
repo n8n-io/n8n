@@ -101,6 +101,38 @@ await test.info().attach('performance-metrics', {
 });
 ```
 
+### "I want to measure how much memory a module adds to the instance"
+Idle heap baselines are collected by the `memory-consumption-*.spec.ts` files via the
+shared `runMemoryBaseline()` helper. Each spec disables one or more modules through
+`N8N_DISABLED_MODULES` and stabilises memory post-GC, so the diff between specs
+reveals a module's footprint.
+
+```typescript
+// memory-consumption-no-mcp-only.spec.ts
+import { runMemoryBaseline } from './memory-baseline';
+import { test } from '../../fixtures/base';
+
+test.use({
+  capability: {
+    services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
+    env: { N8N_DISABLED_MODULES: 'mcp' },
+  },
+});
+
+runMemoryBaseline({ name: 'no-mcp-only', owner: 'AI' });
+```
+
+Run a focused subset and compare `heap-used` (the only metric stable enough for
+single-shot diffs — `heap-total` / `RSS` / `non-heap` are noisy):
+
+```bash
+pnpm test:performance --grep "no-mcp|memory"
+```
+
+Each spec emits `${name}-heap-used-baseline`, `${name}-rss-baseline`, etc. Add the
+series to `.github/workflows/ci-pull-requests.yml` if you want it surfaced in PR
+comments. Run twice and average to shake out variance before quoting numbers.
+
 ## API Reference
 
 ### `measurePerformance(page, actionName, actionFn)`

@@ -12,6 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
@@ -22,7 +23,6 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
-import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
@@ -42,7 +42,6 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: WorkflowObjectAccessors;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -110,11 +109,18 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 const uiStore = useUIStore();
+
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
 
 const openWorkflowSettings = () => {
 	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
@@ -158,12 +164,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflowObject && activeNode.value) {
-		const node = props.workflowObject.getNode(activeNode.value.name);
+	if (activeNode.value) {
+		const node = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(workflowObject.value, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(workflowObject.value, node, activeNodeType.value);
 		}
 	}
 
@@ -192,7 +198,7 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
@@ -217,7 +223,7 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowObject.value.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
@@ -244,7 +250,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflowObject
+	const parents = workflowObject.value
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -271,7 +277,7 @@ const waitingMessage = computed(() => {
 
 	return waitingNodeTooltip(
 		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
-		props.workflowObject,
+		workflowObject.value,
 		parentRunData?.metadata,
 	);
 });

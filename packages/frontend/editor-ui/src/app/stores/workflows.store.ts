@@ -24,23 +24,18 @@ import type {
 	IWorkflowSettings,
 	ITaskStartedData,
 } from 'n8n-workflow';
-import { deepCopy, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
-import {
-	unflattenExecutionData,
-	openFormPopupWindow,
-} from '@/features/execution/executions/executions.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { unflattenExecutionData } from '@/features/execution/executions/executions.utils';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -53,36 +48,72 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
-import { useNodeTypesStore } from './nodeTypes.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
-	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
-	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsListStore = useWorkflowsListStore();
 
-	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
-	const workflowExecutionData = ref<IExecutionResponse | null>(null);
-	const lastSuccessfulExecution = ref<IExecutionResponse | null>(null);
-	const workflowExecutionStartedData =
-		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
-	const workflowExecutionResultDataLastUpdate = ref<number>();
-	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
-	const executionWaitingForWebhook = ref(false);
-	const isInDebugMode = ref(false);
-	const chatMessages = ref<string[]>([]);
-	const chatPartialExecutionDestinationNode = ref<string | null>(null);
-	const selectedTriggerNodeName = ref<string>();
-
 	/**
 	 * @deprecated use useWorkflowId() in Vue components/composables instead.
 	 */
 	const workflowId = ref('');
+
+	// --- Compatibility adapter wiring ---
+	//
+	// Per-workflow session state (active/previous execution id, webhook wait,
+	// debug mode, chat, trigger selection, current executions list, last
+	// successful execution) lives in `workflowExecutionState` keyed by
+	// workflowId. The fields below are writable computeds that route through
+	// the session store so existing direct-state mutations via
+	// `createTestingPinia` keep working.
+	//
+	// Execution-data refs (`workflowExecutionData`, `workflowExecutionStartedData`,
+	// `workflowExecutionResultDataLastUpdate`, `workflowExecutionPairedItemMappings`)
+	// remain workflow-store-local for now. They will migrate to the
+	// per-execution `executionData` store in M5/M6 alongside push-handler and
+	// read-consumer migrations, where the refactor of writers/readers can be
+	// done together to preserve test contracts.
+
+	const currentExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
+	);
+
+	const currentWorkflowExecutions = computed<ExecutionSummary[]>({
+		get: () => currentExecutionStateStore.value.currentWorkflowExecutions as ExecutionSummary[],
+		set: (value) => currentExecutionStateStore.value.setCurrentWorkflowExecutions([...value]),
+	});
+
+	const workflowExecutionData = computed<IExecutionResponse | null>(() => {
+		// Touch the timestamp so consumers still see updates even when the
+		// underlying execution object reference is preserved across in-place
+		// mutations. The resolved-id timestamp lives on the executionData store.
+		void currentExecutionStateStore.value.activeExecutionResultDataLastUpdate;
+		return currentExecutionStateStore.value.activeExecution as IExecutionResponse | null;
+	});
+	const lastSuccessfulExecution = computed<IExecutionResponse | null>(
+		() => currentExecutionStateStore.value.lastSuccessfulExecution as IExecutionResponse | null,
+	);
+	const workflowExecutionStartedData = computed(
+		() =>
+			currentExecutionStateStore.value.activeExecutionStartedData as
+				| [executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]
+				| undefined,
+	);
+	const workflowExecutionResultDataLastUpdate = computed(
+		() => currentExecutionStateStore.value.activeExecutionResultDataLastUpdate,
+	);
+	const workflowExecutionPairedItemMappings = computed(
+		() =>
+			currentExecutionStateStore.value.activeExecutionPairedItemMappings as Record<
+				string,
+				Set<string>
+			>,
+	);
 
 	// A workflow is new if it hasn't been saved to the backend yet.
 	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
@@ -116,21 +147,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
-	const isWorkflowRunning = computed(() => {
-		if (activeExecutionId.value === null) {
-			return true;
-		} else if (activeExecutionId.value && workflowExecutionData.value) {
-			if (
-				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
-				!workflowExecutionData.value.finished
-			) {
-				return true;
-			}
-		}
-
-		return false;
-	});
-
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
 	const getAllLoadedFinishedExecutions = computed(() => {
@@ -141,28 +157,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
 
-	const getPastChatMessages = computed(() => chatMessages.value);
-
 	const canViewWorkflows = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
-
-	/**
-	 * Sets the active execution id
-	 *
-	 * @param {string} id used to indicate the id of the active execution
-	 * @param {null} id used to indicate that an execution has started but its id has not been retrieved yet
-	 * @param {undefined} id used to indicate there is no active execution
-	 */
-	const activeExecutionId = ref<string | null | undefined>();
-	const previousExecutionId = ref<string | null | undefined>();
-	const readonlyActiveExecutionId = computed(() => activeExecutionId.value);
-	const readonlyPreviousExecutionId = computed(() => previousExecutionId.value);
-
-	function setActiveExecutionId(id: string | null | undefined) {
-		if (id) previousExecutionId.value = activeExecutionId.value;
-		activeExecutionId.value = id;
-	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -241,9 +238,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
-			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
-				rootStore.restApiContext,
-				workflowId.value,
+			currentExecutionStateStore.value.setLastSuccessfulExecution(
+				await workflowsApi.getLastSuccessfulExecution(rootStore.restApiContext, workflowId.value),
 			);
 		} catch (e: unknown) {
 			// no need to do anything if fails
@@ -264,6 +260,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		const previousId = workflowId.value;
+		workflowId.value = '';
 		if (previousId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousId));
 			workflowDocumentStore.reset();
@@ -343,255 +340,39 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
-		if (workflowExecutionData.value) {
-			workflowExecutionData.value = {
-				...workflowExecutionData.value,
-				data: workflowResultData,
-			};
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-			workflowExecutionStartedData.value = undefined;
-		}
+		currentExecutionStateStore.value.setActiveExecutionRunData(workflowResultData);
 	}
 
 	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
-		if (execution?.data?.waitTill) {
-			delete execution.data.resultData.runData[
-				execution.data.resultData.lastNodeExecuted as string
-			];
-		}
-		workflowExecutionData.value = execution;
-		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(execution);
-		workflowExecutionResultDataLastUpdate.value = Date.now();
-		workflowExecutionStartedData.value = undefined;
+		currentExecutionStateStore.value.setActiveExecution(execution);
 	}
 
 	function clearExecutionStartedData(): void {
-		workflowExecutionStartedData.value = undefined;
-	}
-
-	function setExecutionWaitingForWebhook(value: boolean): void {
-		executionWaitingForWebhook.value = value;
-	}
-
-	function setIsInDebugMode(value: boolean): void {
-		isInDebugMode.value = value;
-	}
-
-	function setChatPartialExecutionDestinationNode(value: string | null): void {
-		chatPartialExecutionDestinationNode.value = value;
+		currentExecutionStateStore.value.clearActiveExecutionStartedData();
 	}
 
 	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
-		lastSuccessfulExecution.value = execution;
+		currentExecutionStateStore.value.setLastSuccessfulExecution(execution);
 	}
 
 	function clearCurrentWorkflowExecutions(): void {
-		currentWorkflowExecutions.value = [];
+		currentExecutionStateStore.value.clearCurrentWorkflowExecutions();
 	}
 
 	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
-		currentWorkflowExecutions.value = executions;
+		currentExecutionStateStore.value.setCurrentWorkflowExecutions(executions);
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		uiStore.markStateDirty();
-
-		// If node has any WorkflowResultData rename also that one that the data
-		// does still get displayed also after node got renamed
-		const runData = workflowExecutionData.value?.data?.resultData?.runData;
-		if (runData?.[nameData.old]) {
-			runData[nameData.new] = runData[nameData.old];
-			delete runData[nameData.old];
-		}
-
-		// In case the renamed node was last selected set it also there with the new name
-		if (uiStore.lastSelectedNode === nameData.old) {
-			uiStore.lastSelectedNode = nameData.new;
-		}
-
-		if (workflowId.value) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowId.value),
-			);
-			workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
-			workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
-		}
-
-		const resultData = workflowExecutionData.value?.data?.resultData;
-		if (resultData?.pinData?.[nameData.old]) {
-			resultData.pinData[nameData.new] = resultData.pinData[nameData.old];
-			delete resultData.pinData[nameData.old];
-		}
-
-		// Update the name in execution result pinData pairedItem references
-		Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {})
-			.flatMap((executionData) =>
-				executionData.flatMap((nodeExecution) =>
-					Array.isArray(nodeExecution.pairedItem)
-						? nodeExecution.pairedItem
-						: [nodeExecution.pairedItem],
-				),
-			)
-			.forEach((pairedItem) => {
-				if (
-					typeof pairedItem === 'number' ||
-					pairedItem?.sourceOverwrite?.previousNode !== nameData.old
-				)
-					return;
-				pairedItem.sourceOverwrite.previousNode = nameData.new;
-			});
-
-		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
-			.flatMap((taskData) => taskData.flatMap((task) => task.source))
-			.forEach((source) => {
-				if (!source || source.previousNode !== nameData.old) return;
-				source.previousNode = nameData.new;
-			});
-	}
-
-	async function trackNodeExecution(pushData: PushPayload<'nodeExecuteAfter'>): Promise<void> {
-		const nodeName = pushData.nodeName;
-
-		if (pushData.data.error) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowId.value),
-			);
-			const node = workflowDocumentStore.getNodeByName(nodeName);
-			telemetry.track('Manual exec errored', {
-				error_title: pushData.data.error.message,
-				node_type: node?.type,
-				node_type_version: node?.typeVersion,
-				node_id: node?.id,
-				node_graph_string: JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(
-						workflowDocumentStore.serialize(),
-						nodeTypesStore.getAllNodeTypes(),
-						{
-							isCloudDeployment: settingsStore.isCloudDeployment,
-						},
-					).nodeGraph,
-				),
-			});
-		}
+		currentExecutionStateStore.value.renameActiveExecutionNode(nameData);
 	}
 
 	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
-		const currentData =
-			workflowExecutionStartedData.value?.[0] === data.executionId
-				? workflowExecutionStartedData.value?.[1]
-				: {};
-
-		workflowExecutionStartedData.value = [
-			data.executionId,
-			{
-				...currentData,
-				[data.nodeName]: [...(currentData[data.nodeName] ?? []), data.data],
-			},
-		];
-	}
-
-	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		if (!workflowExecutionData.value?.data) {
-			console.warn(
-				'[workflows.store] updateNodeExecutionStatus called without execution data; ignoring.',
-			);
-			return;
-		}
-
-		const { nodeName, data } = pushData;
-		const isNodeWaiting = data.executionStatus === 'waiting';
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowId.value),
-		);
-		const node = workflowDocumentStore.getNodeByName(nodeName);
-		if (!node) return;
-
-		workflowExecutionData.value.data.resultData.lastNodeExecuted = nodeName;
-
-		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
-			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
-		}
-
-		const tasksData = workflowExecutionData.value.data.resultData.runData[nodeName];
-		if (isNodeWaiting) {
-			tasksData.push(data);
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-
-			if (data.metadata?.resumeFormUrl) {
-				openFormPopupWindow(data.metadata.resumeFormUrl);
-			}
-		} else {
-			// If we process items in parallel on subnodes we get several placeholder taskData items.
-			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
-			const existingRunIndex = tasksData.findIndex(
-				(item) => item.executionIndex === data.executionIndex,
-			);
-
-			// For waiting nodes always replace the last item as executionIndex will always be different
-			const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
-			const index =
-				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
-			const status = tasksData[index]?.executionStatus ?? 'unknown';
-
-			if ('waiting' === status || 'running' === status || tasksData[existingRunIndex]) {
-				tasksData.splice(index, 1, data);
-			} else {
-				tasksData.push(data);
-			}
-
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-
-			void trackNodeExecution(pushData);
-		}
-
-		// Synthesize redactionInfo from item-level redaction markers in push events.
-		// The full redactionInfo (with accurate canReveal) arrives later via the
-		// executionFinished REST call; this provides an early signal so the UI can
-		// show the redacted state during live execution.
-		if (!workflowExecutionData.value.data.redactionInfo?.isRedacted && data.data) {
-			for (const connectionType of Object.keys(data.data)) {
-				for (const items of data.data[connectionType]) {
-					if (items?.some((item) => item.redaction?.redacted)) {
-						workflowExecutionData.value.data.redactionInfo = {
-							isRedacted: true,
-							reason:
-								items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
-								'workflow_redaction_policy',
-							canReveal: false, // conservative default; updated when executionFinished fetches full data
-						};
-						break;
-					}
-				}
-				if (workflowExecutionData.value.data.redactionInfo?.isRedacted) break;
-			}
-		}
-	}
-
-	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		const tasksData = workflowExecutionData.value?.data?.resultData.runData[pushData.nodeName];
-		const existingRunIndex =
-			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
-
-		if (tasksData?.[existingRunIndex]) {
-			tasksData.splice(existingRunIndex, 1, pushData.data);
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-		}
+		currentExecutionStateStore.value.addActiveNodeExecutionStartedData(data);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
-		if (!workflowExecutionData.value?.data) {
-			return;
-		}
-
-		const { [nodeName]: removedRunData, ...remainingRunData } =
-			workflowExecutionData.value.data.resultData.runData;
-		workflowExecutionData.value.data.resultData.runData = remainingRunData;
-	}
-
-	function activeNode(): INodeUi | null {
-		// kept here for FE hooks
-		const ndvStore = useNDVStore();
-		return ndvStore.activeNode;
+		currentExecutionStateStore.value.clearActiveNodeExecutionData(nodeName);
 	}
 
 	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
@@ -767,7 +548,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 
 		if (isCurrentWorkflow) {
-			currentSettings = workflowDocumentStore.settings;
+			currentSettings = workflowDocumentStore.getSettingsSnapshot();
 			currentVersionId = workflowDocumentStore.versionId;
 			currentChecksum = workflowDocumentStore.checksum;
 		} else {
@@ -846,16 +627,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
-		currentWorkflowExecutions.value.splice(currentWorkflowExecutions.value.indexOf(execution), 1);
+		currentExecutionStateStore.value.deleteExecution(execution);
 	}
 
 	function addToCurrentExecutions(executions: ExecutionSummary[]): void {
-		executions.forEach((execution) => {
-			const exists = currentWorkflowExecutions.value.find((ex) => ex.id === execution.id);
-			if (!exists && execution.workflowId === workflowId.value) {
-				currentWorkflowExecutions.value.push(execution);
-			}
-		});
+		currentExecutionStateStore.value.addToCurrentExecutions(executions);
 	}
 
 	function getBinaryUrl(
@@ -874,41 +650,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return url.toString();
 	}
 
-	function resetChatMessages(): void {
-		chatMessages.value = [];
-	}
-
-	function appendChatMessage(message: string): void {
-		chatMessages.value.push(message);
-	}
-
-	function setSelectedTriggerNodeName(value: string | undefined) {
-		selectedTriggerNodeName.value = value;
-	}
-
 	return {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		workflowExecutionResultDataLastUpdate,
 		workflowExecutionStartedData,
-		activeExecutionId: readonlyActiveExecutionId,
-		previousExecutionId: readonlyPreviousExecutionId,
-		executionWaitingForWebhook,
-		isInDebugMode,
-		chatMessages,
-		chatPartialExecutionDestinationNode,
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		isWorkflowRunning,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
-		getPastChatMessages,
-		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
 		getExecutionDataById,
 		convertTemplateNodeToNodeUi,
 		getWorkflowFromUrl,
@@ -925,17 +680,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowExecutionRunData,
 		setWorkflowExecutionData,
 		clearExecutionStartedData,
-		setExecutionWaitingForWebhook,
-		setIsInDebugMode,
-		setChatPartialExecutionDestinationNode,
 		setLastSuccessfulExecution,
 		clearCurrentWorkflowExecutions,
 		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
-		updateNodeExecutionRunData,
-		updateNodeExecutionStatus,
 		clearNodeExecutionData,
-		activeNode,
 		getPastExecutions,
 		getExecution,
 		createNewWorkflow,
@@ -949,17 +698,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deleteExecution,
 		addToCurrentExecutions,
 		getBinaryUrl,
-		resetChatMessages,
-		appendChatMessage,
 		getPartialIdForNode,
-		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		canViewWorkflows,
-		// This is exposed to ease the refactoring to the injected workflowState composable
-		// Please do not use outside this context
-		private: {
-			setActiveExecutionId,
-		},
 	};
 });

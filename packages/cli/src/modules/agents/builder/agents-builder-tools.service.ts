@@ -1,6 +1,13 @@
-import { Tool } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { agentSkillSchema } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	formatZodErrors,
+	RunnableAgentJsonConfigSchema,
+	tryParseConfigJson,
+	type AgentJsonConfig,
+	type ConfigValidationError,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -8,15 +15,14 @@ import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
 import {
-	AgentJsonConfigSchema,
-	formatZodErrors,
-	tryParseConfigJson,
-} from '../json-config/agent-json-config';
+	getNativeWebSearchProviderTools,
+	hasNativeWebSearchProvider,
+} from '../json-config/native-web-search-provider-tools';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
@@ -27,6 +33,10 @@ import {
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { OauthService } from '@/oauth/oauth.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -54,6 +64,27 @@ function rejectIfEmptyInstructions(
 		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
 	}
 	return null;
+}
+
+function rejectIfUnsupportedNativeWebSearch(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	const webSearch = config.config?.webSearch;
+	const requestsNativeWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === undefined ||
+			webSearch.provider === 'auto' ||
+			webSearch.provider === 'native');
+	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
+	return {
+		errors: [
+			{
+				path: '/config/webSearch/provider',
+				message:
+					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
+			},
+		],
+	};
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -94,6 +125,48 @@ function snapshotFromConfig(
 	};
 }
 
+/**
+ * The builder expresses web-search intent through `config.webSearch`; this
+ * write-path normalizer persists provider-specific native tool details so
+ * builder-saved configs are deterministic. Runtime reconstruction uses the
+ * same policy defensively for configs saved through other entry points.
+ */
+function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerTools = getNativeWebSearchProviderTools(config, {
+		includeDefaultArgs: true,
+		defaultEnabled: true,
+	});
+	const webSearch = config.config?.webSearch;
+	const fallbackWebSearch =
+		webSearch?.enabled === true &&
+		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
+	const hasNativeWebSearch =
+		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+
+	if (!hasNativeWebSearch) {
+		const { webSearch, ...restConfig } = config.config ?? {};
+		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
+		const normalizedConfig = {
+			...restConfig,
+			...(fallbackWebSearch ? { webSearch } : {}),
+		};
+		return {
+			...restAgentConfig,
+			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
+			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			webSearch: { enabled: true },
+		},
+		providerTools,
+	};
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -107,6 +180,9 @@ export class AgentsBuilderToolsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
+		private readonly mcpRegistryService: McpRegistryService,
+		private readonly oauthService: OauthService,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	getTools(
@@ -184,7 +260,7 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 					}
-					const zodResult = AgentJsonConfigSchema.safeParse(parsed.data);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(parsed.data);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -192,11 +268,16 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -285,7 +366,7 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = AgentJsonConfigSchema.safeParse(patched);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(patched);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
@@ -293,12 +374,17 @@ export class AgentsBuilderToolsService {
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
 					}
+					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+					if (unsupportedNativeWebSearch) {
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+					}
+					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
-							zodResult.data,
+							normalizedConfig,
 						);
 						return {
 							ok: true,
@@ -318,11 +404,13 @@ export class AgentsBuilderToolsService {
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
 				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with the list of ' +
-					'credential types it supports (`credentialTypes: string[]`). ' +
+					'Returns the schedule trigger plus every available chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`) and builder guidance ' +
+					'(`capabilities`, `useIntegrationWhen`, `useNodeToolWhen`). ' +
+					'Use that guidance to decide whether the user needs a chat integration or a node tool. ' +
 					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
-					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
-					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
+					'returned `credentialTypes` and pass it to `ask_credential` as the singular ' +
+					'`credentialType` arg.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
@@ -339,16 +427,27 @@ export class AgentsBuilderToolsService {
 				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
 		};
 
-		return [
+		const tools: BuiltTool[] = [
 			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
-			buildAskCredentialTool({ credentialProvider }),
+			buildAskCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),
+			buildVerifyMcpServerTool({
+				credentialProvider,
+				oauthService: this.oauthService,
+				projectId,
+			}),
+			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 		];
+
+		return tools;
 	}
 
 	private getSharedTools(
