@@ -23,16 +23,6 @@ const renderComponent = createComponentRenderer(WorkflowCustomTelemetryTags, {
 				template:
 					'<button type="button" v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot />{{ label }}</button>',
 			},
-			N8nDialog: {
-				props: ['open'],
-				emits: ['update:open'],
-				template:
-					'<div v-if="open"><button type="button" data-test-id="dialog-close" @click="$emit(\'update:open\', false)" /> <slot /></div>',
-			},
-			N8nDialogDescription: { template: '<p><slot /></p>' },
-			N8nDialogFooter: { template: '<footer><slot /></footer>' },
-			N8nDialogHeader: { template: '<header><slot /></header>' },
-			N8nDialogTitle: { template: '<h2><slot /></h2>' },
 			N8nIcon: { template: '<span />' },
 			N8nIconButton: {
 				props: ['disabled'],
