@@ -229,3 +229,30 @@ test('buildEnhancedConcatList ignores extra pauses after the final segment', () 
 		],
 	);
 });
+
+test('buildEnhancedConcatList places page pause only between page segments', () => {
+	assert.deepEqual(
+		buildEnhancedConcatList({
+			introCoverPath: '/tmp/render/intro-cover.mp4',
+			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
+			segmentPaths: [
+				'/tmp/render/segment-001.mp4',
+				'/tmp/render/segment-002.mp4',
+				'/tmp/render/segment-003.mp4',
+			],
+			pausePaths: [
+				'/tmp/render/pause-001.mp4',
+				'/tmp/render/pause-002.mp4',
+			],
+		}),
+		[
+			'/tmp/render/intro-cover.mp4',
+			'/tmp/render/intro-illustration.mp4',
+			'/tmp/render/segment-001.mp4',
+			'/tmp/render/pause-001.mp4',
+			'/tmp/render/segment-002.mp4',
+			'/tmp/render/pause-002.mp4',
+			'/tmp/render/segment-003.mp4',
+		],
+	);
+});

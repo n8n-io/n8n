@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+import { buildPageTiming, safePageName, validatePagesManifest } from './presentation-utils.mjs';
 import { assEscape, toAssTime } from './compose-video.mjs';
 
 const REQUIRED_JOB_FIELDS = [
@@ -304,4 +309,134 @@ export function buildEnhancedConcatList({
 	}
 
 	return paths.filter(Boolean);
+}
+
+function quoteConcatPath(filePath) {
+	return `file '${String(filePath).replace(/'/g, "'\\''")}'`;
+}
+
+function runFfmpeg(args, logPath) {
+	const result = spawnSync('ffmpeg', args, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 20 });
+	fs.appendFileSync(logPath, `$ ffmpeg ${args.join(' ')}\n${result.stdout}\n${result.stderr}\n`, 'utf8');
+	if (result.status !== 0) throw new Error(`ffmpeg failed with exit code ${result.status}; see ${logPath}`);
+}
+
+function buildExtractAudioArgs({ inputVideoPath, outputAudioPath }) {
+	return ['-y', '-i', inputVideoPath, '-vn', '-c:a', 'libmp3lame', outputAudioPath];
+}
+
+function render() {
+	const jobPath = process.argv[2];
+	if (!jobPath) throw new Error('Usage: node tools/video-composer/compose-enhanced-pdf-video.mjs JOB_JSON_PATH');
+	const job = validateEnhancedJob(JSON.parse(fs.readFileSync(jobPath, 'utf8')));
+	fs.mkdirSync(job.renderDir, { recursive: true });
+
+	const pagesManifest = validatePagesManifest(JSON.parse(fs.readFileSync(job.pagesManifestPath, 'utf8')));
+	const audioManifest = JSON.parse(fs.readFileSync(job.pageAudioManifestPath, 'utf8'));
+	const timing = buildPageTiming({
+		pages: pagesManifest.pages,
+		audio: audioManifest.pages,
+		pagePauseSeconds: job.pagePauseSeconds,
+	});
+	fs.writeFileSync(job.pageTimingPath, JSON.stringify(timing, null, 2), 'utf8');
+
+	const introDuration = job.introCoverSeconds + job.introIllustrationSeconds;
+	fs.writeFileSync(job.subtitlePath, createAssSubtitle({
+		width: job.width,
+		height: job.height,
+		marginV: job.overlayWidth + 80,
+		events: timing.subtitles.map((event) => ({
+			...event,
+			start: Number(event.start) + introDuration,
+			end: Number(event.end) + introDuration,
+		})),
+	}), 'utf8');
+
+	const introCoverPath = path.join(job.renderDir, 'intro-cover.mp4');
+	runFfmpeg(buildCoverIntroFfmpegArgs({
+		coverImagePath: job.coverImagePath,
+		outputPath: introCoverPath,
+		duration: job.introCoverSeconds,
+		width: job.width,
+		height: job.height,
+		fps: job.fps,
+	}), job.ffmpegLogPath);
+
+	const firstPage = pagesManifest.pages[0];
+	if (!firstPage) throw new Error('Enhanced PDF composer requires at least one PDF page');
+	const introIllustrationPath = path.join(job.renderDir, 'intro-illustration.mp4');
+	runFfmpeg(buildIllustrationIntroFfmpegArgs({
+		pageImage: firstPage.imagePath,
+		illustrationImagePath: job.illustrationImagePath,
+		outputPath: introIllustrationPath,
+		duration: job.introIllustrationSeconds,
+		width: job.width,
+		height: job.height,
+		fps: job.fps,
+	}), job.ffmpegLogPath);
+
+	const segmentPaths = [];
+	const pausePaths = [];
+	for (const [index, page] of timing.pages.entries()) {
+		const name = safePageName(page.pageNumber);
+		const pageSubtitlePath = path.join(job.renderDir, `${name}.ass`);
+		fs.writeFileSync(pageSubtitlePath, createAssSubtitle({
+			width: job.width,
+			height: job.height,
+			marginV: page.pageNumber === 1 ? 90 : job.overlayWidth + 80,
+			events: buildSubtitleEventsForSegment({ page }),
+		}), 'utf8');
+
+		const segmentPath = path.join(job.renderDir, `segment-${String(page.pageNumber).padStart(3, '0')}.mp4`);
+		runFfmpeg(buildEnhancedSegmentFfmpegArgs({
+			pageNumber: page.pageNumber,
+			pageImage: page.pageImage,
+			audioPath: page.audioPath,
+			subtitlePath: pageSubtitlePath,
+			outputPath: segmentPath,
+			coverImagePath: job.coverImagePath,
+			illustrationImagePath: job.illustrationImagePath,
+			overlayWidth: job.overlayWidth,
+			width: job.width,
+			height: job.height,
+			fps: job.fps,
+		}), job.ffmpegLogPath);
+		segmentPaths.push(segmentPath);
+
+		if (index < timing.pages.length - 1 && timing.pagePauseSeconds > 0) {
+			const pausePath = path.join(job.renderDir, `pause-${String(page.pageNumber).padStart(3, '0')}.mp4`);
+			runFfmpeg(buildPauseSegmentFfmpegArgs({
+				pageImage: page.pageImage,
+				outputPath: pausePath,
+				duration: timing.pagePauseSeconds,
+				width: job.width,
+				height: job.height,
+				fps: job.fps,
+			}), job.ffmpegLogPath);
+			pausePaths.push(pausePath);
+		}
+	}
+
+	const concatListPath = path.join(job.renderDir, 'segments.txt');
+	const concatPaths = buildEnhancedConcatList({ introCoverPath, introIllustrationPath, segmentPaths, pausePaths });
+	fs.writeFileSync(concatListPath, concatPaths.map(quoteConcatPath).join('\n'), 'utf8');
+	runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', job.outputVideoPath], job.ffmpegLogPath);
+	runFfmpeg(buildExtractAudioArgs({ inputVideoPath: job.outputVideoPath, outputAudioPath: job.outputAudioPath }), job.ffmpegLogPath);
+
+	console.log(JSON.stringify({
+		ok: true,
+		outputVideoPath: job.outputVideoPath,
+		outputAudioPath: job.outputAudioPath,
+		pageTimingPath: job.pageTimingPath,
+		introDuration,
+	}));
+}
+
+if (process.argv[1] && process.argv[1].endsWith('compose-enhanced-pdf-video.mjs')) {
+	try {
+		render();
+	} catch (error) {
+		console.error(error.stack || error.message);
+		process.exit(1);
+	}
 }
