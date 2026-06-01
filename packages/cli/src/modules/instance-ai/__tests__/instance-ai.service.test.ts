@@ -56,7 +56,7 @@ jest.mock('@n8n/instance-ai', () => {
 			evaluateTerminal(
 				_events: unknown[],
 				status: 'completed' | 'cancelled' | 'errored',
-				options: { errorMessage?: string } = {},
+				options: { errorMessage?: string; suppressCompletedFallback?: boolean } = {},
 			) {
 				if (status === 'errored') {
 					return {
@@ -75,6 +75,15 @@ jest.mock('@n8n/instance-ai', () => {
 									'I hit an error before I could finish that response. Please try again.',
 							},
 						},
+					};
+				}
+
+				if (status === 'completed' && options.suppressCompletedFallback) {
+					return {
+						status,
+						visibilitySource: 'none',
+						action: 'none',
+						reason: 'completed-silent-suppressed',
 					};
 				}
 
@@ -634,7 +643,11 @@ type TerminalGuardOrderServiceInternals = {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
-		options?: { messageGroupId?: string; errorMessage?: string },
+		options?: {
+			messageGroupId?: string;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		},
 	) => { action: string; reason: string } | undefined;
 	evaluateWaitingResponse: (
 		threadId: string,
@@ -2160,6 +2173,21 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+	});
+
+	it('does not publish completed fallback output when silence is expected', () => {
+		const service = createTerminalGuardOrderService();
+
+		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision).toMatchObject({
+			action: 'none',
+			reason: 'completed-silent-suppressed',
+		});
+		expect(service.eventBus.events).toEqual([]);
 	});
 
 	it('publishes fallback error before run-finish on a silent failed run', () => {
