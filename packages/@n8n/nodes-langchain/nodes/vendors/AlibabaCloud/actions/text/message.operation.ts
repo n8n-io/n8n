@@ -1,17 +1,13 @@
 import type { Tool } from '@langchain/core/tools';
-import type {
-	IDataObject,
-	INodeProperties,
-	IExecuteFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import { apiRequest } from '../../transport';
 import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
+import { fetchModelCatalog, toModalitySet } from '../../helpers/modelCatalog';
+import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -258,7 +254,22 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 const TEXT_ONLY_PATTERNS = ['coder', 'math'];
 
-function isMultimodalModel(model: string): boolean {
+// Picks the DashScope endpoint from the model's actual input modalities: a model
+// that accepts non-text input (image/audio/video) needs the multimodal-generation
+// endpoint, otherwise text-generation. Falls back to a name-based heuristic when
+// the model is not in the catalogue (e.g. a manually typed id or fetch failure).
+async function isMultimodalModel(this: IExecuteFunctions, model: string): Promise<boolean> {
+	try {
+		const catalog = await fetchModelCatalog.call(this);
+		const entry = catalog.find((m) => m.model === model);
+		if (entry?.inference_metadata) {
+			const input = toModalitySet(entry.inference_metadata.request_modality);
+			return [...input].some((modality) => modality !== 'text');
+		}
+	} catch {
+		// Catalogue unavailable — fall back to the name-based heuristic below.
+	}
+
 	const lower = model.toLowerCase();
 	return !TEXT_ONLY_PATTERNS.some((pattern) => lower.includes(pattern));
 }
@@ -285,10 +296,10 @@ export async function execute(
 		messageValues: IMessage[];
 	};
 	const messages = messagesParam.messageValues || [];
-	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+	const options = this.getNodeParameter('options', itemIndex, {});
 	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
 
-	const isMultimodal = isMultimodalModel(model);
+	const isMultimodal = await isMultimodalModel.call(this, model);
 
 	const { tools, connectedTools } = await getTools.call(this);
 
