@@ -81,6 +81,49 @@ export function extractJsonObject(text) {
 	throw new Error('LLM response contained an incomplete JSON object');
 }
 
+function splitSpokenSentences(text) {
+	return String(text || '').match(/[^。！？!?]+[。！？!?]?/g)?.map((sentence) => sentence.trim()).filter(Boolean) || [];
+}
+
+function compactSpeech(text) {
+	return String(text || '').replace(/\s+/g, '');
+}
+
+function isRepeatedOpening(text) {
+	const compact = compactSpeech(text);
+	if (!compact) return false;
+
+	return [
+		/^今天(我们|咱们)?(继续)?(要|来)?聊/,
+		/^接下来(我们|咱们)?(继续)?(要|来)?聊/,
+		/^欢迎(大家|各位)?(来到|收听|观看)/,
+		/^大家好/,
+	].some((pattern) => pattern.test(compact));
+}
+
+function isClosingBoilerplate(text) {
+	const compact = compactSpeech(text);
+	if (!compact) return false;
+
+	return [
+		/感谢.*(收听|观看|大家)/,
+		/(下期|下次).*(再见|见)/,
+		/(拜拜|再见吧|咱们下期)/,
+		/(今天|本期|这期|这一期|节目|内容).*(到这里|到这|就到这里|就到这)/,
+		/(以上就是|全部内容)/,
+	].some((pattern) => pattern.test(compact));
+}
+
+function cleanSegmentText(text, index) {
+	const sentences = splitSpokenSentences(text);
+	const cleaned = sentences
+		.filter((sentence) => !isClosingBoilerplate(sentence))
+		.filter((sentence) => index === 0 || !isRepeatedOpening(sentence))
+		.join('');
+
+	return cleaned.trim();
+}
+
 export function parseGeneratedScript(raw, expectedMode) {
 	const parsed = JSON.parse(extractJsonObject(raw));
 	const mode = String(parsed.mode ?? '').trim();
@@ -99,7 +142,7 @@ export function parseGeneratedScript(raw, expectedMode) {
 
 	const segments = parsed.segments.map((segment, index) => {
 		const role = String(segment?.role ?? '').trim();
-		const text = String(segment?.text ?? '').trim();
+		const text = cleanSegmentText(segment?.text, index);
 		if (!text) throw new Error(`Generated script segment ${index + 1} text is empty`);
 		if (mode === 'single' && role !== 'narrator') {
 			throw new Error('single mode only allows narrator role');

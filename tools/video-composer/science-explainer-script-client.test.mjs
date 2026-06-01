@@ -32,6 +32,10 @@ test('buildScienceExplainerPrompt includes viewpoint, mode, text, and visual ana
 	assert.match(prompt, /睡眠时长和衰老指标呈 U 型关系/);
 	assert.match(prompt, /U 型曲线图/);
 	assert.match(prompt, /不能证明因果/);
+	assert.match(prompt, /连续页面/);
+	assert.match(prompt, /不要.*感谢收听/);
+	assert.match(prompt, /不要.*下期再见/);
+	assert.match(prompt, /后续页面不要重新开场/);
 });
 
 test('normalizers accept a fixture-like science script and visual analysis pair', () => {

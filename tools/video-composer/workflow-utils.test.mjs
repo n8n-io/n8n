@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -12,6 +13,8 @@ import {
 	parseTtsResponseFrames,
 	resolveVoicePreset,
 } from './workflow-utils.mjs';
+
+const scriptWriterSkill = new URL('./script-writer/SKILL.md', import.meta.url);
 
 test('resolveVoicePreset returns official speaker ids', () => {
 	assert.equal(VOICE_PRESETS.guest_female_xiaohe.speaker, 'zh_female_xiaohe_uranus_bigtts');
@@ -103,6 +106,28 @@ test('parseGeneratedScript validates dialogue schema', () => {
 	);
 });
 
+test('parseGeneratedScript removes repeated openings and closing boilerplate from segments', () => {
+	const script = parseGeneratedScript(
+		JSON.stringify({
+			mode: 'dialogue',
+			title: '标题',
+			summary: '摘要',
+			segments: [
+				{ role: 'A', text: '今天我们要聊抗炎饮食，先看一个常见误区。' },
+				{ role: 'B', text: '今天我们继续聊这个话题。真正关键的是搭配和长期习惯。' },
+				{ role: 'A', text: '这个例子说明，不能把单一食物神化。好了，那今天的内容咱们就到这里了，感谢大家的收听。' },
+				{ role: 'B', text: '最后可以记住一句话：稳定、均衡，比追逐神奇食物更重要。咱们下期再见拜拜。' },
+			],
+		}),
+		'dialogue',
+	);
+
+	assert.equal(script.segments[0].text, '今天我们要聊抗炎饮食，先看一个常见误区。');
+	assert.equal(script.segments[1].text, '真正关键的是搭配和长期习惯。');
+	assert.equal(script.segments[2].text, '这个例子说明，不能把单一食物神化。');
+	assert.equal(script.segments[3].text, '最后可以记住一句话：稳定、均衡，比追逐神奇食物更重要。');
+});
+
 test('buildGeneratedScriptText prefixes dialogue roles and merges narrator text', () => {
 	assert.equal(
 		buildGeneratedScriptText({
@@ -168,6 +193,28 @@ test('buildTtsSegments keeps dialogue turns with role-specific speakers', () => 
 	assert.equal(segments[0].speaker, 'zh_male_wennuanahu_uranus_bigtts');
 	assert.equal(segments[1].speaker, 'zh_female_yingyujiaoxue_uranus_bigtts');
 	assert.equal(segments[1].audioPath, '/tmp/job/tts/segments/002-B.mp3');
+});
+
+test('script writer skill treats segments as one continuous audio track', () => {
+	const skill = fs.readFileSync(scriptWriterSkill, 'utf8');
+
+	assert.match(skill, /连续/);
+	assert.match(skill, /不是独立/);
+	assert.match(skill, /不要在每个 segment/);
+	assert.match(skill, /不要.*感谢收听/);
+	assert.match(skill, /不要.*下期再见/);
+});
+
+test('video clip workflow embeds the continuity cleanup guard', () => {
+	const workflowPath = new URL('../../workflows/video-clip-tts-workflow.json', import.meta.url);
+	const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
+	for (const name of ['Parse Generated Script', 'Synthesize And Merge TTS Segments']) {
+		const node = workflow.nodes.find((item) => item.name === name);
+		assert.ok(node, `${name} node should exist`);
+		assert.match(node.parameters.jsCode, /cleanSegmentText/);
+		assert.match(node.parameters.jsCode, /isClosingBoilerplate/);
+		assert.match(node.parameters.jsCode, /isRepeatedOpening/);
+	}
 });
 
 test('parseTtsResponseFrames parses JSON stream and SSE data frames', () => {

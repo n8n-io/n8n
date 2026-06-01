@@ -42,6 +42,10 @@ Do not output this reasoning chain. Only output the strict JSON schema.
 - Use short spoken sentences.
 - Preserve the user's core viewpoint while adding context, conflict, examples, and a closing takeaway.
 - Avoid absolute medical, legal, or financial claims. Use cautious wording for sensitive topics.
+- Treat all segments as one continuous audio track（连续音轨）, not independent clips or separate episodes（不是独立片段）.
+- Do not restart the topic inside each segment. Only the first segment may contain an opening such as `今天我们要聊...`.
+- Do not add ending boilerplate in any segment: 不要在每个 segment 里写 `感谢收听`, `下期再见`, `拜拜`, `今天的内容就到这里`, or similar phrases.
+- Do not write a per-segment summary. Adjacent segments should connect naturally, like consecutive turns in one recording.
 
 ## Single Mode
 
@@ -51,6 +55,7 @@ Do not output this reasoning chain. Only output the strict JSON schema.
 - Each segment should be 40-120 Chinese characters.
 - The first segment should hook attention quickly.
 - The final segment should close with a concise takeaway.
+- Do not make each segment sound like an independent short video; segment boundaries are only for TTS processing.
 
 ## Dialogue Mode
 
@@ -60,6 +65,7 @@ Do not output this reasoning chain. Only output the strict JSON schema.
 - Produce 8-12 segments.
 - Each segment should be 30-90 Chinese characters.
 - The first `A` segment must be a natural podcast opening that quickly names the topic and gives listeners a reason to stay. It may use phrases like `今天咱们来聊...`, `今天我们要聊的话题是...`, or a more natural variant, but must not sound like a prompt.
+- After the first `A` segment, do not repeat opening phrases such as `今天我们继续聊...` or `欢迎大家...`.
 - The second segment should let `B` confirm listener value, ask a natural follow-up, or name the common confusion.
 - Include at least one concrete objection or listener concern.
 - A should guide the structure, state the core thesis clearly, and ask follow-up questions.
@@ -78,6 +84,7 @@ Default to a two-person knowledge podcast rhythm:
 - Explain in layers: claim, reason, example, boundary.
 - Include one real objection from B; A should acknowledge the reasonable part before clarifying.
 - Close with a concise takeaway, not a sales slogan.
+- Keep the final takeaway as content, not a program ending. Do not say `感谢收听`, `下期再见`, `拜拜`, or `今天就到这里`.
 
 When the downstream service rewrites or expands the podcast, subtitles must be generated from the returned spoken transcript, not from this prompt or any workflow instruction.
 
