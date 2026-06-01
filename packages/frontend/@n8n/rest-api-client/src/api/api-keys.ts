@@ -13,10 +13,7 @@ export async function getApiKeys(
 	context: IRestApiContext,
 	options: { take?: number; skip?: number } = {},
 ): Promise<ApiKeyList> {
-	const params: Record<string, string> = {};
-	if (options.take !== undefined) params.take = String(options.take);
-	if (options.skip !== undefined) params.skip = String(options.skip);
-	return await makeRestApiRequest(context, 'GET', '/api-keys', params);
+	return await makeRestApiRequest(context, 'GET', '/api-keys', options);
 }
 
 export async function getApiKeyScopes(context: IRestApiContext): Promise<ApiKeyScope[]> {
