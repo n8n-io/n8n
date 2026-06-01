@@ -11,7 +11,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { getApiKeyScopesForRole, hasGlobalScope } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -61,17 +61,17 @@ export class ApiKeysController {
 	}
 
 	/**
-	 * Get API keys. Holders of `apiKey:manage` (owners and admins) see every
-	 * key on the instance; everyone else sees only their own.
+	 * Get API keys. The service returns every key on the instance for callers
+	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
+	 * everyone else.
 	 */
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
-		const options = { take: query.take, skip: query.skip };
-		if (hasGlobalScope(req.user, 'apiKey:manage')) {
-			return await this.publicApiKeyService.getAllRedactedApiKeys(options);
-		}
-		return await this.publicApiKeyService.getRedactedApiKeysForUser(req.user, options);
+		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
+			take: query.take,
+			skip: query.skip,
+		});
 	}
 
 	/**

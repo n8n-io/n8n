@@ -87,49 +87,16 @@ describe('ApiKeysController', () => {
 	});
 
 	describe('getAPIKeys', () => {
-		beforeEach(() => {
-			publicApiKeyService.getRedactedApiKeysForUser.mockReset();
-			publicApiKeyService.getAllRedactedApiKeys.mockReset();
-		});
+		it('delegates to the service with the authenticated user and pagination params', async () => {
+			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({ items: [], count: 0 });
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
-		const reqFor = (scopes: string[], id = '123'): AuthenticatedRequest =>
-			({
-				user: {
-					id,
-					role: { scopes: scopes.map((slug) => ({ slug })) },
-				},
-			}) as unknown as AuthenticatedRequest;
+			await controller.getApiKeys(req, mock(), { take: 10, skip: 5 } as never);
 
-		const emptyPage = { items: [], count: 0 };
-
-		it("forwards pagination params to getRedactedApiKeysForUser when caller lacks apiKey:manage", async () => {
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue(emptyPage);
-
-			await controller.getApiKeys(reqFor(['apiKey:list']), mock(), {
-				take: 10,
-				skip: 5,
-			} as never);
-
-			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
-				expect.objectContaining({ id: '123' }),
-				{ take: 10, skip: 5 },
-			);
-			expect(publicApiKeyService.getAllRedactedApiKeys).not.toHaveBeenCalled();
-		});
-
-		it('forwards pagination params to getAllRedactedApiKeys when caller has apiKey:manage', async () => {
-			publicApiKeyService.getAllRedactedApiKeys.mockResolvedValue(emptyPage);
-
-			await controller.getApiKeys(reqFor(['apiKey:list', 'apiKey:manage']), mock(), {
-				take: 10,
-				skip: 5,
-			} as never);
-
-			expect(publicApiKeyService.getAllRedactedApiKeys).toHaveBeenCalledWith({
+			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(req.user, {
 				take: 10,
 				skip: 5,
 			});
-			expect(publicApiKeyService.getRedactedApiKeysForUser).not.toHaveBeenCalled();
 		});
 	});
 
