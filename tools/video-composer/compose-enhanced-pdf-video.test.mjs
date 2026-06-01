@@ -113,9 +113,11 @@ test('buildCoverIntroFfmpegArgs maps the cover image into a silent intro segment
 	});
 
 	assert.deepEqual(args.slice(0, 5), ['-y', '-loop', '1', '-i', '/tmp/cover.png']);
-	assert.equal(args.includes('anullsrc=channel_layout=stereo:sample_rate=24000'), true);
+	assert.equal(args.includes('anullsrc=channel_layout=stereo:sample_rate=48000'), true);
 	assert.equal(args.includes('/tmp/render/intro-cover.mp4'), true);
 	assert.equal(args[args.indexOf('-t') + 1], '4');
+	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
 
 test('buildIllustrationIntroFfmpegArgs uses PDF page 1 as background', () => {
@@ -134,6 +136,8 @@ test('buildIllustrationIntroFfmpegArgs uses PDF page 1 as background', () => {
 	assert.equal(args.includes('/tmp/render/intro-illustration.mp4'), true);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1056:702/);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /overlay=\(W-w\)\/2:\(H-h\)\/2/);
+	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
 
 test('buildEnhancedSegmentFfmpegArgs omits overlays for page 1', () => {
@@ -154,6 +158,8 @@ test('buildEnhancedSegmentFfmpegArgs omits overlays for page 1', () => {
 	assert.equal(args.includes('/tmp/cover.png'), false);
 	assert.equal(args.includes('/tmp/illustration.png'), false);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /subtitles=filename=/);
+	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
 
 test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () => {
@@ -177,6 +183,8 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 	assert.match(filter, /scale=260:324/);
 	assert.match(filter, /overlay=40:H-h-40/);
 	assert.match(filter, /overlay=W-w-40:H-h-40/);
+	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
 
 test('buildSubtitleEventsForSegment returns segment-relative subtitle times', () => {
@@ -272,5 +280,6 @@ test('buildFinalConcatFfmpegArgs re-encodes concatenated segments', () => {
 	assert.equal(args[args.indexOf('-c:a') + 1], 'aac');
 	assert.equal(args[args.indexOf('-b:a') + 1], '192k');
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args[args.indexOf('-ac') + 1], '2');
 	assert.equal(args.at(-1), '/tmp/final.mp4');
 });

@@ -63,7 +63,11 @@ function escapeForFilterPath(filePath) {
 }
 
 function silentAudioInput() {
-	return ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=24000'];
+	return ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000'];
+}
+
+function aacOutputArgs() {
+	return ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2'];
 }
 
 export function createAssSubtitle({ width = 1920, height = 1080, events = [], marginV = 90 }) {
@@ -118,8 +122,7 @@ export function buildCoverIntroFfmpegArgs({
 		'libx264',
 		'-pix_fmt',
 		'yuv420p',
-		'-c:a',
-		'aac',
+		...aacOutputArgs(),
 		outputPath,
 	];
 }
@@ -166,8 +169,7 @@ export function buildIllustrationIntroFfmpegArgs({
 		'libx264',
 		'-pix_fmt',
 		'yuv420p',
-		'-c:a',
-		'aac',
+		...aacOutputArgs(),
 		outputPath,
 	];
 }
@@ -204,8 +206,7 @@ export function buildEnhancedSegmentFfmpegArgs({
 			'libx264',
 			'-pix_fmt',
 			'yuv420p',
-			'-c:a',
-			'aac',
+			...aacOutputArgs(),
 			'-shortest',
 			outputPath,
 		];
@@ -243,8 +244,7 @@ export function buildEnhancedSegmentFfmpegArgs({
 		'libx264',
 		'-pix_fmt',
 		'yuv420p',
-		'-c:a',
-		'aac',
+		...aacOutputArgs(),
 		'-shortest',
 		outputPath,
 	];
@@ -281,8 +281,7 @@ export function buildPauseSegmentFfmpegArgs({
 		'libx264',
 		'-pix_fmt',
 		'yuv420p',
-		'-c:a',
-		'aac',
+		...aacOutputArgs(),
 		outputPath,
 	];
 }
@@ -335,6 +334,8 @@ export function buildFinalConcatFfmpegArgs({ concatListPath, outputVideoPath }) 
 		'192k',
 		'-ar',
 		'48000',
+		'-ac',
+		'2',
 		outputVideoPath,
 	];
 }
