@@ -1,22 +1,34 @@
 import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, Project, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import { SourceControlController } from '../source-control.controller.ee';
 import type { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlRequest } from '../types/requests';
+import { SourceControlContext } from '../types/source-control-context';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
+
+jest.mock('@n8n/permissions', () => {
+	const actual = jest.requireActual('@n8n/permissions');
+	return {
+		...actual,
+		hasGlobalScope: jest.fn(actual.hasGlobalScope),
+	};
+});
 
 describe('SourceControlController', () => {
 	let controller: SourceControlController;
 	let sourceControlService: SourceControlService;
 	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let sourceControlContextFactory: SourceControlContextFactory;
 	let eventService: EventService;
 
 	beforeEach(() => {
@@ -28,14 +40,20 @@ describe('SourceControlController', () => {
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
+		sourceControlContextFactory = mock<SourceControlContextFactory>();
 		eventService = mock<EventService>();
 
 		controller = new SourceControlController(
 			sourceControlService,
 			sourceControlPreferencesService,
 			mock(),
+			sourceControlContextFactory,
 			eventService,
 		);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	describe('pushWorkfolder', () => {
@@ -170,28 +188,66 @@ describe('SourceControlController', () => {
 	});
 
 	describe('getPreferences', () => {
-		it('should return preferences with public key', async () => {
-			const mockPreferences = {
-				branchName: 'main',
-				repositoryUrl: 'git@github.com:example/repo.git',
-				connected: true,
-				publicKey: '',
-			};
-			const mockPublicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
+		const fullPreferences = {
+			branchName: 'main',
+			branchColor: '#ff0000',
+			branchReadOnly: false,
+			connected: true,
+			repositoryUrl: 'git@github.com:example/repo.git',
+			connectionType: 'ssh' as const,
+		};
 
+		const buildReq = (user: Partial<User> = {}) =>
+			mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1', ...user }) });
+
+		beforeEach(() => {
 			(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue(
-				mockPreferences,
+				fullPreferences,
 			);
+		});
+
+		it('should return full preferences (including public key) for users with sourceControl:manage', async () => {
+			const mockPublicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
 			(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(mockPublicKey);
+			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(true);
 
-			const result = await controller.getPreferences();
+			const result = await controller.getPreferences(buildReq());
 
-			expect(sourceControlPreferencesService.getPublicKey).toHaveBeenCalled();
-			expect(sourceControlPreferencesService.getPreferences).toHaveBeenCalled();
+			expect(result).toEqual({ ...fullPreferences, publicKey: mockPublicKey });
+			expect(sourceControlContextFactory.createContext).not.toHaveBeenCalled();
+		});
+
+		it('should return branch name and color for project admins (has authorized projects)', async () => {
+			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			const user = mock<User>({ id: 'user-1' });
+			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+				new SourceControlContext(user, [mock<Project>({ id: 'p1', type: 'team' })], []),
+			);
+
+			const result = await controller.getPreferences(mock<AuthenticatedRequest>({ user }));
+
 			expect(result).toEqual({
-				...mockPreferences,
-				publicKey: mockPublicKey,
+				connected: fullPreferences.connected,
+				branchReadOnly: fullPreferences.branchReadOnly,
+				branchName: fullPreferences.branchName,
+				branchColor: fullPreferences.branchColor,
 			});
+			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();
+		});
+
+		it('should return only branchReadOnly for users with no source-control access', async () => {
+			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			const user = mock<User>({ id: 'user-1' });
+			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+				new SourceControlContext(user, [], []),
+			);
+
+			const result = await controller.getPreferences(mock<AuthenticatedRequest>({ user }));
+
+			expect(result).toEqual({
+				branchReadOnly: fullPreferences.branchReadOnly,
+			});
+			expect(sourceControlPreferencesService.getPublicKey).not.toHaveBeenCalled();
 		});
 
 		it('should require authentication', () => {

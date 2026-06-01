@@ -156,6 +156,7 @@ export type RelayEventMap = {
 		runData?: IRun;
 		projectId?: string;
 		projectName?: string;
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	};
 
 	'workflow-sharing-updated': {
@@ -430,6 +431,38 @@ export type RelayEventMap = {
 	};
 
 	'credentials-user-disconnected': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-created': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		projectId?: string;
+		projectType?: string;
+	};
+
+	'private-credential-toggled-to-private': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-toggled-to-static': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-deleted': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-user-connected': {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
