@@ -12,6 +12,7 @@ import promClient from 'prom-client';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
 
@@ -35,6 +36,7 @@ describe('PrometheusMetricsService', () => {
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let workflowHookContextService: WorkflowHookContextService;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -78,6 +80,8 @@ describe('PrometheusMetricsService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
 		licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		workflowHookContextService = mockInstance(WorkflowHookContextService);
+		jest.mocked(workflowHookContextService.getWorkflowTags).mockResolvedValue([]);
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -596,7 +600,7 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Histogram).toHaveBeenCalledWith({
 				name: 'n8n_workflow_execution_duration_seconds',
 				help: 'Workflow execution duration in seconds.',
-				labelNames: ['status', 'mode'],
+				labelNames: ['status', 'mode', 'workflow_tags'],
 				buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
 			});
 
@@ -616,7 +620,7 @@ describe('PrometheusMetricsService', () => {
 
 			expect(promClient.Histogram).toHaveBeenCalledWith(
 				expect.objectContaining({
-					labelNames: ['status', 'mode', 'workflow_id'],
+					labelNames: ['status', 'mode', 'workflow_id', 'workflow_tags'],
 				}),
 			);
 		});
@@ -627,7 +631,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:05Z'),
@@ -638,7 +642,7 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'success', mode: 'trigger' },
+				{ status: 'success', mode: 'trigger', workflow_tags: '' },
 				5,
 			);
 		});
@@ -649,7 +653,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:02.5Z'),
@@ -660,7 +664,7 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'failed', mode: 'webhook' },
+				{ status: 'failed', mode: 'webhook', workflow_tags: '' },
 				2.5,
 			);
 		});
@@ -671,7 +675,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:03Z'),
@@ -682,7 +686,7 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'failed', mode: 'trigger' },
+				{ status: 'failed', mode: 'trigger', workflow_tags: '' },
 				3,
 			);
 		});
@@ -694,7 +698,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: new Date('2026-01-01T00:00:01Z'),
@@ -705,7 +709,132 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'success', mode: 'manual', workflow_id: 'wf_789' },
+				{ status: 'success', mode: 'manual', workflow_id: 'wf_789', workflow_tags: '' },
+				1,
+			);
+		});
+
+		it('should include sorted workflow tag names in observation labels', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			await handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: {
+					id: 'wf_789',
+					name: 'My Workflow',
+					tags: [{ name: 'prod' }, { name: 'customer' }],
+				},
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_tags: 'customer,prod' },
+				1,
+			);
+		});
+
+		it('should dedupe and filter workflow tag names in observation labels', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			await handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: {
+					id: 'wf_789',
+					name: 'My Workflow',
+					tags: [{ name: 'prod' }, { name: 'customer' }, { name: 'prod' }, { name: '' }],
+				},
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_tags: 'customer,prod' },
+				1,
+			);
+		});
+
+		it('should use an empty workflow_tags label when the workflow has no tags', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			await handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow', tags: [] },
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_tags: '' },
+				1,
+			);
+		});
+
+		it('should look up workflow tags when the workflow has no tags relation', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			jest
+				.mocked(workflowHookContextService.getWorkflowTags)
+				.mockResolvedValue(['prod', 'customer']);
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			await handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow' },
+			});
+
+			expect(workflowHookContextService.getWorkflowTags).toHaveBeenCalledWith('wf_789');
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_tags: 'customer,prod' },
+				1,
+			);
+		});
+
+		it('should still observe duration when workflow tag lookup fails', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			promClient.Histogram.prototype.observe = jest.fn();
+			jest
+				.mocked(workflowHookContextService.getWorkflowTags)
+				.mockRejectedValue(new Error('lookup failed'));
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			await handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'manual',
+				},
+				workflow: { id: 'wf_789', name: 'My Workflow' },
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'manual', workflow_tags: '' },
 				1,
 			);
 		});
@@ -716,7 +845,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: {
 					startedAt: new Date('2026-01-01T00:00:00Z'),
 					stoppedAt: undefined,
@@ -735,7 +864,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
-			handler({
+			await handler({
 				runData: undefined,
 				workflow: { id: 'wf_123', name: 'Test' },
 			});
