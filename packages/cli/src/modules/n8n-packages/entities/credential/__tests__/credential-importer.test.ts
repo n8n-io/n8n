@@ -6,8 +6,9 @@ import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { CredentialImporter } from '../credential-importer';
+import { CredentialMatcherFactory } from '../credential-matcher-factory';
+import { CredentialMissingModeFactory } from '../credential-missing-mode-factory';
 import type { CredentialBindingRequest } from '../credential.types';
-import { createSuccessBinding } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 
 describe('CredentialImporter', () => {
@@ -50,7 +51,10 @@ describe('CredentialImporter', () => {
 				credentialsRepository,
 			),
 		);
-		importer = new CredentialImporter();
+		importer = new CredentialImporter(
+			new CredentialMatcherFactory(Container.get(IdBasedCredentialMatcher)),
+			Container.get(CredentialMissingModeFactory),
+		);
 	});
 
 	it('returns matched bindings when credentials exist on the target instance', async () => {
@@ -69,9 +73,7 @@ describe('CredentialImporter', () => {
 			]),
 		);
 
-		expect(credentialResolution.successes).toEqual([
-			createSuccessBinding('cred-manifest', 'cred-manifest'),
-		]);
+		expect(credentialResolution.successes).toEqual(new Map([['cred-manifest', 'cred-manifest']]));
 		expect(credentialResolution.failures).toEqual([]);
 	});
 });

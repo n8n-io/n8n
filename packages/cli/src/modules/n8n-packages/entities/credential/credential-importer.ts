@@ -1,18 +1,25 @@
 import { Service } from '@n8n/di';
 
-import { applyCredentialMatching } from './credential-matcher-factory';
-import { applyCredentialMissingMode } from './credential-missing-mode';
+import { CredentialMatcherFactory } from './credential-matcher-factory';
+import { CredentialMissingModeFactory } from './credential-missing-mode-factory';
 import type { CredentialBindingRequest, CredentialResolution } from './credential.types';
 
 @Service()
 export class CredentialImporter {
-	async resolveForImport(request: CredentialBindingRequest): Promise<CredentialResolution> {
-		const matched = await applyCredentialMatching(request.matchingMode, request.requirements, {
-			targetProject: request.targetProject,
-			user: request.user,
-		});
+	constructor(
+		private readonly matcherFactory: CredentialMatcherFactory,
+		private readonly missingModeFactory: CredentialMissingModeFactory,
+	) {}
 
-		return await applyCredentialMissingMode(request.missingMode, matched, {
+	async resolveForImport(request: CredentialBindingRequest): Promise<CredentialResolution> {
+		const matched = await this.matcherFactory
+			.getMatcher(request.matchingMode)
+			.match(request.requirements, {
+				targetProject: request.targetProject,
+				user: request.user,
+			});
+
+		return await this.missingModeFactory.getHandler(request.missingMode).handle(matched, {
 			requirements: request.requirements,
 			targetProject: request.targetProject,
 			user: request.user,

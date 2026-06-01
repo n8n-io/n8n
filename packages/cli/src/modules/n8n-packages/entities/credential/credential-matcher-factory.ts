@@ -1,34 +1,28 @@
-import { Container } from '@n8n/di';
+import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { CredentialMatcher, CredentialMatcherContext } from './credential-matcher';
-import type { CredentialResolution } from './credential.types';
+import type { CredentialMatcher } from './credential-matcher';
 import { IdBasedCredentialMatcher } from './id-based-credential-matcher';
 import type { CredentialMatchingMode } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
-export function createCredentialMatcher(mode: CredentialMatchingMode): CredentialMatcher {
-	if (!(mode in matcherByMode)) {
-		throw new BadRequestError(`Unsupported credential matching mode: ${mode as string}`);
+@Service()
+export class CredentialMatcherFactory {
+	private readonly matchers: Record<CredentialMatchingMode, CredentialMatcher>;
+
+	constructor(idBasedMatcher: IdBasedCredentialMatcher) {
+		/* eslint-disable @typescript-eslint/naming-convention -- API credential matching mode keys */
+		this.matchers = {
+			'id-only': idBasedMatcher,
+		};
+		/* eslint-enable @typescript-eslint/naming-convention */
 	}
 
-	const MatcherClass = matcherByMode[mode as ImplementedMatchingMode];
-	return Container.get(MatcherClass);
+	getMatcher(mode: CredentialMatchingMode): CredentialMatcher {
+		const matcher = this.matchers[mode];
+		if (!matcher) {
+			throw new BadRequestError(`Unsupported credential matching mode: ${mode as string}`);
+		}
+		return matcher;
+	}
 }
-
-export async function applyCredentialMatching(
-	mode: CredentialMatchingMode,
-	requirements: PackageCredentialRequirement[] | undefined,
-	context: CredentialMatcherContext,
-): Promise<CredentialResolution> {
-	return await createCredentialMatcher(mode).match(requirements, context);
-}
-
-/* eslint-disable @typescript-eslint/naming-convention -- API credential matching mode keys */
-const matcherByMode = {
-	'id-only': IdBasedCredentialMatcher,
-} as const;
-/* eslint-enable @typescript-eslint/naming-convention */
-
-type ImplementedMatchingMode = keyof typeof matcherByMode;

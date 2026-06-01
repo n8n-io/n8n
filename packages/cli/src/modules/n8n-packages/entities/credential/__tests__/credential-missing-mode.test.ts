@@ -3,14 +3,11 @@ import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import {
-	applyCredentialMissingMode,
-	CredentialMissingModeHandler,
-	createCredentialMissingModeHandler,
-	MustPreexistCredentialMissingModeHandler,
-} from '../credential-missing-mode';
+import { MustPreexistCredentialMissingModeHandler } from '../credential-missing-mode';
+import type { CredentialMissingModeHandler } from '../credential-missing-mode';
+import { CredentialMissingModeFactory } from '../credential-missing-mode-factory';
 import type { CredentialMissingModeContext } from '../credential.types';
-import { createFailure, createSuccessBinding } from '../credential.types';
+import { createFailure } from '../credential.types';
 
 const context: CredentialMissingModeContext = {
 	requirements: undefined,
@@ -22,7 +19,7 @@ describe('MustPreexistCredentialMissingModeHandler', () => {
 	const handler: CredentialMissingModeHandler = new MustPreexistCredentialMissingModeHandler();
 
 	it('returns the result when there are no failures', async () => {
-		const result = { successes: [createSuccessBinding('a', 'b')], failures: [] };
+		const result = { successes: new Map([['a', 'b']]), failures: [] };
 		await expect(handler.handle(result, context)).resolves.toBe(result);
 	});
 
@@ -37,7 +34,7 @@ describe('MustPreexistCredentialMissingModeHandler', () => {
 		await expect(
 			handler.handle(
 				{
-					successes: [],
+					successes: new Map(),
 					failures: [createFailure(requirement, 'not_found')],
 				},
 				context,
@@ -46,25 +43,21 @@ describe('MustPreexistCredentialMissingModeHandler', () => {
 	});
 });
 
-describe('createCredentialMissingModeHandler', () => {
+describe('CredentialMissingModeFactory', () => {
+	const factory = new CredentialMissingModeFactory(new MustPreexistCredentialMissingModeHandler());
+
 	it('returns MustPreexistCredentialMissingModeHandler for must-preexist', () => {
-		expect(createCredentialMissingModeHandler('must-preexist')).toBeInstanceOf(
+		expect(factory.getHandler('must-preexist')).toBeInstanceOf(
 			MustPreexistCredentialMissingModeHandler,
 		);
 	});
 
 	it('rejects unsupported credential missing modes', () => {
-		expect(() => createCredentialMissingModeHandler('invalid' as 'must-preexist')).toThrow(
-			BadRequestError,
-		);
+		expect(() => factory.getHandler('invalid' as 'must-preexist')).toThrow(BadRequestError);
 	});
-});
 
-describe('applyCredentialMissingMode', () => {
 	it('delegates to the handler for the given mode', async () => {
-		const result = { successes: [createSuccessBinding('a', 'b')], failures: [] };
-		await expect(applyCredentialMissingMode('must-preexist', result, context)).resolves.toBe(
-			result,
-		);
+		const result = { successes: new Map([['a', 'b']]), failures: [] };
+		await expect(factory.getHandler('must-preexist').handle(result, context)).resolves.toBe(result);
 	});
 });

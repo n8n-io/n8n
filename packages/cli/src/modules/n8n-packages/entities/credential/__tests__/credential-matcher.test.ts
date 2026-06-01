@@ -7,8 +7,8 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { CredentialMatcherContext } from '../credential-matcher';
-import { applyCredentialMatching, createCredentialMatcher } from '../credential-matcher-factory';
-import { createFailure, createSuccessBinding } from '../credential.types';
+import { CredentialMatcherFactory } from '../credential-matcher-factory';
+import { createFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 
 describe('IdBasedCredentialMatcher', () => {
@@ -20,6 +20,7 @@ describe('IdBasedCredentialMatcher', () => {
 	const user = mock<User>({ id: 'user-1' });
 
 	let context: CredentialMatcherContext;
+	let matcherFactory: CredentialMatcherFactory;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -43,6 +44,7 @@ describe('IdBasedCredentialMatcher', () => {
 				credentialsRepository,
 			),
 		);
+		matcherFactory = new CredentialMatcherFactory(Container.get(IdBasedCredentialMatcher));
 	});
 
 	it('reports a missing credential when it is neither owned by the project nor global', async () => {
@@ -53,9 +55,9 @@ describe('IdBasedCredentialMatcher', () => {
 			usedByWorkflows: ['wf-1'],
 		};
 
-		const result = await applyCredentialMatching('id-only', [requirement], context);
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
-		expect(result.successes).toEqual([]);
+		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 	});
 
@@ -69,7 +71,7 @@ describe('IdBasedCredentialMatcher', () => {
 			usedByWorkflows: ['wf-1'],
 		};
 
-		const result = await applyCredentialMatching('id-only', [requirement], context);
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
 		expect(result.failures).toEqual([createFailure(requirement, 'unknown_type')]);
 		expect(sharedCredentialsRepository.find.mock.calls).toHaveLength(0);
@@ -82,8 +84,7 @@ describe('IdBasedCredentialMatcher', () => {
 			{ credentialsId: 'cred-manifest' },
 		] as never);
 
-		const result = await applyCredentialMatching(
-			'id-only',
+		const result = await matcherFactory.getMatcher('id-only').match(
 			[
 				{
 					id: 'cred-manifest',
@@ -95,7 +96,7 @@ describe('IdBasedCredentialMatcher', () => {
 			context,
 		);
 
-		expect(result.successes).toEqual([createSuccessBinding('cred-manifest', 'cred-manifest')]);
+		expect(result.successes).toEqual(new Map([['cred-manifest', 'cred-manifest']]));
 		expect(result.failures).toEqual([]);
 		// Everything resolved against the project, so the instance-wide global lookup is skipped.
 		expect(credentialsRepository.find.mock.calls).toHaveLength(0);
@@ -104,8 +105,7 @@ describe('IdBasedCredentialMatcher', () => {
 	it('falls back to global credentials when not owned in the target project', async () => {
 		credentialsRepository.find.mockResolvedValue([{ id: 'cred-global' }] as never);
 
-		const result = await applyCredentialMatching(
-			'id-only',
+		const result = await matcherFactory.getMatcher('id-only').match(
 			[
 				{
 					id: 'cred-global',
@@ -117,7 +117,7 @@ describe('IdBasedCredentialMatcher', () => {
 			context,
 		);
 
-		expect(result.successes).toEqual([createSuccessBinding('cred-global', 'cred-global')]);
+		expect(result.successes).toEqual(new Map([['cred-global', 'cred-global']]));
 		expect(result.failures).toEqual([]);
 	});
 
@@ -129,9 +129,9 @@ describe('IdBasedCredentialMatcher', () => {
 			usedByWorkflows: ['wf-1'],
 		};
 
-		const result = await applyCredentialMatching('id-only', [requirement], context);
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
-		expect(result.successes).toEqual([]);
+		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 	});
 
@@ -150,9 +150,9 @@ describe('IdBasedCredentialMatcher', () => {
 			usedByWorkflows: ['wf-1'],
 		};
 
-		const result = await applyCredentialMatching('id-only', [requirement], context);
+		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
-		expect(result.successes).toEqual([]);
+		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 		expect(credentialsFinderService.findCredentialIdsWithScopeForUser.mock.calls[0]).toEqual([
 			['cred-manifest'],
@@ -162,8 +162,9 @@ describe('IdBasedCredentialMatcher', () => {
 	});
 });
 
-describe('createCredentialMatcher', () => {
+describe('CredentialMatcherFactory', () => {
 	it('rejects unsupported credential matching modes', () => {
-		expect(() => createCredentialMatcher('name-and-type' as 'id-only')).toThrow(BadRequestError);
+		const factory = new CredentialMatcherFactory(mock<IdBasedCredentialMatcher>());
+		expect(() => factory.getMatcher('name-and-type' as 'id-only')).toThrow(BadRequestError);
 	});
 });
