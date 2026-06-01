@@ -90,19 +90,23 @@ export class EvalExecutionService {
 	): Promise<InstanceAiEvalExecutionResult> {
 		const executionId = randomUUID();
 
-		// Retry the workflow lookup once on a short delay. Concurrent eval
+		// Retry the workflow lookup with exponential backoff. Concurrent eval
 		// scenarios share the build's workflowId; under contention the index or
-		// permission cache occasionally serves a stale 'not found' for a few
-		// hundred milliseconds even though the row exists. A single 200 ms retry
-		// absorbs that race without slowing the happy path.
+		// permission cache occasionally serves a stale 'not found' for a second
+		// or two even though the row exists. Three short retries (200ms, 500ms,
+		// 1000ms) absorb the race without slowing the happy path — the lookup
+		// either returns immediately or the first retry typically wins.
 		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
 		if (!workflowEntity) {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-				'workflow:execute',
-			]);
+			for (const delayMs of [200, 500, 1000]) {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (workflowEntity) break;
+			}
 		}
 
 		if (!workflowEntity) {
