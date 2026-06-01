@@ -89,9 +89,10 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 
 	it('reuses prebaked knowledge base when the manifest hash matches', async () => {
 		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
-		const files = new Map<string, string>([
-			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
-		]);
+		const files = new Map<string, string>();
+		for (const [path, content] of bundle.files) {
+			files.set(path, content);
+		}
 		const { workspace, writes } = createSandboxWorkspace(files);
 
 		const prebaked = await loadPrebakedKnowledgeBaseBundle({
@@ -106,5 +107,22 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		expect(prebaked?.contentHash).toBe(bundle.contentHash);
 		expect(materialized.contentHash).toBe(bundle.contentHash);
 		expect(writes.size).toBe(0);
+	});
+
+	it('rematerializes when prebaked manifest exists but payload is incomplete', async () => {
+		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const files = new Map<string, string>([
+			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
+		]);
+		const { workspace, writes } = createSandboxWorkspace(files);
+
+		const materialized = await materializeKnowledgeBaseIntoWorkspace({
+			workspace,
+			root: ROOT,
+		});
+
+		expect(materialized.contentHash).toBe(bundle.contentHash);
+		expect(writes.has(bundle.indexPath)).toBe(true);
+		expect(writes.size).toBeGreaterThan(1);
 	});
 });

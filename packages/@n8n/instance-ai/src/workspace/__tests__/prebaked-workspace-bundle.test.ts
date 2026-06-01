@@ -43,9 +43,10 @@ function createSandboxWorkspace(files: Map<string, string>): {
 
 describe('loadPrebakedWorkspaceBundle', () => {
 	const manifestPath = `${ROOT}/bundle/.manifest.json`;
+	const filePath = `${ROOT}/bundle/file.txt`;
 	const bundle = {
 		rootDir: `${ROOT}/bundle`,
-		files: new Map([[`${ROOT}/bundle/file.txt`, 'content\n']]),
+		files: new Map([[filePath, 'content\n']]),
 		contentHash: 'abc123',
 	};
 
@@ -56,6 +57,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 					manifestPath,
 					stringifyWorkspaceJson({ schemaVersion: 1, contentHash: bundle.contentHash }),
 				],
+				[filePath, 'content\n'],
 			]),
 		);
 
@@ -99,15 +101,44 @@ describe('loadPrebakedWorkspaceBundle', () => {
 
 		expect(result).toBeUndefined();
 	});
+
+	it('returns undefined when the manifest hash matches but a payload file is missing', async () => {
+		const { workspace } = createSandboxWorkspace(
+			new Map([
+				[
+					manifestPath,
+					stringifyWorkspaceJson({ schemaVersion: 1, contentHash: bundle.contentHash }),
+				],
+			]),
+		);
+
+		const result = await loadPrebakedWorkspaceBundle({
+			workspace,
+			manifestPath,
+			expectedHash: bundle.contentHash,
+			hashField: 'contentHash',
+			schemaVersion: 1,
+			resourceLabel: 'Test bundle file',
+			invalidManifestLogMessage: 'invalid',
+			staleManifestLogMessage: 'stale',
+			staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
+			successLogMessage: 'success',
+			successLogContext: () => ({ root: ROOT }),
+			buildBundle: () => bundle,
+		});
+
+		expect(result).toBeUndefined();
+	});
 });
 
 describe('materializeWorkspaceBundle', () => {
 	const manifestPath = `${ROOT}/bundle/.manifest.json`;
+	const filePath = `${ROOT}/bundle/file.txt`;
 	const bundle = {
 		rootDir: `${ROOT}/bundle`,
 		manifestPath,
 		files: new Map([
-			[`${ROOT}/bundle/file.txt`, 'content\n'],
+			[filePath, 'content\n'],
 			[manifestPath, stringifyWorkspaceJson({ schemaVersion: 1, contentHash: 'abc123' })],
 		]),
 		contentHash: 'abc123',
@@ -129,9 +160,39 @@ describe('materializeWorkspaceBundle', () => {
 		expect(writes.has(manifestPath)).toBe(true);
 	});
 
+	it('writes manifest after payload files', async () => {
+		const writeOrder: string[] = [];
+		const writes = new Map<string, string>();
+		const workspace: SandboxWorkspace = {
+			filesystem: {
+				provider: 'local',
+				writeFile: jest.fn(async (path: string, content: string | Buffer) => {
+					writeOrder.push(path);
+					writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+					await Promise.resolve();
+				}),
+				mkdir: jest.fn(async () => await Promise.resolve()),
+			},
+		};
+
+		await materializeWorkspaceBundle({
+			workspace,
+			resourceLabel: 'Test bundle file',
+			loadPrebaked: async () => await Promise.resolve(undefined),
+			buildBundle: () => bundle,
+			materializedLogMessage: 'materialized',
+			materializedLogContext: () => ({ root: ROOT }),
+		});
+
+		expect(writeOrder.at(-1)).toBe(manifestPath);
+	});
+
 	it('skips writes when a valid prebaked manifest exists', async () => {
 		const { workspace, writes } = createSandboxWorkspace(
-			new Map([[manifestPath, bundle.files.get(manifestPath) ?? '']]),
+			new Map([
+				[manifestPath, bundle.files.get(manifestPath) ?? ''],
+				[filePath, 'content\n'],
+			]),
 		);
 
 		const result = await materializeWorkspaceBundle({
