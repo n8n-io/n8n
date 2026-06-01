@@ -85,6 +85,7 @@ const onCreateNewCredential = async () => {
 			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:label="item.name"
 			:value="item.id"
+			@click="closeSelect"
 		>
 			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
 				<N8nText bold>{{ item.name }}</N8nText>
