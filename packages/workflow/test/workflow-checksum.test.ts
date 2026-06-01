@@ -177,4 +177,60 @@ describe('calculateWorkflowChecksum', () => {
 
 		expect(checksum1).not.toBe(checksum2);
 	});
+
+	it('should generate the same checksum when object keys are in different insertion order', async () => {
+		const workflow1: WorkflowSnapshot = {
+			name: 'Test Workflow',
+			settings: {
+				executionOrder: 'v1',
+				timezone: 'America/New_York',
+			},
+			meta: {
+				nested: { foo: 'bar', baz: 'qux' },
+			},
+		};
+
+		const workflow2: WorkflowSnapshot = {
+			meta: {
+				nested: { baz: 'qux', foo: 'bar' },
+			},
+			settings: {
+				timezone: 'America/New_York',
+				executionOrder: 'v1',
+			},
+			name: 'Test Workflow',
+		};
+
+		const checksum1 = await calculateWorkflowChecksum(workflow1);
+		const checksum2 = await calculateWorkflowChecksum(workflow2);
+
+		expect(checksum1).toBe(checksum2);
+	});
+
+	it('should return a 64-character lowercase hex string matching a pinned reference hash', async () => {
+		const canonicalWorkflow: WorkflowSnapshot = {
+			name: 'Canonical',
+			nodes: [],
+			connections: {},
+		};
+
+		const checksum = await calculateWorkflowChecksum(canonicalWorkflow);
+
+		expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+		expect(checksum).toBe('11020572b14a9e257c93b4c971cc6fd85e390305548f029e3277422fb5678e33');
+	});
+
+	it('should produce the same checksum via the jsSHA fallback as WebCrypto', async () => {
+		const webCryptoChecksum = await calculateWorkflowChecksum(baseWorkflow);
+
+		const originalCrypto = globalThis.crypto;
+		Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
+		try {
+			const fallbackChecksum = await calculateWorkflowChecksum(baseWorkflow);
+			expect(fallbackChecksum).toBe(webCryptoChecksum);
+			expect(fallbackChecksum).toMatch(/^[0-9a-f]{64}$/);
+		} finally {
+			Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+		}
+	});
 });

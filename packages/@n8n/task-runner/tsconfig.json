@@ -6,7 +6,6 @@
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"isolatedModules": true,
 		"paths": {
 			"@/*": ["./src/*"]
 		},

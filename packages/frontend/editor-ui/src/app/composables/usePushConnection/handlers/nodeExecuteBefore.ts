@@ -1,9 +1,7 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
@@ -15,13 +13,13 @@ export async function nodeExecuteBefore(
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const stateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 
 	workflowState.executingNode.addExecutingNode(data.nodeName);
 
-	const activeExecutionId = stateStore.activeExecutionId;
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
 		useExecutionDataStore(createExecutionDataId(activeExecutionId)).addNodeExecutionStartedData(
 			data,
