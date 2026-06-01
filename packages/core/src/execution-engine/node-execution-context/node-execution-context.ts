@@ -502,7 +502,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			// Include the missing parameter path in the message so the failure
+			// surfaces in execution logs and UI tooltips without having to inspect
+			// `extra`. Most node implementations bubble this straight to the user;
+			// builders and integrators waste time guessing which path triggered it.
+			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {
