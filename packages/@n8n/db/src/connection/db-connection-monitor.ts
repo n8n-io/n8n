@@ -200,7 +200,7 @@ export class DbConnectionMonitor {
 		const pool = driver.master;
 		if (!pool || typeof pool.on !== 'function') {
 			// Defensive: TypeORM may have renamed `driver.master` in a future release.
-			this.logger.debug(
+			this.logger.warn(
 				'Skipping Postgres pool error listener: driver.master is unavailable (TypeORM internals may have changed)',
 			);
 			return;
