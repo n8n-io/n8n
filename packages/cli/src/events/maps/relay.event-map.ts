@@ -439,7 +439,7 @@ export type RelayEventMap = {
 	'oauth-callback-binding-rejected': {
 		reason: 'cookie-missing' | 'hash-mismatch';
 		credentialId?: string;
-		origin?: 'static-credential' | 'dynamic-credential';    
+		origin?: 'static-credential' | 'dynamic-credential';
 	};
 
 	'private-credential-created': {
