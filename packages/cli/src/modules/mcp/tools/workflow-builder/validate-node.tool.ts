@@ -64,6 +64,12 @@ const outputSchema = {
 			}),
 		)
 		.describe('Per-node validation results, in input order.'),
+	error: z
+		.string()
+		.optional()
+		.describe(
+			'Top-level error message when validation could not run at all (e.g. internal failure loading the schema). Omitted on success.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -79,7 +85,7 @@ export const createValidateNodeTool = (
 	name: CODE_BUILDER_VALIDATE_NODE_TOOL.toolName,
 	config: {
 		description:
-			'Validate one or more node configurations (type, typeVersion, parameters) against the generated node schema. Use this for quick spot-checks of individual nodes without re-parsing a full workflow. Schema-level only — does not validate connections, required inputs, triggers, or credential existence; use validate_workflow for those graph-level checks. For langchain tool subnodes (nodes wired via ai_tool), set isToolNode: true so the schema evaluates the correct displayOptions branch.',
+			"Validate a node's config the moment you write it — before assembling create_workflow_from_code or calling update_workflow. Read-only and needs no existing workflow, so use it freely while composing. Unlike the write tools (which validate only as they mutate), this returns isolated per-node, per-parameter errors with no graph noise, and can check several candidate configs in one call so you wire only the one that passes. For langchain tool subnodes (nodes wired via ai_tool), set isToolNode: true so the schema evaluates the correct displayOptions branch. Schema-level only — for connections, required inputs, triggers, and credentials use validate_workflow.",
 		inputSchema,
 		outputSchema,
 		annotations: {

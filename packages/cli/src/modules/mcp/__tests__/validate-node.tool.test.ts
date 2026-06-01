@@ -13,8 +13,8 @@ jest.mock('@n8n/workflow-sdk', () => ({
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_VALIDATE_NODE_TOOL: {
-		toolName: 'validate_node',
-		displayTitle: 'Validating node',
+		toolName: 'validate_node_config',
+		displayTitle: 'Validating node config',
 	},
 }));
 
@@ -37,7 +37,7 @@ describe('validate-node MCP tool', () => {
 		test('creates tool with correct name and read-only annotations', () => {
 			const tool = createTool();
 
-			expect(tool.name).toBe('validate_node');
+			expect(tool.name).toBe('validate_node_config');
 			expect(tool.config.annotations).toEqual(
 				expect.objectContaining({
 					readOnlyHint: true,
@@ -268,7 +268,7 @@ describe('validate-node MCP tool', () => {
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
-					tool_name: 'validate_node',
+					tool_name: 'validate_node_config',
 					parameters: expect.objectContaining({ nodeCount: 2 }),
 					results: expect.objectContaining({
 						success: true,
@@ -295,7 +295,7 @@ describe('validate-node MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({
-					tool_name: 'validate_node',
+					tool_name: 'validate_node_config',
 					results: expect.objectContaining({
 						success: false,
 						error: 'schema load failed',
