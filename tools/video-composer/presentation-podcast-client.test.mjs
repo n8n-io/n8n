@@ -113,6 +113,8 @@ test('presentation-podcast-client sends page source text and full script to AI p
 	assert.match(pageJob.podcastInputText, /AI Podcast PDF Smoke Test/);
 	assert.match(pageJob.podcastInputText, /这一页验证 n8n 工作流能生成带字幕的视频/);
 	assert.match(pageJob.podcastInputText, /不要引入页面没有出现的新主题/);
+	assert.match(pageJob.podcastInputText, /不要在每一页结尾加入播客结束语/);
+	assert.match(pageJob.podcastInputText, /不要说“感谢收听”/);
 });
 
 test('presentation-podcast-client compacts long page source text before AI podcast generation', () => {

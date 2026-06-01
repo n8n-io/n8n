@@ -194,18 +194,40 @@ export function buildEnhancedSegmentFfmpegArgs({
 	width = 1920,
 	height = 1080,
 	fps = 30,
+	introCoverSeconds = 4,
+	introIllustrationSeconds = 4,
 }) {
 	const subtitles = `subtitles=filename=${escapeForFilterPath(subtitlePath)}`;
 	const baseInputs = ['-y', '-loop', '1', '-i', pageImage, '-i', audioPath];
 	if (Number(pageNumber) === 1) {
+		const coverEnd = Math.max(0, Number(introCoverSeconds) || 0);
+		const illustrationEnd = coverEnd + Math.max(0, Number(introIllustrationSeconds) || 0);
+		const illustrationWidth = Math.round(width * 0.55);
+		const illustrationMaxHeight = Math.round(height * 0.65);
+		const illustrationX = Math.floor((width - illustrationWidth) / 2);
+		const illustrationY = Math.floor((height - illustrationMaxHeight) / 2);
 		const filter = [
 			scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
-			`[pagev]${subtitles}[subtitlev]`,
+			scaleImageToCanvasFilter('[2:v]', width, height, '[coverv]'),
+			scaleOverlayFilter('[3:v]', illustrationWidth, illustrationMaxHeight, '[illustrationv]'),
+			`[pagev][illustrationv]overlay=${illustrationX}:${illustrationY}:enable='between(t,${coverEnd},${illustrationEnd})'[illustrationraw]`,
+			normalizeCanvasFilter('[illustrationraw]', width, height, '[illustrationstage]'),
+			`[illustrationstage][coverv]overlay=0:0:enable='lt(t,${coverEnd})'[stageraw]`,
+			normalizeCanvasFilter('[stageraw]', width, height, '[stagev]'),
+			`[stagev]${subtitles}[subtitlev]`,
 			normalizeCanvasFilter('[subtitlev]', width, height, '[vout]'),
 		].join(';');
 
 		return [
 			...baseInputs,
+			'-loop',
+			'1',
+			'-i',
+			coverImagePath,
+			'-loop',
+			'1',
+			'-i',
+			illustrationImagePath,
 			'-filter_complex',
 			filter,
 			'-map',
@@ -314,12 +336,10 @@ export function buildSubtitleEventsForSegment({ page }) {
 }
 
 export function buildEnhancedConcatList({
-	introCoverPath,
-	introIllustrationPath,
 	segmentPaths = [],
 	pausePaths = [],
 }) {
-	const paths = [introCoverPath, introIllustrationPath];
+	const paths = [];
 	for (const [index, segmentPath] of segmentPaths.entries()) {
 		paths.push(segmentPath);
 		if (index < segmentPaths.length - 1 && pausePaths[index]) paths.push(pausePaths[index]);
@@ -384,40 +404,12 @@ function render() {
 	});
 	fs.writeFileSync(job.pageTimingPath, JSON.stringify(timing, null, 2), 'utf8');
 
-	const introDuration = job.introCoverSeconds + job.introIllustrationSeconds;
 	fs.writeFileSync(job.subtitlePath, createAssSubtitle({
 		width: job.width,
 		height: job.height,
 		marginV: 90,
-		events: timing.subtitles.map((event) => ({
-			...event,
-			start: Number(event.start) + introDuration,
-			end: Number(event.end) + introDuration,
-		})),
+		events: timing.subtitles,
 	}), 'utf8');
-
-	const introCoverPath = path.join(job.renderDir, 'intro-cover.mp4');
-	runFfmpeg(buildCoverIntroFfmpegArgs({
-		coverImagePath: job.coverImagePath,
-		outputPath: introCoverPath,
-		duration: job.introCoverSeconds,
-		width: job.width,
-		height: job.height,
-		fps: job.fps,
-	}), job.ffmpegLogPath);
-
-	const firstPage = pagesManifest.pages[0];
-	if (!firstPage) throw new Error('Enhanced PDF composer requires at least one PDF page');
-	const introIllustrationPath = path.join(job.renderDir, 'intro-illustration.mp4');
-	runFfmpeg(buildIllustrationIntroFfmpegArgs({
-		pageImage: firstPage.imagePath,
-		illustrationImagePath: job.illustrationImagePath,
-		outputPath: introIllustrationPath,
-		duration: job.introIllustrationSeconds,
-		width: job.width,
-		height: job.height,
-		fps: job.fps,
-	}), job.ffmpegLogPath);
 
 	const segmentPaths = [];
 	const pausePaths = [];
@@ -444,6 +436,8 @@ function render() {
 			width: job.width,
 			height: job.height,
 			fps: job.fps,
+			introCoverSeconds: job.introCoverSeconds,
+			introIllustrationSeconds: job.introIllustrationSeconds,
 		}), job.ffmpegLogPath);
 		segmentPaths.push(segmentPath);
 
@@ -462,7 +456,7 @@ function render() {
 	}
 
 	const concatListPath = path.join(job.renderDir, 'segments.txt');
-	const concatPaths = buildEnhancedConcatList({ introCoverPath, introIllustrationPath, segmentPaths, pausePaths });
+	const concatPaths = buildEnhancedConcatList({ segmentPaths, pausePaths });
 	fs.writeFileSync(concatListPath, concatPaths.map(quoteConcatPath).join('\n'), 'utf8');
 	runFfmpeg(buildFinalConcatFfmpegArgs({ concatListPath, outputVideoPath: job.outputVideoPath }), job.ffmpegLogPath);
 	runFfmpeg(buildExtractAudioArgs({ inputVideoPath: job.outputVideoPath, outputAudioPath: job.outputAudioPath }), job.ffmpegLogPath);
@@ -472,7 +466,7 @@ function render() {
 		outputVideoPath: job.outputVideoPath,
 		outputAudioPath: job.outputAudioPath,
 		pageTimingPath: job.pageTimingPath,
-		introDuration,
+		visualIntroDuration: job.introCoverSeconds + job.introIllustrationSeconds,
 	}));
 }
 

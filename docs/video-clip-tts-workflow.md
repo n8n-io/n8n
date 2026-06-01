@@ -63,19 +63,21 @@ The form also accepts optional context and podcast settings:
 
 The output timeline is:
 
-- `0s - 4s`: silent cover intro
-- `4s - 8s`: silent illustration intro over PDF page 1
-- page 1 explanation: PDF page 1 only
+- `0s - 4s`: podcast audio and subtitles start immediately while the cover fills the canvas
+- `4s - 8s`: the same page 1 podcast audio continues while the illustration is shown over PDF page 1
+- remaining page 1 explanation: PDF page 1 only
 - page 2 and later explanations: current PDF page with cover lower-left and
   illustration lower-right
+- Per-page AI Podcast prompts treat pages as continuous program segments and
+  explicitly prohibit repeated ending phrases such as thanks, episode closers,
+  or next-episode signoffs.
 
 Review artifacts and generated temporary files are written under the project
 root `tmp/` directory by default: `tmp/n8n-video-jobs/{jobId}`. This matches
 the existing video composer workflow storage convention. The most useful files
 are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`,
-`timing/page-timing.json`, `render/intro-cover.mp4`,
-`render/intro-illustration.mp4`, `render/segment-*.mp4`, `render/final.mp4`,
-and `cost.json`.
+`timing/page-timing.json`, `render/segment-*.mp4`, `render/final.mp4`, and
+`cost.json`.
 
 Use `VIDEO_COMPOSER_REPO_DIR` or `N8N_VIDEO_COMPOSER_REPO_DIR` to point the
 workflow at the video composer repository. Use `VIDEO_COMPOSER_JOBS_DIR` or

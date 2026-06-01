@@ -145,7 +145,7 @@ test('buildIllustrationIntroFfmpegArgs uses PDF page 1 as background', () => {
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
 
-test('buildEnhancedSegmentFfmpegArgs omits overlays for page 1', () => {
+test('buildEnhancedSegmentFfmpegArgs starts page 1 audio while showing cover and illustration stages', () => {
 	const args = buildEnhancedSegmentFfmpegArgs({
 		pageNumber: 1,
 		pageImage: '/tmp/page-001.png',
@@ -158,12 +158,17 @@ test('buildEnhancedSegmentFfmpegArgs omits overlays for page 1', () => {
 		width: 1920,
 		height: 1080,
 		fps: 30,
+		introCoverSeconds: 4,
+		introIllustrationSeconds: 4,
 	});
 
-	assert.equal(args.includes('/tmp/cover.png'), false);
-	assert.equal(args.includes('/tmp/illustration.png'), false);
-	assert.match(args[args.indexOf('-filter_complex') + 1], /subtitles=filename=/);
-	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
+	assert.equal(args.includes('/tmp/cover.png'), true);
+	assert.equal(args.includes('/tmp/illustration.png'), true);
+	const filter = args[args.indexOf('-filter_complex') + 1];
+	assert.match(filter, /enable='lt\(t,4\)'/);
+	assert.match(filter, /enable='between\(t,4,8\)'/);
+	assert.match(filter, /subtitles=filename=/);
+	assert.match(filter, /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -211,17 +216,13 @@ test('buildSubtitleEventsForSegment returns segment-relative subtitle times', ()
 	]);
 });
 
-test('buildEnhancedConcatList orders intro segments before page segments and pauses', () => {
+test('buildEnhancedConcatList starts directly with page segments because page 1 contains the visual intro stages', () => {
 	assert.deepEqual(
 		buildEnhancedConcatList({
-			introCoverPath: '/tmp/render/intro-cover.mp4',
-			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
 			segmentPaths: ['/tmp/render/segment-001.mp4', '/tmp/render/segment-002.mp4'],
 			pausePaths: ['/tmp/render/pause-001.mp4'],
 		}),
 		[
-			'/tmp/render/intro-cover.mp4',
-			'/tmp/render/intro-illustration.mp4',
 			'/tmp/render/segment-001.mp4',
 			'/tmp/render/pause-001.mp4',
 			'/tmp/render/segment-002.mp4',
@@ -232,14 +233,10 @@ test('buildEnhancedConcatList orders intro segments before page segments and pau
 test('buildEnhancedConcatList ignores extra pauses after the final segment', () => {
 	assert.deepEqual(
 		buildEnhancedConcatList({
-			introCoverPath: '/tmp/render/intro-cover.mp4',
-			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
 			segmentPaths: ['/tmp/render/segment-001.mp4', '/tmp/render/segment-002.mp4'],
 			pausePaths: ['/tmp/render/pause-001.mp4', '/tmp/render/pause-002.mp4'],
 		}),
 		[
-			'/tmp/render/intro-cover.mp4',
-			'/tmp/render/intro-illustration.mp4',
 			'/tmp/render/segment-001.mp4',
 			'/tmp/render/pause-001.mp4',
 			'/tmp/render/segment-002.mp4',
@@ -250,8 +247,6 @@ test('buildEnhancedConcatList ignores extra pauses after the final segment', () 
 test('buildEnhancedConcatList places page pause only between page segments', () => {
 	assert.deepEqual(
 		buildEnhancedConcatList({
-			introCoverPath: '/tmp/render/intro-cover.mp4',
-			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
 			segmentPaths: [
 				'/tmp/render/segment-001.mp4',
 				'/tmp/render/segment-002.mp4',
@@ -263,8 +258,6 @@ test('buildEnhancedConcatList places page pause only between page segments', () 
 			],
 		}),
 		[
-			'/tmp/render/intro-cover.mp4',
-			'/tmp/render/intro-illustration.mp4',
 			'/tmp/render/segment-001.mp4',
 			'/tmp/render/pause-001.mp4',
 			'/tmp/render/segment-002.mp4',
@@ -402,12 +395,15 @@ test('enhanced PDF composer renders a real video with portrait PDF page and wide
 		outputVideoPath,
 	]);
 	assert.equal(dimensions, '1920x1080');
-	assert.equal(fs.existsSync(path.join(renderDir, 'intro-illustration.mp4')), true);
+	assert.equal(fs.existsSync(path.join(renderDir, 'intro-cover.mp4')), false);
+	assert.equal(fs.existsSync(path.join(renderDir, 'intro-illustration.mp4')), false);
+	assert.equal(fs.readFileSync(path.join(renderDir, 'segments.txt'), 'utf8').includes('intro-'), false);
 	assert.equal(fs.existsSync(path.join(renderDir, 'segment-002.mp4')), true);
 	assert.equal(fs.existsSync(path.join(renderDir, 'pause-001.mp4')), true);
 	for (const subtitleFile of ['subtitles.ass', 'page-001.ass', 'page-002.ass']) {
 		const subtitle = fs.readFileSync(path.join(renderDir, subtitleFile), 'utf8');
 		assert.match(subtitle, /Style: Default,[^\n]*,2,80,80,90,1/);
 	}
+	assert.match(fs.readFileSync(path.join(renderDir, 'subtitles.ass'), 'utf8'), /Dialogue: 0,0:00:00\.00,0:00:00\.50,Default,,0,0,0,,第一页/);
 	assert.ok(fs.statSync(outputVideoPath).size > 0);
 });
