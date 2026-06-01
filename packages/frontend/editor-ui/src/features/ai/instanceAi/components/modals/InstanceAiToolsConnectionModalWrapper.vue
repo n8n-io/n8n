@@ -59,6 +59,11 @@ onMounted(async () => {
 	// Also ensure connections are loaded if the user opens the modal before
 	// ConnectionsCard has mounted (e.g. opened via a deep link).
 	void mcpStore.fetchConnections();
+	// Pre-load credentials so the picker is populated on first open. The
+	// credentials store is only auto-refreshed by `CredentialEdit.vue` after
+	// OAuth, so without this the picker is empty until the user creates a
+	// credential.
+	void credentialsStore.fetchAllCredentials();
 
 	const payload = modalState.value?.data as { connectionId?: string } | undefined;
 	const connectionId = payload?.connectionId;
@@ -189,8 +194,7 @@ watch(
 		});
 		if (!created) return;
 
-		const next = items.value.find((i) => i.id === created.id);
-		if (next) detailItem.value = next;
+		uiStore.closeModal(props.modalName);
 	},
 );
 
@@ -211,7 +215,8 @@ async function handleSelectCredential(
 	if (item.isConnected) return;
 	const server = findServerForItem(item);
 	if (!server) return;
-	await mcpStore.connect({ serverSlug: server.slug, credentialId });
+	const created = await mcpStore.connect({ serverSlug: server.slug, credentialId });
+	if (created) uiStore.closeModal(props.modalName);
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
