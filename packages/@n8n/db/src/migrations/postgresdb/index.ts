@@ -193,6 +193,8 @@ import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/17
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -391,4 +393,6 @@ export const postgresMigrations: Migration[] = [
 	AddSourceWorkflowIdToWorkflow1784000000015,
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
 	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
 ];

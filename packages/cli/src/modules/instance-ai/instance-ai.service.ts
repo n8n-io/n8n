@@ -2353,7 +2353,6 @@ export class InstanceAiService {
 
 	private createAgentMemoryOptions() {
 		return {
-			lastMessages: this.instanceAiConfig.lastMessages,
 			observationalMemory: {
 				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,

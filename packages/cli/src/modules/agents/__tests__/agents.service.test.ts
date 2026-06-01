@@ -34,6 +34,7 @@ import {
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -83,6 +84,7 @@ describe('AgentsService', () => {
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
+	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
@@ -101,6 +103,7 @@ describe('AgentsService', () => {
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		scheduleService = mock<AgentScheduleService>();
 		chatIntegrationService = mock<ChatIntegrationService>();
+		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		agentsConfig = { modules: [] } as unknown as AgentsConfig;
@@ -134,6 +137,8 @@ describe('AgentsService', () => {
 			globalConfig,
 			telemetry,
 			chatIntegrationService,
+			agentKnowledgeService,
+			mock(),
 			mock(),
 		);
 	});
@@ -457,7 +462,7 @@ describe('AgentsService', () => {
 				instructions: 'Old instructions',
 				description: 'previously stored description',
 				credential: 'cred-anthropic',
-				memory: { enabled: true, lastMessages: 20 },
+				memory: { enabled: true },
 				tools: [{ type: 'custom', id: 'tool-keep' } as const],
 			} as unknown as AgentJsonConfig;
 			const agent = makeAgent({ schema: previousSchema });
@@ -481,7 +486,7 @@ describe('AgentsService', () => {
 			expect(savedSchema.instructions).toBe('Updated instructions');
 			expect(savedSchema.description).toBe('previously stored description');
 			expect(savedSchema.credential).toBe('cred-anthropic');
-			expect(savedSchema.memory).toEqual({ enabled: true, lastMessages: 20 });
+			expect(savedSchema.memory).toEqual({ enabled: true });
 			expect(savedSchema.tools).toEqual([{ type: 'custom', id: 'tool-keep' }]);
 			// description column on the entity also stays untouched.
 			expect(savedEntity.description).toBe(agent.description);
@@ -2330,6 +2335,28 @@ describe('AgentsService', () => {
 			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+
+		it('deletes knowledge file content before removing the agent row', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.delete(agentId, projectId);
+
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
+			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+				agentRepository.remove.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('still removes the agent when knowledge file cleanup fails', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+
+			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
 
 		it('stops the local schedule when deleting the agent', async () => {
