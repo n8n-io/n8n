@@ -727,6 +727,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
