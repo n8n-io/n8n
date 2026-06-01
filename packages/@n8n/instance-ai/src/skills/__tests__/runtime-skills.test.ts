@@ -15,7 +15,7 @@ describe('Instance AI runtime skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			description:
-				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments.',
+				'Designs and manages n8n Data Tables directly with the data-tables and parse-file tools. Use when the user asks to create, inspect, import, seed, query, update, clean up, rename columns in, or delete data tables and rows, especially from CSV/XLSX/JSON attachments, and before planning workflows that create or write to Data Tables.',
 			platforms: ['daytona'],
 			recommendedTools: ['data-tables', 'parse-file'],
 		});
@@ -44,5 +44,36 @@ describe('Instance AI runtime skills', () => {
 			throw new Error('Expected load_skill to return file content');
 		}
 		expect(loadResult.content).toContain('Fast Routing');
+	});
+
+	it('loads the bundled Computer Use credential setup skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find(
+			(entry) => entry.name === 'credential-setup-with-computer-use',
+		);
+
+		expect(skill?.name).toBe('credential-setup-with-computer-use');
+		for (const tool of [
+			'research',
+			'ask-user',
+			'browser_connect',
+			'browser_snapshot',
+			'browser_capture_secret',
+			'browser_create_credential',
+		]) {
+			expect(skill?.recommendedTools).toContain(tool);
+		}
+		expect(skill?.linkedFiles.references).toEqual([]);
+
+		const loaded = await source.loadSkill('credential-setup-with-computer-use');
+		expect(loaded?.instructions).toContain('Computer Use browser tools');
+		expect(loaded?.instructions).toContain('browser_capture_secret');
+		expect(loaded?.instructions).toContain('interactive: false');
+		expect(loaded?.instructions).toContain('`ref`');
+		expect(loaded?.instructions).toContain('`redactedKey`');
+		expect(loaded?.instructions).toContain('same `credentialsKey`');
+		expect(loaded?.instructions).toContain('`data`');
+		expect(loaded?.instructions).toContain('`resolveData`');
+		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
 	});
 });

@@ -371,6 +371,78 @@ describe('MongoDB CRUD Node', () => {
 		});
 
 		describe.each(['findOneAndReplace', 'findOneAndUpdate', 'update'])(
+			'%s: non-scalar updateKey value',
+			(operation) => {
+				const itemsWithObjectKey = [
+					{ json: { id: { $regex: '^a' }, value: 'x', collection: 'col1' } },
+				];
+
+				function mockObjectKey(continueOnFail: boolean) {
+					const mock = mockExecuteFunctions(1.3, operation);
+					mock.getInputData.mockReturnValue(itemsWithObjectKey);
+					mock.continueOnFail.mockReturnValue(continueOnFail);
+					mock.getNodeParameter.mockImplementation(
+						(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+							switch (parameterName) {
+								case 'operation':
+									return operation;
+								case 'collection':
+									return 'col1';
+								case 'fields':
+									return 'value';
+								case 'updateKey':
+									return 'id';
+								case 'upsert':
+									return false;
+								case 'options.useDotNotation':
+									return false;
+								case 'options.dateFields':
+									return '';
+								default:
+									return fallbackValue;
+							}
+						},
+					);
+					return mock;
+				}
+
+				it('throws NodeOperationError when continueOnFail is off', async () => {
+					await expect(node.execute.call(mockObjectKey(false))).rejects.toThrow(
+						/must be a string, number, boolean, or date/,
+					);
+				});
+
+				it('pushes error item with pairedItem when continueOnFail is on', async () => {
+					const [items] = await node.execute.call(mockObjectKey(true));
+					expect(items).toHaveLength(1);
+					expect(items[0].json.error).toMatch(/must be a string, number, boolean, or date/);
+					expect(items[0].pairedItem).toEqual({ item: 0 });
+				});
+
+				it('does not invoke the driver for the affected item', async () => {
+					const findOneAndReplaceSpy = jest.spyOn(Collection.prototype, 'findOneAndReplace');
+					const findOneAndUpdateSpy = jest.spyOn(Collection.prototype, 'findOneAndUpdate');
+					const updateOneSpy = jest.spyOn(Collection.prototype, 'updateOne');
+					findOneAndReplaceSpy.mockResolvedValue(null);
+					findOneAndUpdateSpy.mockResolvedValue(null);
+					updateOneSpy.mockResolvedValue({
+						acknowledged: true,
+						matchedCount: 0,
+						modifiedCount: 0,
+						upsertedCount: 0,
+						upsertedId: null,
+					});
+
+					await node.execute.call(mockObjectKey(true));
+
+					expect(findOneAndReplaceSpy).not.toHaveBeenCalled();
+					expect(findOneAndUpdateSpy).not.toHaveBeenCalled();
+					expect(updateOneSpy).not.toHaveBeenCalled();
+				});
+			},
+		);
+
+		describe.each(['findOneAndReplace', 'findOneAndUpdate', 'update'])(
 			'%s: item missing the updateKey field',
 			(operation) => {
 				const itemsMissingKey = [{ json: { value: 'no-id-field', collection: 'col1' } }];

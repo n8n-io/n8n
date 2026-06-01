@@ -16,6 +16,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks } from '@/external-hooks';
@@ -30,6 +31,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { WorkflowValidationService } from './workflow-validation.service';
 
 @Service()
 export class WorkflowCreationService {
@@ -50,6 +52,7 @@ export class WorkflowCreationService {
 		private readonly folderService: FolderService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly workflowValidationService: WorkflowValidationService,
 	) {}
 
 	async createWorkflow(
@@ -59,6 +62,7 @@ export class WorkflowCreationService {
 			tagIds?: string[];
 			parentFolderId?: string;
 			projectId?: string;
+			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
 			publicApi?: boolean;
@@ -69,6 +73,7 @@ export class WorkflowCreationService {
 			tagIds,
 			parentFolderId,
 			projectId,
+			sourceWorkflowId,
 			autosaved = false,
 			uiContext,
 			publicApi = false,
@@ -78,6 +83,8 @@ export class WorkflowCreationService {
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
+
+		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
 
 		await validateEntity(newWorkflow);
 
@@ -134,6 +141,16 @@ export class WorkflowCreationService {
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
 			}
+		}
+
+		// Reject illegal credential-to-node bindings before persisting
+		const restrictionValidation = this.workflowValidationService.validateCredentialNodeRestrictions(
+			newWorkflow.nodes,
+		);
+		if (!restrictionValidation.isValid) {
+			throw new WorkflowValidationError(
+				restrictionValidation.error ?? 'Credential binding is not allowed.',
+			);
 		}
 
 		// Run external hook after all validation has passed, right before persisting

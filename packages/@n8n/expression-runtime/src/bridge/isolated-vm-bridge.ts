@@ -280,7 +280,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Create an ivm.Reference callback for getting value/metadata at a path.
 	 *
 	 * Used by createDeepLazyProxy when accessing properties. Returns metadata
-	 * markers for functions, arrays, and objects, or the primitive value directly.
+	 * markers for arrays and objects, or the primitive value directly.
+	 *
+	 * Function-typed values are returned as `undefined` — every callable on
+	 * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
+	 * `$evaluateExpression()`, `$getPairedItem()`) is wired in-isolate via
+	 * the typed-RPC dispatcher (`callHost`). No expression form should
+	 * reach a function through this path.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
@@ -314,14 +320,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					}
 				}
 
-				// Handle functions - return metadata marker
+				// Functions are not reachable via the lazy-proxy data path —
+				// every callable on the host data surface routes through the
+				// typed-RPC dispatcher. Return undefined so any residual
+				// access surfaces as missing rather than as a stale metadata
+				// marker the runtime no longer knows how to interpret.
 				if (typeof value === 'function') {
-					const fnString = value.toString();
-					// Block native functions for security
-					if (fnString.includes('[native code]')) {
-						return undefined;
-					}
-					return { __isFunction: true, __name: path[path.length - 1] };
+					return undefined;
 				}
 
 				// Handle arrays - always lazy, only transfer length
@@ -415,48 +420,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create an ivm.Reference callback for calling functions at a path.
-	 *
-	 * Used when expressions invoke functions from workflow data.
-	 *
-	 * @param data - Current workflow data to use for callback responses
-	 * @private
-	 */
-	private createCallFunctionAtPathRef(data: WorkflowData): ivm.Reference {
-		return new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
-			try {
-				// Navigate to function, tracking parent to preserve `this` context
-				let fn: unknown = data;
-				let parent: unknown = undefined;
-				let startIndex = 0;
-				const dollarFn = (data as Record<string, unknown>).$;
-				if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
-					fn = (dollarFn as (name: string) => unknown)(path[1]);
-					startIndex = 2;
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					parent = fn;
-					fn = (fn as Record<string, unknown>)?.[path[i]];
-				}
-
-				if (typeof fn !== 'function') {
-					throw new Error(`${path.join('.')} is not a function`);
-				}
-
-				// Block native functions for security (same check as getValueAtPath)
-				if (fn.toString().includes('[native code]')) {
-					throw new Error(`${path.join('.')} is a native function and cannot be called`);
-				}
-
-				// Execute function with parent as `this` to preserve method context
-				return (fn as (...fnArgs: unknown[]) => unknown).call(parent, ...args);
-			} catch (err) {
-				return serializeError(err);
-			}
-		});
-	}
-
-	/**
 	 * Create the single typed-RPC dispatcher.
 	 *
 	 * The isolate sends one envelope per typed RPC invocation:
@@ -494,6 +457,20 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleGetInputLast(data);
 					case 'getInputAll':
 						return this.handleGetInputAll(data);
+					case 'getItems':
+						return this.handleGetItems(msg, data);
+					case 'fromAi':
+						return this.handleFromAi(msg, data);
+					case 'getNodePairedItem':
+						return this.handleGetNodePairedItem(msg, data);
+					case 'getNodeItemMatching':
+						return this.handleGetNodeItemMatching(msg, data);
+					case 'getNodeItem':
+						return this.handleGetNodeItem(msg, data);
+					case 'evaluateExpression':
+						return this.handleEvaluateExpression(msg, data);
+					case 'getPairedItem':
+						return this.handleGetPairedItem(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -571,12 +548,131 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
+	 * Handler for `$items(nodeName?, outputIndex?, runIndex?)` — the
+	 * global accessor for a node's execution data. Reads the literal
+	 * `$items` property off `data` (host-wired by `WorkflowDataProxy`)
+	 * and forwards the validated args verbatim. The host applies its own
+	 * defaults when fields are `undefined`.
+	 *
+	 * @private
+	 */
+	private handleGetItems(
+		msg: Extract<BridgeMessage, { type: 'getItems' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
+	}
+
+	/**
+	 * Handler for `$fromAI(name, description?, type?, defaultValue?)` and its
+	 * `$fromAi` / `$fromai` aliases. Reads the literal `$fromAI` property
+	 * off `data` (host-wired) and forwards the args. The host validates
+	 * `name` (required + regex) and applies its own resolution / fallback
+	 * logic, so empty / invalid names surface as the host's structured
+	 * `ExpressionError` rather than a generic zod parse error.
+	 *
+	 * Note: `msg.valueType` maps to the host's third positional parameter
+	 * (`_type` in `WorkflowDataProxy.handleFromAi`). The bridge protocol
+	 * renames it to avoid collision with the `type` discriminator on the
+	 * envelope — the host parameter currently goes unused, but if it ever
+	 * gains a name (`type`), this mapping should stay explicit.
+	 *
+	 * @private
+	 */
+	private handleFromAi(
+		msg: Extract<BridgeMessage, { type: 'fromAi' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
+	}
+
+	/**
+	 * Handlers for the `$('Foo').pairedItem(itemIndex?)` / `.itemMatching(...)` /
+	 * `.item` cluster. Three separate typed RPCs, each reading exactly one
+	 * literal property off the host node proxy.
+	 *
+	 * The split is load-bearing: the host's `pairedItemMethod` closure
+	 * captures which property name the proxy `get` trap saw, and uses
+	 * that to pick the right error message (e.g. "Missing item index for
+	 * .itemMatching()") and to decide between method-call vs getter
+	 * semantics for `.item`. Reading the matching property here lets
+	 * those host-side branches fire exactly as they do in the legacy
+	 * engine; no in-isolate validation needed.
+	 *
+	 * @private
+	 */
+	private handleGetNodePairedItem(
+		msg: Extract<BridgeMessage, { type: 'getNodePairedItem' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
+	}
+
+	private handleGetNodeItemMatching(
+		msg: Extract<BridgeMessage, { type: 'getNodeItemMatching' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
+	}
+
+	private handleGetNodeItem(
+		msg: Extract<BridgeMessage, { type: 'getNodeItem' }>,
+		data: WorkflowData,
+	): unknown {
+		// `.item` is a host getter — accessing it invokes the resolver and
+		// returns the value immediately. Optional chaining only short-
+		// circuits on null/undefined; the getter still fires on access.
+		return data.$?.(msg.nodeName)?.item;
+	}
+
+	/**
+	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
+	 * the string to the host's nested-evaluation helper, which re-enters
+	 * the expression engine on the inner expression. Under the VM engine
+	 * this round-trips through the bridge again on a fresh evaluation
+	 * cycle, which is the same shape the legacy engine supports.
+	 *
+	 * @private
+	 */
+	private handleEvaluateExpression(
+		msg: Extract<BridgeMessage, { type: 'evaluateExpression' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
+	}
+
+	/**
+	 * Handler for `$getPairedItem(destinationNodeName, incomingSourceData,
+	 * initialPairedItem)`. Forwards directly to the host binding, which
+	 * walks the paired-item ancestry chain back to the named upstream node
+	 * and returns the matching execution item.
+	 *
+	 * The two trailing host parameters — `usedMethodName` and
+	 * `nodeBeforeLast` — are deliberately not part of the wire protocol:
+	 * the host's default for `usedMethodName` is already `$getPairedItem`,
+	 * and `nodeBeforeLast` is an internal recursion argument the host sets
+	 * during traversal.
+	 *
+	 * @private
+	 */
+	private handleGetPairedItem(
+		msg: Extract<BridgeMessage, { type: 'getPairedItem' }>,
+		data: WorkflowData,
+	): unknown {
+		return data.$getPairedItem?.(
+			msg.destinationNodeName,
+			msg.incomingSourceData,
+			msg.initialPairedItem,
+		);
+	}
+
+	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
-	 * 1. Create four ivm.Reference callbacks scoped to the current data:
-	 *    `getValueAtPath`, `getArrayElement`, `callFunctionAtPath`, `callHost`.
-	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`/`$3`
+	 * 1. Create three ivm.Reference callbacks scoped to the current data:
+	 *    `getValueAtPath`, `getArrayElement`, `callHost`.
+	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`
 	 *    are the callback references — no global mutable state.
 	 * 3. buildContext() inside the isolate creates a fresh evaluation context
 	 *    from the closure-scoped references.
@@ -596,7 +692,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
-		const callFunctionAtPath = this.createCallFunctionAtPathRef(data);
 		const callHost = this.createCallHostRef(data);
 
 		try {
@@ -617,8 +712,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 var __ctx = buildContext({
   getValueAtPath: $0,
   getArrayElement: $1,
-  callFunctionAtPath: $2,
-  callHost: $3,
+  callHost: $2,
 }, ${timezone});
 try {
   var __result = (function() {
@@ -643,7 +737,7 @@ try {
 
 			const result = this.context.evalClosureSync(
 				wrappedCode,
-				[getValueAtPath, getArrayElement, callFunctionAtPath, callHost],
+				[getValueAtPath, getArrayElement, callHost],
 				{ result: { copy: true }, timeout: this.config.timeout },
 			);
 
@@ -680,7 +774,6 @@ try {
 		} finally {
 			getValueAtPath.release();
 			getArrayElement.release();
-			callFunctionAtPath.release();
 			callHost.release();
 		}
 	}

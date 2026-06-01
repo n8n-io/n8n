@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { FrontendSettings } from '@n8n/api-types';
+import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -645,7 +645,7 @@ describe('WorkflowSettingsVue', () => {
 				updatedAt: new Date(),
 			},
 			{
-				id: 'resolver-n8n',
+				id: SYSTEM_RESOLVER_ID,
 				name: 'N8n Resolver',
 				type: 'n8n-internal-type',
 				config: '{}',
@@ -711,7 +711,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
-		it('should not show "Edit" button when no resolver is selected', async () => {
+		it('should not show "Edit" button when the default n8n system resolver is selected', async () => {
 			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
 
@@ -732,7 +732,7 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should not show "Edit" button when a non-editable resolver is selected', async () => {
-			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-n8n' });
+			workflowDocumentStore.setSettings({ credentialResolverId: SYSTEM_RESOLVER_ID });
 
 			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
@@ -895,10 +895,23 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// The stale ID should be cleared — dropdown shows no selected value
+			// The stale ID is cleared and the n8n system resolver is selected as the default.
 			const dropdown = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdown.querySelector('input') as HTMLInputElement;
-			expect(input.value).toBe('');
+			expect(input.value).toBe('N8n Resolver');
+		});
+
+		it('should default to the n8n system resolver when no resolver is selected', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdown = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdown.querySelector('input') as HTMLInputElement;
+			expect(input.value).toBe('N8n Resolver');
 		});
 	});
 
@@ -1388,55 +1401,21 @@ describe('WorkflowSettingsVue', () => {
 				await flushPromises();
 
 				// No other lock is in play.
-				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 
 				const manualCombobox = within(
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
 				expect(manualCombobox).toBeDisabled();
 			});
-
-			it('shows the enforcement lock copy (not the new hint) when instance enforcement is also on', async () => {
-				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
-				settingsStore.settings.envFeatureFlags = {
-					...settingsStore.settings.envFeatureFlags,
-					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true',
-				};
-				getSecuritySettings.mockResolvedValue({
-					...DEFAULT_SECURITY_SETTINGS,
-					redactionEnforcement: { floor: 'production' },
-				});
-				projectsStore.personalProject = mock<Project>({
-					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
-				});
-				const workflow = createTestWorkflow({
-					id: '1',
-					name: 'Test Workflow',
-					active: true,
-					scopes: ['workflow:update', 'workflow:enableRedaction', 'workflow:disableRedaction'],
-				});
-				workflowsListStore.workflowsById = { '1': workflow };
-				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
-				workflowDocumentStore.setSettings({ redactionPolicy: 'none' });
-
-				const { getAllByTestId, queryByText } = createComponent({ pinia });
-				await flushPromises();
-
-				expect(getAllByTestId('workflow-settings-redaction-enforced-lock')).toHaveLength(2);
-				expect(
-					queryByText(
-						'Manual execution data can only be redacted when production execution data is also redacted.',
-					),
-				).not.toBeInTheDocument();
-			});
 		});
 
-		describe('instance enforcement', () => {
-			const setUpEnforcement = (params: {
-				enforced: boolean;
+		describe('instance floor', () => {
+			const setUpFloor = (params: {
+				floor: 'off' | 'production' | 'all';
 				flagEnabled: boolean;
 				hasUpdatePermission?: boolean;
+				redactionPolicy?: 'none' | 'non-manual' | 'manual-only' | 'all';
 			}) => {
 				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
@@ -1446,7 +1425,7 @@ describe('WorkflowSettingsVue', () => {
 				};
 				getSecuritySettings.mockResolvedValue({
 					...DEFAULT_SECURITY_SETTINGS,
-					redactionEnforcement: { floor: params.enforced ? 'production' : 'off' },
+					redactionEnforcement: { floor: params.floor },
 				});
 
 				const hasPermission = params.hasUpdatePermission ?? true;
@@ -1466,12 +1445,40 @@ describe('WorkflowSettingsVue', () => {
 				});
 				workflowsListStore.workflowsById = { '1': workflow };
 				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+
+				if (params.redactionPolicy) {
+					workflowDocumentStore.setSettings({ redactionPolicy: params.redactionPolicy });
+				}
 			};
 
-			it('locks both redaction selects with enforcement copy when enforcement is on', async () => {
-				setUpEnforcement({ enforced: true, flagEnabled: true });
+			it('locks production select with floor copy under floor "production"; manual stays editable', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
 
-				const { getByTestId, getAllByTestId, queryByText } = createComponent({ pinia });
+				const { getByTestId, getAllByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				expect(productionInput).toBeDisabled();
+				expect(
+					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
+				).toBe('Redact');
+
+				const floorIcons = getAllByTestId('workflow-settings-redaction-floor-lock');
+				expect(floorIcons).toHaveLength(1);
+
+				// Production was coerced to 'redact', so the IAM-697 rule no longer blocks the manual select.
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(manualInput).not.toBeDisabled();
+			});
+
+			it('locks both selects with floor copy under floor "all"', async () => {
+				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByTestId, getAllByTestId } = createComponent({ pinia });
 				await flushPromises();
 
 				const productionInput = within(
@@ -1483,18 +1490,18 @@ describe('WorkflowSettingsVue', () => {
 				expect(productionInput).toBeDisabled();
 				expect(manualInput).toBeDisabled();
 
-				const lockIcons = getAllByTestId('workflow-settings-redaction-enforced-lock');
-				expect(lockIcons).toHaveLength(2);
+				expect(
+					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
+				).toBe('Redact');
+				expect(
+					getByTestId('workflow-settings-redact-manual-select').querySelector('input')?.value,
+				).toBe('Redact');
 
-				// Permission-only tooltip copy must not be shown when enforcement is the lock reason.
-				expect(queryByText('View users with access')).not.toBeInTheDocument();
+				expect(getAllByTestId('workflow-settings-redaction-floor-lock')).toHaveLength(2);
 			});
 
-			it('leaves both redaction selects editable when enforcement is off', async () => {
-				setUpEnforcement({ enforced: false, flagEnabled: true });
-				// Seed with production=redact so the manual select is editable (the new
-				// workflow-level invariant disables manual when production is default).
-				workflowDocumentStore.setSettings({ redactionPolicy: 'non-manual' });
+			it('leaves both selects editable under floor "off"', async () => {
+				setUpFloor({ floor: 'off', flagEnabled: true, redactionPolicy: 'non-manual' });
 
 				const { getByTestId, queryByTestId } = createComponent({ pinia });
 				await flushPromises();
@@ -1507,11 +1514,12 @@ describe('WorkflowSettingsVue', () => {
 				);
 				expect(productionInput).not.toBeDisabled();
 				expect(manualInput).not.toBeDisabled();
-				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
+				expect(getSecuritySettings).toHaveBeenCalled();
 			});
 
-			it('ignores enforcement state when the feature flag is off', async () => {
-				setUpEnforcement({ enforced: true, flagEnabled: false });
+			it('does not apply the floor lock when the feature flag is off', async () => {
+				setUpFloor({ floor: 'all', flagEnabled: false, redactionPolicy: 'non-manual' });
 
 				const { getByTestId, queryByTestId } = createComponent({ pinia });
 				await flushPromises();
@@ -1519,19 +1527,125 @@ describe('WorkflowSettingsVue', () => {
 				const productionInput = within(
 					getByTestId('workflow-settings-redact-production-select'),
 				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
 				expect(productionInput).not.toBeDisabled();
-				expect(queryByTestId('workflow-settings-redaction-enforced-lock')).not.toBeInTheDocument();
+				expect(manualInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 				expect(getSecuritySettings).not.toHaveBeenCalled();
 			});
 
-			it('prefers enforcement copy when both enforcement and missing permission would lock', async () => {
-				setUpEnforcement({ enforced: true, flagEnabled: true, hasUpdatePermission: false });
+			it('keeps manual select enabled under floor "production" (production coerced to redact)', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByTestId, queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(manualInput).not.toBeDisabled();
+				// IAM-697 hint must not be shown — production is forced to redact.
+				expect(
+					queryByText(
+						'Manual execution data can only be redacted when production execution data is also redacted.',
+					),
+				).not.toBeInTheDocument();
+			});
+
+			it('shows the floor lock on manual (not the IAM-697 hint) when floor "all" and policy "none"', async () => {
+				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
 
 				const { getAllByTestId, queryByText } = createComponent({ pinia });
 				await flushPromises();
 
-				expect(getAllByTestId('workflow-settings-redaction-enforced-lock')).toHaveLength(2);
-				expect(queryByText('View users with access')).not.toBeInTheDocument();
+				expect(getAllByTestId('workflow-settings-redaction-floor-lock')).toHaveLength(2);
+				expect(
+					queryByText(
+						'Manual execution data can only be redacted when production execution data is also redacted.',
+					),
+				).not.toBeInTheDocument();
+			});
+
+			it('persists coerced redactionPolicy on save under floor "production"', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
+					}),
+				);
+			});
+
+			it('persists coerced redactionPolicy on save under floor "all"', async () => {
+				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'all' }),
+					}),
+				);
+			});
+
+			it('fails open when getSecuritySettings rejects (no floor lock, selects editable)', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'non-manual' });
+				// Override the resolved mock with a rejection — the component must swallow the error
+				// and leave instanceRedactionFloor at its default 'off'.
+				getSecuritySettings.mockRejectedValueOnce(new Error('Network error'));
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).not.toBeDisabled();
+				expect(manualInput).not.toBeDisabled();
+				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
+			});
+
+			it('keeps the permission lock active when the flag is off (no floor lock applies)', async () => {
+				setUpFloor({
+					floor: 'all',
+					flagEnabled: false,
+					hasUpdatePermission: false,
+					redactionPolicy: 'all',
+				});
+
+				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const productionInput = within(
+					getByTestId('workflow-settings-redact-production-select'),
+				).getByRole('combobox');
+				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
+					'combobox',
+				);
+				expect(productionInput).toBeDisabled();
+				expect(manualInput).toBeDisabled();
+
+				// No floor-lock indicator under flag-off (the lock comes from missing permission).
+				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 			});
 		});
 	});

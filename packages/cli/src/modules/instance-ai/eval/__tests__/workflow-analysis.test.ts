@@ -11,11 +11,12 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-workflow';
 
 import {
-	assertUnpinCompatibility,
 	buildVendorLlmRouting,
+	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	partitionAiRoots,
 } from '../workflow-analysis';
 import { UserError } from 'n8n-workflow';
 
@@ -205,7 +206,7 @@ describe('identifyNodesForPinData', () => {
 	});
 });
 
-describe('assertUnpinCompatibility', () => {
+describe('partitionAiRoots', () => {
 	function agentWithMemory(memoryType: string) {
 		const nodes = [
 			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
@@ -219,164 +220,166 @@ describe('assertUnpinCompatibility', () => {
 		return makeWorkflow(nodes, connections);
 	}
 
-	it('is a no-op when unpinNodes is empty', () => {
-		const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryPostgresChat');
-		expect(() => assertUnpinCompatibility(workflow, [])).not.toThrow();
+	describe('explicit pin validation (typo guard)', () => {
+		it('throws when an explicit pin name does not exist in the workflow', () => {
+			const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
+			let thrown: unknown;
+			try {
+				partitionAiRoots(workflow, ['Ghost']);
+			} catch (e) {
+				thrown = e;
+			}
+			expect(thrown).toBeInstanceOf(UserError);
+			expect((thrown as UserError).message).toContain('not found in workflow');
+			expect((thrown as UserError).message).toContain('"Ghost"');
+		});
+
+		it('throws when an explicit pin name refers to a disabled root', () => {
+			const nodes = [
+				makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', disabled: true }),
+			];
+			const connections: IConnections = {
+				PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			};
+			let thrown: unknown;
+			try {
+				partitionAiRoots(makeWorkflow(nodes, connections), ['Agent']);
+			} catch (e) {
+				thrown = e;
+			}
+			expect(thrown).toBeInstanceOf(UserError);
+			expect((thrown as UserError).message).toContain('disabled');
+			expect((thrown as UserError).message).toContain('"Agent"');
+		});
+
+		it('throws when an explicit pin name refers to a non-AI-root node', () => {
+			const nodes = [
+				makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			let thrown: unknown;
+			try {
+				partitionAiRoots(makeWorkflow(nodes), ['Set']);
+			} catch (e) {
+				thrown = e;
+			}
+			expect(thrown).toBeInstanceOf(UserError);
+			expect((thrown as UserError).message).toContain('not AI root nodes');
+			expect((thrown as UserError).message).toContain('"Set"');
+		});
 	});
 
-	it('allows unpinning an Agent backed by MemoryBufferWindow', () => {
-		const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
-		expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+	describe('default partition (no explicit pin)', () => {
+		it('intercepts an Agent backed by a non-protocol-binary memory', () => {
+			const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
+			const result = partitionAiRoots(workflow);
+			expect(result.unpinNodes).toEqual(['Agent']);
+			expect(result.pinNodes).toEqual([]);
+			expect(result.autoPinned).toEqual([]);
+		});
+
+		it('returns an empty partition when the workflow has no AI roots', () => {
+			const nodes = [makeNode({ name: 'Set', type: 'n8n-nodes-base.set' })];
+			const result = partitionAiRoots(makeWorkflow(nodes));
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual([]);
+			expect(result.autoPinned).toEqual([]);
+		});
+
+		it('ignores disabled sub-nodes when partitioning', () => {
+			const nodes = [
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+				makeNode({
+					name: 'PgMem',
+					type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+					disabled: true,
+				}),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual(['Agent']);
+			expect(result.autoPinned).toEqual([]);
+		});
 	});
 
-	it('allows unpinning an Agent with no sub-nodes attached', () => {
-		const nodes = [makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' })];
-		expect(() => assertUnpinCompatibility(makeWorkflow(nodes), ['Agent'])).not.toThrow();
+	describe('explicit pin opt-out', () => {
+		it('moves explicitly pinned roots to pinNodes', () => {
+			const nodes = [
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections), ['Agent']);
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Agent']);
+			expect(result.autoPinned).toEqual([]);
+		});
 	});
 
-	it('ignores disabled sub-nodes when checking compatibility', () => {
-		const nodes = [
-			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
-			makeNode({
-				name: 'PgMem',
-				type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-				disabled: true,
-			}),
-			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-		];
-		const connections: IConnections = {
-			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
-			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
-		};
-		expect(() =>
-			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
-		).not.toThrow();
-	});
+	describe('auto-pin on incompatible sub-nodes', () => {
+		it.each([
+			['Postgres memory', '@n8n/n8n-nodes-langchain.memoryPostgresChat'],
+			['Redis memory', '@n8n/n8n-nodes-langchain.memoryRedisChat'],
+			['MongoDB memory', '@n8n/n8n-nodes-langchain.memoryMongoDbChat'],
+		])('auto-pins an Agent backed by %s', (_label, memoryType) => {
+			const workflow = agentWithMemory(memoryType);
+			const result = partitionAiRoots(workflow);
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Agent']);
+			expect(result.autoPinned).toContainEqual({
+				root: 'Agent',
+				subNode: 'Memory',
+				subNodeType: memoryType,
+				reason: 'protocol_binary',
+			});
+		});
 
-	it('refuses unknown root names rather than silently skipping (typo guard)', () => {
-		const workflow = agentWithMemory('@n8n/n8n-nodes-langchain.memoryBufferWindow');
+		it.each([
+			'@n8n/n8n-nodes-langchain.vectorStorePGVector',
+			'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+			'@n8n/n8n-nodes-langchain.vectorStoreRedis',
+			'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
+			'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
+		])('auto-pins an Agent backed by protocol-binary vector store %s', (vectorStoreType) => {
+			const nodes = [
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+				makeNode({ name: 'Store', type: vectorStoreType }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				Store: { ai_vectorStore: [[{ node: 'Agent', type: 'ai_vectorStore', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.pinNodes).toEqual(['Agent']);
+			expect(result.autoPinned.some((e) => e.reason === 'protocol_binary')).toBe(true);
+		});
 
-		let thrown: unknown;
-		try {
-			assertUnpinCompatibility(workflow, ['Ghost']);
-		} catch (e) {
-			thrown = e;
-		}
-
-		expect(thrown).toBeInstanceOf(UserError);
-		expect((thrown as UserError).message).toContain('not found in workflow');
-		expect((thrown as UserError).message).toContain('"Ghost"');
-	});
-
-	it('refuses disabled roots rather than silently skipping (typo guard)', () => {
-		const nodes = [
-			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
-			makeNode({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				disabled: true,
-			}),
-		];
-		const connections: IConnections = {
-			PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
-		};
-
-		let thrown: unknown;
-		try {
-			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
-		} catch (e) {
-			thrown = e;
-		}
-
-		expect(thrown).toBeInstanceOf(UserError);
-		expect((thrown as UserError).message).toContain('disabled');
-		expect((thrown as UserError).message).toContain('"Agent"');
-	});
-
-	it('refuses non-AI-root nodes (e.g. a regular Set node in unpinNodes is a caller mistake)', () => {
-		const nodes = [
-			makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
-			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-		];
-
-		let thrown: unknown;
-		try {
-			assertUnpinCompatibility(makeWorkflow(nodes), ['Set']);
-		} catch (e) {
-			thrown = e;
-		}
-
-		expect(thrown).toBeInstanceOf(UserError);
-		expect((thrown as UserError).message).toContain('not AI root nodes');
-		expect((thrown as UserError).message).toContain('"Set"');
-	});
-
-	it.each([
-		'@n8n/n8n-nodes-langchain.chainLlm',
-		'@n8n/n8n-nodes-langchain.chainRetrievalQa',
-		'@n8n/n8n-nodes-langchain.chainSummarization',
-	])('recognises %s by type even when it has no inbound ai_* connections', (chainType) => {
-		const nodes = [makeNode({ name: 'Chain', type: chainType })];
-		expect(() => assertUnpinCompatibility(makeWorkflow(nodes), ['Chain'])).not.toThrow();
-	});
-
-	it.each([
-		['Postgres memory', '@n8n/n8n-nodes-langchain.memoryPostgresChat'],
-		['Redis memory', '@n8n/n8n-nodes-langchain.memoryRedisChat'],
-		['MongoDB memory', '@n8n/n8n-nodes-langchain.memoryMongoDbChat'],
-	])('refuses unpinning an Agent backed by %s', (_label, memoryType) => {
-		const workflow = agentWithMemory(memoryType);
-		expect(() => assertUnpinCompatibility(workflow, ['Agent'])).toThrow(UserError);
-	});
-
-	it.each([
-		'@n8n/n8n-nodes-langchain.vectorStorePGVector',
-		'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
-		'@n8n/n8n-nodes-langchain.vectorStoreRedis',
-		'@n8n/n8n-nodes-langchain.vectorStoreMilvus',
-		'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
-	])('refuses unpinning an Agent backed by protocol-binary vector store %s', (vectorStoreType) => {
-		const nodes = [
-			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
-			makeNode({ name: 'Store', type: vectorStoreType }),
-			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-		];
-		const connections: IConnections = {
-			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
-			Store: { ai_vectorStore: [[{ node: 'Agent', type: 'ai_vectorStore', index: 0 }]] },
-		};
-		expect(() => assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent'])).toThrow(
-			UserError,
-		);
-	});
-
-	it('reports all offending roots when multiple unpin targets are mixed', () => {
-		const nodes = [
-			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
-			makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
-			makeNode({ name: 'BufMem', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' }),
-			makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
-			makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
-		];
-		const connections: IConnections = {
-			OpenAI: { ai_languageModel: [[{ node: 'AgentB', type: 'ai_languageModel', index: 0 }]] },
-			PgMem: { ai_memory: [[{ node: 'AgentA', type: 'ai_memory', index: 0 }]] },
-			BufMem: { ai_memory: [[{ node: 'AgentB', type: 'ai_memory', index: 0 }]] },
-		};
-
-		let thrown: unknown;
-		try {
-			assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']);
-		} catch (e) {
-			thrown = e;
-		}
-
-		expect(thrown).toBeInstanceOf(UserError);
-		const message = (thrown as UserError).message;
-		expect(message).toContain('AgentA');
-		expect(message).toContain('PgMem');
-		expect(message).not.toContain('AgentB');
-		expect(message).not.toContain('BufMem');
+		it('partitions independently across multiple roots — pin one, intercept the other', () => {
+			const nodes = [
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+				makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
+				makeNode({ name: 'BufMem', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' }),
+				makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
+				makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				OpenAI: { ai_languageModel: [[{ node: 'AgentB', type: 'ai_languageModel', index: 0 }]] },
+				PgMem: { ai_memory: [[{ node: 'AgentA', type: 'ai_memory', index: 0 }]] },
+				BufMem: { ai_memory: [[{ node: 'AgentB', type: 'ai_memory', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual(['AgentB']);
+			expect(result.pinNodes).toEqual(['AgentA']);
+			expect(result.autoPinned.map((e) => e.root)).toEqual(['AgentA']);
+		});
 	});
 
 	describe('vendor LLM mapping', () => {
@@ -391,9 +394,10 @@ describe('assertUnpinCompatibility', () => {
 			return makeWorkflow(nodes, connections);
 		}
 
-		it('allows unpinning an Agent backed by lmChatOpenAi (the only mapped vendor for M1)', () => {
-			const workflow = agentWithLlm('@n8n/n8n-nodes-langchain.lmChatOpenAi');
-			expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+		it('intercepts an Agent backed by lmChatOpenAi (the only mapped vendor for M1)', () => {
+			const result = partitionAiRoots(agentWithLlm('@n8n/n8n-nodes-langchain.lmChatOpenAi'));
+			expect(result.unpinNodes).toEqual(['Agent']);
+			expect(result.autoPinned).toEqual([]);
 		});
 
 		it.each([
@@ -408,51 +412,17 @@ describe('assertUnpinCompatibility', () => {
 			'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 			'@n8n/n8n-nodes-langchain.lmChatOllama',
 			'@n8n/n8n-nodes-langchain.lmOpenAi',
-		])('refuses unpinning an Agent backed by unmapped vendor LLM %s', (llmType) => {
-			const workflow = agentWithLlm(llmType);
-
-			let thrown: unknown;
-			try {
-				assertUnpinCompatibility(workflow, ['Agent']);
-			} catch (e) {
-				thrown = e;
-			}
-
-			expect(thrown).toBeInstanceOf(UserError);
-			const message = (thrown as UserError).message;
-			expect(message).toContain('unsupported vendor LLM');
-			expect(message).toContain(llmType);
+		])('auto-pins an Agent backed by unmapped vendor LLM %s', (llmType) => {
+			const result = partitionAiRoots(agentWithLlm(llmType));
+			expect(result.pinNodes).toEqual(['Agent']);
+			expect(result.autoPinned[0]).toMatchObject({
+				root: 'Agent',
+				subNodeType: llmType,
+				reason: 'unsupported_vendor_llm',
+			});
 		});
 
-		it('groups protocol-binary and unsupported-vendor refusals into the same error', () => {
-			const nodes = [
-				makeNode({ name: 'Anthropic', type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
-				makeNode({ name: 'PgMem', type: '@n8n/n8n-nodes-langchain.memoryPostgresChat' }),
-				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-			];
-			const connections: IConnections = {
-				Anthropic: {
-					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
-				},
-				PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
-			};
-
-			let thrown: unknown;
-			try {
-				assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
-			} catch (e) {
-				thrown = e;
-			}
-
-			expect(thrown).toBeInstanceOf(UserError);
-			const message = (thrown as UserError).message;
-			expect(message).toContain('protocol-binary');
-			expect(message).toContain('PgMem');
-			expect(message).toContain('unsupported vendor LLM');
-			expect(message).toContain('Anthropic');
-		});
-
-		it('ignores disabled vendor LLM sub-nodes when checking compatibility', () => {
+		it('ignores disabled vendor LLM sub-nodes when partitioning', () => {
 			const nodes = [
 				makeNode({
 					name: 'Anthropic',
@@ -466,10 +436,8 @@ describe('assertUnpinCompatibility', () => {
 					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
 				},
 			};
-
-			expect(() =>
-				assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
-			).not.toThrow();
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual(['Agent']);
 		});
 
 		describe('lmChatOpenAi options.baseURL override', () => {
@@ -488,71 +456,26 @@ describe('assertUnpinCompatibility', () => {
 				return makeWorkflow(nodes, connections);
 			}
 
-			it('allows lmChatOpenAi with no options', () => {
-				const workflow = agentWithOpenAi({});
-				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
+			it.each([
+				['no options', {}],
+				['empty baseURL', { options: { baseURL: '' } }],
+				['whitespace-only baseURL', { options: { baseURL: '   ' } }],
+			])('intercepts lmChatOpenAi with %s', (_label, parameters) => {
+				const result = partitionAiRoots(agentWithOpenAi(parameters));
+				expect(result.unpinNodes).toEqual(['Agent']);
 			});
 
-			it('allows lmChatOpenAi with empty options.baseURL', () => {
-				const workflow = agentWithOpenAi({ options: { baseURL: '' } });
-				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
-			});
-
-			it('allows lmChatOpenAi when options.baseURL is whitespace-only', () => {
-				const workflow = agentWithOpenAi({ options: { baseURL: '   ' } });
-				expect(() => assertUnpinCompatibility(workflow, ['Agent'])).not.toThrow();
-			});
-
-			it('refuses lmChatOpenAi when options.baseURL is set — credential rewrite would be bypassed', () => {
+			it('auto-pins lmChatOpenAi when options.baseURL would bypass the credential rewrite', () => {
 				const workflow = agentWithOpenAi({
 					options: { baseURL: 'https://my-proxy.example.com/v1' },
 				});
-
-				let thrown: unknown;
-				try {
-					assertUnpinCompatibility(workflow, ['Agent']);
-				} catch (e) {
-					thrown = e;
-				}
-
-				expect(thrown).toBeInstanceOf(UserError);
-				const message = (thrown as UserError).message;
-				expect(message).toContain('options.baseURL');
-				expect(message).toContain('"OpenAI"');
-				expect(message).not.toContain('unsupported vendor LLM');
-			});
-
-			it('groups baseURL-override refusals alongside protocol-binary refusals', () => {
-				const nodes = [
-					makeNode({
-						name: 'OpenAI',
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						parameters: { options: { baseURL: 'https://my-proxy.example.com/v1' } },
-					}),
-					makeNode({
-						name: 'PgMem',
-						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-					}),
-					makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
-				];
-				const connections: IConnections = {
-					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
-					PgMem: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
-				};
-
-				let thrown: unknown;
-				try {
-					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']);
-				} catch (e) {
-					thrown = e;
-				}
-
-				expect(thrown).toBeInstanceOf(UserError);
-				const message = (thrown as UserError).message;
-				expect(message).toContain('protocol-binary');
-				expect(message).toContain('PgMem');
-				expect(message).toContain('options.baseURL');
-				expect(message).toContain('OpenAI');
+				const result = partitionAiRoots(workflow);
+				expect(result.pinNodes).toEqual(['Agent']);
+				expect(result.autoPinned[0]).toMatchObject({
+					root: 'Agent',
+					subNode: 'OpenAI',
+					reason: 'unsafe_baseurl_override',
+				});
 			});
 
 			it('skips the baseURL check when the OpenAI sub-node is disabled', () => {
@@ -568,15 +491,13 @@ describe('assertUnpinCompatibility', () => {
 				const connections: IConnections = {
 					OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
 				};
-
-				expect(() =>
-					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['Agent']),
-				).not.toThrow();
+				const result = partitionAiRoots(makeWorkflow(nodes, connections));
+				expect(result.unpinNodes).toEqual(['Agent']);
 			});
 		});
 
-		describe('shared vendor LLM sub-node across multiple unpinned roots', () => {
-			it('refuses unpinning both roots when one OpenAI sub-node feeds both', () => {
+		describe('shared vendor LLM sub-node across multiple roots', () => {
+			function workflowWithSharedSubNode(): IWorkflowBase {
 				const nodes = [
 					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
 					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
@@ -592,49 +513,25 @@ describe('assertUnpinCompatibility', () => {
 						],
 					},
 				};
+				return makeWorkflow(nodes, connections);
+			}
 
-				let thrown: unknown;
-				try {
-					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']);
-				} catch (e) {
-					thrown = e;
-				}
-
-				expect(thrown).toBeInstanceOf(UserError);
-				const message = (thrown as UserError).message;
-				expect(message).toContain('shared by multiple unpinned roots');
-				expect(message).toContain('"OpenAI"');
-				// Both root attributions listed in the error so the user can see
-				// exactly which conflict to resolve.
-				expect(message).toContain('AgentA');
-				expect(message).toContain('AgentB');
+			it('auto-pins both roots when one OpenAI sub-node feeds both', () => {
+				const result = partitionAiRoots(workflowWithSharedSubNode());
+				expect(result.unpinNodes).toEqual([]);
+				expect(result.pinNodes).toEqual(['AgentA', 'AgentB']);
+				const reasons = result.autoPinned.map((e) => e.reason);
+				expect(reasons).toContain('shared_vendor_llm_subnode');
 			});
 
-			it('allows unpinning when only one root references the shared OpenAI sub-node', () => {
-				const nodes = [
-					makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
-					makeNode({ name: 'AgentA', type: '@n8n/n8n-nodes-langchain.agent' }),
-					makeNode({ name: 'AgentB', type: '@n8n/n8n-nodes-langchain.agent' }),
-				];
-				const connections: IConnections = {
-					OpenAI: {
-						ai_languageModel: [
-							[
-								{ node: 'AgentA', type: 'ai_languageModel', index: 0 },
-								{ node: 'AgentB', type: 'ai_languageModel', index: 0 },
-							],
-						],
-					},
-				};
-
-				// Only AgentA is being unpinned — AgentB stays pinned so there's
-				// no attribution conflict at the wire-server layer.
-				expect(() =>
-					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA']),
-				).not.toThrow();
+			it('intercepts the remaining root when the other one is explicitly pinned', () => {
+				// AgentA is opted out → AgentB no longer shares the sub-node ambiguously.
+				const result = partitionAiRoots(workflowWithSharedSubNode(), ['AgentA']);
+				expect(result.unpinNodes).toEqual(['AgentB']);
+				expect(result.pinNodes).toEqual(['AgentA']);
 			});
 
-			it('ignores a disabled sub-node when counting shared references', () => {
+			it('ignores a disabled shared sub-node when partitioning', () => {
 				const nodes = [
 					makeNode({
 						name: 'OpenAI',
@@ -654,10 +551,8 @@ describe('assertUnpinCompatibility', () => {
 						],
 					},
 				};
-
-				expect(() =>
-					assertUnpinCompatibility(makeWorkflow(nodes, connections), ['AgentA', 'AgentB']),
-				).not.toThrow();
+				const result = partitionAiRoots(makeWorkflow(nodes, connections));
+				expect(result.unpinNodes.sort()).toEqual(['AgentA', 'AgentB']);
 			});
 		});
 	});
@@ -692,6 +587,25 @@ describe('buildVendorLlmRouting', () => {
 
 		expect(routing.subNodeToRoot.get('OpenAI')).toBe('Agent');
 		expect(routing.rootToSubNode.get('Agent')?.name).toBe('OpenAI');
+	});
+
+	it('also self-maps the root in subNodeToRoot so agent-context credential lookups resolve', () => {
+		// LangChain's Agent invokes the LLM sub-node's `supplyData` with a
+		// context whose `executeData.node` is the Agent itself (observed
+		// empirically). The credential helper looks up `subNodeToRoot` by
+		// that name — without the self-map, the lookup would miss and the
+		// SDK would post to the wire server's loud-fail no-root route.
+		const nodes = [
+			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+		const connections: IConnections = {
+			OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+		};
+
+		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
+
+		expect(routing.subNodeToRoot.get('Agent')).toBe('Agent');
 	});
 
 	it('does not include sub-nodes feeding roots that are still pinned', () => {
@@ -747,7 +661,12 @@ describe('buildVendorLlmRouting', () => {
 
 		const routing = buildVendorLlmRouting(makeWorkflow(nodes, connections), ['Agent']);
 
-		expect(Array.from(routing.subNodeToRoot.keys())).toEqual(['OpenAI']);
+		// `Agent` is also present in subNodeToRoot via the agent-context
+		// self-map (see test above) — assert by lookup so the test isn't
+		// sensitive to insertion order.
+		expect(routing.subNodeToRoot.get('OpenAI')).toBe('Agent');
+		expect(routing.subNodeToRoot.get('Agent')).toBe('Agent');
+		expect(routing.subNodeToRoot.size).toBe(2);
 		expect(Array.from(routing.rootToSubNode.keys())).toEqual(['Agent']);
 	});
 
@@ -824,6 +743,180 @@ describe('buildVendorLlmRouting', () => {
 		expect(routing.subNodeToRoot.get('OpenAI B')).toBe('Agent B');
 		expect(routing.rootToSubNode.get('Agent A')?.name).toBe('OpenAI A');
 		expect(routing.rootToSubNode.get('Agent B')?.name).toBe('OpenAI B');
+	});
+});
+
+describe('detectBinaryDependencies', () => {
+	it('returns undefined when no node consumes a binary attachment', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: { resource: 'message', operation: 'post', text: 'hello' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
+	});
+
+	it('detects $binary.<key> expressions in node parameters', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Send',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					url: 'https://example.com/upload',
+					body: { value: '={{ $binary.attachment }}' },
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result).toMatchObject({ propertyName: 'attachment' });
+	});
+
+	it('detects Extract from File as a binary consumer (allowlist fallback)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				parameters: { operation: 'pdf' },
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result).toMatchObject({
+			propertyName: 'data',
+			contentType: 'application/pdf',
+		});
+	});
+
+	it('does NOT mark Telegram as a binary consumer unless $binary is referenced (sendVoice only sometimes uses binary)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				parameters: { resource: 'message', operation: 'sendVoice' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
+	});
+
+	it('picks up Telegram sendVoice when it references $binary.data and uses OGG default', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Telegram',
+				type: 'n8n-nodes-base.telegram',
+				parameters: {
+					resource: 'message',
+					operation: 'sendVoice',
+					binaryPropertyName: '={{ $binary.data }}',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('data');
+		expect(result?.contentType).toBe('audio/ogg');
+		expect(result?.filename).toBe('voice.ogg');
+	});
+
+	it('prefers $binary.<key> expressions over the allowlist when both are present', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				parameters: {
+					operation: 'pdf',
+					binaryPropertyName: '={{ $binary.uploadedFile }}',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('uploadedFile');
+		expect(result?.contentType).toBe('application/pdf');
+	});
+
+	it('detects literal binaryPropertyName parameters on upload nodes (Slack files.upload)', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: 'image',
+					channels: ['#general'],
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('image');
+	});
+
+	it('detects literal binaryPropertyName on S3 PutObject with default key name', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'S3',
+				type: 'n8n-nodes-base.awsS3',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: 'data',
+				},
+			}),
+		];
+		const result = detectBinaryDependencies(makeWorkflow(nodes));
+		expect(result?.propertyName).toBe('data');
+	});
+
+	it('extracts the literal from a quoted-string expression on binaryPropertyName', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: '={{ "image" }}',
+				},
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))?.propertyName).toBe('image');
+	});
+
+	it('falls back to `data` when binaryPropertyName is a dynamic expression', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				parameters: {
+					resource: 'file',
+					operation: 'upload',
+					binaryPropertyName: '={{ $json.binaryKey }}',
+				},
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))?.propertyName).toBe('data');
+	});
+
+	it('ignores disabled nodes', () => {
+		const nodes = [
+			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			makeNode({
+				name: 'Extract',
+				type: 'n8n-nodes-base.extractFromFile',
+				disabled: true,
+				parameters: { operation: 'pdf' },
+			}),
+		];
+		expect(detectBinaryDependencies(makeWorkflow(nodes))).toBeUndefined();
 	});
 });
 
