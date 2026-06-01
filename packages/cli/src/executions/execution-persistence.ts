@@ -15,7 +15,7 @@ import type {
 import { ExecutionEntity, ExecutionRepository, Not, separate } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
-import { BinaryDataService, StorageConfig } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { migrateRunExecutionData } from 'n8n-workflow';
 
@@ -58,6 +58,7 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -126,6 +127,12 @@ export class ExecutionPersistence {
 	 * Find a single execution by id, dispatching data reads to the store matching its `storedAt`.
 	 * - In `db` mode, we load entity, metadata, optional annotation, and data via `DbStore`.
 	 * - In `fs` mode, we load entity, metadata, optional annotation from the DB, and data via `FsStore`.
+	 *
+	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
+	 * share one database, so an absent data row means a known-corrupt record we report and skip
+	 * (soft). In `fs` mode the entity lives in the DB while its data lives on disk, so a missing
+	 * file points at an out-of-band loss (deletion, unmounted volume) that a single-execution read
+	 * should surface loudly rather than silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -237,14 +244,30 @@ export class ExecutionPersistence {
 
 		queryParams.relations ??= [];
 		if (Array.isArray(queryParams.relations)) {
-			queryParams.relations.push('metadata');
+			if (!queryParams.relations.includes('metadata')) queryParams.relations.push('metadata');
 		} else {
 			queryParams.relations.metadata = true;
+		}
+
+		// A narrowing `select` must still include the fields we route and read by: `storedAt` (else
+		// every execution defaults to the fs store) and `id`/`workflowId` (else no bundle resolves).
+		// An undefined `select` loads all columns, so no action needed.
+		if (queryParams.select) {
+			if (Array.isArray(queryParams.select)) {
+				for (const field of ['id', 'workflowId', 'storedAt'] as const) {
+					if (!queryParams.select.includes(field)) queryParams.select.push(field);
+				}
+			} else {
+				queryParams.select.id = true;
+				queryParams.select.workflowId = true;
+				queryParams.select.storedAt = true;
+			}
 		}
 
 		const entities = await this.executionRepository.find(queryParams);
 		if (entities.length === 0) return [];
 
+		// TODO: will need to be adjusted once we implement s3 or other storage locations
 		const [dbEntities, fsEntities] = separate(entities, (e) => e.storedAt === 'db');
 
 		const [dbBundles, fsBundles] = await Promise.all([
@@ -454,9 +477,15 @@ export class ExecutionPersistence {
 		bundle: ExecutionDataBundle,
 		options: { unflattenData?: boolean; includeAnnotation?: boolean },
 	) {
-		const { executionData: _ed, metadata, annotation, ...rest } = entity;
+		const { metadata, annotation, ...rest } = entity;
 		const data = await this.parseExecutionData(bundle.data, options);
 		const serializedAnnotation = this.serializeAnnotation(annotation);
+
+		if (entity.status === 'success' && bundle.data === '[]') {
+			this.errorReporter.error('Found successful execution where data is empty stringified array', {
+				extra: { executionId: entity.id, workflowId: entity.workflowId },
+			});
+		}
 
 		return {
 			...rest,

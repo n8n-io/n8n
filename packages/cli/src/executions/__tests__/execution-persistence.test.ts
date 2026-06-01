@@ -10,7 +10,7 @@ import {
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { BinaryDataService, StorageConfig } from 'n8n-core';
+import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -25,6 +25,7 @@ describe('ExecutionPersistence', () => {
 	const binaryDataService = mock<BinaryDataService>();
 	const fsStore = mock<FsStore>();
 	const dbStore = mock<DbStore>();
+	const errorReporter = mock<ErrorReporter>();
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -70,6 +71,7 @@ describe('ExecutionPersistence', () => {
 			mock<StorageConfig>({ modeTag }),
 			executionsConfig,
 			mock<DatabaseConfig>({ type: dbType }),
+			errorReporter,
 		);
 
 	describe('create', () => {
@@ -1108,6 +1110,73 @@ describe('ExecutionPersistence', () => {
 
 			const findArg = executionRepository.find.mock.calls[0][0];
 			expect(findArg?.relations).toEqual({ annotation: true, metadata: true });
+		});
+
+		it('should not duplicate metadata when the caller already requested it', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ relations: ['metadata'] },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.relations).toEqual(['metadata']);
+		});
+
+		it('should force-select routing fields when a caller-provided array `select` omits them', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ select: ['id', 'mode'] },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.select).toEqual(['id', 'mode', 'workflowId', 'storedAt']);
+		});
+
+		it('should force-select routing fields when a caller-provided object `select` omits them', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ select: { mode: true } },
+				{ includeData: true },
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.select).toEqual({ mode: true, id: true, workflowId: true, storedAt: true });
+		});
+
+		it('should not touch `select` when the caller did not narrow columns', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([]);
+
+			await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: wf } },
+				{
+					includeData: true,
+				},
+			);
+
+			const findArg = executionRepository.find.mock.calls[0][0];
+			expect(findArg?.select).toBeUndefined();
+		});
+
+		it('should report a successful execution whose data is an empty stringified array', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([makeEntity('a', 'db')]);
+			dbStore.readMany.mockResolvedValue(new Map([['a', { ...makeBundle('a'), data: '[]' }]]));
+
+			await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				'Found successful execution where data is empty stringified array',
+				{ extra: { executionId: 'a', workflowId: wf } },
+			);
 		});
 
 		it('should return an empty array when no entities match', async () => {

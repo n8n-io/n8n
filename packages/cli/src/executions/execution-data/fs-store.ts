@@ -15,6 +15,9 @@ import type {
 	ExecutionDataBundle,
 } from './types';
 
+// Max number of bundles read concurrently, to bound open file descriptors.
+const MAX_READ_CONCURRENCY = 50;
+
 @Service()
 export class FsStore implements ExecutionDataStore {
 	constructor(
@@ -73,12 +76,14 @@ export class FsStore implements ExecutionDataStore {
 		const bundles = new Map<string, ExecutionDataBundle>();
 		if (refs.length === 0) return bundles;
 
-		const results = await Promise.all(
-			refs.map(async (ref) => [ref, await this.read(ref)] as const),
-		);
+		// Read in chunks to cap concurrent file descriptors.
+		for (let i = 0; i < refs.length; i += MAX_READ_CONCURRENCY) {
+			const batch = refs.slice(i, i + MAX_READ_CONCURRENCY);
+			const bundlesInBatch = await Promise.all(batch.map(async (ref) => await this.tryRead(ref)));
 
-		for (const [ref, bundle] of results) {
-			if (bundle) bundles.set(ref.executionId, bundle);
+			for (const [idx, bundle] of bundlesInBatch.entries()) {
+				if (bundle) bundles.set(batch[idx].executionId, bundle);
+			}
 		}
 
 		return bundles;
@@ -116,5 +121,18 @@ export class FsStore implements ExecutionDataStore {
 		return (
 			error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT'
 		);
+	}
+
+	/**
+	 * Read a single bundle, returning `null` if it is missing, corrupted or otherwise unreadable.
+	 * Data corruption errors are reported and swallowed via {@link errorReporter}.
+	 */
+	private async tryRead(ref: ExecutionRef): Promise<ExecutionDataBundle | null> {
+		try {
+			return await this.read(ref);
+		} catch (error) {
+			this.errorReporter.error(error);
+			return null;
+		}
 	}
 }
