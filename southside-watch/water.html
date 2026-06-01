@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water & Sewer Impact — Southside VA Data Center Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="page-hero">
+  <div class="container">
+    <span class="eyebrow">🌊 Water & Sewer Impact</span>
+    <h1>Data Centers Are Thirsty — Who Pays the Water Bill?</h1>
+    <p>Modern data centers rely on millions of gallons of water daily for cooling. In rural Southside Virginia, where water and sewer infrastructure was built for communities — not hyperscale industry — this demand poses serious questions about capacity, cost, and long-term sustainability.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:3rem">
+      <div class="stat-card" style="text-align:center">
+        <div class="num" style="font-size:2rem;color:var(--blue-bright)">3.4M+</div>
+        <div class="lbl">Gallons/day proposed</div>
+        <small>Across all tracked Southside VA projects</small>
+      </div>
+      <div class="stat-card" style="text-align:center">
+        <div class="num" style="font-size:2rem;color:var(--orange)">1.2B+</div>
+        <div class="lbl">Gallons/year potential</div>
+        <small>If all proposed projects are approved</small>
+      </div>
+      <div class="stat-card" style="text-align:center">
+        <div class="num" style="font-size:2rem;color:var(--red)">?</div>
+        <div class="lbl">Local utility capacity</div>
+        <small>No public capacity assessments published</small>
+      </div>
+      <div class="stat-card" style="text-align:center">
+        <div class="num" style="font-size:2rem;color:var(--yellow)">0</div>
+        <div class="lbl">Full water impact studies</div>
+        <small>No comprehensive studies released publicly</small>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h2>How Data Centers Use Water</h2>
+        <p class="mt-1">Data centers generate enormous amounts of heat from servers. The most common cooling method — evaporative cooling towers — removes this heat by evaporating water into the atmosphere. A 100 MW facility can consume between 500,000 and 1,000,000 gallons of water per day, depending on the cooling system design and local climate.</p>
+
+        <div class="warning-box">
+          <strong>⚠ Southside Virginia Context:</strong> The region's water infrastructure — municipal utilities, county water authorities, and rural water systems — was built and sized to serve residential and small commercial users. A single large data center could represent a demand increase larger than adding thousands of new residential customers overnight.
+        </div>
+
+        <h3 class="mt-3">Types of Data Center Cooling</h3>
+        <div style="margin-top:.75rem">
+          <div class="card mb-1" style="padding:1rem">
+            <h4>💧 Evaporative Cooling (Wet Cooling Towers)</h4>
+            <p style="font-size:.85rem;margin-top:.3rem">Most common. Uses large amounts of water evaporated into the air. Cheapest to build, highest water consumption. Typical: 1–2 million gallons/day per 100 MW facility.</p>
+          </div>
+          <div class="card mb-1" style="padding:1rem">
+            <h4>❄️ Air Cooling (Dry Cooling)</h4>
+            <p style="font-size:.85rem;margin-top:.3rem">Uses air instead of water. Much lower water consumption, but higher energy use and less efficient in hot climates. Rarely chosen by large operators due to cost.</p>
+          </div>
+          <div class="card mb-1" style="padding:1rem">
+            <h4>🔄 Hybrid Cooling</h4>
+            <p style="font-size:.85rem;margin-top:.3rem">Combines air and water cooling. Can reduce water use by 30–70% compared to pure evaporative. Typically requires upfront negotiation with developer.</p>
+          </div>
+          <div class="card" style="padding:1rem">
+            <h4>♻️ Reclaimed Water</h4>
+            <p style="font-size:.85rem;margin-top:.3rem">Some newer data centers use treated wastewater for cooling. This reduces strain on freshwater supplies. Requires infrastructure investment. Should be required when feasible.</p>
+          </div>
+        </div>
+
+        <h3 class="mt-3">Sewer System Concerns</h3>
+        <p class="mt-1">Data centers also generate wastewater — cooling tower blowdown, chemical discharge from water treatment systems, and sanitary wastewater from staff. In rural counties where sewer systems operate near capacity, this additional load can push systems to their limits, requiring costly upgrades.</p>
+        <p class="mt-1">The South Hill water authority flagged capacity concerns during the Piedmont Data Centers approval process. These concerns were not fully resolved before the conditional use permit was granted.</p>
+
+        <div class="danger-box mt-2">
+          <strong>⚠ Unresolved — South Hill:</strong> The South Hill water authority raised capacity warnings during the Piedmont Data Centers review. The permit was approved before a capacity resolution was documented. Phase 2 (which would double water demand) remains pending.
+        </div>
+      </div>
+
+      <div>
+        <div class="card mb-2">
+          <h4 style="margin-bottom:.75rem">💧 Water Use by Project</h4>
+          <div style="font-size:.83rem">
+            <div style="margin-bottom:.9rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:.2rem">
+                <span>Greensville Commerce Park A</span>
+                <span class="text-orange">1–2M gal/day</span>
+              </div>
+              <div class="progress"><div class="progress-bar progress-bar-orange" style="width:100%"></div></div>
+            </div>
+            <div style="margin-bottom:.9rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:.2rem">
+                <span>Brunswick Industrial B</span>
+                <span class="text-yellow">800K gal/day</span>
+              </div>
+              <div class="progress"><div class="progress-bar progress-bar-orange" style="width:65%"></div></div>
+            </div>
+            <div style="margin-bottom:.9rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:.2rem">
+                <span>South Hill Technology Hub (Ph.1)</span>
+                <span class="text-red">600K gal/day</span>
+              </div>
+              <div class="progress"><div class="progress-bar progress-bar-red" style="width:50%"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:.2rem">
+                <span>Franklin Site C (est.)</span>
+                <span style="color:var(--gray-500)">Unknown</span>
+              </div>
+              <div class="progress"><div class="progress-bar" style="width:20%;background:var(--gray-700)"></div></div>
+            </div>
+          </div>
+          <small class="mt-1" style="display:block;color:var(--gray-500)">Figures from permit applications and developer disclosures where available; otherwise estimated from industry standards.</small>
+        </div>
+
+        <div class="card mb-2">
+          <h4 style="margin-bottom:.75rem">📋 Questions to Ask About Water</h4>
+          <ul class="checklist" style="font-size:.83rem">
+            <li>What is the daily water consumption estimate?</li>
+            <li>What cooling system is planned — wet, dry, or hybrid?</li>
+            <li>What is the source of water supply?</li>
+            <li>Has the water authority confirmed capacity?</li>
+            <li>Who pays for water infrastructure upgrades?</li>
+            <li>Will wastewater be treated before discharge?</li>
+            <li>Is reclaimed water an option for cooling?</li>
+            <li>What is the impact on groundwater?</li>
+            <li>How will drought conditions affect operations?</li>
+          </ul>
+        </div>
+
+        <div class="card" style="background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.2)">
+          <h4 class="text-blue mb-1">🔍 Blackwater River Concern</h4>
+          <p style="font-size:.83rem;color:var(--gray-300)">A community report (May 2025) flagged potential data center development near the Blackwater River watershed in Southampton County. The Blackwater River drains into the Chowan River and ultimately the Albemarle Sound — an ecologically sensitive system. Any development in this watershed should require a full hydrological impact study. <strong>Status: Investigating.</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2 class="mb-3">What Responsible Water Protections Look Like</h2>
+    <div class="three-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon card-icon-blue">📊</div>
+          <h3>Independent Capacity Assessment</h3>
+        </div>
+        <p style="font-size:.88rem">Before any approval, require an independent engineering assessment of the local water and sewer system's capacity — not just a developer's self-report.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon card-icon-orange">💰</div>
+          <h3>Developer Pays for Upgrades</h3>
+        </div>
+        <p style="font-size:.88rem">Any water or sewer infrastructure upgrades required by the data center should be funded by the developer, not by ratepayers or county taxpayers.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon card-icon-green">♻️</div>
+          <h3>Mandate Efficient Cooling</h3>
+        </div>
+        <p style="font-size:.88rem">Require hybrid cooling or reclaimed water use as a condition of approval. The technology exists — it just costs more upfront. Shift that cost to the developer, not the aquifer.</p>
+      </div>
+    </div>
+
+    <div class="callout mt-4">
+      <p>Southside Virginia's rivers, aquifers, and water systems belong to the communities that live there. Allowing them to be drawn down for the benefit of distant corporations — without full public disclosure and enforceable protections — is not economic development. It is extraction.</p>
+    </div>
+
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+<script src="js/nav.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

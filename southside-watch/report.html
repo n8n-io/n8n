@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Concern — Southside VA Data Center Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="nav-placeholder"></div>
+
+<div class="page-hero">
+  <div class="container">
+    <span class="eyebrow">⚑ Report a Concern</span>
+    <h1>Submit Information or a Community Concern</h1>
+    <p>Help us track what's happening in your community. Your report may be the first step in exposing a project the public doesn't know about yet. You can submit anonymously. All information is reviewed before publication.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="two-col">
+      <div>
+
+        <div class="info-box mb-3">
+          <strong>Privacy Notice:</strong> Your contact information will never be published without your explicit permission. Anonymous submissions are accepted. If you select "permission to contact," we may follow up for clarification. We protect the identity of all community sources.
+        </div>
+
+        <div id="form-success" style="display:none" class="card mb-3" style="border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)">
+          <h3 style="color:var(--green)">✓ Report Submitted</h3>
+          <p>Thank you for your submission. Our team will review your report and may follow up if you provided contact information. If you submitted documents, we will process them and add them to our records archive where appropriate.</p>
+        </div>
+
+        <form id="report-form">
+
+          <!-- Contact Info -->
+          <h3 style="margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--navy-border)">Your Information (Optional)</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">First & Last Name</label>
+              <input type="text" class="form-input" placeholder="Your full name">
+              <div class="form-hint">Will not be published without your consent</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" class="form-input" placeholder="your@email.com">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" class="form-input" placeholder="(555) 000-0000">
+              <div class="form-hint">Optional — for follow-up questions only</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your County or City <span>*</span></label>
+              <select class="form-select" required>
+                <option value="">Select your location</option>
+                <option>Emporia (City)</option>
+                <option>Greensville County</option>
+                <option>Brunswick County</option>
+                <option>South Hill (Town)</option>
+                <option>Mecklenburg County</option>
+                <option>Franklin (City)</option>
+                <option>Southampton County</option>
+                <option>Sussex County</option>
+                <option>Isle of Wight County</option>
+                <option>Surry County</option>
+                <option>Other — Southside Virginia</option>
+                <option>Outside the Region</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Concern Details -->
+          <h3 style="margin:1.5rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--navy-border)">Concern Details</h3>
+
+          <div class="form-group">
+            <label class="form-label">Location of Concern <span>*</span></label>
+            <input type="text" class="form-input" placeholder="Street address, road intersection, or general description" required>
+            <div class="form-hint">As specific as possible. "Route 58 near the old textile mill" is fine.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Type of Concern <span>*</span></label>
+            <select class="form-select" required>
+              <option value="">Select concern type</option>
+              <option>Energy bills / electricity rates</option>
+              <option>Water supply / consumption</option>
+              <option>Sewer system capacity</option>
+              <option>Noise from cooling equipment</option>
+              <option>Diesel backup generators (noise or emissions)</option>
+              <option>Construction traffic</option>
+              <option>Land use / zoning change</option>
+              <option>Rezoning process or public notice</option>
+              <option>Tax incentives / PILOT agreement</option>
+              <option>Lack of public notice for hearing</option>
+              <option>Environmental concern (water, air, wetlands)</option>
+              <option>New project not yet public</option>
+              <option>Vote or decision not tracked on this site</option>
+              <option>Documents or public records to share</option>
+              <option>Correction to existing information on this site</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description <span>*</span></label>
+            <textarea class="form-textarea" rows="7" placeholder="Please describe what you've observed, heard, or are concerned about. Be as specific as possible — dates, names, locations, and specific events are especially helpful." required style="min-height:160px"></textarea>
+            <div class="form-hint">Minimum detail makes this useful. "A county official told me at the August 12 meeting that…" is far more useful than "I heard there's a deal."</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Project Name (if known)</label>
+            <input type="text" class="form-input" placeholder="e.g., Commerce Park Phase 2, or the name on the construction sign">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Developer or Company Name (if known)</label>
+            <input type="text" class="form-input" placeholder="e.g., Apex Digital Infrastructure, or an LLC name">
+          </div>
+
+          <!-- File Upload -->
+          <h3 style="margin:1.5rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--navy-border)">Photos & Documents</h3>
+
+          <div class="form-group">
+            <label class="form-label">Upload Photos</label>
+            <input type="file" class="form-input" accept="image/*" multiple style="padding:.5rem">
+            <div class="form-hint">Construction activity, signage, official documents, notices — anything that documents what you've seen.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Upload Documents</label>
+            <input type="file" class="form-input" accept=".pdf,.doc,.docx,.txt,.xls,.xlsx" multiple style="padding:.5rem">
+            <div class="form-hint">Meeting minutes, permit applications, letters, PILOT agreements, FOIA responses, etc.</div>
+          </div>
+
+          <!-- Permissions -->
+          <h3 style="margin:1.5rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--navy-border)">Permissions</h3>
+
+          <div class="form-check">
+            <input type="checkbox" id="perm-contact" name="perm-contact">
+            <label for="perm-contact"><strong>Permission to contact:</strong> You may follow up with me for additional information or clarification.</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="perm-publish" name="perm-publish">
+            <label for="perm-publish"><strong>Permission to publish anonymously:</strong> You may publish the information I've submitted, without identifying me, on this website or in public records requests.</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="perm-share" name="perm-share">
+            <label for="perm-share"><strong>Permission to share with journalists:</strong> You may share this report (without identifying me) with local journalists investigating data center development.</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="confirm-true" name="confirm-true" required>
+            <label for="confirm-true"><span style="color:var(--red)">*</span> I certify that this information is accurate to the best of my knowledge and I am not submitting knowingly false information.</label>
+          </div>
+
+          <div class="form-group mt-3">
+            <button type="submit" class="btn btn-orange btn-lg" style="width:100%;justify-content:center">
+              ⚑ Submit Report
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <div class="card mb-2">
+          <h4 style="margin-bottom:.75rem">What Happens After You Submit</h4>
+          <ul class="num-list" style="font-size:.83rem">
+            <li><div>Your report is received and reviewed within 48–72 hours</div></li>
+            <li><div>We assess credibility and cross-reference against other sources</div></li>
+            <li><div>If you gave permission to contact, we may reach out for more detail</div></li>
+            <li><div>Verified or credible reports are added to the database with appropriate confidence levels</div></li>
+            <li><div>Documents are archived and attributed to public records if possible</div></li>
+          </ul>
+        </div>
+
+        <div class="card mb-2" style="border-color:rgba(34,197,94,.2)">
+          <h4 class="text-green mb-1">🔒 Your Privacy</h4>
+          <ul style="font-size:.83rem;list-style:none;padding:0">
+            <li style="padding:.4rem 0;border-bottom:1px solid var(--navy-border);color:var(--gray-300)">✓ Anonymous submissions accepted</li>
+            <li style="padding:.4rem 0;border-bottom:1px solid var(--navy-border);color:var(--gray-300)">✓ Names never published without consent</li>
+            <li style="padding:.4rem 0;border-bottom:1px solid var(--navy-border);color:var(--gray-300)">✓ Source identities protected</li>
+            <li style="padding:.4rem 0;border-bottom:1px solid var(--navy-border);color:var(--gray-300)">✓ No information sold or shared for marketing</li>
+            <li style="padding:.4rem 0;color:var(--gray-300)">✓ HTTPS encrypted submission</li>
+          </ul>
+        </div>
+
+        <div class="card mb-2">
+          <h4 style="margin-bottom:.75rem">🔍 Especially Valuable</h4>
+          <ul style="font-size:.83rem;padding-left:1.25rem;color:var(--gray-300)">
+            <li style="margin-bottom:.4rem">PILOT or incentive agreement text</li>
+            <li style="margin-bottom:.4rem">Meeting recordings</li>
+            <li style="margin-bottom:.4rem">Permit applications or approvals</li>
+            <li style="margin-bottom:.4rem">Internal government communications</li>
+            <li style="margin-bottom:.4rem">Photos of signage, construction, or notices</li>
+            <li style="margin-bottom:.4rem">Information about new sites not yet public</li>
+            <li>Names of beneficial owners behind LLCs</li>
+          </ul>
+        </div>
+
+        <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2)">
+          <h4 class="text-orange mb-1">📅 Upcoming Hearings</h4>
+          <div style="font-size:.83rem">
+            <div style="padding:.5rem 0;border-bottom:1px solid rgba(30,45,74,.5)">
+              <strong>Greensville Co. BOS — Regular Meeting</strong>
+              <div style="color:var(--gray-300)">Watch for Commerce Park rezoning on agenda</div>
+            </div>
+            <div style="padding:.5rem 0;border-bottom:1px solid rgba(30,45,74,.5)">
+              <strong>Brunswick Co. BOS</strong>
+              <div style="color:var(--gray-300)">Substation cost question still unresolved</div>
+            </div>
+            <div style="padding:.5rem 0">
+              <strong>Submit a hearing we should track →</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div id="footer-placeholder"></div>
+<script src="js/nav.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
