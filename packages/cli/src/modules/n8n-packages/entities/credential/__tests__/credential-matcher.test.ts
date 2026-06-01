@@ -18,14 +18,27 @@ type UsableCredential = Awaited<
 
 const usable = (id: string): UsableCredential => ({ id }) as UsableCredential;
 
-describe('IdBasedCredentialMatcher', () => {
-	const credentialsFinderService = mock<CredentialsFinderService>();
-	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const credentialsService = mock<CredentialsService>();
-	const credentialTypes = mock<CredentialTypes>();
-	const targetProject = mock<Project>({ id: 'project-target' });
-	const user = mock<User>({ id: 'user-1' });
+const credentialsFinderService = mock<CredentialsFinderService>();
+const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+const credentialsService = mock<CredentialsService>();
+const credentialTypes = mock<CredentialTypes>();
+const targetProject = mock<Project>({ id: 'project-target' });
+const user = mock<User>({ id: 'user-1' });
 
+function createMatcherFactory(): CredentialMatcherFactory {
+	Container.set(
+		IdBasedCredentialMatcher,
+		new IdBasedCredentialMatcher(
+			credentialsFinderService,
+			sharedCredentialsRepository,
+			credentialTypes,
+			credentialsService,
+		),
+	);
+	return new CredentialMatcherFactory(Container.get(IdBasedCredentialMatcher));
+}
+
+describe('IdBasedCredentialMatcher', () => {
 	let context: CredentialMatcherContext;
 	let matcherFactory: CredentialMatcherFactory;
 
@@ -34,16 +47,7 @@ describe('IdBasedCredentialMatcher', () => {
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 		context = { targetProject, user };
-		Container.set(
-			IdBasedCredentialMatcher,
-			new IdBasedCredentialMatcher(
-				credentialsFinderService,
-				sharedCredentialsRepository,
-				credentialTypes,
-				credentialsService,
-			),
-		);
-		matcherFactory = new CredentialMatcherFactory(Container.get(IdBasedCredentialMatcher));
+		matcherFactory = createMatcherFactory();
 	});
 
 	it('reports a missing credential when the user cannot use it in the target project', async () => {
@@ -185,7 +189,7 @@ describe('IdBasedCredentialMatcher', () => {
 
 describe('CredentialMatcherFactory', () => {
 	it('rejects unsupported credential matching modes', () => {
-		const factory = new CredentialMatcherFactory(mock<IdBasedCredentialMatcher>());
+		const factory = createMatcherFactory();
 		expect(() => factory.getMatcher('name-and-type' as 'id-only')).toThrow(BadRequestError);
 	});
 });

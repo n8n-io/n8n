@@ -44,7 +44,7 @@ describe('MustPreexistCredentialMissingModeHandler', () => {
 });
 
 describe('CredentialMissingModeFactory', () => {
-	const factory = new CredentialMissingModeFactory(new MustPreexistCredentialMissingModeHandler());
+	const factory = new CredentialMissingModeFactory();
 
 	it('returns MustPreexistCredentialMissingModeHandler for must-preexist', () => {
 		expect(factory.getHandler('must-preexist')).toBeInstanceOf(
