@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';

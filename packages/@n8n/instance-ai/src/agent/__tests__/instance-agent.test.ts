@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import type { Mock } from 'vitest';
 
 const mockAgentInstances: Array<{

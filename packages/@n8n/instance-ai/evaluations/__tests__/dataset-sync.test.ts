@@ -1,3 +1,5 @@
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 vi.mock('../data/workflows', () => ({

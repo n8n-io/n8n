@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
 import * as langsmithModule from 'langsmith';
@@ -214,7 +215,7 @@ vi.mock('@n8n/agents', async () => {
 	};
 });
 
-vi.mock('langsmith', async () => {
+vi.mock('langsmith', () => {
 	const createFeedbackCalls: Array<{
 		runId: string;
 		key: string;
@@ -259,7 +260,7 @@ vi.mock('langsmith', async () => {
 	};
 });
 
-vi.mock('langsmith/traceable', async () => {
+vi.mock('langsmith/traceable', () => {
 	return {
 		traceable: () => {
 			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');

@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import type { Mock } from 'vitest';
 
 // The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s

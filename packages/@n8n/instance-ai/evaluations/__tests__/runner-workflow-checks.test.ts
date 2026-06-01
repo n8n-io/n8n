@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 vi.mock('../binaryChecks/index', () => ({
 	runBinaryChecks: vi.fn(),
 }));
@@ -19,6 +21,7 @@ const silentLogger: EvalLogger = {
 	isVerbose: false,
 };
 
+// @ts-expect-error - Partial
 const fakeWorkflow: WorkflowResponse = {
 	id: 'wf-1',
 	name: 'Demo',

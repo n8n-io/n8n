@@ -1,3 +1,6 @@
+import { vi } from 'vitest';
+import type { Mock } from 'vitest';
+
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import { runWorkflowTestCase } from '../harness/runner';

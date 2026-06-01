@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import type { Mock, Mocked } from 'vitest';
 
 vi.mock('@n8n/agents', () => ({

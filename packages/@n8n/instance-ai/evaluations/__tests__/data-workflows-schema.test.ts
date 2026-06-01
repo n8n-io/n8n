@@ -1,3 +1,6 @@
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
+
 vi.mock('fs', () => ({
 	readdirSync: vi.fn(),
 	readFileSync: vi.fn(),

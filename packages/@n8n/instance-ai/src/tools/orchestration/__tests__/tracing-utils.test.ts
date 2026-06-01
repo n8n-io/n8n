@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import type { OrchestrationContext } from '../../../types';
 
 const mockCreateDetachedSubAgentTraceContext = vi.fn<(arg: unknown) => Promise<unknown>>();

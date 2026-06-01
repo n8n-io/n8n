@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { compareBuckets, type ExperimentBucket, type ScenarioCounts } from '../comparison/compare';
 
 function bucket(

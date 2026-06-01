@@ -1,3 +1,4 @@
+/* eslint-disable import-x/order */
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes, WorkflowStructureIssue } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
