@@ -5860,6 +5860,52 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('This is the default node description');
 		});
+
+		test('should resolve expression in toolDescription via the resolver callback', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}{{ $json.user }}',
+			};
+			const resolveToolDescription = vi.fn().mockReturnValue('123ABC');
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).toHaveBeenCalledTimes(1);
+			expect(result).toBe('123ABC');
+		});
+
+		test('should not call resolver for static toolDescription', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: 'Plain static description',
+			};
+			const resolveToolDescription = vi.fn();
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).not.toHaveBeenCalled();
+			expect(result).toBe('Plain static description');
+		});
+
+		test('should fall back to raw value when no resolver is provided for an expression', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}',
+			};
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType);
+
+			// Assert
+			expect(result).toBe('={{ $json.sessionId }}');
+		});
 	});
 	describe('isDefaultNodeName', () => {
 		let mockNodeTypeDescription: INodeTypeDescription;
