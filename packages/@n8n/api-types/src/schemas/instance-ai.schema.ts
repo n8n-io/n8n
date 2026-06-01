@@ -1056,6 +1056,10 @@ export interface InstanceAiModelCredential {
 export interface InstanceAiMcpConnectionResponse {
 	id: string;
 	serverSlug: string;
+	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
+	serverTitle: string;
+	/** URL of the registry server's primary icon, when available. */
+	serverIcon?: string;
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;

@@ -18,21 +18,38 @@ import type { Response } from 'express';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryService } from './instance-ai-mcp-registry.service';
+
+interface ServerMetadata {
+	title: string;
+	icon?: string;
+}
+
+function serverMetadata(server: McpRegistryServer | undefined, slug: string): ServerMetadata {
+	if (!server) return { title: slug };
+	return { title: server.title, icon: server.icons[0]?.src };
+}
 
 @RestController('/instance-ai/mcp/connections')
 export class InstanceAiMcpConnectionController {
 	constructor(
 		private readonly service: InstanceAiMcpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly mcpRegistryService: McpRegistryService,
 	) {}
 
 	@Get('/')
 	@GlobalScope('instanceAi:message')
 	async list(req: AuthenticatedRequest): Promise<InstanceAiMcpConnectionResponse[]> {
 		const connections = await this.service.listConnectionsForUser(req.user);
+		const uniqueSlugs = [...new Set(connections.map((c) => c.serverSlug))];
+		const servers = await this.mcpRegistryService.getBySlugs(uniqueSlugs);
+		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
+
 		const enriched = await Promise.all(
 			connections.map(async (connection) => {
 				const credential = await this.credentialsFinderService.findCredentialForUser(
@@ -41,7 +58,12 @@ export class InstanceAiMcpConnectionController {
 					['credential:read'],
 				);
 				if (!credential) return null;
-				return toResponse(connection, credential.name, credential.type);
+				return toResponse(
+					connection,
+					credential.name,
+					credential.type,
+					serverMetadata(serverBySlug.get(connection.serverSlug), connection.serverSlug),
+				);
 			}),
 		);
 		return enriched.filter((row): row is InstanceAiMcpConnectionResponse => row !== null);
@@ -63,7 +85,13 @@ export class InstanceAiMcpConnectionController {
 		if (!credential) {
 			throw new NotFoundError('Credential not found after creating connection');
 		}
-		return toResponse(connection, credential.name, credential.type);
+		const server = await this.mcpRegistryService.get(connection.serverSlug);
+		return toResponse(
+			connection,
+			credential.name,
+			credential.type,
+			serverMetadata(server, connection.serverSlug),
+		);
 	}
 
 	/**
@@ -94,7 +122,13 @@ export class InstanceAiMcpConnectionController {
 		if (!credential) {
 			throw new NotFoundError('Credential not found for connection');
 		}
-		return toResponse(connection, credential.name, credential.type);
+		const server = await this.mcpRegistryService.get(connection.serverSlug);
+		return toResponse(
+			connection,
+			credential.name,
+			credential.type,
+			serverMetadata(server, connection.serverSlug),
+		);
 	}
 
 	@Delete('/:id')
@@ -108,10 +142,13 @@ function toResponse(
 	connection: InstanceAiMcpRegistryConnection,
 	credentialName: string,
 	credentialType: string,
+	server: ServerMetadata,
 ): InstanceAiMcpConnectionResponse {
 	return {
 		id: connection.id,
 		serverSlug: connection.serverSlug,
+		serverTitle: server.title,
+		serverIcon: server.icon,
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
