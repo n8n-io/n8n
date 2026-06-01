@@ -438,6 +438,23 @@ describe('buildNodeIndex', () => {
 	it('returns an empty array when nodes is missing', () => {
 		expect(buildNodeIndex({ connections: {} } as unknown as WorkflowJSON)).toEqual([]);
 	});
+
+	it('coerces non-string node names to an empty string', () => {
+		const json = {
+			nodes: [
+				{ name: 123, type: 'x', position: [0, 0], parameters: {} },
+				{ type: 'y', position: [0, 0], parameters: {} },
+				{ name: null, type: 'z', position: [0, 0], parameters: {} },
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		expect(buildNodeIndex(json)).toEqual([
+			{ index: 0, name: '' },
+			{ index: 1, name: '' },
+			{ index: 2, name: '' },
+		]);
+	});
 });
 
 describe('buildErrorDetails', () => {

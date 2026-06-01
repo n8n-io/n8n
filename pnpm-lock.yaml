@@ -3375,6 +3375,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -5085,6 +5088,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../testing/janitor
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
