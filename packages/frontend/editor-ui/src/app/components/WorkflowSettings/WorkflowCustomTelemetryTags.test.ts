@@ -23,7 +23,6 @@ const renderComponent = createComponentRenderer(WorkflowCustomTelemetryTags, {
 				template:
 					'<button type="button" v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot />{{ label }}</button>',
 			},
-			N8nIcon: { template: '<span />' },
 			N8nIconButton: {
 				props: ['disabled'],
 				emits: ['click'],
@@ -40,8 +39,6 @@ const renderComponent = createComponentRenderer(WorkflowCustomTelemetryTags, {
 				props: ['label', 'inputName'],
 				template: '<label :for="inputName"><span v-if="label">{{ label }}</span><slot /></label>',
 			},
-			N8nText: { template: '<p v-bind="$attrs"><slot /></p>' },
-			N8nTooltip: { template: '<span><slot /></span>' },
 		},
 	},
 });
@@ -107,17 +104,9 @@ describe('WorkflowCustomTelemetryTags', () => {
 
 		expect(getByLabelText('Back')).toBeVisible();
 		expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
-		expect(
-			getByText((_, element) => {
-				const text = element?.textContent?.replace(/\s+/g, ' ').trim();
-				return Boolean(
-					element?.id === 'reka-dialog-description-v-1' &&
-						text?.includes(
-							"Add custom tags to this workflow's OpenTelemetry spans. Learn more in the",
-						),
-				);
-			}),
-		).toBeVisible();
+		expect(getByRole('dialog')).toHaveAccessibleDescription(
+			/Add custom tags to this workflow's OpenTelemetry spans\.\s+Learn more in the\s+documentation/,
+		);
 		expect(getByRole('link', { name: 'documentation' })).toHaveAttribute(
 			'href',
 			'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
