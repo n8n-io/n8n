@@ -5,7 +5,11 @@ import {
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	WorkflowHistoryRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
@@ -18,18 +22,25 @@ import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
 	let repo: WorkflowHistoryRepository;
+	let workflowPublishedVersionRepo: WorkflowPublishedVersionRepository;
 	let manager: WorkflowHistoryManager;
 	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowHistoryRepository);
+		workflowPublishedVersionRepo = Container.get(WorkflowPublishedVersionRepository);
 		manager = Container.get(WorkflowHistoryManager);
 		globalConfig = Container.get(GlobalConfig);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
+		await testDb.truncate([
+			'WorkflowPublishedVersion',
+			'WorkflowEntity',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 		jest.clearAllMocks();
 
 		globalConfig.workflowHistory.pruneTime = -1;
@@ -162,6 +173,35 @@ describe('Workflow History Manager', () => {
 
 		// Other old versions should be deleted
 		const otherVersionIds = workflowVersions.slice(2).map((i) => i.versionId);
+		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+	});
+
+	test('should not prune published versions', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const workflow = await createActiveWorkflow();
+		const workflowVersions = await createManyWorkflowHistoryItems(
+			workflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		workflow.versionId = workflowVersions[0].versionId;
+		workflow.activeVersionId = workflowVersions[1].versionId;
+
+		await Container.get(WorkflowRepository).save(workflow);
+		await workflowPublishedVersionRepo.setPublishedVersion(
+			workflow.id,
+			workflowVersions[2].versionId,
+		);
+
+		await expect(manager.prune()).resolves.toBeUndefined();
+
+		expect(await repo.count({ where: { versionId: workflow.versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: workflow.activeVersionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: workflowVersions[2].versionId } })).toBe(1);
+
+		const otherVersionIds = workflowVersions.slice(3).map((i) => i.versionId);
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
