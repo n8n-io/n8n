@@ -1,7 +1,21 @@
-import type { BrowserContext, Page } from '@playwright/test';
+import type { BrowserContext, Page, TestInfo } from '@playwright/test';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { CoverageReport } from 'monocart-coverage-reports';
 
 import { coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
+
+/** Per-spec raw lives here; the shard emitter resolves each dir to a per-spec
+ *  lcov so the impact map can attribute coverage to the spec that produced it. */
+const BY_SPEC_DIR = join(coverageOptions.outputDir ?? './coverage', '.by-spec');
+
+/** Spec id = project-relative path (e.g. tests/e2e/nodes/if-node.spec.ts) — the
+ *  same id the runner uses, so the impact map keys match runnable specs. */
+function specId(testInfo: TestInfo): string {
+	return relative(process.cwd(), testInfo.file).split('\\').join('/');
+}
+
+const slugify = (spec: string) => spec.replace(/[^a-zA-Z0-9]+/g, '_');
 
 /**
  * Browser-native V8 coverage collection (Chromium `page.coverage`), replacing
@@ -9,8 +23,13 @@ import { coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
  *
  * Wraps the BrowserContext: starts JS coverage on every page at creation
  * (before navigation, so the initial bundle load is captured) and, on test
- * teardown, hands each page's V8 coverage to monocart-coverage-reports, which
- * accumulates raw data in the shared outputDir for `coverage:report` to merge.
+ * teardown, hands each page's V8 coverage to monocart-coverage-reports.
+ *
+ * Coverage is accumulated TWICE: into the shared outputDir (the full shard
+ * report, frontend + backend) and into a PER-SPEC dir keyed by the spec file
+ * (`.by-spec/<slug>/`, with a `.spec` marker naming the spec). The per-spec
+ * data is what lets the impact map say "this spec exercised this function" for
+ * test selection. The extra cost is a second `add()` of data already in memory.
  *
  * No-op unless COVERAGE_ENABLED — normal runs pay nothing.
  */
@@ -18,6 +37,7 @@ export const v8CoverageFixtures = {
 	context: async (
 		{ context }: { context: BrowserContext },
 		use: (context: BrowserContext) => Promise<void>,
+		testInfo: TestInfo,
 	) => {
 		if (!COVERAGE_ENABLED) {
 			await use(context);
@@ -39,15 +59,28 @@ export const v8CoverageFixtures = {
 
 		await use(context);
 
-		const report = new CoverageReport(coverageOptions);
+		const spec = specId(testInfo);
+		const specDir = join(BY_SPEC_DIR, slugify(spec));
+		const sharedReport = new CoverageReport(coverageOptions);
+		const specReport = new CoverageReport({ ...coverageOptions, name: spec, outputDir: specDir });
+		let collected = false;
 		for (const page of tracked) {
 			if (page.isClosed()) continue;
 			try {
 				const coverage = await page.coverage.stopJSCoverage();
-				if (coverage?.length) await report.add(coverage);
+				if (coverage?.length) {
+					await sharedReport.add(coverage);
+					await specReport.add(coverage);
+					collected = true;
+				}
 			} catch {
 				// Page closed before collection — ignore.
 			}
+		}
+		// Record the real spec id so the emitter can tag the per-spec lcov's TN.
+		if (collected) {
+			mkdirSync(specDir, { recursive: true });
+			writeFileSync(join(specDir, '.spec'), spec);
 		}
 	},
 };

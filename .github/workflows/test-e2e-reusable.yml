@@ -171,6 +171,8 @@ jobs:
           IMAGE_DIST_ROOT="$PWD/img-dist" \
           N8N_COVERAGE_DIR="$PWD/coverage/.backend-v8" \
             pnpm coverage:emit-shard
+          # Per-spec frontend lcovs (one per spec, TN-tagged) for the impact map.
+          pnpm coverage:emit-spec-lcovs
 
       - name: Upload Shard Artifacts
         if: always()
@@ -181,6 +183,7 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/coverage/lcov.info
+            packages/testing/playwright/coverage/by-spec/
           retention-days: 1
           if-no-files-found: ignore
 
