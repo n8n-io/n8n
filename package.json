@@ -113,7 +113,7 @@
       "multer": "^2.1.1",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
-      "semver": "^7.5.4",
+      "semver": "catalog:",
       "tar-fs": "2.1.4",
       "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
