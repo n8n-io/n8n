@@ -13,6 +13,7 @@ function getNode(name) {
 }
 
 test('science explainer workflow has the expected import name and nodes', () => {
+	assert.equal(workflow.id, 'pdf-science-explainer-video-workflow');
 	assert.equal(workflow.name, 'MVP - PDF Science Explainer Video Composer');
 
 	for (const nodeName of [
