@@ -91,15 +91,17 @@ export class CredentialModal extends BaseModal {
 
 	/**
 	 * Wait for save to fully complete.
-	 * After saving (and optional credential testing), the button becomes
-	 * disabled (no unsaved changes) and is no longer loading
+	 * After saving (and optional credential testing), the button either shows a
+	 * "Saved" label or settles back to a disabled "Save" state.
 	 */
 	async waitForSaveComplete(): Promise<void> {
-		const btn = this.getSaveButton().locator('button');
-		await expect(async () => {
-			await expect(btn).toBeDisabled();
-			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
-		}).toPass({ timeout: 10000 });
+		const saveCompleted = this.root.getByText('Saved', { exact: true }).or(
+			this.getSaveButton()
+				.locator('button[disabled]')
+				.filter({ hasText: /^Save$/ }),
+		);
+
+		await expect(saveCompleted).toBeVisible({ timeout: 20_000 });
 	}
 
 	async save(): Promise<void> {
@@ -128,10 +130,14 @@ export class CredentialModal extends BaseModal {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
-			await this.getNameInput().fill(options.name);
+			const nameInput = this.getNameInput();
+			await nameInput.fill(options.name);
+			await nameInput.press('Enter');
+			await expect(this.getCredentialName()).toContainText(options.name);
 		}
 
 		if (!options?.skipSave) {
+			await expect(this.getSaveButton()).toBeEnabled();
 			await this.save();
 		}
 
@@ -142,7 +148,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	get oauthConnectButton() {
-		return this.root.getByTestId('oauth-connect-button');
+		return this.root.getByTestId('quick-connect-button');
 	}
 
 	get oauthConnectSuccessBanner() {

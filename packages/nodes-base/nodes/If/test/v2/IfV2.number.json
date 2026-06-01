@@ -37,7 +37,8 @@
 				"conditions": {
 					"options": {
 						"caseSensitive": true,
-						"leftValue": ""
+						"leftValue": "",
+						"typeValidation": "loose"
 					},
 					"conditions": [
 						{

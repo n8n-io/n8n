@@ -30,6 +30,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -44,6 +45,7 @@ const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
+const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -98,6 +100,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );
@@ -130,6 +133,14 @@ const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
 
+const refreshCredentials = () => {
+	void credentialsStore.fetchAllCredentials({
+		projectId: route?.params?.projectId as string | undefined,
+		includeScopes: true,
+		externalSecretsStore: filters.value.externalSecretsStore,
+	});
+};
+
 const addCredential = () => {
 	setRouteCredentialId('create');
 	telemetry.track('User clicked add cred button', {
@@ -142,6 +153,10 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
 			void router.replace({ params: { credentialId: '' }, query: route.query });
+		}
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
+			credentialsStore.pendingOAuthRefresh = false;
+			refreshCredentials();
 		}
 	},
 });
@@ -229,16 +244,16 @@ const initialize = async () => {
 	maybeCreateCredential();
 	await maybeEditCredential();
 	loading.value = false;
+
+	// Fire-and-forget: fetch which workflows use these credentials
+	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
+	void fetchDependencyCounts(credentialIds, 'credential');
 };
 
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials({
-				projectId: route?.params?.projectId as string | undefined,
-				includeScopes: true,
-				externalSecretsStore: filters.value.externalSecretsStore,
-			});
+			refreshCredentials();
 		});
 	}
 });
@@ -309,6 +324,7 @@ onMounted(() => {
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
+				@connected="refreshCredentials"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">

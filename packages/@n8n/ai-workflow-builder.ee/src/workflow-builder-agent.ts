@@ -34,6 +34,7 @@ import {
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
+import type { SsrfGuard } from './tools/utils/ssrf-guard';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
@@ -96,6 +97,8 @@ export interface WorkflowBuilderAgentConfig {
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	/** Assistant handler for routing help/debug queries via the SDK (code builder only) */
 	assistantHandler?: AssistantHandler;
+	/** SSRF guard for web_fetch (real service when enabled, passthrough otherwise). */
+	ssrf?: SsrfGuard;
 }
 
 export interface ExpressionValue {
@@ -106,9 +109,7 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** Enable CodeWorkflowBuilder (default: false). When false, uses legacy multi-agent system. */
-	codeBuilder?: boolean;
-	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
+	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
 	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
@@ -155,13 +156,12 @@ export class WorkflowBuilderAgent {
 	private stageLLMs: StageLLMs;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
-	private instanceUrl?: string;
 	private runMetadata?: Record<string, unknown>;
 	private onGenerationSuccess?: () => Promise<void>;
 	private nodeDefinitionDirs?: string[];
-	private resourceLocatorCallback?: ResourceLocatorCallback;
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	private assistantHandler?: AssistantHandler;
+	private ssrf?: SsrfGuard;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
 	private sessionFeatureFlags?: BuilderFeatureFlags;
 
@@ -171,13 +171,12 @@ export class WorkflowBuilderAgent {
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
-		this.instanceUrl = config.instanceUrl;
 		this.runMetadata = config.runMetadata;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
-		this.resourceLocatorCallback = config.resourceLocatorCallback;
 		this.onTelemetryEvent = config.onTelemetryEvent;
 		this.assistantHandler = config.assistantHandler;
+		this.ssrf = config.ssrf;
 	}
 
 	/**
@@ -189,12 +188,10 @@ export class WorkflowBuilderAgent {
 			parsedNodeTypes: this.parsedNodeTypes,
 			stageLLMs: this.stageLLMs,
 			logger: this.logger,
-			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
 			featureFlags,
-			onGenerationSuccess: this.onGenerationSuccess,
-			resourceLocatorCallback: this.resourceLocatorCallback,
 			assistantHandler: this.assistantHandler,
+			ssrf: this.ssrf,
 		});
 	}
 
@@ -224,23 +221,7 @@ export class WorkflowBuilderAgent {
 	) {
 		this.validateMessageLength(payload.message);
 
-		// Feature flag: Route to CodeWorkflowBuilder if enabled (default: false)
-		const useCodeWorkflowBuilder = payload.featureFlags?.codeBuilder ?? false;
-
-		if (useCodeWorkflowBuilder) {
-			yield* this.routeCodeBuilder(
-				payload,
-				userId,
-				abortSignal,
-				externalCallbacks,
-				historicalMessages,
-			);
-			return;
-		}
-
-		// Fall back to legacy multi-agent system
-		this.logger?.debug('Routing to legacy multi-agent system', { userId });
-		yield* this.runMultiAgentSystem(
+		yield* this.routeCodeBuilder(
 			payload,
 			userId,
 			abortSignal,
@@ -340,6 +321,9 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
 		const codeWorkflowBuilder = new CodeWorkflowBuilder({
 			llm: this.stageLLMs.builder,
 			nodeTypes: this.parsedNodeTypes,
@@ -351,7 +335,8 @@ export class WorkflowBuilderAgent {
 			runMetadata: {
 				...this.runMetadata,
 				userMessageId: payload.id,
-				workflowId: payload.workflowContext?.currentWorkflow?.id,
+				workflowId,
+				ls_thread_id: threadId,
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
 			generatePinData: payload.featureFlags?.pinData ?? true,

@@ -74,6 +74,16 @@ const flagsSchema = z.object({
 		.string()
 		.describe('The ID of the project to assign the imported workflows to')
 		.optional(),
+	activeState: z
+		.enum(['false', 'fromJson'], {
+			errorMap: () => ({
+				message: 'Valid values for flag "--activeState" are only "false" or "fromJson".',
+			}),
+		})
+		.describe(
+			'Whether to respect the JSON active field. "false" (default) deactivates all imported workflows. "fromJson" activates/deactivates each workflow based on its JSON active field.',
+		)
+		.default('false'),
 });
 
 @Command({
@@ -85,12 +95,19 @@ const flagsSchema = z.object({
 		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --activeState=fromJson',
 	],
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
 		const { flags } = this;
+
+		if (flags.activeState === 'fromJson' && this.globalConfig.executions.mode !== 'queue') {
+			throw new UserError(
+				'The "--activeState=fromJson" flag can only be used when n8n is running in queue or multi-main mode. In regular deployment mode, workflow activation is not supported.',
+			);
+		}
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -124,7 +141,9 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(ImportService).importWorkflows(workflows, project.id, {
+			activeState: flags.activeState,
+		});
 
 		this.reportSuccess(workflows.length);
 	}

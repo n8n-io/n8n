@@ -14,7 +14,7 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import type { IExecutionTrackProperties } from '@/interfaces';
+import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
@@ -26,22 +26,48 @@ type ExecutionTrackDataKey =
 	| 'prod_error'
 	| 'prod_success'
 	| 'manual_crashed'
-	| 'prod_crashed';
+	| 'prod_crashed'
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
 
 interface IExecutionTrackData {
 	count: number;
 	first: Date;
 }
 
+type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
+	user_id: string | undefined;
+};
+
 interface IExecutionsBuffer {
-	[workflowId: string]: {
-		manual_error?: IExecutionTrackData;
-		manual_success?: IExecutionTrackData;
-		prod_error?: IExecutionTrackData;
-		prod_success?: IExecutionTrackData;
-		manual_crashed?: IExecutionTrackData;
-		prod_crashed?: IExecutionTrackData;
-		user_id: string | undefined;
+	[workflowId: string]: IExecutionsBufferEntry;
+}
+
+interface IApiInvocationProperties {
+	user_id: string;
+	path: string;
+	method: string;
+	api_version: string;
+	user_agent?: string;
+}
+
+interface IApiInvocationsBufferEntry {
+	total_calls: number;
+	first: Date;
+	endpoints: Record<string, number>;
+	user_agents: Record<string, number>;
+}
+
+interface IApiInvocationsBuffer {
+	[userId: string]: IApiInvocationsBufferEntry;
+}
+
+interface IAgentExecutionCountsBuffer {
+	[bufferKey: string]: {
+		agent_id: string;
+		user_id?: string;
+		message_count: number;
+		token_count: number;
+		tool_call_count: number;
 	};
 }
 
@@ -52,6 +78,10 @@ export class Telemetry {
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
+
+	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+
+	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -155,6 +185,45 @@ export class Telemetry {
 			return;
 		}
 
+		this.flushWorkflowExecutionCounts();
+		this.flushAgentExecutionCounts();
+
+		// Flush API invocation counts
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
+
+		const sourceControlPreferences = Container.get(
+			SourceControlPreferencesService,
+		).getPreferences();
+
+		// License info
+		const pulsePacket = {
+			plan_name_current: this.license.getPlanName(),
+			quota: this.license.getTriggerLimit(),
+			usage: await this.workflowRepository.getActiveTriggerCount(),
+			role_count: await Container.get(UserRepository).countUsersByRole(),
+			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
+			branchName: sourceControlPreferences.branchName,
+			read_only_instance: sourceControlPreferences.branchReadOnly,
+			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
+			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
+		};
+
+		this.track('pulse', pulsePacket);
+	}
+
+	private flushWorkflowExecutionCounts() {
 		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
 			const data = this.executionCountsBuffer[workflowId];
 			const sum =
@@ -177,25 +246,31 @@ export class Telemetry {
 		}
 
 		this.executionCountsBuffer = {};
+	}
 
-		const sourceControlPreferences = Container.get(
-			SourceControlPreferencesService,
-		).getPreferences();
+	private getAgentExecutionCountsBufferKey(agentId: string, userId?: string) {
+		return userId ? `${agentId}:${userId}` : agentId;
+	}
 
-		// License info
-		const pulsePacket = {
-			plan_name_current: this.license.getPlanName(),
-			quota: this.license.getTriggerLimit(),
-			usage: await this.workflowRepository.getActiveTriggerCount(),
-			role_count: await Container.get(UserRepository).countUsersByRole(),
-			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
-			branchName: sourceControlPreferences.branchName,
-			read_only_instance: sourceControlPreferences.branchReadOnly,
-			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
-			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
-		};
+	private flushAgentExecutionCounts() {
+		const keysToReport = Object.keys(this.agentExecutionCountsBuffer).filter((bufferKey) => {
+			const data = this.agentExecutionCountsBuffer[bufferKey];
+			return data.message_count + data.token_count + data.tool_call_count > 0;
+		});
 
-		this.track('pulse', pulsePacket);
+		for (const bufferKey of keysToReport) {
+			// Agent-level aggregate window keyed by persisted agent ID plus optional n8n user ID.
+			// A resume-only window may legitimately report tokens or tools with message_count = 0.
+			const { agent_id, user_id, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
+			this.track('Agent execution count', {
+				event_version: '1',
+				agent_id,
+				...(user_id ? { user_id } : {}),
+				...counts,
+			});
+		}
+
+		this.agentExecutionCountsBuffer = {};
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -216,15 +291,19 @@ export class Telemetry {
 				}`;
 			}
 
-			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+			this.addExecutionTrackData(workflowId, key, execTime);
 
-			if (!executionTrackDataKey) {
-				this.executionCountsBuffer[workflowId][key] = {
-					count: 1,
-					first: execTime,
-				};
-			} else {
-				executionTrackDataKey.count++;
+			const executionStatus = properties.crashed
+				? 'crashed'
+				: properties.success
+					? 'success'
+					: 'error';
+			const executionMode = properties.is_manual ? 'manual' : 'prod';
+
+			if (properties.execution_source === 'instance_ai') {
+				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
+				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
+				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
 			if (properties.used_dynamic_credentials) {
@@ -238,6 +317,68 @@ export class Telemetry {
 			) {
 				this.track('Workflow execution errored', properties);
 			}
+		}
+	}
+
+	private addExecutionTrackData(workflowId: string, key: ExecutionTrackDataKey, execTime: Date) {
+		const executionTrackData = this.executionCountsBuffer[workflowId][key];
+
+		if (!executionTrackData) {
+			this.executionCountsBuffer[workflowId][key] = {
+				count: 1,
+				first: execTime,
+			};
+		} else {
+			executionTrackData.count++;
+		}
+	}
+
+	trackAgentExecution(properties: IAgentExecutionTrackProperties) {
+		if (!this.rudderStack) return;
+
+		const {
+			agent_id,
+			user_id,
+			message_count = 0,
+			token_count = 0,
+			tool_call_count = 0,
+		} = properties;
+		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, user_id);
+
+		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
+			agent_id,
+			...(user_id ? { user_id } : {}),
+			message_count: 0,
+			token_count: 0,
+			tool_call_count: 0,
+		};
+
+		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
+		agentExecutionCounts.message_count += message_count;
+		agentExecutionCounts.token_count += token_count;
+		agentExecutionCounts.tool_call_count += tool_call_count;
+	}
+
+	trackApiInvocation(properties: IApiInvocationProperties) {
+		if (!this.rudderStack) return;
+
+		const { user_id, path, method, user_agent } = properties;
+
+		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+			total_calls: 0,
+			first: new Date(),
+			endpoints: {},
+			user_agents: {},
+		};
+
+		const entry = this.apiInvocationsBuffer[user_id];
+		entry.total_calls++;
+
+		const endpointKey = `${method} ${path}`;
+		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
+
+		if (user_agent) {
+			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
 	}
 
@@ -349,5 +490,13 @@ export class Telemetry {
 	// test helpers
 	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
+	}
+
+	getApiInvocationsBuffer(): IApiInvocationsBuffer {
+		return this.apiInvocationsBuffer;
+	}
+
+	getAgentExecutionCountsBuffer(): IAgentExecutionCountsBuffer {
+		return this.agentExecutionCountsBuffer;
 	}
 }

@@ -3,9 +3,17 @@ import { computed, ref, useCssModule } from 'vue';
 import { useAsyncState } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
-import { N8nAlertDialog, N8nBadge, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAlertDialog,
+	N8nBadge,
+	N8nHeading,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -13,6 +21,8 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
+import DataRedactionSection from './DataRedactionSection.vue';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -21,6 +31,7 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -57,7 +68,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state, isLoading } = useAsyncState(async () => {
+const { state } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -65,8 +76,12 @@ const { state, isLoading } = useAsyncState(async () => {
 		publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
+		managedByEnv: settings.managedByEnv,
+		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
 	};
 }, undefined);
+
+const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
 async function updatePersonalSpaceSetting(
 	key: 'personalSpacePublishing' | 'personalSpaceSharing',
@@ -166,6 +181,13 @@ const sharingCountText = computed(() => {
 			</N8nText>
 		</div>
 
+		<N8nNotice
+			v-if="isManagedByEnv"
+			class="mb-l"
+			:content="i18n.baseText('settings.security.managedByEnv')"
+			data-test-id="security-managed-by-env-notice"
+		/>
+
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
 		</N8nHeading>
@@ -188,6 +210,7 @@ const sharingCountText = computed(() => {
 						<ElSwitch
 							:model-value="settingsStore.isMFAEnforced"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="enable-force-mfa"
 							@update:model-value="onUpdateMfaEnforced"
 						/>
@@ -214,6 +237,12 @@ const sharingCountText = computed(() => {
 			</div>
 		</div>
 
+		<DataRedactionSection
+			v-if="isRedactionEnforcementFlagEnabled && state !== undefined"
+			:initial-floor="state.initialRedactionFloor"
+			:managed-by-env="isManagedByEnv"
+		/>
+
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.security.personalSpace.title') }}
 		</N8nHeading>
@@ -234,15 +263,17 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpaceSharing"
-							:loading="isLoading"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="security-personal-space-sharing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpaceSharing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-sharing-toggle"
@@ -289,15 +320,17 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpacePublishing"
-							:loading="isLoading"
 							size="large"
+							:disabled="isManagedByEnv"
 							data-test-id="security-personal-space-publishing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpacePublishing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-publishing-toggle"

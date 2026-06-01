@@ -1,5 +1,4 @@
 import { test, expect, chatHubTestConfig } from './fixtures';
-import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
@@ -14,44 +13,42 @@ test.describe(
 			anthropicCredential: _,
 			jinaCredential,
 		}) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i);
+			await n8n.chatHubChat.dismissWelcomeScreen();
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i);
 
 			// Open tools manager modal
-			await page.getToolsButton().click();
-			await expect(page.toolsModal.getRoot()).toBeVisible();
+			await n8n.chatHubChat.getToolsButton().click();
+			await expect(n8n.chatHubChat.toolsModal.getRoot()).toBeVisible();
 
 			// Add Jina AI tool from available tools list
-			await page.toolsModal.getAddButton('Jina AI').click();
+			await n8n.chatHubChat.toolsModal.getAddButton('Jina AI').click();
 
 			// Select credential in settings view
-			await page.toolsModal.getCredentialSelect().click();
-			await page.getVisiblePopoverOption(jinaCredential.name).click();
+			await n8n.chatHubChat.toolsModal.getCredentialSelect().click();
+			await n8n.chatHubChat.getVisiblePopoverOption(jinaCredential.name).click();
 
 			// Change Operation from "Read" to "Search"
-			await page.toolsModal.getParameterInput('operation').click();
-			await page.getVisiblePopoverOption('Search').click();
+			await n8n.chatHubChat.toolsModal.getParameterInput('operation').click();
+			await n8n.chatHubChat.getVisiblePopoverOption('Search').click();
 
 			// Set search query and simplify to "defined automatically by the model"
-			await page.toolsModal.getFromAiOverrideButton('searchQuery').click();
-			await page.toolsModal.getFromAiOverrideButton('simplify').click();
+			await n8n.chatHubChat.toolsModal.getFromAiOverrideButton('searchQuery').click();
+			await n8n.chatHubChat.toolsModal.getFromAiOverrideButton('simplify').click();
 
 			// Save and close
-			await page.toolsModal.getSaveButton().click();
-			await page.toolsModal.getCloseButton().click();
-			await expect(page.toolsModal.getRoot()).toBeHidden();
+			await n8n.chatHubChat.toolsModal.getSaveButton().click();
+			await n8n.chatHubChat.toolsModal.getCloseButton().click();
+			await expect(n8n.chatHubChat.toolsModal.getRoot()).toBeHidden();
 
 			// Verify tool is shown
-			await expect(page.getToolsButton()).toContainText('Search web in Jina AI');
+			await expect(n8n.chatHubChat.getToolsButton()).toContainText('Search web in Jina AI');
 
 			// Send message and check response
-			await page.getChatInput().fill('What is n8n?');
-			await page.getSendButton().click();
-			await expect(page.getChatMessages().nth(0)).toContainText('What is n8n?');
-			await expect(page.getChatMessages().nth(1)).toContainText(/automation/i, {
+			await n8n.chatHubChat.getChatInput().fill('What is n8n?');
+			await n8n.chatHubChat.getSendButton().click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText('What is n8n?');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText(/automation/i, {
 				timeout: 60000,
 			});
 		});

@@ -275,6 +275,15 @@ export class UserRepository extends Repository<User> {
 			);
 		}
 
+		if (filter?.projectId !== undefined) {
+			queryBuilder.innerJoin(
+				'user.projectRelations',
+				'userListProjectFilter',
+				'userListProjectFilter.projectId = :userListProjectId',
+				{ userListProjectId: filter.projectId },
+			);
+		}
+
 		return queryBuilder;
 	}
 

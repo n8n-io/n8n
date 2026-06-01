@@ -186,7 +186,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
-		border: var(--border-width) var(--border-style) var(--color--foreground);
+		border: var(--border);
 		border-radius: 6px;
 		list-style: none;
 		overflow-x: auto;
@@ -196,7 +196,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			justify-content: stretch;
 			align-items: stretch;
 			flex: 1 0;
-			border-left: var(--border-width) var(--border-style) var(--color--foreground);
+			border-left: var(--border);
 
 			&:first-child {
 				border-left: 0;
@@ -216,11 +216,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			width: 100%;
 			height: 100%;
 			padding: var(--spacing--3xs) var(--spacing--lg) 0;
+			background-color: var(--background--surface);
 			border-bottom: 3px solid transparent;
 
 			&:hover {
-				background-color: var(--color--background--light-3);
-				transition: background-color 0.3s;
+				background-color: var(--background-hover);
 			}
 
 			&.activeTab {

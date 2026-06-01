@@ -265,7 +265,7 @@ test.describe(
 			);
 		});
 
-		test('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
+		test.fixme('maps expressions to updated fields correctly', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 			await n8n.canvas.openNode('Set');
 

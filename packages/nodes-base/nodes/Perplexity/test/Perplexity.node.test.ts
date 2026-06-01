@@ -2,7 +2,7 @@ import { Perplexity } from '../../Perplexity/Perplexity.node';
 import { description } from '../descriptions/chat/complete.operation';
 
 jest.mock('../../Perplexity/GenericFunctions', () => ({
-	getModels: jest.fn(),
+	getAgentModels: jest.fn(),
 }));
 
 describe('Perplexity Node', () => {

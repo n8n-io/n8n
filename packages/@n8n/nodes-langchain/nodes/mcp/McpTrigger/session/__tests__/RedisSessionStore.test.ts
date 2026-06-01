@@ -1,19 +1,20 @@
 import type { Tool } from '@langchain/core/tools';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { RedisSessionStore, type RedisPublisher } from '../RedisSessionStore';
 
 describe('RedisSessionStore', () => {
 	let store: RedisSessionStore;
-	let mockPublisher: jest.Mocked<RedisPublisher>;
+	let mockPublisher: Mocked<RedisPublisher>;
 	const getSessionKey = (sessionId: string) => `mcp-session:${sessionId}`;
 	const ttl = 3600;
 
 	beforeEach(() => {
 		mockPublisher = {
-			set: jest.fn().mockResolvedValue(undefined),
-			get: jest.fn().mockResolvedValue(null),
-			clear: jest.fn().mockResolvedValue(undefined),
+			set: vi.fn().mockResolvedValue(undefined),
+			get: vi.fn().mockResolvedValue(null),
+			clear: vi.fn().mockResolvedValue(undefined),
 		};
 		store = new RedisSessionStore(mockPublisher, getSessionKey, ttl);
 	});

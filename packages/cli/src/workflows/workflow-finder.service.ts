@@ -1,4 +1,4 @@
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -7,6 +7,7 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -122,6 +123,45 @@ export class WorkflowFinderService {
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
 	}
 
+	async findWorkflowsByIdsForUser(
+		workflowIds: string[],
+		user: User,
+		scopes: Scope[],
+		options: { includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) return [];
+
+		const where = await this.findAllWhere(user, scopes);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: { ...where, workflowId: In(workflowIds) },
+			relations: { workflow: { parentFolder: options.includeParentFolder } },
+		});
+
+		// A workflow may appear via several share paths (project membership +
+		// direct share); dedupe so callers see one entity per id.
+		const seen = new Set<string>();
+		const workflows: WorkflowEntity[] = [];
+		for (const { workflow } of sharedWorkflows) {
+			if (seen.has(workflow.id)) continue;
+			seen.add(workflow.id);
+			workflows.push(workflow);
+		}
+		return workflows;
+	}
+
+	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {
+		return await userHasScopes(user, scopes, false, { projectId });
+	}
+
+	async findProjectIdForFolder(folderId: string): Promise<string | null> {
+		const folder = await this.folderRepository.findOne({
+			where: { id: folderId },
+			relations: { homeProject: true },
+		});
+
+		return folder?.homeProject.id ?? null;
+	}
+
 	async findAllWorkflowIdsForUser(
 		user: User,
 		scopes: Scope[],
@@ -134,7 +174,7 @@ export class WorkflowFinderService {
 			where,
 		});
 
-		return sharedWorkflows.map(({ workflowId }) => workflowId);
+		return Array.from(new Set(sharedWorkflows.map(({ workflowId }) => workflowId)));
 	}
 
 	async findAllWorkflowsForUser(

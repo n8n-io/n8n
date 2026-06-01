@@ -16,7 +16,14 @@ describe(usePopOutWindow, () => {
 			Object.assign(window, {
 				open: () =>
 					({
-						document: { body: { append: vi.fn() } },
+						document: {
+							body: { append: vi.fn(), setAttribute: vi.fn(), removeAttribute: vi.fn() },
+							head: { appendChild: vi.fn(), querySelectorAll: vi.fn(() => []) },
+							documentElement: { style: {} },
+							createElement: vi.fn(() => ({ setAttribute: vi.fn() })),
+							querySelector: vi.fn(),
+							styleSheets: [],
+						},
 						addEventListener: vi.fn(),
 						close: vi.fn(),
 					}) as unknown as Window,

@@ -4,12 +4,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import semver from 'semver';
 
+export const CURRENT_MAJOR_VERSION = 2;
+export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
+
 export const RELEASE_TRACKS = /** @type { const } */ ([
 	//
 	'stable',
 	'beta',
 	'v1',
 ]);
+
+/**
+ * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
+ * */
 
 /**
  * @typedef {typeof RELEASE_TRACKS[number]} ReleaseTrack
@@ -24,7 +31,7 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
  * */
 
 /**
- * @typedef {{ tag: ReleaseVersion, version: SemVer}} TagVersionInfo
+ * @typedef {{ tag: ReleaseVersion, version: SemVer }} TagVersionInfo
  * */
 
 export const RELEASE_PREFIX = 'n8n@';
@@ -45,6 +52,15 @@ export function pickHighestReleaseTag(tags) {
 		.sort((a, b) => semver.rcompare(a.v, b.v));
 
 	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
+}
+
+/**
+ * @param {any} track
+ *
+ * @returns { track is ReleaseTrack }
+ * */
+export function isReleaseTrack(track) {
+	return RELEASE_TRACKS.includes(track);
 }
 
 /**
@@ -89,6 +105,9 @@ export function resolveReleaseTagForTrack(track) {
  * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
  * pointing at the same commit.
  *
+ * Queries tags via `git ls-remote` so it works with shallow checkouts where
+ * the tags aren't present locally.
+ *
  * Returns null if the track tag or release tag is missing.
  *
  * @param { ReleaseTrack } track
@@ -98,18 +117,40 @@ export function resolveRcBranchForTrack(track) {
 		return '1.x';
 	}
 
-	const commit = getCommitForRef(track);
-	if (!commit) return null;
+	const tagToSha = listRemoteTagsWithCommits();
+	const trackSha = tagToSha.get(track);
+	if (!trackSha) return null;
 
-	const tagsAtCommit = listTagsPointingAt(commit);
+	const tagsAtCommit = [...tagToSha]
+		.filter(([, sha]) => sha === trackSha)
+		.map(([tag]) => tag);
+
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const version = stripReleasePrefixes(releaseTag);
-	const parsed = semver.parse(version);
+	const parsed = semver.parse(stripReleasePrefixes(releaseTag));
 	if (!parsed) return null;
 
 	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
+}
+
+/**
+ * Takes a TagVersionInfo object and returns a rc-branch name.
+ *
+ * e.g. release-candidate/2.8.x or 1.x
+ *
+ * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
+ *
+ * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` | `${number}.x` }
+ * */
+export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
+	const version = tagVersionInfo.version;
+	const majorVersion = semver.major(version);
+	if (majorVersion < CURRENT_MAJOR_VERSION) {
+		return `${majorVersion}.x`;
+	}
+
+	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${semver.minor(version)}.x`;
 }
 
 /**
@@ -150,8 +191,9 @@ export function readPrLabels(pullRequest) {
 /**
  * Ensures git tag exists.
  *
- * @throws { Error } if no tag was found
- * */
+ * @param {string} tag
+ * @throws {Error} if no tag was found
+ */
 export function ensureTagExists(tag) {
 	sh('git', ['fetch', '--force', '--no-tags', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
 }
@@ -231,6 +273,34 @@ export function getCommitForRef(ref) {
 }
 
 /**
+ * List every tag on `origin` together with the commit SHA it resolves to.
+ * Uses `git ls-remote --tags`, so it works without a deep local clone.
+ *
+ * Annotated tags appear twice in ls-remote output: once as the tag-object
+ * SHA, then again with a `^{}` suffix and the underlying commit SHA. We
+ * prefer the peeled `^{}` value so the map always points at commits.
+ *
+ * @returns { Map<string, string> } tag name → commit SHA
+ */
+export function listRemoteTagsWithCommits() {
+	const res = trySh('git', ['ls-remote', '--tags', 'origin']);
+	if (!res.ok || !res.out) return new Map();
+
+	const tagToSha = new Map();
+	for (const line of res.out.split('\n')) {
+		const match = line.match(/^([0-9a-f]+)\s+refs\/tags\/(.+)$/);
+		if (!match) continue;
+		const [, sha, ref] = match;
+		if (ref.endsWith('^{}')) {
+			tagToSha.set(ref.slice(0, -3), sha);
+		} else if (!tagToSha.has(ref)) {
+			tagToSha.set(ref, sha);
+		}
+	}
+	return tagToSha;
+}
+
+/**
  * List all tags that point at the given commit SHA.
  *
  * @param {string} commit
@@ -250,7 +320,7 @@ export function listTagsPointingAt(commit) {
  * @param {string} to
  */
 export function listCommitsBetweenRefs(from, to) {
-	return sh('git', ['--no-pager', 'log', '--format="- %s (%h)', `${to}..origin/${from}`]);
+	return sh('git', ['--no-pager', 'log', '--format=%s (%h)', `${to}..origin/${from}`]);
 }
 
 /**
@@ -313,4 +383,60 @@ export async function getPullRequestById(pullRequestId) {
 	});
 
 	return pullRequest.data;
+}
+
+/**
+ * Returns the set of files changed in a PR, including previous filenames for renames.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Set<string>> }
+ * */
+export async function getChangedFiles(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+
+	return new Set([
+		...files.map((file) => file.filename),
+		...files.map((file) => file.previous_filename).filter((filename) => filename !== undefined),
+	]);
+}
+
+/**
+ * @param {string} tag
+ */
+export async function getExistingRelease(tag) {
+	const { octokit, owner, repo } = initGithub();
+
+	try {
+		const releaseRequest = await octokit.rest.repos.getReleaseByTag({
+			owner,
+			repo,
+			tag,
+		});
+
+		return releaseRequest.data;
+	} catch (ex) {
+		if (ex?.status === 404) {
+			return undefined;
+		}
+		throw ex;
+	}
+}
+
+/**
+ * @param {number} releaseId
+ */
+export async function deleteRelease(releaseId) {
+	const { octokit, owner, repo } = initGithub();
+	await octokit.rest.repos.deleteRelease({
+		owner,
+		repo,
+		release_id: releaseId,
+	});
 }

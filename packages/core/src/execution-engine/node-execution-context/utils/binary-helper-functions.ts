@@ -266,10 +266,19 @@ export async function prepareBinaryData(
 		if (!filePath) {
 			try {
 				const { responseUrl } = binaryData;
+				let sanitizedUrl: string | undefined;
+				let urlPathname: string | undefined;
+				if (responseUrl) {
+					const parsed = new URL(responseUrl);
+					parsed.username = '';
+					parsed.password = '';
+					sanitizedUrl = parsed.toString();
+					urlPathname = parsed.pathname;
+				}
 				filePath =
 					binaryData.contentDisposition?.filename ??
-					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
-				fullUrl = responseUrl;
+					(urlPathname ?? binaryData.req?.path)?.slice(1);
+				fullUrl = sanitizedUrl;
 			} catch {}
 		}
 		if (!mimeType) {

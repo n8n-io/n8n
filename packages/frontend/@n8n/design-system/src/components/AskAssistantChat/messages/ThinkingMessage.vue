@@ -78,7 +78,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 </template>
 
 <style lang="scss" module>
-@use '../../../css/mixins/animations';
+@use '../../../css/mixins/motion';
 
 .thinkingContainer {
 	margin: var(--spacing--4xs) 0;
@@ -124,7 +124,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .shimmer {
-	@include animations.shimmer;
+	@include motion.shimmer;
 }
 
 .itemList {

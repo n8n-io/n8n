@@ -8,6 +8,11 @@ import type { WorkflowHistory, WorkflowVersion } from '@n8n/rest-api-client/api/
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowHistoryDiff from './WorkflowHistoryDiff.vue';
+import { telemetry } from '@/app/plugins/telemetry';
+
+vi.mock('@/app/plugins/telemetry', () => ({
+	telemetry: { track: vi.fn() },
+}));
 
 const workflowId = 'wf-1';
 const sourceVersionId = 'v-source';
@@ -129,6 +134,13 @@ describe('WorkflowHistoryDiff', () => {
 			expect(rendered.getByTestId('workflow-history-diff-target-version-value')).toHaveTextContent(
 				sourceVersionId,
 			);
+			expect(telemetry.track).toHaveBeenCalledWith('user_selects_version_in_diff', {
+				instance_id: '',
+				workflow_id: workflowId,
+				version_id: targetVersionId,
+				side: 'source',
+				source: 'version_history',
+			});
 		});
 	});
 
@@ -171,6 +183,13 @@ describe('WorkflowHistoryDiff', () => {
 			expect(rendered.getByTestId('workflow-history-diff-target-version-value')).toHaveTextContent(
 				sourceVersionId,
 			);
+			expect(telemetry.track).toHaveBeenCalledWith('user_selects_version_in_diff', {
+				instance_id: '',
+				workflow_id: workflowId,
+				version_id: sourceVersionId,
+				side: 'target',
+				source: 'version_history',
+			});
 		});
 	});
 
@@ -211,6 +230,13 @@ describe('WorkflowHistoryDiff', () => {
 			expect(rendered.getByTestId('workflow-history-diff-target-version-value')).toHaveTextContent(
 				targetVersionId,
 			);
+			expect(telemetry.track).toHaveBeenCalledWith('user_selects_version_in_diff', {
+				instance_id: '',
+				workflow_id: workflowId,
+				version_id: otherVersionId,
+				side: 'source',
+				source: 'version_history',
+			});
 		});
 	});
 });

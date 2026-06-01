@@ -57,6 +57,11 @@ const properties: INodeProperties[] = [
 										value: 'text/html',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
+									},
+									{
 										name: 'MS Word Document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

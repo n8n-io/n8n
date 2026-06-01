@@ -71,6 +71,20 @@ describe('Xml Node - options validation', () => {
 				);
 			},
 		);
+
+		test.each(FORBIDDEN_KEYS)(
+			'should reject non-string attrkey that resolves to "%s"',
+			async (forbiddenKey) => {
+				setupGetNodeParameter('xmlToJson', { attrkey: [forbiddenKey], mergeAttrs: false });
+
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					`The "Attribute Key" option value "${forbiddenKey}" is not allowed`,
+				);
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					NodeOperationError,
+				);
+			},
+		);
 	});
 
 	describe('charkey validation', () => {
@@ -101,5 +115,119 @@ describe('Xml Node - options validation', () => {
 				);
 			},
 		);
+
+		test.each(FORBIDDEN_KEYS)(
+			'should reject non-string charkey that resolves to "%s"',
+			async (forbiddenKey) => {
+				setupGetNodeParameter('xmlToJson', { charkey: [forbiddenKey] });
+
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					`The "Character Key" option value "${forbiddenKey}" is not allowed`,
+				);
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					NodeOperationError,
+				);
+			},
+		);
+	});
+
+	describe('default option behaviour', () => {
+		test('should use the parser default attribute key when attrkey option is not set', async () => {
+			setupGetNodeParameter('xmlToJson', { mergeAttrs: false, explicitArray: false });
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { data: '<root foo="bar">x</root>' } },
+			]);
+
+			const result = await xmlNode.execute.call(mockExecuteFunctions);
+
+			const parsed = result[0][0].json as { root: Record<string, unknown> };
+			expect(parsed.root).toHaveProperty('$', { foo: 'bar' });
+		});
+
+		test('should use the parser default character key when charkey option is not set', async () => {
+			setupGetNodeParameter('xmlToJson', { mergeAttrs: false, explicitArray: false });
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { data: '<root foo="bar">text</root>' } },
+			]);
+
+			const result = await xmlNode.execute.call(mockExecuteFunctions);
+
+			const parsed = result[0][0].json as { root: Record<string, unknown> };
+			expect(parsed.root).toHaveProperty('_', 'text');
+		});
+	});
+
+	describe('attrkey and charkey are coerced to a stable string', () => {
+		test('should forward the coerced attrkey string to the parser in xmlToJson mode', async () => {
+			const statefulAttrkey = (() => {
+				let calls = 0;
+				return {
+					toString: () => (++calls === 1 ? 'safe' : 'changed'),
+				};
+			})();
+
+			setupGetNodeParameter('xmlToJson', {
+				attrkey: statefulAttrkey,
+				mergeAttrs: false,
+				explicitArray: false,
+			});
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { data: '<root foo="bar">x</root>' } },
+			]);
+
+			const result = await xmlNode.execute.call(mockExecuteFunctions);
+
+			const parsed = result[0][0].json as { root: Record<string, unknown> };
+			expect(parsed.root).toHaveProperty('safe', { foo: 'bar' });
+			expect(parsed.root).not.toHaveProperty('changed');
+		});
+
+		test('should forward the coerced charkey string to the parser in xmlToJson mode', async () => {
+			const statefulCharkey = (() => {
+				let calls = 0;
+				return {
+					toString: () => (++calls === 1 ? 'safe' : 'changed'),
+				};
+			})();
+
+			setupGetNodeParameter('xmlToJson', {
+				charkey: statefulCharkey,
+				mergeAttrs: false,
+				explicitArray: false,
+			});
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { data: '<root foo="bar">text</root>' } },
+			]);
+
+			const result = await xmlNode.execute.call(mockExecuteFunctions);
+
+			const parsed = result[0][0].json as { root: Record<string, unknown> };
+			expect(parsed.root).toHaveProperty('safe', 'text');
+			expect(parsed.root).not.toHaveProperty('changed');
+		});
+
+		test('should forward the coerced attrkey string to the builder in jsonToxml mode', async () => {
+			const statefulAttrkey = (() => {
+				let calls = 0;
+				return {
+					toString: () => (++calls === 1 ? 'safe' : 'changed'),
+				};
+			})();
+
+			setupGetNodeParameter('jsonToxml', {
+				attrkey: statefulAttrkey,
+				headless: true,
+			});
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { root: { safe: { foo: 'bar' } } } },
+			]);
+
+			const result = await xmlNode.execute.call(mockExecuteFunctions);
+
+			const xml = (result[0][0].json as { data: string }).data;
+			expect(xml).toContain('foo="bar"');
+			expect(xml).not.toContain('<safe');
+			expect(xml).not.toContain('<changed');
+		});
 	});
 });

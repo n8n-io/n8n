@@ -6,7 +6,7 @@ import * as router from 'vue-router';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
-import type { Project } from '../projects.types';
+import type { Project, ProjectListItem } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
@@ -35,6 +35,13 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const trackClickedNewAgent = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent,
+	}),
+}));
+
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -58,6 +65,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
+			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value"></button>
 			</div>
@@ -233,7 +241,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update permission', () => {
+	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -243,6 +251,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project editor has externalSecretsProvider:read scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -277,6 +300,37 @@ describe('ProjectHeader', () => {
 		expect(mockPush).toHaveBeenCalledWith({
 			name: VIEWS.NEW_WORKFLOW,
 			query: { projectId: project.id },
+		});
+	});
+
+	describe('new agent telemetry', () => {
+		beforeEach(() => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			const project = createTestProject({
+				scopes: ['workflow:create', 'agent:create'],
+			});
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+		});
+
+		it('tracks source=button when the agent main button is clicked', async () => {
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			await userEvent.click(getByTestId('add-resource-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+		});
+
+		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+			await waitFor(() => expect(getByTestId('action-agent')).toBeVisible());
+			await userEvent.click(getByTestId('action-agent'));
+
+			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
 		});
 	});
 
@@ -447,7 +501,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(3);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(4);
 		});
 
 		it('should pass empty array when no modules are active', () => {
@@ -581,6 +635,29 @@ describe('ProjectHeader', () => {
 			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
 
 			expect(queryByTestId('add-resource-variable')).toBeDisabled();
+		});
+
+		it('should enable agent create button when project scope allows it', () => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			const project = createTestProject({ scopes: ['agent:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			expect(getByTestId('add-resource-agent')).toBeInTheDocument();
+			expect(getByTestId('add-resource-agent')).toBeEnabled();
+		});
+
+		it('should disable agent create button when no scope allows it', () => {
+			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			const project = createTestProject({ scopes: [] });
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+			expect(getByTestId('add-resource-agent')).toBeDisabled();
 		});
 	});
 });

@@ -4,6 +4,7 @@ import {
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
 	DownloadDataTableCsvQueryDto,
+	ImportCsvToDataTableDto,
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
@@ -41,6 +42,7 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { ProjectService } from '@/services/project.service.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
@@ -113,6 +115,8 @@ export class DataTableController {
 			} else if (e instanceof DataTableNameConflictError) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof FileUploadError) {
 				throw new BadRequestError(e.message);
 			} else {
 				throw new InternalServerError(e.message, e);
@@ -361,6 +365,36 @@ export class DataTableController {
 			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Post('/:dataTableId/import-csv')
+	@ProjectScope('dataTable:writeRow')
+	async importCsvToDataTable(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: ImportCsvToDataTableDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableService.importCsvToExistingTable(
+				dataTableId,
+				req.params.projectId,
+				dto.fileId,
+			);
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof FileUploadError) {
 				throw new BadRequestError(e.message);
 			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

@@ -35,7 +35,7 @@ import {
 	generateDefaultNodeName,
 } from './node-type-utils';
 import { escapeString, escapeRegexChars } from './string-utils';
-import { formatValue } from './subnode-generator';
+import { formatValue, formatCredentials } from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
 import type { WorkflowJSON } from '../types/base';
@@ -110,14 +110,15 @@ function generateSubnodeCall(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
+	appendNodeConfigOptions(configParts, subnodeNode);
 
 	// Recursively include nested subnodes if this subnode has its own subnodes
 	const nestedSubnodesConfig = generateSubnodesConfigForNode(subnodeNode, ctx);
@@ -205,6 +206,42 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 	return generateSubnodesConfigForNode(node, ctx);
 }
 
+function appendNodeConfigOptions(configParts: string[], node: SemanticNode): void {
+	if (node.json.webhookId) {
+		configParts.push(`webhookId: '${escapeString(node.json.webhookId)}'`);
+	}
+	if (node.json.disabled) {
+		configParts.push('disabled: true');
+	}
+	if (node.json.notes) {
+		configParts.push(`notes: '${escapeString(node.json.notes)}'`);
+	}
+	if (node.json.notesInFlow) {
+		configParts.push('notesInFlow: true');
+	}
+	if (node.json.executeOnce) {
+		configParts.push('executeOnce: true');
+	}
+	if (node.json.retryOnFail) {
+		configParts.push('retryOnFail: true');
+	}
+	if (typeof node.json.maxTries === 'number') {
+		configParts.push(`maxTries: ${node.json.maxTries}`);
+	}
+	if (typeof node.json.waitBetweenTries === 'number') {
+		configParts.push(`waitBetweenTries: ${node.json.waitBetweenTries}`);
+	}
+	if (node.json.alwaysOutputData) {
+		configParts.push('alwaysOutputData: true');
+	}
+	if (node.json.onError) {
+		configParts.push(`onError: '${node.json.onError}'`);
+	}
+	if (node.json.extendsCredential) {
+		configParts.push(`extendsCredential: '${escapeString(node.json.extendsCredential)}'`);
+	}
+}
+
 /**
  * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
  * Processes nested subnodes first so they're declared before their parents.
@@ -263,14 +300,15 @@ function generateSubnodeCallWithVarRefs(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
+	appendNodeConfigOptions(configParts, subnodeNode);
 
 	// Generate nested subnodes config using variable references
 	const nestedSubnodesConfig = generateSubnodesConfigWithVarRefs(subnodeNode, ctx);
@@ -389,8 +427,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
@@ -398,11 +436,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
-
-	// Include onError if set
-	if (node.json.onError) {
-		configParts.push(`onError: '${node.json.onError}'`);
-	}
+	appendNodeConfigOptions(configParts, node);
 
 	// Include subnodes config if this node has AI subnodes
 	// Use variable references if subnodes are declared as variables
@@ -588,8 +622,8 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
@@ -597,11 +631,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
-
-	// Include onError if set
-	if (node.json.onError) {
-		configParts.push(`onError: '${node.json.onError}'`);
-	}
+	appendNodeConfigOptions(configParts, node);
 
 	if (configParts.length > 0) {
 		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);

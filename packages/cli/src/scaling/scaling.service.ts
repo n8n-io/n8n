@@ -5,14 +5,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import {
-	BINARY_ENCODING,
-	sleep,
-	jsonStringify,
-	ensureError,
-	UnexpectedError,
-	ManualExecutionCancelledError,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -226,10 +219,12 @@ export class ScalingService {
 	async addJob(jobData: JobData, { priority }: { priority: number }) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
+		const { keepLastCompleted, keepLastFailed } = this.globalConfig.executions.queueRetention;
+
 		const jobOptions: JobOptions = {
 			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
+			removeOnComplete: keepLastCompleted,
+			removeOnFail: keepLastFailed,
 		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
@@ -264,8 +259,7 @@ export class ScalingService {
 		try {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
-				await job.discard(); // prevent retries
-				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
+				this.logger.debug('Sent abort signal to worker', props);
 				return true;
 			}
 

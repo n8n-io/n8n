@@ -5,9 +5,11 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import type {
+	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -101,11 +103,16 @@ export async function getExecutions(
 	return await makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
 }
 
-export async function getExecutionData(context: IRestApiContext, executionId: string) {
-	return await makeRestApiRequest<IExecutionResponse | null>(
+export async function getExecutionData(
+	context: IRestApiContext,
+	executionId: string,
+	queryParams?: ExecutionRedactionQueryDto,
+) {
+	return await makeRestApiRequest<IExecutionFlattedResponse | null>(
 		context,
 		'GET',
 		`/executions/${executionId}`,
+		queryParams,
 	);
 }
 

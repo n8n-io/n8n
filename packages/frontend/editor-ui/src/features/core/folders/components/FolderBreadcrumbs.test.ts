@@ -13,8 +13,7 @@ import { useFoldersStore } from '../folders.store';
 import type { IUser } from 'n8n-workflow';
 
 vi.mock('vue-router', async (importOriginal) => ({
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	...(await importOriginal<typeof import('vue-router')>()),
+	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({}),
 	useRouter: vi.fn(() => ({
 		replace: vi.fn(),

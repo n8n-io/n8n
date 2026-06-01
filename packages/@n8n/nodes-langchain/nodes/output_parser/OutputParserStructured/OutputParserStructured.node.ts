@@ -31,7 +31,7 @@ export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
 		name: 'outputParserStructured',
-		icon: 'fa:code',
+		icon: 'node:structured-output-parser',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
@@ -182,7 +182,7 @@ export class OutputParserStructured implements INodeType {
 			},
 		],
 		builderHint: {
-			message:
+			searchHint:
 				'Output data is wrapped in an "output" key, e.g. { "output": { "state": "California", "cities": ["San Francisco"] } }',
 			inputs: {
 				ai_languageModel: {

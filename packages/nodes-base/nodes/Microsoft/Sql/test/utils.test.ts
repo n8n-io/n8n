@@ -1,10 +1,12 @@
 import { Request } from 'mssql';
 import type { IResult } from 'mssql';
 import type mssql from 'mssql';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import {
 	configurePool,
+	copyInputItem,
+	createTableStruct,
 	deleteOperation,
 	escapeIdentifier,
 	escapeTableName,
@@ -341,6 +343,61 @@ describe('MSSQL tests', () => {
 				errorMessage,
 			);
 		});
+
+		it('should replace $1 with @p1 and bind the value', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users WHERE id = $1', 0, [42]);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE id = @p1');
+			assertParameters({ p1: 42 });
+		});
+
+		it('should replace multiple $N placeholders and bind all values', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM users WHERE age > $1 AND name = $2',
+				0,
+				[18, 'John'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE age > @p1 AND name = @p2');
+			assertParameters({ p1: 18, p2: 'John' });
+		});
+
+		it('should replace the same $N placeholder used multiple times', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE id = $1 OR parent_id = $1',
+				0,
+				['abc'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE id = @p1 OR parent_id = @p1');
+			assertParameters({ p1: 'abc' });
+		});
+
+		it('should not confuse $1 with $10 when replacing parameters', async () => {
+			const values = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'];
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE c1 = $1 AND c10 = $10',
+				0,
+				values,
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE c1 = @p1 AND c10 = @p10');
+			assertParameters({ p1: 'v1', p10: 'v10' });
+		});
+
+		it('should execute query without parameters when queryValues is empty', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0, []);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
 	});
 
 	describe('escapeIdentifier', () => {
@@ -372,6 +429,56 @@ describe('MSSQL tests', () => {
 			);
 			expect(escapeTableName('schema.[table]')).toEqual('[schema.[table]]]');
 			expect(escapeTableName('[schema].table')).toEqual('[[schema]].table]');
+		});
+	});
+
+	describe('createTableStruct', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		const makeGetParam =
+			(table: string, columns: string) =>
+			(param: string, _index: number): string => {
+				if (param === 'table') return table;
+				if (param === 'columns') return columns;
+				return '';
+			};
+
+		it('should build the correct struct for standard inputs', () => {
+			const items = [makeItem({ id: 1, name: 'Alice' })];
+			const result = createTableStruct(makeGetParam('users', 'id, name'), items);
+
+			expect(result).toEqual({
+				users: {
+					'id, name': [{ id: 1, name: 'Alice' }],
+				},
+			});
+		});
+
+		it('should group multiple items with the same table and columns', () => {
+			const items = [makeItem({ id: 1 }), makeItem({ id: 2 })];
+			const result = createTableStruct(makeGetParam('orders', 'id'), items);
+
+			expect(result.orders['id']).toHaveLength(2);
+		});
+	});
+
+	describe('copyInputItem', () => {
+		const makeItem = (json: IDataObject): INodeExecutionData => ({
+			json,
+			pairedItem: { item: 0 },
+		});
+
+		it('should copy specified properties from item json', () => {
+			const item = makeItem({ id: 1, name: 'Bob', age: 30 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: 'Bob' });
+		});
+
+		it('should set missing properties to null', () => {
+			const item = makeItem({ id: 1 });
+			expect(copyInputItem(item, ['id', 'name'])).toEqual({ id: 1, name: null });
 		});
 	});
 });

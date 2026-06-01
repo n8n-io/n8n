@@ -10,7 +10,35 @@
 			"Bash(pnpm test:*)",
 			"Bash(pnpm typecheck:*)",
 			"Bash(popd)",
-			"Bash(pushd:*)"
+			"Bash(pushd:*)",
+			"Bash(mkdir -p .claude/plans)",
+			"Write(.claude/plans/*)"
 		]
+	},
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Skill",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node .claude/plugins/n8n/scripts/track-skill-usage.mjs",
+						"timeout": 10,
+						"async": true
+					}
+				]
+			}
+		]
+	},
+	"extraKnownMarketplaces": {
+		"n8n": {
+			"source": {
+				"source": "directory",
+				"path": "./.claude/plugins/n8n"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"n8n@n8n": true
 	}
 }

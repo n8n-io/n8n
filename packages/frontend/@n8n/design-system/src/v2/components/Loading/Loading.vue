@@ -84,17 +84,7 @@ function isLastRow(index: number, total: number): boolean {
 </template>
 
 <style lang="scss" module>
-@keyframes skeleton-pulse {
-	0% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.4;
-	}
-	100% {
-		opacity: 1;
-	}
-}
+@use '../../../css/mixins/motion';
 
 .loading {
 	display: block;
@@ -111,7 +101,9 @@ function isLastRow(index: number, total: number): boolean {
 }
 
 .animated {
-	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	--animation--skeleton-pulse--duration: 1.5s;
+
+	@include motion.skeleton-pulse;
 }
 
 // Variant-specific styles

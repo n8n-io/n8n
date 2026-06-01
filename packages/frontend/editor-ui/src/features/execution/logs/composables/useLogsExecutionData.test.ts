@@ -14,7 +14,6 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
-import { stringify } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import {
 	injectWorkflowState,
@@ -116,9 +115,9 @@ describe(useLogsExecutionData, () => {
 			workflowsStore.fetchExecutionDataById.mockResolvedValueOnce(
 				createTestWorkflowExecutionResponse({
 					id: 'e1',
-					data: stringify({
+					data: {
 						resultData: { runData: { C: [createTestTaskData()] } },
-					}) as unknown as IRunExecutionData, // Data is stringified in actual API response
+					} as unknown as IRunExecutionData,
 					workflowData: createTestWorkflow({ id: 'w1', nodes: [createTestNode({ name: 'C' })] }),
 				}),
 			);

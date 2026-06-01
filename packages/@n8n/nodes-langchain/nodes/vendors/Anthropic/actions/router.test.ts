@@ -1,5 +1,6 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as document from './document';
 import * as file from './file';
@@ -10,11 +11,11 @@ import * as text from './text';
 
 describe('Anthropic router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockDocument = jest.spyOn(document.analyze, 'execute');
-	const mockFile = jest.spyOn(file.upload, 'execute');
-	const mockImage = jest.spyOn(image.analyze, 'execute');
-	const mockPrompt = jest.spyOn(prompt.generate, 'execute');
-	const mockText = jest.spyOn(text.message, 'execute');
+	const mockDocument = vi.spyOn(document.analyze, 'execute');
+	const mockFile = vi.spyOn(file.upload, 'execute');
+	const mockImage = vi.spyOn(image.analyze, 'execute');
+	const mockPrompt = vi.spyOn(prompt.generate, 'execute');
+	const mockText = vi.spyOn(text.message, 'execute');
 	const operationMocks = [
 		[mockDocument, 'document', 'analyze'],
 		[mockFile, 'file', 'upload'],
@@ -24,7 +25,7 @@ describe('Anthropic router', () => {
 	];
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
@@ -36,7 +37,7 @@ describe('Anthropic router', () => {
 				json: {},
 			},
 		]);
-		(mock as jest.Mock).mockResolvedValue([
+		(mock as Mock).mockResolvedValue([
 			{
 				json: {
 					foo: 'bar',

@@ -10,6 +10,10 @@ export const DEFAULT_OPERATION_MODES: NodeOperationMode[] = [
 	'retrieve-as-tool',
 ];
 
+// `mode` is a discriminator field, so per-option `builderHint`s here would never
+// surface in the generated `.d.ts` (discriminator props are dropped from narrowed
+// types). Per-mode guidance lives as node-level `extraTypeDefContent` variations
+// in `createVectorStoreNode.ts`, which the codegen routes per-combo.
 export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 	{
 		name: 'Get Many',

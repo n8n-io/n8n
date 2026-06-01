@@ -72,7 +72,7 @@ export abstract class TaskRequester {
 		private readonly eventService: EventService,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly globalConfig: GlobalConfig,
-		private readonly errorReporter: ErrorReporter,
+		protected readonly errorReporter: ErrorReporter,
 	) {}
 
 	setRunnerUnavailable(taskType: string, reason: string) {
@@ -442,7 +442,7 @@ export abstract class TaskRequester {
 				}
 			}
 
-			const data = (await func.call(funcs, ...params)) as unknown;
+			const data = await func.call(funcs, ...params);
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',

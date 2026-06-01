@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.12.0",
+  "version": "2.23.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -20,9 +20,10 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist",
@@ -30,6 +31,7 @@
   ],
   "devDependencies": {
     "@n8n/errors": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
@@ -37,7 +39,16 @@
     "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
-    "@types/xml2js": "catalog:"
+    "@types/xml2js": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "jest-mock-extended": "^3.0.4",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
@@ -54,7 +65,7 @@
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",
-    "cron": "4.4.0",
+    "cron": "catalog:",
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "catalog:",
@@ -78,7 +89,6 @@
     "ssh2": "1.15.0",
     "uuid": "catalog:",
     "winston": "3.14.2",
-    "xml2js": "catalog:",
-    "zod": "catalog:"
+    "xml2js": "catalog:"
   }
 }

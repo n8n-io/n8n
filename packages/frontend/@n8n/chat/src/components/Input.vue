@@ -90,10 +90,15 @@ onChange((newFiles) => {
 	files.value = newFilesDT.files;
 });
 
+function handleSetupWebsocket(executionId: string, resumeToken?: string) {
+	setupWebsocketConnection(executionId, resumeToken);
+}
+
 onMounted(() => {
 	chatEventBus.on('focusInput', focusChatInput);
 	chatEventBus.on('blurInput', blurChatInput);
 	chatEventBus.on('setInputValue', setInputValue);
+	chatEventBus.on('setupWebsocket', handleSetupWebsocket);
 
 	if (chatTextArea.value) {
 		resizeObserver.value = new ResizeObserver((entries) => {
@@ -113,6 +118,7 @@ onUnmounted(() => {
 	chatEventBus.off('focusInput', focusChatInput);
 	chatEventBus.off('blurInput', blurChatInput);
 	chatEventBus.off('setInputValue', setInputValue);
+	chatEventBus.off('setupWebsocket', handleSetupWebsocket);
 
 	if (resizeObserver.value) {
 		resizeObserver.value.disconnect();
@@ -148,7 +154,7 @@ function attachFiles() {
 	return [];
 }
 
-function setupWebsocketConnection(executionId: string) {
+function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
@@ -158,6 +164,7 @@ function setupWebsocketConnection(executionId: string) {
 				executionId,
 				chatStore.currentSessionId.value,
 				true,
+				resumeToken,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
 			chatStore.ws.onmessage = (e) => {
@@ -260,7 +267,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const response = await chatStore.sendMessage(messageText, attachFiles());
 
 	if (response?.executionId) {
-		setupWebsocketConnection(response.executionId);
+		setupWebsocketConnection(response.executionId, response.resumeToken);
 	}
 
 	// Emit event to reset message history navigation

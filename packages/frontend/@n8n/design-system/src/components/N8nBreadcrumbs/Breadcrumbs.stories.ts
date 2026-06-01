@@ -28,6 +28,15 @@ export default {
 			options: ['hover', 'click'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component:
+					'A hierarchical navigation trail showing the current location and parent levels.',
+			},
+		},
+	},
 };
 
 const items: PathItem[] = [

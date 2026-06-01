@@ -1,35 +1,25 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import type { NextFunction, Request, Response } from 'express';
-import { TokenExpiredError } from 'jsonwebtoken';
-import type { OpenAPIV3 } from 'openapi-types';
-
 import { JwtService } from './jwt.service';
-import { LastActiveAtService } from './last-active-at.service';
 
-import { EventService } from '@/events/event.service';
-
-const API_KEY_AUDIENCE = 'public-api';
-const API_KEY_ISSUER = 'n8n';
+export const API_KEY_AUDIENCE = 'public-api';
+export const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
-const PREFIX_LEGACY_API_KEY = 'n8n_api_';
+export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 
 @Service()
 export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
-		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
-		private readonly eventService: EventService,
-		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
 	/**
@@ -94,18 +84,6 @@ export class PublicApiKeyService {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
 	}
 
-	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey,
-					audience: API_KEY_AUDIENCE,
-				},
-			},
-			relations: ['role'],
-		});
-	}
-
 	/**
 	 * Redacts an API key by replacing a portion of it with asterisks.
 	 *
@@ -122,50 +100,6 @@ export class PublicApiKeyService {
 		);
 
 		return redactedPart + visiblePart;
-	}
-
-	getAuthMiddleware(version: string) {
-		return async (
-			req: AuthenticatedRequest,
-			_scopes: unknown,
-			schema: OpenAPIV3.ApiKeySecurityScheme,
-		): Promise<boolean> => {
-			const providedApiKey = req.headers[schema.name.toLowerCase()] as string;
-
-			const user = await this.getUserForApiKey(providedApiKey);
-
-			if (!user) return false;
-
-			if (user.disabled) return false;
-
-			// Legacy API keys are not JWTs and do not need to be verified.
-			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
-				try {
-					this.jwtService.verify(providedApiKey, {
-						issuer: API_KEY_ISSUER,
-						audience: API_KEY_AUDIENCE,
-					});
-				} catch (e) {
-					if (e instanceof TokenExpiredError) return false;
-					throw e;
-				}
-			}
-
-			this.eventService.emit('public-api-invoked', {
-				userId: user.id,
-				path: req.path,
-				method: req.method,
-				apiVersion: version,
-			});
-
-			req.user = user;
-
-			// TODO: ideally extract that to a dedicated middleware, but express-openapi-validator
-			// does not support middleware between authentication and operators
-			void this.lastActiveAtService.updateLastActiveIfStale(user.id);
-
-			return true;
-		};
 	}
 
 	private generateApiKey(user: User, expiresAt: UnixTimestamp) {
@@ -195,25 +129,6 @@ export class PublicApiKeyService {
 		if (!apiKeyData) return false;
 
 		return apiKeyData.scopes.includes(endpointScope);
-	}
-
-	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const apiKey = req.headers['x-n8n-api-key'];
-
-			if (apiKey === undefined || typeof apiKey !== 'string') {
-				res.status(401).json({ message: 'Unauthorized' });
-				return;
-			}
-
-			const valid = await this.apiKeyHasValidScopes(apiKey, endpointScope);
-
-			if (!valid) {
-				res.status(403).json({ message: 'Forbidden' });
-				return;
-			}
-			next();
-		};
 	}
 
 	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {

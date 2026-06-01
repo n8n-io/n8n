@@ -1,8 +1,10 @@
-import type {
-	IDisplayOptions,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	NodeOperationError,
+	type IDisplayOptions,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
@@ -29,7 +31,7 @@ export const description: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
-		displayName: 'Limit',
+		displayName: 'Limit Per Input Row',
 		name: 'limit',
 		type: 'number',
 		displayOptions: {
@@ -112,8 +114,13 @@ export async function execute(
 
 	if (orderBy) {
 		const column = this.getNodeParameter('orderByColumn', index, '') as string;
-		const direction = this.getNodeParameter('orderByDirection', index, 'ASC') as 'ASC' | 'DESC';
 		if (column) {
+			const availableColumns = await dataTableProxy.getColumns();
+			const isSystemColumn = DATA_TABLE_SYSTEM_COLUMNS.includes(column);
+			if (!isSystemColumn && !availableColumns.find((x) => x.name === column))
+				throw new NodeOperationError(this.getNode(), 'Specified column does not exist');
+
+			const direction = this.getNodeParameter('orderByDirection', index, 'ASC') as 'ASC' | 'DESC';
 			sortBy = [column, direction];
 		}
 	}

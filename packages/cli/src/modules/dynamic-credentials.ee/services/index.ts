@@ -3,3 +3,6 @@ export * from './credential-resolver.service';
 export * from './dynamic-credential.service';
 export * from './dynamic-credential-storage.service';
 export * from './credential-resolver-workflow.service';
+export * from './credential-check-proxy.service';
+export * from './n8n-resolver-seeder.service';
+export * from './credential-connection-status.service';

@@ -17,9 +17,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 
@@ -47,9 +45,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 
@@ -57,7 +53,7 @@ test.describe(
 			await n8n.canvas.openNode('DebugHelper');
 
 			await n8n.ndv.getEditPinnedDataButton().click();
-			const editor = n8n.ndv.outputPanel.get().locator('[contenteditable="true"]');
+			const editor = n8n.ndv.outputPanel.getContentEditableEditor();
 			await expect(editor).toContainText('"password":');
 			await expect(editor).toContainText('"uid":');
 		});

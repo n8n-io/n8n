@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { splitByComma, parseRegex } from '../../helpers/common';
 
 describe('common helper', () => {

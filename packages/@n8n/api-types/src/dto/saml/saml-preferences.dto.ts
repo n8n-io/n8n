@@ -46,6 +46,11 @@ export class SamlPreferences extends Z.class({
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
 
+	/** PEM-encoded private key for signing SAML AuthnRequests. Stored encrypted at rest. */
+	signingPrivateKey: z.string().optional(),
+	/** PEM-encoded certificate containing the public key matching signingPrivateKey. */
+	signingCertificate: z.string().optional(),
+
 	acsBinding: SamlLoginBindingSchema.default('post'),
 	signatureConfig: SignatureConfigSchema.default({
 		prefix: 'ds',

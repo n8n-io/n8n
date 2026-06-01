@@ -8,7 +8,12 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sanitizeXmlName,
+} from 'n8n-workflow';
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
@@ -1135,22 +1140,30 @@ export class NextCloud implements INodeType {
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData as string, { explicitArray: false }, (err, data) => {
-							if (err) {
-								return reject(err);
-							}
+						parseString(
+							responseData as string,
+							{
+								explicitArray: false,
+								tagNameProcessors: [sanitizeXmlName],
+								attrNameProcessors: [sanitizeXmlName],
+							},
+							(err, data) => {
+								if (err) {
+									return reject(err);
+								}
 
-							if (data.ocs.meta.status !== 'ok') {
-								return reject(
-									new NodeApiError(
-										this.getNode(),
-										(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
-									),
-								);
-							}
+								if (data.ocs.meta.status !== 'ok') {
+									return reject(
+										new NodeApiError(
+											this.getNode(),
+											(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
+										),
+									);
+								}
 
-							resolve(data.ocs.data as IDataObject);
-						});
+								resolve(data.ocs.data as IDataObject);
+							},
+						);
 					});
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -1162,26 +1175,34 @@ export class NextCloud implements INodeType {
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-							parseString(responseData as string, { explicitArray: false }, (err, data) => {
-								if (err) {
-									return reject(err);
-								}
+							parseString(
+								responseData as string,
+								{
+									explicitArray: false,
+									tagNameProcessors: [sanitizeXmlName],
+									attrNameProcessors: [sanitizeXmlName],
+								},
+								(err, data) => {
+									if (err) {
+										return reject(err);
+									}
 
-								if (data.ocs.meta.status !== 'ok') {
-									return reject(
-										new NodeApiError(
-											this.getNode(),
-											(data.ocs.meta.message || data.ocs.meta.status) as JsonObject,
-										),
-									);
-								}
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(
+												this.getNode(),
+												(data.ocs.meta.message || data.ocs.meta.status) as JsonObject,
+											),
+										);
+									}
 
-								if (operation === 'delete' || operation === 'update') {
-									resolve(data.ocs.meta as IDataObject);
-								} else {
-									resolve(data.ocs.data as IDataObject);
-								}
-							});
+									if (operation === 'delete' || operation === 'update') {
+										resolve(data.ocs.meta as IDataObject);
+									} else {
+										resolve(data.ocs.data as IDataObject);
+									}
+								},
+							);
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -1192,23 +1213,31 @@ export class NextCloud implements INodeType {
 						returnData.push(...executionData);
 					} else {
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
-							parseString(responseData as string, { explicitArray: false }, (err, data) => {
-								if (err) {
-									return reject(err);
-								}
+							parseString(
+								responseData as string,
+								{
+									explicitArray: false,
+									tagNameProcessors: [sanitizeXmlName],
+									attrNameProcessors: [sanitizeXmlName],
+								},
+								(err, data) => {
+									if (err) {
+										return reject(err);
+									}
 
-								if (data.ocs.meta.status !== 'ok') {
-									return reject(
-										new NodeApiError(this.getNode(), data.ocs.meta.message as JsonObject),
-									);
-								}
+									if (data.ocs.meta.status !== 'ok') {
+										return reject(
+											new NodeApiError(this.getNode(), data.ocs.meta.message as JsonObject),
+										);
+									}
 
-								if (typeof data.ocs.data.users.element === 'string') {
-									resolve([data.ocs.data.users.element] as IDataObject[]);
-								} else {
-									resolve(data.ocs.data.users.element as IDataObject[]);
-								}
-							});
+									if (typeof data.ocs.data.users.element === 'string') {
+										resolve([data.ocs.data.users.element] as IDataObject[]);
+									} else {
+										resolve(data.ocs.data.users.element as IDataObject[]);
+									}
+								},
+							);
 						});
 
 						jsonResponseData.forEach((value) => {
@@ -1217,12 +1246,20 @@ export class NextCloud implements INodeType {
 					}
 				} else if (resource === 'folder' && operation === 'list') {
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData as string, { explicitArray: false }, (err, data) => {
-							if (err) {
-								return reject(err);
-							}
-							resolve(data as IDataObject);
-						});
+						parseString(
+							responseData as string,
+							{
+								explicitArray: false,
+								tagNameProcessors: [sanitizeXmlName],
+								attrNameProcessors: [sanitizeXmlName],
+							},
+							(err, data) => {
+								if (err) {
+									return reject(err);
+								}
+								resolve(data as IDataObject);
+							},
+						);
 					});
 
 					const propNames: { [key: string]: string } = {

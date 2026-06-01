@@ -146,7 +146,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		// Note: connection can be undefined if called after a delete operation.
 		// Skip disabled connections — they should not be loaded into the provider registry.
 		if (connection?.isEnabled) {
-			const settings = this.decryptSettings(connection.encryptedSettings);
+			const settings = await this.decryptSettings(connection.encryptedSettings);
 			await this.setupProvider(
 				connection.type,
 				{ connected: true, connectedAt: null, settings },
@@ -318,7 +318,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 			if (!connection.isEnabled) continue;
 
-			const settings: SecretsProviderSettings['settings'] = this.decryptSettings(
+			const settings: SecretsProviderSettings['settings'] = await this.decryptSettings(
 				connection.encryptedSettings,
 			);
 
@@ -392,9 +392,11 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}
 	}
 
-	private decryptSettings(encryptedData: string): SecretsProviderSettings['settings'] {
+	private async decryptSettings(
+		encryptedData: string,
+	): Promise<SecretsProviderSettings['settings']> {
 		try {
-			const decryptedData = this.cipher.decrypt(encryptedData);
+			const decryptedData = await this.cipher.decryptV2(encryptedData);
 			return jsonParse<SecretsProviderSettings['settings']>(decryptedData);
 		} catch (e) {
 			this.logger.error('Failed to decrypt external secrets settings', { error: e });

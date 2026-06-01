@@ -3,6 +3,15 @@ import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
+/** Maximum allowed size for pinned data in bytes (12 MB) */
+export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12;
+
+/** Maximum allowed workflow size in bytes (16 MB) */
+export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16;
+
+/** Expected maximum workflow request metadata (i.e. headers) size in bytes (~2 KB) */
+export const MAX_EXPECTED_REQUEST_SIZE = 2048;
+
 export const workflowNameSchema = z
 	.string()
 	.min(1, { message: 'Workflow name is required' })
@@ -61,6 +70,14 @@ export const workflowPinDataSchema = z.custom<IPinData | null>(
 
 export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 
+const workflowGroupSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	nodeIds: z.array(z.string().min(1)),
+});
+
+export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
+
 /**
  * Base workflow shape containing fields shared between Create and Update DTOs.
  */
@@ -76,6 +93,7 @@ export const baseWorkflowShape = {
 	staticData: workflowStaticDataSchema.optional(),
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
+	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
 	// Folder organization

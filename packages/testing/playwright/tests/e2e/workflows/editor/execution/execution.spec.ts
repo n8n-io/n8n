@@ -147,7 +147,7 @@ test.describe(
 			await n8n.canvas.openNode('Webhook');
 
 			await n8n.clipboard.grant();
-			await n8n.page.getByTestId('copy-input').click();
+			await n8n.ndv.getCopyInputButton().click();
 			await n8n.ndv.clickBackToCanvasButton();
 
 			const webhookUrl = await n8n.clipboard.readText();
@@ -197,7 +197,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('Trigger A');
 
 			await n8n.ndv.clickBackToCanvasButton();
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 
 			await n8n.canvas.nodeByName('Trigger B').hover();
 			await expect(n8n.canvas.getExecuteWorkflowButton('Trigger A')).toHaveCSS('opacity', '0');

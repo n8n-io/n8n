@@ -527,8 +527,8 @@ describe('New SDK API', () => {
 
 			// HTTP output 0 -> Success
 			expect(json.connections['HTTP'].main[0]![0].node).toBe('Success');
-			// HTTP error output -> Error (via error connection type)
-			expect(json.connections['HTTP'].error[0]![0].node).toBe('Error');
+			// HTTP error output -> Error (modern format: error pin at main[1])
+			expect(json.connections['HTTP'].main[1]![0].node).toBe('Error');
 		});
 	});
 
@@ -763,9 +763,126 @@ describe('New SDK API', () => {
 
 			// Both success and error paths should converge at Notify
 			expect(json.connections['Risky API Call'].main[0]![0].node).toBe('Process Success');
-			expect(json.connections['Risky API Call'].error[0]![0].node).toBe('Handle Error');
+			expect(json.connections['Risky API Call'].main[1]![0].node).toBe('Handle Error');
 			expect(json.connections['Process Success'].main[0]![0].node).toBe('Notify');
 			expect(json.connections['Handle Error'].main[0]![0].node).toBe('Notify');
+		});
+	});
+
+	describe('Nested control-flow targets', () => {
+		it('allows ifElse.onTrue(splitInBatchesBuilder)', () => {
+			const t = createTrigger('Start');
+			const ifNode = createIfNode('HasItems?');
+			const sibNode = createSplitInBatchesNode('Loop');
+			const processNode = createNode('Process');
+			const doneNode = createNode('Done');
+
+			const loop = splitInBatches(sibNode).onEachBatch(processNode).onDone(doneNode);
+
+			const wf = workflow('test', 'Test').add(t).to(ifNode.onTrue!(loop).onFalse(null));
+
+			const json = wf.toJSON();
+
+			// IF true output wires to the SIB node (head of the nested builder)
+			expect(json.connections['HasItems?'].main[0]![0].node).toBe('Loop');
+			// SIB branches are wired by the SIB handler
+			expect(json.connections['Loop'].main[0]![0].node).toBe('Done');
+			expect(json.connections['Loop'].main[1]![0].node).toBe('Process');
+		});
+
+		it('allows ifElse.onFalse(splitInBatchesBuilder)', () => {
+			const t = createTrigger('Start');
+			const ifNode = createIfNode('Flag?');
+			const sibNode = createSplitInBatchesNode('Loop');
+			const processNode = createNode('Process');
+			const successNode = createNode('Success');
+
+			const loop = splitInBatches(sibNode).onEachBatch(processNode);
+
+			const wf = workflow('test', 'Test').add(t).to(ifNode.onTrue!(successNode).onFalse(loop));
+
+			const json = wf.toJSON();
+
+			expect(json.connections['Flag?'].main[0]![0].node).toBe('Success');
+			expect(json.connections['Flag?'].main[1]![0].node).toBe('Loop');
+			expect(json.connections['Loop'].main[1]![0].node).toBe('Process');
+		});
+
+		it('allows ifElse.onError(splitInBatchesBuilder)', () => {
+			const t = createTrigger('Start');
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: {
+					name: 'Gate',
+					onError: 'continueErrorOutput',
+					parameters: {
+						conditions: {
+							conditions: [
+								{
+									leftValue: '={{ $json.value }}',
+									operator: { type: 'boolean', operation: 'true' },
+								},
+							],
+						},
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const sibNode = createSplitInBatchesNode('ErrorLoop');
+			const recover = createNode('Recover');
+			const ok = createNode('OK');
+
+			const loop = splitInBatches(sibNode).onEachBatch(recover);
+
+			const wf = workflow('test', 'Test').add(t).to(ifNode.onTrue!(ok).onFalse(null).onError(loop));
+
+			const json = wf.toJSON();
+
+			// IF with onError='continueErrorOutput' emits three main outputs: true/false/error.
+			// The error branch lands on output 2 and points at the SIB head.
+			expect(json.connections['Gate'].main[2]![0].node).toBe('ErrorLoop');
+		});
+
+		it('allows switch.onCase(n, splitInBatchesBuilder)', () => {
+			const t = createTrigger('Start');
+			const switchNode = createSwitchNode('Route');
+			const sibNode = createSplitInBatchesNode('BatchA');
+			const processA = createNode('ProcessA');
+			const simple = createNode('Simple');
+
+			const loop = splitInBatches(sibNode).onEachBatch(processA);
+
+			const wf = workflow('test', 'Test').add(t).to(switchNode.onCase!(0, loop).onCase(1, simple));
+
+			const json = wf.toJSON();
+
+			expect(json.connections['Route'].main[0]![0].node).toBe('BatchA');
+			expect(json.connections['Route'].main[1]![0].node).toBe('Simple');
+		});
+
+		it('allows splitInBatches.onEachBatch(ifElseBuilder)', () => {
+			const t = createTrigger('Start');
+			const sibNode = createSplitInBatchesNode('Loop');
+			const ifNode = createIfNode('PerItem');
+			const hit = createNode('Hit');
+			const miss = createNode('Miss');
+			const finalize = createNode('Finalize');
+
+			const loop = splitInBatches(sibNode)
+				.onEachBatch(ifNode.onTrue!(hit).onFalse(miss))
+				.onDone(finalize);
+
+			const wf = workflow('test', 'Test').add(t).to(loop);
+
+			const json = wf.toJSON();
+
+			// SIB each output (index 1) -> IF head
+			expect(json.connections['Loop'].main[1]![0].node).toBe('PerItem');
+			// IF branches materialised
+			expect(json.connections['PerItem'].main[0]![0].node).toBe('Hit');
+			expect(json.connections['PerItem'].main[1]![0].node).toBe('Miss');
+			// Done output wired to finalize
+			expect(json.connections['Loop'].main[0]![0].node).toBe('Finalize');
 		});
 	});
 });

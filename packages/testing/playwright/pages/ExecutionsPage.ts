@@ -4,6 +4,11 @@ import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
+	async goto(projectId?: string) {
+		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
+		await this.page.goto(url);
+	}
+
 	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
@@ -46,6 +51,10 @@ export class ExecutionsPage extends BasePage {
 
 	getExecutionsList(): Locator {
 		return this.page.getByTestId('current-executions-list');
+	}
+
+	getGlobalExecutionItems(): Locator {
+		return this.page.getByTestId('global-execution-list-item');
 	}
 
 	getExecutionsSidebar(): Locator {

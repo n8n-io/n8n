@@ -27,6 +27,10 @@ interface VaultSettings {
 	// AppRole
 	roleId: string;
 	secretId: string;
+
+	// Manual KV configuration (bypasses sys/mounts auto-discovery)
+	kvMountPath?: string;
+	kvVersion?: string;
 }
 
 interface VaultResponse<T> {
@@ -211,6 +215,31 @@ export class VaultProvider extends SecretsProvider {
 					authMethod: ['appRole'],
 				},
 			},
+		},
+
+		// Manual KV configuration
+		{
+			displayName: 'KV Mount Path (optional)',
+			name: 'kvMountPath',
+			type: 'string',
+			default: '',
+			required: false,
+			noDataExpression: true,
+			placeholder: 'e.g. secret/',
+			hint: 'Specify the KV engine mount path to skip sys/mounts auto-discovery. Leave blank to auto-detect.',
+		},
+		{
+			displayName: 'KV Version',
+			name: 'kvVersion',
+			type: 'options',
+			default: '2',
+			required: false,
+			noDataExpression: true,
+			options: [
+				{ name: 'v1', value: '1' },
+				{ name: 'v2', value: '2' },
+			],
+			hint: 'Only used when KV Mount Path is specified.',
 		},
 	];
 
@@ -449,28 +478,82 @@ export class VaultProvider extends SecretsProvider {
 		return [name, data];
 	}
 
-	async update(): Promise<void> {
-		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
+	private normalizeKvPath(mountPath: string): string {
+		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
+	}
 
-		const kvs = Object.entries(mounts.data.data).filter(([, v]) => v.type === 'kv');
+	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
+		const { kvMountPath, kvVersion } = this.settings;
+
+		if (kvMountPath) {
+			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+		}
+
+		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
+		const kvMounts = Object.entries(mounts.data.data).filter(([, mount]) => mount.type === 'kv');
+
+		return kvMounts
+			.map(([basePath, mount]) => {
+				const version = mount.options?.version;
+				if (typeof version !== 'string') {
+					this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
+					return null;
+				}
+				return { path: basePath, version };
+			})
+			.filter((entry): entry is { path: string; version: string } => entry !== null);
+	}
+
+	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
+		const { kvMountPath, kvVersion } = this.settings;
+
+		let listUrl: string;
+		let forbiddenMessage: string;
+		let failureMessage: (status: number) => string;
+
+		if (kvMountPath) {
+			const normalizedPath = this.normalizeKvPath(kvMountPath);
+			const version = kvVersion ?? '2';
+			listUrl =
+				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
+			forbiddenMessage = `Permission denied accessing ${kvMountPath}. Check your token policies.`;
+			failureMessage = (status) =>
+				`Could not access KV mount at ${kvMountPath} (status ${status}).`;
+		} else {
+			listUrl = 'sys/mounts';
+			forbiddenMessage =
+				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.";
+			failureMessage = () =>
+				"Couldn't list mounts but it wasn't a permissions issue. Please consult your Vault admin.";
+		}
+
+		const resp = await this.#http.get(listUrl, { validateStatus: () => true });
+
+		if (resp.status === 403) {
+			return [false, forbiddenMessage];
+		}
+		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
+		if (resp.status === 200 || (kvMountPath && resp.status === 404)) {
+			return [true];
+		}
+		return [false, failureMessage(resp.status)];
+	}
+
+	async update(): Promise<void> {
+		const kvMounts = await this.discoverKvMounts();
 
 		const secrets = Object.fromEntries(
 			(
 				await Promise.all(
-					kvs.map(async ([basePath, data]): Promise<[string, IDataObject] | null> => {
-						const version = data.options?.version;
-						if (typeof version !== 'string') {
-							this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
-							return null;
-						}
-						const value = await this.getKVSecrets(basePath, version, '');
+					kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
+						const value = await this.getKVSecrets(path, version, '');
 						if (value === null) {
 							return null;
 						}
-						return [basePath.substring(0, basePath.length - 1), value[1]];
+						return [path.substring(0, path.length - 1), value[1]];
 					}),
 				)
-			).filter((v): v is [string, IDataObject] => v !== null),
+			).filter((entry): entry is [string, IDataObject] => entry !== null),
 		);
 		this.cachedSecrets = secrets;
 		this.logger.debug('Vault provider secrets updated');
@@ -487,29 +570,10 @@ export class VaultProvider extends SecretsProvider {
 				return [false, 'Invalid credentials'];
 			}
 
-			const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
-				method: 'GET',
-				url: 'sys/mounts',
-				responseType: 'json',
-				validateStatus: () => true,
-			});
-
-			if (resp.status === 403) {
-				return [
-					false,
-					"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.",
-				];
-			} else if (resp.status !== 200) {
-				return [
-					false,
-					"Couldn't list mounts but wasn't a permissions issue. Please consult your Vault admin.",
-				];
-			}
-
-			return [true];
-		} catch (e) {
-			if (axios.isAxiosError(e)) {
-				if (e.code === 'ECONNREFUSED') {
+			return await this.testSecretAccess();
+		} catch (error) {
+			if (axios.isAxiosError(error)) {
+				if (error.code === 'ECONNREFUSED') {
 					return [
 						false,
 						'Connection refused. Please check the host and port of the server are correct.',
