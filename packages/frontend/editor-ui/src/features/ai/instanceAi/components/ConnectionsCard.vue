@@ -101,7 +101,10 @@ function openMcpSettings(connectionId: string) {
 		mcpTelemetry.trackSettingsOpened(connection.serverSlug);
 	}
 	mcpTelemetry.trackModalOpened();
-	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
+	uiStore.openModalWithData({
+		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
+		data: { connectionId },
+	});
 }
 
 onMounted(() => {
