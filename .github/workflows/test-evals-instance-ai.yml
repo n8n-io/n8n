@@ -74,7 +74,7 @@ jobs:
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
-        run: pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-sandbox-ci
+        run: pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
 
       - name: Start n8n containers
         env:
@@ -284,7 +284,7 @@ jobs:
           done
 
           # Sandbox service container logs (when using n8n-sandbox provider)
-          for c in $(docker ps -aq --filter "label=com.docker.compose.project=n8n-sandbox-ci"); do
+          for c in $(docker ps -aq --filter "label=com.docker.compose.project=n8n-svc-sandbox"); do
             name=$(docker inspect --format '{{.Name}}' "$c" | sed 's|^/||')
             echo ""
             echo "============================================================"
@@ -301,12 +301,8 @@ jobs:
             docker stop "${ids[@]}" 2>/dev/null || true
             docker rm "${ids[@]}" 2>/dev/null || true
           fi
-          # Sandbox service cleanup (containers are labelled by project name)
-          mapfile -t sandbox_ids < <(docker ps -aq --filter "label=com.docker.compose.project=n8n-sandbox-ci")
-          if [ "${#sandbox_ids[@]}" -gt 0 ]; then
-            docker stop "${sandbox_ids[@]}" 2>/dev/null || true
-            docker rm "${sandbox_ids[@]}" 2>/dev/null || true
-          fi
+          # Sandbox service cleanup
+          pnpm --filter n8n-containers services:clean 2>/dev/null || true
           docker network rm n8n-eval-net 2>/dev/null || true
 
       - name: Post eval results to PR
