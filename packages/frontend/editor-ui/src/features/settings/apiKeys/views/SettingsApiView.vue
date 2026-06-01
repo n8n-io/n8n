@@ -180,6 +180,7 @@ function onEdit(id: string) {
 				:current-page="page"
 				:page-size="pageSize"
 				:total="apiKeysCount"
+				layout="total, prev, pager, next"
 				data-test-id="api-keys-pagination"
 				@current-change="onPageChange"
 			/>
@@ -292,7 +293,7 @@ function onEdit(id: string) {
 
 .pagination {
 	display: flex;
-	justify-content: center;
+	justify-content: flex-end;
 	margin-top: var(--spacing--sm);
 }
 </style>
