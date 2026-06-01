@@ -1,4 +1,9 @@
-import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
+import type {
+	OrchestrationContext,
+	PlannedTaskGraph,
+	PlannedTaskRecord,
+	PlannedTaskService,
+} from '../../../types';
 import { BlueprintAccumulator } from '../blueprint-accumulator';
 
 const {
@@ -106,9 +111,23 @@ describe('clearPlannedTaskGraph', () => {
 });
 
 describe('rehydrateAccumulatorFromGraph (resume revision flow)', () => {
-	const persistedTasks = [
-		{ id: 'wf-1', title: "Build 'A' workflow", kind: 'build-workflow', spec: 'A', deps: [] },
-		{ id: 'wf-2', title: "Build 'B' workflow", kind: 'build-workflow', spec: 'B', deps: [] },
+	const persistedTasks: PlannedTaskRecord[] = [
+		{
+			id: 'wf-1',
+			title: "Build 'A' workflow",
+			kind: 'build-workflow',
+			spec: 'A',
+			deps: [],
+			status: 'planned',
+		},
+		{
+			id: 'wf-2',
+			title: "Build 'B' workflow",
+			kind: 'build-workflow',
+			spec: 'B',
+			deps: [],
+			status: 'planned',
+		},
 	];
 
 	it('seeds the accumulator from an awaiting-approval graph so a revision keeps originals', async () => {
