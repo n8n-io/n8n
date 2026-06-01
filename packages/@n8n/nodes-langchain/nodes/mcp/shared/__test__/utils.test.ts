@@ -5,7 +5,7 @@ import { proxyFetch } from '@n8n/ai-utilities';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
-import { expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
 import {
@@ -197,6 +197,7 @@ describe('utils', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 			vi.restoreAllMocks();
+			mockClient.close = vi.fn();
 			mockClient.close.mockResolvedValue(undefined);
 
 			MockedClient.mockImplementation(function () {
@@ -288,7 +289,10 @@ describe('utils', () => {
 				const abort = new AbortController();
 				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
 
-				await connectMcpClient({
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					name: 'test-client',
@@ -296,17 +300,25 @@ describe('utils', () => {
 					signal: abort.signal,
 				});
 
+				expect(result.ok).toBe(true);
 				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
 					once: true,
 				});
+
+				// Trigger the abort; the listener will call client.close (the wrapper)
 				expect(() => abort.abort()).not.toThrow();
 				await Promise.resolve();
-				expect(mockClient.close).toHaveBeenCalledTimes(1);
+
+				// The original close function should have been called exactly once
+				expect(closeSpy).toHaveBeenCalledTimes(1);
 			});
 
-			it('should allow the returned client to close normally and close again on later abort', async () => {
+			it('should remove the abort listener on normal close, preventing double-close on later abort', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 				const abort = new AbortController();
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
@@ -318,11 +330,14 @@ describe('utils', () => {
 
 				expect(result.ok).toBe(true);
 				if (result.ok) {
+					// Normal close – triggers the wrapper, which removes the listener and calls originalClose
 					await result.result.close();
 				}
-				abort.abort();
+				abort.abort(); // listener already removed, should not call close again
 				await Promise.resolve();
-				expect(mockClient.close).toHaveBeenCalledTimes(2);
+
+				// Original close called exactly once (not twice)
+				expect(closeSpy).toHaveBeenCalledTimes(1);
 			});
 
 			it('should return auth error on 401 during connect', async () => {

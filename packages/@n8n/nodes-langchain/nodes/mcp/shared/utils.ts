@@ -167,16 +167,23 @@ export async function connectMcpClient({
 	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
+	let onAbort: (() => void) | undefined;
 	if (signal) {
-		// client.close() is safe to call before connect() completes or after
-		// it has already been closed -- both are idempotent no-ops in the SDK.
-		signal.addEventListener(
-			'abort',
-			() => {
-				Promise.resolve(client.close()).catch(() => {});
-			},
-			{ once: true },
-		);
+		onAbort = () => {
+			Promise.resolve(client.close()).catch(() => {});
+		};
+		signal.addEventListener('abort', onAbort, { once: true });
+
+		// Clean up the listener when the client is closed normally,
+		// preventing accumulation of dead client references for long-running agents.
+		const originalClose = client.close.bind(client);
+		client.close = async () => {
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
+			await originalClose();
+		};
 	}
 
 	if (signal?.aborted) {
