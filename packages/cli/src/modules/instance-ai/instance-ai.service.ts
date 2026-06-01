@@ -2593,7 +2593,8 @@ export class InstanceAiService {
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
-		if (adminSettings.sandboxEnabled) {
+		const sandboxStatus = this.settingsService.getSandboxStatus();
+		if (sandboxStatus.workflowBuilderAvailable) {
 			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
 			const getSandboxEntry = async () => {
 				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(

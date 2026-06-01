@@ -76,6 +76,9 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	localGatewayDisabled: false,
 	proxyEnabled: false,
 	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
 };
 
 describe('SettingsInstanceAiView', () => {

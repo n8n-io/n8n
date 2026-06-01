@@ -1018,6 +1018,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
+				getSandboxStatus: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
@@ -1055,6 +1056,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: jest.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
@@ -1154,6 +1161,34 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+		(createLazyRuntimeWorkspace as jest.Mock).mockClear();
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockClear();
+		(createSandbox as jest.Mock).mockClear();
+		(setupSandboxWorkspace as jest.Mock).mockClear();
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockClear();
+		service.settingsService.getSandboxStatus.mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			workflowBuilderAvailable: false,
+			unavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+		});
+
+		const unavailableEnvironment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-2',
+			'run-2',
+			new AbortController().signal,
+		);
+
+		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
+		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
+		expect(createSandbox).not.toHaveBeenCalled();
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 });
 

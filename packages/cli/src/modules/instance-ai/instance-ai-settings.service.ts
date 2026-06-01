@@ -6,6 +6,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
+	InstanceAiSandboxProvider,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -32,6 +33,13 @@ import {
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
+
+export interface InstanceAiSandboxStatus {
+	enabled: boolean;
+	provider: InstanceAiSandboxProvider;
+	workflowBuilderAvailable: boolean;
+	unavailableReason: string | null;
+}
 
 /** Credential types we support and their model provider mapping. */
 const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
@@ -149,14 +157,17 @@ export class InstanceAiSettingsService {
 		const overridden =
 			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
 			c.sandboxProvider !== envSnapshot.sandboxProvider;
-		Container.get(Logger)
-			.scoped('instance-ai')
-			.info(
-				`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
-					(overridden
-						? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
-						: ' (from env)'),
-			);
+		const logger = Container.get(Logger).scoped('instance-ai');
+		logger.info(
+			`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
+				(overridden
+					? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
+					: ' (from env)'),
+		);
+		const sandboxStatus = this.getSandboxStatus();
+		if (sandboxStatus.unavailableReason) {
+			logger.warn(`Sandbox unavailable: ${sandboxStatus.unavailableReason}`);
+		}
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -430,6 +441,22 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	/** Whether workflow building can use the required sandbox workspace. */
+	getSandboxStatus(): InstanceAiSandboxStatus {
+		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
+		const unavailableReason = this.getSandboxUnavailableReason(
+			this.config.sandboxEnabled,
+			provider,
+		);
+
+		return {
+			enabled: this.config.sandboxEnabled,
+			provider,
+			workflowBuilderAvailable: this.config.sandboxEnabled && unavailableReason === null,
+			unavailableReason,
+		};
+	}
+
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
 		return this.enabled;
@@ -533,18 +560,41 @@ export class InstanceAiSettingsService {
 
 	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
 		const c = this.config;
+		const touchesSandboxSettings =
+			update.sandboxEnabled !== undefined ||
+			update.sandboxProvider !== undefined ||
+			update.sandboxImage !== undefined ||
+			update.sandboxTimeout !== undefined ||
+			update.daytonaCredentialId !== undefined ||
+			update.n8nSandboxCredentialId !== undefined;
+		if (!touchesSandboxSettings) {
+			return;
+		}
+
 		// `update.sandboxProvider` is already enum-validated by the request DTO; we only
 		// need the resolved provider here to enforce the cross-field service-URL rule,
 		// which spans the request body and env-backed config and can't live in the schema.
 		const sandboxProvider = update.sandboxProvider ?? normalizeSandboxProvider(c.sandboxProvider);
 		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
+		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
+		if (unavailableReason) {
+			throw new UnprocessableRequestError(unavailableReason);
+		}
+	}
+
+	private getSandboxUnavailableReason(
+		sandboxEnabled: boolean,
+		sandboxProvider: InstanceAiSandboxProvider,
+	): string | null {
 		if (
 			sandboxEnabled &&
 			sandboxProvider === 'n8n-sandbox' &&
-			c.n8nSandboxServiceUrl.trim().length === 0
+			this.config.n8nSandboxServiceUrl.trim().length === 0
 		) {
-			throw new UnprocessableRequestError(N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE);
+			return N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE;
 		}
+
+		return null;
 	}
 
 	private envVarModelConfig(): ModelConfig {

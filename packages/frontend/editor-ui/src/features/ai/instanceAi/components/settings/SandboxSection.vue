@@ -191,6 +191,9 @@ watch(
 						:label="i18n.baseText('instanceAi.settings.credential.createNew')"
 					/>
 				</N8nSelect>
+				<p :class="$style.hint">
+					{{ i18n.baseText('instanceAi.settings.n8nSandbox.serviceUrlHint' as BaseTextKey) }}
+				</p>
 			</N8nInputLabel>
 		</template>
 
@@ -244,6 +247,13 @@ watch(
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.hint {
+	margin: var(--spacing--4xs) 0 0;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-1);
 }
 </style>
