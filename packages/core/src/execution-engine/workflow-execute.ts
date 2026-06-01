@@ -88,6 +88,25 @@ import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
 
+function shouldContinueOnFail(node: INode | undefined) {
+	if (!node) return false;
+
+	return (
+		node.continueOnFail === true ||
+		['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '')
+	);
+}
+
+function getAiToolRequestingNode(executionData: IExecuteData, workflow: Workflow) {
+	if (!executionData.node.rewireOutputLogTo) return undefined;
+
+	const parentNodeName = executionData.source?.main?.find(
+		(source) => source !== null && source !== undefined,
+	)?.previousNode;
+
+	return parentNodeName ? (workflow.getNode(parentNodeName) ?? undefined) : undefined;
+}
+
 interface RunWorkflowOptions {
 	workflow: Workflow;
 	startNode?: INode;
@@ -1956,14 +1975,19 @@ export class WorkflowExecute {
 							},
 						]);
 
+						const requestingAiToolNode = getAiToolRequestingNode(executionData, workflow);
+
 						if (
-							executionData.node.continueOnFail === true ||
-							['continueRegularOutput', 'continueErrorOutput'].includes(
-								executionData.node.onError || '',
-							)
+							shouldContinueOnFail(executionData.node) ||
+							shouldContinueOnFail(requestingAiToolNode)
 						) {
 							// Workflow should continue running even if node errors
-							if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
+							if (requestingAiToolNode && executionNode.rewireOutputLogTo) {
+								nodeSuccessData = [[{ json: { error: executionError.message } }]];
+							} else if (
+								Object.hasOwn(executionData.data, 'main') &&
+								executionData.data.main.length > 0
+							) {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {
