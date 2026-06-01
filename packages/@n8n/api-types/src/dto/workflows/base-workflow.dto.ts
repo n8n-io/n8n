@@ -70,6 +70,14 @@ export const workflowPinDataSchema = z.custom<IPinData | null>(
 
 export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 
+const workflowGroupSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	nodeIds: z.array(z.string().min(1)),
+});
+
+export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
+
 /**
  * Base workflow shape containing fields shared between Create and Update DTOs.
  */
@@ -85,6 +93,7 @@ export const baseWorkflowShape = {
 	staticData: workflowStaticDataSchema.optional(),
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
+	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
 	// Folder organization

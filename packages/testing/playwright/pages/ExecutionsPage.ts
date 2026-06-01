@@ -53,6 +53,10 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('current-executions-list');
 	}
 
+	getGlobalExecutionItems(): Locator {
+		return this.page.getByTestId('global-execution-list-item');
+	}
+
 	getExecutionsSidebar(): Locator {
 		return this.page.getByTestId('executions-sidebar');
 	}

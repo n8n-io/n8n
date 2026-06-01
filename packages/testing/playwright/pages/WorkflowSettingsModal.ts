@@ -64,7 +64,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getArchiveMenuItemWrapper(): Locator {
-		return this.getArchiveMenuItem().locator('..');
+		return this.getArchiveMenuItem();
 	}
 
 	getUnarchiveMenuItem(): Locator {

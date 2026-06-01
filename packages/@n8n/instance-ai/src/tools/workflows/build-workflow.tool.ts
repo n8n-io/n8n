@@ -1,4 +1,4 @@
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
@@ -52,21 +52,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// and always match the LLM's own code — not a roundtripped version.
 	let lastCode: string | null = null;
 
-	return createTool({
-		id: 'build-workflow',
-		description:
+	return new Tool('build-workflow')
+		.description(
 			'Build a workflow from TypeScript SDK code. Two modes:\n' +
-			'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
-			'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
-			'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
-		inputSchema: buildWorkflowInputSchema,
-		outputSchema: z.object({
-			success: z.boolean(),
-			workflowId: z.string().optional(),
-			errors: z.array(z.string()).optional(),
-			warnings: z.array(z.string()).optional(),
-		}),
-		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
+				'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
+				'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
+				'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
+		)
+		.input(buildWorkflowInputSchema)
+		.output(
+			z.object({
+				success: z.boolean(),
+				workflowId: z.string().optional(),
+				errors: z.array(z.string()).optional(),
+				warnings: z.array(z.string()).optional(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof buildWorkflowInputSchema>) => {
 			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				return { success: false, errors: ['Action blocked by admin'] };
@@ -213,6 +215,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					],
 				};
 			}
-		},
-	});
+		})
+		.build();
 }

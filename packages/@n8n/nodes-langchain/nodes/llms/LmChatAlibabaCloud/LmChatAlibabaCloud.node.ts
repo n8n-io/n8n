@@ -120,7 +120,7 @@ export class LmChatAlibabaCloud implements INodeType {
 				},
 				default: 'qwen-plus',
 				builderHint: {
-					message:
+					propertyHint:
 						'Default to the latest Qwen flagship (qwen3.6-max-preview or qwen3.6-plus). Use qwen-plus for cost-efficient builds. Avoid qwen-turbo, Qwen 3.5 and earlier, and older dated snapshots.',
 				},
 			},

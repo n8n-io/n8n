@@ -12,7 +12,7 @@
 // When no comparison is available (no baseline yet, LangSmith offline)
 // the renderers still produce a useful per-test-case summary. When a
 // comparison is available, sections render in priority order:
-// regressions, soft regressions, notable movement, improvements,
+// regressions, likely regressions, worth watching, improvements,
 // failure-category drift. Only sections with content are emitted.
 // ---------------------------------------------------------------------------
 
@@ -26,6 +26,8 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS } from '../binaryChecks/types';
 import type {
 	MultiRunEvaluation,
 	TestCaseAggregation,
@@ -87,8 +89,8 @@ export function formatComparisonMarkdown(
 		if (soft.length > 0) {
 			lines.push(
 				...renderScenarioSection(
-					'Soft regressions',
-					'— investigate if related to your changes',
+					'Likely regressions',
+					'— looser statistical flag, investigate if related to your changes',
 					soft,
 					true,
 					failedIndex,
@@ -98,8 +100,8 @@ export function formatComparisonMarkdown(
 		if (watch.length > 0) {
 			lines.push(
 				...renderScenarioSection(
-					'Notable movement',
-					'— large gap, no statistical flag',
+					'Worth watching',
+					'— large change, not flagged as a regression',
 					watch,
 					false,
 					failedIndex,
@@ -126,6 +128,9 @@ export function formatComparisonMarkdown(
 
 	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
+	const workflowChecksSection = renderWorkflowChecksSection(evaluation);
+	if (workflowChecksSection.length > 0) lines.push(...workflowChecksSection);
+
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
 		if (otherFindings.length > 0) lines.push(...otherFindings);
@@ -135,6 +140,36 @@ export function formatComparisonMarkdown(
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
+}
+
+function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
+	const aggregate = aggregateWorkflowChecks(evaluation);
+	if (!aggregate) return [];
+
+	const lines: string[] = [
+		'#### Workflow checks',
+		'',
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		'',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|---|',
+	];
+
+	const byDimension: Record<string, string[]> = {};
+	for (const name of Object.keys(aggregate.perCheck).sort()) {
+		const entry = aggregate.perCheck[name];
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		(byDimension[entry.dimension] ??= []).push(
+			`| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		);
+	}
+
+	for (const dim of CHECK_DIMENSIONS) {
+		if (byDimension[dim]) lines.push(...byDimension[dim]);
+	}
+	lines.push('');
+	return lines;
 }
 
 function formatHeading(commitSha?: string): string {
@@ -177,16 +212,24 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+	const passRateText = `pass rate ${aggDeltaText} vs master`;
 
-	// Always include all five tier counts so readers see what's being tracked,
-	// not just what's > 0. The hard count is bolded when nonzero for emphasis.
-	const summary = [
+	// Two-line summary: regression-tier counts on top, positives/neutrals on the
+	// bottom. The pass-rate delta tails whichever line matches its sign so the
+	// per-line story stays coherent (negative delta lives with the concerns).
+	const concernsParts = [
 		hard > 0 ? `**${hard} regression${hard === 1 ? '' : 's'}**` : '0 regressions',
-		`${soft} soft`,
-		`${watch} notable`,
-		`${imps} improvement${imps === 1 ? '' : 's'}`,
-		`${stable} stable`,
-	].join(', ');
+		`${soft} likely regression${soft === 1 ? '' : 's'}`,
+		`${watch} worth watching`,
+	];
+	const winsParts = [`${imps} improvement${imps === 1 ? '' : 's'}`, `${stable} stable`];
+	if (aggDelta < 0) {
+		concernsParts.push(passRateText);
+	} else {
+		winsParts.push(passRateText);
+	}
+	const concerns = concernsParts.join(' · ');
+	const wins = winsParts.join(' · ');
 
 	let icon: string;
 	let alertKind: 'CAUTION' | 'WARNING' | 'NOTE' | 'TIP';
@@ -205,7 +248,7 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 		alertKind = 'TIP';
 	}
 
-	return `> [!${alertKind}]\n> ${icon} ${summary}. Pass rate ${aggDeltaText} vs master.`;
+	return `> [!${alertKind}]\n> ${icon} ${concerns}\n> ${wins}`;
 }
 
 function formatAggregateBlock(
@@ -213,7 +256,7 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -363,23 +406,23 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${tc.testCase.prompt.slice(0, 70)}\``;
+		return slug ? `\`${slug}\`` : `\`${tc.testCase.conversation[0].text.slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.scenarios.length
+			const meanPassAtK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.scenarios.length
+			const meanPassHatK = tc.executionScenarios.length
 				? Math.round(
-						(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.scenarios.length) *
+						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
+							tc.executionScenarios.length) *
 							100,
 					)
 				: 0;
@@ -392,8 +435,8 @@ function renderPerTestCaseDetails(
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.scenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.scenarios.length;
+			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
+			const total = tc.executionScenarios.length;
 			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
@@ -468,7 +511,7 @@ function renderFailureDetails(
 	}> = [];
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase?.get(tc.testCase);
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns = sa.runs
 				.filter((r) => !r.success)
 				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
@@ -485,7 +528,7 @@ function renderFailureDetails(
 	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
-			: `${tc.testCase.prompt.slice(0, 50).trim()} / ${scenarioName}`;
+			: `${tc.testCase.conversation[0].text.slice(0, 50).trim()} / ${scenarioName}`;
 		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
@@ -526,7 +569,7 @@ function buildFailedRunsIndex(
 	for (const tc of evaluation.testCases) {
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) continue; // testCase not in the slug map — skip rather than misattribute
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
 				if (!r.success) {
@@ -650,13 +693,13 @@ export function formatComparisonTerminal(
 		if (soft.length > 0) {
 			lines.push(
 				TERMINAL_INDENT +
-					'SOFT REGRESSIONS  (likely natural variance — investigate if related to your changes)',
+					'LIKELY REGRESSIONS  (looser statistical flag — investigate if related to your changes)',
 			);
 			lines.push(formatTerminalScenarioTable(soft, true));
 			lines.push('');
 		}
 		if (watch.length > 0) {
-			lines.push(TERMINAL_INDENT + 'NOTABLE MOVEMENT  (large gap, no statistical flag)');
+			lines.push(TERMINAL_INDENT + 'WORTH WATCHING  (large change, not flagged as a regression)');
 			lines.push(formatTerminalScenarioTable(watch, false));
 			lines.push('');
 		}
@@ -714,16 +757,24 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+	const passRateText = `pass rate ${aggDeltaText} vs master`;
 
-	const summary = [
+	const concernsParts = [
 		`${hard} regression${hard === 1 ? '' : 's'}`,
-		`${soft} soft`,
-		`${watch} notable`,
-		`${imps} improvement${imps === 1 ? '' : 's'}`,
-		`${stable} stable`,
-	].join(', ');
+		`${soft} likely regression${soft === 1 ? '' : 's'}`,
+		`${watch} worth watching`,
+	];
+	const winsParts = [`${imps} improvement${imps === 1 ? '' : 's'}`, `${stable} stable`];
+	if (aggDelta < 0) {
+		concernsParts.push(passRateText);
+	} else {
+		winsParts.push(passRateText);
+	}
 
-	return `▶ ${summary}. Pass rate ${aggDeltaText} vs master.`;
+	// The caller prepends TERMINAL_INDENT to the start of this string. Embed an
+	// extra TERMINAL_INDENT after the line break so the wins line aligns under
+	// the concerns text (past the `▶ ` arrow).
+	return `▶ ${concernsParts.join(' · ')}\n${TERMINAL_INDENT}  ${winsParts.join(' · ')}`;
 }
 
 function formatTerminalAggregate(
@@ -732,7 +783,7 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
 		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
 		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
 		const rate = total > 0 ? (passed / total) * 100 : 0;
@@ -787,24 +838,30 @@ function formatTerminalPerTestCase(
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? tc.testCase.prompt.slice(0, max);
+		return slug ?? tc.testCase.conversation[0].text.slice(0, max);
 	};
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
 			const meanPassAtK =
-				tc.scenarios.length > 0
+				tc.executionScenarios.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(tc.executionScenarios.reduce(
+								(sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0),
+								0,
+							) /
+								tc.executionScenarios.length) *
 								100,
 						)
 					: 0;
 			const meanPassHatK =
-				tc.scenarios.length > 0
+				tc.executionScenarios.length > 0
 					? Math.round(
-							(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-								tc.scenarios.length) *
+							(tc.executionScenarios.reduce(
+								(sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0),
+								0,
+							) /
+								tc.executionScenarios.length) *
 								100,
 						)
 					: 0;
@@ -855,7 +912,7 @@ function formatTerminalPerTestCase(
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
 			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
-			for (const sa of tc.scenarios) {
+			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
 				const status = sr.success ? 'PASS' : 'FAIL';
 				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';

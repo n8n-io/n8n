@@ -22,6 +22,8 @@ import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
+import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
@@ -38,9 +40,16 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
+	fetchPrebuiltBuild,
+	loadPrebuiltManifest,
+	pickPrebuiltWorkflowId,
+	type PrebuiltManifest,
+} from '../harness/prebuilt-workflows';
+import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
+	runWorkflowChecks,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
@@ -50,14 +59,24 @@ import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	MultiRunEvaluation,
-	ScenarioResult,
-	TestScenario,
+	ExecutionScenarioResult,
+	ExecutionScenario,
+	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+const checkOutcomeSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	kind: z.enum(['deterministic', 'llm']),
+	dimension: z.enum(CHECK_DIMENSIONS),
+	status: z.enum(['pass', 'fail', 'n_a']),
+	comment: z.string().optional(),
+});
 
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
@@ -73,6 +92,9 @@ const targetOutputSchema = z.object({
 	buildDurationMs: z.number().optional(),
 	execDurationMs: z.number().default(0),
 	nodeCount: z.number().default(0),
+	/** The thread id used during the build — keys the LangSmith trace lookup. */
+	threadId: z.string().optional(),
+	workflowChecks: z.array(checkOutcomeSchema).optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -112,7 +134,6 @@ function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 
 const runInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		/** 0-based iteration index; injected during multi-run expansion. */
@@ -134,11 +155,42 @@ interface RunConfig {
 	args: ReturnType<typeof parseCliArgs>;
 	lanes: Lane[];
 	logger: EvalLogger;
+	prebuiltManifest?: PrebuiltManifest;
 }
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
+
+	const prebuiltManifest = args.prebuiltWorkflows
+		? loadPrebuiltManifest(args.prebuiltWorkflows)
+		: undefined;
+	if (prebuiltManifest) {
+		// Multi-lane is for distributing the orchestrator build phase across
+		// n8n instances. Prebuilt workflows live on a single instance — fetching
+		// them from any other lane's URL would 404 — and prebuilt mode skips
+		// builds anyway, so multi-lane buys nothing. Refuse the combination
+		// rather than silently fetching from one lane and ignoring the rest.
+		if (args.baseUrls.length > 1) {
+			throw new Error(
+				'--prebuilt-workflows is incompatible with multiple --base-url values. Prebuilt workflows live on a single n8n instance; pass exactly one --base-url.',
+			);
+		}
+		const slugCount = Object.keys(prebuiltManifest).length;
+		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
+
+		// Warn on slugs that don't match a local test-case file. Common cause
+		// is typos in the manifest — without this check, the typo silently
+		// falls through to an orchestrator build (or no run at all), and the
+		// user thinks the prebuilt path ran when it didn't.
+		const localSlugs = new Set(loadWorkflowTestCasesWithFiles().map((tc) => tc.fileSlug));
+		const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !localSlugs.has(slug));
+		if (orphanSlugs.length > 0) {
+			logger.warn(
+				`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching local test case (will be ignored): ${orphanSlugs.join(', ')}`,
+			);
+		}
+	}
 
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
@@ -176,14 +228,14 @@ async function main(): Promise<void> {
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({ args, lanes, logger });
+			const langsmithRun = await runWithLangSmith({ args, lanes, logger, prebuiltManifest });
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({ args, lanes, logger });
+			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -199,7 +251,8 @@ async function main(): Promise<void> {
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
-		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
+		const reportResults = flattenRunsForReport(evaluation);
+		const htmlPath = writeWorkflowReport(reportResults);
 		console.log(`Report:     ${htmlPath}`);
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
@@ -223,24 +276,44 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger } = config;
+	const { args, lanes, logger, prebuiltManifest } = config;
 
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+
+	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
+	// the LangSmith target() output schema doesn't carry the full transcript.
+	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
+
+	// LangSmith dataset rows carry only per-scenario fields. The conversation
+	// for the build is sourced locally, keyed by fileSlug.
+	const conversationByFileSlug = new Map<
+		string,
+		{ conversation: WorkflowTestCase['conversation']; messageBudget?: number }
+	>();
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		conversationByFileSlug.set(fileSlug, {
+			conversation: testCase.conversation,
+			messageBudget: testCase.messageBudget,
+		});
+	}
 
 	// LaneState carries the allocator-managed counters (activeBuilds,
-	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
+	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
-		inflightPrompts: Set<string>;
-		tracedBuild: (prompt: string) => Promise<BuildResult>;
+		inflightKeys: Set<string>;
+		tracedBuild: (buildArgs: {
+			conversation: WorkflowTestCase['conversation'];
+			messageBudget?: number;
+		}) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
-			scenario: TestScenario;
+			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
@@ -251,12 +324,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			runner: lane,
 			activeBuilds: 0,
-			inflightPrompts: new Set<string>(),
+			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
-				async (prompt: string) =>
+				async (buildArgs: {
+					conversation: WorkflowTestCase['conversation'];
+					messageBudget?: number;
+				}) =>
 					await buildWorkflow({
 						client: lane.client,
-						prompt,
+						conversation: buildArgs.conversation,
+						messageBudget: buildArgs.messageBudget,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
@@ -273,7 +350,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			tracedExecute: traceable(
 				async (execArgs: {
 					workflowId: string;
-					scenario: TestScenario;
+					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
 				}) =>
 					await executeScenario(
@@ -283,6 +360,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						args.pinAiRoots,
 					),
 				{
 					name: 'scenario_execution',
@@ -295,7 +373,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	});
 
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// prompt, runs there (capped per-lane), then releases. Scenarios re-use the
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
 	// lane that built their workflow.
 	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
 	const buildCache = new Map<
@@ -305,31 +383,69 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
-		prompt: string,
 		iteration: number,
+		fileSlug: string,
 	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
-		const key = `${String(iteration)}:${prompt}`;
+		// Cache key on (iteration, fileSlug) — every scenario in a test-case file
+		// shares this build, and prebuilt + orchestrator-built paths use the same key.
+		const key = `${String(iteration)}:${fileSlug}`;
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
-			const lane = await allocator.acquire(prompt);
-			try {
+			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
+			if (prebuiltId !== undefined) {
+				// Prebuilt path: no orchestrator concurrency to manage — just
+				// fetch the workflow. main() rejects multi-lane + prebuilt at
+				// startup, so laneStates always has exactly one entry here.
+				const lane = laneStates[0];
 				const start = Date.now();
-				const build = await lane.tracedBuild(prompt);
+				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				if (build.success && !build.workflowChecks) {
+					// No transcript in prebuilt mode — checks run with empty prompt context.
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: '',
+						agentText: undefined,
+						logger,
+					});
+				}
+				return { build, lane, buildDurationMs };
+			}
+			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
+			// the build cache dedupes scenarios within one file.
+			const lane = await allocator.acquire(fileSlug);
+			const entry = conversationByFileSlug.get(fileSlug);
+			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+			try {
+				const start = Date.now();
+				const build = await lane.tracedBuild({
+					conversation: entry.conversation,
+					messageBudget: entry.messageBudget,
+				});
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
 				return { build, lane, buildDurationMs };
 			} finally {
-				allocator.release(lane, prompt);
+				allocator.release(lane, fileSlug);
 			}
 		})();
 		buildCache.set(key, promise);
 		return await promise;
 	}
 
+	function stashTranscript(build: BuildResult): void {
+		if (build.threadId && build.transcript) {
+			transcriptByThreadId.set(build.threadId, build.transcript);
+		}
+	}
+
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
-		const scenario: TestScenario = {
+		const scenario: ExecutionScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
 			dataSetup: inputs.dataSetup,
@@ -340,7 +456,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
-		} = await getOrBuild(inputs.prompt, iteration);
+		} = await getOrBuild(iteration, inputs.testCaseFile);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -353,6 +469,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurationMs,
 				execDurationMs: 0,
 				nodeCount: 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 
@@ -383,6 +501,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurationMs,
 				execDurationMs: Date.now() - execStart,
 				nodeCount,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 		const execDurationMs = Date.now() - execStart;
@@ -405,6 +524,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurationMs,
 			execDurationMs,
 			nodeCount,
+			threadId: build.threadId,
+			workflowChecks: build.workflowChecks,
 		};
 	};
 
@@ -436,6 +557,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		if (output.workflowChecks) {
+			for (const outcome of output.workflowChecks) {
+				if (outcome.status === 'n_a') continue;
+				feedback.push({
+					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
+					score: outcome.status === 'pass' ? 1 : 0,
+					comment: outcome.comment ?? undefined,
+				});
+			}
+		}
 		return feedback;
 	};
 
@@ -449,7 +581,13 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// JSON files are the source of truth; the dataset accumulates orphans (the
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
-	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
+	const sourceExamples = filteredExamplesIterable(
+		lsClient,
+		datasetName,
+		args.filter,
+		args.exclude,
+		logger,
+	);
 	const evaluateData =
 		args.iterations > 1
 			? expandExamplesForIterations(sourceExamples, args.iterations)
@@ -465,6 +603,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
+				exclude: args.exclude ?? null,
+				prebuilt: prebuiltManifest !== undefined,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -481,6 +621,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
+			transcriptByThreadId,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -558,10 +699,14 @@ function filteredExamplesIterable(
 	lsClient: Client,
 	datasetName: string,
 	filter: string | undefined,
+	exclude: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter).map((tc) => tc.fileSlug);
-	const label = filter ? `Filter "${filter}"` : 'Local test cases';
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude).map((tc) => tc.fileSlug);
+	const labelParts: string[] = [];
+	if (filter) labelParts.push(`filter "${filter}"`);
+	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
 		return (async function* () {})();
@@ -676,6 +821,7 @@ function reshapeLangSmithRuns(
 	rows: Array<{ run: Run }>,
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
+	transcriptByThreadId: Map<string, TranscriptTurn[]>,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -691,16 +837,18 @@ function reshapeLangSmithRuns(
 	for (let iter = 0; iter < numIterations; iter++) {
 		const runResults: WorkflowTestCaseResult[] = [];
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenarioResults: ScenarioResult[] = [];
+			const executionScenarioResults: ExecutionScenarioResult[] = [];
 			let workflowBuildSuccess = false;
 			let workflowId: string | undefined;
 			let buildError: string | undefined;
+			let threadId: string | undefined;
+			let workflowChecks: CheckOutcome[] | undefined;
 
-			for (const scenario of testCase.scenarios) {
+			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
 				const output = run ? parseTargetOutput(run.outputs) : undefined;
 				if (!run || !output) {
-					scenarioResults.push({
+					executionScenarioResults.push({
 						scenario,
 						success: false,
 						score: 0,
@@ -710,8 +858,10 @@ function reshapeLangSmithRuns(
 				}
 				if (output.buildSuccess) workflowBuildSuccess = true;
 				if (output.workflowId) workflowId = output.workflowId;
+				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
-				scenarioResults.push({
+				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
+				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
 					evalResult: output.evalResult,
@@ -722,12 +872,16 @@ function reshapeLangSmithRuns(
 				});
 			}
 
+			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
 			runResults.push({
 				testCase,
 				workflowBuildSuccess,
 				workflowId,
-				scenarioResults,
+				executionScenarioResults,
 				buildError,
+				threadId,
+				transcript,
+				workflowChecks,
 			});
 		}
 		allRunResults.push(runResults);
@@ -740,16 +894,16 @@ function reshapeLangSmithRuns(
 // ---------------------------------------------------------------------------
 
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, lanes, logger } = config;
+	const { args, lanes, logger, prebuiltManifest } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
 		return { totalRuns: 0, testCases: [] };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + testCase.scenarios.length,
+		(sum, { testCase }) => sum + testCase.executionScenarios.length,
 		0,
 	);
 	logger.info(
@@ -786,6 +940,8 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								logger,
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
+								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
+								pinAiRoots: args.pinAiRoots,
 							}),
 						MAX_CONCURRENT_BUILDS,
 					);
@@ -810,21 +966,30 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
  * HTML report. Previously we rendered only `tc.runs[0]`, which silently hid
  * iterations 2..N — a flaky scenario that passed once and failed twice would
  * appear clean in the uploaded artifact. For multi-iteration runs we prefix
- * each prompt with its iteration number so the cards are distinguishable at
- * a glance.
+ * the opening user turn with its iteration number so the cards are
+ * distinguishable at a glance.
  */
 function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseResult[] {
 	if (evaluation.totalRuns <= 1) {
 		return evaluation.testCases.map((tc) => tc.runs[0]);
 	}
 	return evaluation.testCases.flatMap((tc) =>
-		tc.runs.map((run, iter) => ({
-			...run,
-			testCase: {
-				...run.testCase,
-				prompt: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${run.testCase.prompt}`,
-			},
-		})),
+		tc.runs.map((run, iter) => {
+			const [opening, ...rest] = run.testCase.conversation;
+			return {
+				...run,
+				testCase: {
+					...run.testCase,
+					conversation: [
+						{
+							...opening,
+							text: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${opening.text}`,
+						},
+						...rest,
+					],
+				},
+			};
+		}),
 	);
 }
 
@@ -845,7 +1010,7 @@ interface AggregateMetrics {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	const total = allScenarios.length;
 	const kIndex = Math.max(totalRuns - 1, 0);
 	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
@@ -866,7 +1031,7 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 /** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
 function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	if (allScenarios.length === 0) return '';
 	const rates: string[] = [];
 	for (let i = 0; i < totalRuns; i++) {
@@ -890,6 +1055,8 @@ function writeEvalResults(
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
+	const checksSummary = aggregateWorkflowChecks(evaluation);
+
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
@@ -902,6 +1069,7 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -917,10 +1085,13 @@ function writeEvalResults(
 		comparisonStatus: outcome?.kind ?? 'not_attempted',
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
-			name: tc.testCase.prompt.slice(0, 70),
+			name: tc.testCase.conversation[0].text.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
-			scenarios: tc.scenarios.map((sa) => ({
+			workflowChecksPerRun: tc.runs.map((run) =>
+				run.workflowChecks ? statusMap(run.workflowChecks) : null,
+			),
+			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
@@ -1047,11 +1218,11 @@ function bucketFromEvaluation(
 		const fileSlug = slugByTestCase.get(tc.testCase);
 		if (!fileSlug) {
 			throw new Error(
-				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.prompt.slice(0, 60)}"`,
+				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.conversation[0].text.slice(0, 60)}"`,
 			);
 		}
 		const total = tc.runs.length;
-		for (const sa of tc.scenarios) {
+		for (const sa of tc.executionScenarios) {
 			const key = `${fileSlug}/${sa.scenario.name}`;
 			const failureCategories: Record<string, number> = {};
 			for (const sr of sa.runs) {

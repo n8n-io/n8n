@@ -11,6 +11,11 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
 import { Annotation, END, START, StateGraph, type BaseCheckpointSaver } from '@langchain/langgraph';
+import {
+	createResourceCacheKey,
+	extractResourceOperations,
+	type ResourceOperationInfo,
+} from '@n8n/ai-utilities/node-catalog';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
@@ -27,6 +32,7 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
@@ -45,11 +51,6 @@ import {
 	buildSelectedNodesSummary,
 	createContextMessage,
 } from '@/utils/context-builders';
-import {
-	createResourceCacheKey,
-	extractResourceOperations,
-	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
 import {
 	executeSubgraphTools,
@@ -247,6 +248,8 @@ export interface DiscoverySubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Optional checkpointer for interrupt/resume support (used in integration tests) */
 	checkpointer?: BaseCheckpointSaver;
+	/** SSRF guard for web_fetch. Defaults to a passthrough guard when omitted. */
+	ssrf?: SsrfGuard;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -286,16 +289,19 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const discoverySecurityFactory = createLangGraphSecurityManagerFactory();
 		const plannerSecurityFactory = createMutableSecurityManagerFactory(this.plannerWebFetchState);
 
+		// SSRF guard for web_fetch; passthrough when SSRF protection is disabled/unset.
+		const ssrf = config.ssrf ?? createPassthroughSsrfGuard();
+
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = includePlanMode
 			? [
 					createNodeSearchTool(config.parsedNodeTypes).tool,
 					submitQuestionsTool,
-					createWebFetchTool(discoverySecurityFactory).tool,
+					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
 				]
 			: [
 					createNodeSearchTool(config.parsedNodeTypes).tool,
-					createWebFetchTool(discoverySecurityFactory).tool,
+					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
 				];
 
 		// Conditionally add introspect tool if feature flag is enabled
@@ -354,7 +360,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool, createWebFetchTool(plannerSecurityFactory).tool],
+			tools: [
+				createGetDocumentationTool().tool,
+				createWebFetchTool(plannerSecurityFactory, ssrf).tool,
+			],
 		});
 
 		// Build the subgraph

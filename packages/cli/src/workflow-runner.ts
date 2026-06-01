@@ -220,7 +220,7 @@ export class WorkflowRunner {
 				await establishExecutionContext(
 					contextWorkflow,
 					data.executionData,
-					undefined,
+					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
 					data.executionMode,
 				);
 			} catch (error) {
@@ -373,6 +373,7 @@ export class WorkflowRunner {
 		});
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
+		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 
@@ -616,6 +617,7 @@ export class WorkflowRunner {
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,
 						status: fullExecutionData.status,
+						waitTill: fullExecutionData.waitTill,
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
@@ -627,6 +629,7 @@ export class WorkflowRunner {
 						startedAt: jobResult.startedAt,
 						stoppedAt: jobResult.stoppedAt,
 						status: jobResult.status,
+						waitTill: jobResult.waitTill,
 						data: createRunExecutionData({
 							resultData: {
 								runData: {},

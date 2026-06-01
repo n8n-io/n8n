@@ -69,10 +69,9 @@ export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
-	'researcher',
 	'delegate',
-	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -88,6 +87,11 @@ export const domainAccessMetaSchema = z.object({
 	host: z.string(),
 });
 export type DomainAccessMeta = z.infer<typeof domainAccessMetaSchema>;
+
+export const webSearchMetaSchema = z.object({
+	query: z.string(),
+});
+export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -245,6 +249,17 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
 		),
+	subnodeRootNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+			id: z.string(),
+		})
+		.optional()
+		.describe(
+			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
@@ -283,13 +298,29 @@ export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const instanceGatewayResourceDecisionSchema = z.enum([
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+]);
+export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
+
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
 	options: z.array(z.string()),
 });
+
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
 
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema
@@ -303,6 +334,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'plan-review',
 	'resource-decision',
+	'continue',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -329,7 +361,8 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
-				'resource-decision shows 5-option gateway permission dialog',
+				'resource-decision shows 5-option gateway permission dialog, ' +
+				'continue shows a single primary button (used by pause-for-user)',
 		),
 	questions: z
 		.array(
@@ -353,6 +386,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
+	webSearch: webSearchMetaSchema
+		.optional()
+		.describe('When present, renders web-search approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -403,6 +439,7 @@ export function isDisplayableConfirmationRequest(
 	switch (inputType) {
 		case 'approval':
 		case 'text':
+		case 'continue':
 			return isNonEmptyString(payload.message);
 		case 'questions':
 			return hasItems(payload.questions);
@@ -500,6 +537,13 @@ export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	toolCategories: z.array(toolCategorySchema).default([]),
 }) {}
 export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
+
+export class InstanceAiGatewayCreateCredentialDto extends Z.class({
+	name: z.string().min(1).max(128),
+	type: z.string().min(1).max(128),
+	data: z.record(z.unknown()),
+	projectId: z.string().optional(),
+}) {}
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -613,7 +657,8 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
+	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
@@ -622,7 +667,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
@@ -667,8 +711,9 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;
+	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];
 	workflowId?: string;
@@ -682,6 +727,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
@@ -695,9 +741,11 @@ export interface InstanceAiToolCallState {
 		| 'tasks'
 		| 'delegate'
 		| 'builder'
-		| 'data-table'
 		| 'researcher'
+		| 'data-table'
 		| 'planner'
+		| 'eval-setup'
+		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -714,9 +762,9 @@ export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
 	tools?: string[];
-	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, researcher, delegate, browser-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -779,7 +827,7 @@ export type InstanceAiSSEConnectionState =
 	| 'reconnecting';
 
 // ---------------------------------------------------------------------------
-// Thread Inspector types (debug panel — raw Mastra storage inspection)
+// Thread Inspector types (debug panel — raw agent memory inspection)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiThreadInfo {
@@ -877,6 +925,7 @@ const instanceAiPermissionsSchema = z.object({
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
 	readFilesystem: instanceAiPermissionModeSchema,
 	fetchUrl: instanceAiPermissionModeSchema,
+	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 });
 
@@ -900,15 +949,27 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	cleanupTestExecutions: 'require_approval',
 	readFilesystem: 'require_approval',
 	fetchUrl: 'require_approval',
+	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 };
 
-/** Permission keys that remain active when branchReadOnly is enabled.
- *  When changing this set, also update the read-only section in
- *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+/**
+ * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * This set mirrors n8n's own backend permission model for protected branches:
+ * publish/unpublish, credential delete/update, and workflow update have no
+ * hard backend lockout — only project-scope gates. branchReadOnly is a
+ * UX-level nudge toward the source-control sync workflow, not a global write
+ * block (only data-table mutations have a hard middleware lockout). Trimming
+ * this set would make the AI stricter than human users on the same instance.
+ *
+ * When changing this set, also update the read-only section in
+ * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
+ */
 const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
 	'readFilesystem',
 	'fetchUrl',
+	'webSearch',
 	'publishWorkflow',
 	'deleteCredential',
 	'restoreWorkflowVersion',
@@ -934,11 +995,7 @@ export function applyBranchReadOnlyOverrides(
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	lastMessages: number;
-	embedderModel: string;
-	semanticRecallTopK: number;
 	subAgentMaxSteps: number;
-	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
@@ -949,16 +1006,11 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	lastMessages: z.number().int().positive().optional(),
-	embedderModel: z.string().optional(),
-	semanticRecallTopK: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
-	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -969,7 +1021,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -997,21 +1048,14 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
-const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
-const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
-	'manage-data-tables-with-agent',
-	'agent-data-table-manager',
-]);
-const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
-const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
-
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
-	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
-	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
-	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
+	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'research-with-agent') return 'researcher';
+	if (toolName === 'plan') return 'planner';
+	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }
 
@@ -1052,16 +1096,69 @@ export interface InstanceAiEvalMockHints {
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
 }
 
+export interface InstanceAiEvalMockedCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+}
+
+/**
+ * PostHog kill-switch flag for the eval vendor SDK interception code path.
+ *
+ * Resolution semantics (consult `EvalExecutionService.isInterceptionEnabled`
+ * for the implementation):
+ *   - **Flag set to `true`**, or **unset** (no rule configured in PostHog):
+ *     interception is ENABLED. The flag is default-on; operators flip it to
+ *     `false` to kill the feature in an emergency.
+ *   - **Flag set to `false`**: interception is DISABLED. Requests with
+ *     `unpinNodes` are refused with a clear error so vendor traffic can
+ *     never reach the real provider — the wire server never boots.
+ *   - **Resolution error** (PostHog unreachable/unhealthy): treated as
+ *     DISABLED (fail-closed). A kill-switch must work when the flag plane
+ *     itself is degraded; an outage is the moment to refuse rather than
+ *     silently run the rewrite.
+ */
+export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
+
+/**
+ * Records a credential field that was rewritten (e.g. routed to the eval wire
+ * server) during evaluation. Populated for every AI root the server intercepts;
+ * empty when the kill-switch is off or every root was auto-/explicit-pinned.
+ */
+export interface InstanceAiEvalRewrittenCredential {
+	nodeName: string;
+	credentialType: string;
+	credentialId?: string;
+	field: string;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
 	hints: InstanceAiEvalMockHints;
+	mockedCredentials: InstanceAiEvalMockedCredential[];
+	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/**
+	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
+	 * default-on wire-server interception path. Useful when the caller wants
+	 * to keep a specific root on the pinned baseline (e.g. for A/B comparison)
+	 * even though its sub-nodes are interceptable.
+	 *
+	 * The server auto-pins AI roots whose inbound `ai_*` sub-nodes are
+	 * incompatible (protocol-binary memory/vector store, unsupported vendor
+	 * LLM, configured `options.baseURL` override, shared with another root)
+	 * — callers do not need to list those here.
+	 *
+	 * Validated up front: unknown / disabled / non-AI-root names come back
+	 * as an error-shaped `InstanceAiEvalExecutionResult`.
+	 */
+	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

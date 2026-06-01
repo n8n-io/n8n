@@ -6,10 +6,15 @@ import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { EventService } from '@/events/event.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
-import { DynamicCredentialResolverRegistry } from '@/modules/dynamic-credentials.ee/services';
+import {
+	CredentialConnectionStatusService,
+	DynamicCredentialResolverRegistry,
+} from '@/modules/dynamic-credentials.ee/services';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
@@ -26,6 +31,9 @@ describe('DynamicCredentialsController', () => {
 	const resolverRegistry = mockInstance(DynamicCredentialResolverRegistry);
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
+	mockInstance(CredentialsFinderService);
+	mockInstance(CredentialConnectionStatusService);
+	mockInstance(EventService);
 
 	mockInstance(Logger);
 
@@ -193,13 +201,18 @@ describe('DynamicCredentialsController', () => {
 			expect(resolverRegistry.getResolverByTypename).toHaveBeenCalledWith(
 				'oauth2-introspection-identifier',
 			);
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
-				authMetadata: {},
-				credentialResolverId: 'resolver-123',
-			});
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				{
+					cid: '1',
+					origin: 'dynamic-credential',
+					authorizationHeader: 'Bearer token123',
+					authMetadata: {},
+					credentialResolverId: 'resolver-123',
+				},
+				req,
+				res,
+			);
 		});
 
 		it('should return auth URI for OAuth1 credential', async () => {
@@ -229,13 +242,18 @@ describe('DynamicCredentialsController', () => {
 			expect(resolverRegistry.getResolverByTypename).toHaveBeenCalledWith(
 				'oauth2-introspection-identifier',
 			);
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
-				authMetadata: {},
-				credentialResolverId: 'resolver-123',
-			});
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				{
+					cid: '1',
+					origin: 'dynamic-credential',
+					authorizationHeader: 'Bearer token123',
+					authMetadata: {},
+					credentialResolverId: 'resolver-123',
+				},
+				req,
+				res,
+			);
 		});
 
 		it('should call validateIdentity when resolver has validateIdentity method', async () => {

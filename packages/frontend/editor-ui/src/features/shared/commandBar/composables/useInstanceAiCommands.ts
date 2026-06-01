@@ -73,8 +73,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 				title: i18n.baseText('commandBar.instanceAi.newThread'),
 				section: i18n.baseText('commandBar.sections.instanceAi'),
 				handler: () => {
-					const threadId = instanceAiStore.newThread();
-					void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+					void router.push({ name: INSTANCE_AI_VIEW });
 				},
 				icon: {
 					component: N8nIcon,

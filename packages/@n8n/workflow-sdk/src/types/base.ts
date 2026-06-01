@@ -75,18 +75,6 @@ export interface NewCredentialValue {
 }
 
 // =============================================================================
-// Placeholder Values
-// =============================================================================
-
-/**
- * Placeholder for values the user needs to fill in.
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
-}
-
-// =============================================================================
 // Error Handling
 // =============================================================================
 
@@ -321,8 +309,11 @@ export interface NodeJSON {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 }
 
 /**
@@ -432,7 +423,10 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
+	credentials?: Record<
+		string,
+		string | CredentialReference | NewCredentialValue | { value: string }
+	>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;
@@ -441,8 +435,11 @@ export interface NodeConfig<TParams = IDataObject> {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -785,7 +782,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -797,10 +795,12 @@ export type IfElseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -812,7 +812,8 @@ export type SwitchCaseTarget =
 	  >
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>
-	| SplitInBatchesBuilder<unknown>;
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
  * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
@@ -1023,6 +1024,20 @@ export interface WorkflowBuilder {
 	/** Connect to multiple outputs (branching). Each array element connects to incrementing output index. Use null to skip an output. */
 	to(nodes: Array<NodeInstance<string, string, unknown> | NodeChain | null>): WorkflowBuilder;
 
+	/**
+	 * Wire the true output of the IF node the cursor is on (the node just added
+	 * via `.to()`/`.add()`). Chains with `.onFalse()`, e.g.
+	 * `.to(ifNode).onTrue(yes).onFalse(no)`. Throws if the current node is not an IF.
+	 */
+	onTrue(target: IfElseTarget): WorkflowBuilder;
+	/** Wire the false output of the IF node the cursor is on. See {@link onTrue}. */
+	onFalse(target: IfElseTarget): WorkflowBuilder;
+	/**
+	 * Wire a case output of the Switch node the cursor is on, e.g.
+	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
+	 */
+	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
+
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
 	/**
@@ -1165,7 +1180,7 @@ export type StickyFn = (
 	config?: StickyNoteConfig,
 ) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
 
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
+export type PlaceholderFn = (hint: string) => string;
 
 export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 

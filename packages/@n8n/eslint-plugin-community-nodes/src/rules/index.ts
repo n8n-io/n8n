@@ -2,11 +2,16 @@ import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
 import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
+import { CredClassNameFieldConventionsRule } from './cred-class-name-field-conventions.js';
+import { CredClassNameSuffixRule } from './cred-class-name-suffix.js';
+import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
+import { N8nObjectValidationRule } from './n8n-object-validation.js';
+import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
@@ -28,6 +33,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
+import { ValidDescriptionRule } from './valid-description.js';
 import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
 import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
@@ -52,14 +58,20 @@ export const rules = {
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
+	'cred-class-name-field-conventions': CredClassNameFieldConventionsRule,
+	'cred-class-name-suffix': CredClassNameSuffixRule,
+	'cred-class-oauth2-naming': CredClassOAuth2NamingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
 	'missing-paired-item': MissingPairedItemRule,
+	'no-builder-hint-leakage': NoBuilderHintLeakageRule,
+	'n8n-object-validation': N8nObjectValidationRule,
 	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
+	'valid-description': ValidDescriptionRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 } satisfies Record<string, AnyRuleModule>;

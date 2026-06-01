@@ -19,6 +19,18 @@ export class SidebarPage {
 		await this.container.getByTestId('universal-add').click();
 	}
 
+	get visibleNavigationMenu() {
+		return this.page.locator('.el-popper:visible');
+	}
+
+	getVisibleNavigationSubmenu(label: string): Locator {
+		return this.visibleNavigationMenu.getByTestId('navigation-submenu').filter({ hasText: label });
+	}
+
+	getVisibleNavigationLink(label: string, hrefPart: string): Locator {
+		return this.visibleNavigationMenu.locator(`a[href*="${hrefPart}"]`).filter({ hasText: label });
+	}
+
 	async clickHomeMenuItem() {
 		await this.container.getByTestId('project-home-menu-item').click();
 	}
@@ -36,38 +48,36 @@ export class SidebarPage {
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
-		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'New project' });
+		return this.visibleNavigationMenu
+			.getByTestId('navigation-menu-item')
+			.filter({ hasText: 'New project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
-		const universalAdd = this.page.getByTestId('universal-add');
+		await expect(this.visibleNavigationMenu).toBeVisible();
 		// "New workflow" only has a submenu when team projects exist; otherwise it's
 		// a direct route to the personal project.
-		const hasSubmenu =
-			(await universalAdd
-				.getByTestId('navigation-submenu')
-				.filter({ hasText: 'New workflow' })
-				.count()) > 0;
-		await universalAdd.getByText('New workflow').click();
-		if (hasSubmenu) {
-			await universalAdd.getByRole('link', { name: projectName }).click();
+		const submenu = this.getVisibleNavigationSubmenu('New workflow');
+		if ((await submenu.count()) > 0) {
+			await submenu.hover();
+			await this.getVisibleNavigationLink(projectName, '/workflow/new').click();
+		} else {
+			await this.visibleNavigationMenu.getByText('New workflow').click();
 		}
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		const universalAdd = this.page.getByTestId('universal-add');
+		await expect(this.visibleNavigationMenu).toBeVisible();
 		// "New credential" only has a submenu when team projects exist; otherwise it's
 		// a direct route to create the credential in the personal project.
-		const hasSubmenu =
-			(await universalAdd
-				.getByTestId('navigation-submenu')
-				.filter({ hasText: 'New credential' })
-				.count()) > 0;
-		await universalAdd.getByText('New credential', { exact: true }).click();
-		if (hasSubmenu) {
-			await universalAdd.getByRole('link', { name: projectName }).click();
+		const submenu = this.getVisibleNavigationSubmenu('New credential');
+		if ((await submenu.count()) > 0) {
+			await submenu.hover();
+			await this.getVisibleNavigationLink(projectName, '/credentials/create').click();
+		} else {
+			await this.visibleNavigationMenu.getByText('New credential', { exact: true }).click();
 		}
 	}
 

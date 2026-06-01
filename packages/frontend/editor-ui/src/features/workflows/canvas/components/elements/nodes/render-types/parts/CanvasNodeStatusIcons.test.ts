@@ -8,6 +8,7 @@ import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import type { IPinData } from 'n8n-workflow';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
@@ -19,6 +20,20 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: vi.fn(),
 	};
 });
+
+const pinnedDataByNodeName: IPinData = {};
+
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName,
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),
@@ -32,14 +47,19 @@ describe('CanvasNodeStatusIcons', () => {
 	beforeEach(() => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+		for (const key of Object.keys(pinnedDataByNodeName)) {
+			delete pinnedDataByNodeName[key];
+		}
 	});
 
 	it('should render correctly for a pinned node', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
-					...createCanvasNodeProvide({ data: { pinnedData: { count: 5, visible: true } } }),
+					...createCanvasNodeProvide(),
 				},
 			},
 		});
@@ -48,12 +68,14 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	it('should not render pinned icon when disabled', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
 		const { queryByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
 					...createCanvasNodeProvide({
-						data: { disabled: true, pinnedData: { count: 5, visible: true } },
+						data: { disabled: true },
 					}),
 				},
 			},

@@ -7,11 +7,12 @@ import type {
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -27,8 +28,8 @@ const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
 
-/** Credential types we support and their Mastra provider mapping. */
-const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
+/** Credential types we support and their model provider mapping. */
+const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -41,7 +42,7 @@ const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MASTRA_PROVIDER);
+const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -63,11 +64,7 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	lastMessages?: number;
-	embedderModel?: string;
-	semanticRecallTopK?: number;
 	subAgentMaxSteps?: number;
-	browserMcp?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
 	sandboxEnabled?: boolean;
@@ -78,7 +75,6 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	optinModalDismissed?: boolean;
 }
 
 @Service()
@@ -99,8 +95,6 @@ export class InstanceAiSettingsService {
 	private adminN8nSandboxCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
-
-	private optinModalDismissed: boolean = false;
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -128,6 +122,11 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
+		const envSnapshot = {
+			sandboxEnabled: this.config.sandboxEnabled,
+			sandboxProvider: this.config.sandboxProvider,
+		};
+
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (row) {
 			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
@@ -135,6 +134,21 @@ export class InstanceAiSettingsService {
 			});
 			this.applyAdminSettings(persisted);
 		}
+
+		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
+		// or a persisted DB setting are in effect — these can silently disagree.
+		const c = this.config;
+		const overridden =
+			c.sandboxEnabled !== envSnapshot.sandboxEnabled ||
+			c.sandboxProvider !== envSnapshot.sandboxProvider;
+		Container.get(Logger)
+			.scoped('instance-ai')
+			.info(
+				`Sandbox: enabled=${c.sandboxEnabled} provider=${c.sandboxProvider}` +
+					(overridden
+						? ` (DB override; env was enabled=${envSnapshot.sandboxEnabled} provider=${envSnapshot.sandboxProvider})`
+						: ' (from env)'),
+			);
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -143,11 +157,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
-			embedderModel: c.embedderModel,
-			semanticRecallTopK: c.semanticRecallTopK,
 			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
 			sandboxEnabled: c.sandboxEnabled,
@@ -158,7 +168,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -180,13 +189,8 @@ export class InstanceAiSettingsService {
 		}
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
-		const previousBrowserMcp = c.browserMcp;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
-		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
-		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
-		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
@@ -203,13 +207,10 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.optinModalDismissed !== undefined)
-			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged:
-				c.mcpServers !== previousMcpServers || c.browserMcp !== previousBrowserMcp,
+			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
 		});
 
 		return this.getAdminSettings();
@@ -284,7 +285,7 @@ export class InstanceAiSettingsService {
 				id: c.id,
 				name: c.name,
 				type: c.type,
-				provider: CREDENTIAL_TO_MASTRA_PROVIDER[c.type] ?? 'custom',
+				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
 			}));
 	}
 
@@ -420,9 +421,9 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
-	async resolveModelName(user: User): Promise<string> {
+	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
-		return prefs.modelName || this.extractModelName(this.config.model);
+		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
 	/** Resolve the current model configuration for an agent run. */
@@ -444,7 +445,7 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const provider = CREDENTIAL_TO_MASTRA_PROVIDER[credential.type];
+		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
 		if (!provider) {
 			return this.envVarModelConfig();
 		}
@@ -454,7 +455,7 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName || this.extractModelName(this.config.model);
+		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
@@ -490,11 +491,7 @@ export class InstanceAiSettingsService {
 	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
 		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
 		'n8nSandboxCredentialId',
-		'lastMessages',
-		'embedderModel',
-		'semanticRecallTopK',
 		'subAgentMaxSteps',
-		'browserMcp',
 		'mcpServers',
 	];
 
@@ -518,7 +515,11 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfig(): ModelConfig {
-		const { model, modelUrl, modelApiKey } = this.config;
+		return this.envVarModelConfigForModel(this.config.model);
+	}
+
+	private envVarModelConfigForModel(model: string): ModelConfig {
+		const { modelUrl, modelApiKey } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
@@ -542,12 +543,7 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
-		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
-		if (persisted.semanticRecallTopK !== undefined)
-			c.semanticRecallTopK = persisted.semanticRecallTopK;
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
-		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -567,8 +563,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.optinModalDismissed !== undefined)
-			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -579,11 +573,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
-			embedderModel: c.embedderModel,
-			semanticRecallTopK: c.semanticRecallTopK,
 			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
 			sandboxEnabled: c.sandboxEnabled,
@@ -594,7 +584,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(

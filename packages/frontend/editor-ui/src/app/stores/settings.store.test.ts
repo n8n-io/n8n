@@ -55,8 +55,7 @@ vi.mock('@/app/stores/versions.store', () => ({
 }));
 
 vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+	const originalModule = await vi.importActual('@vueuse/core');
 
 	return {
 		...originalModule,
@@ -237,6 +236,47 @@ describe('settings.store', () => {
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('isOtelEnabled', () => {
+		it('should return false when otel module is not active', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active but not enabled in moduleSettings', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: false } };
+
+			expect(settingsStore.isOtelEnabled).toBe(false);
+		});
+
+		it('should return true when otel module is active and enabled', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+
+			expect(settingsStore.isOtelEnabled).toBe(true);
 		});
 	});
 });

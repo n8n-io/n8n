@@ -30,11 +30,15 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			expect(token1).toBe(token2);
 		});
 
-		it('returns the active session key if one already exists', () => {
+		it('returns a pairing token instead of exposing an active session key', () => {
 			const pairingToken = registry.generatePairingToken('user-a');
-			const sessionKey = registry.consumePairingToken('user-a', pairingToken);
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			const nextPairingToken = registry.generatePairingToken('user-a');
 
-			expect(registry.generatePairingToken('user-a')).toBe(sessionKey);
+			expect(nextPairingToken).toMatch(/^gw_/);
+			expect(nextPairingToken).not.toBe(sessionKey);
+			expect(registry.getUserIdForApiKey(sessionKey)).toBe('user-a');
+			expect(registry.getUserIdForApiKey(nextPairingToken)).toBe('user-a');
 		});
 
 		it('generates independent tokens for different users', () => {
@@ -77,6 +81,16 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 	});
 
 	describe('getPairingToken', () => {
+		it('returns the expiry time for an active pairing token', () => {
+			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+			const token = registry.generatePairingToken('user-a');
+
+			expect(registry.getApiKeyExpiresAt('user-a', token)?.toISOString()).toBe(
+				new Date(301_000).toISOString(),
+			);
+			nowSpy.mockRestore();
+		});
+
 		it('returns null and cleans up the reverse lookup for an expired token', () => {
 			const token = registry.generatePairingToken('user-a');
 
@@ -89,6 +103,19 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			userGateways.get('user-a')!.pairingToken!.createdAt = Date.now() - 10 * 60 * 1000;
 
 			expect(registry.getPairingToken('user-a')).toBeNull();
+			expect(registry.getUserIdForApiKey(token)).toBeUndefined();
+		});
+
+		it('rejects an expired pairing token via getUserIdForApiKey without prior cleanup', () => {
+			const token = registry.generatePairingToken('user-a');
+
+			const userGateways = (
+				registry as unknown as {
+					userGateways: Map<string, { pairingToken: { token: string; createdAt: number } | null }>;
+				}
+			).userGateways;
+			userGateways.get('user-a')!.pairingToken!.createdAt = Date.now() - 10 * 60 * 1000;
+
 			expect(registry.getUserIdForApiKey(token)).toBeUndefined();
 		});
 	});

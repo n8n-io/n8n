@@ -1,4 +1,4 @@
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -121,6 +121,32 @@ export class WorkflowFinderService {
 			where: { ...where, workflowId: In(workflowIds) },
 		});
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
+	}
+
+	async findWorkflowsByIdsForUser(
+		workflowIds: string[],
+		user: User,
+		scopes: Scope[],
+		options: { includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) return [];
+
+		const where = await this.findAllWhere(user, scopes);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: { ...where, workflowId: In(workflowIds) },
+			relations: { workflow: { parentFolder: options.includeParentFolder } },
+		});
+
+		// A workflow may appear via several share paths (project membership +
+		// direct share); dedupe so callers see one entity per id.
+		const seen = new Set<string>();
+		const workflows: WorkflowEntity[] = [];
+		for (const { workflow } of sharedWorkflows) {
+			if (seen.has(workflow.id)) continue;
+			seen.add(workflow.id);
+			workflows.push(workflow);
+		}
+		return workflows;
 	}
 
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {

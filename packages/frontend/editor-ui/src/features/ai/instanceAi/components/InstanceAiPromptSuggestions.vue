@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { onClickOutside } from '@vueuse/core';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	isMenuSuggestion,
 	isPromptSuggestion,
@@ -33,6 +33,16 @@ const quickExamplesSuggestion = computed(() => props.suggestions.find(isMenuSugg
 const activePreviewPromptKey = ref<BaseTextKey | null>(null);
 const isQuickExamplesOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHoverTimer() {
+	if (!hoverTimer) {
+		return;
+	}
+
+	clearTimeout(hoverTimer);
+	hoverTimer = null;
+}
 
 function setPreview(promptKey: BaseTextKey | null) {
 	activePreviewPromptKey.value = promptKey;
@@ -40,6 +50,7 @@ function setPreview(promptKey: BaseTextKey | null) {
 }
 
 function closeQuickExamples() {
+	clearHoverTimer();
 	isQuickExamplesOpen.value = false;
 	setPreview(null);
 }
@@ -80,6 +91,7 @@ onMounted(() => {
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', handleDocumentKeydown);
+	clearHoverTimer();
 });
 
 onClickOutside(rootRef, closeQuickExamples);
@@ -89,10 +101,16 @@ function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 		return;
 	}
 
-	setPreview(suggestion.promptKey);
+	clearHoverTimer();
+	hoverTimer = setTimeout(() => {
+		hoverTimer = null;
+		setPreview(suggestion.promptKey);
+	}, 300);
 }
 
 function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -101,6 +119,8 @@ function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -109,6 +129,8 @@ function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -117,6 +139,8 @@ function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (isPromptSuggestion(suggestion)) {
 		submitSuggestion({
 			promptKey: suggestion.promptKey,
@@ -248,6 +272,8 @@ function handleQuickExampleLeave() {
 </template>
 
 <style module lang="scss">
+@use '../../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
+
 .suggestions {
 	position: relative;
 	width: 100%;
@@ -262,39 +288,7 @@ function handleQuickExampleLeave() {
 }
 
 .suggestionButton {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius--xl);
-	background: var(--color--foreground--tint-2);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	line-height: var(--line-height--sm);
-	cursor: pointer;
-	animation: suggestionSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-	transition:
-		border-color 0.15s ease,
-		background-color 0.15s ease,
-		color 0.15s ease,
-		box-shadow 0.15s ease,
-		transform 0.15s ease;
-
-	&:hover,
-	&:focus-visible {
-		color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-		border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-		box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
-		transform: translateY(-1px);
-	}
-
-	&:active {
-		transform: translateY(0);
-		box-shadow: none;
-	}
+	@include promptSuggestions.prompt-suggestion-button;
 }
 
 .menuSuggestionButton {
@@ -302,16 +296,11 @@ function handleQuickExampleLeave() {
 }
 
 .menuSuggestionButtonActive {
-	color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-	border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-	box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+	@include promptSuggestions.prompt-suggestion-button-active;
 }
 
 .suggestionIcon {
-	opacity: 0.7;
-	flex-shrink: 0;
-	transition: opacity 0.15s ease;
+	@include promptSuggestions.prompt-suggestion-icon;
 
 	.suggestionButton:hover &,
 	.suggestionButton:focus-visible &,
@@ -426,17 +415,5 @@ function handleQuickExampleLeave() {
 :global(.quick-examples-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
-}
-
-@keyframes suggestionSlideIn {
-	from {
-		opacity: 0;
-		transform: translateY(6px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 </style>

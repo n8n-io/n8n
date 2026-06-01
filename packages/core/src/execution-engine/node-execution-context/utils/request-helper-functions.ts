@@ -424,7 +424,11 @@ export async function proxyRequestToAxios(
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
-		maxContentLength: Infinity,
+		// -1 is the Axios sentinel for "no limit". Infinity also means no limit but
+		// Axios 1.15.1+ treats any value > -1 as a finite cap, wrapping stream responses
+		// in Readable.from() even when the limit is Infinity. That breaks the downstream
+		// `instanceof IncomingMessage` checks in parseIncomingMessage / prepareBinaryData.
+		maxContentLength: -1,
 	};
 	let configObject: IRequestOptions;
 	if (typeof uriOrObject === 'string') {

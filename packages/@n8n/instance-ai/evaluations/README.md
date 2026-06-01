@@ -2,15 +2,19 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Three harnesses live here:
+Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
 Sections:
 
 - [Running e2e + sub-agent evals](#running-evals)
+- [Regression detection](#regression-detection)
+- [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
+- [Running discovery evals](#discovery-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -31,6 +35,12 @@ Each run:
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
+
+### Binary / file scenarios
+
+The mock layer synthesizes minimal-valid binary fixtures (PNG, JPEG, GIF, WebP, PDF, ZIP, GZIP, MP3, WAV, OGG/Opus, MP4, SVG, CSV/JSON/HTML/XML plaintext, octet-stream fallback) on every `type: "binary"` response, so file-download endpoints round-trip through `prepareBinaryData` with the correct `mimeType` / `fileExtension` / `fileType`. Multipart and raw-binary request bodies are redacted to part metadata (`name`, `filename`, `contentType`, `size`) before the LLM prompt so uploads never crash on JSON-serializing raw bytes. The LLM picks `type: "binary"` and the MIME, and the mock layer fills in the bytes.
+
+Common upload flows (webhook → file upload to Slack/Telegram/S3) are also covered on the input side: the trigger pin data automatically includes a `binary` map when a downstream node references `$binary.<key>` or is a known binary consumer (`Extract from File`, `Read Binary File`, LangChain document loader).
 
 ## Quick start
 
@@ -116,7 +126,9 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--verbose` | `false` | Log build/execute/verify timing and SSE events |
-| `--filter` | — | Filter test cases by filename substring (e.g. `contact-form`) |
+| `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
+| `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
+| `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
 | `--keep-workflows` | `false` | Don't delete built workflows after the run |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
@@ -136,8 +148,36 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, and verifier reasoning.
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
+
+### Workflow checks (per built workflow)
+
+After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
+
+The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+
+| Dimension | Checks |
+|---|---|
+| `structure` | 4 — workflow shape (nodes, triggers, start) |
+| `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
+| `parameter_correctness` | 8 — node config, expressions, field references |
+| `intent_match` | 1 — workflow fulfills the user's request |
+| `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
+| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `security` | 2 — hardcoded credentials, inbound auth defaults |
+
+The signal surfaces in:
+
+- **HTML report** — a "Workflow checks" disclosure on each test case, grouped by dimension. Pass / fail / N/A counts per group and per-check rows.
+- **PR comment / `eval-results.json`** — a "Workflow checks" table with pass / fail / N/A counts and pass rate per check, sorted by dimension, aggregated across every successful build in the run.
+- **LangSmith Feedback** — one `evals.workflows.<dimension>.<check_name>` Feedback per non-N/A outcome per scenario row (score 1 for pass, 0 for fail). N/A is omitted so per-experiment column averages reduce to per-check pass-rate cleanly. The dotted key sorts naturally in LangSmith's column UI.
+
+Operational details:
+
+- Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
+- Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ## Environment variables
 
@@ -181,12 +221,12 @@ LangSmith appends a random suffix (e.g. `instance-ai-baseline-7abc1234`); the mo
 Each scenario lands in one of three regression tiers, evaluated in order of strictness:
 
 - **Regression** — high-confidence flag, gating-grade. The drop must be statistically significant (chance of seeing it by noise < 5%), at least 30 percentage points in size, and the baseline must have been reliable (≥ 70% pass rate).
-- **Soft regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
-- **Notable movement** — any scenario whose pass rate moved by ≥ 35 percentage points without reaching either flag tier. Pure visibility, no implication of cause.
+- **Likely regression** — looser bar for visibility on borderline cases. Looser confidence threshold (chance by noise < 20%), drop ≥ 15 percentage points, baseline ≥ 50%. Frequently natural variance — worth a glance only if your changes touch related code paths.
+- **Worth watching** — any scenario whose pass rate moved by ≥ 35 percentage points but wasn't flagged as a regression (hard or likely tier). Pure visibility, no implication of cause.
 
 Other verdicts: `improvement` (PR significantly better, skips the reliability gate), `unreliable_baseline` (confident drop but baseline was too flaky to call a regression — surfaced but not flagged), `stable`, `insufficient_data`.
 
-Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the soft tier first if the false-positive rate looks off — keep the hard tier strict.
+Why these tiers and not a flat percentage threshold? At the small N PR runs use (typically 3 iterations), a flat threshold can't tell a real regression from coin-flip noise. The confidence cutoff filters out gaps that could plausibly happen by chance, and the reliability gate avoids chasing noise on already-flaky scenarios. Implementation lives in `comparison/statistics.ts` (Fisher's exact test for the confidence check, Wilson interval for the headline aggregate band). Tune the likely-regression tier first if the false-positive rate looks off — keep the hard tier strict.
 
 ### Failure-category drift
 
@@ -195,6 +235,78 @@ When both sides captured per-trial `failureCategory` values, the comparison also
 ### Best-effort
 
 Comparison is logged and skipped on any LangSmith failure — it never fails the eval. It is also skipped when no baseline experiment exists yet.
+
+## Running evals against pre-built workflows
+
+The eval framework normally builds each workflow with Instance AI and then verifies it. With `--prebuilt-workflows <path>`, the build step is skipped for matched test cases — the harness fetches the existing workflow from the n8n instance and runs verification against it instead. Use this to score workflows authored by other tools (an MCP-driven session, a hand-built reference, an older Instance AI snapshot) on the same dataset and the same verifier.
+
+The manifest is a JSON file mapping test-case file slugs to workflow IDs:
+
+```json
+{
+  "contact-form-automation": ["W1abc", "W2def", "W3ghi"],
+  "deduplication-trigger": ["W4jkl"]
+}
+```
+
+- **Keys** are test-case file slugs — the JSON filename without `.json` (e.g. `contact-form-automation` for `evaluations/data/workflows/contact-form-automation.json`). The `--filter` flag uses the same identifier.
+- **Values** are arrays of workflow IDs that already exist in the target n8n instance. Multiple iterations rotate through the list with `iteration % ids.length`, so an `--iterations 5` run with 5 IDs gets 5 distinct builds.
+
+Test cases not present in the manifest fall back to the regular Instance AI build path. To run *only* the prebuilt set, pair with `--exclude` to skip the rest, or `--filter` to narrow the run.
+
+```bash
+# Score the prebuilt cohort, skipping anything not in the manifest
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-manifest.json \
+  --filter contact-form-automation,deduplication-trigger \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
+The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
+
+### Producing a manifest
+
+`pnpm eval:build-mcp-manifest` (`evaluations/cli/build-mcp-manifest.ts`) drives `claude -p` against an MCP server — defaults to n8n's instance MCP — and writes a manifest in the schema this flag expects, plus a `manifest-stats.json` sidecar with per-cohort cost / turn / duration aggregates. The output is validated against the same Zod schema the loader uses, so shape regressions surface here rather than at eval time.
+
+**Prerequisites**: `claude` CLI installed; `~/.claude.json` has the MCP server block configured (project-scoped under `.projects[<repo-root>].mcpServers[<name>]` or globally under `.mcpServers[<name>]`); n8n instance reachable at the URL the MCP block points at. Default MCP server name is `"n8n-mcp (instance)"` — override with `--mcp-server`.
+
+```bash
+# Build N=5 per test case, 4 in parallel
+pnpm eval:build-mcp-manifest -n 5 -j 4 --output-dir ./mcp-cohort
+
+# Then score the cohort
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --prebuilt-workflows ./mcp-cohort/manifest.json \
+  --iterations 5 \
+  --experiment-name mcp-cohort
+```
+
+For runs that need to leave the n8n repo (for example, driving the build from a separate Claude project where you have skills configured), three flags decouple the script from its default assumptions:
+
+- `--workflow-dir <path>` — read test-case JSONs from a directory other than the n8n repo's `evaluations/data/workflows/`. When set, the script no longer needs `git rev-parse` to find the repo.
+- `--build-cwd <path>` — set the working directory the `claude` subprocess spawns from. Affects which `~/.claude.json` `projects` entry (and which skills) Claude loads.
+- `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
+
+Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
+
+## Discovery evals
+
+Discovery evals run the orchestrator in-process and assert first-hop tool or
+sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+`agent-spawned` events. Use them when a regression is about which path the
+agent chooses, not whether a generated workflow executes.
+
+To inspect runtime skill loading, run a focused verbose pass:
+
+```bash
+pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass
+```
+
+Verbose output lists each trial's completed tool calls with argument previews.
+For data-table routing, look for `load_skill(skillId="data-table-manager")`
+and `data-tables(action="list")`, and verify there are no planner,
+workflow-builder, or delegate sub-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -232,10 +344,10 @@ pnpm eval:pairwise:langsmith \
 ### Sandbox
 
 Pairwise evals always run inside a sandbox — the same path production uses.
-The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
-sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
-parsed `WorkflowJSON`. This exercises the production builder agent
-end-to-end (sandbox prompt, file I/O, real type checking).
+The agent writes TypeScript to a builder root under the shared sandbox
+workspace, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent end-to-end
+(sandbox prompt, file I/O, real type checking).
 
 Required env vars (Daytona provider — the default):
 
@@ -488,7 +600,7 @@ packages/cli/src/modules/instance-ai/eval/
 ## Known limitations
 
 - **LangChain/AI nodes** — use their own SDKs, not the HTTP mock layer. They fail with credential errors; use pin data instead.
-- **Binary / file nodes** — media attachments, image generation, file downloads. Mock metadata works; realistic binary content is out of scope.
+- **Binary / file nodes** — minimal-valid synthetic fixtures (PDF, PNG, JPEG, OGG/Opus, WAV, MP3, MP4, ZIP, plaintext) are generated per content type and round-trip correctly through `prepareBinaryData`. Image-content correctness and OOXML formats (docx/xlsx — currently mime-sniffed as `application/zip`) remain out of scope. See [Binary / file scenarios](#binary--file-scenarios) for the synthesis path.
 - **Streaming nodes** — mocks return complete responses, not streams.
 - **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.
 - **Non-determinism** — the agent builds different workflows each run. Pass rates vary between 40–65%.

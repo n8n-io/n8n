@@ -2,9 +2,10 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
-	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -21,6 +22,7 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -33,9 +35,8 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const nodeTypesStore = useNodeTypesStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
@@ -111,7 +112,9 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.setChatPartialExecutionDestinationNode(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
@@ -133,7 +136,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			subWorkflowExecData.value[locator.executionId] = data;
 			subWorkflows.value[locator.workflowId] = new Workflow({
 				...subExecution.workflowData,
-				nodeTypes: workflowsStore.getNodeTypes(),
+				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
@@ -185,7 +188,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		throttledWorkflowData,
 		(data) => {
 			workflow.value = data
-				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
+				? new Workflow({ ...data, nodeTypes: nodeTypesStore.getAllNodeTypes() })
 				: undefined;
 		},
 		{ immediate: true },

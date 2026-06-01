@@ -363,6 +363,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				{
 					status: 'crashed',
 					stoppedAt: new Date(),
+					waitTill: null,
 				},
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
@@ -382,7 +383,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await manager.update(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: effectiveStartedAt },
+				{ status: 'running', startedAt: effectiveStartedAt, waitTill: null },
 			);
 
 			return effectiveStartedAt;
@@ -608,7 +609,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const waitTill = new Date(Date.now() + 70000);
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			waitTill: LessThanOrEqual(waitTill),
-			status: Not('crashed'),
+			status: 'waiting',
 		};
 
 		const dbType = this.globalConfig.database.type;
@@ -783,10 +784,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopBeforeRun(execution: IExecutionResponse) {
 		execution.status = 'canceled';
 		execution.stoppedAt = new Date();
+		execution.waitTill = null;
 
 		await this.update(
 			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt },
+			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
 		);
 
 		return execution;
@@ -813,7 +815,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async cancelMany(executionIds: string[]) {
-		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+		await this.update(
+			{ id: In(executionIds) },
+			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
+		);
 	}
 
 	// ----------------------------------

@@ -137,7 +137,7 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
-const nodeVersion = process.env.NODE_VERSION || '24.14.1';
+const nodeVersion = process.env.NODE_VERSION || '24.15.0';
 
 const config = {
 	base: {

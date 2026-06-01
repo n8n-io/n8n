@@ -76,10 +76,10 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
-				new BadRequestError(
-					'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-				),
+			const promise = invitationController.inviteUser(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 		});
 
@@ -103,9 +103,9 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
-				new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED),
-			);
+			const promise = invitationController.inviteUser(req, res, payload);
+			await expect(promise).rejects.toThrow(ForbiddenError);
+			await expect(promise).rejects.toThrow(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		});
 
 		it('throws a BadRequestError if the owner account is not set up', async () => {
@@ -129,8 +129,10 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
-				new BadRequestError('You must set up your own account before inviting others'),
+			const promise = invitationController.inviteUser(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(
+				'You must set up your own account before inviting others',
 			);
 		});
 
@@ -163,10 +165,10 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
-				new ForbiddenError(
-					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
-				),
+			const promise = invitationController.inviteUser(req, res, payload);
+			await expect(promise).rejects.toThrow(ForbiddenError);
+			await expect(promise).rejects.toThrow(
+				'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 			);
 		});
 
@@ -244,12 +246,10 @@ describe('InvitationController', () => {
 			});
 			const res = mock<Response>();
 
-			await expect(
-				invitationController.acceptInvitationWithToken(req, res, payload),
-			).rejects.toThrow(
-				new BadRequestError(
-					'Invite links are not supported on this system, please use single sign on instead.',
-				),
+			const promise = invitationController.acceptInvitationWithToken(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(
+				'Invite links are not supported on this system, please use single sign on instead.',
 			);
 		});
 
@@ -269,9 +269,9 @@ describe('InvitationController', () => {
 			});
 			const res = mock<Response>();
 
-			await expect(
-				invitationController.acceptInvitationWithToken(req, res, payload),
-			).rejects.toThrow(new BadRequestError('Token is required'));
+			const promise = invitationController.acceptInvitationWithToken(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Token is required');
 		});
 
 		it('accepts the invitation successfully with JWT token', async () => {
@@ -365,9 +365,9 @@ describe('InvitationController', () => {
 			});
 			const res = mock<Response>();
 
-			await expect(
-				invitationController.acceptInvitationWithToken(req, res, payload),
-			).rejects.toThrow(new BadRequestError('Invalid payload or URL'));
+			const promise = invitationController.acceptInvitationWithToken(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid payload or URL');
 		});
 
 		it('throws a BadRequestError if invitee already has a password', async () => {
@@ -408,9 +408,9 @@ describe('InvitationController', () => {
 			});
 			const res = mock<Response>();
 
-			await expect(
-				invitationController.acceptInvitationWithToken(req, res, payload),
-			).rejects.toThrow(new BadRequestError('This invite has been accepted already'));
+			const promise = invitationController.acceptInvitationWithToken(req, res, payload);
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('This invite has been accepted already');
 		});
 	});
 });

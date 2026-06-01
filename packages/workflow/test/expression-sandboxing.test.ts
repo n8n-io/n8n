@@ -125,7 +125,24 @@ describe('PrototypeSanitizer', () => {
 			['dlopen', '{{ ({}).dlopen }}'],
 			['execve', '{{ ({}).execve }}'],
 			['loadEnvFile', '{{ ({}).loadEnvFile }}'],
+			['getOwnPropertyDescriptor', '{{ ({}).getOwnPropertyDescriptor }}'],
+			['getOwnPropertyDescriptors', '{{ ({}).getOwnPropertyDescriptors }}'],
+			['defineProperty', '{{ ({}).defineProperty }}'],
+			['defineProperties', '{{ ({}).defineProperties }}'],
+			['setPrototypeOf', '{{ ({}).setPrototypeOf }}'],
 		])('should not allow access to %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['getOwnPropertyDescriptor', '{{ ({})["getOwnPropertyDescriptor"] }}'],
+			['getOwnPropertyDescriptors', '{{ ({})["getOwnPropertyDescriptors"] }}'],
+			['defineProperty', '{{ ({})["defineProperty"] }}'],
+			['defineProperties', '{{ ({})["defineProperties"] }}'],
+			['setPrototypeOf', '{{ ({})["setPrototypeOf"] }}'],
+		])('should not allow access to %s via bracket notation', (_, expression) => {
 			expect(() => {
 				tournament.execute(expression, { __sanitize: sanitizer });
 			}).toThrowError(errorRegex);

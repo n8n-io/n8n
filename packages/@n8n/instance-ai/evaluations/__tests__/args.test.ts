@@ -37,3 +37,33 @@ describe('parseCliArgs --base-url', () => {
 		expect(() => parseCliArgs(['--base-url', 'http://localhost:5678,not-a-url'])).toThrow();
 	});
 });
+
+describe('parseCliArgs --prebuilt-workflows', () => {
+	it('is undefined by default', () => {
+		expect(parseCliArgs([]).prebuiltWorkflows).toBeUndefined();
+	});
+
+	it('accepts a path argument', () => {
+		const args = parseCliArgs(['--prebuilt-workflows', './mcp-manifest.json']);
+		expect(args.prebuiltWorkflows).toBe('./mcp-manifest.json');
+	});
+
+	it('throws when no value is provided', () => {
+		expect(() => parseCliArgs(['--prebuilt-workflows'])).toThrow(/Missing value/);
+	});
+});
+
+describe('parseCliArgs --exclude', () => {
+	it('is undefined by default', () => {
+		expect(parseCliArgs([]).exclude).toBeUndefined();
+	});
+
+	it('accepts a single substring', () => {
+		expect(parseCliArgs(['--exclude', 'cross-team']).exclude).toBe('cross-team');
+	});
+
+	it('accepts a comma-separated list as a single value', () => {
+		const args = parseCliArgs(['--exclude', 'cross-team,deduplication']);
+		expect(args.exclude).toBe('cross-team,deduplication');
+	});
+});

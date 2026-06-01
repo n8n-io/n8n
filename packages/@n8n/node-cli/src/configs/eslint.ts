@@ -7,6 +7,10 @@ import n8nNodesPlugin from 'eslint-plugin-n8n-nodes-base';
 import tseslint, { type ConfigArray } from 'typescript-eslint';
 
 function createConfig(supportCloud = true): ConfigArray {
+	const communityNodesRecommended = supportCloud
+		? n8nCommunityNodesPlugin.configs.recommended
+		: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport;
+
 	return tseslint.config(
 		globalIgnores(['dist']),
 		{
@@ -14,9 +18,7 @@ function createConfig(supportCloud = true): ConfigArray {
 			extends: [
 				eslint.configs.recommended,
 				tseslint.configs.recommended,
-				supportCloud
-					? n8nCommunityNodesPlugin.configs.recommended
-					: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport,
+				communityNodesRecommended,
 				importPlugin.configs['flat/recommended'],
 			],
 			rules: {
@@ -32,6 +34,13 @@ function createConfig(supportCloud = true): ConfigArray {
 		},
 		{
 			files: ['package.json'],
+			// Apply the community-nodes recommended config here as well so that
+			// rules gating on `package.json` (e.g. no-overrides-field,
+			// valid-peer-dependencies, no-forbidden-lifecycle-scripts) actually
+			// fire. The `**/*.ts` block above scopes its `extends:` to TypeScript
+			// only, which means ESLint never lints package.json under that block —
+			// see CE-1023 for the analogous issue in @n8n/scan-community-package.
+			extends: [communityNodesRecommended],
 			rules: {
 				...n8nNodesPlugin.configs.community.rules,
 			},

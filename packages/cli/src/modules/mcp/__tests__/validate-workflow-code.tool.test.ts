@@ -1,8 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
 
+import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 
 const mockParseAndValidate = jest.fn();
@@ -35,6 +37,7 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 describe('validate-workflow-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let telemetry: Telemetry;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -42,9 +45,19 @@ describe('validate-workflow-code MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
 		});
+		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return { description: { outputs: [NodeConnectionTypes.Main] } };
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agentTool') {
+				return { description: { outputs: [NodeConnectionTypes.AiTool] } };
+			}
+			return { description: { outputs: [NodeConnectionTypes.Main] } };
+		}) as typeof nodeTypes.getByNameAndVersion);
 	});
 
-	const createTool = () => createValidateWorkflowCodeTool(user, telemetry);
+	const createTool = () => createValidateWorkflowCodeTool(user, telemetry, nodeTypes);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and readOnlyHint=true', () => {
@@ -154,6 +167,8 @@ describe('validate-workflow-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(response.valid).toBe(false);
 			expect(response.hint).toContain('sdk_ref');
+			expect(response.hint).toContain('Workflow SDK reference');
+			expect(response.hint).toContain('validate_workflow_code');
 		});
 
 		test('does not include SDK reference hint for non-parse errors', async () => {
@@ -189,6 +204,46 @@ describe('validate-workflow-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('returns valid=false when an agent is wired as a tool to another agent', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					nodes: [
+						{
+							id: 'manager',
+							name: 'Manager Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'worker',
+							name: 'Worker Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 3,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Worker Agent': {
+							ai_tool: [[{ node: 'Manager Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				},
+				warnings: [],
+			});
+
+			const tool = createTool();
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(false);
+			expect(Array.isArray(response.errors)).toBe(true);
+			expect((response.errors as string[])[0]).toContain('@n8n/n8n-nodes-langchain.agentTool');
+			expect(result.isError).toBe(true);
 		});
 
 		test('tracks telemetry on failure with error message', async () => {

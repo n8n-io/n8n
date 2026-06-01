@@ -10,6 +10,7 @@ import { shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
@@ -19,6 +20,8 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 		name: '',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
+		workflowTriggerNodes: [],
+		allNodes: [],
 	}),
 }));
 
@@ -116,6 +119,8 @@ const workflowDocumentStoreMock = {
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	workflowTriggerNodes: [],
+	allNodes: [],
 };
 
 const renderComponent = createComponentRenderer(ParameterInputList, {
@@ -135,7 +140,7 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);

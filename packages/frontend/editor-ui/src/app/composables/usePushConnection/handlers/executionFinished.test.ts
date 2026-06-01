@@ -17,6 +17,11 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -277,7 +282,12 @@ describe('executionFinished', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			workflowsStore.workflowId = '1';
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -321,7 +331,12 @@ describe('executionFinished', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			workflowsStore.workflowId = '1';
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -362,7 +377,12 @@ describe('executionFinished', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			workflowsStore.workflowId = '1';
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -406,7 +426,12 @@ describe('executionFinished', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			workflowsStore.workflowId = '1';
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -447,7 +472,12 @@ describe('executionFinished', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			workflowsStore.workflowId = '1';
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+				'activeExecutionId',
+				'get',
+			).mockReturnValue('123');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -501,8 +531,13 @@ describe('executionFinished', () => {
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const uiStore = mockedStore(useUIStore);
 
-		// Set activeExecutionId directly on the store
-		workflowsStore.activeExecutionId = '123';
+		// Set workflowId + activeExecutionId via the state store
+		workflowsStore.workflowId = '1';
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+			'activeExecutionId',
+			'get',
+		).mockReturnValue('123');
 
 		// Mock getWorkflowById to return a workflow
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
@@ -563,7 +598,12 @@ describe('executionFinished', () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		workflowsStore.activeExecutionId = '123';
+		workflowsStore.workflowId = '1';
+		vi.spyOn(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('1')),
+			'activeExecutionId',
+			'get',
+		).mockReturnValue('123');
 
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
@@ -611,8 +651,8 @@ describe('executionFinished', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		// In iframe preview after resetWorkspace, activeExecutionId can be undefined
-		workflowsStore.activeExecutionId = undefined;
+		workflowsStore.workflowId = '1';
+		// In iframe preview after resetWorkspace, activeExecutionId is undefined by default.
 
 		const clearNodeExecutionQueue = vi.fn();
 		const workflowState = mock<WorkflowState>({
@@ -710,9 +750,10 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			workflowsStore.workflow.nodes = [
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.setNodes([
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
-			];
+			]);
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
@@ -739,9 +780,10 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			workflowsStore.workflow.nodes = [
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.setNodes([
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			];
+			]);
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
@@ -768,9 +810,10 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			workflowsStore.workflow.nodes = [
+			const docStore2 = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			docStore2.setNodes([
 				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			];
+			]);
 
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });

@@ -79,6 +79,41 @@ describe('editFileTool', () => {
 		});
 	});
 
+	describe('getAffectedResources', () => {
+		it('declares both read and write access for the edited file', async () => {
+			const resources = await editFileTool.getAffectedResources(
+				{ filePath: 'src/index.ts', oldString: 'foo', newString: 'bar' },
+				CONTEXT,
+			);
+
+			expect(resources).toEqual([
+				{
+					toolGroup: 'filesystemRead',
+					resource: '/base/src/index.ts',
+					description: 'Read file: src/index.ts',
+				},
+				{
+					toolGroup: 'filesystemWrite',
+					resource: '/base/src/index.ts',
+					description: 'Edit file: src/index.ts',
+				},
+			]);
+		});
+
+		it('rejects excluded paths for the read phase', async () => {
+			await expect(
+				editFileTool.getAffectedResources(
+					{
+						filePath: 'node_modules/pkg/index.js',
+						oldString: 'foo',
+						newString: 'bar',
+					},
+					CONTEXT,
+				),
+			).rejects.toThrow('excluded from filesystem reads');
+		});
+	});
+
 	describe('execute', () => {
 		it('replaces the first occurrence of oldString with newString', async () => {
 			mockStat(100);
@@ -157,6 +192,20 @@ describe('editFileTool', () => {
 					CONTEXT,
 				),
 			).rejects.toThrow('escapes');
+		});
+
+		it.each([
+			'node_modules/pkg/index.js',
+			'Node_Modules/pkg/index.js',
+			'.git/config',
+			'dist/out.js',
+		])('rejects edit reads under excluded directory %s', async (filePath) => {
+			await expect(
+				editFileTool.execute({ filePath, oldString: 'foo', newString: 'bar' }, CONTEXT),
+			).rejects.toThrow('excluded from filesystem reads');
+			expect(fs.stat).not.toHaveBeenCalled();
+			expect(fs.readFile).not.toHaveBeenCalled();
+			expect(fs.writeFile).not.toHaveBeenCalled();
 		});
 	});
 });

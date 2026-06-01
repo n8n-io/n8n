@@ -50,6 +50,13 @@ describe('createSessionTools', () => {
 			});
 		});
 
+		describe('getAffectedResources', () => {
+			it('returns empty array (no confirmation required)', () => {
+				const result = tool.getAffectedResources({}, TOOL_CONTEXT);
+				expect(result).toEqual([]);
+			});
+		});
+
 		describe('execute', () => {
 			let freshConnection: ReturnType<typeof createMockConnection>;
 
@@ -125,6 +132,13 @@ describe('createSessionTools', () => {
 		describe('inputSchema validation', () => {
 			it('accepts empty object', () => {
 				expect(() => tool.inputSchema.parse({})).not.toThrow();
+			});
+		});
+
+		describe('getAffectedResources', () => {
+			it('returns empty array (no confirmation required)', () => {
+				const result = tool.getAffectedResources({}, TOOL_CONTEXT);
+				expect(result).toEqual([]);
 			});
 		});
 
