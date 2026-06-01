@@ -143,11 +143,29 @@ jobs:
       # Backend V8 coverage files are written by the n8n container (uid 1000,
       # mode 0600), which the runner user can't read to zip. Root can.
       - name: Make backend coverage readable for upload
-        if: always()
+        if: ${{ always() && inputs.build-variant == 'coverage' }}
         shell: bash
         run: |
           d=packages/testing/playwright/coverage/.backend-v8
           [ -d "$d" ] && sudo chmod -R a+rwX "$d" 2>/dev/null || true
+
+      # Shard-side compaction: resolve this shard's raw V8 to a small lcov here,
+      # so we upload ~0.4MB instead of ~5GB and the aggregate merges lcovs in
+      # bounded memory (the full-suite raw merge OOMs). Backend .js/.map bytes
+      # come from the image (the repo isn't built on the shard); map sources
+      # resolve to the checkout's packages/<x>/src.
+      - name: Emit per-shard coverage lcov
+        if: ${{ always() && inputs.build-variant == 'coverage' }}
+        shell: bash
+        working-directory: packages/testing/playwright
+        run: |
+          cid=$(docker create "$TEST_IMAGE_N8N")
+          rm -rf img-dist
+          docker cp "$cid:/usr/local/lib/node_modules/n8n" ./img-dist
+          docker rm "$cid" >/dev/null
+          IMAGE_DIST_ROOT="$PWD/img-dist" \
+          N8N_COVERAGE_DIR="$PWD/coverage/.backend-v8" \
+            pnpm coverage:emit-shard
 
       - name: Upload Shard Artifacts
         if: always()
@@ -157,15 +175,9 @@ jobs:
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
-            packages/testing/playwright/coverage/.cache/
-            packages/testing/playwright/coverage/.backend-v8/
+            packages/testing/playwright/coverage/lcov.info
           retention-days: 1
           if-no-files-found: ignore
-          # upload-artifact@v7 defaults this to false, which silently drops the
-          # hidden coverage dirs: `coverage/.cache/` (frontend monocart raw) and
-          # `coverage/.backend-v8/` (backend NODE_V8_COVERAGE raw) — both needed
-          # by the coverage workflow's aggregate step.
-          include-hidden-files: true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

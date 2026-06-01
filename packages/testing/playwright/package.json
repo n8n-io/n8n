@@ -26,6 +26,8 @@
     "test:evals": "playwright test --project=eval",
     "test:evals:smoke": "playwright test --project=eval:smoke",
     "coverage:report": "tsx scripts/generate-coverage-report.ts",
+    "coverage:emit-shard": "tsx scripts/emit-shard-coverage.ts",
+    "coverage:merge": "node scripts/merge-coverage.mjs",
     "coverage:clean": "rm -rf coverage .v8-coverage .nyc_output",
     "coverage:analyse": "node scripts/coverage-analysis.mjs",
     "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium --with-deps",

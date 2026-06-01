@@ -65,10 +65,7 @@ jobs:
     name: Aggregate Coverage
     needs: e2e
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
-    # 8vcpu (32GB) — merging the full-suite raw V8 (~130k backend script entries
-    # across 8 shards) needs the headroom. The structural fix is shard-side
-    # compaction (DEVP-205); until then, give the merge memory to work in.
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -82,30 +79,16 @@ jobs:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Collect raw coverage (frontend monocart + backend V8)
-        shell: bash
+      # Shards already resolved their raw V8 to per-shard lcovs (shard-side
+      # compaction). Merge them into one unified lcov + impact map — bounded
+      # memory, no build, no raw. Replaces the all-raw MCR merge that OOM'd.
+      - name: Merge per-shard coverage
+        working-directory: packages/testing/playwright
         run: |
-          mkdir -p packages/testing/playwright/coverage/.cache
-          mkdir -p packages/testing/playwright/coverage/.backend-v8
-          fe=$(find /tmp/shards -path '*/coverage/.cache/*' -type f 2>/dev/null | wc -l)
-          be=$(find /tmp/shards -path '*/coverage/.backend-v8/*' -type f 2>/dev/null | wc -l)
-          echo "Frontend monocart raw: $fe | backend V8 raw: $be"
-          find /tmp/shards -path '*/coverage/.cache/*' -type f \
-            -exec cp {} packages/testing/playwright/coverage/.cache/ \;
-          # Backend raw is nested per-container; flatten with unique names.
-          find /tmp/shards -path '*/coverage/.backend-v8/*' -name '*.json' -type f \
-            -exec sh -c 'cp "$1" "packages/testing/playwright/coverage/.backend-v8/be-$(echo "$1" | md5sum | cut -c1-12).json"' _ {} \;
-
-      # Backend V8 maps to source against the repo's own byte-identical dist +
-      # .js.map (the image was built from this commit). Build so they exist.
-      - name: Build (for backend source-map resolution)
-        run: pnpm build
-
-      - name: Generate Coverage Report
-        env:
-          N8N_COVERAGE_DIR: ${{ github.workspace }}/packages/testing/playwright/coverage/.backend-v8
-          NODE_OPTIONS: --max-old-space-size=24576
-        run: pnpm --filter n8n-playwright coverage:report
+          mapfile -t LCOVS < <(find /tmp/shards -name 'lcov.info' -type f)
+          echo "Merging ${#LCOVS[@]} per-shard lcov(s)"
+          mkdir -p coverage
+          node scripts/merge-coverage.mjs coverage/lcov.info coverage/impact-map.json "${LCOVS[@]}"
 
       - name: Upload Coverage Report Artifact
         if: always()
