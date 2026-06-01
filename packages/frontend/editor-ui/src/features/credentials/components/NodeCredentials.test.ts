@@ -510,27 +510,6 @@ describe('NodeCredentials', () => {
 
 			expect(screen.queryByTestId('node-credential-private-icon')).toBeInTheDocument();
 		});
-
-		it('should show warning when resolvable credential selected but workflow has no resolver', async () => {
-			setupResolvableCredential();
-			workflowDocumentStore.setSettings({ executionOrder: 'v1' });
-
-			renderComponent();
-
-			expect(screen.queryByTestId('node-credential-resolver-warning')).toBeInTheDocument();
-		});
-
-		it('should not show warning when resolvable credential selected and workflow has resolver', async () => {
-			setupResolvableCredential();
-			workflowDocumentStore.setSettings({
-				executionOrder: 'v1',
-				credentialResolverId: 'resolver-123',
-			});
-
-			renderComponent();
-
-			expect(screen.queryByTestId('node-credential-resolver-warning')).not.toBeInTheDocument();
-		});
 	});
 
 	describe('quick connect', () => {

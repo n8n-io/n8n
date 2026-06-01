@@ -6,7 +6,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
-	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import AgentModelSelector from './AgentModelSelector.vue';
 import { modelToString } from '../utils/model-string';
@@ -52,7 +51,6 @@ function buildEnabledMemoryConfig() {
 		...existingMemory,
 		enabled: true,
 		storage: 'n8n' as const,
-		lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 	};
 }
 

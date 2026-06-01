@@ -17,7 +17,6 @@ describe('InstanceAiSettingsService', () => {
 		deployment: { type: string };
 	}>({
 		instanceAi: {
-			lastMessages: 10,
 			model: 'openai/gpt-4',
 			modelUrl: '',
 			modelApiKey: '',
@@ -64,7 +63,6 @@ describe('InstanceAiSettingsService', () => {
 			await expect(
 				service.updateAdminSettings({
 					sandboxEnabled: true,
-					lastMessages: 50,
 				}),
 			).rejects.toThrow(UnprocessableRequestError);
 		});
@@ -84,7 +82,7 @@ describe('InstanceAiSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
-			await expect(service.updateAdminSettings({ lastMessages: 50 })).resolves.toBeDefined();
+			await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).resolves.toBeDefined();
 		});
 
 		it('should allow proxy-managed fields when proxy is disabled', async () => {
@@ -103,7 +101,7 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('emits on every successful update', async () => {
-			await service.updateAdminSettings({ lastMessages: 50 });
+			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-settings-updated',
@@ -120,7 +118,7 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
-			await service.updateAdminSettings({ lastMessages: 50 });
+			await service.updateAdminSettings({ subAgentMaxSteps: 50 });
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
 				mcpSettingsChanged: false,
@@ -197,12 +195,6 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		describe('updateAdminSettings', () => {
-			it('should reject memory fields on cloud', async () => {
-				await expect(service.updateAdminSettings({ lastMessages: 50 })).rejects.toThrow(
-					UnprocessableRequestError,
-				);
-			});
-
 			it('should reject advanced fields on cloud', async () => {
 				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
 					UnprocessableRequestError,
@@ -216,7 +208,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			it('should include cloud-managed label in error message', async () => {
-				await expect(service.updateAdminSettings({ lastMessages: 50 })).rejects.toThrow(
+				await expect(service.updateAdminSettings({ subAgentMaxSteps: 50 })).rejects.toThrow(
 					/cloud-managed/,
 				);
 			});

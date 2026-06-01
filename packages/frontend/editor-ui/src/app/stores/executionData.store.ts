@@ -84,6 +84,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		function computeNodeExecutionIssues(nodeName: string): string[] {
 			const tasks = executionRunData.value?.[nodeName];
 			if (!tasks) return [];
+			// If the latest run succeeded, hide errors from earlier runs. This
+			// matters for AI tools the agent retries: a failure followed by a
+			// successful retry should leave the canvas in the success state.
+			if (tasks.at(-1)?.executionStatus === 'success') return [];
 			const issues: string[] = [];
 			for (const task of tasks) {
 				if (task?.error) {

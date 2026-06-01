@@ -11,11 +11,19 @@ export function targetSkillsSkill(): RuntimeSkill {
 
 Use this to create reusable load-on-demand instructions for the target agent.
 
-## Boundaries
+## Use when
 
-- The instruction is one-off and belongs directly in the target agent instructions.
-- You need guidance for your own builder behavior.
-- The user is asking to edit config, tools, integrations, memory, or model settings without a reusable target-agent skill.
+- The user wants reusable target-agent guidance (for example playbooks,
+  policies, or domain instructions) that should load only for relevant future
+  requests.
+- The same behavior is likely to be reused across multiple future tasks and
+  should be captured as a target-agent skill.
+- You want conditional, load-on-demand behavior instead of always-on target
+  agent instructions.
+
+## Don't use when:
+
+- The user asks for one-off target-agent instructions or config/tool/integration/model/memory edits.
 
 ## Workflow
 
