@@ -2,7 +2,7 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IBinaryData, IExecuteSingleFunctions } from 'n8n-workflow';
 
-import { downloadFilePostReceive } from '../../helpers/utils';
+import { downloadFilePostReceive, escapeFilterValue } from '../../helpers/utils';
 
 describe('Microsoft SharePoint Node', () => {
 	let executeSingleFunctions: MockProxy<IExecuteSingleFunctions>;
@@ -50,5 +50,14 @@ describe('Microsoft SharePoint Node', () => {
 				},
 			},
 		]);
+	});
+
+	describe('escapeFilterValue', () => {
+		it('should escape single quotes', () => {
+			expect(escapeFilterValue("hello' there ''")).toEqual("hello'' there ''''");
+		});
+		it('should not escape double quotes', () => {
+			expect(escapeFilterValue('hello " there ""')).toEqual('hello " there ""');
+		});
 	});
 });

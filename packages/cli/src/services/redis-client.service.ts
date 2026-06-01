@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
-import type { Cluster, RedisOptions } from 'ioredis';
+import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
 
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -13,6 +13,17 @@ type RedisEventMap = {
 	'connection-lost': number;
 	'connection-recovered': never;
 };
+
+/** Function called by ioredis on each failed reconnect. Returns ms to wait before the next attempt. */
+type RetryStrategy = () => number;
+
+type RedisClientCreateOptions = {
+	type: RedisClientType;
+	extraOptions?: RedisOptions;
+};
+
+const RECONNECT_AND_RETRY = 2;
+const DO_NOT_RECONNECT = false;
 
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
@@ -47,11 +58,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return !this.lostConnection;
 	}
 
-	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
+	createClient(options: RedisClientCreateOptions) {
+		const { retryStrategy, resetRetryState } = this.makeRetryStrategy();
+
 		const client =
 			this.clusterNodes().length > 0
-				? this.createClusterClient(arg)
-				: this.createRegularClient(arg);
+				? this.createClusterClient(options, retryStrategy)
+				: this.createRegularClient(options, retryStrategy);
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
@@ -60,6 +73,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		});
 
 		client.on('ready', () => {
+			resetRetryState();
 			if (this.lostConnection) {
 				this.emit('connection-recovered');
 				this.lostConnection = false;
@@ -88,14 +102,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	//            private
 	// ----------------------------------
 
-	private createRegularClient({
-		type,
-		extraOptions,
-	}: {
-		type: RedisClientType;
-		extraOptions?: RedisOptions;
-	}) {
-		const options = this.getOptions({ extraOptions });
+	private createRegularClient(
+		{ type, extraOptions }: RedisClientCreateOptions,
+		retryStrategy: RetryStrategy,
+	) {
+		const options = this.getOptions({ extraOptions, retryStrategy });
 
 		const { host, port } = this.globalConfig.queue.bull.redis;
 
@@ -109,29 +120,41 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return client;
 	}
 
-	private createClusterClient({
-		type,
-		extraOptions,
-	}: {
-		type: string;
-		extraOptions?: RedisOptions;
-	}) {
-		const options = this.getOptions({ extraOptions });
+	private createClusterClient(
+		{ type, extraOptions }: RedisClientCreateOptions,
+		retryStrategy: RetryStrategy,
+	) {
+		const options = this.getOptions({ extraOptions, retryStrategy });
 
 		const clusterNodes = this.clusterNodes();
 
-		const clusterClient = new ioRedis.Cluster(clusterNodes, {
-			redisOptions: options,
-			clusterRetryStrategy: this.retryStrategy(),
-		});
+		const clusterOptions = this.getClusterOptions(options, retryStrategy);
+
+		const clusterClient = new ioRedis.Cluster(clusterNodes, clusterOptions);
 
 		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
 
 		return clusterClient;
 	}
 
-	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+	private getOptions({
+		extraOptions,
+		retryStrategy,
+	}: {
+		extraOptions?: RedisOptions;
+		retryStrategy: RetryStrategy;
+	}) {
+		const {
+			username,
+			password,
+			db,
+			tls,
+			dualStack,
+			keepAlive,
+			keepAliveDelay,
+			keepAliveInterval,
+			reconnectOnFailover,
+		} = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -149,7 +172,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			db,
 			enableReadyCheck: false,
 			maxRetriesPerRequest: null,
-			retryStrategy: this.retryStrategy(),
+			retryStrategy,
 			...extraOptions,
 		};
 
@@ -157,21 +180,58 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 
+		// Add keep-alive configuration
+		if (keepAlive) {
+			options.keepAlive = keepAliveDelay;
+			// @ts-expect-error: keepAliveInterval is missing in ioRedis types but supported in node js socket since v18.4.0
+			options.keepAliveInterval = keepAliveInterval;
+		}
+
+		if (reconnectOnFailover) {
+			options.reconnectOnError = (redisErr: Error) => {
+				const targetError = 'READONLY';
+				if (redisErr.message.includes(targetError)) {
+					this.logger.warn('Reconnecting to Redis due to READONLY error (possible failover event)');
+					return RECONNECT_AND_RETRY;
+				}
+				return DO_NOT_RECONNECT;
+			};
+		}
+
 		return options;
 	}
 
+	private getClusterOptions(options: RedisOptions, retryStrategy: RetryStrategy): ClusterOptions {
+		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
+			this.globalConfig.queue.bull.redis;
+		const clusterOptions: ClusterOptions = {
+			redisOptions: options,
+			clusterRetryStrategy: retryStrategy,
+			slotsRefreshTimeout,
+			slotsRefreshInterval,
+		};
+
+		// NOTE: this is necessary to use AWS Elasticache Clusters with TLS.
+		// See https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls.
+		if (dnsResolveStrategy === 'NONE') {
+			clusterOptions.dnsLookup = (address, lookupFn) => lookupFn(null, address);
+		}
+
+		return clusterOptions;
+	}
+
 	/**
-	 * Strategy to retry connecting to Redis on connection failure.
+	 * Builds a per-client retry strategy and reset hook.
 	 *
-	 * Try to reconnect every 500ms. On every failed attempt, increment a timeout
-	 * counter - if the cumulative timeout exceeds a limit, exit the process.
-	 * Reset the cumulative timeout if >30s between reconnection attempts.
+	 * On every failed attempt, increment a timeout counter - if the cumulative
+	 * timeout exceeds a limit, exit the process. Reset the cumulative timeout
+	 * on successful reconnect or if >30s between reconnection attempts.
 	 */
-	private retryStrategy() {
+	private makeRetryStrategy(): { retryStrategy: RetryStrategy; resetRetryState: () => void } {
 		let lastAttemptTs = 0;
 		let cumulativeTimeout = 0;
 
-		return () => {
+		const retryStrategy: RetryStrategy = () => {
 			const nowTs = Date.now();
 
 			if (nowTs - lastAttemptTs > this.config.resetLength) {
@@ -188,10 +248,18 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				}
 			}
 
+			this.lostConnection = true;
 			this.emit('connection-lost', cumulativeTimeout);
 
 			return this.config.retryInterval;
 		};
+
+		const resetRetryState = () => {
+			lastAttemptTs = 0;
+			cumulativeTimeout = 0;
+		};
+
+		return { retryStrategy, resetRetryState };
 	}
 
 	private clusterNodes() {
@@ -224,8 +292,6 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
 
 			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
-
-			this.lostConnection = true;
 		});
 
 		this.on('connection-recovered', () => {

@@ -1,0 +1,78 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Styleguide/Spacing & Size" />
+
+# Spacing & Size
+
+Our spacing scale is built to keep visual rhythm consistent across components, with step names (`5xs` to `5xl`) that map to fixed pixel values.
+
+Use adjacent steps when adjusting layouts so spacing feels intentional instead of drifting into one-off values.
+The height scale complements spacing and gives controls a shared size language, so buttons, inputs, and panels align naturally.
+
+## Spacing
+
+| Name | Size (px) | Visualization                                                                  |
+| ---- | --------- | ------------------------------------------------------------------------------ |
+| 5xs  | 2px       | <span class="spacing-size spacing" style={{ width: 'var(--spacing--5xs)' }} /> |
+| 4xs  | 4px       | <span class="spacing-size spacing" style={{ width: 'var(--spacing--4xs)' }} /> |
+| 3xs  | 6px       | <span class="spacing-size spacing" style={{ width: 'var(--spacing--3xs)' }} /> |
+| 2xs  | 8px       | <span class="spacing-size spacing" style={{ width: 'var(--spacing--2xs)' }} /> |
+| xs   | 12px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--xs)' }} />  |
+| sm   | 16px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--sm)' }} />  |
+| md   | 20px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--md)' }} />  |
+| lg   | 24px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--lg)' }} />  |
+| xl   | 32px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--xl)' }} />  |
+| 2xl  | 48px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--2xl)' }} /> |
+| 3xl  | 64px      | <span class="spacing-size spacing" style={{ width: 'var(--spacing--3xl)' }} /> |
+| 4xl  | 128px     | <span class="spacing-size spacing" style={{ width: 'var(--spacing--4xl)' }} /> |
+| 5xl  | 256px     | <span class="spacing-size spacing" style={{ width: 'var(--spacing--5xl)' }} /> |
+
+## Height
+
+| Name | Size (px) | Visualization                                                                 |
+| ---- | --------- | ----------------------------------------------------------------------------- |
+| 5xs  | 8px       | <span class="spacing-size height" style={{ height: 'var(--height--5xs)' }} /> |
+| 4xs  | 12px      | <span class="spacing-size height" style={{ height: 'var(--height--4xs)' }} /> |
+| 3xs  | 16px      | <span class="spacing-size height" style={{ height: 'var(--height--3xs)' }} /> |
+| 2xs  | 20px      | <span class="spacing-size height" style={{ height: 'var(--height--2xs)' }} /> |
+| xs   | 24px      | <span class="spacing-size height" style={{ height: 'var(--height--xs)' }} />  |
+| sm   | 28px      | <span class="spacing-size height" style={{ height: 'var(--height--sm)' }} />  |
+| md   | 32px      | <span class="spacing-size height" style={{ height: 'var(--height--md)' }} />  |
+| lg   | 36px      | <span class="spacing-size height" style={{ height: 'var(--height--lg)' }} />  |
+| xl   | 40px      | <span class="spacing-size height" style={{ height: 'var(--height--xl)' }} />  |
+| 2xl  | 48px      | <span class="spacing-size height" style={{ height: 'var(--height--2xl)' }} /> |
+| 3xl  | 56px      | <span class="spacing-size height" style={{ height: 'var(--height--3xl)' }} /> |
+| 4xl  | 64px      | <span class="spacing-size height" style={{ height: 'var(--height--4xl)' }} /> |
+| 5xl  | 96px      | <span class="spacing-size height" style={{ height: 'var(--height--5xl)' }} /> |
+
+### Negative Values
+
+To get negative values, use the `calc()` function like so:
+
+```css
+.box {
+	margin-inline: calc(var(--spacing--xs) * -1); /* -12px */
+}
+```
+
+<style>
+	{`
+
+.spacing-size {
+	display: inline-block;
+	margin:var(--spacing--4xs);
+	background: var(--color--mint-500);
+	border-radius: var(--radius--4xs);
+}
+
+.spacing-size.height {
+	aspect-ratio:1/1;
+	min-width: 2px;
+}
+
+.spacing-size.spacing {
+	min-width: 2px;
+	height:var(--spacing--xs);
+}
+`}
+</style>

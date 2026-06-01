@@ -5,6 +5,8 @@ import {
 	getWorkflowById,
 	newWorkflow,
 	testDb,
+	createActiveWorkflow,
+	createWorkflowWithHistory,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
@@ -13,12 +15,16 @@ import {
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { ImportService } from '@/services/import.service';
 
 import { createMember, createOwner } from './shared/db/users';
@@ -28,9 +34,21 @@ describe('ImportService', () => {
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
+	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockWorkflowIndexService: WorkflowIndexService;
+
+	let workflowRepository: WorkflowRepository;
+	let sharedWorkflowRepository: SharedWorkflowRepository;
+	let workflowHistoryRepository: WorkflowHistoryRepository;
+	let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
+
+		workflowRepository = Container.get(WorkflowRepository);
+		sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+		workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 
 		owner = await createOwner();
 		ownerPersonalProject = await getPersonalProject(owner);
@@ -39,11 +57,33 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		importService = new ImportService(mock(), credentialsRepository, tagRepository);
+		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+
+		mockWorkflowIndexService = mock<WorkflowIndexService>();
+
+		importService = new ImportService(
+			mock(),
+			credentialsRepository,
+			tagRepository,
+			mock(),
+			mock(),
+			mockActiveWorkflowManager,
+			mockWorkflowIndexService,
+			mock(),
+			workflowRepository,
+			workflowPublishHistoryRepository,
+		);
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TagEntity', 'WorkflowTagMapping']);
+		await testDb.truncate([
+			'WorkflowEntity',
+			'SharedWorkflow',
+			'TagEntity',
+			'WorkflowTagMapping',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 	});
 
 	afterAll(async () => {
@@ -60,6 +100,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
+		expect(mockWorkflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(workflowToImport);
 	});
 
 	test('should make user owner of imported workflow', async () => {
@@ -67,7 +108,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
+		const dbSharing = await sharedWorkflowRepository.findOneOrFail({
 			where: {
 				workflowId: workflowToImport.id,
 				projectId: ownerPersonalProject.id,
@@ -97,7 +138,7 @@ describe('ImportService', () => {
 	});
 
 	test('should deactivate imported workflow if active', async () => {
-		const workflowToImport = await createWorkflow({ active: true });
+		const workflowToImport = await createActiveWorkflow();
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
@@ -106,6 +147,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.active).toBe(false);
+		expect(dbWorkflow.activeVersionId).toBeNull();
 	});
 
 	test('should leave intact new-format credentials', async () => {
@@ -149,7 +191,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -170,7 +212,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -189,7 +231,7 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
-		const dbWorkflow = await Container.get(WorkflowRepository).findOneOrFail({
+		const dbWorkflow = await workflowRepository.findOneOrFail({
 			where: { id: workflowToImport.id },
 			relations: ['tags'],
 		});
@@ -201,5 +243,241 @@ describe('ImportService', () => {
 		const dbTag = await tagRepository.findOneOrFail({ where: { name: tag.name } });
 
 		expect(dbTag.name).toBe(tag.name); // tag created
+	});
+
+	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
+		const workflowWithId = await createActiveWorkflow();
+		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
+
+		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
+	});
+
+	test('should always create a record in workflow history', async () => {
+		const workflowToImport = newWorkflow();
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const workflowHistoryRecords = await workflowHistoryRepository.find({
+			where: {
+				workflowId: workflowToImport.id,
+			},
+		});
+
+		expect(workflowHistoryRecords).toHaveLength(1);
+		expect(workflowHistoryRecords[0].versionId).toBeDefined();
+		expect(workflowHistoryRecords[0].authors).toBe('import');
+		expect(workflowHistoryRecords[0].nodes).toEqual(workflowToImport.nodes);
+		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
+	});
+
+	test('should preserve versionMetadata name and description when importing', async () => {
+		const workflowToImport: any = newWorkflow();
+		workflowToImport.versionMetadata = {
+			name: 'Historical Workflow Name',
+			description: 'Historical workflow description',
+		};
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const workflowHistoryRecords = await workflowHistoryRepository.find({
+			where: {
+				workflowId: workflowToImport.id,
+			},
+		});
+
+		expect(workflowHistoryRecords).toHaveLength(1);
+		expect(workflowHistoryRecords[0].name).toBe('Historical Workflow Name');
+		expect(workflowHistoryRecords[0].description).toBe('Historical workflow description');
+	});
+
+	test('should create a record in workflow publish history if active version exists', async () => {
+		// Create an existing active workflow in the database first
+		const existingWorkflow = await createActiveWorkflow();
+		const originalActiveVersionId = existingWorkflow.activeVersionId!;
+
+		// Now import it again (simulating re-import of an active workflow)
+		const workflowToImport = await getWorkflowById(existingWorkflow.id);
+		if (!workflowToImport) fail('Expected to find workflow');
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const publishHistoryRecords = await workflowPublishHistoryRepository.find({
+			where: {
+				workflowId: existingWorkflow.id,
+				event: 'deactivated',
+			},
+		});
+
+		// Should have publish history for deactivating the original active version
+		expect(publishHistoryRecords).toHaveLength(1);
+		expect(publishHistoryRecords[0].versionId).toBe(originalActiveVersionId);
+	});
+
+	test('should not create a record in workflow publish history for new workflows', async () => {
+		const workflowToImport = newWorkflow();
+		workflowToImport.active = true;
+		workflowToImport.activeVersionId = 'some-version';
+
+		if (!workflowToImport) fail('Expected to find workflow');
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const publishHistoryRecords = await workflowPublishHistoryRepository.find({
+			where: {
+				workflowId: workflowToImport.id,
+				event: 'deactivated',
+			},
+		});
+
+		expect(publishHistoryRecords).toHaveLength(0);
+	});
+
+	test('should always generate a new versionId when importing, ensuring proper history ordering', async () => {
+		const initialWorkflow = await createWorkflowWithHistory();
+		const originalVersionId = initialWorkflow.versionId;
+
+		// Import the same workflow again (simulating re-import)
+		const workflowToReimport = await getWorkflowById(initialWorkflow.id);
+		if (!workflowToReimport) fail('Expected to find workflow');
+
+		await importService.importWorkflows([workflowToReimport], ownerPersonalProject.id);
+
+		const historyRecords = await workflowHistoryRepository.find({
+			where: { workflowId: initialWorkflow.id },
+			order: { createdAt: 'ASC' },
+		});
+
+		expect(historyRecords).toHaveLength(2);
+		expect(historyRecords[0].versionId).toBe(originalVersionId);
+		expect(historyRecords[1].versionId).not.toBe(originalVersionId);
+
+		// Verify the workflow now has the new versionId
+		const updatedWorkflow = await getWorkflowById(initialWorkflow.id);
+		expect(updatedWorkflow?.versionId).toBe(historyRecords[1].versionId);
+	});
+
+	describe('activeState: fromJson', () => {
+		test('should activate imported workflow when JSON has active=true', async () => {
+			const workflowToImport = await createWorkflow();
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			const dbWorkflow = await getWorkflowById(workflowToImport.id);
+			if (!dbWorkflow) fail('Expected to find workflow');
+
+			expect(dbWorkflow.active).toBe(true);
+			expect(dbWorkflow.activeVersionId).toBe(dbWorkflow.versionId);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith(workflowToImport.id, 'activate');
+		});
+
+		test('should deactivate imported workflow that is updating existing one when JSON has active=false', async () => {
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const existingWorkflow = await createActiveWorkflow();
+
+			const workflowToImport = await getWorkflowById(existingWorkflow.id);
+			if (!workflowToImport) fail('Expected to find workflow');
+			workflowToImport.active = false;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			const dbWorkflow = await getWorkflowById(workflowToImport.id);
+			if (!dbWorkflow) fail('Expected to find workflow');
+
+			expect(dbWorkflow.active).toBe(false);
+			expect(dbWorkflow.activeVersionId).toBeNull();
+			expect(mockActiveWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		test('should leave imported workflow deactivated when JSON has active=false', async () => {
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const workflowToImport = await createWorkflow();
+			workflowToImport.active = false;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			const dbWorkflow = await getWorkflowById(workflowToImport.id);
+			if (!dbWorkflow) fail('Expected to find workflow');
+
+			expect(dbWorkflow.active).toBe(false);
+			expect(dbWorkflow.activeVersionId).toBeNull();
+			expect(mockActiveWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		test('should record both deactivated (old) and activated (new) publish history when re-importing an active workflow', async () => {
+			const existingWorkflow = await createActiveWorkflow();
+			const originalActiveVersionId = existingWorkflow.activeVersionId!;
+
+			const workflowToImport = await getWorkflowById(existingWorkflow.id);
+			if (!workflowToImport) fail('Expected to find workflow');
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			const dbWorkflow = await getWorkflowById(existingWorkflow.id);
+			if (!dbWorkflow) fail('Expected to find workflow');
+
+			const deactivatedRecords = await workflowPublishHistoryRepository.find({
+				where: { workflowId: existingWorkflow.id, event: 'deactivated' },
+			});
+			const activatedForNewVersion = await workflowPublishHistoryRepository.find({
+				where: {
+					workflowId: existingWorkflow.id,
+					event: 'activated',
+					versionId: dbWorkflow.versionId,
+				},
+			});
+
+			expect(deactivatedRecords).toHaveLength(1);
+			expect(deactivatedRecords[0].versionId).toBe(originalActiveVersionId);
+			expect(activatedForNewVersion).toHaveLength(1);
+			expect(activatedForNewVersion[0].userId).toBeNull();
+		});
+
+		test('should not call ActiveWorkflowManager.remove for a brand-new active workflow', async () => {
+			jest.mocked(mockActiveWorkflowManager.remove).mockClear();
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const workflowToImport = await createWorkflow();
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockActiveWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith(workflowToImport.id, 'activate');
+		});
+
+		test('should call ActiveWorkflowManager.remove exactly once when re-importing an active workflow', async () => {
+			jest.mocked(mockActiveWorkflowManager.remove).mockClear();
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const existingWorkflow = await createActiveWorkflow();
+
+			const workflowToImport = await getWorkflowById(existingWorkflow.id);
+			if (!workflowToImport) fail('Expected to find workflow');
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(existingWorkflow.id);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith(existingWorkflow.id, 'activate');
+		});
 	});
 });

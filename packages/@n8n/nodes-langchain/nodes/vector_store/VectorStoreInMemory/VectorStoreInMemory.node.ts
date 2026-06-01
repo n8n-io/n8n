@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import {
 	type INodeProperties,
 	type ILoadOptionsFunctions,
@@ -11,8 +11,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
+import { createVectorStoreNode, MemoryVectorStoreManager } from '@n8n/ai-utilities';
 
 const warningBanner: INodeProperties = {
 	displayName:
@@ -57,7 +56,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
 		description: 'The easiest way to experiment with vector stores, without external setup.',
-		icon: 'fa:database',
+		icon: 'node:simple-vector-store',
 		iconColor: 'black',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
@@ -66,6 +65,15 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			AI: ['Vector Stores', 'Tools', 'Root Nodes'],
 			'Vector Stores': ['For Beginners'],
 			Tools: ['Other Tools'],
+		},
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+					relationHint:
+						'Connect to enable retrieval-augmented generation (RAG) for AI Agent workflows',
+				},
+			],
 		},
 	},
 	sharedFields: [

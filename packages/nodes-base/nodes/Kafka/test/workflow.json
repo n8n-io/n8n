@@ -66,10 +66,19 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    \"name\": \"First item\",\n    \"code\": 1\n  },\n  {\n    \"name\": \"Second item\",\n    \"code\": 2\n  }\n]"
+				"data": [
+					{
+						"name": "First item",
+						"code": 1
+					},
+					{
+						"name": "Second item",
+						"code": 2
+					}
+				]
 			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [220, -100],
 			"id": "50ce815c-cf9a-4d83-8739-c95f9c3d7ec6",
 			"name": "Test Data"

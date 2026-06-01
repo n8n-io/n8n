@@ -1,4 +1,5 @@
-import { Container, Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
@@ -7,43 +8,40 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
+import { ErrorReporter } from '@/errors';
+
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
-import { areConfigModes, binaryToBuffer } from './utils';
+import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
-import { InvalidModeError } from '../errors/invalid-mode.error';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.ServiceMode = 'default';
+	private mode: BinaryData.ServiceMode = 'filesystem-v2';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
-	constructor(private readonly config: BinaryDataConfig) {}
+	constructor(
+		private readonly config: BinaryDataConfig,
+		private readonly errorReporter: ErrorReporter,
+		private readonly logger: Logger,
+	) {}
+
+	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
+		this.managers[mode] = manager;
+	}
 
 	async init() {
 		const { config } = this;
-		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		if (config.availableModes.includes('filesystem')) {
-			const { FileSystemManager } = await import('./file-system.manager');
+		const { FileSystemManager } = await import('./file-system.manager');
+		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
+		this.managers['filesystem-v2'] = this.managers.filesystem;
+		await this.managers.filesystem.init();
 
-			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
-			this.managers['filesystem-v2'] = this.managers.filesystem;
-
-			await this.managers.filesystem.init();
-		}
-
-		if (config.availableModes.includes('s3')) {
-			const { ObjectStoreManager } = await import('./object-store.manager');
-			const { ObjectStoreService } = await import('./object-store/object-store.service.ee');
-
-			this.managers.s3 = new ObjectStoreManager(Container.get(ObjectStoreService));
-
-			await this.managers.s3.init();
-		}
+		// DB and S3 managers are set via `setManager()` from `cli`
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
@@ -66,8 +64,7 @@ export class BinaryDataService {
 	}
 
 	async copyBinaryFile(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		binaryData: IBinaryData,
 		filePath: string,
 	) {
@@ -76,6 +73,7 @@ export class BinaryDataService {
 		if (!manager) {
 			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
+			binaryData.bytes = size;
 			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
@@ -86,23 +84,18 @@ export class BinaryDataService {
 			mimeType: binaryData.mimeType,
 		};
 
-		const { fileId, fileSize } = await manager.copyByFilePath(
-			workflowId,
-			executionId,
-			filePath,
-			metadata,
-		);
+		const { fileId, fileSize } = await manager.copyByFilePath(location, filePath, metadata);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
 	}
 
 	async store(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		bufferOrStream: Buffer | Readable,
 		binaryData: IBinaryData,
 	) {
@@ -112,6 +105,7 @@ export class BinaryDataService {
 			const buffer = await binaryToBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
+			binaryData.bytes = buffer.length;
 
 			return binaryData;
 		}
@@ -121,15 +115,11 @@ export class BinaryDataService {
 			mimeType: binaryData.mimeType,
 		};
 
-		const { fileId, fileSize } = await manager.store(
-			workflowId,
-			executionId,
-			bufferOrStream,
-			metadata,
-		);
+		const { fileId, fileSize } = await manager.store(location, bufferOrStream, metadata);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
@@ -163,17 +153,45 @@ export class BinaryDataService {
 		return await this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
+	async deleteMany(locations: BinaryData.FileLocation[]) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
-		if (manager.deleteMany) await manager.deleteMany(ids);
+		if (manager.deleteMany) await manager.deleteMany(locations);
+	}
+
+	async deleteManyByBinaryDataId(ids: string[]) {
+		const fileIdsByMode = new Map<string, string[]>();
+
+		for (const attachmentId of ids) {
+			const [mode, fileId] = attachmentId.split(':');
+
+			if (!fileId) {
+				continue;
+			}
+
+			const entry = fileIdsByMode.get(mode) ?? [];
+
+			fileIdsByMode.set(mode, entry.concat([fileId]));
+		}
+
+		for (const [mode, fileIds] of fileIdsByMode) {
+			const manager = this.managers[mode];
+
+			if (!manager) {
+				this.logger.info(
+					`File manager of mode ${mode} is missing. Skip deleting these files: ${fileIds.join(', ')}`,
+				);
+				continue;
+			}
+
+			await manager.deleteManyByFileId?.(fileIds);
+		}
 	}
 
 	async duplicateBinaryData(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		inputData: Array<INodeExecutionData[] | null>,
 	) {
 		if (inputData && this.managers[this.mode]) {
@@ -183,11 +201,7 @@ export class BinaryDataService {
 						return await Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return await this.duplicateBinaryDataInExecData(
-										workflowId,
-										executionId,
-										executionData,
-									);
+									return await this.duplicateBinaryDataInExecData(location, executionData);
 								}
 
 								return executionData;
@@ -222,8 +236,7 @@ export class BinaryDataService {
 	}
 
 	private async duplicateBinaryDataInExecData(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		executionData: INodeExecutionData,
 	) {
 		const manager = this.managers[this.mode];
@@ -242,7 +255,7 @@ export class BinaryDataService {
 
 				const [_mode, fileId] = binaryDataId.split(':');
 
-				return await manager?.copyByFileId(workflowId, executionId, fileId).then((newFileId) => ({
+				return await manager?.copyByFileId(location, fileId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));

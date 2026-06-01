@@ -8,6 +8,7 @@ import contacts from './fixtures/contacts.json';
 import contactsSearchResult from './fixtures/contacts_search_result.json';
 import deals from './fixtures/deals.json';
 import dealsSearchResult from './fixtures/deals_search_result.json';
+import engagements from './fixtures/engagements.json';
 
 describe('Hubspot Node', () => {
 	nock.disableNetConnect();
@@ -349,6 +350,24 @@ describe('Hubspot Node', () => {
 
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['deals.workflow.json'],
+		});
+	});
+
+	describe('engagements', () => {
+		beforeAll(() => {
+			hubspotNock
+				.post('/engagements/v1/engagements', engagements.request.createWithOwnerId)
+				.reply(200, engagements.response.createWithOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createWithoutOwnerId)
+				.reply(200, engagements.response.createWithoutOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createV2_1)
+				.reply(200, engagements.response.createV2_1);
+		});
+
+		afterAll(() => hubspotNock.done());
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['engagements.workflow.json'],
 		});
 	});
 });

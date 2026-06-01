@@ -1,0 +1,80 @@
+{
+	"name": "Google Analytics GA4 Report Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"propertyType": "ga4",
+				"propertyId": {
+					"mode": "id",
+					"value": "123456789"
+				},
+				"dateRange": "last7days",
+				"metricsGA4": {
+					"metricValues": [
+						{
+							"listName": "totalUsers"
+						}
+					]
+				},
+				"dimensionsGA4": {
+					"dimensionValues": [
+						{
+							"listName": "date"
+						}
+					]
+				},
+				"returnAll": false,
+				"limit": 10,
+				"simple": true
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "ga4-report-node",
+			"name": "GA4 Report",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "ga-oauth-cred-id",
+					"name": "Google Analytics OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"GA4 Report": [
+			{
+				"json": {
+					"date": "20240101",
+					"totalUsers": "100"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "GA4 Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

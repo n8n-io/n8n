@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { captor, mock, type MockProxy } from 'jest-mock-extended';
 import type {
 	IRunExecutionData,
 	ContextType,
@@ -14,8 +13,10 @@ import type {
 	ExecuteWorkflowData,
 	RelatedExecution,
 	IExecuteWorkflowInfo,
+	IExecutionContext,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 
@@ -48,17 +49,86 @@ export const describeCommonTests = (
 		});
 	});
 
+	describe('getExecutionContext', () => {
+		it('should return execution context when runtimeData exists', () => {
+			const mockContext: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+				credentials: 'encrypted-credential-data',
+			};
+
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: mockContext,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			const result = context.getExecutionContext();
+
+			expect(result).toEqual(mockContext);
+			expect(result?.version).toBe(1);
+			expect(result?.establishedAt).toBeDefined();
+		});
+
+		it('should return undefined when executionData is not set', () => {
+			runExecutionData.executionData = undefined;
+
+			expect(context.getExecutionContext()).toBeUndefined();
+		});
+
+		it('should return undefined when runtimeData is not set', () => {
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: undefined,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			expect(context.getExecutionContext()).toBeUndefined();
+		});
+
+		it('should handle optional credentials field', () => {
+			const contextWithoutCredentials: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: contextWithoutCredentials,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			const result = context.getExecutionContext();
+
+			expect(result).toEqual(contextWithoutCredentials);
+			expect(result?.credentials).toBeUndefined();
+		});
+	});
+
 	describe('onExecutionCancellation', () => {
-		const handler = jest.fn();
-		context.onExecutionCancellation(handler);
+		it('registers the handler and triggers it when the signal aborts', () => {
+			const handler = vi.fn();
+			context.onExecutionCancellation(handler);
 
-		const fnCaptor = captor<() => void>();
-		expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).not.toHaveBeenCalled();
+			const fnCaptor = captor<() => void>();
+			expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).not.toHaveBeenCalled();
 
-		fnCaptor.value();
-		expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).toHaveBeenCalled();
+			fnCaptor.value();
+			expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).toHaveBeenCalled();
+		});
 	});
 
 	describe('continueOnFail', () => {
@@ -90,7 +160,7 @@ export const describeCommonTests = (
 		it('should return the context object', () => {
 			const contextType: ContextType = 'node';
 			const expectedContext = mock<IContextObject>();
-			const getContextSpy = jest.spyOn(NodeHelpers, 'getContext');
+			const getContextSpy = vi.spyOn(NodeHelpers, 'getContext');
 			getContextSpy.mockReturnValue(expectedContext);
 
 			expect(context.getContext(contextType)).toEqual(expectedContext);
@@ -163,7 +233,9 @@ export const describeCommonTests = (
 		it('should evaluate the expression correctly', () => {
 			const expression = '$json.test';
 			const expectedResult = 'data';
-			const resolveSimpleParameterValueSpy = jest.spyOn(
+			// Touch the lazy proxy property so vi.spyOn can find it.
+			void workflow.expression.resolveSimpleParameterValue;
+			const resolveSimpleParameterValueSpy = vi.spyOn(
 				workflow.expression,
 				'resolveSimpleParameterValue',
 			);
@@ -201,7 +273,7 @@ export const describeCommonTests = (
 
 	describe('executeWorkflow', () => {
 		const data = [[{ json: { test: true } }]];
-		const executeWorkflowData = mock<ExecuteWorkflowData>();
+		const executeWorkflowData = mock<ExecuteWorkflowData>({ data });
 		const workflowInfo = mock<IExecuteWorkflowInfo>();
 		const parentExecution: RelatedExecution = {
 			executionId: 'parent_execution_id',
@@ -210,24 +282,18 @@ export const describeCommonTests = (
 
 		it('should execute workflow and return data', async () => {
 			additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
-			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
 				parentExecution,
 			});
 
 			expect(result.data).toEqual(data);
-			expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
-				workflow.id,
-				additionalData.executionId,
-				executeWorkflowData.data,
-			);
+			expect(result).toBe(executeWorkflowData);
 		});
 
 		it('should put execution to wait if waitTill is returned', async () => {
 			const waitTill = new Date();
 			additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData, waitTill });
-			binaryDataService.duplicateBinaryData.mockResolvedValue(data);
 
 			const result = await context.executeWorkflow(workflowInfo, undefined, undefined, {
 				parentExecution,

@@ -2,6 +2,46 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 2.0.0
+
+### What changed?
+
+The `npm` command is no longer available in the `n8nio/runners` image. Only `pnpm` is available for package management.
+
+### When is action necessary?
+
+If you are extending the `n8nio/runners` image and using `npm` to install dependencies. Replace any `npm install` commands with `pnpm install` in your Dockerfile or scripts.
+
+# 1.122.0
+
+### What changed?
+
+The way to add third-party dependencies to the `n8nio/runners` image has changed. More details [here](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
+
+### When is action necessary?
+
+If you are adding third-party dependencies to the `n8nio/runners` image using `package.json` and `extras.txt` and building the image yourself, please extend the image as instructed in the link above.
+
+# 1.113.0
+
+### What changed?
+
+Support for bare repositories in Git Node was dropped in the cloud version of n8n due to security reasons. Also, an environment variable `N8N_GIT_NODE_DISABLE_BARE_REPOS` was added that allows self-hosted users to disable bare repositories as well.
+
+### When is action necessary?
+
+If you have workflows that use the Git Node and work with bare git repositories.
+
+# 1.109.0
+
+### What changed?
+
+Webhook HTML responses were sandboxed to an iframe starting from 1.103.1 due to security. The sandboxing mechanism is now changed to use `Content-Security-Policy` header instead of an `iframe`. The security guarantees stay the same, but the mechanism is less breaking.
+
+### When is action necessary?
+
+If you have workflows that return HTML responses from `Webhook Trigger` node or `Respond to Webhook` node.
+
 # 1.107.0
 
 ## What changed?

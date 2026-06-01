@@ -4,7 +4,6 @@ import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
@@ -12,8 +11,7 @@ jest.unmock('@/telemetry');
 jest.mock('@/posthog');
 
 describe('Telemetry', () => {
-	let startPulseSpy: jest.SpyInstance;
-	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+	let spyTrack: jest.SpyInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -27,28 +25,34 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		// @ts-expect-error Spying on private method
-		startPulseSpy = jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
-
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
-		config.set('deployment.type', 'n8n-testing');
+		globalConfig.deployment.type = 'n8n-testing';
 	});
 
 	afterAll(async () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
-		startPulseSpy.mockRestore();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack.mockClear();
+		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		// @ts-expect-error Spying on private method
+		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
-		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock(), globalConfig);
+		telemetry = new Telemetry(
+			mock(),
+			postHog,
+			mock(),
+			instanceSettings,
+			mock(),
+			globalConfig,
+			mock(),
+		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = mockRudderStack;
 	});
@@ -110,6 +114,48 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].manual_error?.first).toEqual(execTime3);
 			expect(execBuffer['1'].prod_error?.count).toBe(2);
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime4);
+		});
+
+		test('should count Instance AI source buckets alongside existing mode buckets', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: true,
+				success: true,
+				error_node_type: 'custom-nodes-base.node-type',
+				execution_source: 'user',
+			};
+
+			const userManualExecTime = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.execution_source = 'instance_ai';
+			payload.mock_data_sources = 'trigger_input';
+
+			const instanceAiMockManualExecTime = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.is_manual = false;
+			delete payload.mock_data_sources;
+
+			const instanceAiRealProdExecTime = fakeJestSystemTime('2022-01-01 14:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_success?.count).toBe(2);
+			expect(execBuffer['1'].manual_success?.first).toEqual(userManualExecTime);
+			expect(execBuffer['1'].prod_success?.count).toBe(1);
+			expect(execBuffer['1'].prod_success?.first).toEqual(instanceAiRealProdExecTime);
+
+			expect(execBuffer['1']).not.toHaveProperty('user_manual_success');
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.first).toEqual(
+				instanceAiMockManualExecTime,
+			);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.first).toEqual(
+				instanceAiRealProdExecTime,
+			);
 		});
 
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
@@ -262,6 +308,311 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
 		});
+
+		test('should count crashed executions correctly', async () => {
+			const payload = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			// Manual crashed execution
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Production crashed execution
+			payload.is_manual = false;
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeJestSystemTime('2022-01-01 13:30:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			// Should fire "Workflow execution errored" events for manual crashed executions with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(2);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(2);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['1'].prod_crashed?.count).toBe(2);
+			expect(execBuffer['1'].prod_crashed?.first).toEqual(execTime2);
+
+			// Other execution types should be undefined
+			expect(execBuffer['1'].manual_success).toBeUndefined();
+			expect(execBuffer['1'].manual_error).toBeUndefined();
+			expect(execBuffer['1'].prod_success).toBeUndefined();
+			expect(execBuffer['1'].prod_error).toBeUndefined();
+		});
+
+		test('should handle crashed executions with different workflow IDs', async () => {
+			const payload1 = {
+				workflow_id: '1',
+				is_manual: true,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.node-type',
+			};
+
+			const payload2 = {
+				workflow_id: '2',
+				is_manual: false,
+				success: false,
+				crashed: true,
+				error_node_type: 'n8n-nodes-base.another-node',
+			};
+
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload1);
+
+			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload2);
+
+			// Should fire one "Workflow execution errored" event for manual crashed execution with n8n-nodes-base
+			expect(spyTrack).toHaveBeenCalledTimes(1);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_crashed?.count).toBe(1);
+			expect(execBuffer['1'].manual_crashed?.first).toEqual(execTime1);
+			expect(execBuffer['2'].prod_crashed?.count).toBe(1);
+			expect(execBuffer['2'].prod_crashed?.first).toEqual(execTime2);
+
+			// Cross-check other types are undefined
+			expect(execBuffer['1'].prod_crashed).toBeUndefined();
+			expect(execBuffer['2'].manual_crashed).toBeUndefined();
+		});
+	});
+
+	describe('trackAgentExecution', () => {
+		test('should aggregate agent execution counters by agent ID', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-2', message_count: 1 });
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 2,
+				},
+				'agent-2': {
+					agent_id: 'agent-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+			});
+		});
+
+		test('should flush agent execution counters and reset the buffer', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 2,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should allow a post-flush window with tokens but no fresh user turn', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+			spyTrack.mockClear();
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should aggregate agent execution counters by agent ID and user ID when present', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-2', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1:user-1': {
+					agent_id: 'agent-1',
+					user_id: 'user-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 0,
+				},
+				'agent-1:user-2': {
+					agent_id: 'agent-1',
+					user_id: 'user-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 0,
+					token_count: 0,
+					tool_call_count: 2,
+				},
+			});
+		});
+
+		test('should flush attributed and unattributed agent execution counters separately', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				user_id: 'user-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 0,
+			});
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+	});
+
+	describe('trackApiInvocation', () => {
+		beforeEach(() => {
+			jest.setSystemTime(testDateTime);
+		});
+
+		test('should count calls per user and endpoint', () => {
+			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/executions',
+				method: 'POST',
+				api_version: 'v1',
+				user_agent: 'custom-app/2.0',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(3);
+			expect(buffer['user1'].first).toEqual(execTime1);
+			expect(buffer['user1'].endpoints['GET /workflows']).toBe(2);
+			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
+			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+		});
+
+		test('should handle missing user_agent', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(1);
+			expect(buffer['user1'].user_agents).toEqual({});
+		});
+
+		test('should track multiple users independently', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user2',
+				path: '/executions',
+				method: 'POST',
+				api_version: 'v1',
+				user_agent: 'custom-app/2.0',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].total_calls).toBe(1);
+			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
+			expect(buffer['user2'].total_calls).toBe(1);
+			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+			expect(Object.keys(buffer)).toHaveLength(0);
+		});
 	});
 
 	describe('Rudderstack', () => {
@@ -297,6 +648,64 @@ describe('Telemetry', () => {
 					context: {
 						ip: '0.0.0.0', // RudderStack anonymized IP
 					},
+				}),
+			);
+		});
+
+		test('should include instance_id, version_cli, and user_id in track properties', () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '1234', custom_prop: 'value' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: eventName,
+					properties: expect.objectContaining({
+						instance_id: instanceId,
+						user_id: '1234',
+						version_cli: expect.any(String),
+						custom_prop: 'value',
+					}),
+				}),
+			);
+		});
+
+		test('should format userId with user_id when provided', () => {
+			const eventName = 'Test Event';
+			const properties = { user_id: '5678' };
+
+			telemetry.track(eventName, properties);
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: `${instanceId}#5678`,
+				}),
+			);
+		});
+
+		test('should format userId without user_id when not provided', () => {
+			const eventName = 'Test Event';
+
+			telemetry.track(eventName, {});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userId: instanceId,
+				}),
+			);
+		});
+
+		test('should set user_id to undefined when not provided in properties', () => {
+			const eventName = 'Test Event';
+
+			telemetry.track(eventName, {});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					properties: expect.objectContaining({
+						user_id: undefined,
+					}),
 				}),
 			);
 		});

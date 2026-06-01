@@ -1,0 +1,624 @@
+import {
+	sleep,
+	type IExecuteFunctions,
+	type INode,
+	type EngineRequest,
+	type EngineResponse,
+} from 'n8n-workflow';
+import { mock, type MockProxy } from 'vitest-mock-extended';
+
+import type { RequestResponseMetadata } from '@utils/agent-execution';
+
+import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
+import * as helpers from '../../agents/ToolsAgent/V3/helpers';
+import type { MockedFunction } from 'vitest';
+
+// Mock the helper modules
+vi.mock('../../agents/ToolsAgent/V3/helpers', () => ({
+	buildExecutionContext: vi.fn(),
+	executeBatch: vi.fn(),
+	checkMaxIterations: vi.fn(),
+	buildResponseMetadata: vi.fn(),
+	resolveSubAgentRequest: vi.fn(),
+}));
+
+// Mock langchain modules
+vi.mock('@langchain/classic/agents', () => ({
+	createToolCallingAgent: vi.fn(),
+}));
+
+vi.mock('@langchain/core/runnables', () => ({
+	RunnableSequence: {
+		from: vi.fn(),
+	},
+}));
+
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual('n8n-workflow')),
+	sleep: vi.fn(),
+}));
+
+const emptyMemoryHits = { loads: 0, saves: 0 };
+
+const mockContext = mock<IExecuteFunctions>();
+const mockNode = mock<INode>();
+
+function withCommonFields(ctx: MockProxy<IExecuteFunctions>, node: INode): void {
+	ctx.getNode.mockReturnValue(node);
+	ctx.logger = {
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	};
+	ctx.customData = {
+		set: vi.fn(),
+		setAll: vi.fn(),
+		get: vi.fn(),
+		getAll: vi.fn(),
+	};
+}
+
+/**
+ * Sub-agent execution context — `isExecuteFunctions(this)` returns false.
+ *
+ * Intentionally does NOT set `getExecuteData`, so the V3 executor takes the
+ * inline-resolution branch (delegates to `resolveSubAgentRequest`).
+ * The shared top-level `mockContext` defined above gets `getExecuteData`
+ * stamped in `beforeEach`; use this helper to deliberately opt out.
+ */
+function mockSubAgentContext(): MockProxy<IExecuteFunctions> {
+	const ctx = mock<IExecuteFunctions>();
+	withCommonFields(ctx, mockNode);
+	return ctx;
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	withCommonFields(mockContext, mockNode);
+	// `isExecuteFunctions` checks `'getExecuteData' in context`. vitest-mock-extended
+	// proxies property access but does not register own properties, so the `in`
+	// check is false by default. Stamp `getExecuteData` here so the shared
+	// `mockContext` exercises the top-level (engine-routed) request path;
+	// sub-agent inline resolution is covered by `mockSubAgentContext()` below
+	// and by `resolveSubAgentRequest.test.ts`.
+	mockContext.getExecuteData = vi.fn() as never;
+});
+
+describe('toolsAgentExecute V3 - Execute Function Logic', () => {
+	it('should build execution context and process single batch', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(helpers.buildExecutionContext).toHaveBeenCalledWith(mockContext);
+		expect(helpers.executeBatch).toHaveBeenCalledTimes(1);
+		expect(helpers.executeBatch).toHaveBeenCalledWith(
+			mockContext,
+			mockExecutionContext.items.slice(0, 1),
+			0,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			undefined,
+		);
+		expect(result).toEqual([[{ json: { output: 'success 1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should pass response to executeBatch when provided', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		const mockResponse: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [],
+			metadata: { previousRequests: [] },
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		const result = await toolsAgentExecute.call(mockContext, mockResponse);
+
+		expect(helpers.executeBatch).toHaveBeenCalledWith(
+			mockContext,
+			mockExecutionContext.items.slice(0, 1),
+			0,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			mockResponse,
+		);
+		expect(result).toEqual([[{ json: { output: 'success 1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should process multiple batches sequentially', async () => {
+		const mockExecutionContext = {
+			items: [
+				{ json: { text: 'test input 1' } },
+				{ json: { text: 'test input 2' } },
+				{ json: { text: 'test input 3' } },
+			],
+			batchSize: 2,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult1 = {
+			returnData: [
+				{ json: { output: 'success 1' }, pairedItem: { item: 0 } },
+				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
+			],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		const mockBatchResult2 = {
+			returnData: [{ json: { output: 'success 3' }, pairedItem: { item: 2 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
+			.mockResolvedValueOnce(mockBatchResult1)
+			.mockResolvedValueOnce(mockBatchResult2);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(helpers.executeBatch).toHaveBeenCalledTimes(2);
+		expect(helpers.executeBatch).toHaveBeenNthCalledWith(
+			1,
+			mockContext,
+			mockExecutionContext.items.slice(0, 2),
+			0,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			undefined,
+		);
+		expect(helpers.executeBatch).toHaveBeenNthCalledWith(
+			2,
+			mockContext,
+			mockExecutionContext.items.slice(2, 3),
+			2,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			undefined,
+		);
+		expect(result).toEqual([
+			[
+				{ json: { output: 'success 1' }, pairedItem: { item: 0 } },
+				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
+				{ json: { output: 'success 3' }, pairedItem: { item: 2 } },
+			],
+		]);
+	});
+
+	it('should delegate to resolveSubAgentRequest when running as a sub-agent (no getExecuteData)', async () => {
+		const subAgentContext = mockSubAgentContext();
+
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockRequest: EngineRequest<RequestResponseMetadata> = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: 'Test Tool',
+					input: { input: 'test data' },
+					type: 'ai_tool',
+					id: 'call_inline',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		const resolvedOutput = [[{ json: { output: 'resolved inline' } }]];
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue({
+			returnData: [],
+			request: mockRequest,
+			memoryHits: emptyMemoryHits,
+		});
+		vi.spyOn(helpers, 'resolveSubAgentRequest').mockResolvedValue(resolvedOutput);
+
+		const result = await toolsAgentExecute.call(subAgentContext);
+
+		expect(helpers.resolveSubAgentRequest).toHaveBeenCalledTimes(1);
+		expect(helpers.resolveSubAgentRequest).toHaveBeenCalledWith(
+			subAgentContext,
+			mockRequest,
+			expect.objectContaining({ runAgentBatch: expect.any(Function) }),
+		);
+		expect(result).toBe(resolvedOutput);
+	});
+
+	it('should return request when batch returns tool call request', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockRequest: EngineRequest<RequestResponseMetadata> = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: 'Test Tool',
+					input: { input: 'test data' },
+					type: 'ai_tool',
+					id: 'call_123',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		const mockBatchResult = {
+			returnData: [],
+			request: mockRequest,
+			memoryHits: emptyMemoryHits,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(result).toEqual(mockRequest);
+	});
+
+	it('should merge requests from multiple batches', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockRequest1: EngineRequest<RequestResponseMetadata> = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: 'Test Tool 1',
+					input: { input: 'test data 1' },
+					type: 'ai_tool',
+					id: 'call_123',
+					metadata: { itemIndex: 0 },
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		const mockRequest2: EngineRequest<RequestResponseMetadata> = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction' as const,
+					nodeName: 'Test Tool 2',
+					input: { input: 'test data 2' },
+					type: 'ai_tool',
+					id: 'call_456',
+					metadata: { itemIndex: 1 },
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest1,
+				memoryHits: emptyMemoryHits,
+			})
+			.mockResolvedValueOnce({
+				returnData: [],
+				request: mockRequest2,
+				memoryHits: emptyMemoryHits,
+			});
+
+		const result = (await toolsAgentExecute.call(
+			mockContext,
+		)) as EngineRequest<RequestResponseMetadata>;
+
+		expect(result.actions).toHaveLength(2);
+		expect(result.actions[0].nodeName).toBe('Test Tool 1');
+		expect(result.actions[1].nodeName).toBe('Test Tool 2');
+	});
+
+	it('should apply delay between batches when configured', async () => {
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
+		sleepMock.mockResolvedValue(undefined);
+
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
+			batchSize: 1,
+			delayBetweenBatches: 1000,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		await toolsAgentExecute.call(mockContext);
+
+		expect(sleepMock).toHaveBeenCalledWith(1000);
+		expect(sleepMock).toHaveBeenCalledTimes(1); // Only between batches, not after the last one
+	});
+
+	it('should not apply delay after last batch', async () => {
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
+		sleepMock.mockResolvedValue(undefined);
+
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 1000,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		await toolsAgentExecute.call(mockContext);
+
+		expect(sleepMock).not.toHaveBeenCalled();
+	});
+
+	it('should pass response parameter to executeBatch', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		const mockResponse: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [
+				{
+					action: {
+						id: 'call_123',
+						nodeName: 'Test Tool',
+						input: { input: 'test data', id: 'call_123' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'tool result' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
+				},
+			],
+			metadata: { itemIndex: 0, previousRequests: [] },
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		await toolsAgentExecute.call(mockContext, mockResponse);
+
+		expect(helpers.executeBatch).toHaveBeenCalledWith(
+			mockContext,
+			mockExecutionContext.items.slice(0, 1),
+			0,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			mockResponse,
+		);
+	});
+
+	it('should report ai.agent.tool_calls.completed from inbound EngineResponse regardless of returnIntermediateSteps', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			// Note: no `intermediateSteps` on the returnData — simulates returnIntermediateSteps: false
+			returnData: [{ json: { output: 'final answer' }, pairedItem: { item: 0 } }],
+			request: undefined,
+			memoryHits: emptyMemoryHits,
+		};
+
+		// Inbound response carries 3 completed tool runs from prior iterations.
+		const mockResponse: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [
+				{
+					action: {
+						id: 'call_1',
+						nodeName: 'Tool A',
+						input: { id: 'call_1' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'a' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 0,
+						source: [],
+					},
+				},
+				{
+					action: {
+						id: 'call_2',
+						nodeName: 'Tool B',
+						input: { id: 'call_2' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'b' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 1,
+						source: [],
+					},
+				},
+				{
+					action: {
+						id: 'call_3',
+						nodeName: 'Tool C',
+						input: { id: 'call_3' },
+						metadata: { itemIndex: 0 },
+						actionType: 'ExecutionNodeAction',
+						type: 'ai_tool',
+					},
+					data: {
+						data: { ai_tool: [[{ json: { result: 'c' } }]] },
+						executionTime: 0,
+						startTime: 0,
+						executionIndex: 2,
+						source: [],
+					},
+				},
+			],
+			metadata: { previousRequests: [] },
+		};
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.enableStreaming') return true;
+			if (param === 'options.autoSaveHighlightedData') return false;
+			return defaultValue;
+		});
+		// V3 only emits tracing metadata when invoked from an IExecuteFunctions-shaped
+		// context (detected by the presence of `getExecuteData`).
+		mockContext.getExecuteData.mockReturnValue({} as any);
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		await toolsAgentExecute.call(mockContext, mockResponse);
+
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.version': 'v3',
+				'ai.agent.tool_calls.completed': 3,
+				'ai.agent.execution.succeeded': true,
+			}),
+		});
+	});
+
+	it('should collect return data from multiple batches', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }, { json: { text: 'test input 2' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		vi.spyOn(helpers, 'executeBatch')
+			.mockResolvedValueOnce({
+				returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
+				request: undefined,
+				memoryHits: emptyMemoryHits,
+			})
+			.mockResolvedValueOnce({
+				returnData: [{ json: { output: 'success 2' }, pairedItem: { item: 1 } }],
+				request: undefined,
+				memoryHits: emptyMemoryHits,
+			});
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(result).toEqual([
+			[
+				{ json: { output: 'success 1' }, pairedItem: { item: 0 } },
+				{ json: { output: 'success 2' }, pairedItem: { item: 1 } },
+			],
+		]);
+	});
+});

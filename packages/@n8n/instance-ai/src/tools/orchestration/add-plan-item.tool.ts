@@ -1,0 +1,123 @@
+/**
+ * Plan item tools — add and remove items from the plan progressively.
+ *
+ * The planner sub-agent uses these during initial planning (add-plan-item)
+ * and during revision after user rejection (both add and remove).
+ * Each call publishes a `tasks-update` event so the UI updates in real time.
+ */
+
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+import type { BlueprintAccumulator } from './blueprint-accumulator';
+import {
+	blueprintCheckpointItemSchema,
+	blueprintDelegateItemSchema,
+	blueprintWorkflowItemSchema,
+} from './blueprint.schema';
+import type { OrchestrationContext } from '../../types';
+
+/** Publish the current accumulator state as a tasks-update event with full planItems. */
+export function publishPlanUpdate(
+	accumulator: BlueprintAccumulator,
+	context: OrchestrationContext,
+): void {
+	const taskItems = accumulator.getTaskItemsForEvent();
+	const planItems = accumulator.getTaskList().map((t) => ({
+		id: t.id,
+		title: t.title,
+		kind: t.kind,
+		spec: t.spec,
+		deps: t.deps,
+		...(t.tools ? { tools: t.tools } : {}),
+		...(t.workflowId ? { workflowId: t.workflowId } : {}),
+	}));
+	context.eventBus.publish(context.threadId, {
+		type: 'tasks-update',
+		runId: context.runId,
+		agentId: context.orchestratorAgentId,
+		payload: { tasks: { tasks: taskItems }, planItems },
+	});
+}
+
+const addPlanItemInputSchema = z.object({
+	summary: z.string().optional().describe('1-2 sentence plan overview — set on first call'),
+	assumptions: z
+		.array(z.string())
+		.optional()
+		.describe('Assumptions the plan relies on — set on first call'),
+	item: z.discriminatedUnion('kind', [
+		blueprintWorkflowItemSchema.extend({ kind: z.literal('workflow') }),
+		blueprintDelegateItemSchema.extend({ kind: z.literal('delegate') }),
+		blueprintCheckpointItemSchema.extend({ kind: z.literal('checkpoint') }),
+	]),
+});
+
+export function createAddPlanItemTool(
+	accumulator: BlueprintAccumulator,
+	context: OrchestrationContext,
+) {
+	return new Tool('add-plan-item')
+		.description(
+			'Add a single plan item (workflow, delegate, or checkpoint task). ' +
+				'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
+				'Add workflow items only if the request requires automation. ' +
+				'Add a checkpoint item AFTER its target workflow(s) so the orchestrator can verify the result end-to-end. ' +
+				'Set summary and assumptions on your first call.',
+		)
+		.input(addPlanItemInputSchema)
+		.output(z.object({ result: z.string() }))
+		.handler(async (input: z.infer<typeof addPlanItemInputSchema>) => {
+			if (input.summary !== undefined || input.assumptions !== undefined) {
+				accumulator.updateMeta(input.summary, input.assumptions);
+			}
+
+			const task = accumulator.addItem(input.item);
+
+			await context.taskStorage.save(context.threadId, {
+				tasks: accumulator.getTaskItemsForEvent(),
+			});
+			publishPlanUpdate(accumulator, context);
+
+			const totalCount = accumulator.getTaskItemsForEvent().length;
+			return {
+				result: `Added: ${task.title} (${totalCount} item${totalCount === 1 ? '' : 's'} total)`,
+			};
+		})
+		.build();
+}
+
+export function createRemovePlanItemTool(
+	accumulator: BlueprintAccumulator,
+	context: OrchestrationContext,
+) {
+	return new Tool('remove-plan-item')
+		.description(
+			'Remove a plan item by ID. Use during plan revision to drop items the user no longer wants.',
+		)
+		.input(
+			z.object({
+				id: z.string().describe('ID of the plan item to remove'),
+			}),
+		)
+		.output(z.object({ result: z.string() }))
+		.handler(async (input: { id: string }) => {
+			const removed = accumulator.removeItem(input.id);
+
+			await context.taskStorage.save(context.threadId, {
+				tasks: accumulator.getTaskItemsForEvent(),
+			});
+			publishPlanUpdate(accumulator, context);
+
+			const totalCount = accumulator.getTaskItemsForEvent().length;
+			if (removed) {
+				return {
+					result: `Removed item ${input.id}. ${totalCount} item${totalCount === 1 ? '' : 's'} remaining.`,
+				};
+			}
+			return {
+				result: `Item ${input.id} not found. ${totalCount} item${totalCount === 1 ? '' : 's'} in plan.`,
+			};
+		})
+		.build();
+}

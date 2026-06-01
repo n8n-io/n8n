@@ -2,16 +2,13 @@ import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { ApiKeyRepository } from '@n8n/db';
+import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	getApiKeyScopesForRole,
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
-
-import type { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
@@ -20,7 +17,6 @@ import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
@@ -59,7 +55,7 @@ describe('Owner shell', () => {
 	let ownerShell: User;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell('global:owner');
+		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -85,6 +81,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBeNull();
@@ -124,6 +122,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -155,6 +155,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -186,6 +188,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -214,6 +218,8 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create', 'workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -269,6 +275,8 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -280,6 +288,8 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -304,9 +314,9 @@ describe('Owner shell', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(ownerShell.role);
+		const scopesForRole = getApiKeyScopesForRole(ownerShell);
 
-		expect(scopes).toEqual(scopesForRole);
+		expect(scopes.sort()).toEqual(scopesForRole.sort());
 	});
 });
 
@@ -317,9 +327,8 @@ describe('Member', () => {
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 		});
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -344,6 +353,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
@@ -375,6 +386,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -383,7 +396,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -407,6 +419,8 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -415,7 +429,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const notAllowedScope = getOwnerOnlyApiKeyScopes()[0];
 
@@ -457,6 +470,8 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -468,6 +483,8 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -492,8 +509,8 @@ describe('Member', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(member.role);
+		const scopesForRole = getApiKeyScopesForRole(member);
 
-		expect(scopes).toEqual(scopesForRole);
+		expect(scopes.sort()).toEqual(scopesForRole.sort());
 	});
 });

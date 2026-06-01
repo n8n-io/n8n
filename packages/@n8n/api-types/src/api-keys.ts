@@ -12,6 +12,10 @@ export type ApiKey = {
 	/** Null if API key never expires */
 	expiresAt: UnixTimestamp | null;
 	scopes: ApiKeyScope[];
+	/** ISO timestamp of the last time the key authenticated a request, or null if never used. */
+	lastUsedAt: string | null;
 };
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
+
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

@@ -60,6 +60,18 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "last_updated": {
+                        "type": "string"
+                    },
+                    "snippet": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },
@@ -75,6 +87,17 @@
                 "completion_tokens": {
                     "type": "integer"
                 },
+                "cost": {
+                    "type": "object",
+                    "properties": {
+                        "request_cost": {
+                            "type": "number"
+                        },
+                        "total_cost": {
+                            "type": "number"
+                        }
+                    }
+                },
                 "prompt_tokens": {
                     "type": "integer"
                 },
@@ -87,5 +110,5 @@
             }
         }
     },
-    "version": 1
+    "version": 5
 }

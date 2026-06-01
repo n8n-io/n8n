@@ -10,7 +10,6 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -20,12 +19,14 @@ import {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
+import {
+	getRoleScopes,
+	PROJECT_OWNER_ROLE_SLUG,
+	type GlobalRole,
+	type ProjectRole,
+	type Scope,
+} from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -33,8 +34,12 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
-import { createMember, createOwner, createUser } from './shared/db/users';
+import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -58,7 +63,7 @@ beforeEach(async () => {
 });
 
 describe('GET /projects/', () => {
-	test('member should get all personal projects and team projects they are apart of', async () => {
+	test('member should only get their own personal project and team projects they are a part of', async () => {
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -80,19 +85,20 @@ describe('GET /projects/', () => {
 		const resp = await memberAgent.get('/projects/');
 		expect(resp.status).toBe(200);
 		const respProjects = resp.body.data as Project[];
-		expect(respProjects.length).toBe(4);
+		expect(respProjects.length).toBe(2);
 
-		expect(
-			[personalProject1, personalProject2, personalProject3].every((v, i) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return false;
-				}
-				const u = [testUser1, testUser2, testUser3][i];
-				return p.name === u.createPersonalProjectName();
-			}),
-		).toBe(true);
+		// testUser1 should see their own personal project
+		const ownPersonalProject = respProjects.find((p) => p.id === personalProject1.id);
+		expect(ownPersonalProject).not.toBeUndefined();
+		expect(ownPersonalProject!.name).toBe(testUser1.createPersonalProjectName());
+
+		// testUser1 should NOT see other users' personal projects
+		expect(respProjects.find((p) => p.id === personalProject2.id)).toBeUndefined();
+		expect(respProjects.find((p) => p.id === personalProject3.id)).toBeUndefined();
+
+		// testUser1 should see team projects they belong to
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+		// testUser1 should NOT see team projects they don't belong to
 		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
 	});
 
@@ -134,6 +140,273 @@ describe('GET /projects/', () => {
 		).toBe(true);
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
 		expect(respProjects.find((p) => p.id === teamProject2.id)).not.toBeUndefined();
+	});
+});
+
+describe('GET /projects/sharing-candidates', () => {
+	test('member sees own personal project plus all peer personal projects', async () => {
+		const [member1, member2, member3] = await Promise.all([
+			createMember(),
+			createMember(),
+			createMember(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, member1),
+			createTeamProject(),
+		]);
+		const [personal1, personal2, personal3] = await Promise.all([
+			getPersonalProject(member1),
+			getPersonalProject(member2),
+			getPersonalProject(member3),
+		]);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		// Own + peer personal projects appear (3 personal projects total)
+		expect(respProjects.find((p) => p.id === personal1.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === personal2.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === personal3.id)).not.toBeUndefined();
+
+		// Team project the caller is a member of appears
+		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+
+		// Team project the caller is NOT a member of does not appear
+		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
+	});
+
+	test('member does not see peer team projects they are not a member of', async () => {
+		const [member1, member2] = await Promise.all([createMember(), createMember()]);
+		const peerOnlyTeam = await createTeamProject(undefined, member2);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		expect(respProjects.find((p) => p.id === peerOnlyTeam.id)).toBeUndefined();
+	});
+
+	test('search filter narrows results across personal and relation branches', async () => {
+		const [member1, peer] = await Promise.all([
+			createUser({ firstName: 'Alice', lastName: 'Anderson' }),
+			createUser({ firstName: 'Bob', lastName: 'Banana' }),
+		]);
+		const matchingTeam = await createTeamProject('Banana Republic', member1);
+		const nonMatchingTeam = await createTeamProject('Other Project', member1);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0, search: 'banana' });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+		const peerPersonal = await getPersonalProject(peer);
+
+		// Matches by team name
+		expect(respProjects.find((p) => p.id === matchingTeam.id)).not.toBeUndefined();
+		// Matches peer personal project (name contains "Banana")
+		expect(respProjects.find((p) => p.id === peerPersonal.id)).not.toBeUndefined();
+		// Non-matching team does not appear
+		expect(respProjects.find((p) => p.id === nonMatchingTeam.id)).toBeUndefined();
+	});
+
+	test('type=team filter excludes peer personal projects', async () => {
+		const [member1, member2] = await Promise.all([createMember(), createMember()]);
+		const team = await createTeamProject(undefined, member1);
+		const peerPersonal = await getPersonalProject(member2);
+
+		const resp = await testServer
+			.authAgentFor(member1)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0, type: 'team' });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		expect(respProjects.find((p) => p.id === team.id)).not.toBeUndefined();
+		expect(respProjects.find((p) => p.id === peerPersonal.id)).toBeUndefined();
+	});
+
+	test('owner sees all projects via the admin path', async () => {
+		const [owner, peer1, peer2] = await Promise.all([
+			createOwner(),
+			createMember(),
+			createMember(),
+		]);
+		const [team1, team2] = await Promise.all([createTeamProject(), createTeamProject()]);
+		const [ownerPersonal, peer1Personal, peer2Personal] = await Promise.all([
+			getPersonalProject(owner),
+			getPersonalProject(peer1),
+			getPersonalProject(peer2),
+		]);
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(200);
+		const respProjects = resp.body.data as Project[];
+
+		// All five projects accessible to the admin
+		for (const expected of [ownerPersonal, peer1Personal, peer2Personal, team1, team2]) {
+			expect(respProjects.find((p) => p.id === expected.id)).not.toBeUndefined();
+		}
+	});
+
+	test('caller without user:list global scope receives 403', async () => {
+		const chatUser = await createChatUser();
+
+		const resp = await testServer
+			.authAgentFor(chatUser)
+			.get('/projects/sharing-candidates')
+			.query({ take: 50, skip: 0 });
+		expect(resp.status).toBe(403);
+	});
+});
+
+describe('Project members endpoints', () => {
+	test('POST /projects/:projectId/users adds a member and emits telemetry', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+
+		expect(res.status).toBe(201);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test('POST /projects/:projectId/users returns 409 for existing member with different role', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		// First add as viewer
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+		expect(res.status).toBe(409);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test('POST /projects/:projectId/users returns 200 when member already exists with same role (no-op)', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		// First add as viewer
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+
+		expect(res.status).toBe(200);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test("PATCH /projects/:projectId/users/:userId changes a member's role", async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.patch(`/projects/${project.id}/users/${member.id}`)
+			.send({ role: 'project:editor' });
+
+		expect(res.status).toBe(204);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:editor')).toBe(
+			true,
+		);
+	});
+
+	describe('PATCH /projects/:projectId/users/:userId when project roles are managed by provisioning', () => {
+		let provisioningService: ProvisioningService;
+		let savedConfig: Record<string, unknown>;
+
+		beforeEach(async () => {
+			provisioningService = Container.get(ProvisioningService);
+			await provisioningService.getConfig();
+			// @ts-expect-error - provisioningConfig is private
+			savedConfig = { ...provisioningService.provisioningConfig };
+		});
+
+		afterEach(() => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig = { ...savedConfig };
+		});
+
+		test('should return 403 when SSO provider controls project roles', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesProvisionProjectRoles = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
+
+		test('should return 403 when expression-based role mapping is active', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
+	});
+
+	test('DELETE /projects/:projectId/users/:userId removes a member', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent.delete(`/projects/${project.id}/users/${member.id}`);
+
+		expect(res.status).toBe(204);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id)).toBe(false);
 	});
 });
 
@@ -193,7 +466,7 @@ describe('GET /projects/my-projects', () => {
 			[
 				personalProject1,
 				{
-					role: 'project:personalOwner',
+					role: PROJECT_OWNER_ROLE_SLUG,
 					scopes: ['project:list', 'project:read', 'credential:create'],
 				},
 			],
@@ -216,7 +489,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
@@ -270,7 +543,7 @@ describe('GET /projects/my-projects', () => {
 			[
 				ownerProject,
 				{
-					role: 'project:personalOwner',
+					role: PROJECT_OWNER_ROLE_SLUG,
 					scopes: [
 						'project:list',
 						'project:create',
@@ -343,7 +616,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
@@ -398,6 +671,23 @@ describe('POST /projects/', () => {
 		}
 	});
 
+	test('should create a team project with context parameter', async () => {
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		const resp = await ownerAgent.post('/projects/').send({
+			name: 'Test Team Project with Context',
+			uiContext: 'universal_button',
+		});
+		expect(resp.status).toBe(200);
+		const respProject = resp.body.data as Project;
+		expect(respProject.name).toEqual('Test Team Project with Context');
+		expect(async () => {
+			await findProject(respProject.id);
+		}).not.toThrow();
+		expect(resp.body.data.role).toBe('project:admin');
+	});
+
 	test('should allow to create a team projects if below the quota', async () => {
 		testServer.license.setQuota('quota:maxTeamProjects', 1);
 		const ownerUser = await createOwner();
@@ -437,42 +727,29 @@ describe('POST /projects/', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
 
-	const globalConfig = Container.get(GlobalConfig);
-	// Preventing this relies on transactions and we can't use them with the
-	// sqlite legacy driver due to data loss risks.
-	if (!globalConfig.database.isLegacySqlite) {
-		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-			const maxTeamProjects = 3;
-			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
-			const ownerUser = await createOwner();
-			const ownerAgent = testServer.authAgentFor(ownerUser);
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBe(0);
+	test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+		const maxTeamProjects = 3;
+		testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			0,
+		);
 
-			await Promise.all([
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
-			]);
+		await Promise.all([
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+		]);
 
-			// Some of the calls above will interleave and may fail with a deadlock
-			// error on MySQL (this is not an issue on PG or MariaDB).
-			// That can lead to less projects being created than the quota allows.
-			// So we're only checking here that we didn't create more projects than
-			// are allowed instead of checking for a specific number.
-			// We only want to prevent that this endpoint is exploited. A normal user
-			// using the FE would almost never hit this and if they do they can retry
-			// the action. No need to implement rety logic in the controller.
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBeLessThanOrEqual(maxTeamProjects);
-		});
-	}
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			maxTeamProjects,
+		);
+	});
 });
 
 describe('PATCH /projects/:projectId', () => {
@@ -531,7 +808,7 @@ describe('PATCH /projects/:projectId', () => {
 				createTeamProject(undefined, testUser1),
 				createTeamProject(undefined, testUser2),
 			]);
-			const [credential1, credential2] = await Promise.all([
+			const [_credential1, credential2] = await Promise.all([
 				saveCredential(randomCredentialPayload(), {
 					role: 'credential:owner',
 					project: teamProject1,
@@ -552,22 +829,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-			const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
-				name: teamProject1.name,
+			// Add two members to teamProject1
+			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
-					{ userId: testUser1.id, role: 'project:admin' },
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				],
 			});
-			expect(resp.status).toBe(200);
-
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
-			deleteSpy.mockClear();
+			expect(addResp.status).toBe(201);
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
 				getProjectRelations({ projectId: teamProject1.id }),
@@ -579,15 +848,15 @@ describe('PATCH /projects/:projectId', () => {
 
 			expect(tp1Relations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tp1Relations.find((p) => p.userId === testUser2.id)).toBeUndefined();
-			expect(tp1Relations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
-			expect(tp1Relations.find((p) => p.userId === testUser3.id)?.role).toBe('project:editor');
-			expect(tp1Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:viewer');
+			expect(tp1Relations.find((p) => p.userId === testUser1.id)?.role.slug).toBe('project:admin');
+			expect(tp1Relations.find((p) => p.userId === testUser3.id)?.role.slug).toBe('project:editor');
+			expect(tp1Relations.find((p) => p.userId === ownerUser.id)?.role.slug).toBe('project:viewer');
 
 			// Check we haven't modified the other team project
 			expect(tp2Relations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
 			expect(tp2Relations.find((p) => p.userId === testUser1.id)).toBeUndefined();
-			expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role).toBe('project:editor');
-			expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:editor');
+			expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role.slug).toBe('project:editor');
+			expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role.slug).toBe('project:editor');
 		});
 
 		test.each([['project:viewer'], ['project:editor']] as const)(
@@ -620,10 +889,7 @@ describe('PATCH /projects/:projectId', () => {
 							// add a user to the project
 							{ userId: userToBeInvited.id, role: 'project:editor' },
 							// implicitly remove the project editor
-						] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						],
 					});
 				//.expect(403);
 
@@ -639,8 +905,14 @@ describe('PATCH /projects/:projectId', () => {
 				expect(tp1Relations.length).toBe(2);
 				expect(tp1Relations).toMatchObject(
 					expect.arrayContaining([
-						expect.objectContaining({ userId: actor.id, role }),
-						expect.objectContaining({ userId: projectEditor.id, role: 'project:editor' }),
+						expect.objectContaining({
+							userId: actor.id,
+							role: expect.objectContaining({ slug: role }),
+						}),
+						expect.objectContaining({
+							userId: projectEditor.id,
+							role: expect.objectContaining({ slug: 'project:editor' }),
+						}),
 					]),
 				);
 			},
@@ -658,16 +930,9 @@ describe('PATCH /projects/:projectId', () => {
 
 				await testServer
 					.authAgentFor(projectAdmin)
-					.patch(`/projects/${teamProject.id}`)
+					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						name: teamProject.name,
-						relations: [
-							{ userId: projectAdmin.id, role: 'project:admin' },
-							{ userId: userToBeInvited.id, role },
-						] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						relations: [{ userId: userToBeInvited.id, role }],
 					})
 					.expect(400);
 
@@ -675,7 +940,10 @@ describe('PATCH /projects/:projectId', () => {
 				expect(tpRelations.length).toBe(1);
 				expect(tpRelations).toMatchObject(
 					expect.arrayContaining([
-						expect.objectContaining({ userId: projectAdmin.id, role: 'project:admin' }),
+						expect.objectContaining({
+							userId: projectAdmin.id,
+							role: expect.objectContaining({ slug: 'project:admin' }),
+						}),
 					]),
 				);
 			},
@@ -695,17 +963,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser1.id, role: 'project:editor' },
-					{ userId: testUser3.id, role: 'project:editor' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
+			const resp = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser1.id}`)
+				.send({ role: 'project:editor' });
 			expect(resp.status).toBe(400);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
@@ -713,9 +973,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
-			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role?.slug).toBe('project:admin');
 		});
 
 		test("should  edit a relation of a project when changing a user's role to an licensed role but unlicensed roles are present", async () => {
@@ -732,18 +992,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser1.id, role: 'project:viewer' },
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser3.id, role: 'project:admin' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
-			expect(resp.status).toBe(200);
+			const resp1 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser2.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp1.status).toBe(204);
+			const resp2 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser3.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp2.status).toBe(204);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
 			expect(tpRelations.length).toBe(3);
@@ -751,9 +1007,9 @@ describe('PATCH /projects/:projectId', () => {
 			expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser3.id)).not.toBeUndefined();
-			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:viewer');
-			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role?.slug).toBe('project:viewer');
+			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role?.slug).toBe('project:admin');
 		});
 
 		test('should not add or remove users from a personal project', async () => {
@@ -763,14 +1019,8 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const resp = await memberAgent.patch(`/projects/${personalProject.id}`).send({
-				relations: [
-					{ userId: testUser1.id, role: 'project:personalOwner' },
-					{ userId: testUser2.id, role: 'project:admin' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
+				relations: [{ userId: testUser2.id, role: 'project:admin' }],
 			});
 			expect(resp.status).toBe(403);
 
@@ -820,6 +1070,30 @@ describe('GET /project/:projectId', () => {
 			lastName: testUser2.lastName,
 			role: 'project:admin',
 		});
+	});
+
+	test('should have correct folder scopes when, as an admin / owner, I fetch a project created by a different user', async () => {
+		const [ownerUser, testUser1] = await Promise.all([createOwner(), createUser()]);
+
+		const createdProject = await createTeamProject(undefined, testUser1);
+
+		const memberAgent = testServer.authAgentFor(ownerUser);
+
+		const resp = await memberAgent.get(`/projects/${createdProject.id}`);
+		expect(resp.status).toBe(200);
+
+		expect(resp.body.data.id).toBe(createdProject.id);
+		expect(resp.body.data.name).toBe(createdProject.name);
+
+		expect(resp.body.data.scopes).toEqual(
+			expect.arrayContaining([
+				'folder:read',
+				'folder:update',
+				'folder:delete',
+				'folder:create',
+				'folder:list',
+			]),
+		);
 	});
 });
 

@@ -1,0 +1,51 @@
+delete:
+  x-eov-operation-id: deleteDataTableRows
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Delete rows from a data table
+  description: Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.
+  operationId: delete-data-table-rows
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+    - name: filter
+      in: query
+      required: true
+      description: JSON string of filter conditions. Required to prevent accidental deletion of all data.
+      schema:
+        type: string
+        format: jsonString
+      example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"archived"}]}'
+    - name: returnData
+      in: query
+      description: If true, return the deleted rows; if false, return true on success
+      schema:
+        type: boolean
+        default: false
+    - name: dryRun
+      in: query
+      description: If true, preview which rows would be deleted without actually deleting them
+      schema:
+        type: boolean
+        default: false
+  responses:
+    '200':
+      description: Rows deleted successfully
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: boolean
+                description: True when returnData is false
+              - type: array
+                items:
+                  $ref: '../schemas/dataTableRow.yml'
+                description: Deleted rows when returnData is true
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

@@ -1,6 +1,7 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
+	agent: 'run';
 	session: 'create' | 'save' | 'terminate';
 	window: 'create' | 'close' | 'takeScreenshot' | 'load';
 	extraction: 'getPaginated' | 'query' | 'scrape';

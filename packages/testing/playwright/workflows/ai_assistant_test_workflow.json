@@ -20,7 +20,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1aaa;\n}\n\nreturn $input.all();"
 			},
 			"id": "b54d4db9-b257-41a8-862f-26d293115bad",
 			"name": "Code",

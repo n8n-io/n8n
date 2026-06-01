@@ -26,6 +26,7 @@ describe('ControllerRegistryMetadata', () => {
 
 			expect(metadata).toEqual({
 				basePath: '/',
+				registerOnRootPath: false,
 				middlewares: [],
 				routes: expect.any(Map),
 			});

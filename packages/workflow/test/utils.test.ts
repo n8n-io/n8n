@@ -1,6 +1,6 @@
 import { ALPHABET } from '../src/constants';
 import { ApplicationError } from '@n8n/errors';
-import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
@@ -11,8 +11,12 @@ import {
 	randomString,
 	hasKey,
 	isSafeObjectProperty,
+	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
 	sleepWithAbort,
+	isCommunityPackageName,
+	sanitizeFilename,
+	sanitizeXmlName,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -106,6 +110,184 @@ describe('jsonParse', () => {
 
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+
+	describe('acceptJSObject', () => {
+		const options: Parameters<typeof jsonParse>[1] = {
+			acceptJSObject: true,
+		};
+
+		it('should handle string values', () => {
+			const result = jsonParse('{name: \'John\', surname: "Doe"}', options);
+			expect(result).toEqual({ name: 'John', surname: 'Doe' });
+		});
+
+		it('should handle positive numbers', () => {
+			const result = jsonParse(
+				'{int: 12345, float1: 444.111, float2: .123, float3: +.12, oct: 0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: 12345,
+				float1: 444.111,
+				float2: 0.123,
+				float3: 0.12,
+				oct: 16,
+			});
+		});
+
+		it('should handle negative numbers', () => {
+			const result = jsonParse(
+				'{int: -12345, float1: -444.111, float2: -.123, float3: -.12, oct: -0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: -12345,
+				float1: -444.111,
+				float2: -0.123,
+				float3: -0.12,
+				oct: -16,
+			});
+		});
+
+		it('should handle mixed values', () => {
+			const result = jsonParse('{int: -12345, float: 12.35, text: "hello world"}', options);
+			expect(result).toEqual({
+				int: -12345,
+				float: 12.35,
+				text: 'hello world',
+			});
+		});
+	});
+
+	describe('JSON repair', () => {
+		describe('Recovery edge cases', () => {
+			it('should handle simple object with single quotes', () => {
+				const result = jsonParse("{name: 'John', age: 30}", { repairJSON: true });
+				expect(result).toEqual({ name: 'John', age: 30 });
+			});
+
+			it('should handle nested objects with single quotes', () => {
+				const result = jsonParse("{user: {name: 'John', active: true},}", { repairJSON: true });
+				expect(result).toEqual({ user: { name: 'John', active: true } });
+			});
+
+			it('should handle empty string values', () => {
+				const result = jsonParse("{key: ''}", { repairJSON: true });
+				expect(result).toEqual({ key: '' });
+			});
+
+			it('should handle numeric string values', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should handle multiple keys with trailing comma', () => {
+				const result = jsonParse("{a: '1', b: '2', c: '3',}", { repairJSON: true });
+				expect(result).toEqual({ a: '1', b: '2', c: '3' });
+			});
+
+			it('should recover single quotes around strings', () => {
+				const result = jsonParse("{key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover unquoted keys', () => {
+				const result = jsonParse("{myKey: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ myKey: 'value' });
+			});
+
+			it('should recover trailing commas in objects', () => {
+				const result = jsonParse("{key: 'value',}", { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should recover trailing commas in nested objects', () => {
+				const result = jsonParse("{outer: {inner: 'value',},}", { repairJSON: true });
+				expect(result).toEqual({ outer: { inner: 'value' } });
+			});
+
+			it('should recover multiple issues at once', () => {
+				const result = jsonParse("{key1: 'value1', key2: 'value2',}", { repairJSON: true });
+				expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+			});
+
+			it('should recover numeric values with single quotes', () => {
+				const result = jsonParse("{key: '123'}", { repairJSON: true });
+				expect(result).toEqual({ key: '123' });
+			});
+
+			it('should recover boolean values with single quotes', () => {
+				const result = jsonParse("{key: 'true'}", { repairJSON: true });
+				expect(result).toEqual({ key: 'true' });
+			});
+
+			it('should handle urls', () => {
+				const result = jsonParse('{"key": "https://example.com",}', { repairJSON: true });
+				expect(result).toEqual({ key: 'https://example.com' });
+			});
+
+			it('should handle ipv6 addresses', () => {
+				const result = jsonParse('{"key": "2a01:c50e:3544:bd00:4df0:7609:251a:f6d0",}', {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: '2a01:c50e:3544:bd00:4df0:7609:251a:f6d0' });
+			});
+
+			it('should handle single quotes containing double quotes', () => {
+				const result = jsonParse('{key: \'value with "quotes" inside\'}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value with "quotes" inside' });
+			});
+
+			it('should handle escaped single quotes', () => {
+				const result = jsonParse("{key: 'it\\'s escaped'}", { repairJSON: true });
+				expect(result).toEqual({ key: "it's escaped" });
+			});
+
+			it('should handle keys containing hyphens', () => {
+				const result = jsonParse("{key-with-dash: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key-with-dash': 'value' });
+			});
+
+			it('should handle keys containing dots', () => {
+				const result = jsonParse("{key.name: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ 'key.name': 'value' });
+			});
+
+			it('should handle unquoted string values', () => {
+				const result = jsonParse('{key: value}', { repairJSON: true });
+				expect(result).toEqual({ key: 'value' });
+			});
+
+			it('should handle unquoted multi-word values', () => {
+				const result = jsonParse('{key: some text}', { repairJSON: true });
+				expect(result).toEqual({ key: 'some text' });
+			});
+
+			it('should handle input with double quotes mixed with single quotes', () => {
+				const result = jsonParse('{key: "value with \'single\' quotes"}', { repairJSON: true });
+				expect(result).toEqual({ key: "value with 'single' quotes" });
+			});
+
+			it('should handle keys starting with numbers', () => {
+				const result = jsonParse("{123key: 'value'}", { repairJSON: true });
+				expect(result).toEqual({ '123key': 'value' });
+			});
+
+			it('should handle nested objects containing quotes', () => {
+				const result = jsonParse("{outer: {inner: 'value with \"quotes\"', other: 'test'},}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ outer: { inner: 'value with "quotes"', other: 'test' } });
+			});
+
+			it('should handle complex nested quote conflicts', () => {
+				const result = jsonParse("{key: 'value with \"quotes\" inside', nested: {inner: 'test'}}", {
+					repairJSON: true,
+				});
+				expect(result).toEqual({ key: 'value with "quotes" inside', nested: { inner: 'test' } });
+			});
+		});
 	});
 });
 
@@ -377,11 +559,44 @@ describe('isSafeObjectProperty', () => {
 		['prototype', false],
 		['constructor', false],
 		['getPrototypeOf', false],
+		['setPrototypeOf', false],
+		['getOwnPropertyDescriptor', false],
+		['getOwnPropertyDescriptors', false],
+		['defineProperty', false],
+		['defineProperties', false],
+		['mainModule', false],
+		['binding', false],
+		['_load', false],
 		['safeKey', true],
 		['anotherKey', true],
 		['toString', true],
 	])('should return %s for key "%s"', (key, expected) => {
 		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('containsUnsafeObjectPropertyToken', () => {
+	it.each([
+		['constructor', true],
+		['__proto__', true],
+		['prototype', true],
+		['getPrototypeOf', true],
+		['setPrototypeOf', true],
+		['getOwnPropertyDescriptor', true],
+		['getOwnPropertyDescriptors', true],
+		['defineProperty', true],
+		['defineProperties', true],
+		['mainModule', true],
+		['user.constructor', true],
+		['"constructor"', true],
+		['a.b."__proto__".c', true],
+		['user.name', false],
+		['items[0].title', false],
+		['constructorName', false],
+		['myPrototypeId', false],
+		['', false],
+	])('should return %s for "%s"', (input, expected) => {
+		expect(containsUnsafeObjectPropertyToken(input)).toBe(expected);
 	});
 });
 
@@ -395,6 +610,22 @@ describe('setSafeObjectProperty', () => {
 		setSafeObjectProperty(obj, key, value);
 		expect(obj).toEqual(expected);
 	});
+});
+
+describe('sanitizeXmlName', () => {
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should prefix dangerous name "%s"',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(`sanitized_${name}`);
+		},
+	);
+
+	it.each(['name', 'id', 'root', '__custom__', 'Constructor', 'PROTOTYPE'])(
+		'should pass through safe name "%s" unchanged',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(name);
+		},
+	);
 });
 
 describe('sleepWithAbort', () => {
@@ -414,7 +645,7 @@ describe('sleepWithAbort', () => {
 		abortController.abort();
 
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 	});
 
@@ -426,7 +657,7 @@ describe('sleepWithAbort', () => {
 
 		const start = Date.now();
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 		const end = Date.now();
 		const elapsed = end - start;
@@ -453,11 +684,115 @@ describe('sleepWithAbort', () => {
 		const sleepPromise = sleepWithAbort(1000, abortController.signal);
 		setTimeout(() => abortController.abort(), 50);
 
-		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+		await expect(sleepPromise).rejects.toThrow(ManualExecutionCancelledError);
 
 		// clearTimeout should have been called to clean up
 		expect(clearTimeoutSpy).toHaveBeenCalled();
 
 		clearTimeoutSpy.mockRestore();
+	});
+});
+
+describe('isCommunityPackageName', () => {
+	// Standard community package names
+	it('should identify standard community node package names', () => {
+		expect(isCommunityPackageName('n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-custom')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-test')).toBe(true);
+	});
+
+	// Scoped package names
+	it('should identify scoped community node package names', () => {
+		expect(isCommunityPackageName('@username/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('@org/n8n-nodes-custom')).toBe(true);
+		expect(isCommunityPackageName('@test-scope/n8n-nodes-test-name')).toBe(true);
+	});
+
+	it('should identify scoped packages with other characters', () => {
+		expect(isCommunityPackageName('n8n-nodes-my_package')).toBe(true);
+		expect(isCommunityPackageName('@user/n8n-nodes-with_underscore')).toBe(true);
+		expect(isCommunityPackageName('@user_name/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('@n8n-io/n8n-nodes-test')).toBe(true);
+		expect(isCommunityPackageName('@n8n.io/n8n-nodes-test')).toBe(true);
+	});
+
+	it('should handle mixed cases', () => {
+		expect(isCommunityPackageName('@user-name_org/n8n-nodes-mixed-case_example')).toBe(true);
+		expect(isCommunityPackageName('@mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+		expect(isCommunityPackageName('@my.mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+	});
+
+	// Official n8n packages that should not be identified as community packages
+	it('should not identify official n8n packages as community nodes', () => {
+		expect(isCommunityPackageName('@n8n/n8n-nodes-example')).toBe(false);
+		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
+	});
+
+	// Additional edge cases
+	it('should handle edge cases correctly', () => {
+		// Non-matching patterns
+		expect(isCommunityPackageName('not-n8n-nodes')).toBe(false);
+		expect(isCommunityPackageName('n8n-core')).toBe(false);
+
+		// With node name after package
+		expect(isCommunityPackageName('n8n-nodes-example.NodeName')).toBe(true);
+		expect(isCommunityPackageName('@user/n8n-nodes-example.NodeName')).toBe(true);
+	});
+
+	// Multiple executions to test regex state
+	it('should work correctly with multiple consecutive calls', () => {
+		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
+		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('sanitizeFilename', () => {
+	it('should return normal filenames unchanged', () => {
+		expect(sanitizeFilename('normalfile')).toBe('normalfile');
+		expect(sanitizeFilename('my-file_v2')).toBe('my-file_v2');
+		expect(sanitizeFilename('test.txt')).toBe('test.txt');
+	});
+
+	it('should handle empty and invalid inputs', () => {
+		expect(sanitizeFilename('')).toBe('untitled');
+	});
+
+	it('should handle edge cases', () => {
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
+	});
+
+	it('should prevent path traversal attacks', () => {
+		// Basic path traversal attempts - extracts just the filename
+		expect(sanitizeFilename('../../../etc/passwd')).toBe('passwd');
+		expect(sanitizeFilename('..\\..\\..\\windows\\system32')).toBe('system32');
+
+		// Path traversal with file extension
+		expect(sanitizeFilename('../file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('../../secret.json')).toBe('secret.json');
+
+		// Nested path separators - extracts just the final component
+		expect(sanitizeFilename('path/to/file')).toBe('file');
+		expect(sanitizeFilename('path\\to\\file')).toBe('file');
+
+		// Hidden files and nested directories
+		expect(sanitizeFilename('../../../.ssh/authorized_keys')).toBe('authorized_keys');
+		expect(sanitizeFilename('../../../etc/cron.d/backdoor')).toBe('backdoor');
+	});
+
+	it('should extract filename from full file paths', () => {
+		// Unix paths
+		expect(sanitizeFilename('/tmp/n8n-upload-xyz/original.pdf')).toBe('original.pdf');
+		expect(sanitizeFilename('/home/user/documents/report.docx')).toBe('report.docx');
+
+		// Windows paths
+		expect(sanitizeFilename('C:\\Users\\Admin\\file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('D:\\temp\\upload\\image.png')).toBe('image.png');
+	});
+
+	it('should remove null bytes', () => {
+		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
+		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });

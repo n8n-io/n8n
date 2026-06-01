@@ -1,3 +1,29 @@
-import { createVitestConfig } from '@n8n/vitest-config/node';
+import { defineConfig } from 'vitest/config';
+import { createBaseInlineConfig } from '@n8n/vitest-config/node';
 
-export default createVitestConfig({ include: ['test/**/*.test.ts'] });
+const { reporters, outputFile, ...sharedTestConfig } = createBaseInlineConfig({
+	include: ['test/**/*.test.ts'],
+	setupFiles: ['./test/setup-vm-evaluator.ts'],
+});
+
+export default defineConfig({
+	test: {
+		reporters,
+		outputFile,
+		projects: [
+			{
+				test: {
+					...sharedTestConfig,
+					name: 'legacy-engine',
+				},
+			},
+			{
+				test: {
+					...sharedTestConfig,
+					name: 'vm-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'vm' },
+				},
+			},
+		],
+	},
+});

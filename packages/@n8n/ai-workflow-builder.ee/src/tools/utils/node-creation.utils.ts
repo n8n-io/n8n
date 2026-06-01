@@ -1,4 +1,19 @@
-import type { INode, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
+import {
+	assert,
+	resolveNodeWebhookId,
+	type INode,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type OnError,
+} from 'n8n-workflow';
+
+/**
+ * Node execution settings that can be set when creating a node
+ */
+export interface NodeSettings {
+	executeOnce?: boolean;
+	onError?: OnError;
+}
 
 /**
  * Generate a unique node name by appending numbers if necessary
@@ -41,49 +56,43 @@ export function generateNodeId(): string {
 }
 
 /**
- * Generate a webhook ID for nodes that require it
- * @returns A unique webhook identifier
- */
-export function generateWebhookId(): string {
-	return crypto.randomUUID();
-}
-
-/**
- * Check if a node type requires a webhook
- * @param nodeType - The node type description
- * @returns True if the node requires a webhook
- */
-export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
-	return !!(nodeType.webhooks && nodeType.webhooks.length > 0);
-}
-
-/**
  * Create a new node instance with all required properties
  * @param nodeType - The node type description
+ * @param typeVersion - The node type version - nodeType can have multiple versions
  * @param name - The name for the node
  * @param position - The position of the node
  * @param parameters - Optional parameters for the node
+ * @param id - Optional specific ID to use for the node (for testing purposes)
+ * @param nodeSettings - Optional node execution settings (executeOnce, onError)
  * @returns A complete node instance
  */
 export function createNodeInstance(
 	nodeType: INodeTypeDescription,
+	typeVersion: number,
 	name: string,
 	position: [number, number],
 	parameters: Record<string, NodeParameterValueType> = {},
+	id?: string,
+	nodeSettings?: NodeSettings,
 ): INode {
+	assert(
+		Array.isArray(nodeType.version)
+			? nodeType.version.includes(typeVersion)
+			: typeVersion === nodeType.version,
+	);
 	const node: INode = {
-		id: generateNodeId(),
+		id: id ?? generateNodeId(),
 		name,
 		type: nodeType.name,
-		typeVersion: getLatestVersion(nodeType),
+		typeVersion,
 		position,
 		parameters,
+		// Spread node settings (only defined properties will be included)
+		...nodeSettings,
 	};
 
 	// Add webhook ID if required
-	if (requiresWebhook(nodeType)) {
-		node.webhookId = generateWebhookId();
-	}
+	resolveNodeWebhookId(node, nodeType);
 
 	return node;
 }

@@ -1,0 +1,112 @@
+post:
+  x-eov-operation-id: createFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Create a folder
+  description: Create a folder within a project.
+  parameters:
+    - name: projectId
+      in: path
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
+  requestBody:
+    description: Payload for folder to create.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/folder.create.yml'
+    required: true
+  responses:
+    '201':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+get:
+  x-eov-operation-id: getFolders
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Retrieve folders
+  description: Retrieve folders within a project. Supports filtering, sorting, field selection, and pagination.
+  parameters:
+    - name: projectId
+      in: path
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
+    - name: filter
+      in: query
+      required: false
+      description: JSON-encoded filter object. Supported fields — parentFolderId, name, tags (array of tag names), excludeFolderIdAndDescendants.
+      schema:
+        type: string
+        example: '{"parentFolderId":"abc123","name":"My Folder"}'
+    - name: select
+      in: query
+      required: false
+      description: JSON-encoded array of fields to include. Valid fields — id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, subFolderCount, path.
+      schema:
+        type: string
+        example: '["id","name","tags","workflowCount"]'
+    - name: sortBy
+      in: query
+      required: false
+      description: Sort order for results.
+      schema:
+        type: string
+        enum:
+          - name:asc
+          - name:desc
+          - createdAt:asc
+          - createdAt:desc
+          - updatedAt:asc
+          - updatedAt:desc
+    - name: skip
+      in: query
+      required: false
+      description: Number of items to skip for pagination. Defaults to 0.
+      schema:
+        type: string
+    - name: take
+      in: query
+      required: false
+      description: Number of items to return. Defaults to 10.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+                description: Total number of folders matching the query.
+              data:
+                type: array
+                items:
+                  $ref: '../schemas/folder.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

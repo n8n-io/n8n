@@ -25,23 +25,23 @@ export class TelemetryController {
 		});
 	}
 
-	@Post('/proxy/:version/track', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
+	@Post('/proxy/:version/track', { skipAuth: true, ipRateLimit: { limit: 100, windowMs: 60_000 } })
 	async track(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/identify', { skipAuth: true, rateLimit: true })
+	@Post('/proxy/:version/identify', { skipAuth: true, ipRateLimit: true })
 	async identify(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
 
-	@Post('/proxy/:version/page', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
+	@Post('/proxy/:version/page', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
 	@Get('/rudderstack/sourceConfig', {
 		skipAuth: true,
-		rateLimit: { limit: 50, windowMs: 60_000 },
+		ipRateLimit: { limit: 50, windowMs: 60_000 },
 		usesTemplates: true,
 	})
 	async sourceConfig(_: Request, res: Response) {

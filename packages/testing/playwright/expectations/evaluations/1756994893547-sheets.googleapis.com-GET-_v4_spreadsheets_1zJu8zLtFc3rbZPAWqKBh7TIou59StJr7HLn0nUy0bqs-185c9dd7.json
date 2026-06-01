@@ -1,0 +1,64 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/v4/spreadsheets/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs",
+		"queryStringParameters": {
+			"fields": ["sheets.properties"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-l2-request-path": ["l2-managed-6"],
+			"X-XSS-Protection": ["0"],
+			"X-Frame-Options": ["SAMEORIGIN"],
+			"X-Content-Type-Options": ["nosniff"],
+			"Vary": ["Origin", "X-Origin", "Referer"],
+			"Server": ["ESF"],
+			"Date": ["Thu, 04 Sep 2025 14:07:57 GMT"],
+			"Content-Type": ["application/json; charset=UTF-8"],
+			"Alt-Svc": ["h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"sheets": [
+					{
+						"properties": {
+							"sheetId": 0,
+							"title": "Sheet1",
+							"index": 0,
+							"sheetType": "GRID",
+							"gridProperties": {
+								"rowCount": 2001,
+								"columnCount": 26
+							}
+						}
+					},
+					{
+						"properties": {
+							"sheetId": 1911651598,
+							"title": "Sheet2",
+							"index": 1,
+							"sheetType": "GRID",
+							"gridProperties": {
+								"rowCount": 1000,
+								"columnCount": 26
+							}
+						}
+					}
+				]
+			},
+			"rawBytes": "ewogICJzaGVldHMiOiBbCiAgICB7CiAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICJzaGVldElkIjogMCwKICAgICAgICAidGl0bGUiOiAiU2hlZXQxIiwKICAgICAgICAiaW5kZXgiOiAwLAogICAgICAgICJzaGVldFR5cGUiOiAiR1JJRCIsCiAgICAgICAgImdyaWRQcm9wZXJ0aWVzIjogewogICAgICAgICAgInJvd0NvdW50IjogMjAwMSwKICAgICAgICAgICJjb2x1bW5Db3VudCI6IDI2CiAgICAgICAgfQogICAgICB9CiAgICB9LAogICAgewogICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAic2hlZXRJZCI6IDE5MTE2NTE1OTgsCiAgICAgICAgInRpdGxlIjogIlNoZWV0MiIsCiAgICAgICAgImluZGV4IjogMSwKICAgICAgICAic2hlZXRUeXBlIjogIkdSSUQiLAogICAgICAgICJncmlkUHJvcGVydGllcyI6IHsKICAgICAgICAgICJyb3dDb3VudCI6IDEwMDAsCiAgICAgICAgICAiY29sdW1uQ291bnQiOiAyNgogICAgICAgIH0KICAgICAgfQogICAgfQogIF0KfQo="
+		}
+	},
+	"id": "1756994893547-sheets.googleapis.com-GET-_v4_spreadsheets_1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs-185c9dd7.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -1,5 +1,4 @@
 export * from './binary-data.service';
 export { BinaryDataConfig } from './binary-data.config';
-export * from './types';
-export { ObjectStoreService } from './object-store/object-store.service.ee';
-export { isStoredMode as isValidNonDefaultMode } from './utils';
+export type * from './types';
+export { isStoredMode as isValidNonDefaultMode, FileLocation, binaryToBuffer } from './utils';

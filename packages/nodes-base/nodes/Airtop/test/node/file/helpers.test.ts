@@ -1,5 +1,5 @@
 import * as helpers from '../../../actions/file/helpers';
-import { BASE_URL } from '../../../constants';
+import * as GenericFunctions from '../../../GenericFunctions';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
@@ -19,14 +19,24 @@ jest.mock('../../../transport', () => {
 	};
 });
 
+jest.mock('../../../GenericFunctions', () => {
+	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+	return {
+		...originalModule,
+		waitForSessionEvent: jest.fn(),
+	};
+});
+
 describe('Test Airtop file helpers', () => {
 	afterAll(() => {
 		jest.unmock('../../../transport');
+		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 		(transport.apiRequest as jest.Mock).mockReset();
+		(GenericFunctions.waitForSessionEvent as jest.Mock).mockReset();
 	});
 
 	describe('requestAllFiles', () => {
@@ -195,60 +205,75 @@ describe('Test Airtop file helpers', () => {
 	});
 
 	describe('waitForFileInSession', () => {
-		it('should resolve when file is available in session', async () => {
-			const apiRequestMock = transport.apiRequest as jest.Mock;
-			apiRequestMock.mockResolvedValueOnce({
-				data: {
-					sessionIds: ['session-123', 'other-session'],
-				},
-			});
+		it('should resolve when file_upload_status event with available status is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				event: 'file_upload_status',
+				status: 'available',
+				fileId: 'file-123',
+			};
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
 
 			const mockExecuteFunction = createMockExecuteFunction({});
 
 			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
 
-			expect(apiRequestMock).toHaveBeenCalledTimes(1);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
-		});
-
-		it('should timeout if file never becomes available in session', async () => {
-			const apiRequestMock = transport.apiRequest as jest.Mock;
-
-			// Mock to always return file not in session
-			apiRequestMock.mockResolvedValue({
-				data: {
-					sessionIds: ['other-session'],
-				},
-			});
-
-			const mockExecuteFunction = createMockExecuteFunction({});
-
-			const waitPromise = helpers.waitForFileInSession.call(
-				mockExecuteFunction,
+			expect(waitForSessionEventMock).toHaveBeenCalledTimes(1);
+			expect(waitForSessionEventMock).toHaveBeenCalledWith(
 				'session-123',
-				'file-123',
-				100,
+				expect.any(Function),
+				1000,
 			);
-
-			await expect(waitPromise).rejects.toThrow();
 		});
 
-		it('should resolve immediately if file is already in session', async () => {
-			const apiRequestMock = transport.apiRequest as jest.Mock;
-
-			// Mock to return file already in session
-			apiRequestMock.mockResolvedValueOnce({
-				data: {
-					sessionIds: ['session-123', 'other-session'],
+		it('should throw error when uploading a file with invalid file format', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				event: 'file_upload_status',
+				status: 'upload_failed',
+				fileId: 'file-123',
+				eventData: {
+					error: 'Upload failed due to invalid file format',
 				},
-			});
+			};
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
 
 			const mockExecuteFunction = createMockExecuteFunction({});
 
-			await helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000);
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000),
+			).rejects.toMatchObject({ description: 'Upload failed due to invalid file format' });
+		});
 
-			expect(apiRequestMock).toHaveBeenCalledTimes(1);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', `${BASE_URL}/files/file-123`);
+		it('should throw error when upload_failed status is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			const mockEvent = {
+				fileId: 'file-123',
+				event: 'file_upload_status',
+				status: 'upload_failed',
+				eventData: {
+					error: 'Upload failed for File ID: file-123',
+				},
+			};
+			waitForSessionEventMock.mockResolvedValueOnce(mockEvent);
+
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			// the service should throw an error description 'Upload failed for File ID: file-123'
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 1000),
+			).rejects.toMatchObject({ description: 'Upload failed for File ID: file-123' });
+		});
+
+		it('should timeout if no matching event is received', async () => {
+			const waitForSessionEventMock = GenericFunctions.waitForSessionEvent as jest.Mock;
+			waitForSessionEventMock.mockRejectedValueOnce(new Error('Timeout reached'));
+
+			const mockExecuteFunction = createMockExecuteFunction({});
+
+			await expect(
+				helpers.waitForFileInSession.call(mockExecuteFunction, 'session-123', 'file-123', 100),
+			).rejects.toThrow('Timeout reached');
 		});
 	});
 

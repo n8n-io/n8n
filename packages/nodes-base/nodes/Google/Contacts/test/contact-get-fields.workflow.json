@@ -1,0 +1,72 @@
+{
+	"name": "Google Contacts Get Fields Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "c123456789",
+				"fields": ["names", "emailAddresses", "phoneNumbers"],
+				"rawData": false
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-get-fields",
+			"name": "Get Contact Fields",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Contact Fields": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"emailAddresses": {
+						"work": ["john@example.com"]
+					},
+					"phoneNumbers": {
+						"mobile": ["+1234567890"]
+					},
+					"contactId": "c123456789"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Contact Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

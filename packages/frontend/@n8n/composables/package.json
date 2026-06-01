@@ -1,23 +1,24 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.9.0",
+  "version": "1.17.0",
   "files": [
     "dist"
   ],
   "exports": {
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsup",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -26,16 +27,17 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@testing-library/vue": "catalog:frontend",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
-    "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend",
-    "tsup": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",

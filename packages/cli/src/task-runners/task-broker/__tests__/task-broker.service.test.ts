@@ -359,6 +359,78 @@ describe('TaskBroker', () => {
 			expect(remainingRequests[0]).toEqual(request);
 		});
 
+		it('should not create duplicate request when runner defers', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+
+			// Simulate a launcher-like runner that defers tasks on acceptance
+			const messageCallback = jest.fn().mockImplementation(async (message) => {
+				if (message.type === 'broker:taskofferaccept') {
+					taskBroker.handleRunnerDeferred(message.taskId);
+				}
+			});
+
+			taskBroker.registerRunner(runner, messageCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId,
+				taskType: 'taskType1',
+				validFor: -1,
+				validUntil: 0n,
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			taskBroker.settleTasks();
+
+			// Let the async acceptOffer complete
+			await new Promise(setImmediate);
+
+			const requests = taskBroker.getPendingTaskRequests();
+			expect(requests).toHaveLength(1);
+			expect(requests[0].requestId).toBe('request1');
+			expect(requests[0].acceptInProgress).toBe(false);
+		});
+
+		it('should log warning when offers exist but none match request type', () => {
+			const loggerMock = mock<Logger>();
+			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'python',
+				validFor: -1,
+				validUntil: 0n,
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'javascript',
+				acceptInProgress: false,
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+
+			taskBroker.settleTasks();
+
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				expect.stringMatching(/No matching task offer.*request1.*javascript.*python/),
+			);
+		});
+
 		it('should expire tasks before settling', () => {
 			const validOffer: TaskOffer = {
 				offerId: 'valid',
@@ -714,6 +786,28 @@ describe('TaskBroker', () => {
 				nodeTypes,
 			});
 		});
+
+		it('should discard `requester:rpcresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterRpcResponse('nonexistent', 'call1', 'success', {}),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `requester:taskdataresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterDataResponse('nonexistent', 'req1', {}),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `requester:nodetypesresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterNodeTypesResponse('nonexistent', 'req1', []),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `sendTaskSettings` for an already-cleaned-up task', async () => {
+			await expect(taskBroker.sendTaskSettings('nonexistent', {})).resolves.toBeUndefined();
+		});
 	});
 
 	describe('task execution timeouts', () => {
@@ -927,6 +1021,144 @@ describe('TaskBroker', () => {
 				),
 			);
 
+			jest.useRealTimers();
+		});
+	});
+
+	describe('request timeout', () => {
+		it('should time out request and send `broker:requestexpired` message', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
+			};
+
+			taskBroker.taskRequested(request);
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+
+			jest.advanceTimersByTime(60 * 1000);
+
+			await Promise.resolve();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+
+			jest.useRealTimers();
+		});
+
+		it('should clear timeout on request matched', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+			};
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+				clearTimeout(request.timeout);
+				const requests = taskBroker.getPendingTaskRequests();
+				const filtered = requests.filter((r) => r.requestId !== request.requestId);
+				taskBroker.setPendingTaskRequests(filtered);
+			});
+
+			taskBroker.taskRequested(request);
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+
+			jest.advanceTimersByTime(65 * 1000);
+
+			await Promise.resolve();
+
+			expect(requesterCallback).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:requestexpired' }),
+			);
+
+			jest.useRealTimers();
+		});
+
+		it('should reset timeout on request deferred', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+				request.acceptInProgress = false;
+				clearTimeout(request.timeout);
+				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
+			});
+
+			taskBroker.settleTasks();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+			const deferredRequest = taskBroker.getPendingTaskRequests()[0];
+			expect(deferredRequest.timeout).toBeDefined();
+
+			jest.advanceTimersByTime(60 * 1000);
+
+			await Promise.resolve();
+
+			expect(handleTimeoutSpy).toHaveBeenCalledWith('request1');
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+
+			handleTimeoutSpy.mockRestore();
 			jest.useRealTimers();
 		});
 	});

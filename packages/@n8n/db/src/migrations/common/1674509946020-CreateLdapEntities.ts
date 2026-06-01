@@ -3,7 +3,7 @@ import { LDAP_FEATURE_NAME, LDAP_DEFAULT_CONFIGURATION } from '@n8n/constants';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateLdapEntities1674509946020 implements ReversibleMigration {
-	async up({ escape, dbType, isMysql, runQuery }: MigrationContext) {
+	async up({ escape, dbType, runQuery }: MigrationContext) {
 		const userTable = escape.tableName('user');
 		await runQuery(`ALTER TABLE ${userTable} ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`);
 
@@ -23,7 +23,7 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 				${escape.columnName('createdAt')} timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				${escape.columnName('updatedAt')} timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY(${escape.columnName('providerId')}, ${escape.columnName('providerType')})
-			)${isMysql ? "ENGINE='InnoDB'" : ''}`,
+			)`,
 		);
 
 		const idColumn =
@@ -53,8 +53,7 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 				${escape.columnName('updated')} INTEGER NOT NULL,
 				${escape.columnName('disabled')} INTEGER NOT NULL,
 				${escape.columnName('error')} TEXT
-				${isMysql ? ',PRIMARY KEY (`id`)' : ''}
-			)${isMysql ? "ENGINE='InnoDB'" : ''}`,
+			)`,
 		);
 	}
 

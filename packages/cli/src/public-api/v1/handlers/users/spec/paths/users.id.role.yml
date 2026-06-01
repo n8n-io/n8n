@@ -17,7 +17,7 @@ patch:
           properties:
             newRoleName:
               type: string
-              enum: [global:admin, global:member]
+              example: global:member
           required:
             - newRoleName
   responses:

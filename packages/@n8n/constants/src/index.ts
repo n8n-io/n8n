@@ -3,6 +3,7 @@ export * from './browser';
 export * from './community-nodes';
 export * from './instance';
 export * from './execution';
+export * from './logstreaming';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -17,7 +18,6 @@ export const LICENSE_FEATURES = {
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
-	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
@@ -30,12 +30,21 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	AI_GATEWAY: 'feat:aiGateway',
 	FOLDERS: 'feat:folders',
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
+	NAMED_VERSIONS: 'feat:namedVersions',
+	CUSTOM_ROLES: 'feat:customRoles',
+	AI_BUILDER: 'feat:aiBuilder',
+	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
+	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
+	TOKEN_EXCHANGE: 'feat:tokenExchange',
+	DATA_REDACTION: 'feat:dataRedaction',
+	N8N_PACKAGES: 'feat:n8nPackages',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -45,13 +54,17 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	AI_GATEWAY_BUDGET: 'quota:aiGatewayBudget',
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
+	EVALUATION_CONCURRENCY_LIMIT: 'quota:evaluations:concurrencyLimit',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
+
+export const DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT = 24;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 export type NumericLicenseFeature = (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS];
@@ -80,6 +93,12 @@ export interface LdapConfig {
 	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
+	/**
+	 * Enforce email uniqueness in LDAP directory.
+	 * When enabled, blocks login if multiple LDAP accounts share the same email.
+	 * Prevents privilege escalation via email-based account linking.
+	 */
+	enforceEmailUniqueness: boolean;
 }
 
 export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
@@ -102,6 +121,7 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	synchronizationInterval: 60,
 	searchPageSize: 0,
 	searchTimeout: 60,
+	enforceEmailUniqueness: true,
 };
 
 export { Time } from './time';
@@ -109,3 +129,9 @@ export { Time } from './time';
 export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
+
+/**
+ * Character set used for generating nanoid IDs across n8n.
+ * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
+ */
+export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';

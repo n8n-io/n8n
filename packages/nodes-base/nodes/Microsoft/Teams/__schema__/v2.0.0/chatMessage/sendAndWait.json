@@ -4,14 +4,11 @@
         "data": {
             "type": "object",
             "properties": {
-                "Approve": {
-                    "type": "string"
-                },
-                "Which changes do you want?": {
-                    "type": "string"
+                "approved": {
+                    "type": "boolean"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

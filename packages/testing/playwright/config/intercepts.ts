@@ -17,6 +17,7 @@ export function getContextSettings(context: BrowserContext) {
 
 export async function setupDefaultInterceptors(target: BrowserContext) {
 	// Global /rest/settings intercept - always active like Cypress
+	// TODO: Remove this as a global and move it per test
 	await target.route('**/rest/settings', async (route: Route) => {
 		try {
 			const originalResponse = await route.fetch();

@@ -134,6 +134,27 @@ export class ParameterUpdateError extends OperationalError {
 }
 
 /**
+ * Error thrown when parameter value is too large to retrieve
+ */
+export class ParameterTooLargeError extends OperationalError {
+	constructor(
+		message: string,
+		options?: OperationalErrorOptions & { nodeId?: string; parameter?: string; maxSize?: number },
+	) {
+		super(message, {
+			...options,
+			tags: {
+				...options?.tags,
+				nodeId: options?.nodeId,
+				parameter: options?.parameter,
+				maxSize: options?.maxSize,
+			},
+			shouldReport: false,
+		});
+	}
+}
+
+/**
  * Error thrown when workflow state is invalid
  */
 export class WorkflowStateError extends UnexpectedError {

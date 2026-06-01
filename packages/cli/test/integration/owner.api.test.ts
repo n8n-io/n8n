@@ -6,11 +6,10 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { OwnershipService } from '@/services/ownership.service';
 import { Container } from '@n8n/di';
 import validator from 'validator';
-
-import config from '@/config';
 
 import { createUserShell } from './shared/db/users';
 import * as utils from './shared/utils/';
@@ -20,8 +19,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 let ownerShell: User;
 
 beforeEach(async () => {
-	ownerShell = await createUserShell('global:owner');
-	config.set('userManagement.isInstanceOwnerSetUp', false);
+	ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 });
 
 afterEach(async () => {
@@ -71,10 +69,7 @@ describe('POST /owner/setup', () => {
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
 		expect(storedOwner.lastName).toBe(newOwnerData.lastName);
 
-		const isInstanceOwnerSetUpConfig = config.getEnv('userManagement.isInstanceOwnerSetUp');
-		expect(isInstanceOwnerSetUpConfig).toBe(true);
-
-		const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
+		const isInstanceOwnerSetUpSetting = await Container.get(OwnershipService).hasInstanceOwner();
 		expect(isInstanceOwnerSetUpSetting).toBe(true);
 	});
 

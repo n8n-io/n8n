@@ -1,0 +1,64 @@
+name: 'Build: Windows'
+
+on:
+  workflow_dispatch:
+    inputs:
+      notify_on_failure:
+        description: 'Send Slack notification on build failure'
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      notify_on_failure:
+        description: 'Send Slack notification on build failure'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      QBOT_SLACK_TOKEN:
+        required: false
+  pull_request:
+    branches: [master]
+    paths:
+      - '**/package.json'
+      - '**/turbo.json'
+      - '.github/workflows/build-windows.yml'
+      - '.github/actions/setup-nodejs/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build
+
+      - name: Smoke test pnpm start -- -- --version
+        shell: pwsh
+        run: |
+          Write-Host "Running smoke test: pnpm start -- -- --version"
+
+          pnpm start -- -- --version
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n❌ Smoke test failed (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+
+          Write-Host "`n✓ Smoke test passed"
+
+      - name: Send Slack notification on failure
+        if: failure() && inputs.notify_on_failure == true
+        shell: bash
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C035KBDA917 \
+            --text "🚨 Windows build failed for \`$GITHUB_REPOSITORY\` on \`$GITHUB_REF_NAME\` (\`$GITHUB_SHA\`) — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

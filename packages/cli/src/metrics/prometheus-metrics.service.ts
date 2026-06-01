@@ -1,17 +1,18 @@
+import { readFileSync } from 'node:fs';
+
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository } from '@n8n/db';
+import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { EventMessageTypeNames } from 'n8n-workflow';
-import promClient, { type Counter, type Gauge } from 'prom-client';
+import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -29,11 +30,16 @@ export class PrometheusMetricsService {
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
+	private tokenExchangeListenersRegistered = false;
+
 	private readonly gauges: Record<string, Gauge<string>> = {};
+
+	private readonly histograms: Record<string, Histogram<string>> = {};
 
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
@@ -44,6 +50,9 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			workflowExecutionDuration:
+				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
+			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -59,13 +68,17 @@ export class PrometheusMetricsService {
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.initDefaultMetrics();
+		this.initPssMetric();
 		this.initN8nVersionMetric();
 		if (this.instanceSettings.instanceType === 'main') this.initInstanceRoleMetric();
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
+		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
+		this.initWorkflowStatisticsMetrics();
+		this.initTokenExchangeMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -141,6 +154,46 @@ export class PrometheusMetricsService {
 		if (!this.includes.metrics.default) return;
 
 		promClient.collectDefaultMetrics({ prefix: this.globalConfig.endpoints.metrics.prefix });
+	}
+
+	/**
+	 * Set up PSS (Proportional Set Size) metric: `n8n_process_pss_bytes`
+	 *
+	 * Unlike RSS which double-counts shared pages, PSS divides shared memory
+	 * proportionally among processes. This gives a fairer memory measurement
+	 * in containerized environments where shared libraries are common.
+	 * Only available on Linux with kernel 4.14+.
+	 */
+	private initPssMetric() {
+		if (!this.includes.metrics.default) return;
+
+		let pssAvailable = true;
+		try {
+			readFileSync('/proc/self/smaps_rollup', 'utf8');
+		} catch {
+			pssAvailable = false;
+		}
+
+		if (!pssAvailable) return;
+
+		const prefix = this.prefix;
+		new promClient.Gauge({
+			name: prefix + 'process_pss_bytes',
+			help: 'Proportional Set Size of the process in bytes.',
+			collect() {
+				try {
+					// Sync read is intentional: /proc is a kernel virtual filesystem (microseconds, no disk I/O).
+					// This matches prom-client's own built-in metrics which use process.memoryUsage() (also /proc).
+					const content = readFileSync('/proc/self/smaps_rollup', 'utf8');
+					const match = content.match(/^Pss:\s+(\d+)\s+kB$/m);
+					if (match) {
+						this.set(parseInt(match[1], 10) * 1024);
+					}
+				} catch {
+					// Failed to read smaps_rollup, skip this scrape
+				}
+			},
+		});
 	}
 
 	/**
@@ -258,7 +311,7 @@ export class PrometheusMetricsService {
 	private initQueueMetrics() {
 		if (
 			!this.includes.metrics.queue ||
-			config.getEnv('executions.mode') !== 'queue' ||
+			this.globalConfig.executions.mode !== 'queue' ||
 			this.instanceSettings.instanceType !== 'main'
 		) {
 			return;
@@ -294,6 +347,43 @@ export class PrometheusMetricsService {
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);
 			this.counters.failed?.inc(jobCounts.failed);
+		});
+	}
+
+	/**
+	 * Set up histogram for workflow execution duration: `n8n_workflow_execution_duration_seconds`
+	 *
+	 * Observes duration from `startedAt` to `stoppedAt` on each completed workflow execution.
+	 * Labels: `status` (success/failed), `mode` (manual/trigger/webhook/etc.),
+	 * and optionally `workflow_id` (gated by existing config flag).
+	 */
+	private initWorkflowExecutionDurationMetric() {
+		if (!this.includes.metrics.workflowExecutionDuration) return;
+
+		const labelNames = ['status', 'mode'];
+		if (this.includes.labels.workflowId) labelNames.push('workflow_id');
+
+		this.histograms.workflowExecutionDuration = new promClient.Histogram({
+			name: this.prefix + 'workflow_execution_duration_seconds',
+			help: 'Workflow execution duration in seconds.',
+			labelNames,
+			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
+		});
+
+		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+			if (!runData?.stoppedAt) return;
+
+			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
+			const labels: Record<string, string> = {
+				status: runData.status === 'success' ? 'success' : 'failed',
+				mode: runData.mode,
+			};
+
+			if (this.includes.labels.workflowId) {
+				labels.workflow_id = String(workflow.id ?? 'unknown');
+			}
+
+			this.histograms.workflowExecutionDuration?.observe(labels, durationSeconds);
 		});
 	}
 
@@ -379,5 +469,247 @@ export class PrometheusMetricsService {
 			labels.workflow_name = String(payload.workflowName ?? 'unknown');
 		}
 		return labels;
+	}
+
+	/**
+	 * Shared cache for workflow statistics to avoid multiple DB calls per scrape
+	 */
+	private workflowStatisticsCache: {
+		data: any;
+		timestamp: number;
+		ttl: number;
+	} | null = null;
+
+	/**
+	 * Get workflow statistics with shared caching to avoid multiple DB calls per scrape
+	 */
+	private async getWorkflowStatistics(
+		cacheService: CacheService,
+		licenseMetricsRepository: LicenseMetricsRepository,
+		cacheTtl: number,
+	): Promise<any> {
+		const now = Date.now();
+
+		// Check if we have valid in-memory cache for this scrape window
+		if (
+			this.workflowStatisticsCache &&
+			now - this.workflowStatisticsCache.timestamp < this.workflowStatisticsCache.ttl
+		) {
+			return this.workflowStatisticsCache.data;
+		}
+
+		// Try to get from persistent cache
+		const fullCacheKey = 'metrics:workflow-statistics:shared';
+		const cachedValue = await cacheService.get(fullCacheKey);
+
+		if (cachedValue !== undefined) {
+			const parsedValue = jsonParse(String(cachedValue), { fallbackValue: undefined });
+			if (parsedValue !== undefined) {
+				// Update in-memory cache with short TTL (just for scrape deduplication)
+				this.workflowStatisticsCache = {
+					data: parsedValue,
+					timestamp: now,
+					ttl: 1000, // 1 second - enough to dedupe within a single scrape
+				};
+				return parsedValue;
+			}
+		}
+
+		// Fetch from database and cache both in-memory and persistently
+		const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
+		await cacheService.set(fullCacheKey, JSON.stringify(metrics), cacheTtl);
+
+		this.workflowStatisticsCache = {
+			data: metrics,
+			timestamp: now,
+			ttl: 1000, // 1 second - in-memory cache is only for scrape deduplication
+		};
+
+		return metrics;
+	}
+
+	/**
+	 * Helper function to create a cached workflow statistics gauge
+	 */
+	private createWorkflowStatisticsGauge(
+		metricName: string,
+		help: string,
+		getMetricValue: (metrics: any) => number,
+		cacheService: CacheService,
+		licenseMetricsRepository: LicenseMetricsRepository,
+		cacheTtl: number,
+	) {
+		const getWorkflowStatistics = this.getWorkflowStatistics.bind(this);
+		return new promClient.Gauge({
+			name: this.prefix + metricName,
+			help,
+			async collect() {
+				const metrics = await getWorkflowStatistics(
+					cacheService,
+					licenseMetricsRepository,
+					cacheTtl,
+				);
+				const value = getMetricValue(metrics);
+				this.set(value);
+			},
+		});
+	}
+
+	/**
+	 * Setup workflow statistics metrics
+	 *
+	 * These metrics are updated every time metrics are collected.
+	 * We cache the values so we don't hit the database on every metrics query.
+	 * Both the metric being enabled and the TTL of the cached values is configurable.
+	 */
+	private initWorkflowStatisticsMetrics() {
+		if (!this.includes.metrics.workflowStatistics) return;
+
+		const licenseMetricsRepository = this.licenseMetricsRepository;
+		const cacheService = this.cacheService;
+		const cacheTtl =
+			this.globalConfig.endpoints.metrics.workflowStatisticsInterval * Time.seconds.toMilliseconds;
+
+		// Define all metrics with their configuration
+		const metricsConfig = [
+			{
+				name: 'production_executions',
+				help: 'Total number of production workflow executions (success + error).',
+				getValue: (metrics: any) => Number(metrics.productionExecutions) || 0,
+			},
+			{
+				name: 'production_root_executions',
+				help: 'Total number of production root workflow executions (excludes sub-workflows).',
+				getValue: (metrics: any) => Number(metrics.productionRootExecutions) || 0,
+			},
+			{
+				name: 'manual_executions',
+				help: 'Total number of manual workflow executions (success + error).',
+				getValue: (metrics: any) => Number(metrics.manualExecutions) || 0,
+			},
+			{
+				name: 'enabled_users',
+				help: 'Total number of enabled users.',
+				getValue: (metrics: any) => Number(metrics.enabledUsers) || 0,
+			},
+			{
+				name: 'users',
+				help: 'Total number of users.',
+				getValue: (metrics: any) => Number(metrics.totalUsers) || 0,
+			},
+			{
+				name: 'workflows',
+				help: 'Total number of workflows.',
+				getValue: (metrics: any) => Number(metrics.totalWorkflows) || 0,
+			},
+			{
+				name: 'credentials',
+				help: 'Total number of credentials.',
+				getValue: (metrics: any) => Number(metrics.totalCredentials) || 0,
+			},
+		];
+
+		// Create all metrics using the helper function
+		metricsConfig.forEach((config) => {
+			this.createWorkflowStatisticsGauge(
+				config.name,
+				config.help,
+				config.getValue,
+				cacheService,
+				licenseMetricsRepository,
+				cacheTtl,
+			);
+		});
+	}
+
+	/**
+	 * Set up counters for token exchange and embed login flows.
+	 *
+	 * These metrics are always registered when the `/metrics` endpoint is active
+	 * and require no additional configuration flag.
+	 *
+	 * Counters:
+	 * - `n8n_token_exchange_requests_total{result}` - success/failure rate
+	 * - `n8n_token_exchange_failures_total{reason}` - failure breakdown by reason
+	 * - `n8n_embed_login_requests_total{result}` - embed login success/failure rate
+	 * - `n8n_embed_login_failures_total{reason}` - embed login failure breakdown
+	 * - `n8n_token_exchange_jit_provisioning_total` - JIT-provisioned users
+	 * - `n8n_token_exchange_identity_linked_total` - identities linked to existing users
+	 */
+	private initTokenExchangeMetrics() {
+		// Token exchange (RFC 8693 flow)
+		this.counters.tokenExchangeRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_requests_total',
+			help: 'Total number of token exchange requests.',
+			labelNames: ['result'],
+		});
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.tokenExchangeFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_failures_total',
+			help: 'Total number of token exchange failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// Embed login flow
+		this.counters.embedLoginRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_requests_total',
+			help: 'Total number of embed login requests.',
+			labelNames: ['result'],
+		});
+		this.counters.embedLoginRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.embedLoginRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.embedLoginFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_failures_total',
+			help: 'Total number of embed login failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// JIT provisioning and identity linking
+		this.counters.tokenExchangeJitProvisioningTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_jit_provisioning_total',
+			help: 'Total number of users JIT-provisioned via token exchange.',
+		});
+		this.counters.tokenExchangeJitProvisioningTotal.inc(0);
+
+		this.counters.tokenExchangeIdentityLinkedTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_identity_linked_total',
+			help: 'Total number of external identities linked to existing users via token exchange.',
+		});
+		this.counters.tokenExchangeIdentityLinkedTotal.inc(0);
+
+		// Listeners reference `this.counters.*` via `this`, so they automatically
+		// pick up newly created counter objects after a re-init. Register them only
+		// once to prevent double-counting if `init()` is called more than once.
+		if (this.tokenExchangeListenersRegistered) return;
+		this.tokenExchangeListenersRegistered = true;
+
+		this.eventService.on('token-exchange-succeeded', () => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('token-exchange-failed', ({ failureReason }) => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.tokenExchangeFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('embed-login', () => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('embed-login-failed', ({ failureReason }) => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.embedLoginFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('token-exchange-user-provisioned', () => {
+			this.counters.tokenExchangeJitProvisioningTotal?.inc(1);
+		});
+
+		this.eventService.on('token-exchange-identity-linked', () => {
+			this.counters.tokenExchangeIdentityLinkedTotal?.inc(1);
+		});
 	}
 }

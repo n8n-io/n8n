@@ -1,11 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
+import { CHAT_NODE_TYPE } from 'n8n-workflow';
 import { WebSocket } from 'ws';
 
 import type { ChatExecutionManager } from '../chat-execution-manager';
 import { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
-import type { ErrorReporter } from 'n8n-core';
 
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;
@@ -42,12 +43,10 @@ describe('ChatService', () => {
 
 		mockExecutionManager.findExecution.mockResolvedValue(undefined);
 
-		try {
-			await chatService.startSession(req);
-		} catch (error) {
-			expect(error).toBeDefined();
-			expect(mockWs.send).toHaveBeenCalledWith('Execution with id "42" does not exist');
-		}
+		await chatService.startSession(req);
+
+		expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+		expect(mockWs.close).toHaveBeenCalledWith(1008);
 	});
 
 	it('should handle missing WebSocket connection gracefully', async () => {
@@ -69,16 +68,21 @@ describe('ChatService', () => {
 
 			(mockWs as any).readyState = WebSocket.OPEN;
 
+			const validToken = 'a'.repeat(64);
 			const req = {
 				ws: mockWs,
 				query: {
 					sessionId: 'abc',
 					executionId: '123',
 					isPublic: true,
+					token: validToken,
 				},
 			} as unknown as ChatRequest;
 
-			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: validToken },
+			} as any);
 
 			await chatService.startSession(req);
 
@@ -100,6 +104,7 @@ describe('ChatService', () => {
 					sessionId: 'abc',
 					executionId: '123',
 					isPublic: false,
+					token: 'a'.repeat(64),
 				},
 			} as unknown as ChatRequest;
 
@@ -118,7 +123,10 @@ describe('ChatService', () => {
 				isPublic: false,
 			});
 
-			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
 
 			await chatService.startSession(req);
 
@@ -126,6 +134,119 @@ describe('ChatService', () => {
 			expect(clearIntervalSpy).toHaveBeenCalledWith(dummyInterval);
 			expect((chatService as any).sessions.get(sessionKey).connection).toBe(mockWs);
 			clearIntervalSpy.mockRestore();
+		});
+
+		it('should reject public session with missing token', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+			expect(mockWs.on).not.toHaveBeenCalled();
+		});
+
+		it('should reject public session with invalid token', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: 'b'.repeat(64),
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+			expect(mockWs.on).not.toHaveBeenCalled();
+		});
+
+		it('should accept public session with valid token', async () => {
+			const validToken = 'a'.repeat(64);
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: validToken,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: validToken },
+			} as any);
+
+			await chatService.startSession(req);
+
+			const sessionKey = 'abc|123|public';
+			const session = (chatService as any).sessions.get(sessionKey);
+			expect(session).toBeDefined();
+			expect(session?.executionId).toBe('123');
+		});
+
+		it('should send same error for invalid token as for missing execution', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: 'b'.repeat(64),
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+		});
+
+		it('should skip token validation for old executions without resumeToken (backwards compat)', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: undefined },
+			} as any);
+
+			await chatService.startSession(req);
+
+			const sessionKey = 'abc|123|public';
+			const session = (chatService as any).sessions.get(sessionKey);
+			expect(session).toBeDefined();
+			expect(session?.executionId).toBe('123');
 		});
 
 		describe('checkHeartbeats', () => {
@@ -253,6 +374,30 @@ describe('ChatService', () => {
 
 			expect(mockLogger.error).toHaveBeenCalled();
 		});
+
+		it('should not resume execution if blockUserInput is true', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+				nodeWaitingForChatResponse: 'node1',
+			};
+			const data = JSON.stringify({ action: 'sendMessage', chatInput: 'hello', sessionId: 'abc' });
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				status: 'waiting',
+				data: { resultData: { lastNodeExecuted: 'node1' } },
+				workflowData: {
+					nodes: [{ name: 'node1', type: CHAT_NODE_TYPE, parameters: { blockUserInput: true } }],
+				},
+			} as any);
+
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(session.nodeWaitingForChatResponse).toBe('node1');
+			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('pollAndProcessChatResponses', () => {
@@ -319,6 +464,28 @@ describe('ChatService', () => {
 			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
+		it('should send continue if execution status is running and nodeWaitingForChatResponse is defined', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { send: jest.fn() },
+				nodeWaitingForChatResponse: 'node1',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'running',
+			} as any);
+
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
+
+			expect(session.connection.send).toHaveBeenCalledWith('n8n|continue');
+			expect(session.nodeWaitingForChatResponse).toBeUndefined();
+		});
+
 		it('should send message if execution status is waiting and a message exists', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
@@ -352,6 +519,38 @@ describe('ChatService', () => {
 			expect(session.nodeWaitingForChatResponse).toEqual('node1');
 		});
 
+		it('should stringify message if it is an object', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { send: jest.fn() },
+				sessionId: 'abc',
+				nodeWaitingForChatResponse: undefined,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'node1',
+						runData: { node1: [{ data: { main: [[{ sendMessage: { msg: 'test message' } }]] } }] },
+					},
+				},
+				workflowData: { nodes: [{ name: 'node1' }] },
+			} as any);
+			(chatService as any).shouldResumeImmediately = jest.fn().mockReturnValue(false);
+			(chatService as any).resumeExecution = jest.fn();
+
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
+
+			expect(session.connection.send).toHaveBeenCalledWith('{"msg":"test message"}');
+			expect(session.nodeWaitingForChatResponse).toEqual('node1');
+		});
+
 		it('should close connection if execution status is success and shouldNotReturnLastNodeResponse is false', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
@@ -365,6 +564,32 @@ describe('ChatService', () => {
 				status: 'success',
 				data: { resultData: { lastNodeExecuted: 'node1' } },
 				workflowData: { nodes: [{ type: 'n8n-core.respondToWebhook', name: 'node1' }] },
+				mode: 'manual',
+			} as any);
+
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
+
+			expect(session.connection.once).toHaveBeenCalled();
+			expect(session.connection.once).toHaveBeenCalledWith('drain', expect.any(Function));
+		});
+
+		it('should close connection if execution status is success even if there is a node waiting for a chat response', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { close: jest.fn(), readyState: 1, once: jest.fn() },
+				isPublic: false,
+				nodeWaitingForChatResponse: 'node1',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'success',
+				data: { resultData: { lastNodeExecuted: 'node1' } },
+				workflowData: { nodes: [{ type: CHAT_NODE_TYPE, name: 'node1' }] },
 				mode: 'manual',
 			} as any);
 

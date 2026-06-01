@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { getSheetHeaderRow } from '../../Google/Sheet/v2/methods/loadOptions';
+export { getConditionsForColumn, getDataTableColumns } from '../../DataTable/common/methods';
 
 export async function getSheetHeaderRowWithGeneratedColumnNames(
 	this: ILoadOptionsFunctions,

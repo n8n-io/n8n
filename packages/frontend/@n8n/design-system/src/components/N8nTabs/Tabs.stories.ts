@@ -1,15 +1,20 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
 
 export default {
-	title: 'Atoms/Tabs',
+	title: 'Core/Tabs',
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		docs: {
+			description: {
+				component: 'A tab navigation component for switching between content panels.',
+			},
+		},
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 

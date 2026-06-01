@@ -509,7 +509,19 @@
 									>
 										{{#each multiSelectOptions}}
 											<div class='multiselect-option'>
-												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
+												{{#if ../radioSelect}}
+													{{#if (eq ../defaultValue label)}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' checked />
+													{{else}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
+													{{/if}}
+												{{else}}
+													{{#if (includes ../defaultValue label)}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' checked />
+													{{else}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
+													{{/if}}
+												{{/if}}
 												<label for='{{id}}'>{{label}}</label>
 											</div>
 										{{/each}}
@@ -525,9 +537,17 @@
 									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 									<div class='select-input'>
 										<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
-											<option value='' disabled selected>Select an option ...</option>
+											{{#if defaultValue}}
+												<option value='' disabled>Select an option ...</option>
+											{{else}}
+												<option value='' disabled selected>Select an option ...</option>
+											{{/if}}
 											{{#each selectOptions}}
-												<option value='{{this}}'>{{this}}</option>
+												{{#if (eq ../defaultValue this)}}
+													<option value='{{this}}' selected>{{this}}</option>
+												{{else}}
+													<option value='{{this}}'>{{this}}</option>
+												{{/if}}
 											{{/each}}
 										</select>
 									</div>
@@ -672,6 +692,10 @@
 			</section>
 		</div>
 		<script>
+			// Get signature from URL for fetch requests
+			const url = new URL(window.location.href);
+			let formSignature = url.searchParams.get('signature');
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -724,8 +748,7 @@
 
 				checkboxes.forEach((checkbox, index) => {
 					if (checkbox.checked) {
-						const label = input.querySelectorAll('label')[index];
-						selectedValues.push(label.textContent.trim());
+						selectedValues.push(checkbox.value.trim());
 					}
 				});
 
@@ -751,17 +774,20 @@
 				}
 
 				if (data.exact && values.length !== data.exact) {
-					updateError(errorElement, 'add', `You must select ${data.exact} options`);
+					const optionText = data.exact === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You must select exactly ${data.exact} ${optionText}`);
 					return false;
 				}
 
 				if (data.minSelect && values.length < data.minSelect) {
-					updateError(errorElement, 'add', `You must select at least ${data.minSelect} options`);
+					const optionText = data.minSelect === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You must select at least ${data.minSelect} ${optionText}`);
 					return false;
 				}
 
 				if(data.maxSelect && values.length > data.maxSelect) {
-					updateError(errorElement, 'add', `You can select a maximum of ${data.maxSelect} options`);
+					const optionText = data.maxSelect === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You can select a maximum of ${data.maxSelect} ${optionText}`);
 					return false;
 				}
 
@@ -876,11 +902,23 @@
 				if (!interval) return;
 
 				try {
-					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
+					const baseUrl = formWaitingUrl ?? window.location.href;
+					const url = new URL(baseUrl);
+					url.pathname = url.pathname + '/n8n-execution-status';
+					// Include signature in fetch request for validation
+					if (formSignature) {
+						url.searchParams.set('signature', formSignature);
+					}
+					const response = await fetch(url.toString());
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {
-						window.location.replace(formWaitingUrl ?? window.location.href);
+						// Redirect to form page with signature in URL (will be cleaned after load)
+						const redirectUrl = new URL(formWaitingUrl ?? window.location.href);
+						if (formSignature) {
+							redirectUrl.searchParams.set('signature', formSignature);
+						}
+						window.location.replace(redirectUrl.toString());
 						return;
 					}
 
@@ -969,11 +1007,21 @@
 					let postUrl = '';
 					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
+					} else if (formSignature) {
+						// For waiting forms, include signature in POST URL since it was cleaned from address bar
+						postUrl = '?signature=' + encodeURIComponent(formSignature);
+					}
+
+					const authToken = '{{{ authToken }}}';
+					const headers = {};
+					if(authToken) {
+						headers['x-auth-token'] = authToken;
 					}
 
 					fetch(postUrl, {
 						method: 'POST',
 						body: formData,
+						headers,
 					})
 						.then(async function (response) {
 							const useResponseData = document.getElementById("useResponseData").value;
@@ -988,14 +1036,16 @@
 
 								if(json?.formWaitingUrl) {
 									formWaitingUrl = json.formWaitingUrl;
+									// Extract signature from URL for subsequent requests
+									const waitingUrl = new URL(json.formWaitingUrl);
+									formSignature = waitingUrl.searchParams.get('signature');
 									clearTimeout(timeoutId);
 									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
 								}
 
 								if (json?.redirectURL) {
-									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
-									window.location.replace(url);
+									window.location.replace(json.redirectURL);
 									return;
 								}
 

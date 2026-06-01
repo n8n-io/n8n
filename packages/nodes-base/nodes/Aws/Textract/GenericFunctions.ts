@@ -12,9 +12,10 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../GenericFunctions';
 
 function getEndpointForService(
 	service: string,
@@ -39,7 +40,7 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions = {
 		qs: {
@@ -54,7 +55,7 @@ export async function awsApiRequest(
 	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+		return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 	} catch (error) {
 		if (error?.response?.data || error?.response?.body) {
 			const errorMessage = error?.response?.data || error?.response?.body;
@@ -98,12 +99,20 @@ export async function awsApiRequestSOAP(
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response as string, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
+			parseString(
+				response as string,
+				{
+					explicitArray: false,
+					tagNameProcessors: [sanitizeXmlName],
+					attrNameProcessors: [sanitizeXmlName],
+				},
+				(err, data) => {
+					if (err) {
+						return reject(err);
+					}
+					resolve(data);
+				},
+			);
 		});
 	} catch (error) {
 		return response;
@@ -172,11 +181,19 @@ export async function validateCredentials(
 	const response = await this.helpers.request(options);
 
 	return await new Promise((resolve, reject) => {
-		parseString(response as string, { explicitArray: false }, (err, data) => {
-			if (err) {
-				return reject(err);
-			}
-			resolve(data);
-		});
+		parseString(
+			response as string,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(err, data) => {
+				if (err) {
+					return reject(err);
+				}
+				resolve(data);
+			},
+		);
 	});
 }

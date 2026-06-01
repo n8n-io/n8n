@@ -65,12 +65,43 @@ describe('LicenseService', () => {
 	});
 
 	describe('activateLicense', () => {
+		it('should activate license without eulaUri (initial activation)', async () => {
+			license.activate.mockResolvedValueOnce();
+			await licenseService.activateLicense('activation-key');
+			expect(license.activate).toHaveBeenCalledWith('activation-key');
+		});
+
+		it('should activate license with eulaUri and userEmail (EULA acceptance)', async () => {
+			license.activate.mockResolvedValueOnce();
+			await licenseService.activateLicense(
+				'activation-key',
+				'https://n8n.io/legal/eula/',
+				'user@example.com',
+			);
+			expect(license.activate).toHaveBeenCalledWith(
+				'activation-key',
+				'https://n8n.io/legal/eula/',
+				'user@example.com',
+			);
+		});
+
+		it('should throw LicenseEulaRequiredError when EULA_REQUIRED error occurs', async () => {
+			const eulaError = new LicenseError('EULA_REQUIRED');
+			(eulaError as any).info = { eula: { uri: 'https://n8n.io/legal/eula/' } };
+			license.activate.mockRejectedValueOnce(eulaError);
+
+			await expect(licenseService.activateLicense('activation-key')).rejects.toThrow(
+				'License activation requires EULA acceptance',
+			);
+		});
+
 		Object.entries(LicenseErrors).forEach(([errorId, message]) =>
 			it(`should handle ${errorId} error`, async () => {
 				license.activate.mockRejectedValueOnce(new LicenseError(errorId));
-				await expect(licenseService.activateLicense('')).rejects.toThrowError(
-					new BadRequestError(message),
-				);
+				const execution = licenseService.activateLicense('');
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(message);
 			}),
 		);
 	});
@@ -96,9 +127,10 @@ describe('LicenseService', () => {
 
 		test('on failure', async () => {
 			license.renew.mockRejectedValueOnce(new LicenseError('RESERVATION_EXPIRED'));
-			await expect(licenseService.renewLicense()).rejects.toThrowError(
-				new BadRequestError('Activation key has expired'),
-			);
+
+			const execution = licenseService.renewLicense();
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Activation key has expired');
 
 			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
 				success: false,

@@ -1,14 +1,22 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nNotice from './Notice.vue';
 
 export default {
-	title: 'Atoms/Notice',
+	title: 'Core/Notice',
 	component: N8nNotice,
 	argTypes: {
 		theme: {
 			control: 'select',
 			options: ['success', 'warning', 'danger', 'info'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A dismissible notification banner for informational or warning messages.',
+			},
 		},
 	},
 };
@@ -71,5 +79,5 @@ export const HtmlEdgeCase = PropTemplate.bind({});
 HtmlEdgeCase.args = {
 	theme: 'warning',
 	content:
-		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
+		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua. <ul><li>Item 1</li><li>Item 2</li></ul>',
 };

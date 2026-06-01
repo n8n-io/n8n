@@ -1,5 +1,7 @@
 import type { Readable } from 'stream';
 
+import type { BINARY_DATA_MODES } from './binary-data.config';
+
 export namespace BinaryData {
 	type LegacyMode = 'filesystem';
 
@@ -8,7 +10,7 @@ export namespace BinaryData {
 	/**
 	 * Binary data mode selectable by user via env var config.
 	 */
-	export type ConfigMode = 'default' | 'filesystem' | 's3';
+	export type ConfigMode = (typeof BINARY_DATA_MODES)[number];
 
 	/**
 	 * Binary data mode used internally by binary data service. User-selected
@@ -32,14 +34,15 @@ export namespace BinaryData {
 
 	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
-	export type IdsForDeletion = Array<{ workflowId: string; executionId: string }>;
+	export type FileLocation =
+		| { type: 'execution'; workflowId: string; executionId: string }
+		| { type: 'custom'; pathSegments: string[]; sourceType?: string; sourceId?: string };
 
 	export interface Manager {
 		init(): Promise<void>;
 
 		store(
-			workflowId: string,
-			executionId: string,
+			location: FileLocation,
 			bufferOrStream: Buffer | Readable,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
@@ -52,12 +55,12 @@ export namespace BinaryData {
 		/**
 		 * Present for `FileSystem`, absent for `ObjectStore` (delegated to S3 lifecycle config)
 		 */
-		deleteMany?(ids: IdsForDeletion): Promise<void>;
+		deleteMany?(locations: FileLocation[]): Promise<void>;
+		deleteManyByFileId?(ids: string[]): Promise<void>;
 
-		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
+		copyByFileId(targetLocation: FileLocation, sourceFileId: string): Promise<string>;
 		copyByFilePath(
-			workflowId: string,
-			executionId: string,
+			targetLocation: FileLocation,
 			sourcePath: string,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;

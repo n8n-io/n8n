@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -9,11 +10,13 @@ import type {
 	IHttpRequestMethods,
 	IRunData,
 	IWorkflowBase,
+	IDestinationNode,
 } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -24,8 +27,11 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
+import { matchesExpectedNodeType } from './node-type-matcher';
+import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -35,6 +41,12 @@ import type {
 	WebhookRequest,
 } from './webhook.types';
 
+const SINGLE_WEBHOOK_TRIGGERS = [
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.slackTrigger',
+	'n8n-nodes-base.facebookLeadAdsTrigger',
+];
+
 /**
  * Service for handling the execution of webhooks of manual executions
  * that use the [Test URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).
@@ -42,6 +54,7 @@ import type {
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly nodeTypes: NodeTypes,
 		private readonly registrations: TestWebhookRegistrationsService,
@@ -59,7 +72,8 @@ export class TestWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
+		expectedNodeType?: ExpectedWebhookNodeType,
+	): Promise<IWebhookResponseCallbackData | WebhookResponse> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -92,6 +106,17 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
+		if (
+			expectedNodeType &&
+			!matchesExpectedNodeType(expectedNodeType, webhook.webhookDescription.nodeType)
+		) {
+			throw new WebhookNotFoundError({
+				path,
+				httpMethod,
+				webhookMethods: await this.getWebhookMethods(path),
+			});
+		}
+
 		const key = this.registrations.toKey(webhook);
 
 		const registration = await this.registrations.get(key);
@@ -104,7 +129,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, pushRef, workflowEntity, webhook: testWebhook } = registration;
+		const { pushRef, workflowEntity, webhook: testWebhook, destinationNode } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -120,59 +145,70 @@ export class TestWebhooks implements IWebhookManager {
 			sanitizeWebhookRequest(request);
 		}
 
-		return await new Promise(async (resolve, reject) => {
-			try {
-				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(
-					workflow,
-					webhook,
-					workflowEntity,
-					workflowStartNode,
-					executionMode,
-					pushRef,
-					undefined, // IRunExecutionData
-					undefined, // executionId
-					request,
-					response,
-					(error: Error | null, data: IWebhookResponseCallbackData) => {
-						if (error !== null) reject(error);
-						else resolve(data);
-					},
-					destinationNode,
-				);
-
-				// The workflow did not run as the request was probably setup related
-				// or a ping so do not resolve the promise and wait for the real webhook
-				// request instead.
-				if (executionId === undefined) return;
-
-				// Inform editor-ui that webhook got received
-				if (pushRef !== undefined) {
-					this.push.send(
-						{ type: 'testWebhookReceived', data: { workflowId: webhook?.workflowId, executionId } },
+		await workflow.expression.acquireIsolate();
+		try {
+			return await new Promise(async (resolve, reject) => {
+				try {
+					const executionMode = 'manual';
+					const executionId = await WebhookHelpers.executeWebhook(
+						workflow,
+						webhook,
+						workflowEntity,
+						workflowStartNode,
+						executionMode,
 						pushRef,
+						undefined, // IRunExecutionData
+						undefined, // executionId
+						request,
+						response,
+						(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
+							if (error !== null) reject(error);
+							else resolve(data);
+						},
+						destinationNode,
 					);
+
+					// The workflow did not run as the request was probably setup related
+					// or a ping so do not resolve the promise and wait for the real webhook
+					// request instead.
+					if (executionId === undefined) {
+						await workflow.expression.releaseIsolate();
+						return;
+					}
+
+					// Inform editor-ui that webhook got received
+					if (pushRef !== undefined) {
+						this.push.send(
+							{
+								type: 'testWebhookReceived',
+								data: { workflowId: webhook?.workflowId, executionId },
+							},
+							pushRef,
+						);
+					}
+				} catch {}
+
+				/**
+				 * Multi-main setup: In a manual webhook execution, the main process that
+				 * handles a webhook might not be the same as the main process that created
+				 * the webhook. If so, after the test webhook has been successfully executed,
+				 * the handler process commands the creator process to clear its test webhooks.
+				 */
+				if (this.instanceSettings.isMultiMain && pushRef && !this.push.hasPushRef(pushRef)) {
+					void this.publisher.publishCommand({
+						command: 'clear-test-webhooks',
+						payload: { webhookKey: key, workflowEntity, pushRef },
+					});
+					return;
 				}
-			} catch {}
 
-			/**
-			 * Multi-main setup: In a manual webhook execution, the main process that
-			 * handles a webhook might not be the same as the main process that created
-			 * the webhook. If so, after the test webhook has been successfully executed,
-			 * the handler process commands the creator process to clear its test webhooks.
-			 */
-			if (this.instanceSettings.isMultiMain && pushRef && !this.push.hasPushRef(pushRef)) {
-				void this.publisher.publishCommand({
-					command: 'clear-test-webhooks',
-					payload: { webhookKey: key, workflowEntity, pushRef },
-				});
-				return;
-			}
+				this.clearTimeout(key);
 
-			this.clearTimeout(key);
-
-			await this.deactivateWebhooks(workflow);
-		});
+				await this.deactivateWebhooks(workflow);
+			});
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })
@@ -191,7 +227,12 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		await this.deactivateWebhooks(workflow);
+		await workflow.expression.acquireIsolate();
+		try {
+			await this.deactivateWebhooks(workflow);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	clearTimeout(key: string) {
@@ -200,13 +241,34 @@ export class TestWebhooks implements IWebhookManager {
 		if (timeout) clearTimeout(timeout);
 	}
 
+	async getWebhooksFromPath(rawPath: string) {
+		const path = removeTrailingSlash(rawPath);
+		const webhooks: IWebhookData[] = [];
+		const registrations = await this.registrations.getRegistrationsHash();
+
+		for (const httpMethod of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
+			const key = this.registrations.toKey({ httpMethod, path });
+			let webhook = registrations?.[key]?.webhook;
+			if (!webhook) {
+				// check for dynamic webhooks
+				const [webhookId, ...segments] = path.split('/');
+				const key = this.registrations.toKey({ httpMethod, path, webhookId });
+				if (registrations?.[key]) {
+					webhook = this.getActiveWebhookFromRegistration(segments.join('/'), registrations?.[key]);
+				}
+			}
+			if (webhook) {
+				webhooks.push(webhook);
+			}
+		}
+		return webhooks;
+	}
+
 	async getWebhookMethods(rawPath: string) {
 		const path = removeTrailingSlash(rawPath);
-		const allKeys = await this.registrations.getAllKeys();
+		const webhooks = await this.getWebhooksFromPath(path);
 
-		const webhookMethods = allKeys
-			.filter((key) => key.includes(path))
-			.map((key) => key.split('|')[0] as IHttpRequestMethods);
+		const webhookMethods = webhooks.map((webhook) => webhook.httpMethod);
 
 		if (!webhookMethods.length) throw new WebhookNotFoundError({ path });
 
@@ -248,8 +310,10 @@ export class TestWebhooks implements IWebhookManager {
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
-		destinationNode?: string;
-		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+		destinationNode?: IDestinationNode;
+		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
+		chatSessionId?: string;
+		workflowIsActive?: boolean;
 	}) {
 		const {
 			userId,
@@ -259,101 +323,136 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			chatSessionId,
+			workflowIsActive,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		let webhooks = WebhookHelpers.getWorkflowWebhooks(
-			workflow,
-			additionalData,
-			destinationNode,
-			true,
-		);
+		await workflow.expression.acquireIsolate();
+		let webhooks: IWebhookData[];
+		try {
+			webhooks = WebhookHelpers.getWorkflowWebhooks(
+				workflow,
+				additionalData,
+				destinationNode,
+				true,
+			);
 
-		// If we have a preferred trigger with data, we don't have to listen for a
-		// webhook.
-		if (triggerToStartFrom?.data) {
-			return false;
-		}
-
-		// If we have a preferred trigger without data we only want to listen for
-		// that trigger, not the other ones.
-		if (triggerToStartFrom) {
-			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
-		}
-
-		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
-			return false; // no webhooks found to start a workflow
-		}
-
-		const timeout = setTimeout(
-			async () => await this.cancelWebhook(workflow.id),
-			TEST_WEBHOOK_TIMEOUT,
-		);
-
-		for (const webhook of webhooks) {
-			const key = this.registrations.toKey(webhook);
-			const registrationByKey = await this.registrations.get(key);
-
-			if (runData && webhook.node in runData) {
+			// If we have a preferred trigger with data, we don't have to listen for a
+			// webhook.
+			if (triggerToStartFrom?.data) {
 				return false;
 			}
 
-			// if registration already exists and is not a test webhook created by this user in this workflow throw an error
-			if (
-				registrationByKey &&
-				!webhook.webhookId &&
-				!registrationByKey.webhook.isTest &&
-				registrationByKey.webhook.userId !== userId &&
-				registrationByKey.webhook.workflowId !== workflow.id
-			) {
-				throw new WebhookPathTakenError(webhook.node);
+			// If we have a preferred trigger without data we only want to listen for
+			// that trigger, not the other ones.
+			if (triggerToStartFrom) {
+				webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
 			}
 
-			webhook.path = removeTrailingSlash(webhook.path);
-			webhook.isTest = true;
+			if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
+				return false; // no webhooks found to start a workflow
+			}
 
-			/**
-			 * Additional data cannot be cached because of circular refs.
-			 * Hence store the `userId` and recreate additional data when needed.
-			 */
-			const { workflowExecuteAdditionalData: _, ...cacheableWebhook } = webhook;
+			const timeoutDuration = TEST_WEBHOOK_TIMEOUT;
 
-			cacheableWebhook.userId = userId;
+			// Check if any webhook is a single webhook trigger and workflow is active
+			if (workflowIsActive) {
+				const singleWebhookTrigger = webhooks.find((w) =>
+					SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
+				);
+				if (singleWebhookTrigger) {
+					throw new SingleWebhookTriggerError(
+						workflow.getNode(singleWebhookTrigger.node)?.name ?? '',
+					);
+				}
+			}
 
-			const registration: TestWebhookRegistration = {
-				pushRef,
-				workflowEntity,
-				destinationNode,
-				webhook: cacheableWebhook as IWebhookData,
-			};
+			const timeout = setTimeout(
+				async () => await this.cancelWebhook(workflow.id),
+				timeoutDuration,
+			);
 
-			try {
+			for (const webhook of webhooks) {
+				webhook.path = removeTrailingSlash(webhook.path);
+
+				// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
+				// IMPORTANT: This must happen BEFORE key generation
+				if (
+					chatSessionId &&
+					webhook.node &&
+					workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
+				) {
+					// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
+					webhook.path = `${workflow.id}/${chatSessionId}`;
+				}
+
+				const key = this.registrations.toKey(webhook);
+				const registrationByKey = await this.registrations.get(key);
+
+				if (runData && webhook.node in runData) {
+					return false;
+				}
+
+				// if registration already exists and is not a test webhook created by this user in this workflow throw an error
+				if (
+					registrationByKey &&
+					!webhook.webhookId &&
+					!registrationByKey.webhook.isTest &&
+					registrationByKey.webhook.userId !== userId &&
+					registrationByKey.webhook.workflowId !== workflow.id
+				) {
+					throw new WebhookPathTakenError(webhook.node);
+				}
+
+				webhook.isTest = true;
+
 				/**
-				 * Register the test webhook _before_ creation at third-party service
-				 * in case service sends a confirmation request immediately on creation.
+				 * Additional data cannot be cached because of circular refs.
+				 * Hence store the `userId` and recreate additional data when needed.
 				 */
-				await this.registrations.register(registration);
+				const { workflowExecuteAdditionalData: _, ...cacheableWebhook } = webhook;
 
-				await this.webhookService.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
+				cacheableWebhook.userId = userId;
 
-				cacheableWebhook.staticData = workflow.staticData;
+				const registration: TestWebhookRegistration = {
+					version: 1,
+					pushRef,
+					workflowEntity,
+					destinationNode,
+					webhook: cacheableWebhook as IWebhookData,
+				};
 
-				await this.registrations.register(registration);
+				try {
+					/**
+					 * Register the test webhook _before_ creation at third-party service
+					 * in case service sends a confirmation request immediately on creation.
+					 */
+					await this.registrations.register(registration);
 
-				this.timeouts[key] = timeout;
-			} catch (error) {
-				await this.deactivateWebhooks(workflow);
+					await this.webhookService.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
 
-				delete this.timeouts[key];
+					cacheableWebhook.staticData = workflow.staticData;
 
-				throw error;
+					await this.registrations.register(registration);
+
+					this.timeouts[key] = timeout;
+				} catch (error) {
+					await this.deactivateWebhooks(workflow);
+
+					delete this.timeouts[key];
+
+					throw error;
+				}
 			}
-		}
 
-		return true;
+			return true;
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	async cancelWebhook(workflowId: string) {
@@ -384,7 +483,19 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				void this.deactivateWebhooks(workflow);
+				void (async () => {
+					await workflow.expression.acquireIsolate();
+					try {
+						await this.deactivateWebhooks(workflow);
+					} finally {
+						await workflow.expression.releaseIsolate();
+					}
+				})().catch((error) => {
+					this.logger.error('Failed to deactivate test webhooks on cancel', {
+						error,
+						workflowId,
+					});
+				});
 			}
 
 			foundWebhook = true;
@@ -393,33 +504,31 @@ export class TestWebhooks implements IWebhookManager {
 		return foundWebhook;
 	}
 
-	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
-		const key = this.registrations.toKey({ httpMethod, path, webhookId });
-
-		let webhook: IWebhookData | undefined;
-		let maxMatches = 0;
+	getActiveWebhookFromRegistration(
+		path: string,
+		registration: TestWebhookRegistration,
+	): IWebhookData | undefined {
 		const pathElementsSet = new Set(path.split('/'));
-		// check if static elements match in path
-		// if more results have been returned choose the one with the most static-route matches
-		const registration = await this.registrations.get(key);
-
-		if (!registration) return;
 
 		const { webhook: dynamicWebhook } = registration;
 
 		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
 		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
 
-		if (allStaticExist && staticElements.length > maxMatches) {
-			maxMatches = staticElements.length;
-			webhook = dynamicWebhook;
+		// webhook matches if all static elements exist or if there are no static elements
+		if ((allStaticExist && staticElements.length > 0) || staticElements.length === 0) {
+			return dynamicWebhook;
 		}
-		// handle routes with no static elements
-		else if (staticElements.length === 0 && !webhook) {
-			webhook = dynamicWebhook;
-		}
+		return undefined;
+	}
 
-		return webhook;
+	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
+		const key = this.registrations.toKey({ httpMethod, path, webhookId });
+		const registration = await this.registrations.get(key);
+
+		if (!registration) return;
+
+		return this.getActiveWebhookFromRegistration(path, registration);
 	}
 
 	/**
@@ -449,15 +558,19 @@ export class TestWebhooks implements IWebhookManager {
 			const { userId, staticData } = webhook;
 
 			if (userId) {
-				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					workflowId: workflow.id,
+				});
 			}
 
 			if (staticData) workflow.staticData = staticData;
 
 			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
-		}
 
-		await this.registrations.deregisterAll();
+			// Deregister only this webhook, not all webhooks from other running workflows
+			await this.registrations.deregister(webhook);
+		}
 	}
 
 	/**

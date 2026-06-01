@@ -45,16 +45,10 @@
                 }
             }
         },
-        "category": {
-            "type": "string"
-        },
         "cause": {
             "type": "string"
         },
         "caused_by": {
-            "type": "string"
-        },
-        "child_incidents": {
             "type": "string"
         },
         "close_notes": {
@@ -69,19 +63,10 @@
         "comments_and_work_notes": {
             "type": "string"
         },
-        "contract": {
-            "type": "string"
-        },
         "correlation_display": {
             "type": "string"
         },
         "correlation_id": {
-            "type": "string"
-        },
-        "delivery_plan": {
-            "type": "string"
-        },
-        "delivery_task": {
             "type": "string"
         },
         "description": {
@@ -108,9 +93,6 @@
         "impact": {
             "type": "string"
         },
-        "incident_state": {
-            "type": "string"
-        },
         "knowledge": {
             "type": "string"
         },
@@ -118,12 +100,6 @@
             "type": "string"
         },
         "notify": {
-            "type": "string"
-        },
-        "number": {
-            "type": "string"
-        },
-        "opened_at": {
             "type": "string"
         },
         "opened_by": {
@@ -140,19 +116,10 @@
         "order": {
             "type": "string"
         },
-        "origin_id": {
-            "type": "string"
-        },
         "origin_table": {
             "type": "string"
         },
         "parent": {
-            "type": "string"
-        },
-        "priority": {
-            "type": "string"
-        },
-        "problem_id": {
             "type": "string"
         },
         "reassignment_count": {
@@ -161,17 +128,22 @@
         "reopen_count": {
             "type": "string"
         },
-        "reopened_by": {
-            "type": "string"
-        },
         "reopened_time": {
             "type": "string"
         },
         "resolved_at": {
             "type": "string"
         },
-        "rfc": {
-            "type": "string"
+        "resolved_by": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
         },
         "route_reason": {
             "type": "string"
@@ -179,16 +151,10 @@
         "severity": {
             "type": "string"
         },
-        "short_description": {
-            "type": "string"
-        },
         "sla_due": {
             "type": "string"
         },
         "state": {
-            "type": "string"
-        },
-        "subcategory": {
             "type": "string"
         },
         "sys_class_name": {
@@ -214,9 +180,6 @@
         "sys_domain_path": {
             "type": "string"
         },
-        "sys_id": {
-            "type": "string"
-        },
         "sys_mod_count": {
             "type": "string"
         },
@@ -224,9 +187,6 @@
             "type": "string"
         },
         "sys_updated_by": {
-            "type": "string"
-        },
-        "sys_updated_on": {
             "type": "string"
         },
         "task_effective_number": {
@@ -266,5 +226,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

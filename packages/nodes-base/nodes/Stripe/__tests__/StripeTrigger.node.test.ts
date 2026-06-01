@@ -1,17 +1,28 @@
-import type { IHookFunctions } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 import { stripeApiRequest } from '../helpers';
 import { StripeTrigger } from '../StripeTrigger.node';
+import { verifySignature } from '../StripeTriggerHelpers';
 
 jest.mock('../helpers', () => ({
 	stripeApiRequest: jest.fn(),
 }));
 
+jest.mock('../StripeTriggerHelpers', () => ({
+	verifySignature: jest.fn().mockResolvedValue(true),
+}));
+
 const mockedStripeApiRequest = jest.mocked(stripeApiRequest);
+const mockedVerifySignature = jest.mocked(verifySignature);
 
 describe('Stripe Trigger Node', () => {
 	let node: StripeTrigger;
 	let mockNodeFunctions: IHookFunctions;
+	let mockResponse: {
+		status: jest.Mock;
+		send: jest.Mock;
+		end: jest.Mock;
+	};
 
 	beforeEach(() => {
 		node = new StripeTrigger();
@@ -95,5 +106,92 @@ describe('Stripe Trigger Node', () => {
 		const callArgs = mockedStripeApiRequest.mock.calls[0];
 		const requestBody = callArgs[2];
 		expect(requestBody).toHaveProperty('api_version', '2025-05-28.basil');
+	});
+
+	describe('webhook signature verification', () => {
+		let mockWebhookFunctions: IWebhookFunctions;
+		const testBody = { type: 'charge.succeeded', id: 'ch_123' };
+		const rawBody = JSON.stringify(testBody);
+
+		beforeEach(() => {
+			mockResponse = {
+				status: jest.fn().mockReturnThis(),
+				send: jest.fn().mockReturnThis(),
+				end: jest.fn(),
+			};
+			mockWebhookFunctions = {
+				getBodyData: jest.fn().mockReturnValue(testBody),
+				getRequestObject: jest.fn().mockReturnValue({
+					rawBody: Buffer.from(rawBody),
+					body: testBody,
+				}),
+				getResponseObject: jest.fn().mockReturnValue(mockResponse),
+				getNodeParameter: jest.fn().mockReturnValue(['*']),
+				helpers: {
+					returnJsonArray: jest.fn().mockImplementation((data) => [data]),
+				},
+			} as unknown as IWebhookFunctions;
+
+			// Reset the verifySignature mock to return true by default
+			mockedVerifySignature.mockResolvedValue(true);
+		});
+
+		it('should process webhook with valid signature', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				workflowData: [[testBody]],
+			});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
+		});
+
+		it('should process webhook when verification is skipped because no secret is configured', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				workflowData: [[testBody]],
+			});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
+		});
+
+		it('should reject webhook with invalid signature', async () => {
+			mockedVerifySignature.mockResolvedValue(false);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				noWebhookResponse: true,
+			});
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+			expect(mockResponse.end).toHaveBeenCalledWith();
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
+		});
+
+		it('should handle events filtering correctly', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([
+				'payment_intent.succeeded',
+			]);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({});
+		});
+
+		it('should process webhook when event type matches filter', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue(['charge.succeeded']);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				workflowData: [[testBody]],
+			});
+		});
 	});
 });

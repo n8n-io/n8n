@@ -4,10 +4,12 @@ import { Column } from './column';
 import { CreateIndex, DropIndex } from './indices';
 import {
 	AddColumns,
+	AddEnumCheck,
 	AddForeignKey,
 	AddNotNull,
 	CreateTable,
 	DropColumns,
+	DropEnumCheck,
 	DropForeignKey,
 	DropNotNull,
 	DropTable,
@@ -26,12 +28,27 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 	dropColumns: (tableName: string, columnNames: string[]) =>
 		new DropColumns(tableName, columnNames, tablePrefix, queryRunner),
 
+	/**
+	 * Creates an index on the given table and column names.
+	 *
+	 * @param whereClause - The where clause to apply to the index to create a partial index.
+	 */
 	createIndex: (
 		tableName: string,
 		columnNames: string[],
 		isUnique = false,
 		customIndexName?: string,
-	) => new CreateIndex(tableName, columnNames, isUnique, tablePrefix, queryRunner, customIndexName),
+		whereClause?: string,
+	) =>
+		new CreateIndex(
+			tableName,
+			columnNames,
+			isUnique,
+			tablePrefix,
+			queryRunner,
+			customIndexName,
+			whereClause,
+		),
 
 	dropIndex: (
 		tableName: string,
@@ -47,6 +64,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		columnName: string,
 		reference: [string, string],
 		customConstraintName?: string,
+		onDelete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL',
 	) =>
 		new AddForeignKey(
 			tableName,
@@ -55,6 +73,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 			tablePrefix,
 			queryRunner,
 			customConstraintName,
+			onDelete,
 		),
 
 	dropForeignKey: (
@@ -76,6 +95,13 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),
 	dropNotNull: (tableName: string, columnName: string) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
+
+	/** WARNING: This recreates the entire table on SQLite. */
+	addEnumCheck: (tableName: string, columnName: string, values: string[]) =>
+		new AddEnumCheck(tableName, columnName, values, tablePrefix, queryRunner),
+	/** WARNING: This recreates the entire table on SQLite. */
+	dropEnumCheck: (tableName: string, columnName: string) =>
+		new DropEnumCheck(tableName, columnName, tablePrefix, queryRunner),
 
 	/* eslint-enable */
 });

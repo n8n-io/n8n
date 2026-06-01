@@ -1,0 +1,77 @@
+{
+	"name": "TheHive Case Create Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "create",
+				"caseFields": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"title": "Test Case",
+						"description": "Test case description",
+						"severity": 2,
+						"tags": "test,n8n",
+						"tlp": 2,
+						"pap": 2
+					}
+				}
+			},
+			"type": "n8n-nodes-base.theHiveProject",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "thehive-node",
+			"name": "TheHive Case Create",
+			"credentials": {
+				"theHiveProjectApi": {
+					"id": "thehive-creds",
+					"name": "TheHive API Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"TheHive Case Create": [
+			{
+				"json": {
+					"_id": "~123789",
+					"_type": "Case",
+					"title": "Test Case",
+					"description": "Test case description",
+					"severity": 2,
+					"status": "Open",
+					"tags": ["test", "n8n"],
+					"tlp": 2,
+					"pap": 2,
+					"createdAt": 1698753600000,
+					"updatedAt": 1698753600000
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "TheHive Case Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

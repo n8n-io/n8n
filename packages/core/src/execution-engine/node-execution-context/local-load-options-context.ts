@@ -1,5 +1,5 @@
 import get from 'lodash/get';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import { ApplicationError, resolveRelativePath, Workflow } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
 	IWorkflowExecuteAdditionalData,
@@ -20,7 +20,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
-	async getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null> {
+	async getWorkflowNodeContext(
+		nodeType: string,
+		preferActiveVersion: boolean = false,
+	): Promise<IWorkflowNodeContext | null> {
 		const { value: workflowId } = this.getCurrentNodeParameter(
 			'workflowId',
 		) as INodeParameterResourceLocator;
@@ -31,7 +34,11 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType);
+		const selectedWorkflowNode = (
+			preferActiveVersion && dbWorkflow.activeVersion
+				? dbWorkflow.activeVersion.nodes
+				: dbWorkflow.nodes
+		).find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({
@@ -61,9 +68,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined {
 		const nodeParameters = this.additionalData.currentNodeParameters;
 
-		if (parameterPath.startsWith('&')) {
-			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-		}
+		parameterPath = resolveRelativePath(this.path, parameterPath);
 
 		return get(nodeParameters, parameterPath);
 	}

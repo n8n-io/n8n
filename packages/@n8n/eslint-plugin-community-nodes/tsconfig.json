@@ -1,0 +1,9 @@
+{
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"types": ["vitest/globals", "node"]
+	},
+	"include": ["src/**/*.ts"]
+}

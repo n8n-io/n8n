@@ -4,44 +4,73 @@ import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
 
-const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
-	string: ['text', 'varchar', 'character varying', 'character', 'char'],
-	number: [
-		'integer',
-		'smallint',
-		'bigint',
-		'decimal',
-		'numeric',
-		'real',
-		'double precision',
-		'smallserial',
-		'serial',
-		'bigserial',
-	],
-	boolean: ['boolean'],
-	dateTime: [
-		'timestamp',
-		'date',
-		'timestampz',
-		'timestamp without time zone',
-		'timestamp with time zone',
-	],
-	time: ['time', 'time without time zone', 'time with time zone'],
-	object: ['json', 'jsonb'],
-	options: ['enum', 'USER-DEFINED'],
-	array: ['ARRAY'],
-};
+const postgresTypeToFieldType = new Map(
+	Object.entries({
+		text: 'string',
+		varchar: 'string',
+		'character varying': 'string',
+		character: 'string',
+		char: 'string',
+		integer: 'number',
+		smallint: 'number',
+		bigint: 'number',
+		decimal: 'number',
+		numeric: 'number',
+		real: 'number',
+		'double precision': 'number',
+		smallserial: 'number',
+		serial: 'number',
+		bigserial: 'number',
+		// eslint-disable-next-line id-denylist
+		boolean: 'boolean',
+		timestamp: 'dateTime',
+		date: 'dateTime',
+		timestampz: 'dateTime',
+		'timestamp without time zone': 'dateTime',
+		'timestamp with time zone': 'dateTime',
+		time: 'time',
+		'time without time zone': 'time',
+		'time with time zone': 'time',
+		json: 'object',
+		jsonb: 'object',
+		enum: 'options',
+		ARRAY: 'array',
 
-function mapPostgresType(postgresType: string): FieldType {
-	let mappedType: FieldType = 'string';
+		// PostgreSQL extensions
+		citext: 'string',
+		uuid: 'string',
+		geometry: 'string',
+		geography: 'string',
+		inet: 'string',
+		cidr: 'string',
+		macaddr: 'string',
+		macaddr8: 'string',
+		int4range: 'string',
+		int8range: 'string',
+		numrange: 'string',
+		tsrange: 'string',
+		tstzrange: 'string',
+		daterange: 'string',
+		tsvector: 'string',
+		tsquery: 'string',
+		hstore: 'object',
+		ltree: 'string',
+	} as const),
+);
 
-	for (const t of Object.keys(fieldTypeMapping)) {
-		const postgresTypes = fieldTypeMapping[t as FieldType];
-		if (postgresTypes?.includes(postgresType)) {
-			mappedType = t as FieldType;
+function mapPostgresType(
+	postgresType: string,
+	userDefinedType?: string,
+	enumInfo?: Map<string, string[]>,
+): FieldType {
+	if (postgresType === 'USER-DEFINED' && userDefinedType) {
+		if (enumInfo?.has(userDefinedType)) {
+			return 'options';
 		}
+		return postgresTypeToFieldType.get(userDefinedType) ?? 'string';
 	}
-	return mappedType;
+
+	return postgresTypeToFieldType.get(postgresType) ?? 'string';
 }
 
 export async function getMappingColumns(
@@ -66,29 +95,27 @@ export async function getMappingColumns(
 	const columns = await getTableSchema(db, schema, table, { getColumnsForResourceMapper: true });
 	const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
 	const enumInfo = await getEnums(db);
-	const fields = await Promise.all(
-		columns.map(async (col) => {
-			const canBeUsedToMatch =
-				operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
-			const type = mapPostgresType(col.data_type);
-			const options =
-				type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
-			const hasDefault = Boolean(col.column_default);
-			const isGenerated =
-				col.is_generated === 'ALWAYS' ||
-				['ALWAYS', 'BY DEFAULT'].includes(col.identity_generation ?? '');
-			const nullable = col.is_nullable === 'YES';
-			return {
-				id: col.column_name,
-				displayName: col.column_name,
-				required: !nullable && !hasDefault && !isGenerated,
-				defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
-				display: true,
-				type,
-				canBeUsedToMatch,
-				options,
-			};
-		}),
-	);
+	const fields = columns.map((col) => {
+		const canBeUsedToMatch =
+			operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
+		const type = mapPostgresType(col.data_type, col.udt_name, enumInfo);
+		const options =
+			type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
+		const hasDefault = Boolean(col.column_default);
+		const isGenerated =
+			col.is_generated === 'ALWAYS' ||
+			['ALWAYS', 'BY DEFAULT'].includes(col.identity_generation ?? '');
+		const nullable = col.is_nullable === 'YES';
+		return {
+			id: col.column_name,
+			displayName: col.column_name,
+			required: !nullable && !hasDefault && !isGenerated,
+			defaultMatch: (col.column_name === 'id' && canBeUsedToMatch) || false,
+			display: true,
+			type,
+			canBeUsedToMatch,
+			options,
+		};
+	});
 	return { fields };
 }

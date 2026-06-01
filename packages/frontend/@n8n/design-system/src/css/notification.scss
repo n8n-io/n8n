@@ -9,7 +9,7 @@
 	box-sizing: border-box;
 	border: 1px solid var.$notification-border-color;
 	position: fixed;
-	background-color: var(--color-notification-background);
+	background-color: var(--notification--color--background);
 	box-shadow: var.$notification-shadow;
 	transition:
 		opacity 0.3s,
@@ -39,7 +39,7 @@
 
 	@include mixins.e(title) {
 		line-height: normal;
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight--bold);
 		font-size: var.$notification-title-font-size;
 		color: var.$notification-title-color;
 		margin: 0;

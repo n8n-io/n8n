@@ -311,7 +311,47 @@ describe('ChatPlugin', () => {
 
 			expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 			expect(chatStore.messages.value).toHaveLength(0);
-			expect(chatStore.currentSessionId.value).toBeNull();
+			expect(chatStore.currentSessionId.value).toBe(sessionId);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).toHaveBeenCalledWith(localStorageSessionIdKey, sessionId);
+		});
+
+		it('should preserve manually set sessionId when no messages exist', async () => {
+			const manualSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				manualSessionId,
+			);
+			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce({ data: [] });
+
+			const sessionId = await chatStore.loadPreviousSession?.();
+
+			expect(sessionId).toBe(manualSessionId);
+			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
+			expect(chatStore.messages.value).toHaveLength(0);
+		});
+
+		it('should preserve manually set sessionId when messages exist', async () => {
+			const manualSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				manualSessionId,
+			);
+			const mockMessages: LoadPreviousSessionResponse = {
+				data: [
+					{
+						id: ['user', 'uuid-1'],
+						kwargs: { content: 'Hello', additional_kwargs: {} },
+						lc: 1,
+						type: 'HumanMessage',
+					},
+				],
+			};
+			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce(mockMessages);
+
+			const sessionId = await chatStore.loadPreviousSession?.();
+
+			expect(sessionId).toBe(manualSessionId);
+			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
+			expect(chatStore.messages.value).toHaveLength(1);
 		});
 
 		it('should skip loading if loadPreviousSession is false', async () => {
@@ -324,12 +364,53 @@ describe('ChatPlugin', () => {
 			expect(api.loadPreviousSession).not.toHaveBeenCalled();
 		});
 
-		it('should start a new session', async () => {
+		it('should start a new session when localStorage is empty', async () => {
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(null);
+
 			await chatStore.startNewSession?.();
 
 			expect(chatStore.currentSessionId.value).toMatch(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 			);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).toHaveBeenCalledWith(
+				localStorageSessionIdKey,
+				chatStore.currentSessionId.value,
+			);
+		});
+
+		it('should preserve existing sessionId when starting new session with loadPreviousSession enabled', async () => {
+			const existingSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			mockOptions.loadPreviousSession = true;
+			chatStore = setupChatStore(mockOptions);
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				existingSessionId,
+			);
+
+			await chatStore.startNewSession?.();
+
+			expect(chatStore.currentSessionId.value).toBe(existingSessionId);
+			// localStorage.setItem should not be called since sessionId already exists
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).not.toHaveBeenCalled();
+		});
+
+		it('should generate new sessionId when loadPreviousSession is disabled', async () => {
+			const existingSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			mockOptions.loadPreviousSession = false;
+			chatStore = setupChatStore(mockOptions);
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				existingSessionId,
+			);
+
+			await chatStore.startNewSession?.();
+
+			// Should generate new UUID, not preserve existing one
+			expect(chatStore.currentSessionId.value).not.toBe(existingSessionId);
+			expect(chatStore.currentSessionId.value).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+			);
+			// localStorage.setItem should be called with new sessionId
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(window.localStorage.setItem).toHaveBeenCalledWith(
 				localStorageSessionIdKey,
@@ -358,6 +439,112 @@ describe('ChatPlugin', () => {
 			const chatStore = setupChatStore(mockOptions);
 
 			expect(chatStore.initialMessages.value).toHaveLength(0);
+		});
+	});
+
+	describe('beforeMessageSent and afterMessageSent hooks', () => {
+		it('should call beforeMessageSent before sending (non-streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			vi.mocked(api.sendMessage).mockImplementation(async () => {
+				callOrder.push('send');
+				return { output: 'Response' };
+			});
+
+			const chatStore = setupChatStore({ ...mockOptions, beforeMessageSent });
+			await chatStore.sendMessage('Test message');
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+			expect(callOrder).toEqual(['before', 'send']);
+		});
+
+		it('should call afterMessageSent after sending (non-streaming)', async () => {
+			const mockResponse = { output: 'Response' };
+			const afterMessageSent = vi.fn();
+			vi.mocked(api.sendMessage).mockResolvedValueOnce(mockResponse);
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				webhookConfig: { method: 'POST' },
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(afterMessageSent).toHaveBeenCalledWith('Test message', mockResponse);
+		});
+
+		it('should call beforeMessageSent before sending (streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			vi.mocked(api.sendMessageStreaming).mockImplementation(async () => {
+				callOrder.push('stream');
+				return { hasReceivedChunks: true };
+			});
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				enableStreaming: true,
+				beforeMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+			expect(callOrder).toEqual(['before', 'stream']);
+		});
+
+		it('should call afterMessageSent after streaming completes', async () => {
+			const afterMessageSent = vi.fn();
+			vi.mocked(api.sendMessageStreaming).mockResolvedValueOnce({ hasReceivedChunks: true });
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				enableStreaming: true,
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(afterMessageSent).toHaveBeenCalledWith(
+				'Test message',
+				expect.objectContaining({
+					hasReceivedChunks: true,
+				}),
+			);
+		});
+
+		it('should call hooks in correct order (non-streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			const afterMessageSent = vi.fn(() => {
+				callOrder.push('after');
+			});
+			vi.mocked(api.sendMessage).mockResolvedValueOnce({ output: 'Response' });
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				webhookConfig: { method: 'POST' },
+				beforeMessageSent,
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(callOrder).toEqual(['before', 'after']);
+		});
+
+		it('should call beforeMessageSent with file uploads', async () => {
+			const beforeMessageSent = vi.fn();
+			const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+			vi.mocked(api.sendMessage).mockResolvedValueOnce({ output: 'File received' });
+
+			const chatStore = setupChatStore({ ...mockOptions, beforeMessageSent });
+			await chatStore.sendMessage('Test message', [testFile]);
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
 		});
 	});
 

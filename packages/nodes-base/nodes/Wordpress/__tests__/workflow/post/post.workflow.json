@@ -5,16 +5,16 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-100, 100],
-			"id": "da734910-1187-408a-bfa9-1f38cd8faf73",
+			"position": [-32, 688],
+			"id": "d9528df2-82cb-47fe-8176-238283d1827e",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [340, 0],
-			"id": "086a9b07-77ee-4c99-9d4e-05fdb63914a4",
+			"position": [416, 688],
+			"id": "1f61c57c-8bf3-44bd-86a7-651906c1b06d",
 			"name": "Update Response"
 		},
 		{
@@ -30,13 +30,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [120, 0],
-			"id": "11bb21ca-d2c2-4ac8-8559-a0f44adcb9a4",
+			"position": [192, 688],
+			"id": "eb2e2d7a-48e9-49fb-a808-e2546ce14a2b",
 			"name": "Post > Update",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -48,13 +48,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [120, -200],
-			"id": "01a19b2c-c0e6-49dc-9deb-4f1a52fbe9d4",
+			"position": [192, 304],
+			"id": "72a59773-a15a-4e58-8bed-be1108449550",
 			"name": "Post > Get Many",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -62,8 +62,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [340, -200],
-			"id": "7353362c-e6dd-4812-b8e8-cc52044b0cf3",
+			"position": [416, 304],
+			"id": "11b128da-9b78-4f02-93a7-c3db1bc3363a",
 			"name": "Get Many"
 		},
 		{
@@ -74,13 +74,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [120, 200],
-			"id": "702ca685-91f4-416d-8f91-9a75409b8460",
+			"position": [192, 880],
+			"id": "3ff21988-4d92-4c87-831f-4e684248c761",
 			"name": "Post > Get",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -88,8 +88,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [340, 200],
-			"id": "ca376415-c336-40ab-8ed7-7ddcf0d180cd",
+			"position": [416, 880],
+			"id": "dc730fc9-a28d-4eb4-aa8d-a1b85ff45ef9",
 			"name": "Get Response"
 		},
 		{
@@ -100,23 +100,23 @@
 					"content": "This is my content",
 					"slug": "new-post",
 					"status": "future",
+					"date": "2025-03-27T18:30:04",
 					"commentStatus": "closed",
 					"pingStatus": "closed",
 					"format": "standard",
 					"sticky": true,
-					"categories": [1],
-					"date": "2025-03-27T18:30:04"
+					"categories": [1]
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [120, 400],
-			"id": "3a022ad5-8ce7-4ff2-988f-a449c7f1466e",
+			"position": [192, 1072],
+			"id": "f2e1c5f0-fbfa-419e-ba7a-ef60c8853304",
 			"name": "Post > Create",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -124,9 +124,37 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [340, 400],
-			"id": "54e3d212-9d19-4aa1-ad32-1ca0cc64c32b",
+			"position": [416, 1072],
+			"id": "c386bee8-4bb9-4a1e-b4bc-4f8689722729",
 			"name": "Create Response"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {
+					"before": "2026-01-01T00:00:00"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [192, 496],
+			"id": "cc61993a-ac13-42d7-aace-c501da128361",
+			"name": "Post > Get Many (With Filters)",
+			"credentials": {
+				"wordpressApi": {
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [416, 496],
+			"id": "770a6cf9-93ca-4b56-a23b-b1d9904de993",
+			"name": "Get Many (With Filters)"
 		}
 	],
 	"pinData": {
@@ -691,6 +719,124 @@
 					}
 				}
 			}
+		],
+		"Get Many (With Filters)": [
+			{
+				"json": {
+					"id": 1,
+					"date": "2025-03-27T18:05:01",
+					"date_gmt": "2025-03-27T18:05:01",
+					"guid": {
+						"rendered": "https://myblog.com/?p=1"
+					},
+					"modified": "2025-03-27T18:22:36",
+					"modified_gmt": "2025-03-27T18:22:36",
+					"slug": "hello-world",
+					"status": "publish",
+					"type": "post",
+					"link": "https://myblog.com/2025/03/27/hello-world/",
+					"title": {
+						"rendered": "Hello world!"
+					},
+					"content": {
+						"rendered": "\n<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n",
+						"protected": false
+					},
+					"excerpt": {
+						"rendered": "<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"comment_status": "open",
+					"ping_status": "open",
+					"sticky": false,
+					"template": "",
+					"format": "standard",
+					"meta": {
+						"footnotes": ""
+					},
+					"categories": [1],
+					"tags": [],
+					"class_list": [
+						"post-1",
+						"post",
+						"type-post",
+						"status-publish",
+						"format-standard",
+						"hentry",
+						"category-uncategorised"
+					],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/posts"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/post"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=1"
+							}
+						],
+						"version-history": [
+							{
+								"count": 1,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions"
+							}
+						],
+						"predecessor-version": [
+							{
+								"id": 6,
+								"href": "https://myblog.com/wp-json/wp/v2/posts/1/revisions/6"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=1"
+							}
+						],
+						"wp:term": [
+							{
+								"taxonomy": "category",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/categories?post=1"
+							},
+							{
+								"taxonomy": "post_tag",
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/tags?post=1"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -714,6 +860,11 @@
 					},
 					{
 						"node": "Post > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post > Get Many (With Filters)",
 						"type": "main",
 						"index": 0
 					}
@@ -763,17 +914,28 @@
 					}
 				]
 			]
+		},
+		"Post > Get Many (With Filters)": {
+			"main": [
+				[
+					{
+						"node": "Get Many (With Filters)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "2665dd64-c5ba-429b-a96d-c9ef88d22f35",
+	"versionId": "15a2bfaf-cdca-4010-81ee-e589d6fddc1e",
 	"meta": {
 		"templateCredsSetupCompleted": true,
-		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
 	},
-	"id": "TJ2kzGNKbZt6fvPV",
+	"id": "W7kWl5BZvsrmZeVw",
 	"tags": []
 }

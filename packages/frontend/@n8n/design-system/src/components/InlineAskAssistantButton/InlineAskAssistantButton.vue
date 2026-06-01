@@ -53,75 +53,65 @@ const onClick = () => {
 		data-test-id="ask-assistant-button"
 		@click="onClick"
 	>
-		<div>
-			<div :style="{ padding: sizes[size].padding }">
-				<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
-				<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-				<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
-			</div>
+		<div :style="{ padding: sizes[size].padding }">
+			<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
+			<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
+			<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
 		</div>
 	</button>
 </template>
 
 <style lang="scss" module>
 .button {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	position: relative;
-	border: 0;
-	padding: 1px;
+	border: 1px solid transparent;
+	padding: 0;
+	overflow: hidden;
 
-	background: var(--color-assistant-highlight-gradient);
+	background:
+		var(--assistant--button--color--background--gradient) padding-box,
+		var(--assistant--color--highlight-gradient) border-box;
 
 	> div {
-		background-color: var(--color-askAssistant-button-background);
-		border-radius: inherit;
 		height: 100%;
-		overflow: hidden;
-
-		> div {
-			height: 100%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			line-height: unset;
-		}
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		line-height: unset;
 	}
 }
 
 .hoverable {
 	&:hover {
 		cursor: pointer;
-		background: var(--color-assistant-highlight-reverse);
+		background:
+			var(--assistant--button--color--background--gradient--hover) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--color-askAssistant-button-background-hover);
-		}
-
-		> div > div {
-			background: var(--color-assistant-inner-highlight-hover);
+			background: var(--assistant--button--color--background--hover);
 		}
 	}
 
 	&:active {
-		background: var(--color-assistant-highlight-gradient);
+		background:
+			var(--assistant--button--color--background--gradient--active) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--color-askAssistant-button-background-active);
-		}
-
-		> div > div {
-			background: var(--color-assistant-inner-highlight-active);
+			background: var(--assistant--button--color--background--active);
 		}
 	}
 }
 
 .asked {
 	cursor: not-allowed;
-	background: var(--color-foreground-base);
-	color: var(--color-text-light);
+	background: var(--color--foreground);
+	color: var(--color--text--tint-1);
 }
 
 .icon {
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 </style>

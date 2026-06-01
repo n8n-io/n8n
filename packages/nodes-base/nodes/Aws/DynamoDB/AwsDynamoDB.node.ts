@@ -27,6 +27,7 @@ import {
 	decodeItem,
 	simplify,
 } from './utils';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsDynamoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,18 +38,15 @@ export class AwsDynamoDB implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
+		schemaPath: 'Aws/DynamoDB',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -140,6 +138,7 @@ export class AwsDynamoDB implements INodeType {
 						const dataToSend = this.getNodeParameter('dataToSend', 0) as
 							| 'defineBelow'
 							| 'autoMapInputData';
+						const autoParseNumbers = this.getNodeParameter('autoParseNumbers', i, true) as boolean;
 						const item: { [key: string]: string } = {};
 
 						if (dataToSend === 'autoMapInputData') {
@@ -152,11 +151,11 @@ export class AwsDynamoDB implements INodeType {
 								item[key] = items[i].json[key] as string;
 							}
 
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, autoParseNumbers);
 						} else {
 							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 							fields.forEach(({ fieldId, fieldValue }) => (item[fieldId] = fieldValue));
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, autoParseNumbers);
 						}
 
 						const headers = {

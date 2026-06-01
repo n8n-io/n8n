@@ -5,7 +5,7 @@ export class NocoDb implements ICredentialType {
 
 	displayName = 'NocoDB';
 
-	documentationUrl = 'nocoDb';
+	documentationUrl = 'nocodb';
 
 	properties: INodeProperties[] = [
 		{

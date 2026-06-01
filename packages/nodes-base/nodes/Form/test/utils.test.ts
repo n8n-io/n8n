@@ -1,15 +1,30 @@
+jest.mock('n8n-core', () => ({
+	getHtmlSandboxCSP: jest.fn(
+		() =>
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+	),
+	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+	// Empty stand-in: the test registers a fake instance via `Container.set`
+	// below so `Container.get(InstanceSettings)` returns that object directly.
+	InstanceSettings: class {},
+}));
+
+import { Container } from '@n8n/di';
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	FormFieldsParameter,
 	IDataObject,
 	INode,
 	INodeExecutionData,
 	IWebhookFunctions,
+	IWorkflowSettings,
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -19,10 +34,20 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	sanitizeCustomCss,
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
+	validateSafeRedirectUrl,
+	handleNewlines,
+	parseFormFields,
+	validateFormPageAuth,
+	generateFormUserAuthToken,
+	verifyFormUserAuthToken,
 } from '../utils/utils';
+import { isIpAllowed } from '../../Webhook/utils';
+
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -89,6 +114,308 @@ describe('FormTrigger, sanitizeHtml', () => {
 			expect(sanitizeHtml(html)).toBe(expected);
 		});
 	});
+
+	it('should allow table elements and preserve structure', () => {
+		const tableTestCases = [
+			{
+				html: '<table><tr><td>Cell content</td></tr></table>',
+				expected: '<table><tr><td>Cell content</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>30</td></tr><tr><td>Jane</td><td>25</td></tr></tbody></table>',
+			},
+		];
+
+		tableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should allow tfoot elements and preserve table footer structure', () => {
+		const tfootTestCases = [
+			{
+				html: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><td>Footer content</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Data</td></tr></tbody><tfoot><tr><td>Footer</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+				expected: '<table><tfoot><tr><th>Total</th><td>$100</td></tr></tfoot></table>',
+			},
+		];
+
+		tfootTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve table cell attributes (colspan, rowspan, scope, headers)', () => {
+		const cellAttributeTestCases = [
+			{
+				html: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+				expected: '<table><tr><td colspan="2">Spanning cell</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+				expected:
+					'<table><tr><th rowspan="3">Header</th><td>Data 1</td></tr><tr><td>Data 2</td></tr><tr><td>Data 3</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+				expected:
+					'<table><tr><th scope="col">Column Header</th></tr><tr><th scope="row">Row Header</th><td>Data</td></tr></table>',
+			},
+			{
+				html: '<table><tr><th id="header1">Name</th><th id="header2">Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+				expected:
+					'<table><tr><th>Name</th><th>Age</th></tr><tr><td headers="header1">John</td><td headers="header2">30</td></tr></table>',
+			},
+			{
+				html: '<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+				expected:
+					'<table><tr><td colspan="2" rowspan="2">Complex cell</td><td>Simple cell</td></tr></table>',
+			},
+		];
+
+		cellAttributeTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should strip malicious attributes from table cells while preserving allowed ones', () => {
+		const maliciousCellTestCases = [
+			{
+				html: '<td onclick="alert(\'XSS\')" colspan="2" style="color: red;">Safe content</td>',
+				expected: '<td colspan="2">Safe content</td>',
+			},
+			{
+				html: '<th onmouseover="steal()" rowspan="3" class="malicious" scope="col">Header</th>',
+				expected: '<th rowspan="3" scope="col">Header</th>',
+			},
+			{
+				html: '<td headers="header1" data-evil="payload" onerror="hack()">Data</td>',
+				expected: '<td headers="header1">Data</td>',
+			},
+			{
+				html: '<th colspan="2" rowspan="2" onclick="javascript:alert(\'XSS\')" scope="colgroup">Multi-span header</th>',
+				expected: '<th colspan="2" rowspan="2" scope="colgroup">Multi-span header</th>',
+			},
+		];
+
+		maliciousCellTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle complex table structures with tfoot and cell attributes', () => {
+		const complexTableTestCases = [
+			{
+				html: '<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+				expected:
+					'<table><thead><tr><th colspan="2" scope="colgroup">Sales Report</th></tr><tr><th scope="col">Product</th><th scope="col">Revenue</th></tr></thead><tbody><tr><th scope="row">Widget A</th><td>$1,000</td></tr><tr><th scope="row">Widget B</th><td>$2,000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td colspan="1">$3,000</td></tr></tfoot></table>',
+			},
+			{
+				html: '<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+				expected:
+					'<table><tbody><tr><td rowspan="2">Multi-row cell</td><td>Cell 1</td></tr><tr><td>Cell 2</td></tr></tbody><tfoot><tr><td colspan="2">Footer spans both columns</td></tr></tfoot></table>',
+			},
+		];
+
+		complexTableTestCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should remove malicious attributes from table elements', () => {
+		const maliciousTableCases = [
+			{
+				html: '<table onclick="alert(\'XSS\')" class="malicious"><tr><td>Content</td></tr></table>',
+				expected: '<table><tr><td>Content</td></tr></table>',
+			},
+			{
+				html: '<thead onmouseover="steal()" id="header"><tr><th onclick="hack()">Header</th></tr></thead>',
+				expected: '<thead><tr><th>Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody style="background: red;" data-evil="payload"><tr><td onerror="malicious()">Data</td></tr></tbody>',
+				expected: '<tbody><tr><td>Data</td></tr></tbody>',
+			},
+			{
+				html: '<tr onload="alert(\'XSS\')" class="row"><td onblur="steal()" title="tooltip">Cell</td></tr>',
+				expected: '<tr><td>Cell</td></tr>',
+			},
+			{
+				html: '<th onclick="javascript:alert(\'XSS\')" style="color: red;">Header</th>',
+				expected: '<th>Header</th>',
+			},
+			{
+				html: '<td onmouseover="malicious()" data-payload="evil">Cell Data</td>',
+				expected: '<td>Cell Data</td>',
+			},
+		];
+
+		maliciousTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle nested content within table elements', () => {
+		const nestedTableCases = [
+			{
+				html: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+				expected: '<table><tr><td><strong>Bold</strong> and <em>italic</em> text</td></tr></table>',
+			},
+			{
+				html: '<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+				expected:
+					'<table><thead><tr><th><a href="https://example.com">Link Header</a></th></tr></thead></table>',
+			},
+			{
+				html: '<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+				expected:
+					'<table><tbody><tr><td><ul><li>Item 1</li><li>Item 2</li></ul></td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+				expected:
+					'<table><tr><td><code>code snippet</code> and <pre>preformatted text</pre></td></tr></table>',
+			},
+		];
+
+		nestedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should handle malformed table structures gracefully', () => {
+		const malformedTableCases = [
+			{
+				html: '<table><td>Cell without row</td></table>',
+				expected: '<table><td>Cell without row</td></table>',
+			},
+			{
+				html: '<thead><th>Header without table</th></thead>',
+				expected: '<thead><th>Header without table</th></thead>',
+			},
+			{
+				html: '<tbody><tr><td>Unclosed table',
+				expected: '<tbody><tr><td>Unclosed table</td></tr></tbody>',
+			},
+			{
+				html: '<tr><th>Mixed header</th><td>and data</td></tr>',
+				expected: '<tr><th>Mixed header</th><td>and data</td></tr>',
+			},
+		];
+
+		malformedTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should prevent XSS attacks through table elements', () => {
+		const xssTableCases = [
+			{
+				html: '<table><tr><td><script>alert("XSS")</script>Safe content</td></tr></table>',
+				expected: '<table><tr><td>Safe content</td></tr></table>',
+			},
+			{
+				html: '<thead><tr><th><img src="x" onerror="alert(\'XSS\')">Header</th></tr></thead>',
+				expected: '<thead><tr><th><img src="x" />Header</th></tr></thead>',
+			},
+			{
+				html: '<tbody><tr><td><a href="javascript:alert(\'XSS\')">Malicious Link</a></td></tr></tbody>',
+				expected: '<tbody><tr><td><a>Malicious Link</a></td></tr></tbody>',
+			},
+			{
+				html: '<table><tr><td><iframe src="javascript:alert(\'XSS\')"></iframe></td></tr></table>',
+				expected:
+					'<table><tr><td><iframe referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media"></iframe></td></tr></table>',
+			},
+		];
+
+		xssTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+
+	it('should preserve complex table layouts', () => {
+		const complexTableCases = [
+			{
+				html: '<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+				expected:
+					'<table><thead><tr><th>Product</th><th>Price</th><th>Stock</th></tr></thead><tbody><tr><td>Widget A</td><td>$10.99</td><td>50</td></tr><tr><td>Widget B</td><td>$15.99</td><td>25</td></tr></tbody></table>',
+			},
+			{
+				html: '<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+				expected:
+					'<table><tr><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr><tr><td>100</td><td>150</td><td>200</td><td>175</td></tr></table>',
+			},
+		];
+
+		complexTableCases.forEach(({ html, expected }) => {
+			expect(sanitizeHtml(html)).toBe(expected);
+		});
+	});
+});
+
+describe('sanitizeCustomCss', () => {
+	it('should return undefined for undefined input', () => {
+		expect(sanitizeCustomCss(undefined)).toBeUndefined();
+	});
+
+	it('should return undefined for empty string', () => {
+		expect(sanitizeCustomCss('')).toBeUndefined();
+	});
+
+	it('should preserve CSS child combinator selectors (>)', () => {
+		const css = '#n8n-form > div.form-header > p { text-align: left; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS adjacent sibling selectors (+)', () => {
+		const css = 'h1 + p { margin-top: 0; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS general sibling selectors (~)', () => {
+		const css = 'h1 ~ p { color: gray; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should remove script tags from CSS', () => {
+		const css = '.container { color: red; }<script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should remove style closing tags that could break out of style block', () => {
+		const css = '.container { color: red; }</style><script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should preserve url() in CSS', () => {
+		const css = '.bg { background-image: url(https://example.com/image.png); }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve complex CSS with multiple selectors and properties', () => {
+		const css = `
+			#n8n-form > div.form-header > p { text-align: left; }
+			.form-container > .input-group + .input-group { margin-top: 1rem; }
+			button:hover { background-color: #0056b3; }
+		`;
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
 });
 
 describe('FormTrigger, formWebhook', () => {
@@ -100,6 +427,7 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -144,7 +472,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		await formWebhook(executeFunctions);
 
@@ -226,6 +557,33 @@ describe('FormTrigger, formWebhook', () => {
 		});
 	});
 
+	it('should resolve expressions inside html field content', async () => {
+		const mockRender = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Custom HTML',
+				fieldType: 'html',
+				html: '<div>{{ $json.test }}</div>',
+				requiredField: false,
+			},
+		];
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.evaluateExpression
+			.calledWith('{{ $json.test }}')
+			.mockReturnValue('TEST VALUE' as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		const renderArgs = mockRender.mock.calls[0][1];
+		expect(renderArgs.formFields[0].html).toBe('<div>TEST VALUE</div>');
+	});
+
 	it('should sanitize form descriptions', async () => {
 		const mockRender = jest.fn();
 
@@ -239,7 +597,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		for (const { description, expected } of formDescription) {
 			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
@@ -273,6 +634,51 @@ describe('FormTrigger, formWebhook', () => {
 		}
 	});
 
+	it.each([
+		['\\n', '\n'],
+		['\\\\n', '\\n'],
+	])('should replace %j with %j in form descriptions', async (pattern, replacement) => {
+		const description = `Some message${pattern}Other text`;
+		const expected = `Some message${replacement}Other text`;
+		const mockRender = jest.fn();
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+			appendAttribution: true,
+			buttonLabel: 'Submit',
+			formDescription: expected,
+			formDescriptionMetadata: createDescriptionMetadata(expected),
+			formFields: [
+				{
+					defaultValue: '',
+					errorId: 'error-field-0',
+					id: 'field-0',
+					inputRequired: 'form-required',
+					isInput: true,
+					label: 'Name',
+					placeholder: undefined,
+					type: 'text',
+				},
+			],
+			formSubmittedText: 'Your response has been recorded',
+			formTitle: 'Test Form',
+			n8nWebsiteLink:
+				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+			testRun: true,
+			useResponseData: false,
+		});
+	});
+
 	it('should return workflowData on POST request', async () => {
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
@@ -289,8 +695,12 @@ describe('FormTrigger, formWebhook', () => {
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
+		executeFunctions.getRequestObject.mockReturnValue({
+			method: 'POST',
+			contentType: 'multipart/form-data',
+		} as any);
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
+		executeFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 
 		const result = await formWebhook(executeFunctions);
 
@@ -308,6 +718,277 @@ describe('FormTrigger, formWebhook', () => {
 					},
 				],
 			],
+		});
+	});
+
+	it('should set Content-Security-Policy header with sandbox CSP on GET request', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+		);
+	});
+
+	it('should include sandbox directive in CSP header for security', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			expect.stringContaining('sandbox'),
+		);
+	});
+
+	describe('n8nUserAuth', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		const setupContext = (
+			ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+			overrides: { method: 'GET' | 'POST'; cookie?: string; options?: IDataObject } = {
+				method: 'GET',
+			},
+		) => {
+			const status = jest.fn(() => ({ send: jest.fn() })) as any;
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const setHeader = jest.fn();
+			const render = jest.fn();
+			const request = {
+				method: overrides.method,
+				originalUrl: '/form/test',
+				query: {},
+				headers: {
+					host: 'localhost:5678',
+					...(overrides.cookie ? { cookie: overrides.cookie } : {}),
+				},
+				protocol: 'http',
+				contentType: overrides.method === 'POST' ? 'multipart/form-data' : undefined,
+			};
+
+			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue(overrides.options ?? {});
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getRequestObject.mockReturnValue(request as any);
+			ctx.getHeaderData.mockReturnValue(request.headers);
+			ctx.getResponseObject.mockReturnValue({
+				status,
+				writeHead,
+				end,
+				setHeader,
+				render,
+			} as any);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getBodyData.mockReturnValue({ data: { 'field-0': 'John' }, files: {} });
+			ctx.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+			ctx.getChildNodes.mockReturnValue([]);
+
+			return { status, writeHead, end, setHeader, render };
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('redirects to /signin on GET when no cookie is present with an absolute redirect URL', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead, end } = setupContext(ctx, { method: 'GET' });
+
+			const result = await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: '/signin?redirect=' + encodeURIComponent('http://localhost:5678/form/test'),
+			});
+			expect(end).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('honours x-forwarded-proto/host when building the redirect URL', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const headers = {
+				host: 'localhost:5678',
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': 'forms.example.com',
+			};
+			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
+			ctx.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form/test',
+				query: {},
+				headers,
+				protocol: 'http',
+			} as any);
+			ctx.getHeaderData.mockReturnValue(headers);
+			ctx.getResponseObject.mockReturnValue({
+				writeHead,
+				end,
+				status: jest.fn(() => ({ send: jest.fn() })),
+				setHeader: jest.fn(),
+				render: jest.fn(),
+			} as any);
+
+			await formWebhook(ctx);
+
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: '/signin?redirect=' + encodeURIComponent('https://forms.example.com/form/test'),
+			});
+		});
+
+		it('returns 401 on POST when no cookie is present', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const send = jest.fn();
+			const status = jest.fn(() => ({ send })) as any;
+			const writeHead = jest.fn();
+			const end = jest.fn();
+			const setHeader = jest.fn();
+			setupContext(ctx, { method: 'POST' });
+			ctx.getResponseObject.mockReturnValue({
+				status,
+				writeHead,
+				end,
+				setHeader,
+				render: jest.fn(),
+			} as any);
+
+			const result = await formWebhook(ctx);
+
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', 'Basic realm="Enter credentials"');
+			expect(status).toHaveBeenCalledWith(401);
+			expect(send).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('redirects to /signin on GET when cookie is invalid', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				cookie: 'n8n-auth=bad.token',
+			});
+			ctx.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('bad.token');
+			expect(writeHead).toHaveBeenCalledWith(
+				302,
+				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+			);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('renders the form when GET with a valid cookie', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render } = setupContext(ctx, {
+				method: 'GET',
+				cookie: 'n8n-auth=valid.jwt.token',
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+			expect(render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+		});
+
+		it('parses n8n-auth alongside other cookies', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'GET',
+				cookie: 'other=value; n8n-auth=valid.jwt.token; another=thing',
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await formWebhook(ctx);
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		});
+
+		it('includes the user in trigger output on POST with valid cookie', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, { method: 'POST', cookie: 'n8n-auth=valid.jwt.token' });
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await formWebhook(ctx);
+
+			expect(result).toMatchObject({
+				webhookResponse: { status: 200 },
+				workflowData: [[{ json: expect.objectContaining({ user: authedUser }) }]],
+			});
+		});
+
+		it('omits the user when includeUserInOutput is false', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'POST',
+				cookie: 'n8n-auth=valid.jwt.token',
+				options: { includeUserInOutput: false },
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await formWebhook(ctx);
+
+			const json = (result as any).workflowData[0][0].json;
+			expect(json.user).toBeUndefined();
 		});
 	});
 });
@@ -495,7 +1176,7 @@ describe('FormTrigger, prepareFormData', () => {
 		});
 	});
 
-	it('should set redirectUrl with http if protocol is missing', () => {
+	it('should set redirectUrl with https if protocol is missing', () => {
 		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
@@ -517,7 +1198,7 @@ describe('FormTrigger, prepareFormData', () => {
 			query,
 		});
 
-		expect(result.redirectUrl).toBe('http://example.com/thank-you');
+		expect(result.redirectUrl).toBe('https://example.com/thank-you');
 	});
 
 	it('should return invalid form data when formFields are empty', () => {
@@ -899,6 +1580,82 @@ describe('FormTrigger, prepareFormData - Checkbox and Radio Fields', () => {
 			{ id: 'option1_field-1', label: 'Office' },
 		]);
 	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for query parameters in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { userName: 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.4,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name'); // Label should still be fieldLabel for rendering
+		});
+
+		it('should use fieldLabel for query parameters in v2.3 and earlier', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { 'User Name': 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.3,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name');
+		});
+
+		it('should fallback to fieldLabel if fieldName is missing in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const query: IDataObject = { 'User Name': 'John Doe' };
+
+			const result = prepareFormData({
+				formTitle: 'Test Form',
+				formDescription: 'Test Description',
+				formSubmittedText: undefined,
+				redirectUrl: undefined,
+				formFields,
+				testRun: true,
+				query,
+				nodeVersion: 2.4,
+			});
+
+			expect(result.formFields[0].defaultValue).toBe('John Doe');
+			expect(result.formFields[0].label).toBe('User Name');
+		});
+	});
 });
 
 describe('addFormResponseDataToReturnItem - Checkbox and Radio Fields', () => {
@@ -1057,7 +1814,9 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
-		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
+		getRequestObject: jest
+			.fn()
+			.mockReturnValue({ method: 'GET', query: {}, contentType: 'multipart/form-data' }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -1070,6 +1829,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getTimezone.mockReturnValue('UTC');
 		mockContext.getNode.mockReturnValue(formNode);
 		mockContext.getWorkflowStaticData.mockReturnValue({});
+		mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	it('should handle empty form submission', async () => {
@@ -1156,6 +1916,31 @@ describe('prepareFormReturnItem', () => {
 		expect(result.binary!.Multiple_Files_1).toEqual({});
 	});
 
+	it('should call rm to clean up temporary files after file processing', async () => {
+		// Using require() here for inline jest.spyOn() pattern - this is acceptable in tests
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const rmSpy = jest.spyOn(require('fs/promises'), 'rm').mockResolvedValue(undefined);
+
+		const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+			{ filepath: '/tmp/file1', originalFilename: 'file1.txt', mimetype: 'text/plain', size: 1024 },
+			{ filepath: '/tmp/file2', originalFilename: 'file2.txt', mimetype: 'text/plain', size: 2048 },
+		];
+
+		mockContext.getBodyData.mockReturnValue({
+			data: {},
+			files: { 'field-0': mockFiles },
+		});
+
+		const formFields = [{ fieldLabel: 'Multiple Files', fieldType: 'file', multipleFiles: true }];
+		await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(rmSpy).toHaveBeenCalledTimes(2);
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file1', { force: true });
+		expect(rmSpy).toHaveBeenCalledWith('/tmp/file2', { force: true });
+
+		rmSpy.mockRestore();
+	});
+
 	it('should format date fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '2023-04-01' },
@@ -1167,6 +1952,19 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json['Date Field']).toBe('formatted-date');
 		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
+	});
+
+	it('should not format date fields when formatDate is undefined', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '2023-04-01' },
+			files: {},
+		});
+
+		const formFields = [{ fieldLabel: 'Date Field', fieldType: 'date', formatDate: undefined }];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(DateTime.fromFormat).not.toHaveBeenCalled();
+		expect(result.json['Date Field']).toBe('2023-04-01');
 	});
 
 	it('should handle multiselect fields', async () => {
@@ -1203,6 +2001,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: { param: 'value' },
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
@@ -1214,11 +2013,132 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: {},
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
 
 		expect(result.json.formQueryParameters).toBeUndefined();
+	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for binary property names in v2.4+', async () => {
+			const mockFile: Partial<MultiPartFormData.File> = {
+				filepath: '/tmp/uploaded-file',
+				originalFilename: 'test.txt',
+				mimetype: 'text/plain',
+				size: 1024,
+				newFilename: 'test.txt',
+			};
+
+			mockContext.getBodyData.mockReturnValue({
+				data: {},
+				files: { 'field-0': mockFile },
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.4,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'resume',
+					fieldLabel: 'Resume Upload',
+					fieldType: 'file',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.binary).toBeDefined();
+			expect(result.binary!.resume).toBeDefined();
+			expect(result.binary!['Resume_Upload']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for binary property names in v2.3 and earlier', async () => {
+			const mockFile: Partial<MultiPartFormData.File> = {
+				filepath: '/tmp/uploaded-file',
+				originalFilename: 'test.txt',
+				mimetype: 'text/plain',
+				size: 1024,
+				newFilename: 'test.txt',
+			};
+
+			mockContext.getBodyData.mockReturnValue({
+				data: {},
+				files: { 'field-0': mockFile },
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.3,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'resume',
+					fieldLabel: 'Resume Upload',
+					fieldType: 'file',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.binary).toBeDefined();
+			expect(result.binary!['Resume_Upload']).toBeDefined();
+			expect(result.binary!.resume).toBeUndefined();
+		});
+
+		it('should use fieldName for output data keys in v2.4+', async () => {
+			mockContext.getBodyData.mockReturnValue({
+				data: { 'field-0': 'John Doe' },
+				files: {},
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.4,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.json.userName).toBe('John Doe');
+			expect(result.json['User Name']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for output data keys in v2.3 and earlier', async () => {
+			mockContext.getBodyData.mockReturnValue({
+				data: { 'field-0': 'John Doe' },
+				files: {},
+			});
+
+			mockContext.getNode.mockReturnValue({
+				...formNode,
+				typeVersion: 2.3,
+			} as INode);
+
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+
+			const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+			expect(result.json['User Name']).toBe('John Doe');
+			expect(result.json.userName).toBeUndefined();
+		});
 	});
 
 	it('should return html if field name is set', async () => {
@@ -1235,6 +2155,367 @@ describe('prepareFormReturnItem', () => {
 
 		expect(result.json.greeting).toBe('<div>hi</div>');
 		expect(result.json.formMode).toBe('production');
+	});
+
+	describe('binaryMode feature', () => {
+		describe('binaryMode === "combined"', () => {
+			beforeEach(() => {
+				mockContext.getWorkflowSettings.mockReturnValue(
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
+				);
+			});
+
+			it('should place single file binary data in bodyData when binaryMode is "combined"', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test-file.pdf',
+					originalFilename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+					newFilename: 'document.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-binary-data',
+					mimeType: 'application/pdf',
+					fileName: 'document.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Document', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Document).toEqual(mockBinaryData);
+				expect(result.binary).toEqual({});
+			});
+
+			it('should place multiple files binary data in bodyData array when binaryMode is "combined"', async () => {
+				const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+					{
+						filepath: '/tmp/file1.jpg',
+						originalFilename: 'photo1.jpg',
+						mimetype: 'image/jpeg',
+						size: 1024,
+						newFilename: 'photo1.jpg',
+					},
+					{
+						filepath: '/tmp/file2.jpg',
+						originalFilename: 'photo2.jpg',
+						mimetype: 'image/jpeg',
+						size: 2048,
+						newFilename: 'photo2.jpg',
+					},
+				];
+
+				const mockBinaryData1 = {
+					data: 'mock-binary-data-1',
+					mimeType: 'image/jpeg',
+					fileName: 'photo1.jpg',
+				};
+
+				const mockBinaryData2 = {
+					data: 'mock-binary-data-2',
+					mimeType: 'image/jpeg',
+					fileName: 'photo2.jpg',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFiles },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock)
+					.mockResolvedValueOnce(mockBinaryData1)
+					.mockResolvedValueOnce(mockBinaryData2);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Photos', fieldType: 'file', multipleFiles: true },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Photos).toEqual([mockBinaryData1, mockBinaryData2]);
+				expect(result.binary).toEqual({});
+			});
+
+			it('should handle mixed form data with files in combined mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/resume.pdf',
+					originalFilename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+					newFilename: 'resume.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-resume-data',
+					mimeType: 'application/pdf',
+					fileName: 'resume.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {
+						'field-0': 'John Doe',
+						'field-1': 'john@example.com',
+					},
+					files: { 'field-2': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Name', fieldType: 'text' },
+					{ fieldLabel: 'Email', fieldType: 'email' },
+					{ fieldLabel: 'Resume', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Name).toBe('John Doe');
+				expect(result.json.Email).toBe('john@example.com');
+				expect(result.json.Resume).toEqual(mockBinaryData);
+				expect(result.binary).toEqual({});
+			});
+		});
+
+		describe('binaryMode !== "combined" (separate mode)', () => {
+			beforeEach(() => {
+				mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+			});
+
+			it('should place single file in returnItem.binary when binaryMode is not "combined"', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test-file.pdf',
+					originalFilename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+					newFilename: 'document.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-binary-data',
+					mimeType: 'application/pdf',
+					fileName: 'document.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Document', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Document).toEqual({
+					filename: 'document.pdf',
+					mimetype: 'application/pdf',
+					size: 2048,
+				});
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Document).toEqual(mockBinaryData);
+			});
+
+			it('should place multiple files in returnItem.binary with indexed names when binaryMode is not "combined"', async () => {
+				const mockFiles: Array<Partial<MultiPartFormData.File>> = [
+					{
+						filepath: '/tmp/file1.jpg',
+						originalFilename: 'photo1.jpg',
+						mimetype: 'image/jpeg',
+						size: 1024,
+						newFilename: 'photo1.jpg',
+					},
+					{
+						filepath: '/tmp/file2.jpg',
+						originalFilename: 'photo2.jpg',
+						mimetype: 'image/jpeg',
+						size: 2048,
+						newFilename: 'photo2.jpg',
+					},
+				];
+
+				const mockBinaryData1 = {
+					data: 'mock-binary-data-1',
+					mimeType: 'image/jpeg',
+					fileName: 'photo1.jpg',
+				};
+
+				const mockBinaryData2 = {
+					data: 'mock-binary-data-2',
+					mimeType: 'image/jpeg',
+					fileName: 'photo2.jpg',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFiles },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock)
+					.mockResolvedValueOnce(mockBinaryData1)
+					.mockResolvedValueOnce(mockBinaryData2);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Photos', fieldType: 'file', multipleFiles: true },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Photos).toEqual([
+					{ filename: 'photo1.jpg', mimetype: 'image/jpeg', size: 1024 },
+					{ filename: 'photo2.jpg', mimetype: 'image/jpeg', size: 2048 },
+				]);
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Photos_0).toEqual(mockBinaryData1);
+				expect(result.binary!.Photos_1).toEqual(mockBinaryData2);
+			});
+
+			it('should handle mixed form data with files in separate mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/resume.pdf',
+					originalFilename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+					newFilename: 'resume.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-resume-data',
+					mimeType: 'application/pdf',
+					fileName: 'resume.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {
+						'field-0': 'John Doe',
+						'field-1': 'john@example.com',
+					},
+					files: { 'field-2': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'Name', fieldType: 'text' },
+					{ fieldLabel: 'Email', fieldType: 'email' },
+					{ fieldLabel: 'Resume', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.json.Name).toBe('John Doe');
+				expect(result.json.Email).toBe('john@example.com');
+				expect(result.json.Resume).toEqual({
+					filename: 'resume.pdf',
+					mimetype: 'application/pdf',
+					size: 3072,
+				});
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.Resume).toEqual(mockBinaryData);
+			});
+
+			it('should sanitize field labels for binary property names in separate mode', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test.pdf',
+					originalFilename: 'test.pdf',
+					mimetype: 'application/pdf',
+					size: 1024,
+					newFilename: 'test.pdf',
+				};
+
+				const mockBinaryData = {
+					data: 'mock-data',
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+				};
+
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'User Resume (2024)', fieldType: 'file', multipleFiles: false },
+				];
+
+				const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				expect(result.binary).toBeDefined();
+				expect(result.binary!.User_Resume__2024_).toEqual(mockBinaryData);
+			});
+		});
+
+		describe('binaryMode comparison tests', () => {
+			it('should produce different structures for combined vs separate mode with single file', async () => {
+				const mockFile: Partial<MultiPartFormData.File> = {
+					filepath: '/tmp/test.txt',
+					originalFilename: 'test.txt',
+					mimetype: 'text/plain',
+					size: 512,
+					newFilename: 'test.txt',
+				};
+
+				const mockBinaryData = {
+					data: 'file-content',
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+				};
+
+				const formFields: FormFieldsParameter = [
+					{ fieldLabel: 'File', fieldType: 'file', multipleFiles: false },
+				];
+
+				// Test combined mode
+				mockContext.getWorkflowSettings.mockReturnValue(
+					mock<IWorkflowSettings>({ binaryMode: BINARY_MODE_COMBINED }),
+				);
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const resultCombined = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				// Test separate mode
+				mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+				mockContext.getBodyData.mockReturnValue({
+					data: {},
+					files: { 'field-0': mockFile },
+				});
+				(mockContext.nodeHelpers.copyBinaryFile as jest.Mock).mockResolvedValue(mockBinaryData);
+
+				const resultSeparate = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+				// Combined mode: binary data in json
+				expect(resultCombined.json.File).toEqual(mockBinaryData);
+				expect(resultCombined.binary).toEqual({});
+
+				// Separate mode: metadata in json, binary data in binary property
+				expect(resultSeparate.json.File).toEqual({
+					filename: 'test.txt',
+					mimetype: 'text/plain',
+					size: 512,
+				});
+				expect(resultSeparate.binary!.File).toEqual(mockBinaryData);
+			});
+		});
 	});
 });
 
@@ -1450,7 +2731,7 @@ describe('validateResponseModeConfiguration', () => {
 		]);
 
 		expect(() => validateResponseModeConfiguration(webhookFunctions)).toThrow(
-			'TestNode node not correctly configured',
+			'Unused Respond to Webhook node found in the workflow',
 		);
 	});
 
@@ -1472,26 +2753,8 @@ describe('validateResponseModeConfiguration', () => {
 	});
 
 	describe('prepareFormFields', () => {
-		it('should resolve expressions in html fields', async () => {
-			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
-				if (expression === '{{ $json.formMode }}') {
-					return 'Title';
-				}
-			});
-
-			const result = prepareFormFields(webhookFunctions, [
-				{
-					fieldLabel: 'Custom HTML',
-					fieldType: 'html',
-					elementName: 'test',
-					html: '<h1>{{ $json.formMode }}</h1>',
-				},
-			]);
-
-			expect(result[0].html).toBe('<h1>Title</h1>');
-		});
 		it('should prepare hiddenField', async () => {
-			const result = prepareFormFields(webhookFunctions, [
+			const result = prepareFormFields([
 				{
 					fieldLabel: '',
 					fieldName: 'test',
@@ -1503,6 +2766,58 @@ describe('validateResponseModeConfiguration', () => {
 				fieldLabel: 'test',
 				fieldName: 'test',
 				fieldType: 'hiddenField',
+			});
+		});
+
+		it('should sanitize html fields', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<div>Safe content</div><script>alert("XSS")</script>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<div>Safe content</div>');
+		});
+
+		it('should not modify html fields when html is empty', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '',
+				},
+			]);
+
+			expect(result[0].html).toBe('');
+		});
+
+		it('should not modify html fields when html is undefined', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+				},
+			]);
+
+			expect(result[0].html).toBeUndefined();
+		});
+
+		it('should not process non-html fields', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Text Field',
+					fieldType: 'text',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'Text Field',
+				fieldType: 'text',
 			});
 		});
 	});
@@ -1593,5 +2908,598 @@ describe('addFormResponseDataToReturnItem', () => {
 
 		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
+	});
+
+	describe('Version 2.4+ fieldName support', () => {
+		it('should use fieldName for output data keys in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json.userName).toBe('John Doe');
+			expect(returnItem.json['User Name']).toBeUndefined();
+		});
+
+		it('should use fieldLabel for output data keys in v2.3 and earlier', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'userName',
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.3);
+
+			expect(returnItem.json['User Name']).toBe('John Doe');
+			expect(returnItem.json.userName).toBeUndefined();
+		});
+
+		it('should fallback to fieldLabel if fieldName is missing in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldLabel: 'User Name',
+					fieldType: 'text',
+				},
+			];
+			const bodyData: IDataObject = { 'field-0': 'John Doe' };
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json['User Name']).toBe('John Doe');
+		});
+
+		it('should handle multiple fields with fieldName in v2.4+', () => {
+			const formFields: FormFieldsParameter = [
+				{
+					fieldName: 'firstName',
+					fieldLabel: 'First Name',
+					fieldType: 'text',
+				},
+				{
+					fieldName: 'lastName',
+					fieldLabel: 'Last Name',
+					fieldType: 'text',
+				},
+				{
+					fieldName: 'email',
+					fieldLabel: 'Email Address',
+					fieldType: 'email',
+				},
+			];
+			const bodyData: IDataObject = {
+				'field-0': 'John',
+				'field-1': 'Doe',
+				'field-2': 'john@example.com',
+			};
+
+			addFormResponseDataToReturnItem(returnItem, formFields, bodyData, 2.4);
+
+			expect(returnItem.json.firstName).toBe('John');
+			expect(returnItem.json.lastName).toBe('Doe');
+			expect(returnItem.json.email).toBe('john@example.com');
+			expect(returnItem.json['First Name']).toBeUndefined();
+			expect(returnItem.json['Last Name']).toBeUndefined();
+			expect(returnItem.json['Email Address']).toBeUndefined();
+		});
+	});
+});
+
+describe('validateSafeRedirectUrl', () => {
+	it('should return null for undefined input', () => {
+		expect(validateSafeRedirectUrl(undefined)).toBeNull();
+	});
+
+	it('should return null for empty string', () => {
+		expect(validateSafeRedirectUrl('')).toBeNull();
+		expect(validateSafeRedirectUrl('   ')).toBeNull();
+	});
+
+	it('should return valid http/https URLs', () => {
+		expect(validateSafeRedirectUrl('https://example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('http://example.com/path')).toBe('http://example.com/path');
+	});
+
+	it('should add https:// prefix to URLs without protocol', () => {
+		expect(validateSafeRedirectUrl('example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('example.com/path')).toBe('https://example.com/path');
+	});
+
+	it('should trim whitespace from URLs', () => {
+		expect(validateSafeRedirectUrl('  https://example.com  ')).toBe('https://example.com');
+	});
+
+	it('should return null for javascript: URLs', () => {
+		expect(validateSafeRedirectUrl('javascript:alert(1)')).toBeNull();
+	});
+
+	it('should return null for data: URLs', () => {
+		expect(validateSafeRedirectUrl('data:text/html,<script>alert(1)</script>')).toBeNull();
+	});
+
+	it('should return null for invalid URLs', () => {
+		expect(validateSafeRedirectUrl('not a valid url')).toBeNull();
+	});
+});
+
+describe('FormTrigger, prepareFormData - Default Value', () => {
+	it('should use defaultValue when no query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+				defaultValue: 'John Doe',
+			},
+			{
+				fieldLabel: 'Email',
+				fieldType: 'email',
+				requiredField: true,
+				placeholder: 'Enter your email',
+				defaultValue: 'john@example.com',
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('John Doe');
+		expect(result.formFields[1].defaultValue).toBe('john@example.com');
+	});
+
+	it('should prioritize query parameter over defaultValue', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				defaultValue: 'Default Name',
+			},
+		];
+
+		const query = { Name: 'Query Name' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('Query Name');
+	});
+
+	it('should use empty string when neither defaultValue nor query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('');
+	});
+});
+
+describe('FormTrigger IP Whitelist', () => {
+	describe('isIpAllowed (reused from Webhook)', () => {
+		it('should return true if whitelist is undefined', () => {
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should return true if whitelist is an empty string', () => {
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should allow IP in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.1')).toBe(true);
+		});
+
+		it('should block IP not in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.2')).toBe(false);
+		});
+
+		it('should support CIDR notation', () => {
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support comma-separated mixed entries', () => {
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
+		});
+
+		it('should handle IPv6 addresses', () => {
+			expect(isIpAllowed('::1', [], '::1')).toBe(true);
+			expect(isIpAllowed('::1', [], '::2')).toBe(false);
+		});
+
+		it('should check both direct IP and proxy IPs', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
+		});
+	});
+});
+
+describe('handleNewlines', () => {
+	it.each([
+		['\\n', '\n'], // \n => newline character
+		['\\\\n', '\\n'], // \\n => \n
+		['\\\\\\n', '\\\\n'], // \\\n => \\n
+	])('should replace %j with %j in text', (pattern, replacement) => {
+		const text = `Some message${pattern}Other text`;
+		const expected = `Some message${replacement}Other text`;
+
+		const result = handleNewlines(text);
+
+		expect(result).toBe(expected);
+	});
+});
+
+describe('parseFormFields - HTML field expression resolution', () => {
+	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+	beforeEach(() => {
+		mockWebhookFunctions = mock<IWebhookFunctions>();
+	});
+
+	it('should resolve expressions in html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>{{ $json.formMode }}</h1>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression === '{{ $json.formMode }}') {
+				return 'Title';
+			}
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(mockWebhookFunctions.evaluateExpression).toHaveBeenCalledWith('{{ $json.formMode }}');
+		expect(result[0].html).toBe('<h1>Title</h1>');
+	});
+
+	it('should handle multiple expressions in html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>{{ $json.title }}</h1><p>{{ $json.description }}</p>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression === '{{ $json.title }}') return 'Welcome';
+			if (expression === '{{ $json.description }}') return 'Please fill out the form';
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('<h1>Welcome</h1><p>Please fill out the form</p>');
+	});
+
+	it('should not modify html fields without expressions', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>Static Title</h1>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('<h1>Static Title</h1>');
+	});
+
+	it('should handle empty html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('');
+	});
+});
+
+describe('validateFormPageAuth', () => {
+	const authedUser = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
+
+	const buildContext = (method: 'GET' | 'POST', cookie?: string) => {
+		const res = {
+			writeHead: jest.fn(),
+			end: jest.fn(),
+			setHeader: jest.fn(),
+			status: jest.fn().mockReturnValue({ send: jest.fn() }),
+		};
+		const req = {
+			method,
+			originalUrl: '/form-waiting/exec-id',
+			headers: {
+				host: 'localhost:5678',
+				...(cookie ? { cookie } : {}),
+			},
+			protocol: 'http',
+		};
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
+		ctx.getResponseObject.mockReturnValue(res as never);
+		return { ctx, res, req };
+	};
+
+	it('returns empty object and skips validation when authentication is not n8nUserAuth', async () => {
+		const { ctx } = buildContext('GET');
+
+		const result = await validateFormPageAuth(ctx, 'none');
+
+		expect(result).toEqual({});
+		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+	});
+
+	it('responds with 302 redirect to /signin on GET when no cookie is present, using an absolute URL', async () => {
+		const { ctx, res } = buildContext('GET');
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(res.writeHead).toHaveBeenCalledWith(302, {
+			Location:
+				'/signin?redirect=' + encodeURIComponent('http://localhost:5678/form-waiting/exec-id'),
+		});
+		expect(res.end).toHaveBeenCalled();
+		expect(result.responded).toBe(true);
+		expect(result.authedUser).toBeUndefined();
+	});
+
+	it('responds with 401 on POST when no cookie is present', async () => {
+		const send = jest.fn();
+		const { ctx, res } = buildContext('POST');
+		res.status.mockReturnValue({ send });
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(res.setHeader).toHaveBeenCalledWith(
+			'WWW-Authenticate',
+			'Basic realm="Enter credentials"',
+		);
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(send).toHaveBeenCalled();
+		expect(result.responded).toBe(true);
+	});
+
+	it('responds with 302 redirect when cookie is invalid on GET', async () => {
+		const { ctx, res } = buildContext('GET', 'n8n-auth=bad.token');
+		ctx.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('bad.token');
+		expect(res.writeHead).toHaveBeenCalledWith(
+			302,
+			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
+		expect(result.responded).toBe(true);
+	});
+
+	it('returns the authedUser when cookie validates', async () => {
+		const { ctx } = buildContext('GET', 'n8n-auth=valid.jwt.token');
+		ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		expect(result.authedUser).toEqual(authedUser);
+		expect(result.responded).toBeFalsy();
+	});
+
+	it('parses n8n-auth alongside other cookies', async () => {
+		const { ctx } = buildContext('GET', 'other=value; n8n-auth=valid.jwt.token; another=thing');
+		ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+		expect(result.authedUser).toEqual(authedUser);
+	});
+
+	it('falls back to the x-auth-token header when no cookie is present', async () => {
+		const node = { id: 'node-1', webhookId: 'webhook-1' } as INode;
+		const authedFormUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+		const token = generateFormUserAuthToken(node, authedFormUser);
+
+		const res = {
+			writeHead: jest.fn(),
+			end: jest.fn(),
+			setHeader: jest.fn(),
+			status: jest.fn().mockReturnValue({ send: jest.fn() }),
+		};
+		const req = {
+			method: 'POST',
+			originalUrl: '/form-waiting/exec-id',
+			headers: { host: 'localhost:5678', 'x-auth-token': token },
+			protocol: 'http',
+		};
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
+		ctx.getResponseObject.mockReturnValue(res as never);
+		ctx.getNode.mockReturnValue(node);
+
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+		expect(result.authedUser).toEqual(authedFormUser);
+		expect(result.responded).toBeFalsy();
+		// cookie path wasn't attempted because there's no cookie
+		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+	});
+});
+
+describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
+	const node = { id: 'node-id', webhookId: 'webhook-id' } as INode;
+	const user = {
+		id: 'user-1',
+		email: 'user@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+	};
+
+	it('round-trips a freshly generated token', () => {
+		const token = generateFormUserAuthToken(node, user);
+		expect(verifyFormUserAuthToken(token, node)).toEqual(user);
+	});
+
+	it('rejects a token signed for a different node', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const otherNode = { id: 'node-2', webhookId: 'webhook-2' } as INode;
+		expect(verifyFormUserAuthToken(token, otherNode)).toBeNull();
+	});
+
+	it('rejects a tampered signature', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const parts = token.split('.');
+		parts[2] = parts[2].replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+		const tampered = parts.join('.');
+		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
+	});
+
+	it('rejects a tampered payload', () => {
+		const token = generateFormUserAuthToken(node, user);
+		const parts = token.split('.');
+		parts[1] = Buffer.from(
+			JSON.stringify({
+				sub: 'attacker',
+				email: 'a@b',
+				firstName: 'a',
+				lastName: 'b',
+				nid: node.id,
+				wid: node.webhookId,
+			}),
+		).toString('base64url');
+		const tampered = parts.join('.');
+		expect(verifyFormUserAuthToken(tampered, node)).toBeNull();
+	});
+
+	it('rejects an expired token', () => {
+		const realNow = Date.now();
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(realNow - 2 * 60 * 60 * 1000);
+			const token = generateFormUserAuthToken(node, user);
+			jest.setSystemTime(realNow);
+			expect(verifyFormUserAuthToken(token, node)).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('rejects malformed tokens', () => {
+		expect(verifyFormUserAuthToken('garbage', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b', node)).toBeNull();
+		expect(verifyFormUserAuthToken('a.b.c.d', node)).toBeNull();
 	});
 });

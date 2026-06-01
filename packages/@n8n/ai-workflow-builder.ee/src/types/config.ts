@@ -29,8 +29,10 @@ export interface NodePromptConfig {
 	nodeTypePatterns: {
 		set: string[];
 		if: string[];
+		switch: string[];
 		httpRequest: string[];
 		tool: string[];
+		gmail: string[];
 	};
 
 	/** Keywords that trigger inclusion of specific guides */

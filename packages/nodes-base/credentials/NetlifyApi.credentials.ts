@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticate,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class NetlifyApi implements ICredentialType {
 	name = 'netlifyApi';
@@ -16,4 +21,20 @@ export class NetlifyApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticate = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.netlify.com',
+			url: '/api/v1/sites',
+		},
+	};
 }

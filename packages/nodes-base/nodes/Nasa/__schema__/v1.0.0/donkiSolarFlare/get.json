@@ -39,6 +39,9 @@
         "peakTime": {
             "type": "string"
         },
+        "sentNotifications": {
+            "type": "null"
+        },
         "sourceLocation": {
             "type": "string"
         },
@@ -49,5 +52,5 @@
             "type": "integer"
         }
     },
-    "version": 4
+    "version": 7
 }

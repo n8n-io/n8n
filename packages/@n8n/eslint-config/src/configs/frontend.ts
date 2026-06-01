@@ -38,6 +38,9 @@ export const frontendConfig = tseslint.config(
 		rules: {
 			'import-x/no-extraneous-dependencies': 'warn',
 			'vue/one-component-per-file': 'off',
+
+			// TODO: remove these
+			'n8n-local-rules/no-internal-package-import': 'warn',
 		},
 	},
 	{
@@ -57,12 +60,26 @@ export const frontendConfig = tseslint.config(
 			'vue/no-multiple-template-root': 'error',
 			'vue/v-slot-style': 'error',
 			'vue/no-unused-components': 'error',
+			'vue/no-undef-components': [
+				'error',
+				{
+					ignorePatterns: [
+						'RouterLink', // Vue Router global component
+						'RouterView', // Vue Router global component
+						'Teleport', // Vue 3 built-in
+						'Transition', // Vue 3 built-in
+						'TransitionGroup', // Vue 3 built-in
+						'KeepAlive', // Vue 3 built-in
+						'Suspense', // Vue 3 built-in
+					],
+				},
+			],
 			'vue/multi-word-component-names': 'off',
 			'vue/component-name-in-template-casing': [
 				'error',
 				'PascalCase',
 				{
-					registeredComponentsOnly: true,
+					registeredComponentsOnly: false,
 				},
 			],
 			'vue/no-reserved-component-names': [
@@ -98,6 +115,7 @@ export const frontendConfig = tseslint.config(
 			'vue/no-side-effects-in-computed-properties': 'warn',
 			'vue/no-v-text-v-html-on-component': 'warn',
 			'vue/return-in-computed-property': 'warn',
+			'n8n-local-rules/no-internal-package-import': 'warn',
 		},
 	},
 	eslintConfigPrettier,

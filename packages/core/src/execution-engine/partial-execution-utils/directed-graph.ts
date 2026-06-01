@@ -493,6 +493,44 @@ export class DirectedGraph {
 		return graph;
 	}
 
+	static fromNodesAndConnections(nodes: INode[], connections: IConnections): DirectedGraph {
+		const graph = new DirectedGraph();
+
+		graph.addNodes(...nodes);
+
+		// Create a map for quick node lookup
+		const nodeMap = new Map<string, INode>();
+		for (const node of nodes) {
+			nodeMap.set(node.name, node);
+		}
+
+		for (const [fromNodeName, iConnection] of Object.entries(connections)) {
+			const from = nodeMap.get(fromNodeName);
+			a.ok(from);
+
+			for (const [outputType, outputs] of Object.entries(iConnection)) {
+				for (const [outputIndex, conns] of outputs.entries()) {
+					for (const conn of conns ?? []) {
+						const { node: toNodeName, type: _inputType, index: inputIndex } = conn;
+						const to = nodeMap.get(toNodeName);
+						a.ok(to);
+
+						graph.addConnection({
+							from,
+							to,
+							// TODO: parse outputType instead of casting it
+							type: outputType as NodeConnectionType,
+							outputIndex,
+							inputIndex,
+						});
+					}
+				}
+			}
+		}
+
+		return graph;
+	}
+
 	clone() {
 		return new DirectedGraph()
 			.addNodes(...this.getNodes().values())

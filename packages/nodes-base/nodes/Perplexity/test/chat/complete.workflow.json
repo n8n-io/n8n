@@ -12,7 +12,7 @@
 			"parameters": {
 				"model": {
 					"__rl": true,
-					"value": "r1-1776",
+					"value": "sonar",
 					"mode": "id"
 				},
 				"messages": {
@@ -73,7 +73,7 @@
 			{
 				"json": {
 					"id": "6bb24c98-3071-4691-9a7b-dc4bc18c3c2c",
-					"model": "r1-1776",
+					"model": "sonar",
 					"created": 1743161086,
 					"usage": {
 						"prompt_tokens": 4,

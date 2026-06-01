@@ -6,8 +6,13 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
-import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
+import {
+	promptTypeOptions,
+	promptTypeOptionsDeprecated,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+} from '@utils/descriptions';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, systemPromptOption } from './constants';
 import { processItem } from './processItem';
@@ -16,14 +21,13 @@ export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
-		icon: 'fa:link',
+		icon: 'node:question-and-answer-chain',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
-			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -56,6 +60,12 @@ export class ChainRetrievalQa implements INodeType {
 			},
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -96,11 +106,25 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				...promptTypeOptions,
+				...promptTypeOptionsDeprecated,
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2 } }],
+						'@version': [{ _cnd: { lte: 1.2 } }, { _cnd: { gte: 1.7 } }],
 					},
+				},
+			},
+			{
+				...promptTypeOptions,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.7 } }],
+					},
+				},
+			},
+			{
+				...textFromGuardrailsNode,
+				displayOptions: {
+					show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.4 } }] },
 				},
 			},
 			{

@@ -1,12 +1,17 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nUserInfo from './UserInfo.vue';
 
 export default {
-	title: 'Modules/UserInfo',
+	title: 'Core/UserInfo',
 	component: N8nUserInfo,
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		docs: {
+			description: {
+				component: 'A user identity display combining avatar, name, and supporting details.',
+			},
+		},
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

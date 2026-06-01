@@ -9,21 +9,23 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils';
 import type { Class } from 'n8n-core';
-
-import { generateNanoId } from '../utils/generators';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;
 
 const timestampSyntax = {
 	sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
 	postgresdb: 'CURRENT_TIMESTAMP(3)',
-	mysqldb: 'CURRENT_TIMESTAMP(3)',
-	mariadb: 'CURRENT_TIMESTAMP(3)',
 }[dbType];
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
+const binaryColumnTypeMap = {
+	sqlite: 'blob',
+	postgresdb: 'bytea',
+} as const;
+const binaryColumnType = binaryColumnTypeMap[dbType];
 
 export function JsonColumn(options?: Omit<ColumnOptions, 'type'>) {
 	return Column({
@@ -38,6 +40,14 @@ export function DateTimeColumn(options?: Omit<ColumnOptions, 'type'>) {
 		type: datetimeColumnType,
 	});
 }
+
+export function BinaryColumn(options?: Omit<ColumnOptions, 'type'>) {
+	return Column({
+		...options,
+		type: binaryColumnType,
+	});
+}
+
 const tsColumnOptions: ColumnOptions = {
 	precision: 3,
 	default: () => timestampSyntax,
@@ -61,11 +71,8 @@ function mixinStringId<T extends Class<{}, any[]>>(base: T) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
+function mixinUpdatedAt<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
-		@CreateDateColumn(tsColumnOptions)
-		createdAt: Date;
-
 		@UpdateDateColumn(tsColumnOptions)
 		updatedAt: Date;
 
@@ -77,8 +84,19 @@ function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
 	return Derived;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mixinCreatedAt<T extends Class<{}, any[]>>(base: T) {
+	class Derived extends base {
+		@CreateDateColumn(tsColumnOptions)
+		createdAt: Date;
+	}
+	return Derived;
+}
+
 class BaseEntity {}
 
 export const WithStringId = mixinStringId(BaseEntity);
-export const WithTimestamps = mixinTimestamps(BaseEntity);
+export const WithCreatedAt = mixinCreatedAt(BaseEntity);
+export const WithUpdatedAt = mixinUpdatedAt(BaseEntity);
+export const WithTimestamps = mixinCreatedAt(mixinUpdatedAt(BaseEntity));
 export const WithTimestampsAndStringId = mixinStringId(WithTimestamps);

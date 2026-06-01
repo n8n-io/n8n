@@ -1,7 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -13,7 +11,9 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { HookContext } from '../hook-context';
 
@@ -43,7 +43,7 @@ describe('HookContext', () => {
 	});
 	nodeType.description.webhooks = [webhookDescription];
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {
@@ -76,7 +76,7 @@ describe('HookContext', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		expression.getParameterValue.mockImplementation((value) => value);
 		expression.getSimpleParameterValue.mockImplementation((_, value) => value);
@@ -93,6 +93,7 @@ describe('HookContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
@@ -142,6 +143,12 @@ describe('HookContext', () => {
 			const description = hookContext.getWebhookDescription('default');
 
 			expect(description).toEqual<IWebhookDescription>(webhookDescription);
+		});
+	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(hookContext.getExecutionContext()).toBeUndefined();
 		});
 	});
 });

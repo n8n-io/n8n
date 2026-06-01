@@ -47,11 +47,15 @@ export class NodeMailer {
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
 		try {
+			const plainText =
+				mailData.textOnly ??
+				(typeof mailData.body === 'string' ? this.htmlToPlainText(mailData.body) : undefined);
+
 			await this.transport.sendMail({
 				from: this.sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
-				text: mailData.textOnly,
+				text: plainText,
 				html: mailData.body,
 				attachments: [
 					{
@@ -75,5 +79,35 @@ export class NodeMailer {
 		}
 
 		return { emailSent: true };
+	}
+
+	private htmlToPlainText(html: string): string {
+		return (
+			html
+				// Remove non-visible content
+				.replace(/<head[\s\S]*?<\/head>/gi, '')
+				.replace(/<script[\s\S]*?<\/script>/gi, '')
+				.replace(/<style[\s\S]*?<\/style>/gi, '')
+				// Convert links and buttons to "text (url)" format
+				.replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
+				.replace(/<mj-button\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/mj-button>/gi, '$2 ($1)')
+				// Replace <br> and block-level closing tags with newlines
+				.replace(/<br\s*\/?>/gi, '\n')
+				.replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+				// Strip remaining HTML tags
+				.replace(/<[^>]+>/g, '')
+				// Decode common HTML entities
+				.replace(/&amp;/g, '&')
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&quot;/g, '"')
+				.replace(/&#039;/g, "'")
+				.replace(/&nbsp;/g, ' ')
+				// Trim leading whitespace from each line
+				.replace(/^[\t ]+/gm, '')
+				// Collapse multiple blank lines
+				.replace(/\n{3,}/g, '\n\n')
+				.trim()
+		);
 	}
 }

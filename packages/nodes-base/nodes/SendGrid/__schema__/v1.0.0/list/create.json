@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "_metadata": {
+            "type": "object",
+            "properties": {
+                "self": {
+                    "type": "string"
+                }
+            }
+        },
+        "contact_count": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

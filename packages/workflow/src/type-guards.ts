@@ -1,10 +1,15 @@
-import type {
-	INodeProperties,
-	INodePropertyOptions,
-	INodePropertyCollection,
-	INodeParameterResourceLocator,
-	ResourceMapperValue,
-	FilterValue,
+import {
+	type AssignmentCollectionValue,
+	type AssignmentValue,
+	type FilterValue,
+	type INodeParameterResourceLocator,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type NodeConnectionType,
+	type ResourceMapperValue,
+	nodeConnectionTypes,
+	type IBinaryData,
 } from './interfaces';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -62,8 +67,44 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 	);
 };
 
+export const isAssignmentValue = (value: unknown): value is AssignmentValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'id' in value &&
+		typeof value.id === 'string' &&
+		'name' in value &&
+		typeof value.name === 'string' &&
+		'value' in value &&
+		(!('type' in value) || typeof value.type === 'string')
+	);
+};
+
+export const isAssignmentCollectionValue = (value: unknown): value is AssignmentCollectionValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'assignments' in value &&
+		Array.isArray(value.assignments) &&
+		value.assignments.every(isAssignmentValue)
+	);
+};
+
 export const isFilterValue = (value: unknown): value is FilterValue => {
 	return (
 		typeof value === 'object' && value !== null && 'conditions' in value && 'combinator' in value
+	);
+};
+
+export const isNodeConnectionType = (value: unknown): value is NodeConnectionType => {
+	return nodeConnectionTypes.includes(value as NodeConnectionType);
+};
+
+export const isBinaryValue = (value: unknown): value is IBinaryData => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'mimeType' in value &&
+		('data' in value || 'id' in value)
 	);
 };
