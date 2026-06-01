@@ -2,6 +2,7 @@ import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -43,6 +44,9 @@ export async function executionStarted(
 
 	if (needsInit) {
 		workflowExecutionStateStore.promotePendingExecution(data.executionId);
+		// Clear any sub-workflow progress overlays left from a previous run of
+		// this parent execution before its child events start streaming in.
+		useSubworkflowProgressStore().resetForExecution(data.executionId);
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));

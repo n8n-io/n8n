@@ -119,6 +119,12 @@ export interface CanvasNodeData {
 		waiting?: string;
 		running: boolean;
 		waitingForNext?: boolean;
+		subworkflowProgress?: {
+			currentNodeName?: string;
+			currentNodeIndex: number;
+			totalNodes: number;
+			phase: 'running' | 'success' | 'error';
+		};
 	};
 	runData: {
 		outputMap?: ExecutionOutputMap;
