@@ -12,6 +12,7 @@ import {
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import {
@@ -28,8 +29,7 @@ import type {
 	SubmitWorkflowAttempt,
 	SubmitWorkflowOutput,
 } from '../../workflows/submit-workflow.tool';
-
-const {
+import {
 	recordSuccessfulWorkflowBuilds,
 	resultFromPostStreamError,
 	resultFromTerminalRemediation,
@@ -49,12 +49,10 @@ const {
 	mergeLatestVerificationIntoOutcome,
 	settleMissingMainWorkflowSubmit,
 	supportingWorkflowIdsFromSubmitAttempts,
-} =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
+} from '../build-workflow-agent.tool';
 
 function mockBuiltTool(name: string): BuiltTool {
-	return { name, description: name, handler: jest.fn() };
+	return { name, description: name, handler: vi.fn() };
 }
 
 function mockToolRegistry(
@@ -72,14 +70,14 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		modelId: 'test-model' as OrchestrationContext['modelId'],
 		subAgentMaxSteps: 5,
 		eventBus: {
-			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+			getEventsAfter: vi.fn(),
+			getNextEventId: vi.fn(),
+			getEventsForRun: vi.fn().mockReturnValue([]),
+			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
-		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: mockToolRegistry(),
 		abortSignal: new AbortController().signal,
 		...overrides,
@@ -127,16 +125,16 @@ function createPathTemplatedRuntimeSkillSource(): RuntimeSkillSource {
 
 function createRuntimeSkillWorkspace() {
 	const writes = new Map<string, string>();
-	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
 		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 		await Promise.resolve();
 	});
-	const readFile = jest.fn(async (path: string) => {
+	const readFile = vi.fn(async (path: string) => {
 		const content = writes.get(path);
 		if (content === undefined) throw new Error(`ENOENT: ${path}`);
 		return await Promise.resolve(content);
 	});
-	const executeCommand = jest.fn(async (command: string) => {
+	const executeCommand = vi.fn(async (command: string) => {
 		return await Promise.resolve({
 			success: true,
 			exitCode: 0,
@@ -165,7 +163,7 @@ function createMockDomainContext(
 		userId: 'test-user',
 		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
 		workflowService: {
-			get: jest.fn().mockResolvedValue({ name: workflowName }),
+			get: vi.fn().mockResolvedValue({ name: workflowName }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		credentialService: {} as InstanceAiContext['credentialService'],
@@ -181,7 +179,7 @@ function createSpawnableContext(
 	return createMockContext({
 		domainContext: createMockDomainContext(permissionOverrides),
 		domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
-		spawnBackgroundTask: jest.fn().mockReturnValue({
+		spawnBackgroundTask: vi.fn().mockReturnValue({
 			status: 'started',
 			taskId: 'build-task',
 			agentId: 'agent-builder',
@@ -946,7 +944,7 @@ describe('finalizeBuildResult', () => {
 		});
 		const context = createMockContext({
 			workflowTaskService: {
-				getWorkflowLoopState: jest.fn().mockResolvedValue({
+				getWorkflowLoopState: vi.fn().mockResolvedValue({
 					workItemId: 'wi_test',
 					threadId: 'thread_1',
 					runId: 'run_test',
@@ -1090,11 +1088,11 @@ describe('attemptFromAutoResubmit', () => {
 describe('settleMissingMainWorkflowSubmit', () => {
 	function createWorkflowTaskService() {
 		return {
-			reportBuildOutcome: jest.fn().mockResolvedValue({ type: 'continue_building' }),
-			reportVerificationVerdict: jest.fn(),
-			getBuildOutcome: jest.fn().mockResolvedValue(undefined),
-			getWorkflowLoopState: jest.fn().mockResolvedValue(undefined),
-			updateBuildOutcome: jest.fn(),
+			reportBuildOutcome: vi.fn().mockResolvedValue({ type: 'continue_building' }),
+			reportVerificationVerdict: vi.fn(),
+			getBuildOutcome: vi.fn().mockResolvedValue(undefined),
+			getWorkflowLoopState: vi.fn().mockResolvedValue(undefined),
+			updateBuildOutcome: vi.fn(),
 		} as unknown as OrchestrationContext['workflowTaskService'];
 	}
 
@@ -1109,22 +1107,21 @@ describe('settleMissingMainWorkflowSubmit', () => {
 		outcome: WorkflowBuildOutcome;
 	};
 
-	function createRecoveredSubmitHandler(): jest.Mock<Promise<BuildResult>, [BuildResult]> {
-		return jest.fn(async (result: BuildResult) => await Promise.resolve(result));
+	function createRecoveredSubmitHandler(): Mock<(...args: [BuildResult]) => Promise<BuildResult>> {
+		return vi.fn(async (result: BuildResult) => await Promise.resolve(result));
 	}
 
-	function createSuccessfulSubmitHandler(): jest.Mock<
-		Promise<BuildResult>,
-		[SubmitWorkflowAttempt]
+	function createSuccessfulSubmitHandler(): Mock<
+		(...args: [SubmitWorkflowAttempt]) => Promise<BuildResult>
 	> {
-		return jest.fn(
+		return vi.fn(
 			async (attempt: SubmitWorkflowAttempt) =>
 				await Promise.resolve(createSuccessfulResult(attempt)),
 		);
 	}
 
 	function createSubmitTool(handler: (args: Record<string, unknown>) => SubmitWorkflowOutput) {
-		const handlerMock = jest.fn(
+		const handlerMock = vi.fn(
 			async (input: unknown) => await Promise.resolve(handler(input as Record<string, unknown>)),
 		);
 		return {
@@ -1138,7 +1135,7 @@ describe('settleMissingMainWorkflowSubmit', () => {
 		return {
 			name: 'submit-workflow',
 			description: 'Submit workflow stub',
-			handler: jest.fn(),
+			handler: vi.fn(),
 		};
 	}
 
@@ -1162,7 +1159,7 @@ describe('settleMissingMainWorkflowSubmit', () => {
 	}
 
 	it('final-submits a newly created main workflow file', async () => {
-		const trackTelemetry = jest.fn();
+		const trackTelemetry = vi.fn();
 		const context = createMockContext({
 			trackTelemetry,
 			workflowTaskService: createWorkflowTaskService(),
@@ -1287,9 +1284,8 @@ describe('settleMissingMainWorkflowSubmit', () => {
 		});
 
 		expect(submitTool.handler).not.toHaveBeenCalled();
-		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as jest.Mock<
-			Promise<unknown>,
-			[WorkflowBuildOutcome]
+		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as Mock<
+			(...args: [WorkflowBuildOutcome]) => Promise<unknown>
 		>;
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
 		expect(reportedOutcome).toMatchObject({
@@ -1462,9 +1458,8 @@ describe('settleMissingMainWorkflowSubmit', () => {
 			onRecoveredSubmit: createRecoveredSubmitHandler(),
 		});
 
-		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as jest.Mock<
-			Promise<unknown>,
-			[WorkflowBuildOutcome]
+		const reportBuildOutcome = workflowTaskService?.reportBuildOutcome as Mock<
+			(...args: [WorkflowBuildOutcome]) => Promise<unknown>
 		>;
 		expect(reportBuildOutcome).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1550,7 +1545,7 @@ describe('settleMissingMainWorkflowSubmit', () => {
 			submitAttemptHistory.push(finalAttempt);
 			return { success: true, workflowId: 'WF_MAIN' };
 		});
-		const onSuccessfulSubmit = jest.fn(
+		const onSuccessfulSubmit = vi.fn(
 			async (attempt: SubmitWorkflowAttempt) =>
 				await Promise.resolve({
 					...createSuccessfulResult(attempt),
@@ -1664,7 +1659,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		// missing spawnBackgroundTask. The point is we got past the guard, not what
 		// the downstream does.
 		expect(out.result).not.toMatch(/^STOP\./);
-		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
+		const warnMock = context.logger.warn as Mock<
+			(...args: [string, Record<string, unknown>?]) => void
+		>;
 		expect(warnMock.mock.calls.some((c) => c[0].includes('bypassing plan'))).toBe(true);
 	});
 
@@ -1682,16 +1679,16 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 	});
 
 	it('passes parse-file to the builder when attachments registered it', async () => {
-		const publish = jest.fn<undefined, [string, InstanceAiEvent]>();
+		const publish = vi.fn<(a: string, b: InstanceAiEvent) => undefined>();
 		const context = createMockContext({
 			isReplanFollowUp: true,
 			eventBus: {
 				publish,
-				subscribe: jest.fn(),
-				getEventsAfter: jest.fn(),
-				getNextEventId: jest.fn(),
-				getEventsForRun: jest.fn().mockReturnValue([]),
-				getEventsForRuns: jest.fn().mockReturnValue([]),
+				subscribe: vi.fn(),
+				getEventsAfter: vi.fn(),
+				getNextEventId: vi.fn(),
+				getEventsForRun: vi.fn().mockReturnValue([]),
+				getEventsForRuns: vi.fn().mockReturnValue([]),
 			},
 			domainContext: createMockDomainContext(),
 			domainTools: mockToolRegistry({
@@ -1703,7 +1700,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 				'ask-user': mockBuiltTool('ask-user'),
 				research: mockBuiltTool('research'),
 			}),
-			spawnBackgroundTask: jest.fn().mockReturnValue({
+			spawnBackgroundTask: vi.fn().mockReturnValue({
 				status: 'started',
 				taskId: 'build-task',
 				agentId: 'agent-builder',
@@ -1883,7 +1880,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 	it('suspends before spawning when updateWorkflow requires approval', async () => {
 		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, editInput, { suspend });
@@ -1924,7 +1921,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 	it('skips suspend when updateWorkflow is always_allow', async () => {
 		const context = createSpawnableContext({ updateWorkflow: 'always_allow' });
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, editInput, { suspend });
@@ -1936,7 +1933,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 	it('does not apply the edit approval gate without a workflowId', async () => {
 		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
 		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, { task: 'build a new workflow' }, { suspend });
@@ -1948,13 +1945,13 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 	it('does not apply the edit approval gate without domain context', async () => {
 		const context = createMockContext({
 			domainTools: mockToolRegistry({ 'build-workflow': mockBuiltTool('build-workflow') }),
-			spawnBackgroundTask: jest.fn().mockReturnValue({
+			spawnBackgroundTask: vi.fn().mockReturnValue({
 				status: 'started',
 				taskId: 'build-task',
 				agentId: 'agent-builder',
 			}),
 		});
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, editInput, { suspend });
@@ -1968,7 +1965,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 			{ updateWorkflow: 'require_approval' },
 			{ isReplanFollowUp: true },
 		);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, editInput, { suspend });
@@ -1982,7 +1979,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 			{ updateWorkflow: 'require_approval' },
 			{ isCheckpointFollowUp: true },
 		);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, editInput, { suspend });
@@ -1993,7 +1990,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 	it('denies without suspend or spawn when updateWorkflow is blocked', async () => {
 		const context = createSpawnableContext({ updateWorkflow: 'blocked' });
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, editInput, { suspend });
@@ -2008,7 +2005,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 		});
 		const context = createSpawnableContext(readOnlyPermissions);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, editInput, { suspend });
@@ -2023,7 +2020,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
 			editInput.workflowId,
 		]);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		await executeTool(tool, editInput, { suspend });
@@ -2037,7 +2034,7 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
 			editInput.workflowId,
 		]);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 		const tool = createBuildWorkflowAgentTool(context);
 
 		const out = await executeTool(tool, editInput, { suspend });
@@ -2050,11 +2047,11 @@ describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
 
 describe('recordSuccessfulWorkflowBuilds', () => {
 	it('records workflow IDs returned from successful build-workflow executions', async () => {
-		const onWorkflowId = jest.fn();
+		const onWorkflowId = vi.fn();
 		const input = { prompt: 'build it' };
 		const context = { runId: 'run-1' };
 		const result = { success: true, workflowId: 'wf-main', displayName: 'Main' };
-		const handler = jest.fn(
+		const handler = vi.fn(
 			async (_input: unknown, _context?: unknown) => await Promise.resolve(result),
 		);
 		const tool = { name: 'build-workflow', description: 'build-workflow', handler };
@@ -2067,8 +2064,8 @@ describe('recordSuccessfulWorkflowBuilds', () => {
 	});
 
 	it('does not record failed or incomplete build-workflow results', async () => {
-		const onWorkflowId = jest.fn();
-		const handler = jest
+		const onWorkflowId = vi.fn();
+		const handler = vi
 			.fn()
 			.mockResolvedValueOnce({ success: false, workflowId: 'wf-failed' })
 			.mockResolvedValueOnce({ success: true });

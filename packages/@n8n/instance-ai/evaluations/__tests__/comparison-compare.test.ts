@@ -133,7 +133,7 @@ describe('compareBuckets', () => {
 	});
 
 	it('drops unknown categories with a console warning, keeps all known categories', () => {
-		const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)], {
 			totals: { '-': 5, builder_issue: 2 },
 			trialTotal: 10,

@@ -5,15 +5,12 @@ import type {
 	OrchestrationContext,
 	PlannedTaskService,
 } from '../../../types';
-
-const { createCompleteCheckpointTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../complete-checkpoint.tool') as typeof import('../complete-checkpoint.tool');
+import { createCompleteCheckpointTool } from '../complete-checkpoint.tool';
 
 function makeService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
 	return {
-		markCheckpointSucceeded: jest.fn(),
-		markCheckpointFailed: jest.fn(),
+		markCheckpointSucceeded: vi.fn(),
+		markCheckpointFailed: vi.fn(),
 		...overrides,
 	} as unknown as PlannedTaskService;
 }
@@ -27,17 +24,17 @@ function makeContext(service: PlannedTaskService): OrchestrationContext {
 		modelId: 'model' as OrchestrationContext['modelId'],
 		subAgentMaxSteps: 5,
 		eventBus: {
-			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+			getEventsAfter: vi.fn(),
+			getNextEventId: vi.fn(),
+			getEventsForRun: vi.fn().mockReturnValue([]),
+			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
-		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
-		taskStorage: { get: jest.fn(), save: jest.fn() },
+		taskStorage: { get: vi.fn(), save: vi.fn() },
 		plannedTaskService: service,
 	};
 }
@@ -45,7 +42,7 @@ function makeContext(service: PlannedTaskService): OrchestrationContext {
 describe('createCompleteCheckpointTool', () => {
 	it('marks a checkpoint succeeded via markCheckpointSucceeded', async () => {
 		const service = makeService({
-			markCheckpointSucceeded: jest
+			markCheckpointSucceeded: vi
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
@@ -68,7 +65,7 @@ describe('createCompleteCheckpointTool', () => {
 
 	it('marks a checkpoint failed via markCheckpointFailed', async () => {
 		const service = makeService({
-			markCheckpointFailed: jest
+			markCheckpointFailed: vi
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
@@ -89,7 +86,7 @@ describe('createCompleteCheckpointTool', () => {
 
 	it('forwards structured outcome to markCheckpointFailed so replans keep execution context', async () => {
 		const service = makeService({
-			markCheckpointFailed: jest
+			markCheckpointFailed: vi
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});
@@ -119,7 +116,7 @@ describe('createCompleteCheckpointTool', () => {
 	it('returns error string (not throw) on not-found', async () => {
 		const not: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 		const service = makeService({
-			markCheckpointSucceeded: jest.fn().mockResolvedValue(not),
+			markCheckpointSucceeded: vi.fn().mockResolvedValue(not),
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service));
 
@@ -136,7 +133,7 @@ describe('createCompleteCheckpointTool', () => {
 			actual: { kind: 'build-workflow' },
 		};
 		const service = makeService({
-			markCheckpointSucceeded: jest.fn().mockResolvedValue(wk),
+			markCheckpointSucceeded: vi.fn().mockResolvedValue(wk),
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service));
 
@@ -154,7 +151,7 @@ describe('createCompleteCheckpointTool', () => {
 			actual: { status: 'planned' },
 		};
 		const service = makeService({
-			markCheckpointSucceeded: jest.fn().mockResolvedValue(ws),
+			markCheckpointSucceeded: vi.fn().mockResolvedValue(ws),
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service));
 
@@ -179,7 +176,7 @@ describe('createCompleteCheckpointTool', () => {
 
 	it('defaults failed-error to result or a sensible default', async () => {
 		const service = makeService({
-			markCheckpointFailed: jest
+			markCheckpointFailed: vi
 				.fn()
 				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
 		});

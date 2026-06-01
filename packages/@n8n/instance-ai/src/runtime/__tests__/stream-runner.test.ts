@@ -3,29 +3,31 @@ import type * as ResumableStreamExecutor from '../resumable-stream-executor';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
 
-jest.mock('../resumable-stream-executor', () => {
-	const actual = jest.requireActual<typeof ResumableStreamExecutor>('../resumable-stream-executor');
+vi.mock('../resumable-stream-executor', async () => {
+	const actual = await vi.importActual<typeof ResumableStreamExecutor>(
+		'../resumable-stream-executor',
+	);
 
 	return {
 		...actual,
-		executeResumableStream: jest.fn(),
+		executeResumableStream: vi.fn(),
 	};
 });
 
 const emptyWorkSummary: WorkSummary = { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 };
 
 function createLogger() {
-	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 }
 
 function createEventBus() {
 	return {
-		publish: jest.fn(),
-		subscribe: jest.fn(),
-		getEventsAfter: jest.fn(),
-		getNextEventId: jest.fn(),
-		getEventsForRun: jest.fn().mockReturnValue([]),
-		getEventsForRuns: jest.fn().mockReturnValue([]),
+		publish: vi.fn(),
+		subscribe: vi.fn(),
+		getEventsAfter: vi.fn(),
+		getNextEventId: vi.fn(),
+		getEventsForRun: vi.fn().mockReturnValue([]),
+		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
 }
 
@@ -51,14 +53,14 @@ async function collectAsyncIterable(stream: AsyncIterable<unknown>) {
 
 describe('streamAgentRun', () => {
 	it('returns errored status when agent stream contains an error chunk', async () => {
-		jest.mocked(executeResumableStream).mockResolvedValue({
+		vi.mocked(executeResumableStream).mockResolvedValue({
 			status: 'errored',
 			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
-			stream: jest.fn().mockResolvedValue({
+			stream: vi.fn().mockResolvedValue({
 				runId: 'agent-run-1',
 				fullStream: fromChunks([
 					{ type: 'text-delta', delta: 'Hello' },
@@ -87,14 +89,14 @@ describe('streamAgentRun', () => {
 	});
 
 	it('returns completed status for successful streams', async () => {
-		jest.mocked(executeResumableStream).mockResolvedValue({
+		vi.mocked(executeResumableStream).mockResolvedValue({
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
-			stream: jest.fn().mockResolvedValue({
+			stream: vi.fn().mockResolvedValue({
 				runId: 'agent-run-1',
 				fullStream: fromChunks([{ type: 'text-delta', delta: 'All good' }]),
 			}),
@@ -119,9 +121,9 @@ describe('streamAgentRun', () => {
 	});
 
 	it('passes through the buffered manual confirmation event', async () => {
-		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
+		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
 		const agent = {
-			stream: jest.fn().mockResolvedValue({
+			stream: vi.fn().mockResolvedValue({
 				runId: 'agent-run-1',
 				fullStream: emptyStream(),
 			}),
@@ -180,7 +182,7 @@ describe('streamAgentRun', () => {
 	});
 
 	it('passes an already-normalized native stream source through to the resumable executor', async () => {
-		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
+		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
 		const streamResult = {
 			runId: 'agent-run-2',
 			fullStream: emptyStream(),
@@ -190,7 +192,7 @@ describe('streamAgentRun', () => {
 			usage: Promise.resolve({ inputTokens: 1, outputTokens: 2, totalTokens: 3 }),
 		};
 		const agent = {
-			stream: jest.fn().mockResolvedValue(streamResult),
+			stream: vi.fn().mockResolvedValue(streamResult),
 		};
 		const eventBus = createEventBus();
 
@@ -223,7 +225,7 @@ describe('streamAgentRun', () => {
 	});
 
 	it('normalizes native agent readable streams for the resumable executor', async () => {
-		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
+		const mockedExecuteResumableStream = vi.mocked(executeResumableStream);
 		mockedExecuteResumableStream.mockClear();
 		const nativeChunk = { type: 'text-delta', delta: 'All good' };
 		const readable = new ReadableStream<unknown>({
@@ -233,10 +235,10 @@ describe('streamAgentRun', () => {
 			},
 		});
 		const agent = {
-			stream: jest.fn().mockResolvedValue({
+			stream: vi.fn().mockResolvedValue({
 				runId: 'agent-run-1',
 				stream: readable,
-				getState: jest.fn(),
+				getState: vi.fn(),
 			}),
 		};
 		const eventBus = createEventBus();

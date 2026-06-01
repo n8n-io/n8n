@@ -1,4 +1,5 @@
 import type { AgentDbMessage, BuiltMemory } from '@n8n/agents';
+import type { Mocked } from 'vitest';
 
 import { compactBuilderMemoryThread } from '../builder-memory-compaction';
 
@@ -20,13 +21,13 @@ function makeMessage(id: string, text: string): TestBuilderMemoryMessage {
 	};
 }
 
-function makeMemory(memoryStore: Partial<BuiltMemory>): jest.Mocked<BuiltMemory> {
+function makeMemory(memoryStore: Partial<BuiltMemory>): Mocked<BuiltMemory> {
 	return {
-		getThread: jest.fn(async () => {
+		getThread: vi.fn(async () => {
 			await Promise.resolve();
 			return null;
 		}),
-		saveThread: jest.fn(async () => {
+		saveThread: vi.fn(async () => {
 			await Promise.resolve();
 			return {
 				id: 'builder-thread-1',
@@ -35,21 +36,21 @@ function makeMemory(memoryStore: Partial<BuiltMemory>): jest.Mocked<BuiltMemory>
 				updatedAt: new Date(),
 			};
 		}),
-		deleteThread: jest.fn(async () => {
+		deleteThread: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		getMessages: jest.fn(async () => {
+		getMessages: vi.fn(async () => {
 			await Promise.resolve();
 			return [];
 		}),
-		saveMessages: jest.fn(async () => {
+		saveMessages: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		deleteMessages: jest.fn(async () => {
+		deleteMessages: vi.fn(async () => {
 			await Promise.resolve();
 		}),
 		...memoryStore,
-	} as jest.Mocked<BuiltMemory>;
+	} as Mocked<BuiltMemory>;
 }
 
 function makeCompactionInput(
@@ -97,14 +98,14 @@ describe('compactBuilderMemoryThread', () => {
 			makeMessage('msg-2', 'tool output '.repeat(2000)),
 		];
 		const memoryStore = makeMemory({
-			getMessages: jest.fn(async () => {
+			getMessages: vi.fn(async () => {
 				await Promise.resolve();
 				return messages;
 			}),
-			deleteMessages: jest.fn(async () => {
+			deleteMessages: vi.fn(async () => {
 				await Promise.resolve();
 			}),
-			saveMessages: jest.fn(async () => {
+			saveMessages: vi.fn(async () => {
 				await Promise.resolve();
 			}),
 		});
@@ -141,15 +142,15 @@ describe('compactBuilderMemoryThread', () => {
 			makeMessage('msg-2', 'first tool output'),
 		];
 		const memoryStore = makeMemory({
-			getMessages: jest.fn(async () => {
+			getMessages: vi.fn(async () => {
 				await Promise.resolve();
 				return storedMessages;
 			}),
-			deleteMessages: jest.fn(async (messageIds: string[]) => {
+			deleteMessages: vi.fn(async (messageIds: string[]) => {
 				await Promise.resolve();
 				storedMessages = storedMessages.filter((message) => !messageIds.includes(message.id));
 			}),
-			saveMessages: jest.fn(async ({ messages }: { messages: AgentDbMessage[] }) => {
+			saveMessages: vi.fn(async ({ messages }: { messages: AgentDbMessage[] }) => {
 				await Promise.resolve();
 				storedMessages.push(...(messages as TestBuilderMemoryMessage[]));
 			}),

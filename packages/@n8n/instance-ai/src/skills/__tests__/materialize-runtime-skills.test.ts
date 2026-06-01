@@ -23,18 +23,19 @@ import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
-	const writeFile = jest.fn(async (path: string, content: string | Buffer) => {
+	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
 		writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 		await Promise.resolve();
 	});
-	const readFile = jest.fn(async (path: string) => {
+	const readFile = vi.fn(async (path: string) => {
 		const content = writes.get(path);
 		if (content === undefined) throw new Error(`ENOENT: ${path}`);
 		return await Promise.resolve(content);
 	});
-	const executeCommand = jest.fn<
-		ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>,
-		Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+	const executeCommand = vi.fn<
+		(
+			...args: Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+		) => ReturnType<NonNullable<WorkspaceSandbox['executeCommand']>>
 	>(
 		async () =>
 			await Promise.resolve({
@@ -372,7 +373,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				}),
 		};
 		const { workspace } = createMockWorkspace();
-		const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 		await materializeRuntimeSkillsIntoWorkspace({
 			source,
