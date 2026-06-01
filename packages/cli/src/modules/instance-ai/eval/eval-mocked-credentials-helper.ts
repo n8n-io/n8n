@@ -19,8 +19,9 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ICredentialsHelper, UnexpectedError } from 'n8n-workflow';
+import { ICredentialsHelper } from 'n8n-workflow';
 
+import { CredentialMissingIdError } from '@/errors/credential-missing-id.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 const MOCK_MARKER = '__evalMockedCredential' as const;
@@ -32,10 +33,11 @@ export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix
 };
 
 function isMockableMissingCredentialError(error: unknown): boolean {
-	return (
-		error instanceof CredentialNotFoundError ||
-		(error instanceof UnexpectedError && error.message === 'Found credential with no ID.')
-	);
+	return error instanceof CredentialNotFoundError || error instanceof CredentialMissingIdError;
+}
+
+function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
+	return nodeCredentials.id ? nodeCredentials.id : undefined;
 }
 
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
@@ -128,10 +130,10 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
-				credentialId: nodeCredentials.id ?? undefined,
+				credentialId: getCredentialId(nodeCredentials),
 			});
 
-			const hasCredentialId = nodeCredentials.id !== undefined && nodeCredentials.id !== null;
+			const credentialId = getCredentialId(nodeCredentials);
 
 			// When called with no credential id (eval-mode bypass for nodes
 			// with no credentials of any type configured), schema-synthesize
@@ -142,12 +144,13 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			// schema defaults can be richer than `CredentialInformation`, but
 			// at runtime emits only JSON-shaped values, which is what the
 			// rewrite path consumes.
-			credentials = !hasCredentialId
-				? ({
-						...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-						[MOCK_MARKER]: true,
-					} as ICredentialDataDecryptedObject)
-				: { [MOCK_MARKER]: true };
+			credentials =
+				credentialId === undefined
+					? ({
+							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+							[MOCK_MARKER]: true,
+						} as ICredentialDataDecryptedObject)
+					: { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
@@ -187,7 +190,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		this.rewrittenCredentials.push({
 			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
-			credentialId: nodeCredentials.id ?? undefined,
+			credentialId: getCredentialId(nodeCredentials),
 			field,
 		});
 
