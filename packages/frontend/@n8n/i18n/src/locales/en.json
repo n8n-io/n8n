@@ -3851,6 +3851,8 @@
 	"canvas.nodeGroup.autoExtended.title": "'{group}' extended",
 	"canvas.nodeGroup.autoExtended.message": "Added '{node}' to keep '{group}' valid with the new connection.",
 	"canvas.nodeGroup.titlePlaceholder": "Group name",
+	"canvas.nodeGroup.expand": "Expand",
+	"canvas.nodeGroup.collapse": "Collapse",
 	"workflowExtraction.error.failure": "Sub-workflow conversion failed",
 	"workflowExtraction.error.selectionGraph.inputEdgeToNonRoot": "Non-input node '{node}' has a connection from a node outside the current selection.",
 	"workflowExtraction.error.selectionGraph.outputEdgeFromNonLeaf": "Non-output node '{node}' has a connection to a node outside the current selection.",

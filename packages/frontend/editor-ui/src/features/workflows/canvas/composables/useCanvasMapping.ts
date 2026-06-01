@@ -24,6 +24,11 @@ import type {
 	ExecutionOutputMap,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import type { useCanvasNodeGroupView } from './useCanvasNodeGroupView';
+import {
+	buildCollapsedGroupByNodeId,
+	reanchorCollapsedConnections,
+} from './useCanvasMapping.groups';
 import {
 	checkOverlap,
 	computeNodeDisplaySize,
@@ -63,12 +68,14 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 	renderData,
+	groupView,
 	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
+	groupView?: ReturnType<typeof useCanvasNodeGroupView>;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -567,6 +574,16 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
+	const collapsedNodeIds = computed(() => {
+		const ids = new Set<string>();
+		if (!groupView) return ids;
+		for (const group of workflowDocumentStore.value.allGroups) {
+			if (!groupView.isGroupCollapsed(group.id)) continue;
+			for (const id of group.nodeIds) ids.add(id);
+		}
+		return ids;
+	});
+
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
 	// their own width/height parameters are read by the group mapper directly.
@@ -592,6 +609,7 @@ export function useCanvasMapping({
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
+		const hiddenNodes = collapsedNodeIds.value;
 
 		return nodes.value.map<CanvasNode>((node) => {
 			const outputConnections = connectionsBySourceNode[node.name] ?? {};
@@ -634,26 +652,44 @@ export function useCanvasMapping({
 				data,
 				...additionalNodePropertiesById.value[node.id],
 				draggable: node.draggable,
+				hidden: hiddenNodes.has(node.id) ? true : undefined,
 			};
 		});
 	});
 
-	const mappedConnections = computed<CanvasConnection[]>(() => {
-		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
-			(connection) => {
-				const type = getConnectionType(connection);
-				const label = getConnectionLabel(connection);
-				const data = getConnectionData(connection);
-
-				return {
-					...connection,
-					data,
-					type,
-					label,
-					markerEnd: MarkerType.ArrowClosed,
-				};
-			},
+	const collapsedGroupByNodeIdIndex = computed(() => {
+		if (!groupView) return new Map();
+		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
+			groupView.isGroupCollapsed(id),
 		);
+	});
+
+	const mappedConnections = computed<CanvasConnection[]>(() => {
+		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
+		const reanchored = reanchorCollapsedConnections(raw, collapsedGroupByNodeIdIndex.value);
+		return reanchored.map((connection) => {
+			const type = getConnectionType(connection);
+			// A merged connection bundles multiple underlying edges, so its
+			// item count would be ambiguous — drop the label.
+			const merged = (connection.data as { merged?: boolean } | undefined)?.merged === true;
+			const label = merged ? '' : getConnectionLabel(connection);
+			// Honour a status promoted by re-anchor dedupe; otherwise
+			// recompute from the underlying source node's runtime state.
+			const promotedStatus = (connection.data as CanvasConnectionData | undefined)?.status;
+			const baseData = getConnectionData(connection);
+			const data: CanvasConnectionData = {
+				...baseData,
+				status: promotedStatus ?? baseData.status,
+			};
+
+			return {
+				...connection,
+				data,
+				type,
+				label,
+				markerEnd: MarkerType.ArrowClosed,
+			};
+		});
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

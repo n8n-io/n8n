@@ -6,10 +6,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, provide, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
+import { useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -62,6 +63,11 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
+const allGroupsRef = computed(() => workflowDocumentStore.value.allGroups);
+const nodeGroupView = useCanvasNodeGroupView({
+	allGroups: allGroupsRef,
+	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
+});
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
 
@@ -77,6 +83,7 @@ const {
 	connections,
 	workflowObject,
 	renderData,
+	groupView: nodeGroupView,
 	isExperimentalNdvActive,
 });
 
@@ -85,6 +92,7 @@ const mappedGroupVueFlowNodes = computed(() =>
 		allGroups: workflowDocumentStore.value.allGroups,
 		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 	}),
 );
@@ -93,6 +101,8 @@ const mappedNodes = computed(() => [
 	...mappedWorkflowNodes.value,
 	...mappedGroupVueFlowNodes.value,
 ]);
+
+provide('canvasNodeGroupView', nodeGroupView);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

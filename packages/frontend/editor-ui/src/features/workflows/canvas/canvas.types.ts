@@ -142,6 +142,7 @@ export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
+	isCollapsed: boolean;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;

@@ -53,6 +53,7 @@ import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -73,6 +74,7 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
+import { useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -254,6 +256,10 @@ const workflowGraphNodes = computed(() =>
 
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
+const injectedNodeGroupView = inject<ReturnType<typeof useCanvasNodeGroupView> | null>(
+	'canvasNodeGroupView',
+	null,
+);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -565,6 +571,10 @@ function onSelectionDragStart(event: NodeDragEvent) {
 
 function onSelectionDrag(event: NodeDragEvent) {
 	groupDrag.onSelectionDrag(event);
+}
+
+function onCanvasGroupToggle(groupId: string) {
+	injectedNodeGroupView?.toggleCollapsed(groupId);
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
@@ -1264,6 +1274,7 @@ defineExpose({
 				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
+				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"

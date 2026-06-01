@@ -1,12 +1,24 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
-import { CANVAS_NODE_GROUP_ID_PREFIX, CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
+import type {
+	CanvasConnection,
+	CanvasConnectionData,
+	CanvasGroupNode,
+	CanvasGroupNodeData,
+} from '../canvas.types';
+import {
+	CANVAS_NODE_GROUP_HANDLE_LEFT,
+	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_ID_PREFIX,
+	CANVAS_NODE_GROUP_TYPE,
+} from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
+import { createCanvasConnectionId } from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
@@ -65,9 +77,10 @@ export function titleBarFromNodesRect(nodesRect: NodesRect): {
 }
 
 /**
- * Bounding rect of a group's nodes — used to size and position
- * the group's title bar and frame. Reads from workflow store positions (canonical)
- * rather than VueFlow runtime, which can lag or be uninitialized.
+ * Bounding rect of a group's nodes — used to size and position the title
+ * bar and frame. Reads from workflow store positions (canonical) rather than
+ * VueFlow runtime, which can lag, be uninitialized, or be hidden when the
+ * owning group is collapsed.
  *
  * `positionOverrides` lets the drag-time sync substitute live positions for
  * dragged nodes (whose store position lags until drag-stop).
@@ -112,6 +125,7 @@ export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
+	isGroupCollapsed: (id: string) => boolean;
 	readOnly: boolean;
 }
 
@@ -123,6 +137,7 @@ export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
 	getNodeDisplaySize,
+	isGroupCollapsed,
 	readOnly,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
@@ -133,10 +148,11 @@ export function mapGroupsToVueFlowNodes({
 		if (!hasNode) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-
+		const collapsed = isGroupCollapsed(group.id);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
+			isCollapsed: collapsed,
 		};
 
 		const titleBar = titleBarFromNodesRect(nodesRect);
@@ -144,10 +160,12 @@ export function mapGroupsToVueFlowNodes({
 			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
 			type: CANVAS_NODE_GROUP_TYPE,
 			position: titleBar.position,
-			width: titleBar.width,
+			width: collapsed ? GROUP_HEADER_WIDTH_COLLAPSED : titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
-			selectable: false,
+			// Selectable only when the title bar represents
+			// the whole group as a single visual surface
+			selectable: !readOnly && collapsed,
 			connectable: false,
 			// Behind the group's nodes so the expanded frame doesn't overlap them.
 			zIndex: -1,
@@ -155,4 +173,115 @@ export function mapGroupsToVueFlowNodes({
 		});
 	}
 	return out;
+}
+
+/**
+ * Build a Map<nodeId, IWorkflowGroup> for nodes inside a collapsed group.
+ * Used to look up "is this endpoint of an edge currently hidden inside a
+ * collapsed group, and if so, which group does it belong to?".
+ */
+export function buildCollapsedGroupByNodeId(
+	allGroups: IWorkflowGroup[],
+	isGroupCollapsed: (id: string) => boolean,
+): Map<string, IWorkflowGroup> {
+	const result = new Map<string, IWorkflowGroup>();
+	for (const group of allGroups) {
+		if (!isGroupCollapsed(group.id)) continue;
+		for (const nodeId of group.nodeIds) {
+			result.set(nodeId, group);
+		}
+	}
+	return result;
+}
+
+/**
+ * Re-anchor connections crossing a collapsed group's boundary onto the
+ * group's title bar (left / right handles). Edges fully inside a collapsed
+ * group are dropped. Edges that converge on the same external endpoint
+ * (same node + same handle) collapse into a single rendered line; status
+ * is promoted on merge (running > error > pinned > success > undefined) so
+ * a merged line never looks idle when something behind it isn't.
+ */
+const STATUS_PRIORITY: Record<NonNullable<CanvasConnectionData['status']> | 'undefined', number> = {
+	running: 4,
+	error: 3,
+	pinned: 2,
+	success: 1,
+	undefined: 0,
+};
+
+function pickHigherPriorityStatus(
+	a: CanvasConnectionData['status'],
+	b: CanvasConnectionData['status'],
+): CanvasConnectionData['status'] {
+	const aKey = (a ?? 'undefined') as keyof typeof STATUS_PRIORITY;
+	const bKey = (b ?? 'undefined') as keyof typeof STATUS_PRIORITY;
+	return STATUS_PRIORITY[aKey] >= STATUS_PRIORITY[bKey] ? a : b;
+}
+
+export interface CanvasConnectionWithMergeFlag extends CanvasConnection {
+	data?: CanvasConnectionData & { merged?: boolean };
+}
+
+export function reanchorCollapsedConnections(
+	connections: CanvasConnection[],
+	collapsedGroupByNodeId: Map<string, IWorkflowGroup>,
+): CanvasConnectionWithMergeFlag[] {
+	if (collapsedGroupByNodeId.size === 0) return connections as CanvasConnectionWithMergeFlag[];
+
+	const byKey = new Map<string, CanvasConnectionWithMergeFlag>();
+	const result: CanvasConnectionWithMergeFlag[] = [];
+
+	for (const conn of connections) {
+		const sourceGroup = collapsedGroupByNodeId.get(conn.source);
+		const targetGroup = collapsedGroupByNodeId.get(conn.target);
+
+		// Both endpoints inside the same collapsed group → drop entirely.
+		if (sourceGroup && targetGroup && sourceGroup.id === targetGroup.id) {
+			continue;
+		}
+
+		if (!sourceGroup && !targetGroup) {
+			// External-only edge — keep as-is.
+			result.push(conn);
+			continue;
+		}
+
+		const sourceId = sourceGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${sourceGroup.id}` : conn.source;
+		const targetId = targetGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${targetGroup.id}` : conn.target;
+		const sourceHandle = sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle;
+		const targetHandle = targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle;
+
+		const dedupeKey = `${sourceId}|${sourceHandle}|${targetId}|${targetHandle}`;
+		const existing = byKey.get(dedupeKey);
+
+		if (existing) {
+			// Promote status, mark merged so the label drops out.
+			existing.data = {
+				...(existing.data as CanvasConnectionData),
+				status: pickHigherPriorityStatus(existing.data?.status, conn.data?.status),
+				merged: true,
+			};
+			continue;
+		}
+
+		const rewritten: CanvasConnectionWithMergeFlag = {
+			...conn,
+			id: createCanvasConnectionId({
+				source: sourceId,
+				sourceHandle,
+				target: targetId,
+				targetHandle,
+			}),
+			source: sourceId,
+			target: targetId,
+			sourceHandle,
+			targetHandle,
+		};
+
+		byKey.set(dedupeKey, rewritten);
+		result.push(rewritten);
+	}
+
+	return result;
 }
