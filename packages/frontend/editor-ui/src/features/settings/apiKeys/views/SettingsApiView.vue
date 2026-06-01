@@ -34,8 +34,8 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { getAndCacheApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
-const { apiKeysSortByCreationDate } = storeToRefs(apiKeysStore);
+const { fetchApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
+const { apiKeys } = storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
 
@@ -71,7 +71,7 @@ function onUpgrade() {
 async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
-		await Promise.all([getAndCacheApiKeys(), getApiKeyAvailableScopes()]);
+		await Promise.all([fetchApiKeys(), getApiKeyAvailableScopes()]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -119,7 +119,7 @@ function onEdit(id: string) {
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
 		</div>
-		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">
+		<p v-if="isPublicApiEnabled && apiKeys.length" :class="$style.topHint">
 			<N8nText>
 				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 					<template #apiAction>
@@ -143,12 +143,12 @@ function onEdit(id: string) {
 		</p>
 
 		<div :class="$style.apiKeysContainer">
-			<template v-if="apiKeysSortByCreationDate.length">
+			<template v-if="apiKeys.length">
 				<ElRow
-					v-for="(apiKey, index) in apiKeysSortByCreationDate"
+					v-for="(apiKey, index) in apiKeys"
 					:key="apiKey.id"
 					:gutter="10"
-					:class="[{ [$style.destinationItem]: index !== apiKeysSortByCreationDate.length - 1 }]"
+					:class="[{ [$style.destinationItem]: index !== apiKeys.length - 1 }]"
 				>
 					<ElCol>
 						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
@@ -157,7 +157,7 @@ function onEdit(id: string) {
 			</template>
 		</div>
 
-		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
+		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.BottomHint">
 			<N8nText size="small" color="text-light">
 				{{
 					i18n.baseText(
@@ -186,11 +186,7 @@ function onEdit(id: string) {
 			</N8nLink>
 		</div>
 		<div class="mt-m text-right">
-			<N8nButton
-				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"
-				size="large"
-				@click="onCreateApiKey"
-			>
+			<N8nButton v-if="isPublicApiEnabled && apiKeys.length" size="large" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
 		</div>
@@ -205,7 +201,7 @@ function onEdit(id: string) {
 		/>
 
 		<N8nActionBox
-			v-if="isPublicApiEnabled && !apiKeysSortByCreationDate.length"
+			v-if="isPublicApiEnabled && !apiKeys.length"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"

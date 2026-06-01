@@ -238,7 +238,7 @@ describe('Owner shell', () => {
 
 		const getApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
-		const allApiKeys = getApiKeysResponse.body.data as ApiKeyWithRawValue[];
+		const allApiKeys = getApiKeysResponse.body.data.items as ApiKeyWithRawValue[];
 
 		const updatedApiKey = allApiKeys.find((apiKey) => apiKey.id === newApiKey.id);
 
@@ -266,7 +266,8 @@ describe('Owner shell', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.count).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
 			userId: ownerShell.id,
@@ -279,7 +280,7 @@ describe('Owner shell', () => {
 			lastUsedAt: null,
 		});
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.items[1]).toEqual({
 			id: apiKeyWithNoExpiration.body.data.id,
 			label: 'My API Key',
 			userId: ownerShell.id,
@@ -306,7 +307,8 @@ describe('Owner shell', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.count).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
 	test('GET /api-keys/scopes should return scopes for the role', async () => {
@@ -461,7 +463,8 @@ describe('Member', () => {
 
 		expect(retrieveAllApiKeysResponse.statusCode).toBe(200);
 
-		expect(retrieveAllApiKeysResponse.body.data[1]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.count).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
 			userId: member.id,
@@ -474,7 +477,7 @@ describe('Member', () => {
 			lastUsedAt: null,
 		});
 
-		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
+		expect(retrieveAllApiKeysResponse.body.data.items[1]).toEqual({
 			id: apiKeyWithNoExpiration.body.data.id,
 			label: 'My API Key',
 			userId: member.id,
@@ -501,7 +504,8 @@ describe('Member', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.length).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.count).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
 	test('GET /api-keys/scopes should return scopes for the role', async () => {
@@ -512,5 +516,52 @@ describe('Member', () => {
 		const scopesForRole = getApiKeyScopesForRole(member);
 
 		expect(scopes.sort()).toEqual(scopesForRole.sort());
+	});
+});
+
+describe('Pagination', () => {
+	test('GET /api-keys honors `take` and returns total count', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		for (let i = 0; i < 3; i++) {
+			await testServer
+				.authAgentFor(owner)
+				.post('/api-keys')
+				.send({ label: `Key ${i}`, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const response = await testServer.authAgentFor(owner).get('/api-keys?take=2').expect(200);
+
+		expect(response.body.data.count).toBe(3);
+		expect(response.body.data.items).toHaveLength(2);
+	});
+
+	test('GET /api-keys honors `skip` to page through results', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const createdIds: string[] = [];
+		for (let i = 0; i < 3; i++) {
+			const res = await testServer
+				.authAgentFor(owner)
+				.post('/api-keys')
+				.send({ label: `Key ${i}`, expiresAt: null, scopes: ['workflow:create'] });
+			createdIds.push(res.body.data.id);
+		}
+
+		const firstPage = await testServer
+			.authAgentFor(owner)
+			.get('/api-keys?take=2&skip=0')
+			.expect(200);
+		const secondPage = await testServer
+			.authAgentFor(owner)
+			.get('/api-keys?take=2&skip=2')
+			.expect(200);
+
+		expect(firstPage.body.data.items).toHaveLength(2);
+		expect(secondPage.body.data.items).toHaveLength(1);
+
+		const firstPageIds = (firstPage.body.data.items as Array<{ id: string }>).map((k) => k.id);
+		const secondPageIds = (secondPage.body.data.items as Array<{ id: string }>).map((k) => k.id);
+		const union = new Set([...firstPageIds, ...secondPageIds]);
+		expect(union.size).toBe(3);
+		expect([...union].sort()).toEqual(createdIds.slice().sort());
 	});
 });
