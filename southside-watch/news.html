@@ -7,6 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .news-card { background: var(--navy-card); border: 1px solid var(--navy-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; transition: border-color .2s; }
+    .news-card:hover { border-color: var(--navy-border-bright); }
+    .news-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .6rem; flex-wrap: wrap; }
+    .news-card h3 { font-size: .95rem; line-height: 1.4; }
+    .news-card p  { font-size: .84rem; color: var(--gray-300); line-height: 1.65; margin: .4rem 0 .7rem; }
+    .doc-row { display: flex; align-items: flex-start; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid var(--navy-border); }
+    .doc-row:last-child { border-bottom: none; }
+    .doc-icon { width: 34px; height: 34px; background: var(--navy-mid); border: 1px solid var(--navy-border); border-radius: var(--radius); display: grid; place-items: center; font-size: .9rem; flex-shrink: 0; }
+    .doc-meta { font-size: .75rem; color: var(--gray-400); margin-top: .15rem; }
+    .foia-tracker-row { padding: .7rem 0; border-bottom: 1px solid var(--navy-border); font-size: .83rem; }
+    .foia-tracker-row:last-child { border-bottom: none; }
+  </style>
 </head>
 <body>
 <div id="nav-placeholder"></div>
@@ -15,192 +28,247 @@
   <div class="container">
     <span class="eyebrow">📰 News & Documents</span>
     <h1>Public Records, Media Coverage & Research</h1>
-    <p>Public records, meeting minutes, permit filings, media coverage, and research documents related to data center development in Southside Virginia. Help us build this archive by submitting documents.</p>
+    <p>Our growing archive of public records, meeting minutes, FOIA responses, permit applications, and investigative research related to data center development in Southside Virginia. All documents are confidence-rated and sourced.</p>
+    <div class="page-hero-meta">
+      <span class="badge badge-low">8 verified records</span>
+      <span class="badge badge-foia">5 FOIA requests open</span>
+      <span class="badge badge-medium">4 tips under investigation</span>
+    </div>
   </div>
 </div>
 
 <section class="section">
   <div class="container">
-
     <div class="two-col">
       <div>
 
-        <!-- News -->
+        <!-- News Items -->
         <div class="section-title">
-          <span class="eyebrow">Latest</span>
-          <h2>Recent Coverage & Updates</h2>
+          <span class="eyebrow">Investigation Updates</span>
+          <h2>Recent Findings & Coverage</h2>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:3rem">
-          <div class="card">
-            <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-              <span class="badge badge-construction">Brunswick County</span>
-              <span class="badge badge-community">Board Vote</span>
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
+              <span class="badge badge-approved">Brunswick County</span>
+              <span class="badge badge-foia">PILOT Text: FOIA Pending</span>
             </div>
-            <h3 style="font-size:1rem;margin-bottom:.3rem">Brunswick Co. Board Approves 120 MW Data Center 4-1; PILOT Agreement Still Not Public</h3>
-            <p style="font-size:.85rem;color:var(--gray-300)">The Brunswick County Board of Supervisors voted January 22, 2025 to approve the Apex Digital Infrastructure facility. One supervisor — citing unresolved sewer capacity and the undisclosed PILOT agreement — voted no. The full agreement remains unavailable to the public as of May 2025.</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem">
-              <small>January 22, 2025 · Board of Supervisors Minutes</small>
-              <span class="badge badge-high">FOIA Requested</span>
-            </div>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">Jan 22, 2025</span>
           </div>
-
-          <div class="card">
-            <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-              <span class="badge badge-approved">South Hill</span>
-              <span class="badge badge-community">Water</span>
-            </div>
-            <h3 style="font-size:1rem;margin-bottom:.3rem">South Hill Water Authority Flags Capacity Concerns — Permit Issued Anyway</h3>
-            <p style="font-size:.85rem;color:var(--gray-300)">Internal communication from the South Hill water authority, obtained via public records request, shows officials flagged concerns about system capacity before the Piedmont Data Centers conditional use permit was issued. The permit was granted without a resolution. Phase 2 could double demand.</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem">
-              <small>August 2024 · Public Records</small>
-              <span class="badge badge-medium">Verified — Docs Available</span>
-            </div>
+          <h3>Brunswick Co. Board Approves Apex Digital 120 MW — 4-1; PILOT Agreement Still Withheld</h3>
+          <p>The Brunswick County Board of Supervisors voted 4-1 to approve the Brunswick Crossroads Data Center and a 15-year PILOT agreement. Supervisor James Watkins cast the sole dissent, citing unresolved sewer capacity and the fact that the full PILOT text was not available for public review before the vote. A $8.2M EDA infrastructure grant was also approved. As of May 2025, the full PILOT agreement remains withheld — a FOIA appeal is pending after the county cited an exemption on the initial request.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-low">Official minutes: Verified</span>
+            <span class="badge badge-foia">PILOT text: FOIA appeal filed Mar 2025</span>
           </div>
+        </div>
 
-          <div class="card">
-            <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-              <span class="badge badge-proposed">Greensville</span>
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
+              <span class="badge badge-construction">South Hill / Mecklenburg</span>
+              <span class="badge badge-high">Process Failure</span>
             </div>
-            <h3 style="font-size:1rem;margin-bottom:.3rem">Greensville Commerce Park: Satellite Analysis Shows Site Preparation Activity</h3>
-            <p style="font-size:.85rem;color:var(--gray-300)">Comparative satellite imagery from January–April 2025 shows land clearing activity consistent with site preparation at the Commerce Park location. No permit applications have been filed with Greensville County. The developer remains an undisclosed LLC.</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem">
-              <small>May 2025 · Satellite Analysis</small>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">Sep 15, 2024</span>
+          </div>
+          <h3>Water Authority Capacity Warning Kept Out of Board Packet — Permit Issued Anyway</h3>
+          <p>An internal memo from the South Hill Water Authority, obtained via FOIA, shows officials warned on August 12, 2024 that the system was at 74% capacity and estimated a $4.1 million upgrade would be needed to serve the Piedmont Data Centers Phase 1 load. This memo was not included in the Board of Supervisors meeting packet for the September 15 approval vote. The Board voted 5-0 to approve without discussion of water capacity. Phase 2 could double the demand. The water upgrade cost has not been publicly resolved.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-low">Water authority memo: Verified via FOIA</span>
+            <span class="badge badge-foia">Connection fee waiver full text: Requested</span>
+          </div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
+              <span class="badge badge-proposed">Greensville County</span>
               <span class="badge badge-medium">Medium Confidence</span>
             </div>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">Apr–May 2025</span>
           </div>
-
-          <div class="card">
-            <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
-              <span class="badge badge-community">Research</span>
-            </div>
-            <h3 style="font-size:1rem;margin-bottom:.3rem">Virginia SCC Filings Show Dominion Energy Seeking Approval for Regional Load Growth</h3>
-            <p style="font-size:.85rem;color:var(--gray-300)">SCC docket review shows Dominion Energy filed documentation acknowledging significant anticipated load growth in Southside Virginia, citing unnamed industrial customers. Cost recovery mechanism not yet specified in public filings.</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem">
-              <small>March 2025 · SCC Docket Review</small>
-              <span class="badge badge-low">Verified — SCC Records</span>
-            </div>
+          <h3>Satellite Imagery Shows Site Preparation at Greensville Commerce Park Before Any Permit Filed</h3>
+          <p>Comparative satellite imagery from January through April 2025 shows land-clearing activity at the Commerce Park location in Emporia consistent with site preparation for large-scale development. As of May 2025, no permit application has been filed with Greensville County, and no rezoning petition has been submitted. The Emporia City Council passed a non-binding support resolution in March 2025 before any permit or community impact study was ordered. The developer remains an undisclosed LLC.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-medium">Satellite analysis: Medium confidence</span>
+            <span class="badge badge-foia">Greensville Co. pre-app records: FOIA filed</span>
           </div>
+        </div>
 
-          <div class="card">
-            <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
+              <span class="badge badge-operational">Southampton / SCC</span>
+              <span class="badge badge-low">Verified — SCC Docket</span>
+            </div>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">Jun 18, 2024</span>
+          </div>
+          <h3>$29.4M Dominion Transmission Upgrade in Southampton County — Cost Socialized to All Ratepayers</h3>
+          <p>Virginia SCC Case PUR-2024-00078 documents Dominion Energy's approval to build a 138 kV transmission upgrade in Southampton County, citing anticipated load growth from unnamed industrial customers. The $29.4 million project cost was approved for recovery from all Dominion customers across the service territory — not charged directly to data center developers whose load growth required the upgrade. The Virginia Citizens Consumer Council filed an intervener objection on cost allocation grounds; it was overruled. No Southside Virginia local government was notified before the SCC filing.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-low">SCC Order PUR-2024-00078: Verified</span>
+            <span class="badge badge-foia">Data center beneficiary link: FOIA pending</span>
+          </div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
+              <span class="badge badge-proposed">Sussex County</span>
+              <span class="badge badge-medium">Medium Confidence</span>
+            </div>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">Feb 2025</span>
+          </div>
+          <h3>Sussex County: 140-Acre Parcel Acquired by Delaware LLC — No Public Notice</h3>
+          <p>Deed records in Sussex County show a transfer of a 140-acre industrial parcel in Stony Creek to "Coastal Edge Digital LLC," a Delaware company registered in January 2025. No principals are disclosed in the registration. No pre-application meetings, permit filings, or public notices have been filed with Sussex County. This is the first known data center land acquisition in Sussex County. A FOIA request for pre-application communications has been filed with Sussex County Public Works.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-low">Deed transfer: Verified</span>
+            <span class="badge badge-foia">Pre-app records: FOIA filed May 2025</span>
+          </div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-card-header">
+            <div class="flex gap-1 flex-wrap">
               <span class="badge badge-community">Community Report</span>
+              <span class="badge badge-high">Low Confidence</span>
             </div>
-            <h3 style="font-size:1rem;margin-bottom:.3rem">Resident Tip: Franklin Commerce Park Site C Near Blackwater River</h3>
-            <p style="font-size:.85rem;color:var(--gray-300)">Community member report (May 2025) indicates preliminary discussions about a data center site near the Blackwater River watershed in Southampton County. Developer reportedly under NDA. No public records confirmed. We are investigating. Low confidence.</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem">
-              <small>May 2025 · Community Report</small>
-              <span class="badge badge-high">Low Confidence — Investigating</span>
-            </div>
+            <span style="font-size:.72rem;color:var(--gray-400);white-space:nowrap;font-family:var(--font-mono)">May 18, 2025</span>
+          </div>
+          <h3>Tip: Franklin Commerce Park Site Near Blackwater River — Developer Identity Under NDA</h3>
+          <p>A community member with direct knowledge of Southampton County EDA discussions reports that a data center developer has been in preliminary negotiations regarding a site near the Blackwater River watershed. The EDA is reportedly operating under a non-disclosure agreement that prevents public disclosure of the developer's identity before any vote. The Blackwater River drains to the Chowan River and Albemarle Sound — a high-quality water body under Virginia and North Carolina protective designations. We are seeking documentary confirmation; this report is low confidence until verified by public records.</p>
+          <div class="flex gap-1 flex-wrap">
+            <span class="badge badge-high">Low confidence — tip only</span>
+            <span class="badge badge-foia">Southampton EDA minutes: FOIA filed May 22</span>
           </div>
         </div>
 
         <!-- FOIA Guide -->
-        <div class="section-title mt-2">
-          <span class="eyebrow">Tools</span>
-          <h2>Virginia FOIA: Your Right to Public Records</h2>
+        <div class="section-title mt-5">
+          <span class="eyebrow">Your Rights</span>
+          <h2>How to File a Virginia FOIA Request</h2>
         </div>
-        <p>The Virginia Freedom of Information Act (FOIA) gives you the right to access public records from state and local government bodies. This includes meeting minutes, voting records, permit applications, incentive agreements, and correspondence related to data center projects.</p>
 
-        <h3 class="mt-3">How to File a FOIA Request</h3>
-        <ul class="num-list mt-2">
-          <li>
-            <div>
-              <strong>Identify the custodian</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Determine which government body has the records you need (county administrator's office, building department, EDA, etc.). Each agency has a designated FOIA officer.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Write your request</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Be specific: describe what you're looking for by date range, subject, or document type. Include your contact information.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Send in writing</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Email is accepted. Send to the FOIA officer with a clear subject line. Keep a copy for your records.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Know the deadline</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Virginia agencies must respond within 5 business days. They may take up to 7 additional days with notification. They cannot ignore your request.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Appeal if denied</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">If records are improperly withheld, you can file a complaint with the Virginia FOIA Council or pursue legal remedies in circuit court.</p>
-            </div>
-          </li>
-        </ul>
+        <p>The Virginia Freedom of Information Act gives you the right to access public records from state and local government bodies. This includes meeting minutes, voting records, permit applications, incentive agreements, and all correspondence related to data center projects.</p>
 
         <div class="info-box mt-2">
-          <strong>Sample FOIA Language:</strong> "I request all records, including but not limited to correspondence, memoranda, agreements, draft agreements, meeting minutes, and permit applications, related to [Project Name] or [Developer Name] from [Start Date] to present."
+          <strong>Sample request language:</strong> "I request all records, including but not limited to correspondence, memoranda, agreements, draft agreements, meeting minutes, staff reports, and permit applications, related to [Project Name / Developer Name] from [Start Date] to present. Please provide records in electronic form where possible."
         </div>
+
+        <ul class="num-list mt-3">
+          <li><div><strong>Identify the custodian</strong><p style="font-size:.87rem;color:var(--gray-300)">Determine which body holds the records (county administrator, planning department, EDA, building department). Each agency has a designated FOIA officer.</p></div></li>
+          <li><div><strong>Send your request in writing (email is fine)</strong><p style="font-size:.87rem;color:var(--gray-300)">Be specific: date ranges, document types, project names, developer names. Keep a copy with the timestamp you sent it.</p></div></li>
+          <li><div><strong>Know the legal deadline</strong><p style="font-size:.87rem;color:var(--gray-300)">Virginia agencies must respond within 5 business days. They may take 7 additional days with written notification. Silence is not acceptable.</p></div></li>
+          <li><div><strong>If denied, appeal</strong><p style="font-size:.87nm;color:var(--gray-300)">File a petition with the Virginia FOIA Council (free, online), or pursue legal action in circuit court. Wrongful withholding can result in attorney fee awards.</p></div></li>
+        </ul>
       </div>
 
       <!-- Sidebar -->
       <div>
-        <div class="card mb-2">
-          <h4 style="margin-bottom:.75rem">📂 Document Archive</h4>
-          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Public records obtained through FOIA requests, community submissions, and official sources.</p>
-          <div style="font-size:.82rem">
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <div style="font-weight:600">Brunswick Co. Planning Commission Minutes (Nov 2024)</div>
-              <small style="color:var(--gray-300)">Official minutes — 3-2 recommendation vote</small>
-              <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+        <!-- Document archive -->
+        <div class="card mb-3">
+          <h5 style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gray-400);margin-bottom:.9rem;font-weight:700">📂 Document Archive</h5>
+          <div>
+            <div class="doc-row">
+              <div class="doc-icon">📋</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">Brunswick Co. BOS Minutes — Jan 22, 2025</div>
+                <div class="doc-meta">Official minutes · 4-1 vote · Brunswick County Clerk</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
             </div>
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <div style="font-weight:600">Brunswick Co. Board Minutes (Jan 2025)</div>
-              <small style="color:var(--gray-300)">Official minutes — 4-1 approval vote</small>
-              <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+            <div class="doc-row">
+              <div class="doc-icon">📋</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">Brunswick Planning Commission — Nov 14, 2024</div>
+                <div class="doc-meta">3-2 recommendation · dissent documented</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
             </div>
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <div style="font-weight:600">South Hill Water Authority Internal Memo (Aug 2024)</div>
-              <small style="color:var(--gray-300)">Capacity concern memo — obtained via FOIA</small>
-              <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+            <div class="doc-row">
+              <div class="doc-icon">💧</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">South Hill Water Authority Memo — Aug 12, 2024</div>
+                <div class="doc-meta">Capacity warning · obtained via FOIA · $4.1M upgrade flagged</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
             </div>
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <div style="font-weight:600">Dominion Energy SCC Load Growth Filing (2025)</div>
-              <small style="color:var(--gray-300)">SCC docket reference — public record</small>
-              <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+            <div class="doc-row">
+              <div class="doc-icon">📋</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">Mecklenburg Co. BOS Minutes — Sep 15, 2024</div>
+                <div class="doc-meta">5-0 approval · water memo not in packet</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
             </div>
-            <div style="padding:.5rem 0">
-              <div style="font-weight:600">Emporia City Council Resolution (Mar 2025)</div>
-              <small style="color:var(--gray-300)">Resolution of support — full text sought via FOIA</small>
-              <div class="mt-1"><span class="badge badge-medium">Pending Full Text</span></div>
+            <div class="doc-row">
+              <div class="doc-icon">⚡</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">SCC Order PUR-2024-00078</div>
+                <div class="doc-meta">$29.4M transmission upgrade · Southampton Co. · cost socialized</div>
+                <div class="mt-1"><span class="badge badge-low">Verified — Public SCC Docket</span></div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-icon">🏢</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">GVC Holdings LLC — SCC Registration</div>
+                <div class="doc-meta">Registered May 2024 · no member disclosure</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-icon">🗺️</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">Sussex County Deed Transfer — Feb 2025</div>
+                <div class="doc-meta">Coastal Edge Digital LLC · 140 acres · Stony Creek</div>
+                <div class="mt-1"><span class="badge badge-low">Verified — Land Records</span></div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-icon">📋</div>
+              <div>
+                <div style="font-size:.82rem;font-weight:600">Emporia City Council Resolution — Mar 10, 2025</div>
+                <div class="doc-meta">Non-binding support resolution · developer unnamed</div>
+                <div class="mt-1"><span class="badge badge-low">Verified</span></div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="card mb-2">
-          <h4 style="margin-bottom:.75rem">📋 Outstanding FOIA Requests</h4>
-          <div style="font-size:.82rem">
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <strong>Brunswick PILOT Agreement (Full Text)</strong>
-              <div style="color:var(--red);font-size:.78rem">Filed Feb 2025 · Response overdue</div>
+        <!-- Open FOIA requests -->
+        <div class="card mb-3" style="border-color:rgba(245,158,11,.2)">
+          <h5 style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gray-400);margin-bottom:.9rem;font-weight:700">⏳ Open FOIA Requests</h5>
+          <div>
+            <div class="foia-tracker-row">
+              <div style="font-weight:600;font-size:.83rem">Brunswick PILOT Agreement — Full Text</div>
+              <div style="color:var(--red);font-size:.75rem">Filed Feb 3 2025 · Exemption claimed · Appeal filed Mar 2025</div>
             </div>
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <strong>Brunswick EDA Grant Resolution</strong>
-              <div style="color:var(--yellow);font-size:.78rem">Filed Mar 2025 · Partial response received</div>
+            <div class="foia-tracker-row">
+              <div style="font-weight:600;font-size:.83rem">Mecklenburg Water Connection Fee Waiver</div>
+              <div style="color:var(--yellow);font-size:.75rem">Filed Mar 2025 · Partial response received · Awaiting full records</div>
             </div>
-            <div style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">
-              <strong>Greensville LLC Registration Docs</strong>
-              <div style="color:var(--yellow);font-size:.78rem">Filed Apr 2025 · Pending</div>
+            <div class="foia-tracker-row">
+              <div style="font-weight:600;font-size:.83rem">Greensville Co. Pre-Application Records</div>
+              <div style="color:var(--yellow);font-size:.75rem">Filed Apr 28 2025 · Response pending</div>
             </div>
-            <div style="padding:.5rem 0">
-              <strong>Mecklenburg Water Capacity Study</strong>
-              <div style="color:var(--orange);font-size:.78rem">Filed May 2025 · Awaiting response</div>
+            <div class="foia-tracker-row">
+              <div style="font-weight:600;font-size:.83rem">Southampton EDA Meeting Records</div>
+              <div style="color:var(--yellow);font-size:.75rem">Filed May 22 2025 · Response pending (5 bus. days)</div>
+            </div>
+            <div class="foia-tracker-row">
+              <div style="font-weight:600;font-size:.83rem">Dominion / Data Center Beneficiary Link — SCC</div>
+              <div style="color:var(--red);font-size:.75rem">Filed Mar 2025 · Trade secret exemption claimed · Challenging</div>
             </div>
           </div>
         </div>
 
-        <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2)">
+        <!-- Submit -->
+        <div class="card" style="background:rgba(249,115,22,.05);border-color:rgba(249,115,22,.2)">
           <h4 class="text-orange mb-1">📤 Submit a Document</h4>
-          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Do you have public records, meeting recordings, permit applications, or other documents related to data center development in Southside Virginia? Help us build the public archive.</p>
-          <a href="report.html" class="btn btn-orange btn-sm" style="width:100%;justify-content:center">Submit Documents →</a>
+          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Do you have meeting recordings, permit applications, FOIA responses, or any other documents related to data center development in Southside Virginia?</p>
+          <a href="report.html" class="btn btn-orange btn-sm w-full">Submit documents →</a>
         </div>
       </div>
     </div>

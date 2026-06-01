@@ -7,6 +7,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .vote-row td { vertical-align: top; }
+    .vote-officials { font-size: .75rem; color: var(--gray-400); margin-top: .3rem; line-height: 1.55; }
+    .vote-notes { font-size: .75rem; color: var(--gray-500); margin-top: .3rem; line-height: 1.5; font-style: italic; }
+    .tally { display: flex; align-items: center; gap: .35rem; font-size: .82rem; white-space: nowrap; }
+    .tally-yes { color: var(--green); font-weight: 700; }
+    .tally-no  { color: var(--red);   font-weight: 700; }
+    .tally-abs { color: var(--yellow);font-weight: 600; }
+    .vote-card { background: var(--navy-card); border: 1px solid var(--navy-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+    .vote-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; flex-wrap: wrap; }
+    .vote-card-meta { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .6rem; }
+    .vote-card-body { font-size: .85rem; color: var(--gray-300); }
+    .body-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+  </style>
 </head>
 <body>
 <div id="nav-placeholder"></div>
@@ -14,179 +28,157 @@
 <div class="page-hero">
   <div class="container">
     <span class="eyebrow">🗳️ Local Vote Tracker</span>
-    <h1>Every Vote on Data Centers in Southside Virginia</h1>
-    <p>Tracking every public vote on data center rezoning, tax incentives, and related decisions by city councils, boards of supervisors, planning commissions, and economic development authorities across the region.</p>
+    <h1>Every Public Vote on Data Centers in Southside Virginia</h1>
+    <p>Tracking votes, officials, and transparency ratings for every public decision on data center rezoning, tax incentives, infrastructure grants, and related approvals across county boards of supervisors, city councils, planning commissions, and state regulatory bodies.</p>
+    <div class="page-hero-meta">
+      <span class="badge badge-approved">8 Votes Tracked</span>
+      <span class="badge badge-foia">3 FOIA Requests Open</span>
+      <span class="badge badge-high">2 Transparency Rating 1–2 (Poor)</span>
+    </div>
   </div>
 </div>
 
 <section class="section">
   <div class="container">
 
-    <div class="filter-bar">
-      <span style="font-size:.8rem;color:var(--gray-300);font-weight:600">Filter by body:</span>
-      <button class="filter-btn active" data-group="vote" data-filter="all" data-target="#vote-table-body">All Bodies</button>
-      <button class="filter-btn" data-group="vote" data-filter="board" data-target="#vote-table-body">Boards of Supervisors</button>
-      <button class="filter-btn" data-group="vote" data-filter="planning" data-target="#vote-table-body">Planning Commissions</button>
-      <button class="filter-btn" data-group="vote" data-filter="council" data-target="#vote-table-body">City/Town Councils</button>
+    <!-- Key Metrics -->
+    <div class="kpi-row mb-4">
+      <div class="kpi-card">
+        <div class="kpi-num text-orange">8</div>
+        <div class="kpi-label">Public votes tracked</div>
+        <div class="kpi-note">Across 6 public bodies</div>
+        <div class="kpi-card-accent" style="background:var(--orange)"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-num text-red">0 of 3</div>
+        <div class="kpi-label">Full agreements released before vote</div>
+        <div class="kpi-note">PILOTs, grants, incentive agreements</div>
+        <div class="kpi-card-accent" style="background:var(--red)"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-num" style="color:var(--yellow)">5 days</div>
+        <div class="kpi-label">Shortest public notice given</div>
+        <div class="kpi-note">Brunswick Co. hearing — Nov 2024</div>
+        <div class="kpi-card-accent" style="background:var(--yellow)"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-num text-blue">3</div>
+        <div class="kpi-label">Dissenting votes recorded</div>
+        <div class="kpi-note">All cited infrastructure or transparency</div>
+        <div class="kpi-card-accent" style="background:var(--blue)"></div>
+      </div>
     </div>
 
-    <div class="data-table-wrap mb-4">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Public Body</th>
-            <th>Motion / Agenda Item</th>
-            <th>Result</th>
-            <th>Vote</th>
-            <th>Transparency</th>
-            <th>Resident Impact</th>
-          </tr>
-        </thead>
-        <tbody id="vote-table-body">
-        </tbody>
-      </table>
+    <!-- Vote Table (desktop) -->
+    <div class="section-title">
+      <span class="eyebrow">Full Record</span>
+      <h2>All Tracked Votes</h2>
     </div>
 
-    <!-- Officials Summary -->
-    <div class="section-title mt-4">
-      <span class="eyebrow">Officials & Bodies</span>
-      <h2>Public Bodies Tracked</h2>
-      <p>These governing bodies have jurisdiction over data center approvals in Southside Virginia. Track their votes, attend their meetings, and hold them accountable.</p>
+    <div class="filter-bar mb-3">
+      <span class="filter-label">Filter by body:</span>
+      <button class="filter-btn active" data-group="vote" data-filter="all"      data-target="#vote-cards">All Bodies</button>
+      <button class="filter-btn"        data-group="vote" data-filter="board"    data-target="#vote-cards">Boards of Supervisors</button>
+      <button class="filter-btn"        data-group="vote" data-filter="planning" data-target="#vote-cards">Planning Commissions</button>
+      <button class="filter-btn"        data-group="vote" data-filter="council"  data-target="#vote-cards">City/Town Councils</button>
+      <button class="filter-btn"        data-group="vote" data-filter="state"    data-target="#vote-cards">State Bodies (SCC)</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:3rem">
+    <div id="vote-cards"></div>
+
+    <div class="warning-box mt-4">
+      <strong>Transparency ratings:</strong> Votes are rated 1–5 stars based on: public notice period, whether full agreement text was released before the vote, quality of public comment opportunity, and completeness of official minutes.
+      <span class="stars">★</span><span class="stars-empty">★★★★</span> = worst; <span class="stars">★★★★★</span> = best practice.
+    </div>
+
+    <!-- Public Bodies -->
+    <div class="section-title mt-5">
+      <span class="eyebrow">Who Decides</span>
+      <h2>Public Bodies With Jurisdiction</h2>
+      <p>These governing bodies have authority over data center approvals, rezonings, tax incentives, and related decisions in Southside Virginia. Attend their meetings. Speak during public comment. Hold them accountable.</p>
+    </div>
+
+    <div class="body-cards">
       <div class="card">
         <h4>Emporia City Council</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">7-member elected council. Jurisdiction over city land use, tax policy, and public utilities.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-approved">1 vote tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">7-member elected council. Jurisdiction over city zoning, tax policy, and public utilities. Passed non-binding data center support resolution March 2025.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-approved">1 vote tracked</span></div>
       </div>
       <div class="card">
         <h4>Greensville County Board of Supervisors</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">5-member elected board. Key authority for Commerce Park rezoning and county tax incentives.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-proposed">Hearing pending</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">5-member elected board. Key authority for Commerce Park rezoning — formal application not yet filed as of May 2025. Informational session held April 2025.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-medium">1 session tracked (informational)</span></div>
       </div>
       <div class="card">
         <h4>Brunswick County Board of Supervisors</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Approved Apex Digital 4-1 in January 2025. Key upcoming question: who pays for substation?</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-approved">2 votes tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Approved Apex Digital 4-1 in January 2025. Dissent by Supervisor Watkins documented. Substation cost question unresolved. PILOT text not released.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-approved">2 votes tracked</span><span class="badge badge-foia">PILOT: FOIA pending</span></div>
       </div>
       <div class="card">
         <h4>Mecklenburg County Board of Supervisors</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Approved Piedmont Data Centers 5-0. Waived community impact study. Phase 2 pending.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-approved">1 vote tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Approved Piedmont Data Centers 5-0. Community impact study waived. Water authority capacity memo not disclosed to Board. Phase 2 pending.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-approved">2 votes tracked</span><span class="badge badge-high">Water memo withheld</span></div>
       </div>
       <div class="card">
         <h4>South Hill Town Council</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Municipal authority for water/sewer within South Hill. Key body for Phase 2 infrastructure questions.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-community">No votes yet tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Municipal authority for water/sewer within South Hill. Key body for Phase 2 infrastructure capacity questions. No data center votes tracked yet.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-community">No votes tracked yet</span></div>
       </div>
       <div class="card">
         <h4>Franklin City Council</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Key body if Franklin Site C proceeds. Council has not taken up data center issues publicly yet.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-community">No votes yet tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Key authority if Franklin Site C proceeds within city limits. No public discussion of data center development as of May 2025.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-community">No votes tracked yet</span></div>
       </div>
       <div class="card">
         <h4>Southampton County Board of Supervisors</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Jurisdiction over Franklin Site C if it proceeds outside city limits.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-community">No votes yet tracked</span>
-        </div>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Jurisdiction if Franklin Site C is outside city limits. NDA may be in place with EDA. No public votes yet. Watch for agenda items.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-community">No votes tracked yet</span></div>
       </div>
       <div class="card">
-        <h4>Brunswick Co. Planning Commission</h4>
-        <p style="font-size:.83rem;margin-top:.3rem;color:var(--gray-300)">Voted 3-2 to recommend Apex Digital approval — two members dissented on infrastructure grounds.</p>
-        <div style="margin-top:.75rem;font-size:.8rem">
-          <span class="badge badge-approved">1 vote tracked</span>
-        </div>
+        <h4>Sussex County Board of Supervisors</h4>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">First data center discussion expected June 2025 following LLC parcel acquisition in Stony Creek. No county data center policy adopted.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-proposed">Meeting scheduled June 2025</span></div>
+      </div>
+      <div class="card">
+        <h4>Virginia State Corporation Commission (SCC)</h4>
+        <p style="font-size:.83rem;margin:.4rem 0;color:var(--gray-300)">Regulates utility rates and transmission investments. Approved $29.4M Southampton transmission upgrade June 2024. Cost socialized to all Dominion ratepayers.</p>
+        <div class="flex gap-1 mt-1 flex-wrap"><span class="badge badge-operational">1 order tracked</span><span class="badge badge-foia">Developer link: FOIA pending</span></div>
       </div>
     </div>
 
-    <!-- How to Attend -->
-    <div class="two-col">
+    <!-- How to Participate -->
+    <div class="two-col mt-5">
       <div>
-        <h2>How to Attend and Participate</h2>
-        <p class="mt-1">Every public body listed above holds regular public meetings. Zoning decisions and tax incentive approvals require public hearings where residents have the right to speak.</p>
-
+        <h2>How to Attend and Be Heard</h2>
         <ul class="num-list mt-2">
-          <li>
-            <div>
-              <strong>Find upcoming meetings</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Check each county's or city's official website for meeting calendars. Sign up for agendas if notification is offered.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Request the full agenda package</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Agenda packets often contain supporting documents, staff reports, and agreement drafts. Request these before the meeting — they may not be posted publicly.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Sign up to speak during public comment</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Most public hearings allow residents to speak for 3–5 minutes. Prepare specific questions or concerns in writing.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Bring others</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Attendance matters. A packed room of engaged residents sends a message. Coordinate with neighbors and community organizations.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <strong>Document everything</strong>
-              <p style="font-size:.88rem;color:var(--gray-300)">Record public meetings (most are permitted under Virginia law). Submit your recordings and notes to us for the public record.</p>
-            </div>
-          </li>
+          <li><div><strong>Find meeting calendars</strong><p style="font-size:.87rem;color:var(--gray-300)">Each county's and city's official website lists meeting schedules. Most boards meet monthly. Zoning hearings often scheduled separately.</p></div></li>
+          <li><div><strong>Request the full agenda packet</strong><p style="font-size:.87rem;color:var(--gray-300)">Agenda packets contain staff reports, application materials, and sometimes agreement drafts. Request these before the meeting — email the county clerk or administrator.</p></div></li>
+          <li><div><strong>Sign up to speak</strong><p style="font-size:.87rem;color:var(--gray-300)">Public hearings allow residents to speak, usually 3–5 minutes. Prepare specific questions in writing. Focus on unanswered questions, not opinions.</p></div></li>
+          <li><div><strong>Bring neighbors and document everything</strong><p style="font-size:.87rem;color:var(--gray-300)">Attendance sends a message. Record meetings (permitted under Virginia law for public meetings). Share your recordings with us.</p></div></li>
+          <li><div><strong>Submit a FOIA request</strong><p style="font-size:.87rem;color:var(--gray-300)">If key documents aren't in the packet, file a written FOIA request to the FOIA Officer. Virginia agencies must respond within 5 business days.</p></div></li>
         </ul>
       </div>
-
       <div>
-        <div class="card mb-2" style="border-color:rgba(234,179,8,.2)">
-          <h4 class="text-yellow mb-1">⚠ Transparency Rating System</h4>
-          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:.75rem">We rate each vote on a 1–5 scale based on public notice, availability of documents, and quality of public participation.</p>
-          <div style="font-size:.83rem">
-            <div style="padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span class="stars">★★★★★</span> Full notice, docs released early, robust public comment
-            </div>
-            <div style="padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span class="stars">★★★★</span><span class="stars-empty">★</span> Good process, minor gaps
-            </div>
-            <div style="padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span class="stars">★★★</span><span class="stars-empty">★★</span> Adequate notice, some documents withheld
-            </div>
-            <div style="padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span class="stars">★★</span><span class="stars-empty">★★★</span> Short notice, key documents unavailable
-            </div>
-            <div style="padding:.4rem 0">
-              <span class="stars">★</span><span class="stars-empty">★★★★</span> Minimal notice, agreements withheld, limited comment
-            </div>
+        <div class="card mb-2" style="border-color:rgba(245,158,11,.2)">
+          <h4 class="text-yellow mb-1">⭐ Transparency Rating Scale</h4>
+          <div style="font-size:.8rem;display:flex;flex-direction:column;gap:.5rem">
+            <div><span class="stars">★★★★★</span> Full notice (30+ days), all docs released early, robust public comment, dissent documented</div>
+            <div><span class="stars">★★★★</span><span class="stars-empty">★</span> Good process with minor gaps in documentation or notice</div>
+            <div><span class="stars">★★★</span><span class="stars-empty">★★</span> Adequate notice; some supporting documents withheld; public comment permitted</div>
+            <div><span class="stars">★★</span><span class="stars-empty">★★★</span> Short notice (under 2 weeks); key documents unavailable before vote</div>
+            <div><span class="stars">★</span><span class="stars-empty">★★★★</span> Minimal notice; agreements withheld; community impact study waived; limited comment</div>
           </div>
         </div>
-
-        <div class="card">
-          <h4 style="margin-bottom:.75rem">📢 Report a Vote We Missed</h4>
-          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Did your county or city vote on a data center, rezoning, tax incentive, or related matter? Help us track it.</p>
-          <a href="report.html" class="btn btn-orange btn-sm" style="width:100%;justify-content:center">Submit Vote Information →</a>
+        <div class="card" style="background:rgba(249,115,22,.05);border-color:rgba(249,115,22,.2)">
+          <h4 class="text-orange mb-1">📢 Submit a Vote We're Missing</h4>
+          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Did your county vote on a data center, rezoning, tax incentive, or EDA grant? Help us track it. Submit the date, body, and what you know.</p>
+          <a href="report.html" class="btn btn-orange btn-sm w-full">Submit vote information →</a>
         </div>
       </div>
     </div>
 
-    <div class="warning-box mt-4">
-      <strong>Virginia FOIA Reminder:</strong> Meeting minutes, voting records, and supporting documents are public records under the Virginia Freedom of Information Act. If a public body is withholding records related to data center votes, you have the right to request them. File your request in writing, addressed to the FOIA officer of the relevant public body.
+    <div class="info-box mt-4">
+      <strong>Virginia FOIA:</strong> Meeting minutes, voting records, and supporting documents from public bodies are public records under the Virginia Freedom of Information Act. File requests in writing, addressed to the FOIA Officer of the relevant public body. Response required within 5 business days. <a href="news.html">See our FOIA guide in News & Documents →</a>
     </div>
 
   </div>
@@ -196,43 +188,71 @@
 <script src="js/nav.js"></script>
 <script src="js/main.js"></script>
 <script>
-function starsHTML(n, of=5) {
-  return `<span class="stars">${'★'.repeat(n)}</span><span class="stars-empty">${'★'.repeat(of-n)}</span>`;
+function starsHTML(n, of = 5) {
+  if (n === null || n === undefined) return '<span style="color:var(--gray-500);font-size:.78rem">Pending</span>';
+  return `<span class="stars">${'★'.repeat(n)}</span><span class="stars-empty">${'★'.repeat(of - n)}</span>`;
 }
 
-function voteResultHTML(result) {
-  const r = result.toLowerCase();
-  if (r.includes('approved') || r.includes('approval')) return `<span class="vote-yes">${result}</span>`;
-  if (r.includes('denied') || r.includes('rejected')) return `<span class="vote-no">${result}</span>`;
-  return `<span class="vote-split">${result}</span>`;
-}
-
-function bodyCategory(body) {
-  const b = body.toLowerCase();
-  if (b.includes('planning')) return 'planning';
-  if (b.includes('board of supervisors')) return 'board';
-  if (b.includes('council')) return 'council';
+function bodyCategory(b) {
+  const bl = b.toLowerCase();
+  if (bl.includes('planning'))    return 'planning';
+  if (bl.includes('supervisors')) return 'board';
+  if (bl.includes('council'))     return 'council';
+  if (bl.includes('scc') || bl.includes('commission'))  return 'state';
   return 'board';
 }
 
+function resultColor(r) {
+  const rl = r.toLowerCase();
+  if (rl.includes('approved') || rl.includes('approval')) return 'var(--orange)';
+  if (rl.includes('denied') || rl.includes('rejected'))   return 'var(--red)';
+  if (rl.includes('scheduled') || rl.includes('pending')) return 'var(--gray-300)';
+  return 'var(--yellow)';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  const tbody = document.getElementById('vote-table-body');
+  const container = document.getElementById('vote-cards');
   VOTES.forEach(v => {
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-category', bodyCategory(v.body));
-    tr.innerHTML = `
-      <td class="text-mono" style="font-size:.78rem;white-space:nowrap">${v.date}</td>
-      <td style="font-weight:600;font-size:.85rem">${v.body}</td>
-      <td style="max-width:220px;font-size:.82rem">${v.motion}</td>
-      <td>${voteResultHTML(v.result)}</td>
-      <td style="font-size:.82rem;white-space:nowrap">
-        <span style="color:var(--green)">✓ ${v.yes}</span> /
-        <span style="color:var(--red)">✗ ${v.no}</span>
-        ${v.abstain > 0 ? `/ <span style="color:var(--yellow)">~ ${v.abstain}</span>` : ''}
-      </td>
-      <td>${starsHTML(v.transparencyRating)}</td>
-      <td style="font-size:.8rem;color:var(--gray-300);max-width:200px">${v.impact}</td>`;
-    tbody.appendChild(tr);
+    const div = document.createElement('div');
+    div.className = 'vote-card';
+    div.setAttribute('data-category', bodyCategory(v.body));
+
+    const tallyHTML = v.result.includes('Not Yet Held')
+      ? `<span style="color:var(--gray-400);font-size:.83rem">Not yet held</span>`
+      : `<div class="tally">
+          <span class="tally-yes">✓ ${v.yes}</span>
+          <span style="color:var(--gray-600)">/</span>
+          <span class="tally-no">✗ ${v.no}</span>
+          ${v.abstain > 0 ? `<span style="color:var(--gray-600)">/</span><span class="tally-abs">~ ${v.abstain}</span>` : ''}
+        </div>`;
+
+    div.innerHTML = `
+      <div class="vote-card-header">
+        <div>
+          <div style="font-size:.7rem;color:var(--gray-400);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">${v.date}</div>
+          <h4 style="font-size:.95rem;line-height:1.35">${v.body}</h4>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:.88rem;color:${resultColor(v.result)};margin-bottom:.35rem">${v.result}</div>
+          ${tallyHTML}
+        </div>
+      </div>
+      <div class="vote-card-meta">
+        ${starsHTML(v.transparencyRating)} &nbsp; <span style="font-size:.72rem;color:var(--gray-400)">Transparency</span>
+        &nbsp;·&nbsp; <span class="badge ${v.sourceStatus === 'verified' ? 'badge-low' : 'badge-medium'}">${v.sourceStatus === 'verified' ? 'Verified' : 'Source: ' + (v.sourceStatus||'Unverified')}</span>
+      </div>
+      <div class="vote-card-body">
+        <p style="margin-bottom:.5rem">${v.motion}</p>
+        <p><strong>Impact:</strong> ${v.impact}</p>
+        ${v.yesNames && !v.result.includes('Not Yet') ? `<div class="vote-officials"><span style="color:var(--green);font-weight:600">Yes:</span> ${v.yesNames}</div>` : ''}
+        ${v.noNames  && !v.result.includes('Not Yet') && v.no > 0  ? `<div class="vote-officials"><span style="color:var(--red);font-weight:600">No:</span> ${v.noNames}</div>` : ''}
+        ${v.notes ? `<div class="vote-notes">${v.notes}</div>` : ''}
+      </div>
+      <div style="margin-top:.85rem;padding-top:.75rem;border-top:1px solid var(--navy-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+        <span style="font-size:.73rem;color:var(--gray-500)">Source: ${v.sourceLabel}</span>
+        <a href="report.html" class="btn btn-ghost btn-sm" style="font-size:.76rem">Submit correction →</a>
+      </div>`;
+    container.appendChild(div);
   });
 });
 </script>

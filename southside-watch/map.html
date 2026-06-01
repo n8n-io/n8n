@@ -9,29 +9,57 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    #map { height: 560px; }
+    #map { height: 580px; }
+
+    /* ── Leaflet popup dark theme ── */
     .leaflet-popup-content-wrapper {
-      background: #151d30; border: 1px solid #1e2d4a; border-radius: 8px; color: #f8fafc;
-      box-shadow: 0 8px 32px rgba(0,0,0,.5); max-width: 340px;
+      background: #0f1829; border: 1px solid #1c2e4a; border-radius: 10px;
+      color: #f1f5f9; box-shadow: 0 12px 48px rgba(0,0,0,.65);
+      max-width: 360px; padding: 0;
     }
-    .leaflet-popup-tip { background: #151d30; }
-    .leaflet-popup-content { margin: 0; padding: 0; font-family: Inter, sans-serif; }
-    .popup-header { background: #1a2540; padding: .85rem 1rem; border-radius: 8px 8px 0 0; border-bottom: 1px solid #1e2d4a; }
-    .popup-header h4 { font-size: .9rem; font-weight: 700; color: #f8fafc; margin: 0 0 .3rem; }
-    .popup-body { padding: .9rem 1rem; max-height: 340px; overflow-y: auto; }
-    .popup-row { display: flex; gap: .5rem; margin-bottom: .4rem; font-size: .78rem; }
-    .popup-row .lbl { color: #64748b; min-width: 110px; flex-shrink: 0; }
-    .popup-row .val { color: #e2e8f0; }
-    .popup-row .val a { color: #38bdf8; }
-    .popup-section { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #1e2d4a; }
-    .popup-section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: #64748b; margin-bottom: .4rem; font-weight: 700; }
-    .popup-risk { background: rgba(239,68,68,.1); border-left: 3px solid #ef4444; padding: .4rem .6rem; border-radius: 0 4px 4px 0; font-size: .78rem; color: #fca5a5; margin-top: .35rem; }
-    .map-panel { background: var(--navy-card); border: 1px solid var(--navy-border); border-radius: var(--radius-lg); padding: 1.25rem; }
-    .project-list-item { padding: .8rem 0; border-bottom: 1px solid var(--navy-border); cursor: pointer; transition: background .15s; }
+    .leaflet-popup-tip-container { margin-top: -1px; }
+    .leaflet-popup-tip { background: #0f1829; }
+    .leaflet-popup-content { margin: 0; padding: 0; font-family: Inter, sans-serif; width: 100% !important; }
+
+    .popup-header { background: #162038; padding: .9rem 1.1rem .75rem; border-radius: 10px 10px 0 0; border-bottom: 1px solid #1c2e4a; }
+    .popup-header h4 { font-size: .9rem; font-weight: 700; color: #f1f5f9; margin: 0 0 .4rem; line-height: 1.3; }
+    .popup-badges  { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .popup-body    { padding: .85rem 1.1rem; max-height: 380px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #254069 transparent; }
+    .popup-body::-webkit-scrollbar { width: 4px; }
+    .popup-body::-webkit-scrollbar-thumb { background: #254069; border-radius: 99px; }
+
+    .popup-row { display: flex; gap: .5rem; margin-bottom: .38rem; font-size: .77rem; }
+    .popup-lbl { color: #475569; min-width: 105px; flex-shrink: 0; font-weight: 500; }
+    .popup-val { color: #e2e8f0; }
+    .popup-val a { color: #38bdf8; }
+    .popup-section { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #1c2e4a; }
+    .popup-section-title { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: #475569; margin-bottom: .45rem; font-weight: 700; }
+    .popup-risk { background: rgba(239,68,68,.08); border-left: 3px solid #ef4444; padding: .45rem .65rem; border-radius: 0 4px 4px 0; font-size: .76rem; color: #fca5a5; margin-top: .3rem; }
+    .popup-sources { margin-top: .65rem; }
+    .popup-source-item { display: flex; gap: .4rem; align-items: flex-start; margin-bottom: .3rem; font-size: .74rem; color: #94a3b8; }
+    .popup-source-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: .3rem; }
+    .popup-footer { padding: .65rem 1.1rem; border-top: 1px solid #1c2e4a; display: flex; justify-content: space-between; align-items: center; font-size: .7rem; color: #475569; }
+
+    .map-layout { display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; align-items: start; }
+    @media(max-width:860px) { .map-layout { grid-template-columns: 1fr; } }
+
+    .project-list-item { padding: .7rem 0; border-bottom: 1px solid var(--navy-border); cursor: pointer; }
     .project-list-item:last-child { border-bottom: none; }
-    .project-list-item:hover { color: var(--blue-bright); }
-    .project-list-item h4 { font-size: .85rem; margin-bottom: .2rem; }
-    .project-list-item small { color: var(--gray-300); }
+    .project-list-item:hover h4 { color: var(--blue-bright); }
+    .project-list-item h4 { font-size: .82rem; margin-bottom: .2rem; transition: color .15s; }
+    .project-list-item small { color: var(--gray-400); }
+
+    .project-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
+    @media(max-width:560px) { .project-card-grid { grid-template-columns: 1fr; } }
+
+    .detail-row { display: flex; gap: .5rem; margin-bottom: .35rem; font-size: .82rem; }
+    .detail-lbl { color: var(--gray-400); min-width: 120px; flex-shrink: 0; }
+    .detail-val { color: var(--gray-200); }
+
+    .map-legend { background: var(--navy-card); border: 1px solid var(--navy-border); border-radius: var(--radius-lg); padding: 1.1rem; }
+    .map-legend h5 { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--gray-400); margin-bottom: .75rem; font-weight: 700; }
+    .legend-row { display: flex; align-items: center; gap: .55rem; margin-bottom: .4rem; font-size: .78rem; color: var(--gray-300); }
+    .legend-marker { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,.18); }
   </style>
 </head>
 <body>
@@ -40,55 +68,61 @@
 <div class="page-hero">
   <div class="container">
     <span class="eyebrow">⬡ Interactive Map</span>
-    <h1>Data Center Projects in Southside Virginia</h1>
-    <p>Explore proposed, approved, under construction, and operational data center projects across Greensville, Brunswick, Mecklenburg, Southampton, and surrounding counties. Click any marker for full project details.</p>
+    <h1>Data Center Projects Across Southside Virginia</h1>
+    <p>Explore 8 tracked projects across Greensville, Brunswick, Mecklenburg, Southampton, Sussex, and surrounding counties. Click any marker for full project details including sources, confidence ratings, and open records status.</p>
+    <div class="page-hero-meta">
+      <span class="badge badge-proposed">3 Proposed</span>
+      <span class="badge badge-approved">1 Approved</span>
+      <span class="badge badge-construction">1 Under Construction</span>
+      <span class="badge badge-operational">1 Operational</span>
+      <span class="badge badge-community">2 Early Stage / Tips</span>
+    </div>
   </div>
 </div>
 
 <section class="section-sm">
   <div class="container">
 
-    <!-- Filter Bar -->
     <div class="filter-bar">
-      <span style="font-size:.8rem;color:var(--gray-300);font-weight:600">Filter:</span>
-      <button class="filter-btn active" data-group="map" data-filter="all" data-target="#project-cards">All Projects</button>
-      <button class="filter-btn" data-group="map" data-filter="proposed" data-target="#project-cards">Proposed</button>
-      <button class="filter-btn" data-group="map" data-filter="approved" data-target="#project-cards">Approved</button>
-      <button class="filter-btn" data-group="map" data-filter="construction" data-target="#project-cards">Under Construction</button>
-      <button class="filter-btn" data-group="map" data-filter="operational" data-target="#project-cards">Operational</button>
-      <button class="filter-btn" data-group="map" data-filter="infrastructure" data-target="#project-cards">Infrastructure</button>
+      <span class="filter-label">Filter:</span>
+      <button class="filter-btn active" data-group="map" data-filter="all"          data-target="#project-card-grid">All Projects</button>
+      <button class="filter-btn"        data-group="map" data-filter="proposed"     data-target="#project-card-grid">Proposed</button>
+      <button class="filter-btn"        data-group="map" data-filter="approved"     data-target="#project-card-grid">Approved</button>
+      <button class="filter-btn"        data-group="map" data-filter="construction" data-target="#project-card-grid">Under Construction</button>
+      <button class="filter-btn"        data-group="map" data-filter="operational"  data-target="#project-card-grid">Operational/Infrastructure</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 260px;gap:1.5rem;align-items:start">
+    <div class="map-layout">
       <div>
         <div id="map"></div>
       </div>
       <div>
         <div class="map-legend mb-2">
-          <h4>Map Legend</h4>
-          <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div> Proposed</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> Approved</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Under Construction</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Operational</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Community Report</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Power Infrastructure</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div> Water/Sewer Concern</div>
+          <h5>Status Legend</h5>
+          <div class="legend-row"><div class="legend-marker" style="background:#f59e0b"></div> Proposed</div>
+          <div class="legend-row"><div class="legend-marker" style="background:#f97316"></div> Approved</div>
+          <div class="legend-row"><div class="legend-marker" style="background:#ef4444"></div> Under Construction</div>
+          <div class="legend-row"><div class="legend-marker" style="background:#22c55e"></div> Operational / Infrastructure</div>
+          <div class="legend-row"><div class="legend-marker" style="background:#38bdf8"></div> Early Stage / Community Tip</div>
         </div>
-        <div class="map-panel">
-          <h4 style="margin-bottom:.75rem;font-size:.82rem;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-300)">Projects</h4>
-          <div id="project-sidebar-list"></div>
+        <div class="card">
+          <h5 style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gray-400);margin-bottom:.85rem;font-weight:700">All Projects</h5>
+          <div id="project-list-sidebar"></div>
         </div>
       </div>
     </div>
 
-    <!-- Project Cards -->
+    <!-- Project cards -->
     <div class="mt-4">
-      <h2 style="margin-bottom:1.5rem">Project Database</h2>
-      <div id="project-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.25rem"></div>
+      <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:.75rem">
+        <h2>Project Database</h2>
+        <a href="report.html" class="btn btn-outline btn-sm">Submit a correction or new project →</a>
+      </div>
+      <div class="project-card-grid" id="project-card-grid"></div>
     </div>
 
     <div class="info-box mt-4">
-      <strong>Data Note:</strong> All project information is compiled from public records, FOIA requests, meeting minutes, deed research, permit applications, and verified community reports. Confidence levels reflect our certainty in each data point. <strong>Last full database update: May 2025.</strong> <a href="report.html">Submit a correction or new information →</a>
+      <strong>Data note:</strong> All project data compiled from public records, FOIA requests, deed research, community reports, and satellite analysis. Confidence ratings (<span class="badge badge-low" style="vertical-align:middle">Verified</span> <span class="badge badge-medium" style="vertical-align:middle">Medium</span> <span class="badge badge-high" style="vertical-align:middle">Low</span>) are shown for every entry. Where records are pending, <span class="foia-pending">FOIA Pending</span> is indicated. Last full database update: May 2025. <a href="report.html">Submit corrections →</a>
     </div>
   </div>
 </section>
@@ -98,112 +132,156 @@
 <script src="js/nav.js"></script>
 <script src="js/main.js"></script>
 <script>
-const statusColors = {
-  proposed: '#eab308', approved: '#f97316', construction: '#ef4444',
-  operational: '#22c55e', community: '#38bdf8', infrastructure: '#a855f7', water: '#06b6d4'
+const STATUS_COLORS = {
+  proposed: '#f59e0b', approved: '#f97316', construction: '#ef4444',
+  operational: '#22c55e', infrastructure: '#22c55e',
+  community: '#38bdf8', early: '#38bdf8'
 };
 
-function makeIcon(color) {
+function markerIcon(color) {
   return L.divIcon({
-    className: '', iconAnchor: [12,12], popupAnchor: [0,-14],
-    html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:3px solid rgba(255,255,255,.25);box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`
+    className: '', iconAnchor: [12,12], popupAnchor: [1,-14],
+    html: `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.22);box-shadow:0 2px 12px rgba(0,0,0,.5),0 0 0 4px ${color}22"></div>`
   });
 }
 
-function confidenceBadge(c) {
-  const map = { high: 'badge-low', medium: 'badge-medium', low: 'badge-high' };
-  return `<span class="badge ${map[c] || 'badge-medium'}">${c} confidence</span>`;
-}
-
 function statusBadge(s) {
-  const map = { proposed:'badge-proposed', approved:'badge-approved', construction:'badge-construction', operational:'badge-operational' };
-  return `<span class="badge ${map[s] || 'badge-community'}">${s}</span>`;
+  const m = { proposed:'badge-proposed', approved:'badge-approved', construction:'badge-construction', operational:'badge-operational', infrastructure:'badge-operational' };
+  const l = { proposed:'Proposed', approved:'Approved', construction:'Under Construction', operational:'Operational', infrastructure:'Infrastructure' };
+  return `<span class="badge ${m[s]||'badge-community'}">${l[s]||s}</span>`;
 }
 
-function stars(n, of=5) {
-  return '★'.repeat(n) + '☆'.repeat(of-n);
+function confBadge(c) {
+  const m = { high:'badge-low', medium:'badge-medium', low:'badge-high' };
+  const l = { high:'Verified', medium:'Medium Confidence', low:'Low Confidence' };
+  return `<span class="badge ${m[c]||'badge-medium'}">${l[c]||c}</span>`;
+}
+
+function sourceStatusDot(s) {
+  if (s === 'verified') return '#22c55e';
+  if (s === 'foia')     return '#f59e0b';
+  if (s === 'medium')   return '#f97316';
+  return '#ef4444';
+}
+
+function sourceStatusLabel(s) {
+  if (s === 'verified') return 'Verified';
+  if (s === 'foia')     return 'FOIA Pending';
+  if (s === 'medium')   return 'Partially Verified';
+  return 'Unverified';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const map = L.map('map', { center: [36.72, -77.7], zoom: 9 });
+  const map = L.map('map', { center: [36.72, -77.65], zoom: 8 });
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 18
+    attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 19
   }).addTo(map);
 
-  const sidebar = document.getElementById('project-sidebar-list');
-  const cards = document.getElementById('project-cards');
+  const sidebar = document.getElementById('project-list-sidebar');
+  const cardGrid = document.getElementById('project-card-grid');
 
   PROJECTS.forEach(p => {
-    const color = statusColors[p.status] || '#64748b';
-    const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color) }).addTo(map);
+    const color  = STATUS_COLORS[p.status] || '#64748b';
+    const marker = L.marker([p.lat, p.lng], { icon: markerIcon(color) }).addTo(map);
+
+    // Build source HTML for popup
+    const sourcesHTML = (p.sources||[]).map(s => `
+      <div class="popup-source-item">
+        <div class="popup-source-dot" style="background:${sourceStatusDot(s.status)}"></div>
+        <div><div>${s.label}</div><div style="font-size:.7rem;color:#475569">${sourceStatusLabel(s.status)}${s.note ? ' · ' + s.note : ''}</div></div>
+      </div>`).join('');
 
     const popupHTML = `
       <div>
         <div class="popup-header">
           <h4>${p.name}</h4>
-          ${statusBadge(p.status)} ${confidenceBadge(p.confidence)}
+          <div class="popup-badges">${statusBadge(p.status)} ${confBadge(p.confidence)}</div>
         </div>
         <div class="popup-body">
-          <div class="popup-row"><span class="lbl">County/City</span><span class="val">${p.county} / ${p.city}</span></div>
-          <div class="popup-row"><span class="lbl">Address</span><span class="val">${p.address}</span></div>
-          <div class="popup-row"><span class="lbl">Developer</span><span class="val">${p.developer}</span></div>
-          <div class="popup-row"><span class="lbl">End User</span><span class="val">${p.endUser}</span></div>
+          <div class="popup-row"><span class="popup-lbl">County / City</span><span class="popup-val">${p.county} / ${p.city}</span></div>
+          <div class="popup-row"><span class="popup-lbl">Address</span><span class="popup-val">${p.address}</span></div>
+          <div class="popup-row"><span class="popup-lbl">Developer</span><span class="popup-val">${p.developer}</span></div>
+          <div class="popup-row"><span class="popup-lbl">End User</span><span class="popup-val">${p.endUser}</span></div>
+
           <div class="popup-section">
             <div class="popup-section-title">Technical</div>
-            <div class="popup-row"><span class="lbl">Estimated MW</span><span class="val" style="color:#f97316">${p.mw}</span></div>
-            <div class="popup-row"><span class="lbl">Water Use/Day</span><span class="val">${p.water}</span></div>
-            <div class="popup-row"><span class="lbl">Cooling Type</span><span class="val">${p.cooling}</span></div>
-            <div class="popup-row"><span class="lbl">Generators</span><span class="val">${p.generators}</span></div>
-            <div class="popup-row"><span class="lbl">Acreage</span><span class="val">${p.acreage}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Estimated MW</span><span class="popup-val" style="color:var(--orange)">${p.mw}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Water Use / Day</span><span class="popup-val">${p.water}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Cooling</span><span class="popup-val">${p.cooling}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Generators</span><span class="popup-val">${p.generators}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Acreage</span><span class="popup-val">${p.acreage}</span></div>
           </div>
+
           <div class="popup-section">
             <div class="popup-section-title">Approvals & Finance</div>
-            <div class="popup-row"><span class="lbl">Rezoning Req.</span><span class="val">${p.rezoningRequired ? '⚠ Yes' : 'No'}</span></div>
-            <div class="popup-row"><span class="lbl">Public Hearing</span><span class="val">${p.publicHearingDate || 'N/A'}</span></div>
-            <div class="popup-row"><span class="lbl">Approval Date</span><span class="val">${p.approvalDate || 'Pending'}</span></div>
-            <div class="popup-row"><span class="lbl">Vote Result</span><span class="val">${p.voteResult || 'N/A'}</span></div>
-            <div class="popup-row"><span class="lbl">Tax Incentives</span><span class="val">${p.taxIncentives}</span></div>
-            <div class="popup-row"><span class="lbl">Promised Jobs</span><span class="val">${p.promisedJobs}</span></div>
-            <div class="popup-row"><span class="lbl">Tax Revenue</span><span class="val">${p.promisedRevenue}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Rezoning Req.</span><span class="popup-val">${p.rezoningRequired ? '<span style="color:var(--orange)">⚠ Yes</span>' : 'No'}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Public Hearing</span><span class="popup-val">${p.publicHearingDate||'Not scheduled'}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Approval Date</span><span class="popup-val">${p.approvalDate||'Pending'}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Vote Result</span><span class="popup-val">${p.voteResult||'N/A'}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Tax Incentives</span><span class="popup-val">${p.taxIncentives}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Promised Jobs</span><span class="popup-val">${p.promisedJobs}</span></div>
+            <div class="popup-row"><span class="popup-lbl">Promised Revenue</span><span class="popup-val">${p.promisedRevenue}</span></div>
           </div>
+
           <div class="popup-section">
-            <div class="popup-section-title">Risks & Concerns</div>
+            <div class="popup-section-title">Known Risks</div>
             <div class="popup-risk">${p.risks}</div>
           </div>
-          <div style="margin-top:.75rem;font-size:.72rem;color:#64748b">Last updated: ${p.lastUpdated} · ${confidenceBadge(p.confidence)}</div>
+
+          ${p.notes ? `<div class="popup-section"><div class="popup-section-title">Research Notes</div><div style="font-size:.76rem;color:#64748b;line-height:1.6">${p.notes}</div></div>` : ''}
+
+          ${sourcesHTML ? `<div class="popup-section"><div class="popup-section-title">Sources (${p.sources.length})</div><div class="popup-sources">${sourcesHTML}</div></div>` : ''}
+        </div>
+        <div class="popup-footer">
+          <span>Last updated: ${p.lastUpdated}</span>
+          ${confBadge(p.confidence)}
         </div>
       </div>`;
-    marker.bindPopup(popupHTML, { maxWidth: 340 });
 
-    // Sidebar list
+    marker.bindPopup(popupHTML, { maxWidth: 360, minWidth: 300 });
+
+    // Sidebar list item
     const sideItem = document.createElement('div');
     sideItem.className = 'project-list-item';
-    sideItem.innerHTML = `<h4>${p.name}</h4><small>${p.county} · ${statusBadge(p.status)}</small>`;
-    sideItem.addEventListener('click', () => { map.flyTo([p.lat, p.lng], 12); marker.openPopup(); });
+    sideItem.innerHTML = `
+      <h4>${p.name}</h4>
+      <small>${p.county} &nbsp;${statusBadge(p.status)}</small>`;
+    sideItem.addEventListener('click', () => {
+      map.flyTo([p.lat, p.lng], 12, { duration: 1 });
+      setTimeout(() => marker.openPopup(), 900);
+    });
     sidebar.appendChild(sideItem);
 
-    // Project cards
+    // Project card
     const card = document.createElement('div');
     card.className = 'card';
     card.setAttribute('data-category', p.status);
+
+    const verifiedSources = (p.sources||[]).filter(s => s.status === 'verified').length;
+    const foiaSources     = (p.sources||[]).filter(s => s.status === 'foia').length;
+    const sourcesSummary  = [
+      verifiedSources > 0 ? `<span class="badge badge-low">${verifiedSources} verified</span>` : '',
+      foiaSources     > 0 ? `<span class="badge badge-foia">${foiaSources} FOIA pending</span>` : ''
+    ].filter(Boolean).join(' ');
+
     card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
-        <h3 style="font-size:.95rem;max-width:70%">${p.name}</h3>
+      <div class="flex justify-between items-start mb-2" style="gap:.5rem">
+        <h3 style="font-size:.95rem;line-height:1.35">${p.name}</h3>
         ${statusBadge(p.status)}
       </div>
-      <div style="font-size:.82rem;color:var(--gray-300);margin-bottom:.75rem">${p.county} · ${p.city}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;font-size:.8rem;margin-bottom:.85rem">
-        <div><span style="color:var(--gray-500)">Developer:</span> ${p.developer.length > 28 ? p.developer.slice(0,28)+'…' : p.developer}</div>
-        <div><span style="color:var(--gray-500)">Est. MW:</span> <span style="color:var(--orange)">${p.mw}</span></div>
-        <div><span style="color:var(--gray-500)">Water:</span> ${p.water}</div>
-        <div><span style="color:var(--gray-500)">Jobs:</span> ${p.promisedJobs}</div>
+      <div style="color:var(--gray-400);font-size:.78rem;margin-bottom:.85rem">${p.county} · ${p.city}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .85rem;margin-bottom:.85rem">
+        <div class="detail-row" style="margin:0"><span class="detail-lbl">Developer</span><span class="detail-val" style="font-size:.78rem">${p.developer.length > 30 ? p.developer.slice(0,30)+'…' : p.developer}</span></div>
+        <div class="detail-row" style="margin:0"><span class="detail-lbl">Est. MW</span><span class="detail-val text-orange" style="font-size:.78rem">${p.mw}</span></div>
+        <div class="detail-row" style="margin:0"><span class="detail-lbl">Water / day</span><span class="detail-val" style="font-size:.78rem">${p.water.length > 25 ? p.water.slice(0,25)+'…' : p.water}</span></div>
+        <div class="detail-row" style="margin:0"><span class="detail-lbl">Promised jobs</span><span class="detail-val" style="font-size:.78rem">${p.promisedJobs}</span></div>
       </div>
-      <div style="background:rgba(239,68,68,.07);border-left:3px solid var(--red);padding:.5rem .65rem;font-size:.78rem;color:var(--gray-300);margin-bottom:.85rem;border-radius:0 4px 4px 0">${p.risks.slice(0,100)}${p.risks.length>100?'…':''}</div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        ${confidenceBadge(p.confidence)}
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('map').scrollIntoView({behavior:'smooth'})">View on Map →</button>
+      <div style="background:rgba(239,68,68,.07);border-left:3px solid var(--red);padding:.5rem .7rem;font-size:.76rem;color:var(--gray-300);margin-bottom:.85rem;border-radius:0 4px 4px 0;line-height:1.55">${p.risks.slice(0,130)}${p.risks.length>130?'…':''}</div>
+      <div class="flex justify-between items-center flex-wrap gap-1">
+        <div class="flex gap-1 flex-wrap">${confBadge(p.confidence)} ${sourcesSummary}</div>
+        <button class="btn btn-outline btn-sm" onclick="(()=>{document.getElementById('map').scrollIntoView({behavior:'smooth'})})()">Map →</button>
       </div>`;
-    cards.appendChild(card);
+    cardGrid.appendChild(card);
   });
 });
 </script>

@@ -3,190 +3,429 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Southside Virginia Data Center Watch</title>
-  <meta name="description" content="Tracking proposed data centers, energy demand, water concerns, public votes, tax incentives, and community reports across Southside Virginia.">
+  <title>Southside Virginia Data Center Watch — Civic Transparency & Accountability</title>
+  <meta name="description" content="Tracking proposed data centers, energy demand, water concerns, public votes, tax incentives, and community reports across Emporia, Greensville, Brunswick, South Hill, Franklin, Southampton, Mecklenburg, Sussex and Southside Virginia.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Home-specific overrides ── */
+    .county-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1rem; }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      padding: .18rem .55rem; border-radius: 99px;
+    }
+    .status-pill-red    { background: rgba(239,68,68,.12);  color: var(--red);    border: 1px solid rgba(239,68,68,.25); }
+    .status-pill-orange { background: rgba(249,115,22,.12); color: var(--orange); border: 1px solid rgba(249,115,22,.25); }
+    .status-pill-yellow { background: rgba(245,158,11,.12); color: var(--yellow); border: 1px solid rgba(245,158,11,.25); }
+    .status-pill-gray   { background: rgba(100,116,139,.1); color: var(--gray-300); border: 1px solid rgba(100,116,139,.2); }
+    .status-pill-green  { background: rgba(34,197,94,.1);   color: var(--green);  border: 1px solid rgba(34,197,94,.2); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    .activity-feed { display: flex; flex-direction: column; gap: 1px; }
+    .activity-item {
+      display: grid; grid-template-columns: 72px 1fr;
+      background: var(--navy-card); border: 1px solid var(--navy-border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      transition: border-color .2s;
+    }
+    .activity-item:hover { border-color: var(--navy-border-bright); }
+    .activity-item + .activity-item { margin-top: .75rem; }
+    .activity-date-col {
+      background: var(--navy-mid); padding: .9rem .5rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      text-align: center; gap: .1rem; border-right: 1px solid var(--navy-border);
+    }
+    .activity-month { font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); font-weight: 700; }
+    .activity-day   { font-size: 1.2rem; font-weight: 800; color: var(--white); font-family: var(--font-mono); line-height: 1; }
+    .activity-year  { font-size: .58rem; color: var(--gray-500); margin-top: .1rem; }
+    .activity-body  { padding: .85rem 1rem; }
+    .activity-body h4 { font-size: .88rem; line-height: 1.35; margin-bottom: .3rem; }
+    .activity-body p  { font-size: .8rem; color: var(--gray-300); line-height: 1.6; margin-bottom: .5rem; }
+    .activity-meta  { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+
+    .open-questions-list li {
+      display: flex; align-items: flex-start; gap: .65rem;
+      padding: .65rem 0; border-bottom: 1px solid rgba(28,46,74,.6);
+      font-size: .84rem; color: var(--gray-200);
+    }
+    .open-questions-list li:last-child { border-bottom: none; }
+    .open-questions-list li::before {
+      content: '?'; flex-shrink: 0; width: 20px; height: 20px;
+      background: rgba(239,68,68,.12); color: var(--red); border: 1px solid rgba(239,68,68,.25);
+      border-radius: 50%; font-size: .65rem; font-weight: 800;
+      display: grid; place-items: center; margin-top: .1rem;
+    }
+
+    .cta-manifesto {
+      background: linear-gradient(135deg, rgba(8,13,26,1) 0%, rgba(14,20,40,1) 100%);
+      border: 1px solid var(--navy-border); border-radius: var(--radius-xl);
+      padding: 3.5rem 2.5rem; text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-manifesto::before {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(56,189,248,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(56,189,248,.025) 1px,transparent 1px);
+      background-size: 48px 48px;
+    }
+    .cta-manifesto::after {
+      content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 500px; height: 300px;
+      background: radial-gradient(ellipse, rgba(249,115,22,.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-manifesto-inner { position: relative; z-index: 1; }
+    .manifesto-lines { margin-bottom: 2rem; }
+    .manifesto-line {
+      font-size: clamp(1.35rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: -.02em;
+      line-height: 1.2; color: var(--white);
+    }
+    .manifesto-line span { color: var(--orange); }
+
+    .sidebar-sticky { position: sticky; top: 80px; }
+
+    @media(max-width:900px){
+      .activity-item { grid-template-columns: 56px 1fr; }
+      .activity-day  { font-size: 1rem; }
+      .sidebar-sticky { position: static; }
+    }
+    @media(max-width:600px){
+      .cta-manifesto { padding: 2.5rem 1.5rem; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- Alert Banner -->
+<!-- Breaking News Banner -->
 <div class="alert-banner">
-  <span>⚡ NEW:</span> Brunswick County 120 MW project approved 4-1 — full PILOT agreement still not released. <a href="vote-tracker.html" style="color:var(--yellow);text-decoration:underline">See vote details →</a>
+  <span class="alert-banner-label">Update</span>
+  <span class="alert-banner-text">
+    Brunswick County PILOT agreement still not public — FOIA appeal filed March 2025 &nbsp;·&nbsp;
+    Sussex County parcel acquired by Delaware LLC (Feb 2025) &nbsp;·&nbsp;
+    <a href="vote-tracker.html">See all votes →</a>
+  </span>
 </div>
 
 <div id="nav-placeholder"></div>
 
-<!-- Hero -->
+<!-- ══ HERO ══════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
     <div class="hero-inner">
-      <div class="hero-badge">Civic Transparency Project — Southside Virginia</div>
-      <h1>Before Southside Virginia Becomes<br><span>Data Center Country,</span><br>Residents Deserve the Truth</h1>
-      <p class="hero-sub">Tracking proposed data centers, energy demand, water concerns, public votes, tax incentives, and community reports across <strong>Emporia, Greensville, Brunswick, South Hill, Franklin, Southampton, Mecklenburg, Sussex,</strong> and surrounding Southside Virginia communities.</p>
-      <div class="hero-cta">
-        <a href="map.html" class="btn btn-primary btn-lg">⬡ View Interactive Map</a>
-        <a href="report.html" class="btn btn-orange btn-lg">⚑ Report a Concern</a>
-        <a href="questions.html" class="btn btn-outline btn-lg">☑ Questions to Ask</a>
+      <div class="hero-eyebrow">
+        <span class="hero-live-dot"></span>
+        Public Interest Transparency Project — Southside Virginia
       </div>
+
+      <h1>Before Southside Virginia Becomes<br><em>Data Center Country,</em><br>Residents Deserve the Truth</h1>
+
+      <p class="hero-sub">
+        Tracking proposed data centers, energy demand, water concerns, public votes, tax incentives, and community reports across
+        <strong>Emporia, Greensville County, Brunswick County, South Hill, Franklin, Southampton County, Mecklenburg County, Sussex County,</strong>
+        and surrounding Southside Virginia communities.
+      </p>
+
+      <div class="hero-cta">
+        <a href="map.html"      class="btn btn-primary btn-lg">View the Map</a>
+        <a href="questions.html" class="btn btn-outline btn-lg">Resident Checklist</a>
+        <a href="report.html"   class="btn btn-orange  btn-lg">Report a Concern</a>
+      </div>
+
       <div class="hero-stats">
-        <div class="stat-card">
-          <div class="num"><span class="count-up" data-target="5" data-suffix="">5</span></div>
-          <div class="lbl">Projects Tracked</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num"><span class="count-up" data-target="8" data-suffix="">8</span></div>
+          <div class="hero-stat-lbl">Projects Tracked<br>Across 6 Jurisdictions</div>
         </div>
-        <div class="stat-card">
-          <div class="num"><span class="count-up" data-target="550" data-suffix="+ MW">550+ MW</span></div>
-          <div class="lbl">Proposed Power Demand</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num orange"><span class="count-up" data-target="750" data-suffix="+" data-decimals="0">750+</span> MW</div>
+          <div class="hero-stat-lbl">Proposed Power Demand<br>(Est. — All Projects)</div>
         </div>
-        <div class="stat-card">
-          <div class="num"><span class="count-up" data-target="3.4" data-suffix="M gal/day">3.4M</span></div>
-          <div class="lbl">Daily Water Est.</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num red"><span class="count-up" data-target="5.5" data-suffix="M" data-decimals="1">5.5M</span> gal/day</div>
+          <div class="hero-stat-lbl">Est. Daily Water Use<br>(Full Buildout)</div>
         </div>
-        <div class="stat-card">
-          <div class="num"><span class="count-up" data-target="8" data-suffix="">8</span></div>
-          <div class="lbl">Counties & Cities</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num"><span class="count-up" data-target="8" data-suffix="">8</span></div>
+          <div class="hero-stat-lbl">Public Votes Tracked<br>5 FOIA Requests Open</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Impact Cards -->
+<!-- ══ FOUR QUESTIONS ══════════════════════════════════════════════ -->
 <section class="section" style="background:var(--navy-light)">
   <div class="container">
     <div class="section-title">
       <span class="eyebrow">Four Questions That Matter</span>
-      <h2>What's Really Happening in Southside Virginia</h2>
-      <p>Data centers bring promises — but residents need to ask hard questions about who actually benefits, who absorbs the costs, who makes the decisions, and what the real-world impacts will be.</p>
+      <h2>What Southside Virginia Residents Need to Know</h2>
+      <p>Data center projects bring promises — but communities need honest answers about who benefits, who absorbs the costs, who makes the decisions, and what the real infrastructure impacts will be.</p>
     </div>
+
     <div class="impact-grid">
       <div class="impact-card blue">
-        <div class="card-icon card-icon-blue" style="width:44px;height:44px;font-size:1.3rem;margin-bottom:.75rem">💰</div>
+        <div style="font-size:1.5rem;margin-bottom:.85rem">💰</div>
         <h3>Who Really Benefits?</h3>
-        <p>Developers often hide behind LLCs. End users — major tech giants — are rarely disclosed. Who is collecting the economic gains from Southside Virginia's land and infrastructure?</p>
-        <a href="who-benefits.html" class="btn btn-outline btn-sm">Investigate →</a>
+        <p>Developers hide behind LLCs. End users — tech giants with hundreds of billions in revenue — are rarely disclosed. Of 8 projects tracked, 6 involve unknown or undisclosed ownership.</p>
+        <a href="who-benefits.html" class="btn btn-outline btn-sm">Investigate ownership →</a>
       </div>
       <div class="impact-card orange">
-        <div class="card-icon card-icon-orange" style="width:44px;height:44px;font-size:1.3rem;margin-bottom:.75rem">⚡</div>
+        <div style="font-size:1.5rem;margin-bottom:.85rem">⚡</div>
         <h3>Who Pays?</h3>
-        <p>Data centers consume enormous amounts of electricity and water. Grid upgrades cost tens of millions. Will residents' electric bills go up? Who pays for the new substation?</p>
-        <a href="energy.html" class="btn btn-outline btn-sm">See Energy Costs →</a>
+        <p>750+ MW demands massive grid upgrades — costing tens of millions. A $29.4M transmission expansion already passed to all Dominion ratepayers, not the data centers that required it.</p>
+        <a href="energy.html" class="btn btn-outline btn-sm">Energy cost analysis →</a>
       </div>
       <div class="impact-card red">
-        <div class="card-icon card-icon-red" style="width:44px;height:44px;font-size:1.3rem;margin-bottom:.75rem">🗳️</div>
+        <div style="font-size:1.5rem;margin-bottom:.85rem">🗳️</div>
         <h3>Who Decides?</h3>
-        <p>Local boards approve rezonings, tax breaks, and infrastructure deals — often with minimal public notice. Track every vote, every official, every decision affecting your community.</p>
-        <a href="vote-tracker.html" class="btn btn-outline btn-sm">Track Votes →</a>
+        <p>Local boards approve rezonings with as little as 5 days public notice. Full PILOT agreements are withheld before votes. Track every vote, every official, every deal.</p>
+        <a href="vote-tracker.html" class="btn btn-outline btn-sm">Track every vote →</a>
       </div>
       <div class="impact-card green">
-        <div class="card-icon card-icon-green" style="width:44px;height:44px;font-size:1.3rem;margin-bottom:.75rem">🌊</div>
+        <div style="font-size:1.5rem;margin-bottom:.85rem">🌊</div>
         <h3>What Is the Real Impact?</h3>
-        <p>Diesel generators, water consumption, sewer strain, noise, construction traffic — and in return, fewer jobs than promised. Communities deserve honest answers before approval, not after.</p>
-        <a href="water.html" class="btn btn-outline btn-sm">See Infrastructure Impact →</a>
+        <p>5.5 million gallons of water per day. Diesel generators in rural communities. Sewer systems at capacity. 38 permanent jobs for a 120 MW facility. Residents need honest arithmetic.</p>
+        <a href="water.html" class="btn btn-outline btn-sm">Infrastructure impact →</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Latest Activity -->
+<!-- ══ COUNTY STATUS GRID ════════════════════════════════════════ -->
 <section class="section">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:2rem">
-      <div>
-        <div class="section-title">
-          <span class="eyebrow">Latest Activity</span>
-          <h2>Recent Votes, Projects & Reports</h2>
-        </div>
-        <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-date">January 22, 2025</div>
-            <h4>Brunswick County: Apex Digital 120 MW Approved <span class="badge badge-approved">4-1 Vote</span></h4>
-            <p style="font-size:.88rem;margin-top:.25rem">Brunswick Co. Board of Supervisors approved rezoning for 120 MW facility. 15-year PILOT agreement. Full agreement not released prior to vote. Sewer capacity concerns unresolved.</p>
-            <a href="vote-tracker.html" class="btn btn-outline btn-sm mt-1">See Vote Details</a>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-date">March 10, 2025</div>
-            <h4>Emporia City Council: Greensville Commerce Park Support Resolution <span class="badge badge-approved">4-0-1</span></h4>
-            <p style="font-size:.88rem;margin-top:.25rem">Non-binding resolution of support passed. Developer remains undisclosed LLC. No community impact study scheduled.</p>
-            <a href="vote-tracker.html" class="btn btn-outline btn-sm mt-1">See Details</a>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-date">May 20, 2025</div>
-            <h4>Community Report: Franklin Commerce Park Site C <span class="badge badge-community">Community Tip</span></h4>
-            <p style="font-size:.88rem;margin-top:.25rem">Resident report of new data center site near Blackwater River watershed. Developer under NDA. No public records confirmed yet. Low confidence — investigating.</p>
-            <a href="report.html" class="btn btn-outline btn-sm mt-1">Submit Your Report</a>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-date">Ongoing</div>
-            <h4>South Hill: Piedmont Data Centers Under Construction <span class="badge badge-construction">Active Construction</span></h4>
-            <p style="font-size:.88rem;margin-top:.25rem">Phase 1 (80 MW) underway. Community impact study was waived before approval. Noise complaints logged. Phase 2 (200 MW total) pending.</p>
-            <a href="map.html" class="btn btn-outline btn-sm mt-1">View on Map</a>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="card mb-2" style="border-color:rgba(239,68,68,.3)">
-          <h4 style="color:var(--red);margin-bottom:.75rem">⚠ Open Questions</h4>
-          <ul style="list-style:none;font-size:.85rem">
-            <li style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">Who owns the Greensville Commerce Park LLC?</li>
-            <li style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">Who pays for the $47M Brunswick substation?</li>
-            <li style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">Was the full Brunswick PILOT agreement published?</li>
-            <li style="padding:.5rem 0;border-bottom:1px solid var(--navy-border)">How will South Hill water authority handle demand?</li>
-            <li style="padding:.5rem 0">What is the Franklin Site C project?</li>
-          </ul>
-          <a href="report.html" class="btn btn-red btn-sm mt-2" style="width:100%;justify-content:center">Help Us Find Answers →</a>
-        </div>
-
-        <div class="card mb-2">
-          <h4 style="margin-bottom:.75rem">📍 By the Numbers</h4>
-          <div style="font-size:.85rem">
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span style="color:var(--gray-300)">Projects tracked</span><span class="text-mono">5</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span style="color:var(--gray-300)">Proposed MW</span><span class="text-mono text-orange">550+ MW</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span style="color:var(--gray-300)">Counties affected</span><span class="text-mono">4+</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span style="color:var(--gray-300)">Votes tracked</span><span class="text-mono">5</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--navy-border)">
-              <span style="color:var(--gray-300)">Tax abatements proposed</span><span class="text-mono text-red">Multiple</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:.4rem 0">
-              <span style="color:var(--gray-300)">Full agreements released</span><span class="text-mono text-red">0 of 2</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2)">
-          <p style="font-size:.85rem;font-weight:700;color:var(--orange);margin-bottom:.4rem">Do you have information?</p>
-          <p style="font-size:.83rem;color:var(--gray-300);margin-bottom:1rem">Meeting minutes, FOIA docs, photos, permit applications, or tips from inside the process — all help.</p>
-          <a href="report.html" class="btn btn-orange btn-sm" style="width:100%;justify-content:center">Submit Confidentially →</a>
-        </div>
-      </div>
+    <div class="section-title">
+      <span class="eyebrow">County by County</span>
+      <h2>Where Things Stand Right Now</h2>
+      <p>A real-time status summary for each Southside Virginia jurisdiction. Click any county for project details on the map.</p>
     </div>
 
-    <style>
-      @media(max-width:900px){
-        .hero-two-col{grid-template-columns:1fr!important}
-        section .container > div[style*="grid-template-columns:1fr 340px"]{display:block}
-        section .container > div[style*="grid-template-columns:1fr 340px"] > div:last-child{margin-top:1.5rem}
-      }
-    </style>
+    <div class="county-grid" id="county-grid"></div>
+
+    <div class="info-box mt-3">
+      <strong>How to read this:</strong> "Active" means a project is proposed or in the approval process. "Approved" means a vote has occurred. Status and project counts are updated as new public records become available. <a href="map.html">View full details on the interactive map →</a>
+    </div>
   </div>
 </section>
 
-<!-- Community Section -->
+<!-- ══ ACTIVITY FEED + SIDEBAR ═══════════════════════════════════ -->
 <section class="section" style="background:var(--navy-light)">
   <div class="container">
+    <div class="two-col">
+
+      <!-- Activity Feed -->
+      <div>
+        <div class="section-title">
+          <span class="eyebrow">Accountability Log</span>
+          <h2>Recent Votes, Approvals & Reports</h2>
+        </div>
+
+        <div class="activity-feed">
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">Jan</span>
+              <span class="activity-day">22</span>
+              <span class="activity-year">2025</span>
+            </div>
+            <div class="activity-body">
+              <h4>Brunswick County Board Approves Apex Digital 120 MW — 4-1</h4>
+              <p>Board of Supervisors approved rezoning and 15-year PILOT agreement for the Brunswick Crossroads Data Center. Full PILOT agreement withheld from the public before the vote. Supervisor Watkins dissented, citing unresolved sewer capacity and the undisclosed agreement text. A $47M substation upgrade remains unassigned to developer or ratepayer.</p>
+              <div class="activity-meta">
+                <span class="badge badge-approved">Approved 4-1</span>
+                <span class="badge badge-foia">PILOT Text: FOIA Pending</span>
+                <a href="vote-tracker.html" class="btn btn-ghost btn-sm">See vote →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">Mar</span>
+              <span class="activity-day">10</span>
+              <span class="activity-year">2025</span>
+            </div>
+            <div class="activity-body">
+              <h4>Emporia City Council Passes Support Resolution for Greensville Commerce Park</h4>
+              <p>4-0-1 non-binding resolution of support for the Commerce Park data campus passed without disclosure of developer identity. Developer is listed only as "GVC Holdings LLC" — a Delaware-registered shell company with no disclosed principals. One abstention not explained. No community impact study ordered.</p>
+              <div class="activity-meta">
+                <span class="badge badge-approved">Passed 4-0-1</span>
+                <span class="badge badge-unverified">Developer: Unknown LLC</span>
+                <a href="vote-tracker.html" class="btn btn-ghost btn-sm">See vote →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">Sep</span>
+              <span class="activity-day">15</span>
+              <span class="activity-year">2024</span>
+            </div>
+            <div class="activity-body">
+              <h4>Mecklenburg Board Approves South Hill Data Center 5-0 — Impact Study Waived</h4>
+              <p>Piedmont Data Centers received a 5-0 approval from the Mecklenburg Board of Supervisors despite a water authority capacity warning (74% capacity, $4.1M upgrade needed) that was not disclosed to the Board. Community impact study waived by Board chair. Phase 2 would double water demand — no new hearing required under current approval.</p>
+              <div class="activity-meta">
+                <span class="badge badge-construction">Under Construction</span>
+                <span class="badge badge-high">Water Memo Withheld</span>
+                <a href="vote-tracker.html" class="btn btn-ghost btn-sm">See vote →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">Feb</span>
+              <span class="activity-day">—</span>
+              <span class="activity-year">2025</span>
+            </div>
+            <div class="activity-body">
+              <h4>Sussex County: Parcel Transferred to Delaware LLC — No Public Notice</h4>
+              <p>A 140-acre parcel on the Industrial Park Road in Stony Creek was transferred to "Coastal Edge Digital LLC," a Delaware company registered January 2025 with no disclosed principals. No pre-application meetings or public notices filed with Sussex County. This is the first known land acquisition for a potential data center in Sussex County.</p>
+              <div class="activity-meta">
+                <span class="badge badge-proposed">Unconfirmed Project</span>
+                <span class="badge badge-medium">Medium Confidence</span>
+                <a href="map.html" class="btn btn-ghost btn-sm">View on map →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">May</span>
+              <span class="activity-day">18</span>
+              <span class="activity-year">2025</span>
+            </div>
+            <div class="activity-body">
+              <h4>Community Report: Franklin Commerce Park Site Near Blackwater River</h4>
+              <p>Credible community tip reports preliminary negotiations for a data center site near the Blackwater River watershed in Southampton County. Southampton County EDA reportedly operating under NDA with developer. The Blackwater River drains to the Chowan River and Albemarle Sound — a high-quality water body under state protection. Investigating — low confidence until confirmed by public records.</p>
+              <div class="activity-meta">
+                <span class="badge badge-community">Community Report</span>
+                <span class="badge badge-high">Low Confidence</span>
+                <a href="report.html" class="btn btn-ghost btn-sm">Submit what you know →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-date-col">
+              <span class="activity-month">Jun</span>
+              <span class="activity-day">18</span>
+              <span class="activity-year">2024</span>
+            </div>
+            <div class="activity-body">
+              <h4>SCC Approves $29.4M Transmission Upgrade — Cost Passed to All Ratepayers</h4>
+              <p>The Virginia State Corporation Commission approved a Dominion Energy transmission upgrade in Southampton County. The $29.4M cost is socialized across all Dominion customers — not charged to data center developers whose load growth required it. A residential ratepayer group objected; overruled. No local government in Southside Virginia was notified before the SCC filing.</p>
+              <div class="activity-meta">
+                <span class="badge badge-operational">SCC Approved</span>
+                <span class="badge badge-foia">Developer Link: FOIA Pending</span>
+                <a href="energy.html" class="btn btn-ghost btn-sm">Energy bill impact →</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-3 flex items-center gap-2">
+          <a href="vote-tracker.html" class="btn btn-outline btn-sm">View full vote tracker →</a>
+          <a href="news.html"         class="btn btn-outline btn-sm">All news & documents →</a>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar-sticky">
+
+        <!-- Open Questions -->
+        <div class="card mb-3" style="border-color:rgba(239,68,68,.25)">
+          <h4 style="color:var(--red);margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:1rem">⚠</span> Open Questions
+          </h4>
+          <ul class="open-questions-list" style="list-style:none;padding:0">
+            <li>Who are the beneficial owners of GVC Holdings LLC (Greensville)?</li>
+            <li>Who pays for the $47M Brunswick County substation upgrade?</li>
+            <li>Why was the full Brunswick PILOT text withheld before the vote?</li>
+            <li>Why was the South Hill water authority memo kept out of the Board packet?</li>
+            <li>What developer is behind the Franklin Site C NDA?</li>
+            <li>What is the cumulative water impact across all proposed projects?</li>
+            <li>Has any Southside county adopted a formal data center policy?</li>
+          </ul>
+          <a href="report.html" class="btn btn-red btn-sm w-full mt-2">Help us find answers →</a>
+        </div>
+
+        <!-- By the Numbers -->
+        <div class="card mb-3">
+          <h4 style="margin-bottom:.85rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400)">📊 Project Totals</h4>
+          <div style="font-size:.82rem">
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Projects tracked</span><span class="text-mono">8</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Proposed capacity</span><span class="text-mono text-orange">750+ MW</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Confirmed approvals</span><span class="text-mono text-red">2</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Votes tracked</span><span class="text-mono">8</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Open FOIA requests</span><span class="text-mono text-yellow">5</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0;border-bottom:1px solid var(--navy-border)">
+              <span class="text-muted">Full agreements released</span><span class="text-mono text-red">0 of 3</span>
+            </div>
+            <div class="flex justify-between" style="padding:.42rem 0">
+              <span class="text-muted">Grid upgrade costs to public</span><span class="text-mono text-red">$76.4M+</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data confidence key -->
+        <div class="card mb-3" style="background:var(--navy-card-2)">
+          <h4 style="margin-bottom:.75rem;font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400)">Confidence Key</h4>
+          <div style="font-size:.79rem;display:flex;flex-direction:column;gap:.6rem">
+            <div class="flex items-center gap-2">
+              <span class="badge badge-low" style="flex-shrink:0">Verified</span>
+              <span class="text-muted">Confirmed via public records, official minutes, or FOIA response</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-medium" style="flex-shrink:0">Medium</span>
+              <span class="text-muted">Multiple community sources or partial documents — not fully verified</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-high" style="flex-shrink:0">Low</span>
+              <span class="text-muted">Single tip only — investigating; treat as unconfirmed</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-foia" style="flex-shrink:0">FOIA Pending</span>
+              <span class="text-muted">Request filed — awaiting government response</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit tip -->
+        <div class="card" style="background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.25)">
+          <p style="font-size:.85rem;font-weight:700;color:var(--orange);margin-bottom:.35rem">Do you have information?</p>
+          <p style="font-size:.8rem;color:var(--gray-300);margin-bottom:1rem;line-height:1.6">
+            Meeting minutes, FOIA responses, permit applications, photos, or a tip from inside the approval process — all help build the public record.
+          </p>
+          <a href="report.html" class="btn btn-orange btn-sm w-full">Submit confidentially →</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PROJECT PRINCIPLES ════════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
     <div class="section-title text-center">
-      <span class="eyebrow">About This Project</span>
-      <h2>Who We Are and Why This Matters</h2>
+      <span class="eyebrow">Our Approach</span>
+      <h2>How This Project Works</h2>
     </div>
     <div class="three-col">
       <div class="card">
@@ -194,38 +433,71 @@
           <div class="card-icon card-icon-blue">📋</div>
           <h3>Public Records First</h3>
         </div>
-        <p style="font-size:.88rem">Every claim is sourced. We cite public records, FOIA responses, meeting minutes, permit filings, and verified community reports. We distinguish confirmed facts from rumors.</p>
+        <p style="font-size:.87rem">Every factual claim is sourced and confidence-rated. We cite public records, FOIA responses, meeting minutes, permit filings, deed records, and verified community reports. We clearly separate confirmed facts from community tips under investigation.</p>
       </div>
       <div class="card">
         <div class="card-header">
           <div class="card-icon card-icon-orange">⚖️</div>
-          <h3>Not Anti-Technology</h3>
+          <h3>Pro-Transparency, Not Anti-Tech</h3>
         </div>
-        <p style="font-size:.88rem">This project is about accountability, not opposition. Data centers can bring real benefits — but those benefits must be weighed honestly against real costs, with residents at the table.</p>
+        <p style="font-size:.87rem">This project is about accountability, not opposition to development. Data centers can bring real benefits to economically distressed communities — but only when those benefits are honestly weighed against real costs, with full public disclosure before any vote.</p>
       </div>
       <div class="card">
         <div class="card-header">
           <div class="card-icon card-icon-green">🏘️</div>
           <h3>Resident-First</h3>
         </div>
-        <p style="font-size:.88rem">Southside Virginia communities deserve the same transparency and protections as any other region. We advocate for full disclosure, community input, and fair deals — before approval, not after.</p>
+        <p style="font-size:.87rem">Southside Virginia communities deserve the same transparency, the same protections, and the same seat at the table as any other region. We exist because those communities have historically been the last to learn what's happening and the last to be asked.</p>
       </div>
     </div>
     <div class="text-center mt-4">
-      <a href="about.html" class="btn btn-outline">Learn more about this project →</a>
+      <a href="about.html" class="btn btn-outline">About this project →</a>
     </div>
   </div>
 </section>
 
-<!-- CTA Section -->
+<!-- ══ PLACEHOLDER NOTICE ════════════════════════════════════════ -->
+<section class="section-sm" style="background:var(--navy-light)">
+  <div class="container-sm">
+    <div class="card" style="border-color:rgba(56,189,248,.2);background:rgba(56,189,248,.03)">
+      <div class="flex items-start gap-3">
+        <div style="font-size:1.5rem;flex-shrink:0">📂</div>
+        <div>
+          <h4 class="text-blue mb-1">About the Data on This Site</h4>
+          <p style="font-size:.85rem;line-height:1.7">
+            All project data on this site is compiled from public records, FOIA requests, deed research, corporate registration records, and community reports. Where information is unconfirmed, it is labeled with confidence ratings
+            (<span class="badge badge-high" style="vertical-align:middle">Low</span>,
+            <span class="badge badge-medium" style="vertical-align:middle">Medium</span>,
+            <span class="badge badge-low" style="vertical-align:middle">Verified</span>)
+            and placeholders where records are pending
+            (<span class="foia-pending">FOIA Pending</span>,
+            <span class="cite-needed">Source Needed</span>).
+            This site is a living document — it will grow as more public records are collected. If you have information that can improve the accuracy of any entry, please <a href="report.html">submit it here</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA MANIFESTO ═════════════════════════════════════════════ -->
 <section class="section">
-  <div class="container text-center" style="max-width:700px">
-    <div style="background:linear-gradient(135deg,rgba(29,140,240,.1),rgba(249,115,22,.08));border:1px solid var(--navy-border);border-radius:var(--radius-lg);padding:3rem 2rem">
-      <h2 style="font-size:1.6rem;margin-bottom:1rem">Jobs matter.<br>Water matters.<br>Power bills matter.<br><span class="text-orange">Transparency matters.</span></h2>
-      <p style="margin-bottom:2rem">Southside Virginia has a right to know what's coming before it's built. Share this site with your neighbors, your county supervisor, your local newspaper.</p>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-        <a href="questions.html" class="btn btn-primary btn-lg">☑ Get the Checklist</a>
-        <a href="report.html" class="btn btn-orange btn-lg">⚑ Report a Concern</a>
+  <div class="container-sm">
+    <div class="cta-manifesto">
+      <div class="cta-manifesto-inner">
+        <div class="manifesto-lines">
+          <div class="manifesto-line">Jobs matter.</div>
+          <div class="manifesto-line">Water matters.</div>
+          <div class="manifesto-line">Power bills matter.</div>
+          <div class="manifesto-line"><span>Transparency matters.</span></div>
+        </div>
+        <p style="color:var(--gray-300);max-width:560px;margin:0 auto 2rem;font-size:1rem;line-height:1.75">
+          Southside Virginia has a right to know what's being built, who owns it, who profits, who pays for the infrastructure, and how many real permanent jobs will exist — <em>before</em> the vote, not after.
+        </p>
+        <div class="flex justify-center gap-2 flex-wrap">
+          <a href="questions.html" class="btn btn-primary btn-lg">Get the Resident Checklist</a>
+          <a href="report.html"    class="btn btn-orange  btn-lg">Report a Concern</a>
+        </div>
       </div>
     </div>
   </div>
@@ -234,5 +506,38 @@
 <div id="footer-placeholder"></div>
 <script src="js/nav.js"></script>
 <script src="js/main.js"></script>
+<script>
+/* Render county grid from data */
+document.addEventListener('DOMContentLoaded', () => {
+  const grid = document.getElementById('county-grid');
+  if (!grid || typeof COUNTIES === 'undefined') return;
+
+  const pillClass = { active:'orange', approved:'red', construction:'red', early:'yellow', monitoring:'gray' };
+  const pillLabel = { active:'Active', approved:'Approved', construction:'Construction', early:'Early Stage', monitoring:'Monitoring' };
+
+  COUNTIES.forEach(c => {
+    const cls = pillClass[c.status] || 'gray';
+    const lbl = pillLabel[c.status] || c.status;
+    const mwColor = c.status === 'monitoring' ? 'var(--gray-400)' : (c.status === 'early' || c.status === 'active') ? 'var(--yellow)' : 'var(--orange)';
+
+    const el = document.createElement('a');
+    el.href = 'map.html';
+    el.className = 'county-card';
+    el.style.textDecoration = 'none';
+    el.innerHTML = `
+      <div class="county-card-header">
+        <div class="county-card-name">${c.name}</div>
+        <span class="status-pill status-pill-${cls}"><span class="status-dot"></span>${lbl}</span>
+      </div>
+      <div style="font-size:.78rem;color:var(--gray-400);line-height:1.5">${c.topRisk}</div>
+      <div class="county-card-stats">
+        <div class="county-stat"><div class="county-stat-val" style="color:${mwColor}">${c.totalMW}</div><div class="county-stat-lbl">Power demand</div></div>
+        <div class="county-stat" style="margin-left:auto;text-align:right"><div class="county-stat-val">${c.votes} vote${c.votes !== 1 ? 's' : ''}</div><div class="county-stat-lbl">tracked</div></div>
+      </div>
+      <div style="font-size:.7rem;color:var(--gray-500);padding-top:.4rem;border-top:1px solid var(--navy-border)">${c.lastAction}</div>`;
+    grid.appendChild(el);
+  });
+});
+</script>
 </body>
 </html>
