@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { AGENT_TASK_NAME_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
+import {
+	AGENT_TASK_NAME_MAX_LENGTH,
+	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+	type AgentTaskDto,
+} from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nHeading,
@@ -12,7 +16,7 @@ import {
 } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 
@@ -183,6 +187,13 @@ const errors = computed<{ name?: string; objective?: string; cron?: string }>(()
 	}
 	if (!objective.value.trim()) {
 		result.objective = i18n.baseText('agents.builder.tasks.validation.objectiveRequired');
+	} else if (objective.value.trim().length > AGENT_TASK_OBJECTIVE_MAX_LENGTH) {
+		result.objective = i18n.baseText(
+			'agents.builder.tasks.validation.objectiveMaxLength' as BaseTextKey,
+			{
+				interpolate: { max: String(AGENT_TASK_OBJECTIVE_MAX_LENGTH) },
+			},
+		);
 	}
 	if (!cronExpression.value.trim()) {
 		result.cron = i18n.baseText('agents.builder.tasks.validation.cronRequired');

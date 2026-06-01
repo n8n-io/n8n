@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import type { AgentTaskDto } from '@n8n/api-types';
+import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -164,6 +164,20 @@ describe('AgentTaskModal', () => {
 		await fireEvent.click(getByTestId('agent-task-save'));
 
 		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not save when objective exceeds the maximum length', async () => {
+		const { getByTestId, getByText } = renderModal();
+
+		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(
+			getByTestId('agent-task-objective-input'),
+			'x'.repeat(AGENT_TASK_OBJECTIVE_MAX_LENGTH + 1),
+		);
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+		expect(getByText('agents.builder.tasks.validation.objectiveMaxLength')).toBeInTheDocument();
 	});
 
 	it('updates an existing task without changing enabled', async () => {

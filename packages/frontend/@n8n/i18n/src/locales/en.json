@@ -6358,6 +6358,7 @@
 	"agents.builder.tasks.validation.nameRequired": "Enter a name.",
 	"agents.builder.tasks.validation.nameMaxLength": "Name must be {max} characters or fewer.",
 	"agents.builder.tasks.validation.objectiveRequired": "Enter an objective.",
+	"agents.builder.tasks.validation.objectiveMaxLength": "Objective must be {max} characters or fewer.",
 	"agents.builder.tasks.validation.cronRequired": "Enter a schedule.",
 	"agents.builder.editor.invalidJson": "Invalid JSON",
 	"agents.builder.editorColumn.ariaLabel": "Configuration editor",
