@@ -59,6 +59,7 @@ import { useCredentialResolvers } from '@/features/resolvers/composables/useCred
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
+import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
@@ -75,7 +76,7 @@ const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
 const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
-const isInstanceRedactionEnforced = ref(false);
+const instanceRedactionFloor = ref<RedactionFloor>('off');
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -245,14 +246,25 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-const isRedactionEnforcedByInstance = computed(
-	() => isRedactionEnforcementFlagEnabled.value && isInstanceRedactionEnforced.value,
+const isProductionRedactionLockedByFloor = computed(
+	() =>
+		isRedactionEnforcementFlagEnabled.value &&
+		(instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all'),
 );
 
-// Enforcement wins over permission — an admin cannot override an instance-level policy.
-function getRedactionLockReason(currentValue: string): 'enforcement' | 'permission' | null {
+const isManualRedactionLockedByFloor = computed(
+	() => isRedactionEnforcementFlagEnabled.value && instanceRedactionFloor.value === 'all',
+);
+
+type RedactionLockReason = 'floor' | 'permission' | null;
+
+// Floor lock wins over permission — an admin cannot override an instance-level policy.
+function resolveRedactionLockReason(
+	currentValue: string,
+	lockedByFloor: boolean,
+): RedactionLockReason {
 	if (!isDataRedactionLicensed.value) return null;
-	if (isRedactionEnforcedByInstance.value) return 'enforcement';
+	if (lockedByFloor) return 'floor';
 	if (
 		currentValue === 'default'
 			? !projectPermissions.value.workflow.enableRedaction
@@ -263,10 +275,12 @@ function getRedactionLockReason(currentValue: string): 'enforcement' | 'permissi
 }
 
 const productionRedactionLockReason = computed(() =>
-	getRedactionLockReason(redactProductionData.value),
+	resolveRedactionLockReason(redactProductionData.value, isProductionRedactionLockedByFloor.value),
 );
 
-const manualRedactionLockReason = computed(() => getRedactionLockReason(redactManualData.value));
+const manualRedactionLockReason = computed(() =>
+	resolveRedactionLockReason(redactManualData.value, isManualRedactionLockedByFloor.value),
+);
 
 const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
 const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
@@ -336,6 +350,26 @@ watch(redactProductionData, (newVal) => {
 	if (newVal !== 'redact' && redactManualData.value === 'redact') {
 		redactManualData.value = 'default';
 	}
+});
+
+// Coerce the locked select(s) to 'redact' when an instance floor applies.
+// No `immediate: true` — the natural change of `instanceRedactionFloor` from
+// its `'off'` default to the fetched value triggers this after both the
+// floor and workflow settings have settled in `onMounted`.
+watch(
+	[isProductionRedactionLockedByFloor, isManualRedactionLockedByFloor],
+	([prodLocked, manualLocked]) => {
+		if (prodLocked && redactProductionData.value !== 'redact') {
+			redactProductionData.value = 'redact';
+		}
+		if (manualLocked && redactManualData.value !== 'redact') {
+			redactManualData.value = 'redact';
+		}
+	},
+);
+
+const mcpToggleDisabled = computed(() => {
+	return readOnlyEnv.value || !workflowPermissions.value.update;
 });
 
 const mcpToggleTooltip = computed(() => {
@@ -771,15 +805,6 @@ const onExecutionLogicModeChange = (value: string) => {
 };
 
 onMounted(async () => {
-	if (isRedactionEnforcementFlagEnabled.value) {
-		try {
-			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
-			isInstanceRedactionEnforced.value = (response.redactionEnforcement?.floor ?? 'off') !== 'off';
-		} catch (error) {
-			console.debug('Failed to fetch redaction enforcement state', error);
-		}
-	}
-
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
@@ -878,6 +903,17 @@ onMounted(async () => {
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
+
+	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
+	// the floor-coercion watch sees the loaded settings (not the initial empty object).
+	if (isRedactionEnforcementFlagEnabled.value) {
+		try {
+			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
+			instanceRedactionFloor.value = response.redactionEnforcement?.floor ?? 'off';
+		} catch (error) {
+			console.debug('Failed to fetch redaction enforcement state', error);
+		}
+	}
 
 	// Clear stale credential resolver references (resolver was deleted externally)
 	// Only clear if resolvers loaded successfully — on API failure the list is empty
@@ -1286,8 +1322,8 @@ onBeforeUnmount(() => {
 								size="xsmall"
 								style="opacity: 1"
 								:data-test-id="
-									productionRedactionLockReason === 'enforcement'
-										? 'workflow-settings-redaction-enforced-lock'
+									productionRedactionLockReason === 'floor'
+										? 'workflow-settings-redaction-floor-lock'
 										: undefined
 								"
 							/>
@@ -1316,8 +1352,8 @@ onBeforeUnmount(() => {
 								placement="top"
 							>
 								<template #content>
-									<span v-if="productionRedactionLockReason === 'enforcement'">{{
-										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									<span v-if="productionRedactionLockReason === 'floor'">{{
+										i18n.baseText('workflowSettings.redactionFloorNotice')
 									}}</span>
 									<span v-else
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
@@ -1382,8 +1418,8 @@ onBeforeUnmount(() => {
 								size="xsmall"
 								style="opacity: 1"
 								:data-test-id="
-									manualRedactionLockReason === 'enforcement'
-										? 'workflow-settings-redaction-enforced-lock'
+									manualRedactionLockReason === 'floor'
+										? 'workflow-settings-redaction-floor-lock'
 										: undefined
 								"
 							/>
@@ -1415,8 +1451,8 @@ onBeforeUnmount(() => {
 								placement="top"
 							>
 								<template #content>
-									<span v-if="manualRedactionLockReason === 'enforcement'">{{
-										i18n.baseText('workflowSettings.redactionEnforcementNotice')
+									<span v-if="manualRedactionLockReason === 'floor'">{{
+										i18n.baseText('workflowSettings.redactionFloorNotice')
 									}}</span>
 									<span v-else-if="isManualRedactionLocked"
 										>{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}

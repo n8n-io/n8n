@@ -105,6 +105,18 @@ export class ProjectService {
 		);
 	}
 
+	private get agentRepository() {
+		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+			Container.get(AgentRepository),
+		);
+	}
+
+	private get agentKnowledgeService() {
+		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+			Container.get(AgentKnowledgeService),
+		);
+	}
+
 	async deleteProject(
 		user: User,
 		projectId: string,
@@ -206,10 +218,22 @@ export class ProjectService {
 			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
 		}
 
-		// 8. delete project
+		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
+		if (this.moduleRegistry.isActive('agents')) {
+			const [agentRepository, agentKnowledgeService] = await Promise.all([
+				this.agentRepository,
+				this.agentKnowledgeService,
+			]);
+			const agents = await agentRepository.findByProjectId(project.id);
+			for (const agent of agents) {
+				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+			}
+		}
+
+		// 9. delete project
 		await this.projectRepository.remove(project);
 
-		// 9. delete project relations
+		// 10. delete project relations
 		// Cascading deletes take care of this.
 	}
 

@@ -14,6 +14,7 @@ import type { BuilderModelLookupService } from '../builder/builder-model-lookup.
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -28,8 +29,11 @@ function makeService() {
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
+	const mcpRegistryService = mock<McpRegistryService>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
+	agentsToolsService.getSharedTools.mockReturnValue([]);
+	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService,
@@ -37,6 +41,8 @@ function makeService() {
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		mcpRegistryService,
+		mock(),
 		credentialTypes,
 	);
 
@@ -80,6 +86,15 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === name)!;
 		}
 
+		it('registers MCP-specific tools in the builder toolset', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const toolNames = tools.map((tool) => tool.name);
+			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
 		it('read_config returns the current config snapshot metadata', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent());
@@ -93,6 +108,39 @@ describe('AgentsBuilderToolsService', () => {
 				updatedAt: '2026-01-01T00:00:00.000Z',
 				versionId: 'v1',
 			});
+		});
+
+		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listChatIntegrations.mockReturnValue([
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).handler!(
+				{},
+				ctx,
+			);
+
+			expect(result).toEqual([
+				{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
+				{
+					type: 'linear',
+					label: 'Linear',
+					icon: 'linear',
+					credentialTypes: ['linearOAuth2Api'],
+					capabilities: ['Receive Linear issue/comment events'],
+					useIntegrationWhen: ['The agent should be chatted with from Linear issues/comments'],
+					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
+				},
+			]);
 		});
 
 		it('patch_config applies a patch when baseConfigHash matches', async () => {

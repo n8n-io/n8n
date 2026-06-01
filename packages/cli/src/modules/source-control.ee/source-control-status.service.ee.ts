@@ -185,6 +185,14 @@ export class SourceControlStatusService {
 			throw new ForbiddenError('You do not have permission to pull from source control');
 		}
 
+		if (
+			options.direction === 'push' &&
+			!hasGlobalScope(user, 'sourceControl:push') &&
+			context.authorizedProjects.length === 0
+		) {
+			throw new ForbiddenError('You do not have permission to push to source control');
+		}
+
 		await this.resetWorkfolder();
 
 		const remoteFolders =

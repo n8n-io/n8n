@@ -26,6 +26,7 @@ import {
 } from './agent-chat-integration';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
+import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -48,6 +49,7 @@ export interface ChatInstance {
 	onNewMention: (handler: unknown) => void;
 	onSubscribedMessage: (handler: unknown) => void;
 	onAction: (handler: unknown) => void;
+	getAdapter(name: string): unknown;
 	openDM(user: string): Promise<Thread>;
 	thread(threadId: string): Thread;
 	channel(channelId: string): Channel;
@@ -337,12 +339,11 @@ export class ChatIntegrationService {
 		previous: AgentCredentialIntegrationConfig[],
 		next: AgentCredentialIntegrationConfig[],
 	): Promise<void> {
-		const key = (i: AgentCredentialIntegrationConfig) => `${i.type}:${i.credentialId}`;
-		const previousKeys = new Set(previous.map(key));
-		const nextKeys = new Set(next.map(key));
+		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
+		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
 
 		for (const integration of previous) {
-			if (!nextKeys.has(key(integration))) {
+			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
 				try {
 					await this.disconnect(agent.id, integration);
 					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
@@ -354,7 +355,7 @@ export class ChatIntegrationService {
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(key(i)));
+		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
 
 		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(

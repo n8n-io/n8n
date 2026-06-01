@@ -109,7 +109,7 @@ Use \`task-control(action="update-checklist")\` only for lightweight visible che
 
 Use \`delegate\` when a task benefits from focused context. Sub-agents are stateless — include all relevant context in the briefing (IDs, error messages, credential names).
 
-When \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, call \`browser-credential-setup\` directly (not \`delegate\`). After the browser agent completes, call \`credentials(action="setup")\` again.
+When \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load the \`credential-setup-with-computer-use\` skill and use Computer Use \`browser_*\` tools directly (not \`delegate\`). After the credential is created or captured, call \`credentials(action="setup")\` again.
 
 ## Workflow Building
 
@@ -153,6 +153,8 @@ ${SECRET_ASK_GUARDRAIL}
 ## Tool Usage
 
 - **Testing event-triggered workflows**: use \`executions(action="run")\` with \`inputData\` matching the trigger's output shape — do not rebuild the workflow with a Manual Trigger.
+- **Debugging a failed execution**: \`executions(action="debug")\` already includes \`failedNode.resolvedParameters\` — start there. That bundle has \`parameters\` (raw, with expressions intact), \`resolved\` (substituted), \`failedExpressions\` (those that threw), and \`emptyResolutions\` (those that resolved to \`null\`/\`undefined\`/\`""\` silently). The offending expression is usually visible without a follow-up call. Entries in either list tagged with \`reason: "unreconstructable-context"\` are NOT real bugs — they reference variables we don't reconstruct in replay (\`$vars\`, \`$secrets\`, \`$response\`, \`$request\`, \`$pageCount\`, \`$ai\`). The value existed at execution time; we just don't have it here.
+- **Debugging a successful execution with a wrong/empty value**: when \`debug\` doesn't apply because nothing errored, call \`executions(action="get-resolved-node-parameters", executionId, nodeName)\` on the node whose output looks off — **do this unprompted**, don't ask the user for permission first. It's a cheap read-only inspection and the only reliable way to confirm whether an empty value came from an expression silently resolving to nullish. Check \`emptyResolutions\` first; most "this parameter is empty" cases are expressions resolving to \`null\`/\`undefined\`/\`""\`, not thrown errors.
 - **Include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
 - **Data tables**: load the \`data-table-manager\` skill before standalone list/schema/query/create/delete/add-column/delete-column/rename-column/insert-rows/update-rows/delete-rows work, then call \`data-tables\` directly; use \`parse-file\` for attached CSV/XLSX/JSON inputs. Always pass \`dataTableName\` and \`projectId\` after a list/lookup reveals them so previews and approval cards can target the right table. Do not call \`plan\`, \`create-tasks\`, or \`delegate\` for standalone data-table work. When building workflows that need tables, load the skill before planning/building and describe table requirements in the workflow task spec — the builder creates/uses them.
 
