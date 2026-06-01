@@ -64,6 +64,52 @@ async function openModal(getByTestId: (id: string) => HTMLElement) {
 }
 
 describe('WorkflowCustomTelemetryTags', () => {
+	it.each([
+		{
+			modelValue: undefined,
+			expectedCount: 'No tags configured',
+		},
+		{
+			modelValue: [{ key: 'team', value: 'platform' }],
+			expectedCount: '1 tag configured',
+		},
+		{
+			modelValue: [
+				{ key: 'team', value: 'platform' },
+				{ key: 'env', value: 'production' },
+			],
+			expectedCount: '2 tags configured',
+		},
+	])(
+		'should render the custom telemetry tags count as $expectedCount',
+		({ modelValue, expectedCount }) => {
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue,
+				},
+			});
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-count')).toHaveTextContent(
+				expectedCount,
+			);
+		},
+	);
+
+	it('should include the configured tag count in the configure button accessible name', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: [
+					{ key: 'team', value: 'platform' },
+					{ key: 'env', value: 'production' },
+				],
+			},
+		});
+
+		expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
+			'Configure custom telemetry tags, 2 tags configured',
+		);
+	});
+
 	it('should render the modal title, back button, description, and save action', async () => {
 		const { getByLabelText, getByRole, getByTestId, getByText } = renderComponent();
 

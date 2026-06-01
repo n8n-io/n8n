@@ -14,7 +14,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ICustomTelemetryTag } from 'n8n-workflow';
 import { ElCol, ElRow } from 'element-plus';
 
@@ -82,6 +82,19 @@ const draftValidationError = computed(() => {
 const hasTagErrors = computed(() => validationError.value !== null);
 const hasDraftErrors = computed(() => draftValidationError.value !== null);
 const areControlsDisabled = computed(() => props.isReadOnly || isSaving.value);
+const configuredTagsCount = computed(() => tags.value.length);
+const configuredTagsCountLabel = computed(() =>
+	i18n.baseText('workflowSettings.customTelemetryTags.configuredCount' as BaseTextKey, {
+		adjustToNumber: configuredTagsCount.value,
+		interpolate: { count: configuredTagsCount.value },
+	}),
+);
+const configureButtonAriaLabel = computed(
+	() =>
+		`${i18n.baseText('workflowSettings.customTelemetryTags.configure')} ${i18n
+			.baseText('workflowSettings.customTelemetryTags.displayName')
+			.toLowerCase()}, ${configuredTagsCountLabel.value.toLowerCase()}`,
+);
 
 watch(
 	hasTagErrors,
@@ -166,17 +179,25 @@ const onModalOpenChange = (open: boolean) => {
 				</label>
 			</ElCol>
 			<ElCol :span="14" :class="$style.customTelemetryTagsControl">
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					native-type="button"
-					:class="$style.customTelemetryTagsConfigure"
-					data-test-id="workflow-settings-custom-telemetry-tags-configure"
-					@click="openModal"
-				>
-					{{ i18n.baseText('workflowSettings.customTelemetryTags.configure') }}
-					<N8nIcon icon="chevron-right" />
-				</N8nButton>
+				<div :class="$style.customTelemetryTagsSummary">
+					<N8nButton
+						variant="subtle"
+						size="large"
+						native-type="button"
+						:class="$style.customTelemetryTagsConfigure"
+						:aria-label="configureButtonAriaLabel"
+						data-test-id="workflow-settings-custom-telemetry-tags-configure"
+						@click="openModal"
+					>
+						{{ i18n.baseText('workflowSettings.customTelemetryTags.configure') }}
+					</N8nButton>
+					<span
+						:class="$style.customTelemetryTagsCount"
+						data-test-id="workflow-settings-custom-telemetry-tags-count"
+					>
+						{{ configuredTagsCountLabel }}
+					</span>
+				</div>
 				<N8nText
 					v-if="validationError"
 					size="small"
@@ -370,7 +391,17 @@ const onModalOpenChange = (open: boolean) => {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
+	align-items: flex-start;
+}
+
+.customTelemetryTagsSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.customTelemetryTagsCount {
+	color: var(--text-color);
 }
 
 .customTelemetryTagsConfigure {
