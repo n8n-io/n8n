@@ -214,7 +214,6 @@ const onModalOpenChange = (open: boolean) => {
 						:class="$style.customTelemetryTagsDocsLink"
 						:href="OPEN_TELEMETRY_DOCS_URL"
 						target="_blank"
-						rel="noopener noreferrer"
 					>
 						{{ i18n.baseText('workflowSettings.customTelemetryTags.modal.documentation') }}
 						<N8nIcon icon="arrow-up-right" size="xsmall" />
