@@ -1249,6 +1249,7 @@
 	"experiments.instanceAiWorkflowPreviewSuggestions.suggestions.whatsappSupport.prompt": "When a customer sends a WhatsApp message, use Gemini to match their question against our FAQ in Google Sheets and reply instantly. If it cannot resolve it, create a support ticket in Notion and alert the team on Slack.",
 	"experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scheduleSocialPosts.label": "Schedule social posts",
 	"experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scheduleSocialPosts.prompt": "Every Monday, read this week's content ideas from a Google Sheet, use Gemini to write tailored content then schedule them to post throughout the week.",
+	"experiments.instanceAiWorkflowPreviewSuggestions.suggestions.seeAll": "See all",
 	"experiments.personalizedTemplatesV3.browseAllTemplates": "Browse our template library",
 	"experiments.personalizedTemplatesV3.couldntFind": "Need something different?",
 	"experiments.personalizedTemplatesV3.exploreTemplates": "Get started with HubSpot workflows:",

@@ -128,7 +128,11 @@ onUnmounted(clearHoverTimer);
 				rel="noopener noreferrer"
 				:class="$style.seeAllLink"
 			>
-				<span>See all</span>
+				<span>{{
+					i18n.baseText(
+						'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.seeAll' as BaseTextKey,
+					)
+				}}</span>
 				<N8nIcon icon="arrow-right" :size="12" />
 			</a>
 		</div>
