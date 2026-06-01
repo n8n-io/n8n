@@ -794,7 +794,13 @@ export class OauthService {
 		returnUriUrl.searchParams.set('oauth_token', responseJson.oauth_token);
 		const returnUri = returnUriUrl.toString();
 
-		await this.encryptAndSaveData(credential, { csrfSecret }, []);
+		// The request token secret is required to sign the later access token
+		// request, so it must be persisted until the callback completes.
+		await this.encryptAndSaveData(
+			credential,
+			{ csrfSecret, oauth_token_secret: responseJson.oauth_token_secret ?? '' },
+			[],
+		);
 
 		this.logger.debug('OAuth1 authorization url created for credential', {
 			csrfData,
@@ -802,6 +808,63 @@ export class OauthService {
 		});
 
 		return returnUri;
+	}
+
+	/**
+	 * Exchanges an authorized OAuth1 request token for an access token.
+	 *
+	 * The access token request must be signed with the consumer credentials and
+	 * the request token key/secret obtained during {@link generateAOauth1AuthUri}.
+	 * Returns the parsed token data from the (x-www-form-urlencoded) response.
+	 */
+	async getOAuth1AccessToken(
+		oauthCredentials: OAuth1CredentialData,
+		params: { oauthToken: string; oauthVerifier: string; oauthTokenSecret: string },
+	): Promise<Record<string, string>> {
+		const { signatureMethod } = oauthCredentials;
+
+		const oauth = new clientOAuth1({
+			consumer: {
+				key: oauthCredentials.consumerKey,
+				secret: oauthCredentials.consumerSecret,
+			},
+			signature_method: signatureMethod,
+			hash_function(base, key) {
+				const algorithm = algorithmMap[signatureMethod] ?? 'sha1';
+				return createHmac(algorithm, key).update(base).digest('base64');
+			},
+		});
+
+		const requestData: RequestOptions = {
+			method: 'POST',
+			url: oauthCredentials.accessTokenUrl,
+			data: { oauth_verifier: params.oauthVerifier },
+		};
+
+		const token = { key: params.oauthToken, secret: params.oauthTokenSecret };
+		const headers = oauth.toHeader(oauth.authorize(requestData, token));
+
+		// `oauth_verifier` is part of the signature base string but is not emitted
+		// into the Authorization header by `toHeader`, so it must travel in the
+		// form-encoded body for the server to receive and verify it.
+		const { data: response } = await axios.request<string>({
+			method: 'POST',
+			url: oauthCredentials.accessTokenUrl,
+			data: new URLSearchParams({ oauth_verifier: params.oauthVerifier }).toString(),
+			headers: {
+				...headers,
+				'content-type': 'application/x-www-form-urlencoded',
+			},
+		});
+
+		// Response comes as x-www-form-urlencoded string so convert it to JSON
+		if (typeof response !== 'string') {
+			throw new BadRequestError(
+				'Expected string response from OAuth1 access token endpoint, but received invalid response type',
+			);
+		}
+
+		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {

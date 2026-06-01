@@ -3088,7 +3088,10 @@ describe('OauthService', () => {
 			expect(authUri).toContain('https://example.domain/oauth/authorize?oauth_token=random-token');
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(
 				credential,
-				expect.objectContaining({ csrfSecret: expect.any(String) }),
+				expect.objectContaining({
+					csrfSecret: expect.any(String),
+					oauth_token_secret: 'random-secret',
+				}),
 				[],
 			);
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth1.authenticate', expect.any(Array));
@@ -3198,6 +3201,60 @@ describe('OauthService', () => {
 			expect(parsed.searchParams.get('expiration')).toBe('never');
 			expect(parsed.searchParams.get('name')).toBe('n8n');
 			expect(parsed.searchParams.get('oauth_token')).toBe('random-token');
+		});
+	});
+
+	describe('getOAuth1AccessToken', () => {
+		const oauthCredentials: OAuth1CredentialData = {
+			consumerKey: 'consumer_key',
+			consumerSecret: 'consumer_secret',
+			requestTokenUrl: 'https://trello.com/1/OAuthGetRequestToken',
+			authUrl: 'https://trello.com/1/OAuthAuthorizeToken',
+			accessTokenUrl: 'https://trello.com/1/OAuthGetAccessToken',
+			signatureMethod: 'HMAC-SHA1',
+		};
+
+		it('should send a signed request to the access token endpoint and parse the response', async () => {
+			const axios = require('axios');
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=access-token&oauth_token_secret=access-secret',
+			});
+
+			const result = await service.getOAuth1AccessToken(oauthCredentials, {
+				oauthToken: 'request-token',
+				oauthVerifier: 'verifier',
+				oauthTokenSecret: 'request-secret',
+			});
+
+			expect(result).toEqual({
+				oauth_token: 'access-token',
+				oauth_token_secret: 'access-secret',
+			});
+
+			const requestConfig = jest.mocked(axios.request).mock.calls.at(-1)?.[0];
+			expect(requestConfig.method).toBe('POST');
+			expect(requestConfig.url).toBe('https://trello.com/1/OAuthGetAccessToken');
+			// The request must carry an OAuth1 signature and the request token in the
+			// Authorization header.
+			expect(requestConfig.headers.Authorization).toMatch(/^OAuth /);
+			expect(requestConfig.headers.Authorization).toContain('oauth_signature');
+			expect(requestConfig.headers.Authorization).toContain('oauth_token');
+			// The verifier travels in the form-encoded body.
+			expect(requestConfig.headers['content-type']).toBe('application/x-www-form-urlencoded');
+			expect(requestConfig.data).toBe('oauth_verifier=verifier');
+		});
+
+		it('should throw when the access token endpoint returns a non-string response', async () => {
+			const axios = require('axios');
+			jest.mocked(axios.request).mockResolvedValue({ data: { not: 'a string' } });
+
+			await expect(
+				service.getOAuth1AccessToken(oauthCredentials, {
+					oauthToken: 'request-token',
+					oauthVerifier: 'verifier',
+					oauthTokenSecret: 'request-secret',
+				}),
+			).rejects.toThrow(BadRequestError);
 		});
 	});
 
