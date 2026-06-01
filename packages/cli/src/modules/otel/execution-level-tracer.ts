@@ -37,10 +37,7 @@ export class ExecutionLevelTracer {
 		try {
 			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const customAttributes = buildCustomAttributes(
-				ATTR.WORKFLOW_CUSTOM_PREFIX,
-				params.workflow.customAttributes,
-			);
+
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
@@ -51,7 +48,10 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
 						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
-						...customAttributes,
+						...buildCustomAttributes(
+							ATTR.WORKFLOW_CUSTOM_PREFIX,
+							params.workflow?.customAttributes,
+						),
 						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
