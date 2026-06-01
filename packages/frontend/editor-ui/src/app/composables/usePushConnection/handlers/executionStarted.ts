@@ -4,10 +4,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
@@ -18,8 +15,11 @@ import type { IRunExecutionData } from 'n8n-workflow';
  */
 export async function executionStarted({ data }: ExecutionStarted) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
+		workflowDocumentStore.documentId,
 	);
 	const isIframe = window !== window.parent;
 
@@ -45,10 +45,6 @@ export async function executionStarted({ data }: ExecutionStarted) {
 	// Initialize or reinitialize execution data to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (!executionDataStore.execution?.data || needsInit) {
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-
 		executionDataStore.setExecution({
 			id: data.executionId,
 			finished: false,

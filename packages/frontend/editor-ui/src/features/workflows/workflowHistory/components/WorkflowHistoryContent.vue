@@ -43,6 +43,7 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	const workflowWithoutPinData = omit(props.workflow, 'pinData');
 	return {
 		...workflowWithoutPinData,
+		nodeGroups: props.workflowVersion.nodeGroups,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};

@@ -3,7 +3,7 @@
 //
 // Reads the same env vars production reads (N8N_INSTANCE_AI_SANDBOX_*,
 // DAYTONA_*, N8N_SANDBOX_SERVICE_*) and produces a SandboxConfig the
-// in-process eval harness can hand to BuilderSandboxFactory.
+// in-process eval harness can use to create the shared builder workspace.
 //
 // The sandbox is always on for evals — there is no opt-out. Missing
 // required env vars raise clear errors so misconfiguration shows up at

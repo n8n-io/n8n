@@ -1,4 +1,4 @@
-import { ref, computed, shallowRef } from 'vue';
+import { ref, computed } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
@@ -8,6 +8,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -58,7 +59,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const telemetry = useTelemetry();
 	const workflowId = useWorkflowId();
 	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
-	const currentNDVStore = shallowRef<ReturnType<typeof useNDVStore> | null>(null);
 
 	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
 
@@ -79,19 +79,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
-		const ndvStore = currentNDVStore.value;
 		const workflowDocumentStore = currentWorkflowDocumentStore.value;
 
-		if (ndvStore) {
-			disposeNDVStore(ndvStore);
-		}
-
 		if (workflowDocumentStore) {
+			disposeNDVStore(useNDVStore(workflowDocumentStore.documentId));
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
 
 		currentWorkflowDocumentStore.value = null;
-		currentNDVStore.value = null;
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
@@ -180,7 +175,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
-			currentNDVStore.value = useNDVStore(workflowDocumentId);
 			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
 		}
 
@@ -196,11 +190,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.setIsInDebugMode(true);
+				executionStateStore.setIsInDebugMode(true);
 			}
 		}
 	}
@@ -269,12 +266,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		try {
 			const { workflowDocumentStore } = await initializeWorkspace(data);
 			currentWorkflowDocumentStore.value = workflowDocumentStore;
-			currentNDVStore.value = useNDVStore(
-				createWorkflowDocumentId(
-					workflowDocumentStore.workflowId,
-					workflowDocumentStore.workflowVersion,
-				),
-			);
 		} catch (error) {
 			// Using error instead of warn so that unexpected errors are captured by Sentry
 			console.error('Failed to initialize workspace for workflow', {
@@ -290,7 +281,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			currentWorkflowDocumentStore.value.setName(data.name);
 			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
 			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
-			currentNDVStore.value = useNDVStore(workflowDocumentId);
 			return;
 		}
 
@@ -312,7 +302,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
-		currentNDVStore.value = useNDVStore(workflowDocumentId);
 
 		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
 		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
@@ -481,7 +470,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		initializedWorkflowId,
 		workflowId,
 		currentWorkflowDocumentStore,
-		currentNDVStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,

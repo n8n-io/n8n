@@ -180,6 +180,19 @@ describe('useSelectionValidation', () => {
 		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
 	});
 
+	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
+		const graph = makeLinearGraph();
+		const workflowDocumentStore = setupGraph(graph, {
+			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+		});
+		workflowDocumentStore.createGroup(['a', 'c'], 'Group');
+
+		const { isSelectionGroupable } = useSelectionValidation();
+		const result = isSelectionGroupable(['a', 'b']);
+
+		expect(result).toEqual({ valid: false, reason: 'node-already-grouped', nodeIds: ['a'] });
+	});
+
 	it('returns trigger-selected when a trigger is part of the selection', () => {
 		const graph = makeLinearGraph();
 		graph.nodes.a.type = 'n8n-nodes-base.manualTrigger';

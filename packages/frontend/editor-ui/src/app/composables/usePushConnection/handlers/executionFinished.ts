@@ -18,10 +18,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -79,8 +76,12 @@ export async function executionFinished(
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
+	const executionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof executionStateStore.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -259,9 +260,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: executionStateStore.activeExecutionId ?? '' },
 		});
 	}
 
@@ -481,7 +485,7 @@ export function setRunExecutionData(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);

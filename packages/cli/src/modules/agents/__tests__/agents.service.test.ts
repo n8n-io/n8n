@@ -23,6 +23,9 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import { AgentScheduleService } from '../integrations/agent-schedule.service';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -31,6 +34,7 @@ import {
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -80,9 +84,11 @@ describe('AgentsService', () => {
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
+	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
+	let telemetry: jest.Mocked<Telemetry>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -97,12 +103,14 @@ describe('AgentsService', () => {
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		scheduleService = mock<AgentScheduleService>();
 		chatIntegrationService = mock<ChatIntegrationService>();
+		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		agentsConfig = { modules: [] } as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
+		telemetry = mock<Telemetry>();
 		const logger = mockLogger();
 
 		service = new AgentsService(
@@ -127,8 +135,11 @@ describe('AgentsService', () => {
 			publisher,
 			agentsConfig,
 			globalConfig,
-			mock<Telemetry>(),
+			telemetry,
 			chatIntegrationService,
+			agentKnowledgeService,
+			mock(),
+			mock(),
 		);
 	});
 
@@ -193,6 +204,24 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Help the user.',
 				config: { nodeTools: { enabled: true } },
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('allows MCP servers', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
 			});
 
 			expect(result.valid).toBe(true);
@@ -433,7 +462,7 @@ describe('AgentsService', () => {
 				instructions: 'Old instructions',
 				description: 'previously stored description',
 				credential: 'cred-anthropic',
-				memory: { enabled: true, lastMessages: 20 },
+				memory: { enabled: true },
 				tools: [{ type: 'custom', id: 'tool-keep' } as const],
 			} as unknown as AgentJsonConfig;
 			const agent = makeAgent({ schema: previousSchema });
@@ -457,7 +486,7 @@ describe('AgentsService', () => {
 			expect(savedSchema.instructions).toBe('Updated instructions');
 			expect(savedSchema.description).toBe('previously stored description');
 			expect(savedSchema.credential).toBe('cred-anthropic');
-			expect(savedSchema.memory).toEqual({ enabled: true, lastMessages: 20 });
+			expect(savedSchema.memory).toEqual({ enabled: true });
 			expect(savedSchema.tools).toEqual([{ type: 'custom', id: 'tool-keep' }]);
 			// description column on the entity also stays untouched.
 			expect(savedEntity.description).toBe(agent.description);
@@ -694,8 +723,8 @@ describe('AgentsService', () => {
 		});
 
 		describe('with explicit versionId', () => {
-			it('flips activeVersionId to an existing history row without creating a new one', async () => {
-				const agent = makeAgent({ versionId: 'v2' });
+			it('flips activeVersionId to an existing history row and bumps draft versionId', async () => {
+				const agent = makeAgent({ versionId: 'v2', activeVersionId: 'v2' });
 				const existingHistory = makeAgentHistory({ versionId: 'v1' });
 				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 				agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(existingHistory);
@@ -710,7 +739,28 @@ describe('AgentsService', () => {
 				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 				expect(agent.activeVersionId).toBe('v1');
 				expect(agent.activeVersion).toBe(existingHistory);
+				// Draft versionId was v2 (a history-row PK). Bumping to a fresh
+				// UUID lets the next regular publish snapshot cleanly.
+				expect(agent.versionId).not.toBe('v2');
+				expect(agent.versionId).not.toBe('v1');
+				expect(agent.versionId).toMatch(
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+				);
 				expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			});
+
+			it('is a no-op when the requested version is already active', async () => {
+				const agent = makeAgent({ versionId: 'v1', activeVersionId: 'v1' });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				const result = await service.publishAgent(agentId, projectId, testUser, 'v1');
+
+				expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+				expect(mockTrx.save).not.toHaveBeenCalled();
+				expect(agent.versionId).toBe('v1');
+				expect(agent.activeVersionId).toBe('v1');
+				expect(result).toBe(agent);
 			});
 
 			it('throws NotFoundError when the versionId does not belong to the agent', async () => {
@@ -772,6 +822,54 @@ describe('AgentsService', () => {
 			await service.publishAgent(agentId, projectId, testUser);
 
 			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+		});
+
+		it('can skip integration sync when publishing after an explicit integration connect', async () => {
+			const agent = makeAgent({
+				integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, testUser, undefined, {
+				syncIntegrations: false,
+			});
+
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential integrations', () => {
+		it('marks a published agent dirty when saving a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.saveCredentialIntegration(agent, { type: 'slack', credentialId: 'cred-slack' });
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
+
+		it('marks a published agent dirty when removing a credential integration', async () => {
+			const agent = makeAgent({
+				versionId,
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+			agentRepository.save.mockResolvedValue(agent);
+
+			await service.removeCredentialIntegration(agent, 'slack', 'cred-slack');
+
+			expect(agent.versionId).not.toBe(versionId);
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
 		});
 	});
 
@@ -863,6 +961,156 @@ describe('AgentsService', () => {
 			const streamConfig = (streamSpy.mock.calls[0] as [{ memory: { resourceId: string } }])[0];
 			expect(streamConfig.memory.resourceId).toBe(chatUserId);
 			expect(streamConfig.memory.resourceId).not.toBe(n8nPublisherId);
+		});
+
+		it('does not pass an n8n telemetry userId to streamChatResponse', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBeUndefined();
+		});
+	});
+
+	describe('executeForChat', () => {
+		it('passes the authenticated n8n userId to streamChatResponse for telemetry attribution', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({ schema });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					userId,
+					memory: { threadId: 'thread-1', resourceId: userId },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBe(userId);
+		});
+	});
+
+	describe('integration runtime tools', () => {
+		it('injects each credential integration context/action tool only once', async () => {
+			const integrationRegistry = new ChatIntegrationRegistry();
+			Container.set(ChatIntegrationRegistry, integrationRegistry);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+			Container.set(
+				ChatIntegrationContextQueryExecutor,
+				mock<ChatIntegrationContextQueryExecutor>(),
+			);
+
+			const toolNames: string[] = [];
+			const runtimeAgent = {
+				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+					for (const item of Array.isArray(tool) ? tool : [tool]) {
+						if (item.name) toolNames.push(item.name);
+					}
+				}),
+				hasCheckpointStorage: jest.fn().mockReturnValue(true),
+				checkpoint: jest.fn(),
+			};
+
+			await (
+				service as unknown as {
+					injectRuntimeDependencies(params: {
+						agent: typeof runtimeAgent;
+						agentId: string;
+						projectId: string;
+						credentialProvider: unknown;
+						nodeToolsEnabled: boolean;
+						credentialIntegrations: Array<{ type: string; credentialId: string }>;
+					}): Promise<void>;
+				}
+			).injectRuntimeDependencies({
+				agent: runtimeAgent,
+				agentId,
+				projectId,
+				credentialProvider: mock(),
+				nodeToolsEnabled: false,
+				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			});
+
+			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
+			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
+		});
+	});
+
+	describe('executeForSchedulePublished', () => {
+		it('does not pass an n8n telemetry userId to streamChatResponse', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'n8n-user-publisher' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForSchedulePublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'schedule-run-1' },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
+			expect(streamConfig.userId).toBeUndefined();
 		});
 	});
 
@@ -977,7 +1225,7 @@ describe('AgentsService', () => {
 			});
 			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
 				ok: true,
-				agent: { name: 'Test Agent', stream },
+				agent: { name: 'Test Agent', stream, close: jest.fn().mockResolvedValue(undefined) },
 			} as never);
 
 			await service.executeForWorkflow(
@@ -996,6 +1244,56 @@ describe('AgentsService', () => {
 				}),
 			);
 			expect(releaseLock).toHaveBeenCalled();
+		});
+
+		it('passes the explicit workflow userId to the execution counter', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: 'publisher-user' }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const stream = jest.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock: jest.fn(),
+					}),
+				},
+			});
+			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+				ok: true,
+				agent: { name: 'Test Agent', stream },
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				userId,
+			);
+
+			const streamOptions = stream.mock.calls[0][1] as {
+				executionCounter: { incrementMessageCount: () => void };
+			};
+
+			streamOptions.executionCounter.incrementMessageCount();
+
+			expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+				agent_id: agentId,
+				user_id: userId,
+				message_count: 1,
+			});
 		});
 	});
 
@@ -1189,6 +1487,222 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('revertToVersion', () => {
+		let mockTrx: { save: jest.Mock };
+		let mockTransaction: jest.Mock;
+
+		beforeEach(() => {
+			mockTrx = { save: jest.fn() };
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
+			Object.defineProperty(agentRepository, 'manager', {
+				value: { transaction: mockTransaction },
+				configurable: true,
+			});
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'v1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the version does not exist for the agent', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+			await expect(service.revertToVersion(agentId, projectId, 'foreign-version')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+				'foreign-version',
+				agentId,
+				mockTrx,
+			);
+			expect(mockTrx.save).not.toHaveBeenCalled();
+		});
+
+		it('restores the draft fields from the targeted snapshot and leaves activeVersionId untouched', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Old Agent',
+				description: 'Old description',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-old',
+				instructions: 'Old instructions',
+				tools: [{ type: 'custom', id: 'old_tool' }],
+				skills: [{ type: 'skill', id: 'old_skill' }],
+			};
+			const snapshotTools = {
+				old_tool: {
+					code: 'return "old";',
+					descriptor: { name: 'old_tool' },
+				},
+			} as unknown as Agent['tools'];
+			const snapshotSkills = {
+				old_skill: {
+					name: 'Old skill',
+					description: 'Old skill description',
+					instructions: 'Old skill instructions',
+				},
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: snapshotTools,
+				skills: snapshotSkills,
+			});
+			const activeVersion = makeAgentHistory({ versionId: 'v2' });
+			const agent = makeAgent({
+				name: 'Current Agent',
+				description: 'Current description',
+				versionId: 'v3',
+				schema: {
+					name: 'Current Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Current instructions',
+				},
+				tools: {},
+				skills: {},
+				activeVersionId: 'v2',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			const result = await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.schema).toEqual(snapshotSchema);
+			expect(agent.schema).not.toBe(snapshotSchema);
+			expect(agent.tools).toEqual(snapshotTools);
+			expect(agent.skills).toEqual(snapshotSkills);
+			// Fresh UUID so the next publish snapshot doesn't collide with the
+			// targeted history row's PK and doesn't fast-path past the revert.
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).not.toBe('v3');
+			expect(agent.versionId).not.toBe(agent.activeVersionId);
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(agent.name).toBe('Old Agent');
+			expect(agent.description).toBe('Old description');
+			expect(agent.activeVersionId).toBe('v2');
+			expect(agent.activeVersion).toBe(activeVersion);
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			expect(result).toBe(agent);
+		});
+
+		it('reverts successfully when the agent is currently unpublished', async () => {
+			const snapshotSchema: AgentJsonConfig = {
+				name: 'Restored Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Restored instructions',
+			};
+			const targetVersion = makeAgentHistory({
+				versionId: 'v1',
+				schema: snapshotSchema,
+				tools: {},
+				skills: {},
+			});
+			const agent = makeAgent({ activeVersionId: null, activeVersion: null });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(targetVersion);
+
+			await service.revertToVersion(agentId, projectId, 'v1');
+
+			expect(agent.activeVersionId).toBeNull();
+			expect(agent.versionId).not.toBe('v1');
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(agent.name).toBe('Restored Agent');
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+		});
+	});
+
+	describe('listPublishHistory', () => {
+		it('throws NotFoundError when the agent does not exist in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listPublishHistory(agentId, projectId, 20, 0)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(agentHistoryRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('forwards take and skip to the repository', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([]);
+
+			await service.listPublishHistory(agentId, projectId, 5, 10);
+
+			expect(agentHistoryRepository.findByAgentId).toHaveBeenCalledWith(agentId, 5, 10);
+		});
+
+		it('maps history rows to DTOs and marks the active version', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2026-01-02T00:00:00.000Z');
+			const activeRow = {
+				versionId: 'v2',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Ada Lovelace',
+			} as unknown as AgentHistory;
+			const inactiveRow = {
+				versionId: 'v1',
+				agentId,
+				createdAt,
+				updatedAt,
+				author: 'Unknown',
+			} as unknown as AgentHistory;
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: 'v2' }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([activeRow, inactiveRow]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result).toEqual([
+				{
+					versionId: 'v2',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Ada Lovelace',
+					isActive: true,
+				},
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt: createdAt.toISOString(),
+					updatedAt: updatedAt.toISOString(),
+					author: 'Unknown',
+					isActive: false,
+				},
+			]);
+		});
+
+		it('marks every row as inactive when the agent is unpublished', async () => {
+			const createdAt = new Date('2026-01-01T00:00:00.000Z');
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ activeVersionId: null }));
+			agentHistoryRepository.findByAgentId.mockResolvedValue([
+				{
+					versionId: 'v1',
+					agentId,
+					createdAt,
+					updatedAt: createdAt,
+					author: 'Ada Lovelace',
+				} as unknown as AgentHistory,
+			]);
+
+			const result = await service.listPublishHistory(agentId, projectId, 20, 0);
+
+			expect(result[0].isActive).toBe(false);
+		});
+	});
+
 	describe('getConversationHistory', () => {
 		it('returns the user-visible transcript from execution history', async () => {
 			agentExecutionService.getThreadDetail.mockResolvedValue({
@@ -1296,6 +1810,11 @@ describe('AgentsService', () => {
 			readonly credentialTypes = ['testApi'];
 			readonly displayLabel = 'Test Platform';
 			readonly displayIcon = 'circle';
+			readonly builderGuidance = {
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
+			};
 			async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 				return {};
 			}
@@ -1314,6 +1833,9 @@ describe('AgentsService', () => {
 				label: 'Test Platform',
 				icon: 'circle',
 				credentialTypes: ['testApi'],
+				capabilities: ['Receive messages from Test Platform'],
+				useIntegrationWhen: ['The agent should be chatted with from Test Platform'],
+				useNodeToolWhen: ['Test Platform is only a backend API capability'],
 			});
 		});
 
@@ -1448,6 +1970,182 @@ describe('AgentsService', () => {
 			expect(result.missing).not.toContain('episodicMemory.credential');
 		});
 
+		it('flags missing fallback web search credential', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					config: {
+						webSearch: {
+							enabled: true,
+							provider: 'brave',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('webSearch.credential');
+		});
+
+		it('flags fallback web search credential that does not exist', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					config: {
+						webSearch: {
+							enabled: true,
+							provider: 'brave',
+							credential: 'missing-web-search-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).toContain('webSearch.credential');
+		});
+
+		it('flags missing memory worker model credentials', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred', type: 'openAiApi' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'missing-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.observerModel.credential');
+		});
+
+		it('flags memory worker credentials that do not match the worker model provider', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'wrong-worker-cred', type: 'openAiApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'wrong-worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('memory.observationalMemory.reflectorModel.credential');
+		});
+
+		it('accepts cross-provider memory worker models with matching credentials', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'embedding-cred', type: 'openAiApi' },
+				{ id: 'worker-cred', type: 'anthropicApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+						episodicMemory: {
+							enabled: true,
+							credential: 'embedding-cred',
+							extractorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+							reflectorModel: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'worker-cred',
+							},
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('memory.observationalMemory.observerModel.credential');
+			expect(result.missing).not.toContain('memory.observationalMemory.reflectorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.extractorModel.credential');
+			expect(result.missing).not.toContain('memory.episodicMemory.reflectorModel.credential');
+		});
+
 		it('flags config skill refs that have no stored body', async () => {
 			const agent = makeAgent({
 				schema: {
@@ -1567,6 +2265,59 @@ describe('AgentsService', () => {
 			expect(resumeOptions).not.toHaveProperty('resourceId');
 			expect(JSON.stringify(resumeArgs)).not.toContain(n8nPublisherId);
 		});
+
+		it('keeps the execution counter unattributed for integration resume traffic', async () => {
+			const n8nPublisherId = 'n8n-user-publisher';
+			const runId = 'run-abc';
+			const toolCallId = 'tool-xyz';
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: n8nPublisherId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			n8nCheckpointStorage.getStatus.mockResolvedValue({
+				status: 'ok',
+				checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			} as never);
+
+			const mockAgentInstance = {
+				name: 'Test Agent',
+				resume: jest.fn().mockResolvedValue({
+					stream: {
+						getReader: () => ({
+							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: jest.fn(),
+						}),
+					},
+				}),
+			};
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: {} } as never);
+
+			await service
+				.resumeForChat({ agentId, projectId, runId, toolCallId, resumeData: { value: 'yes' } })
+				.next();
+
+			const resumeOptions = mockAgentInstance.resume.mock.calls[0][2] as {
+				executionCounter: { incrementMessageCount: () => void };
+			};
+
+			resumeOptions.executionCounter.incrementMessageCount();
+
+			expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+				agent_id: agentId,
+				message_count: 1,
+			});
+		});
 	});
 
 	describe('delete — chat cleanup', () => {
@@ -1584,6 +2335,28 @@ describe('AgentsService', () => {
 			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(memoryBackend.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(memoryBackend.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+
+		it('deletes knowledge file content before removing the agent row', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.delete(agentId, projectId);
+
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
+			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
+				agentRepository.remove.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('still removes the agent when knowledge file cleanup fails', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+
+			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
 
 		it('stops the local schedule when deleting the agent', async () => {
@@ -1685,6 +2458,24 @@ describe('AgentsService', () => {
 					integrations: [integration],
 				}),
 			);
+		});
+
+		it('can persist a credential integration without broadcasting a live connect', async () => {
+			const agent = makeAgent({ integrations: [] });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+			const integration = {
+				type: 'slack' as const,
+				credentialId: 'cred-1',
+			};
+
+			await service.saveCredentialIntegration(agent, integration, { broadcast: false });
+
+			expect(agentRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [integration],
+				}),
+			);
+			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
 		it('replaces an existing integration with the same type+credentialId', async () => {

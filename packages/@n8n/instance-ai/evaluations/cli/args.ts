@@ -47,6 +47,10 @@ export interface CliArgs {
 	/** Number of iterations to run each test case (default: 1). Each iteration
 	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
 	iterations: number;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Useful for A/B comparison or when a
+	 *  specific root needs to stay on the pinned baseline. CSV of node names. */
+	pinAiRoots?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +72,7 @@ const cliArgsSchema = z.object({
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
+	pinAiRoots: z.array(z.string().min(1)).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -93,6 +98,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
+		pinAiRoots: validated.pinAiRoots,
 	};
 }
 
@@ -115,6 +121,7 @@ interface RawArgs {
 	concurrency: number;
 	experimentName?: string;
 	iterations: number;
+	pinAiRoots?: string[];
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -128,6 +135,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		concurrency: 16,
 		experimentName: undefined,
 		iterations: 1,
+		pinAiRoots: undefined,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -206,6 +214,16 @@ function parseRawArgs(argv: string[]): RawArgs {
 				result.experimentName = nextArg(argv, i, '--experiment-name');
 				i++;
 				break;
+
+			case '--pin-ai-roots': {
+				const raw = nextArg(argv, i, '--pin-ai-roots');
+				result.pinAiRoots = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
+				i++;
+				break;
+			}
 
 			default:
 				// Fail loudly on unknown flags. Strip any =value payload before

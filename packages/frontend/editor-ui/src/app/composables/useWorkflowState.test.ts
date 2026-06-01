@@ -3,10 +3,8 @@ import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { createRunExecutionData } from 'n8n-workflow';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
@@ -23,7 +21,9 @@ describe('useWorkflowState', () => {
 		workflowsStore.setWorkflowId('test-wf');
 		workflowState = useWorkflowState();
 
-		executionStateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-wf'),
+		);
 	});
 
 	describe('markExecutionAsStopped', () => {
@@ -231,7 +231,7 @@ describe('useWorkflowState', () => {
 
 			workflowState.resetState();
 
-			const fresh = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+			const fresh = useWorkflowExecutionStateStore(createWorkflowDocumentId('test-wf'));
 			expect(fresh.displayedExecutionId).toBeUndefined();
 			expect(fresh.activeExecutionId).toBeUndefined();
 			expect(fresh.pendingExecution).toBeNull();
@@ -281,7 +281,7 @@ describe('useWorkflowState', () => {
 			workflowsStore.setWorkflowId('test-wf');
 
 			// Fresh state — no leakage.
-			const fresh = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+			const fresh = useWorkflowExecutionStateStore(createWorkflowDocumentId('test-wf'));
 			expect(fresh.activeExecutionId).toBeUndefined();
 			expect(fresh.displayedExecutionId).toBeUndefined();
 			expect(fresh.pendingExecution).toBeNull();

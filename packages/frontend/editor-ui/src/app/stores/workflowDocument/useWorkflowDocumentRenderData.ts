@@ -7,10 +7,7 @@ import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	useWorkflowExecutionStateStore,
-	createWorkflowExecutionStateId,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
@@ -66,9 +63,7 @@ import type {
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowDocumentStore.workflowId),
-	);
+	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentId);
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();

@@ -1,10 +1,8 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
@@ -23,7 +21,7 @@ export async function nodeExecuteAfter(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	const assistantStore = useAssistantStore();
 

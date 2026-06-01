@@ -9,10 +9,8 @@ import {
 	setRunExecutionData,
 } from './executionFinished';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { useRouter } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
@@ -22,7 +20,7 @@ export async function executionRecovered(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const executionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 	const uiStore = useUIStore();
 

@@ -5,7 +5,7 @@ orchestration tools (used by the orchestrator for loop control) and domain tools
 (used by the orchestrator directly or delegated to sub-agents). Each tool defines
 its input/output schema via Zod.
 
-## Orchestration Tools (up to 10)
+## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
@@ -26,7 +26,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+  kind: 'delegate' | 'build-workflow' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -42,11 +42,13 @@ for approval before execution starts.
 - On approval: calls `schedulePlannedTasks()` to start detached execution
 - On denial: returns feedback for the LLM to revise the plan
 
-**Task kinds** map to preconfigured sub-agents:
+**Task kinds** map to executors:
 - `build-workflow` → workflow builder agent (sandbox or tool mode)
-- `manage-data-tables` → data table agent (all `*-data-table*` tools)
-- `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
+- `checkpoint` → orchestrator-executed verification step
+
+Standalone data-table work is handled directly by the orchestrator with the
+`data-table-manager` skill and the `data-tables` / `parse-file` tools.
 
 ### `delegate`
 
@@ -193,21 +195,6 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 | `credentials` | object | yes | Real credential mapping |
 
 **Returns**: `{ updatedNodes: string[] }`
-
-### `browser-credential-setup` *(conditional)*
-
-Spawn a sub-agent with Chrome DevTools MCP for OAuth credential setup via
-browser automation. Only available when browser MCP or gateway browser tools
-are configured.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `credentialType` | string | yes | Credential type to set up (e.g., `notionApi`) |
-| `instructions` | string | yes | Setup instructions for the browser agent |
-
-**Returns**: `{ result: string }`
-
----
 
 ## Workflow Tools (9–13)
 
@@ -451,7 +438,7 @@ Cancel a running execution.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `setup-credentials`) or browser automation (`browser-credential-setup`).
+> `setup-credentials`) or Computer Use browser credential capture.
 
 ### `list-credentials`
 
@@ -505,8 +492,9 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
 **HITL**: Suspends execution and renders the credential setup UI. When
-`needsBrowserSetup=true`, the orchestrator should invoke `browser-credential-setup`
-followed by another `setup-credentials` call to finalize.
+`needsBrowserSetup=true`, the orchestrator should load the
+`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
+directly, then call `setup-credentials` again to finalize.
 
 ### `test-credential`
 
@@ -707,15 +695,14 @@ everything; sub-agents receive only what they need.
 | Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
 | Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
 | Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Data table read tools | ✅ (direct) | ✅ (via delegate) | ✅ (data table agent) |
-| Data table write tools | ❌ (via plan) | ❌ | ✅ (data table agent) |
+| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
-| Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
+| Web research tools | ✅ | ✅ (via delegate) | ❌ |
 | Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |
-| Browser MCP tools | ❌ | ❌ | ✅ (browser-credential-setup only) |
+| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
 
 ---
 

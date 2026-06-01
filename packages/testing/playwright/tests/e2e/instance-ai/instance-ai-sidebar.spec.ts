@@ -14,11 +14,11 @@ test.describe(
 			// Send a message to establish the current thread
 			await n8n.instanceAi.sendMessage('First thread message');
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.
 			await n8n.instanceAi.openSidebar();
-
-			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Click new thread button
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
@@ -29,11 +29,13 @@ test.describe(
 			// Send a message to materialize the new thread in the sidebar
 			await n8n.instanceAi.sendMessage('Second thread message');
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			const secondThreadPath = new URL(n8n.page.url()).pathname;
+			expect(secondThreadPath).not.toBe(firstThreadPath);
 
-			// Thread count should increase
-			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore + 1, {
-				timeout: 10_000,
-			});
+			// Assert specific threads instead of a count, which can include stray rows.
+			await expect(n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath)).toBeVisible();
+			await expect(n8n.instanceAi.sidebar.getThreadByHref(secondThreadPath)).toBeVisible();
 		});
 
 		test('should switch between threads', async ({ n8n }) => {
@@ -78,16 +80,7 @@ test.describe(
 			// Sidebar starts collapsed; open it so the thread list is queryable.
 			await n8n.instanceAi.openSidebar();
 
-			// Double-click the thread to enter rename mode
-			const threadItem = n8n.instanceAi.sidebar.getThreadByTitle('Thread to rename');
-			await expect(threadItem).toBeVisible({ timeout: 5_000 });
-			await threadItem.dblclick();
-
-			// Find the rename input and type a new name
-			const input = n8n.instanceAi.sidebar.getRenameInput();
-			await expect(input).toBeVisible({ timeout: 5_000 });
-			await input.fill('Renamed Thread Title');
-			await input.press('Enter');
+			await n8n.instanceAi.sidebar.renameThreadByTitle('Thread to rename', 'Renamed Thread Title');
 
 			// Thread should show the new name
 			await expect(n8n.instanceAi.sidebar.getThreadByTitle('Renamed Thread Title')).toBeVisible({

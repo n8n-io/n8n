@@ -154,7 +154,6 @@ describe('Memory builder — episodic memory', () => {
 		expect(() =>
 			normalizeMemoryConfig({
 				memory: minimalBackend,
-				lastMessages: 10,
 				episodicMemory: {
 					embedder: { specificationVersion: 'v2' } as never,
 					extract: async () => await Promise.resolve({ entries: [] }),
@@ -168,7 +167,6 @@ describe('Memory builder — episodic memory', () => {
 			resolveMemoryConfigDefaults(
 				{
 					memory: minimalBackend,
-					lastMessages: 10,
 					episodicMemory: {},
 				},
 				{ defaultModel: 'openai/gpt-4o-mini' },

@@ -7,7 +7,6 @@ import {
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
-	createWorkflowExecutionStateId,
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
@@ -36,7 +35,7 @@ export function useWorkflowState() {
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
+			createWorkflowDocumentId(ws.workflowId),
 		);
 		if (workflowResultData === null) {
 			executionStateStore.setPendingExecution(null);
@@ -62,7 +61,7 @@ export function useWorkflowState() {
 
 	function setActiveExecutionId(id: string | null | undefined) {
 		useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
+			createWorkflowDocumentId(ws.workflowId),
 		).setActiveExecutionId(id);
 	}
 
@@ -101,16 +100,14 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
+		const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentStore.documentId);
 		const activeExecutionId = executionStateStore.activeExecutionId;
 
 		executionStateStore.setActiveExecutionId(undefined);
 		executionStateStore.executingNode.clearNodeExecutionQueue();
 		executionStateStore.setExecutionWaitingForWebhook(false);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (typeof activeExecutionId === 'string') {
@@ -150,7 +147,7 @@ export function useWorkflowState() {
 			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
-		const executionStateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId(wid));
+		const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId(wid));
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
 		// session-level fields (including the executingNode queue).
 		executionStateStore.resetExecutionState();
@@ -173,7 +170,7 @@ export function useWorkflowState() {
 
 		// re-export from the per-workflow execution-state store
 		get executingNode() {
-			return useWorkflowExecutionStateStore(createWorkflowExecutionStateId(ws.workflowId))
+			return useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId))
 				.executingNode;
 		},
 	};

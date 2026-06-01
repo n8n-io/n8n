@@ -50,7 +50,6 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: () => ({
 		activeExecutionIssuesByNodeName: new Map(),
 	}),
-	createWorkflowExecutionStateId: (id: string) => id,
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

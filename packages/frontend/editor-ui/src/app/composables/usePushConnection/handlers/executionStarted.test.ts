@@ -6,10 +6,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('executionStarted', () => {
@@ -32,7 +29,9 @@ describe('executionStarted', () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 
-		executionStateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('wf-123'));
+		executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('wf-123'),
+		);
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {
