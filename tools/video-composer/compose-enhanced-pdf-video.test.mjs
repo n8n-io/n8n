@@ -405,5 +405,9 @@ test('enhanced PDF composer renders a real video with portrait PDF page and wide
 	assert.equal(fs.existsSync(path.join(renderDir, 'intro-illustration.mp4')), true);
 	assert.equal(fs.existsSync(path.join(renderDir, 'segment-002.mp4')), true);
 	assert.equal(fs.existsSync(path.join(renderDir, 'pause-001.mp4')), true);
+	for (const subtitleFile of ['subtitles.ass', 'page-001.ass', 'page-002.ass']) {
+		const subtitle = fs.readFileSync(path.join(renderDir, subtitleFile), 'utf8');
+		assert.match(subtitle, /Style: Default,[^\n]*,2,80,80,90,1/);
+	}
 	assert.ok(fs.statSync(outputVideoPath).size > 0);
 });

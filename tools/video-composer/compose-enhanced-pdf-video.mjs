@@ -388,7 +388,7 @@ function render() {
 	fs.writeFileSync(job.subtitlePath, createAssSubtitle({
 		width: job.width,
 		height: job.height,
-		marginV: job.overlayWidth + 80,
+		marginV: 90,
 		events: timing.subtitles.map((event) => ({
 			...event,
 			start: Number(event.start) + introDuration,
@@ -427,7 +427,7 @@ function render() {
 		fs.writeFileSync(pageSubtitlePath, createAssSubtitle({
 			width: job.width,
 			height: job.height,
-			marginV: page.pageNumber === 1 ? 90 : job.overlayWidth + 80,
+			marginV: 90,
 			events: buildSubtitleEventsForSegment({ page }),
 		}), 'utf8');
 
