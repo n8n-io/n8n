@@ -46,14 +46,17 @@ describe('OAuth2CredentialController', () => {
 				user: mock<User>({ id: '123' }),
 				query: { id: '1' },
 			});
+			const res = mock<Response>();
 
-			const authUri = await controller.getAuthUri(req);
+			const authUri = await controller.getAuthUri(req, res);
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
 			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
 				mockResolvedCredential,
 				mockCsrfData,
+				req,
+				res,
 			);
 		});
 	});
