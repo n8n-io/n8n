@@ -71,7 +71,7 @@ if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
 // Walk up from a path to the nearest enclosing package.json (bounded by repoRoot).
 function findPackageRoot(fromAbs) {
 	let dir = path.dirname(fromAbs);
-	while (dir.startsWith(repoRoot)) {
+	while (dir === repoRoot || dir.startsWith(`${repoRoot}${path.sep}`)) {
 		if (existsSync(path.join(dir, 'package.json'))) return dir;
 		const parent = path.dirname(dir);
 		if (parent === dir) break;

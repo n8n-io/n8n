@@ -213,7 +213,7 @@ const MODE_BUCKETS = {
 	coverage: new Set(['red', 'stale']),
 };
 const mode = args.mode;
-if (mode !== undefined && !MODE_BUCKETS[mode]) {
+if (mode !== undefined && !Object.hasOwn(MODE_BUCKETS, mode)) {
 	die(2, `Invalid --mode=${mode}. Use 'baseline' or 'coverage' (omit for combined new→red→stale).`);
 }
 const candidates = mode
