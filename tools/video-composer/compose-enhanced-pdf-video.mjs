@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import { buildPageTiming, safePageName, validatePagesManifest } from './presentation-utils.mjs';
 import { assEscape, toAssTime } from './compose-video.mjs';
@@ -315,9 +316,34 @@ function quoteConcatPath(filePath) {
 	return `file '${String(filePath).replace(/'/g, "'\\''")}'`;
 }
 
+export function buildFinalConcatFfmpegArgs({ concatListPath, outputVideoPath }) {
+	return [
+		'-y',
+		'-f',
+		'concat',
+		'-safe',
+		'0',
+		'-i',
+		concatListPath,
+		'-c:v',
+		'libx264',
+		'-pix_fmt',
+		'yuv420p',
+		'-c:a',
+		'aac',
+		'-b:a',
+		'192k',
+		'-ar',
+		'48000',
+		outputVideoPath,
+	];
+}
+
 function runFfmpeg(args, logPath) {
 	const result = spawnSync('ffmpeg', args, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 20 });
-	fs.appendFileSync(logPath, `$ ffmpeg ${args.join(' ')}\n${result.stdout}\n${result.stderr}\n`, 'utf8');
+	const spawnError = result.error ? `${result.error.name}: ${result.error.message}` : '';
+	fs.appendFileSync(logPath, `$ ffmpeg ${args.join(' ')}\n${result.stdout}\n${result.stderr}\n${spawnError}\n`, 'utf8');
+	if (result.error) throw new Error(`ffmpeg failed to start: ${result.error.message}; see ${logPath}`);
 	if (result.status !== 0) throw new Error(`ffmpeg failed with exit code ${result.status}; see ${logPath}`);
 }
 
@@ -420,7 +446,7 @@ function render() {
 	const concatListPath = path.join(job.renderDir, 'segments.txt');
 	const concatPaths = buildEnhancedConcatList({ introCoverPath, introIllustrationPath, segmentPaths, pausePaths });
 	fs.writeFileSync(concatListPath, concatPaths.map(quoteConcatPath).join('\n'), 'utf8');
-	runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', job.outputVideoPath], job.ffmpegLogPath);
+	runFfmpeg(buildFinalConcatFfmpegArgs({ concatListPath, outputVideoPath: job.outputVideoPath }), job.ffmpegLogPath);
 	runFfmpeg(buildExtractAudioArgs({ inputVideoPath: job.outputVideoPath, outputAudioPath: job.outputAudioPath }), job.ffmpegLogPath);
 
 	console.log(JSON.stringify({
@@ -432,7 +458,7 @@ function render() {
 	}));
 }
 
-if (process.argv[1] && process.argv[1].endsWith('compose-enhanced-pdf-video.mjs')) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	try {
 		render();
 	} catch (error) {

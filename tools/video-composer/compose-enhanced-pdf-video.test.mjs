@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
 	buildCoverIntroFfmpegArgs,
 	buildEnhancedSegmentFfmpegArgs,
+	buildFinalConcatFfmpegArgs,
 	buildIllustrationIntroFfmpegArgs,
 	buildSubtitleEventsForSegment,
 	buildEnhancedConcatList,
@@ -255,4 +256,21 @@ test('buildEnhancedConcatList places page pause only between page segments', () 
 			'/tmp/render/segment-003.mp4',
 		],
 	);
+});
+
+test('buildFinalConcatFfmpegArgs re-encodes concatenated segments', () => {
+	const args = buildFinalConcatFfmpegArgs({
+		concatListPath: '/tmp/render/segments.txt',
+		outputVideoPath: '/tmp/final.mp4',
+	});
+
+	assert.equal(args.includes('-c'), false);
+	assert.equal(args.includes('copy'), false);
+	assert.deepEqual(args.slice(0, 7), ['-y', '-f', 'concat', '-safe', '0', '-i', '/tmp/render/segments.txt']);
+	assert.equal(args[args.indexOf('-c:v') + 1], 'libx264');
+	assert.equal(args[args.indexOf('-pix_fmt') + 1], 'yuv420p');
+	assert.equal(args[args.indexOf('-c:a') + 1], 'aac');
+	assert.equal(args[args.indexOf('-b:a') + 1], '192k');
+	assert.equal(args[args.indexOf('-ar') + 1], '48000');
+	assert.equal(args.at(-1), '/tmp/final.mp4');
 });
