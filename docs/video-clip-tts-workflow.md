@@ -39,6 +39,47 @@ python3 -m pip install --user --break-system-packages --upgrade pymupdf
 
 If n8n runs in Docker, install PyMuPDF in that container image or point `PRESENTATION_PYTHON_BIN` to a wrapper script that runs a Python environment with PyMuPDF available.
 
+## Enhanced PDF AI Podcast Workflow
+
+The enhanced PDF version is `workflows/pdf-enhanced-ai-podcast-workflow.json`.
+It reuses the existing PDF parsing, rigorous page-grounded script generation,
+and per-page AI Podcast synthesis from the presentation workflow, then renders a
+new video package with uploaded cover and illustration assets.
+
+The form requires:
+
+- `cover_image`: `png`, `jpg`, `jpeg`, or `webp`
+- `illustration_image`: `png`, `jpg`, `jpeg`, or `webp`
+- `pdf_file`: `pdf`
+
+The form also accepts optional context and podcast settings:
+
+- `extra_context`
+- `podcast_speaker_a`
+- `podcast_speaker_b`
+- `podcast_style`
+- `include_execution_binary_preview`: defaults to metadata-only output. Select it
+  only when n8n execution data should include attached binary previews.
+
+The output timeline is:
+
+- `0s - 4s`: silent cover intro
+- `4s - 8s`: silent illustration intro over PDF page 1
+- page 1 explanation: PDF page 1 only
+- page 2 and later explanations: current PDF page with cover lower-left and
+  illustration lower-right
+
+Review artifacts are written to `tmp/n8n-video-jobs/{jobId}`. The most useful
+files are `pages.json`, `script/page-script.json`, `audio/page-*.mp3`,
+`timing/page-timing.json`, `render/intro-cover.mp4`,
+`render/intro-illustration.mp4`, `render/segment-*.mp4`, `render/final.mp4`,
+and `cost.json`.
+
+Use `VIDEO_COMPOSER_REPO_DIR` or `N8N_VIDEO_COMPOSER_REPO_DIR` to point the
+workflow at the video composer repository. Use `VIDEO_COMPOSER_JOBS_DIR` or
+`N8N_VIDEO_COMPOSER_JOBS_DIR` to override the review artifact and render output
+directory.
+
 ## Prerequisites
 
 Install and verify local tools:
