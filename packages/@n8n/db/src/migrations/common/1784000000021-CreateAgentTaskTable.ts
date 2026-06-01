@@ -8,7 +8,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * (name/objective/cron) are frozen at publish time and drive scheduling. They
  * ship together because they form one feature's schema.
  */
-export class CreateAgentTaskTable1784000000020 implements ReversibleMigration {
+export class CreateAgentTaskTable1784000000021 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, addColumns } }: MigrationContext) {
 		await createTable('agent_task')
 			.withColumns(
