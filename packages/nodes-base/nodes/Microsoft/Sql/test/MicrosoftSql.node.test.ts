@@ -178,4 +178,42 @@ describe('MicrosoftSql Node', () => {
 			}
 		},
 	);
+
+	describe('delete operation parameter validation', () => {
+		const buildPoolMock = () => {
+			const mockRequest = {
+				query: jest.fn().mockResolvedValue({ rowsAffected: [1] }),
+				input: jest.fn(),
+			};
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn(),
+				request: jest.fn().mockReturnValue(mockRequest),
+			});
+			return mockPool;
+		};
+
+		it('should not alter shared object state when delete parameters contain reserved tokens', async () => {
+			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
+
+			mockedConnectionPool.mockReturnValue(buildPoolMock());
+			const node = new MicrosoftSql();
+
+			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
+				const context = getMockedExecuteFunctions({
+					getInputData: jest.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
+					getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'operation') return 'delete';
+						if (paramName === 'table') return reserved;
+						if (paramName === 'deleteKey') return 'id';
+						return undefined;
+					}),
+					continueOnFail: jest.fn().mockReturnValue(false),
+				});
+				await node.execute.call(context);
+			}
+
+			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
+		});
+	});
 });
