@@ -179,7 +179,7 @@ export class DbConnectionMonitor {
 				`Database connection recovered after ${attempt} attempt(s) in ${Date.now() - recoveryStart}ms`,
 			);
 		} else {
-			this.logger.debug(
+			this.logger.warn(
 				`Database connection recovery aborted after ${attempt} attempt(s) (monitor stopped)`,
 			);
 		}
