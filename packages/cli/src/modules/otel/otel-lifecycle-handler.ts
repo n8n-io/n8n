@@ -10,11 +10,10 @@ import type {
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import { OtelConfig } from './otel.config';
 import { TraceContextService } from './tracing-context';
+import { OwnershipService } from '../../services/ownership.service';
 
 @Service()
 export class OtelLifecycleHandler {
@@ -55,7 +54,12 @@ export class OtelLifecycleHandler {
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -89,7 +93,12 @@ export class OtelLifecycleHandler {
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -150,6 +159,17 @@ export class OtelLifecycleHandler {
 			customAttributes,
 		});
 	}
+}
+
+function buildProjectCustomAttributes(
+	tags: Array<{ key: string; value: string }>,
+): Record<string, string> | undefined {
+	if (!tags?.length) return undefined;
+	const attrs: Record<string, string> = {};
+	for (const { key, value } of tags) {
+		attrs[key] = value;
+	}
+	return attrs;
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {

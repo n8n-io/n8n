@@ -180,6 +180,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
+	// Opt-in flag: the `knowledge-base` token must be listed in the backend
+	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(() => isAgentModuleActive('knowledge-base'));
+
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
 	);
@@ -475,6 +479,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isChatFeatureEnabled,
 		isOtelEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};
 });

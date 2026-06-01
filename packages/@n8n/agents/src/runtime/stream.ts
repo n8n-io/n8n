@@ -96,12 +96,16 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		}
 
 		case 'tool-result':
+			// The fullStream emits the raw tool output here, not the
+			// `{ type, value }` ToolResultOutput wrapper used on the message
+			// side — so pass it through verbatim. Only provider-executed tools
+			// (e.g. native web search) reach this branch; local tool results are
+			// written directly by the runtime and never pass through convertChunk.
 			return {
 				type: 'tool-result',
 				toolCallId: c.toolCallId ?? '',
 				toolName: c.toolName ?? '',
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				output: c.output && 'value' in c.output ? (c.output.value as JSONValue) : null,
+				output: c.output,
 			};
 
 		case 'error':

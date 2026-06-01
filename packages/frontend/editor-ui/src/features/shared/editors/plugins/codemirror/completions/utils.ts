@@ -209,7 +209,7 @@ export async function resolveAutocompleteExpression(
 	workflowDocumentId: WorkflowDocumentId,
 	contextNodeName?: string,
 ) {
-	const ndvStore = useNDVStore();
+	const ndvStore = useNDVStore(workflowDocumentId);
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
@@ -231,14 +231,17 @@ export async function resolveAutocompleteExpression(
 
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
-export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+export const isInHttpNodePagination = (
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
 	let nodeType: string | undefined;
 	let path: string;
 	if (targetNodeParameterContext) {
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(workflowDocumentId);
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}
@@ -250,7 +253,8 @@ export const hasActiveNode = (
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
-	if (useNDVStore().activeNode?.name !== undefined) {
+	const ndvStore = useNDVStore(workflowDocumentId);
+	if (ndvStore.activeNode?.name !== undefined) {
 		return true;
 	}
 
@@ -274,7 +278,7 @@ export function autocompletableNodeNames(
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const activeNode =
 		targetNodeParameterContext === undefined
-			? useNDVStore().activeNode
+			? useNDVStore(workflowDocumentId).activeNode
 			: workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];

@@ -14,6 +14,7 @@ import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
+import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
 import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
@@ -43,6 +44,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kent,
 	postgresExporter,
 	cadvisor,
+	sandbox,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
