@@ -78,6 +78,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    isolated-vm:
+      specifier: ^6.1.2
+      version: 6.1.2
     js-base64:
       specifier: 3.7.2
       version: 3.7.2
@@ -917,6 +920,70 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: 'catalog:'
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+
+  packages/@n8n/expression-runtime:
+    dependencies:
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
+      '@n8n/tournament':
+        specifier: 1.2.0
+        version: 1.2.0
+      isolated-vm:
+        specifier: 'catalog:'
+        version: 6.1.2
+      jmespath:
+        specifier: 0.16.0
+        version: 0.16.0
+      js-base64:
+        specifier: 'catalog:'
+        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      jssha:
+        specifier: 3.3.1
+        version: 3.3.1
+      lodash:
+        specifier: 4.18.0
+        version: 4.18.0
+      luxon:
+        specifier: 'catalog:'
+        version: 3.4.4
+      md5:
+        specifier: 2.3.0
+        version: 2.3.0
+      title-case:
+        specifier: 3.0.3
+        version: 3.0.3
+      transliteration:
+        specifier: 2.3.5
+        version: 2.3.5
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/jmespath':
+        specifier: ^0.15.0
+        version: 0.15.0
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/luxon':
+        specifier: 3.2.0
+        version: 3.2.0
+      '@types/md5':
+        specifier: ^2.3.5
+        version: 2.3.5
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -6366,6 +6433,10 @@ packages:
 
   '@n8n/tournament@1.0.6':
     resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
+    engines: {node: '>=20.15', pnpm: '>=9.5'}
+
+  '@n8n/tournament@1.2.0':
+    resolution: {integrity: sha512-EY/vqijjYi2LhnKeShNXNtVBJW7lSRGFe5D2ikv5AfDZiLOqneRnNdfwZbv1bTLByRYyzY708KiXF8P66Gr1dg==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-15':
@@ -12794,6 +12865,10 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
+  isolated-vm@6.1.2:
+    resolution: {integrity: sha512-GGfsHqtlZiiurZaxB/3kY7LLAXR3sgzDul0fom4cSyBjx6ZbjpTrFWiH3z/nUfLJGJ8PIq9LQmQFiAxu24+I7A==}
+    engines: {node: '>=22.0.0'}
+
   isomorphic-timers-promises@1.0.1:
     resolution: {integrity: sha512-u4sej9B1LPSxTGKB/HiuzvEQnXH0ECYkSVQU39koSwmFAxhlEAFl9RdTvLv4TOTQUgBS5O3O5fwUxk6byBZ+IQ==}
     engines: {node: '>=10'}
@@ -13320,9 +13395,6 @@ packages:
   jsonwebtoken@9.0.2:
     resolution: {integrity: sha512-PRp66vJ865SSqOlgqS8hujT5U4AOgMfhrwYIuIhfKaoSCZcirrmASQr8CX7cUg+RMih+hgznrjp99o+W4pJLHQ==}
     engines: {node: '>=12', npm: '>=6'}
-
-  jssha@3.3.0:
-    resolution: {integrity: sha512-w9OtT4ALL+fbbwG3gw7erAO0jvS5nfvrukGPMWIAoea359B26ALXGpzy4YJSp9yGnpUvuvOw1nSjSoHDfWSr1w==}
 
   jssha@3.3.1:
     resolution: {integrity: sha512-VCMZj12FCFMQYcFLPRm/0lOBbLi8uM2BhXPTqw3U4YAfs4AZfiApOoBLoN8cQE60Z50m1MYMTQVCfgF/KaCVhQ==}
@@ -21112,7 +21184,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.16.1(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.16.1)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -22563,6 +22635,12 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
+  '@n8n/tournament@1.2.0':
+    dependencies:
+      ast-types: 0.16.1
+      esprima-next: 5.8.4
+      recast: 0.22.0
+
   '@n8n/typeorm@0.3.20-15(@sentry/node@9.42.1)(mysql2@3.17.0)(pg@8.12.0)(sqlite3@5.1.7)':
     dependencies:
       app-root-path: 3.1.0
@@ -23416,7 +23494,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.16.1(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.16.1(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.16.1)
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -26421,7 +26499,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.16.1(debug@4.4.1)):
+  axios-retry@4.5.0(axios@1.16.1):
     dependencies:
       axios: 1.16.1(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -30335,6 +30413,10 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
+  isolated-vm@6.1.2:
+    dependencies:
+      node-gyp-build: 4.8.4
+
   isomorphic-timers-promises@1.0.1: {}
 
   isstream@0.1.2: {}
@@ -31327,8 +31409,6 @@ snapshots:
       lodash.once: 4.1.1
       ms: 2.1.3
       semver: 7.7.3
-
-  jssha@3.3.0: {}
 
   jssha@3.3.1: {}
 
@@ -33075,7 +33155,7 @@ snapshots:
 
   otpauth@9.1.1:
     dependencies:
-      jssha: 3.3.0
+      jssha: 3.3.1
 
   otplib@12.0.1:
     dependencies:
@@ -35679,7 +35759,7 @@ snapshots:
 
   title-case@3.0.3:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   tlds@1.261.0: {}
 
