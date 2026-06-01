@@ -2,7 +2,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { settingsToFloor } from '@/controllers/redaction-enforcement-mapper';
+import { settingsToFloor } from './redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
@@ -38,7 +38,7 @@ export class RedactionEnforcementService {
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
 
-	async getFloor(): Promise<RedactionFloor> {
+	private async getFloor(): Promise<RedactionFloor> {
 		const settings = await this.instanceRedactionEnforcementService.get();
 		return settingsToFloor(settings);
 	}
@@ -58,7 +58,7 @@ export class RedactionEnforcementService {
 		this.assertMeetsFloor(incomingPolicy, floor);
 	}
 
-	assertMeetsFloor(policy: WorkflowSettings.RedactionPolicy, floor: RedactionFloor): void {
+	private assertMeetsFloor(policy: WorkflowSettings.RedactionPolicy, floor: RedactionFloor): void {
 		const required = FLOOR_REQUIREMENTS[floor];
 		const scope = POLICY_SCOPE[policy];
 

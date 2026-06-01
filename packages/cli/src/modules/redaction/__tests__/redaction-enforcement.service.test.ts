@@ -2,7 +2,7 @@ import type { RedactionEnforcementSettings, RedactionFloor } from '@n8n/api-type
 import { mock } from 'jest-mock-extended';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { floorToSettings } from '@/controllers/redaction-enforcement-mapper';
+import { floorToSettings } from '../redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
@@ -15,16 +15,6 @@ describe('RedactionEnforcementService', () => {
 		instanceRedactionEnforcementService.get.mockResolvedValue(settings);
 		return new RedactionEnforcementService(instanceRedactionEnforcementService);
 	}
-
-	describe('getFloor()', () => {
-		test.each<RedactionFloor>(['off', 'production', 'all'])(
-			'returns floor %s from instance settings',
-			async (floor) => {
-				const service = createService(floor);
-				await expect(service.getFloor()).resolves.toBe(floor);
-			},
-		);
-	});
 
 	describe('assertPolicyChangeAllowed()', () => {
 		test('allows when incoming policy is undefined (field not in payload)', async () => {
