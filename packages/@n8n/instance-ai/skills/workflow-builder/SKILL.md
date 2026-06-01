@@ -8,24 +8,11 @@ description: >-
 recommended_tools:
   - build-workflow
   - workflows
-  - verify-built-workflow
-  - executions
-  - credentials
   - nodes
   - data-tables
-  - parse-file
-  - workspace
-  - research
-  - ask-user
-  - complete-checkpoint
-  - report-verification-verdict
-  - apply-workflow-credentials
-  - evals
-  - eval-setup-with-agent
-  - eval-data
-  - task-control
-platforms:
-  - daytona
+  - credentials
+  - verify-built-workflow
+  - executions
 ---
 
 # Workflow Builder

@@ -82,19 +82,16 @@ describe('Instance AI runtime skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
 
 		expect(skill?.name).toBe('workflow-builder');
-		expect(skill?.platforms).toEqual(['daytona']);
-		for (const tool of [
+		expect(skill?.platforms).toBeUndefined();
+		expect(skill?.recommendedTools).toEqual([
 			'build-workflow',
-			'verify-built-workflow',
-			'nodes',
 			'workflows',
+			'nodes',
+			'data-tables',
 			'credentials',
-			'workspace',
-			'complete-checkpoint',
-			'evals',
-		]) {
-			expect(skill?.recommendedTools).toContain(tool);
-		}
+			'verify-built-workflow',
+			'executions',
+		]);
 		expect(skill?.description).toContain('former workflow-builder agent guidance');
 
 		const loaded = await source.loadSkill('workflow-builder');
