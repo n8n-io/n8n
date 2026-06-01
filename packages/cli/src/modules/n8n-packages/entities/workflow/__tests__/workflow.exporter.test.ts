@@ -1,10 +1,11 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { Readable } from 'node:stream';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { PackageWriter } from '../../../io/package-writer';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
+import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
+import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -25,28 +26,14 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	} as unknown as WorkflowEntity;
 }
 
-class CapturingWriter implements PackageWriter {
-	readonly files: Array<{ path: string; content: string }> = [];
-
-	readonly directories: string[] = [];
-
-	writeFile(path: string, content: string | Buffer): void {
-		this.files.push({ path, content: content.toString() });
-	}
-
-	writeDirectory(path: string): void {
-		this.directories.push(path);
-	}
-
-	finalize(): Readable {
-		throw new Error('not used in this test');
-	}
-}
-
-function makeExporter(returned: WorkflowEntity[]) {
+function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
-	const exporter = new WorkflowExporter(finder, new WorkflowSerializer());
+	const exporter = new WorkflowExporter(
+		finder,
+		new WorkflowSerializer(),
+		extractor ?? new CredentialRequirementsExtractor(),
+	);
 	return { exporter, finder };
 }
 
@@ -87,7 +74,7 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([workflow]);
 		const writer = new CapturingWriter();
 
-		const entries = await exporter.export({
+		const { entries } = await exporter.export({
 			user,
 			workflowIds: [workflow.id, workflow.id],
 			writer,
@@ -107,7 +94,7 @@ describe('WorkflowExporter', () => {
 		const { exporter } = makeExporter([a, b]);
 		const writer = new CapturingWriter();
 
-		const entries = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
+		const { entries } = await exporter.export({ user, workflowIds: [a.id, b.id], writer });
 
 		const targets = entries.map((e) => e.target);
 		expect(targets).toEqual(['workflows/same-name', 'workflows/same-name-2']);
@@ -115,5 +102,45 @@ describe('WorkflowExporter', () => {
 		const writtenPaths = writer.files.map((f) => f.path);
 		expect(writtenPaths).toContain('workflows/same-name/workflow.json');
 		expect(writtenPaths).toContain('workflows/same-name-2/workflow.json');
+	});
+
+	it('runs the extractor on each workflow and concatenates the results into requirements.credentials', async () => {
+		// Per-workflow extraction logic lives in CredentialRequirementsExtractor's
+		// own suite; this test only proves the exporter wires the extractor in.
+		const a = makeWorkflow({ id: 'wf-a' });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const extractor = mock<CredentialRequirementsExtractor>();
+		extractor.extract.mockImplementation((workflow) => [
+			{
+				workflowId: workflow.id,
+				credentialId: `cred-from-${workflow.id}`,
+				credentialName: workflow.id,
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
+		const { exporter } = makeExporter([a, b], extractor);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(requirements.credentials).toEqual<WorkflowCredentialRequirement[]>([
+			{
+				workflowId: 'wf-a',
+				credentialId: 'cred-from-wf-a',
+				credentialName: 'wf-a',
+				credentialType: 'httpHeaderAuth',
+			},
+			{
+				workflowId: 'wf-b',
+				credentialId: 'cred-from-wf-b',
+				credentialName: 'wf-b',
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
 	});
 });

@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
+import { matchesGlobalTrigger } from './global-triggers.js';
 import { findWorkspaceRoot, toPosix } from './path-utils.js';
 
 function parseJsonFile<T>(path: string): T {
@@ -33,18 +34,6 @@ export interface AnalyzeOptions {
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
 	changedFiles: string[] | null;
 }
-
-const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
-// Directory prefixes whose contents force RUN_FULL across the workspace. Used
-// when a package's contract is consumed at runtime by every other package and
-// the workspace symlink/dep-graph alone can't catch the coupling:
-//   - packages/@n8n/db — schema + entities resolved by cli integration tests
-//     through the DI container at runtime; jest --findRelatedTests on the
-//     test file alone wouldn't see the migration/entity file in the import
-//     graph and would silently SKIP. Bailing the workspace is over-broad on
-//     rare db PRs but keeps the failure mode "ran too much" rather than
-//     "ran nothing".
-const GLOBAL_TRIGGER_PREFIXES = ['packages/@n8n/db/'];
 
 function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	const wsFile = join(rootDir, 'pnpm-workspace.yaml');
@@ -131,14 +120,7 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 	// No signal (local dev, missing env) → safest default: everything.
 	if (options.changedFiles === null) return allNames;
 
-	if (
-		options.changedFiles.some(
-			(f) =>
-				GLOBAL_TRIGGER_FILES.has(f) ||
-				GLOBAL_TRIGGER_PREFIXES.some((prefix) => f.startsWith(prefix)),
-		)
-	)
-		return allNames;
+	if (options.changedFiles.some(matchesGlobalTrigger)) return allNames;
 
 	const direct = new Set<string>();
 	for (const file of options.changedFiles) {

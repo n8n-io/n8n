@@ -39,6 +39,7 @@ const props = defineProps<{
 	currentSessionTitle?: string;
 	sessionOptions?: Array<DropdownMenuItemProps<string>>;
 	beforeRevertToPublished?: () => Promise<void> | void;
+	isVersionHistoryOpen?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
+	'toggle-version-history': [];
 }>();
 
 const i18n = useI18n();
@@ -133,6 +135,11 @@ function onOpenPreview() {
 	if (isPreviewDisabled.value) return;
 	emit('open-preview');
 }
+
+// Disabled until the agent has at least one publish history row. The flag
+// is set by the backend (see AgentsService.hasPublishHistory) so it stays
+// true after an unpublish, when activeVersionId is null but rows persist.
+const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory);
 </script>
 
 <template>
@@ -256,6 +263,27 @@ function onOpenPreview() {
 					@unpublished="(a: AgentResource) => emit('unpublished', a)"
 					@reverted="(a: AgentResource) => emit('reverted', a)"
 				/>
+				<N8nTooltip placement="bottom">
+					<template #content>
+						<span v-if="isVersionHistoryDisabled">
+							{{ i18n.baseText('agents.versionHistory.button.tooltip.empty') }}
+						</span>
+						<span v-else>
+							{{ i18n.baseText('agents.versionHistory.title') }}
+						</span>
+					</template>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="history"
+						icon-only
+						:class="{ [$style.activeButton]: isVersionHistoryOpen }"
+						:disabled="isVersionHistoryDisabled"
+						:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
+						data-testid="agent-header-version-history-btn"
+						@click="emit('toggle-version-history')"
+					/>
+				</N8nTooltip>
 				<N8nActionDropdown
 					v-if="headerActions.length > 0"
 					:items="headerActions"
@@ -348,5 +376,9 @@ function onOpenPreview() {
 		calc(var(--spacing--5xl) + var(--spacing--3xl)),
 		calc(100vw - var(--spacing--xl))
 	) !important;
+}
+
+.activeButton {
+	background-color: var(--background--active);
 }
 </style>

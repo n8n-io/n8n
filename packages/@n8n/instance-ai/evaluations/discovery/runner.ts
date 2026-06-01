@@ -129,7 +129,7 @@ export async function runDiscoveryScenario(
 			orchestrationContext,
 			mcpManager,
 			memory,
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,

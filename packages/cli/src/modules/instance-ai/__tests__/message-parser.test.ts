@@ -1,6 +1,10 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
-import { parseStoredMessages } from '../message-parser';
+import {
+	collectConfirmationRequestIds,
+	markExpiredConfirmations,
+	parseStoredMessages,
+} from '../message-parser';
 import type { StoredAgentMessage } from '../message-parser';
 
 const BASE_DATE_MS = Date.UTC(2026, 0, 1);
@@ -106,11 +110,12 @@ describe('parseStoredMessages', () => {
 					content: [
 						{ type: 'text', text: 'Here are your workflows' },
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-1',
 							toolName: 'list-workflows',
 							input: { limit: 10 },
-							result: { workflows: ['wf1'] },
+							state: 'resolved',
+							output: { workflows: ['wf1'] },
 						},
 					],
 					createdAt: makeDate(1),
@@ -160,6 +165,109 @@ describe('parseStoredMessages', () => {
 			expect(tc?.isLoading).toBe(true);
 			expect(tc?.result).toBeUndefined();
 			expect(tc?.renderHint).toBe('tasks');
+		});
+
+		it('should surface rejected tool calls via `error`, not `result`', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Do something',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-rej',
+							toolName: 'workflows',
+							input: { name: 'x' },
+							state: 'rejected',
+							error: 'Workflow not found',
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const tc = result[1].agentTree?.toolCalls[0];
+			expect(tc?.isLoading).toBe(false);
+			expect(tc?.result).toBeUndefined();
+			expect(tc?.error).toBe('Workflow not found');
+		});
+
+		it('should skip malformed tool-call parts instead of rendering half-populated cards', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						// Valid tool call — should survive.
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-ok',
+							toolName: 'list-workflows',
+							input: {},
+							state: 'resolved',
+							output: { ok: true },
+						},
+						// Missing toolName — fails the schema, must be dropped.
+						{ type: 'tool-call', toolCallId: 'tc-no-name', input: {}, state: 'resolved' },
+						// Missing toolCallId — dropped.
+						{ type: 'tool-call', toolName: 'orphan', input: {}, state: 'resolved' },
+						// `error` wrong type for a rejected call — dropped.
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-bad-error',
+							toolName: 'workflows',
+							state: 'rejected',
+							error: { not: 'a string' },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls.map((tc) => tc.toolCallId)).toEqual(['tc-ok']);
+		});
+
+		it('should drop content parts with an unrecognized type', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Hello' },
+						// Unknown type — not in the content-part union, must be ignored.
+						{ type: 'bogus-part', text: 'should not surface', payload: 42 },
+					],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].content).toBe('Hello');
+			expect(result[1].agentTree?.timeline).toEqual([{ type: 'text', content: 'Hello' }]);
 		});
 
 		it('should parse reasoning from native parts', () => {
@@ -388,6 +496,87 @@ describe('parseStoredMessages', () => {
 			});
 		});
 
+		it('should keep the snapshot tree when dedupe collapses in-flight checkpoint messages', () => {
+			// Simulates the in-flight HITL case: the SDK hasn't committed
+			// the turn to memory yet, so `loadInFlightCheckpointMessages`
+			// surfaces several intermediate assistant messages from the
+			// checkpoint blob. The snapshot was paired with a middle
+			// message via timestamp matching, while a later message
+			// (with no tree of its own) carries the latest text. Dedupe
+			// must transfer the agentTree forward so the confirmation
+			// card in the snapshot tree survives.
+			const snapshotTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'Streaming...',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-cred',
+						toolName: 'credentials',
+						args: {},
+						isLoading: true,
+						confirmation: {
+							requestId: 'req-live',
+							inputType: 'approval',
+							message: 'Select a credential',
+							severity: 'info',
+						},
+						renderHint: 'default',
+					},
+				],
+				children: [],
+				timeline: [],
+			};
+
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(0),
+				},
+				{
+					id: 'msg-a-early',
+					role: 'assistant',
+					content: [{ type: 'text', text: '' }],
+					createdAt: makeDate(10),
+				},
+				{
+					id: 'msg-a-paired',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Looking up credentials' }],
+					createdAt: makeDate(20),
+				},
+				{
+					id: 'msg-a-latest',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Need credential confirmation' }],
+					createdAt: makeDate(40),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: snapshotTree,
+					runId: 'run_paired',
+					messageGroupId: 'mg_inflight',
+					createdAt: makeDate(25),
+					updatedAt: makeDate(25),
+				},
+			]);
+
+			// One user + one assistant (dedup collapses the three assistant rows).
+			expect(result).toHaveLength(2);
+			const assistant = result[1];
+			// Latest message id survives so live SSE deltas keep correlating.
+			expect(assistant.id).toBe('msg-a-latest');
+			// Tree from the snapshot is transferred onto the kept message.
+			expect(assistant.agentTree).toBe(snapshotTree);
+			expect(assistant.agentTree?.toolCalls[0].confirmation?.requestId).toBe('req-live');
+		});
+
 		it('should apply renderHint correctly for known tool names', () => {
 			const messages: StoredAgentMessage[] = [
 				{
@@ -401,22 +590,28 @@ describe('parseStoredMessages', () => {
 					role: 'assistant',
 					content: [
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-1',
 							toolName: 'delegate',
-							result: 'ok',
+							input: {},
+							state: 'resolved',
+							output: 'ok',
 						},
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-2',
-							toolName: 'build-workflow',
-							result: 'ok',
+							toolName: 'build-workflow-with-agent',
+							input: {},
+							state: 'resolved',
+							output: 'ok',
 						},
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-3',
 							toolName: 'plan',
-							result: 'ok',
+							input: {},
+							state: 'resolved',
+							output: 'ok',
 						},
 					],
 					createdAt: makeDate(1),
@@ -786,11 +981,12 @@ describe('parseStoredMessages', () => {
 					role: 'assistant',
 					content: [
 						{
-							type: 'tool-result',
+							type: 'tool-call',
 							toolCallId: 'tc-parts',
 							toolName: 'plan',
 							input: { goal: 'x' },
-							result: 'done',
+							state: 'resolved',
+							output: 'done',
 						},
 					],
 					createdAt: makeDate(1),
@@ -802,5 +998,166 @@ describe('parseStoredMessages', () => {
 			expect(result[1].agentTree?.toolCalls).toHaveLength(1);
 			expect(result[1].agentTree?.toolCalls[0].toolCallId).toBe('tc-parts');
 		});
+	});
+});
+
+describe('confirmation expiration helpers', () => {
+	function makeMessageWithConfirmations(requestIds: string[]): InstanceAiMessage {
+		return {
+			id: 'msg-a',
+			role: 'assistant',
+			createdAt: makeDate().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			runId: 'run-1',
+			agentTree: {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: requestIds.map((requestId, idx) => ({
+					toolCallId: `tc-${idx}`,
+					toolName: 'plan',
+					args: {},
+					isLoading: true,
+					confirmation: {
+						requestId,
+						severity: 'info' as const,
+						message: '',
+						inputType: 'plan-review' as const,
+					},
+				})),
+				children: [
+					{
+						agentId: 'agent-planner',
+						role: 'planner',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-sub',
+								toolName: 'submit-plan',
+								args: {},
+								isLoading: true,
+								confirmation: {
+									requestId: 'req-sub',
+									severity: 'info' as const,
+									message: '',
+									inputType: 'plan-review' as const,
+								},
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				],
+				timeline: [],
+			},
+		};
+	}
+
+	it('collects request IDs from orchestrator and sub-agent tool calls', () => {
+		const messages = [makeMessageWithConfirmations(['req-1', 'req-2'])];
+		expect(collectConfirmationRequestIds(messages).sort()).toEqual(['req-1', 'req-2', 'req-sub']);
+	});
+
+	it('flips expired flag only on confirmations whose requestId is not in the live set', () => {
+		const messages = [makeMessageWithConfirmations(['req-1'])];
+		markExpiredConfirmations(messages, new Set(['req-1']));
+
+		const node = messages[0].agentTree!;
+		expect(node.toolCalls[0].confirmation?.expired).toBeUndefined();
+		expect(node.children[0].toolCalls[0].confirmation?.expired).toBe(true);
+	});
+
+	it('does nothing for messages without an agent tree', () => {
+		const messages: InstanceAiMessage[] = [
+			{
+				id: 'msg-u',
+				role: 'user',
+				createdAt: makeDate().toISOString(),
+				content: 'hi',
+				reasoning: '',
+				isStreaming: false,
+			},
+		];
+		expect(collectConfirmationRequestIds(messages)).toEqual([]);
+		markExpiredConfirmations(messages, new Set());
+	});
+
+	/** Build a single assistant message carrying one plan-review confirmation
+	 *  card, with overridable actionability fields. */
+	function makeCardMessage(
+		overrides: Partial<{ isLoading: boolean; confirmationStatus: 'approved' | 'denied' }>,
+	): InstanceAiMessage {
+		return {
+			id: 'msg-a',
+			role: 'assistant',
+			createdAt: makeDate().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			runId: 'run-1',
+			agentTree: {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-0',
+						toolName: 'plan',
+						args: {},
+						isLoading: overrides.isLoading ?? true,
+						...(overrides.confirmationStatus
+							? { confirmationStatus: overrides.confirmationStatus }
+							: {}),
+						confirmation: {
+							requestId: 'req-resolved',
+							severity: 'info' as const,
+							message: '',
+							inputType: 'plan-review' as const,
+						},
+					},
+				],
+				children: [],
+				timeline: [],
+			},
+		};
+	}
+
+	// Regression: a resolved plan card reloaded after the user approved/denied it
+	// has no pending-confirmation row (claim() deleted it), but that absence must
+	// NOT relabel the historical card as "Plan (expired)".
+	it('does not mark a settled (no longer loading) card expired even with no live row', () => {
+		const messages = [makeCardMessage({ isLoading: false })];
+		markExpiredConfirmations(messages, new Set());
+		expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBeUndefined();
+	});
+
+	it.each(['approved', 'denied'] as const)(
+		'does not mark a %s card expired even with no live row',
+		(confirmationStatus) => {
+			const messages = [makeCardMessage({ confirmationStatus })];
+			markExpiredConfirmations(messages, new Set());
+			expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBeUndefined();
+		},
+	);
+
+	it('does not collect request IDs for settled cards', () => {
+		expect(collectConfirmationRequestIds([makeCardMessage({ isLoading: false })])).toEqual([]);
+		expect(
+			collectConfirmationRequestIds([makeCardMessage({ confirmationStatus: 'approved' })]),
+		).toEqual([]);
+	});
+
+	it('still marks a genuinely actionable card expired when its row is gone', () => {
+		const messages = [makeCardMessage({ isLoading: true })];
+		markExpiredConfirmations(messages, new Set());
+		expect(messages[0].agentTree!.toolCalls[0].confirmation?.expired).toBe(true);
 	});
 });

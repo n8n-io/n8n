@@ -12,7 +12,6 @@ const mockAgentInstances: Array<{
 
 const mockMemoryBuilder = {
 	storage: jest.fn(),
-	lastMessages: jest.fn(),
 	observationalMemory: jest.fn(),
 	build: jest.fn(),
 };
@@ -143,11 +142,9 @@ describe('createInstanceAgent', () => {
 		Agent.mockClear();
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
-		mockMemoryBuilder.lastMessages.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},
-			lastMessages: 20,
 		});
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
@@ -155,9 +152,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
-		const memoryConfig = {
-			lastMessages: 20,
-		} as never;
+		const memoryConfig = {} as never;
 
 		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
@@ -208,7 +203,7 @@ describe('createInstanceAgent', () => {
 				runId: 'checkpoint-run',
 				isCheckpointFollowUp: true,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -248,7 +243,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
@@ -290,7 +285,7 @@ describe('createInstanceAgent', () => {
 					wrapTools: jest.fn((tools: unknown) => tools),
 				},
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -334,7 +329,7 @@ describe('createInstanceAgent', () => {
 				runId: 'skills-test',
 				runtimeSkills,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -381,7 +376,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: jest.fn().mockReturnValue([]),
 		};
@@ -423,7 +418,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -465,7 +460,6 @@ describe('createInstanceAgent', () => {
 			},
 			memory: memoryStore,
 			memoryConfig: {
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 30_000,
 					reflectorThresholdTokens: 40_000,
@@ -476,7 +470,6 @@ describe('createInstanceAgent', () => {
 
 		expect(Memory).toHaveBeenCalledTimes(1);
 		expect(mockMemoryBuilder.storage).toHaveBeenCalledWith(memoryStore);
-		expect(mockMemoryBuilder.lastMessages).toHaveBeenCalledWith(15);
 		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
 			observerThresholdTokens: 30_000,
 			reflectorThresholdTokens: 40_000,

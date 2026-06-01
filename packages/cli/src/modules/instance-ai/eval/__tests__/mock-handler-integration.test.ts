@@ -39,6 +39,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			updateCredentials: jest.fn(),
 			updateCredentialsOauthTokenData: jest.fn(),
 			getCredentialsProperties: jest.fn().mockReturnValue([]),
+			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 
