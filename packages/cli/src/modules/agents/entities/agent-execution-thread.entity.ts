@@ -2,6 +2,7 @@ import { AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
+import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
 
 /**
@@ -59,6 +60,23 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 			'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
 	})
 	taskId: string | null;
+
+	/**
+	 * Published agent version that supplied the task snapshot for this session.
+	 * Null for manual draft runs and non-task sessions.
+	 */
+	@ManyToOne(() => AgentHistory, { onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'taskVersionId' })
+	taskVersion: AgentHistory | null;
+
+	@Index()
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Published agent_history version that supplied the task snapshot',
+	})
+	taskVersionId: string | null;
 
 	/** Stable, project-scoped incrementing counter assigned at creation. */
 	@Column({ type: 'int', default: 0 })

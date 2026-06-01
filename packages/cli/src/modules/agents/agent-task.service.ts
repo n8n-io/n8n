@@ -473,6 +473,7 @@ export class AgentTaskService {
 					message,
 					memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
 					taskId,
+					taskVersionId: agent.activeVersionId,
 				}),
 			);
 		} catch (error) {

@@ -174,6 +174,8 @@ export interface ExecuteForTaskPublishedConfig {
 	memory: AgentMemoryScope;
 	/** The scheduled task this run belongs to; stamped on the session for traceability. */
 	taskId: string;
+	/** Published agent_history version that supplied the scheduled task snapshot. */
+	taskVersionId: string;
 }
 
 export interface ExecuteForTaskNowConfig {
@@ -198,6 +200,7 @@ interface StreamChatResponseConfig {
 	projectId: string;
 	source?: string;
 	taskId?: string;
+	taskVersionId?: string;
 }
 
 interface GetRuntimeParams {
@@ -1406,7 +1409,7 @@ export class AgentsService {
 	async *executeForTaskPublished(
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, taskId } = config;
+		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 
 		const runtime = await this.getRuntime({
 			agentId,
@@ -1424,6 +1427,7 @@ export class AgentsService {
 			projectId: runtime.projectId,
 			source: 'task',
 			taskId,
+			taskVersionId,
 		});
 	}
 
@@ -1469,6 +1473,7 @@ export class AgentsService {
 			projectId,
 			source,
 			taskId,
+			taskVersionId,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -1517,6 +1522,7 @@ export class AgentsService {
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
 				source,
 				taskId,
+				taskVersionId,
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution', {

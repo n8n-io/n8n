@@ -1,8 +1,4 @@
-import {
-	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
-	AGENT_TASK_ID_MAX_LENGTH,
-	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
-} from '@n8n/api-types';
+import { AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH, AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
@@ -39,8 +35,7 @@ export class AgentTaskSnapshot extends WithTimestamps {
 	name: string;
 
 	@Column({
-		type: 'varchar',
-		length: AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+		type: 'text',
 		comment: 'User-authored instruction sent to the agent when this task runs',
 	})
 	objective: string;

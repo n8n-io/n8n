@@ -52,9 +52,35 @@ describe('AgentExecutionThreadRepository', () => {
 				agentName: 'Support agent',
 				projectId: 'project-1',
 				taskId: null,
+				taskVersionId: null,
 				sessionNumber: 8,
 			});
 			expect(result).toEqual({ thread: saved, created: true });
+		});
+
+		it('stores the published task snapshot version when supplied', async () => {
+			const saved = mock<AgentExecutionThread>({ id: 'thread-1', sessionNumber: 8 });
+			const scopedRepository = makeScopedRepository(saved);
+			const trx = { getRepository: jest.fn().mockReturnValue(scopedRepository) };
+			entityManager.transaction.mockImplementationOnce(async (_isolation, callback) => {
+				return await callback(trx as never);
+			});
+
+			await repository.findOrCreate(
+				'thread-1',
+				'agent-1',
+				'Support agent',
+				'project-1',
+				'task-1',
+				'version-1',
+			);
+
+			expect(scopedRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				}),
+			);
 		});
 
 		it('retries transient serialization failures before assigning a session number', async () => {

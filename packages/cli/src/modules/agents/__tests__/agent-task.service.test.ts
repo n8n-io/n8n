@@ -598,6 +598,7 @@ describe('AgentTaskService', () => {
 					agentId: AGENT_ID,
 					projectId: 'project-1',
 					taskId: 'task-1',
+					taskVersionId: 'ver-1',
 					message: expect.stringContaining('Summarize messages'),
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
