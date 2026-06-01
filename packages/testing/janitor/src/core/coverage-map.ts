@@ -194,6 +194,15 @@ export interface ResolveResult {
  * - A file in the map without `lines` → all specs covering the file.
  * - A file NOT in the map → `unmapped` → mode 'broad' (run everything). This is
  *   the safety valve that keeps selection sound for new/never-covered code.
+ *
+ * SEAM CONTRACT (line precision): the map only records EXECUTED functions, so it
+ * cannot see an un-executed function sitting between two covered ones. A changed
+ * line inside such a gap is attributed to the nearest preceding covered function
+ * — which can UNDER-SELECT if that region is in truth covered by other specs not
+ * in this (possibly partial/stale) map. Line precision is therefore sound only
+ * when the map is known function-complete for the file. The default-safe usage —
+ * and what the CLI does — is FILE-LEVEL (omit `lines`): a changed file selects
+ * every spec covering any part of it. Treat `lines` as an opt-in optimisation.
  */
 export function resolveImpact(
 	changed: ChangedFile[],

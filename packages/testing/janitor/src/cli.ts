@@ -37,6 +37,7 @@ import {
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
+import { type ImpactMap, mergeCoverage, resolveImpact } from './core/coverage-map.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -646,6 +647,54 @@ function runScope(options: CliOptions): void {
 	console.log(formatScope(result));
 }
 
+function findLcovFiles(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of fs.readdirSync(dir)) {
+		const p = path.join(dir, entry);
+		if (fs.statSync(p).isDirectory()) out.push(...findLcovFiles(p));
+		else if (entry.endsWith('.lcov') || entry === 'lcov.info') out.push(p);
+	}
+	return out;
+}
+
+/** merge-coverage: per-spec lcovs (under --inputs-dir) → unified lcov + impact map. */
+function runMergeCoverage(options: CliOptions): void {
+	if (!options.inputsDir || !options.outLcov || !options.outMap) {
+		console.error('Error: --inputs-dir, --out-lcov, and --out-map are required');
+		process.exit(1);
+	}
+	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
+	// spec attribution comes from each lcov's TN:; the path is only a fallback.
+	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
+	const result = mergeCoverage(inputs);
+	fs.writeFileSync(options.outLcov, result.lcov);
+	fs.writeFileSync(options.outMap, JSON.stringify(result.impactMap));
+	console.error(
+		`merge-coverage: ${files.length} lcov(s) → ${result.stats.files} files, ` +
+			`${result.stats.mapEntries} map entries, ${result.stats.specs} specs`,
+	);
+}
+
+/** select-e2e: changed files + impact map → spec list (JSON). Default-broad when
+ *  any changed file is unmapped (new/never-covered) — never under-selects. */
+function runSelectE2e(options: CliOptions): void {
+	if (!options.mapFile) {
+		console.error('Error: --map=<impact-map.json> is required');
+		process.exit(1);
+	}
+	const map = JSON.parse(fs.readFileSync(options.mapFile, 'utf8')) as ImpactMap;
+	const changed = (readChangedFiles(options) ?? []).map((file) => ({ file }));
+	const allSpecs = options.allSpecsFile
+		? fs
+				.readFileSync(options.allSpecsFile, 'utf8')
+				.split(/[\n,]+/)
+				.map((s) => s.trim())
+				.filter(Boolean)
+		: undefined;
+	const result = resolveImpact(changed, map, { allSpecs });
+	console.log(JSON.stringify(result));
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -702,6 +751,14 @@ async function main(): Promise<void> {
 	}
 	if (options.command === 'test-scoped') {
 		runTestScopedCmd(options);
+		return;
+	}
+	if (options.command === 'merge-coverage') {
+		runMergeCoverage(options);
+		return;
+	}
+	if (options.command === 'select-e2e') {
+		runSelectE2e(options);
 		return;
 	}
 

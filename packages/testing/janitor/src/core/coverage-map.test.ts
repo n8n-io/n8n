@@ -287,4 +287,100 @@ describe('resolveImpact — properties', () => {
 			),
 		);
 	});
+
+	it('R9: lines:[] (empty array) resolves to whole-file, not empty', () => {
+		const map: ImpactMap = { 'f.ts': { '10': ['A'], '20': ['B'] } };
+		// Distinct from undefined; must not silently select nothing (under-selection).
+		expect(resolveImpact([{ file: 'f.ts', lines: [] }], map).specs).toEqual(['A', 'B']);
+	});
+});
+
+// ===========================================================================
+// Serializer + parser hardening — the serializer is exercised by every merge
+// but the algebra properties use mergeCoverage as their own oracle, so a
+// wrong-but-deterministic serialization slips through. These pin it externally.
+// ===========================================================================
+
+describe('serializeLcov (via mergeCoverage.lcov)', () => {
+	it('SERIALIZE-CORRECT: parse∘serialize round-trips FN/FNDA/DA hits', () => {
+		fc.assert(
+			fc.property(arbExecs, (execs) => {
+				// Expected summed hits per (file, line) from the ground truth.
+				const expected = new Map<string, Map<number, number>>();
+				for (const e of execs) {
+					const f = expected.get(e.file) ?? new Map<number, number>();
+					expected.set(e.file, f);
+					f.set(e.fnLine, (f.get(e.fnLine) ?? 0) + e.hits);
+				}
+				const { lcov } = mergeCoverage(buildInputs(execs));
+				for (const rec of parseLcov(lcov)) {
+					const exp = expected.get(rec.file);
+					if (!exp) continue;
+					for (const fn of rec.fns) expect(fn.hits).toBe(exp.get(fn.line) ?? 0);
+					for (const ln of rec.lines) expect(ln.hits).toBe(exp.get(ln.line) ?? 0);
+				}
+			}),
+		);
+	});
+
+	it('emits FN/DA sorted by line and correct FNF/FNH/LF/LH', () => {
+		const { lcov } = mergeCoverage([
+			{
+				spec: 'A',
+				text: 'TN:A\nSF:f.ts\nFN:30,c\nFN:10,a\nFN:20,b\nFNDA:0,c\nFNDA:5,a\nFNDA:2,b\nDA:30,0\nDA:10,5\nDA:20,2\nend_of_record\n',
+			},
+		]);
+		const lines = lcov.split('\n');
+		// Sort order is asserted externally — the order-independence property can't
+		// catch a wrong comparator (it compares the serializer against itself).
+		expect(lines.filter((l) => l.startsWith('FN:'))).toEqual(['FN:10,a', 'FN:20,b', 'FN:30,c']);
+		expect(lines.filter((l) => l.startsWith('DA:'))).toEqual(['DA:10,5', 'DA:20,2', 'DA:30,0']);
+		expect(lcov).toContain('FNF:3'); // 3 functions found
+		expect(lcov).toContain('FNH:2'); // 2 hit (a,b; c has 0)
+		expect(lcov).toContain('LF:3');
+		expect(lcov).toContain('LH:2');
+	});
+});
+
+describe('parseLcov hardening', () => {
+	it('P5: never throws on arbitrary or malformed text', () => {
+		fc.assert(
+			fc.property(fc.string(), (text) => {
+				parseLcov(text); // must not throw
+			}),
+		);
+		fc.assert(
+			fc.property(
+				fc.array(
+					fc.constantFrom(
+						'TN:',
+						'TN:x',
+						'SF:f.ts',
+						'FN:bad',
+						'FN:1,n',
+						'FNDA:',
+						'FNDA:x,n',
+						'DA:',
+						'DA:,',
+						'end_of_record',
+						'',
+						'noise',
+					),
+					{ maxLength: 40 },
+				),
+				(lines) => {
+					parseLcov(lines.join('\n'));
+				},
+			),
+		);
+	});
+
+	it('P4: FNDA without a matching FN → line 0, and fnLine resets per SF (no bleed)', () => {
+		const recs = parseLcov(
+			'SF:a.ts\nFN:5,shared\nFNDA:1,shared\nend_of_record\nSF:b.ts\nFNDA:2,shared\nend_of_record\n',
+		);
+		const b = recs.find((r) => r.file === 'b.ts')!;
+		// `shared` is at line 5 in a.ts; b.ts has no FN for it → line 0, not 5.
+		expect(b.fns).toEqual([{ name: 'shared', line: 0, hits: 2 }]);
+	});
 });
