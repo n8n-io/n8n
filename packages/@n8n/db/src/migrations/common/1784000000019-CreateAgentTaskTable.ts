@@ -12,12 +12,22 @@ export class CreateAgentTaskTable1784000000019 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, addColumns } }: MigrationContext) {
 		await createTable('agent_task')
 			.withColumns(
-				column('id').varchar(32).primary,
-				column('agentId').varchar(36).notNull,
+				column('id')
+					.varchar(32)
+					.primary.comment('Application-generated task ID referenced from agent JSON config'),
+				column('agentId')
+					.varchar(36)
+					.notNull.comment('Owning agent; task bodies are deleted when the agent is deleted'),
 				column('name').varchar(128).notNull,
-				column('objective').text.notNull,
-				column('cronExpression').varchar(128).notNull,
-				column('lastRunAt').timestampTimezone(3),
+				column('objective').text.notNull.comment(
+					'User-authored instruction sent to the agent when this task runs',
+				),
+				column('cronExpression')
+					.varchar(128)
+					.notNull.comment('Cron schedule evaluated using the instance timezone'),
+				column('lastRunAt')
+					.timestampTimezone(3)
+					.comment('Timestamp of the most recent run attempt; null until first run'),
 				column('lastRunStatus')
 					.varchar(16)
 					.withEnumCheck(['success', 'error'])
@@ -51,4 +61,3 @@ export class CreateAgentTaskTable1784000000019 implements ReversibleMigration {
 		await dropTable('agent_task');
 	}
 }
-

@@ -51,7 +51,11 @@ export class AgentHistory extends WithTimestamps {
 	 * time. Scheduled runs read the task body from here so the whole body (not
 	 * just membership/enabled) is gated behind publish.
 	 */
-	@JsonColumn({ nullable: true, default: null })
+	@JsonColumn({
+		nullable: true,
+		default: null,
+		comment: 'Frozen map of taskId to { name, objective, cronExpression } at publish time',
+	})
 	tasks: Record<string, AgentTaskConfig> | null;
 
 	/**

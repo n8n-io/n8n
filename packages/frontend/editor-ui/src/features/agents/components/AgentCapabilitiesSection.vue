@@ -123,12 +123,9 @@ async function reloadTasks() {
 
 onMounted(reloadTasks);
 
-watch(
-	() => props.reloadKey,
-	() => {
-		void reloadTasks();
-	},
-);
+watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
+	void reloadTasks();
+});
 
 function openTaskModal(task: TaskRow | null) {
 	uiStore.openModalWithData({

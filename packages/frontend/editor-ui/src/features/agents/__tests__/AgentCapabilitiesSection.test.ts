@@ -319,6 +319,30 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]').length).toBe(1);
 	});
 
+	it('reloads task bodies when switching agents', async () => {
+		getAgentTasksSpy.mockImplementation(
+			async (_context: unknown, _projectId: string, agentId: string) =>
+				agentId === 'agent-2'
+					? [makeTask({ id: 'task-2', name: 'Weekly digest' })]
+					: [makeTask({ id: 'task-1', name: 'Daily summary' })],
+		);
+
+		const wrapper = mountSection([], {}, null, [taskRef('task-1')]);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Daily summary');
+
+		await wrapper.setProps({
+			agentId: 'agent-2',
+			taskRefs: [taskRef('task-2')],
+		});
+		await flushPromises();
+
+		expect(getAgentTasksSpy).toHaveBeenLastCalledWith({}, 'project-id', 'agent-2');
+		expect(wrapper.text()).toContain('Weekly digest');
+		expect(wrapper.text()).not.toContain('Daily summary');
+	});
+
 	it('opens the task modal when adding or editing a task', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
 		const wrapper = mountSection([], {}, null, [taskRef('task-1', true)]);
