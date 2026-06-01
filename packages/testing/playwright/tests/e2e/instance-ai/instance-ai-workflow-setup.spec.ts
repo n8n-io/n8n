@@ -901,19 +901,19 @@ test.describe(
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,
 		}) => {
-			// creds are sorted by name, in the dropdown
-			const firstCrdentialInList = await n8n.api.credentials.createCredential({
-				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
-				type: 'slackApi',
-				data: {
-					accessToken: 'xoxb-target-token-for-testing',
-				},
-			});
-			const secondCrdentialInList = await n8n.api.credentials.createCredential({
+			// Creds are sorted by name in the dropdown; auto-select picks the most recently updated.
+			const firstCredentialInList = await n8n.api.credentials.createCredential({
 				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: {
 					accessToken: 'xoxb-initial-token-for-testing',
+				},
+			});
+			const secondCredentialInList = await n8n.api.credentials.createCredential({
+				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-target-token-for-testing',
 				},
 			});
 
@@ -926,15 +926,15 @@ test.describe(
 				`Set up the workflow named "${SELECT_EXISTING_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 12_000 });
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(firstCrdentialInList.name);
+				.toBe(secondCredentialInList.name);
 
-			await n8n.instanceAi.workflowSetup.selectCredentialById(secondCrdentialInList.id);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(firstCredentialInList.id);
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(secondCrdentialInList.name);
+				.toBe(firstCredentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -945,7 +945,7 @@ test.describe(
 				persisted,
 				'Slack Trigger',
 				'slackApi',
-				secondCrdentialInList.name,
+				firstCredentialInList.name,
 			);
 		});
 
