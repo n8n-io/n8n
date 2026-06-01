@@ -9,4 +9,3 @@ import { CreateAgentTaskTable1784000000019 as BaseMigration } from '../common/17
 export class CreateAgentTaskTable1784000000019 extends BaseMigration {
 	withFKsDisabled = true as const;
 }
-
