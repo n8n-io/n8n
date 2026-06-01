@@ -104,6 +104,8 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -310,11 +312,22 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
 		private readonly oauthService: OauthService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
+	}
+
+	/**
+	 * Whether the agent knowledge base sub-feature is enabled via
+	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
+	 * runtime tool. Public so the controller can guard its file endpoints.
+	 */
+	isKnowledgeBaseModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('knowledge-base');
 	}
 
 	/**
@@ -753,6 +766,19 @@ export class AgentsService {
 			return false;
 		}
 
+		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
+		// binary blobs from the filesystem/object store, which a DB transaction
+		// can't roll back. The agent_files rows are removed via the agentId FK's
+		// ON DELETE CASCADE when the agent is removed below, so a failure here
+		// only risks orphaned blobs (logged) and must not block agent deletion.
+		try {
+			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to delete knowledge files on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
@@ -932,6 +958,30 @@ export class AgentsService {
 		// via a tool call rather than the system prompt — so values that change
 		// per request don't bust system-prompt prompt caching.
 		agent.tool(createGetEnvironmentTool());
+
+		// search_knowledge is gated behind the `knowledge-base` agents module.
+		// It's also an optional capability: if wiring it up fails (e.g. dynamic
+		// import or service construction error), degrade gracefully and keep the
+		// rest of the runtime usable rather than failing the whole agent. The
+		// failure is logged so it stays observable.
+		if (this.isKnowledgeBaseModuleEnabled()) {
+			try {
+				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+				agent.tool(
+					createSearchKnowledgeTool({
+						agentId,
+						projectId,
+						knowledgeService: this.agentKnowledgeService,
+						commandService: this.agentKnowledgeCommandService,
+					}),
+				);
+			} catch (toolError) {
+				this.logger.warn('Failed to inject search_knowledge tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
+		}
 
 		// Inject the rich_interaction tool only for platforms that can actually
 		// render its suspend/resume HITL cards. Two gates:
