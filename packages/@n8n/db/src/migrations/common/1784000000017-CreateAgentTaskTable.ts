@@ -2,23 +2,21 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
  * Sets up the agent Tasks schema in one migration: the `agent_task` table
- * (the 1:many scheduled-objective model), a nullable `taskId` FK on
- * `agent_execution_threads` so a session can be traced back to the task that
- * triggered it, and a `tasks` snapshot column on `agent_history` so the
- * published task bodies (name/objective/cron) are frozen at publish time and
- * drive scheduling. They ship together because they form one feature's schema.
+ * (the 1:many scheduled-objective model), a nullable `taskId` on
+ * `agent_execution_threads` so a session can preserve which task triggered it,
+ * and a `tasks` snapshot column on `agent_history` so the published task bodies
+ * (name/objective/cron) are frozen at publish time and drive scheduling. They
+ * ship together because they form one feature's schema.
  */
 export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
-	async up({
-		schemaBuilder: { createTable, column, addColumns, createIndex, addForeignKey },
-	}: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column, addColumns } }: MigrationContext) {
 		await createTable('agent_task')
 			.withColumns(
-				column('id').varchar(36).primary,
+				column('id').varchar(32).primary,
 				column('agentId').varchar(36).notNull,
 				column('name').varchar(128).notNull,
 				column('objective').text.notNull,
-				column('cronExpression').varchar(255).notNull,
+				column('cronExpression').varchar(128).notNull,
 				column('lastRunAt').timestampTimezone(3),
 				column('lastRunStatus')
 					.varchar(16)
@@ -32,15 +30,11 @@ export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		await addColumns('agent_execution_threads', [column('taskId').varchar(36)]);
-		await createIndex('agent_execution_threads', ['taskId']);
-		await addForeignKey(
-			'agent_execution_threads',
-			'taskId',
-			['agent_task', 'id'],
-			undefined,
-			'SET NULL',
-		);
+		await addColumns('agent_execution_threads', [
+			column('taskId')
+				.varchar(32)
+				.comment('Task that triggered this session; null for non-task runs'),
+		]);
 
 		await addColumns('agent_history', [
 			column('tasks').json.comment(
@@ -49,12 +43,8 @@ export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 		]);
 	}
 
-	async down({
-		schemaBuilder: { dropForeignKey, dropIndex, dropColumns, dropTable },
-	}: MigrationContext) {
+	async down({ schemaBuilder: { dropColumns, dropTable } }: MigrationContext) {
 		await dropColumns('agent_history', ['tasks']);
-		await dropForeignKey('agent_execution_threads', 'taskId', ['agent_task', 'id']);
-		await dropIndex('agent_execution_threads', ['taskId']);
 		await dropColumns('agent_execution_threads', ['taskId']);
 		await dropTable('agent_task');
 	}

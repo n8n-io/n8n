@@ -1,12 +1,28 @@
-import type { AgentTaskRunStatus } from '@n8n/api-types';
-import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
+import {
+	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
+	AGENT_TASK_ID_MAX_LENGTH,
+	AGENT_TASK_LAST_RUN_STATUS_MAX_LENGTH,
+	type AgentTaskRunStatus,
+} from '@n8n/api-types';
+import { DateTimeColumn, WithTimestamps } from '@n8n/db';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	type Relation,
+} from '@n8n/typeorm';
 
 import { Agent } from './agent.entity';
 
 /** A scheduled, recurring objective an agent runs on its own cron. */
 @Entity({ name: 'agent_task' })
-export class AgentTask extends WithTimestampsAndStringId {
+export class AgentTask extends WithTimestamps {
+	@PrimaryColumn({ type: 'varchar', length: AGENT_TASK_ID_MAX_LENGTH })
+	id: string;
+
 	@Index()
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
@@ -21,12 +37,12 @@ export class AgentTask extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	objective: string;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH })
 	cronExpression: string;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	lastRunAt: Date | null;
 
-	@Column({ type: 'varchar', length: 16, nullable: true })
+	@Column({ type: 'varchar', length: AGENT_TASK_LAST_RUN_STATUS_MAX_LENGTH, nullable: true })
 	lastRunStatus: AgentTaskRunStatus | null;
 }

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 export const AGENT_TASK_NAME_MAX_LENGTH = 128;
+export const AGENT_TASK_ID_MAX_LENGTH = 32;
+export const AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH = 128;
+export const AGENT_TASK_LAST_RUN_STATUS_MAX_LENGTH = 16;
 
 /**
  * Persisted, user-editable body of a task. Membership + enabled state live in
@@ -10,7 +13,7 @@ export const AGENT_TASK_NAME_MAX_LENGTH = 128;
 export const agentTaskSchema = z.object({
 	name: z.string().min(1).max(AGENT_TASK_NAME_MAX_LENGTH),
 	objective: z.string().min(1),
-	cronExpression: z.string().min(1),
+	cronExpression: z.string().min(1).max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH),
 });
 
 export type AgentTaskConfig = z.infer<typeof agentTaskSchema>;
