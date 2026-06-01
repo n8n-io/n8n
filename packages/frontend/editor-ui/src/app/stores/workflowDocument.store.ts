@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, type ShallowRef } from 'vue';
+import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -470,4 +470,31 @@ export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore>
 	const injected = inject(WorkflowDocumentStoreKey, null);
 
 	return computed(() => injected?.value ?? fallback.value);
+}
+
+/**
+ * Re-provides the resolved workflow document store to the current component's
+ * subtree.
+ *
+ * Use this in hosts that render workflow-editor components (e.g. NDV parameter
+ * inputs, which call `injectNDVStore()`/`injectWorkflowDocumentStore()`)
+ * outside the normal workflow editor tree — such as the credential edit modal
+ * or the log-streaming settings modal. Those components are descendants of
+ * `App.vue` but may mount while no workflow document is loaded; re-providing
+ * here guarantees they resolve a valid scoped store instead of throwing.
+ *
+ * Returns the resolved (non-null) document store so the host can derive its own
+ * scoped stores from `documentId` (the host cannot inject what it provides).
+ */
+export function provideWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const provided = shallowRef<WorkflowDocumentStore | null>(workflowDocumentStore.value);
+
+	watchEffect(() => {
+		provided.value = workflowDocumentStore.value;
+	});
+
+	provide(WorkflowDocumentStoreKey, provided);
+
+	return workflowDocumentStore;
 }
