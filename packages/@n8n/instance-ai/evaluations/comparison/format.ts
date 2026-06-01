@@ -36,7 +36,7 @@ import type {
 } from '../types';
 
 interface FormatOptions {
-	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
+	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
 	/** Maps each test-case reference to its file slug. When provided, the
 	 *  per-scenario failure breakdown looks up failed runs by
@@ -58,7 +58,7 @@ export function formatComparisonMarkdown(
 	const lines: string[] = [];
 	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
 
-	lines.push(formatHeading(options.commitSha));
+	lines.push(formatHeading());
 	lines.push('');
 	lines.push(formatTopAlert(outcome));
 	lines.push('');
@@ -139,7 +139,17 @@ export function formatComparisonMarkdown(
 	const failureDetails = renderFailureDetails(evaluation, options.slugByTestCase);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
+	lines.push(formatRerunFooter());
+
 	return lines.join('\n');
+}
+
+// Evals fire on PR open / ready-for-review, not on push.
+function formatRerunFooter(): string {
+	return [
+		'> [!NOTE]',
+		'> Runs once when the PR opens or is marked ready for review — **new commits do not re-trigger it.** To re-check after pushing, open the **Checks** tab and use **Re-run jobs** on this check; it runs against the latest commit on your branch.',
+	].join('\n');
 }
 
 function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
@@ -172,9 +182,8 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	return lines;
 }
 
-function formatHeading(commitSha?: string): string {
-	const sha = commitSha ? ` — \`${commitSha.slice(0, 8)}\`` : '';
-	return `### Instance AI Workflow Eval${sha}`;
+function formatHeading(): string {
+	return '### Instance AI Workflow Eval';
 }
 
 function formatTopAlert(outcome?: ComparisonOutcome): string {
