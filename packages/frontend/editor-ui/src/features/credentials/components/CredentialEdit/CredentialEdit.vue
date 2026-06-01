@@ -171,6 +171,11 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+const appendToBody = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.appendToBody === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -1488,7 +1493,7 @@ const { width } = useElementSize(credNameRef);
 		:before-close="beforeClose"
 		width="70%"
 		height="80%"
-		append-to-body
+		:append-to-body="appendToBody"
 	>
 		<template #header>
 			<div :class="$style.header">

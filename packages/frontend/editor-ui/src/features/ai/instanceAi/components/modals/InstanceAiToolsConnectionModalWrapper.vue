@@ -121,7 +121,18 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 		return creds.map((c) => ({ id: c.id, name: c.name, type: c.type }));
 	},
 	openNewCredential: (authType: string) => {
-		uiStore.openNewCredential(authType, false, false);
+		uiStore.openNewCredential(
+			authType,
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			// Force body mount so the credential dialog stacks above the reka-ui
+			// `ToolsConnectionModal` we're hosted inside.
+			{ appendToBody: true },
+		);
 	},
 };
 
