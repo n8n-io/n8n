@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { InstanceAiPage } from '../pages/InstanceAiPage';
 import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPage';
 
 /**
@@ -15,9 +16,12 @@ import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPag
  * - Executions: /home/executions or /projects/{projectId}/executions
  */
 export class NavigationHelper {
+	private readonly instanceAi: InstanceAiPage;
+
 	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
 
 	constructor(private page: Page) {
+		this.instanceAi = new InstanceAiPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 	}
 
@@ -213,6 +217,15 @@ export class NavigationHelper {
 	 */
 	async toChatHubSettings(): Promise<void> {
 		await this.page.goto('/settings/chat');
+	}
+
+	/**
+	 * Navigate to Instance AI page
+	 * URL: /instance-ai
+	 */
+	async toInstanceAi() {
+		await this.page.goto('/instance-ai');
+		await this.instanceAi.enableInstanceAiIfPrompted();
 	}
 
 	/**

@@ -91,25 +91,6 @@ describe('components/N8nTooltip', () => {
 			expect(tooltip.querySelector('strong')).toBeInTheDocument();
 			expect(tooltip).toHaveTextContent('Bold text');
 		});
-
-		it('should show arrow by default', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				// Arrow is an SVG element inside the tooltip content
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				const arrow = tooltipContent?.querySelector('svg');
-				expect(arrow).toBeInTheDocument();
-			});
-		});
 	});
 
 	describe('placements', () => {

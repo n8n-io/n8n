@@ -149,50 +149,35 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-export const mongoConfig = {
-	client: null as MongoClient | null,
-	connectionString: '',
-	nodeVersion: 0,
-};
-
 /**
  * Type used for cleaner, more intentional typing.
  */
 type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
 /**
- * Get the mongo client.
+ * Create a fresh MongoClient for the given context.
+ * Each call creates a new client to avoid connection pool sharing across executions.
  * @param context - The context.
- * @returns the MongoClient for the node.
+ * @param version - The node version.
+ * @returns A new, connected MongoClient.
  */
-export async function getMongoClient(
+export async function createMongoClient(
 	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	version: number,
 ) {
 	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
 	const node = context.getNode();
 	const { connectionString } = validateAndResolveMongoCredentials(node, credentials);
-	if (
-		!mongoConfig.client ||
-		mongoConfig.connectionString !== connectionString ||
-		mongoConfig.nodeVersion !== version
-	) {
-		if (mongoConfig.client) {
-			await mongoConfig.client.close();
-		}
 
-		mongoConfig.connectionString = connectionString;
-		mongoConfig.nodeVersion = version;
-		mongoConfig.client = new MongoClient(connectionString, {
-			appName: 'devrel.integration.n8n_vector_integ',
-			driverInfo: {
-				name: 'n8n_vector',
-				version: version.toString(),
-			},
-		});
-		await mongoConfig.client.connect();
-	}
-	return mongoConfig.client;
+	const client = new MongoClient(connectionString, {
+		appName: 'devrel.integration.n8n_vector_integ',
+		driverInfo: {
+			name: 'n8n_vector',
+			version: version.toString(),
+		},
+	});
+	await client.connect();
+	return client;
 }
 
 /**
@@ -211,8 +196,8 @@ export async function getDatabase(context: IFunctionsContext, client: MongoClien
  * @returns The list of collections.
  */
 export async function getCollections(this: ILoadOptionsFunctions) {
+	const client = await createMongoClient(this, this.getNode().typeVersion);
 	try {
-		const client = await getMongoClient(this, this.getNode().typeVersion);
 		const db = await getDatabase(this, client);
 		const collections = await db.listCollections().toArray();
 		const results = collections.map((collection) => ({
@@ -223,6 +208,8 @@ export async function getCollections(this: ILoadOptionsFunctions) {
 		return { results };
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), `Error: ${error.message}`);
+	} finally {
+		void client.close().catch(() => {});
 	}
 }
 
@@ -276,16 +263,19 @@ export function getFilterValue<T>(
 }
 
 class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
+	mongoClient: MongoClient;
 	preFilter: IDataObject;
 	postFilterPipeline?: IDataObject[];
 
 	constructor(
 		embeddings: EmbeddingsInterface,
 		options: MongoDBAtlasVectorSearchLibArgs,
+		mongoClient: MongoClient,
 		preFilter: IDataObject,
 		postFilterPipeline?: IDataObject[],
 	) {
 		super(embeddings, options);
+		this.mongoClient = mongoClient;
 		this.preFilter = preFilter;
 		this.postFilterPipeline = postFilterPipeline;
 	}
@@ -321,8 +311,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
+		const client = await createMongoClient(context, context.getNode().typeVersion);
 		try {
-			const client = await getMongoClient(context, context.getNode().typeVersion);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
@@ -357,10 +347,12 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 					textKey: metadataFieldName, // Field containing raw text
 					embeddingKey: embeddingFieldName, // Field containing embeddings
 				},
+				client,
 				preFilter ?? {},
 				postFilterPipeline,
 			);
 		} catch (error) {
+			void client.close().catch(() => {});
 			if (error instanceof NodeOperationError) {
 				throw error;
 			}
@@ -371,8 +363,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const client = await createMongoClient(context, context.getNode().typeVersion);
 		try {
-			const client = await getMongoClient(context, context.getNode().typeVersion);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
@@ -396,6 +388,12 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 				itemIndex,
 				description: 'Please check your MongoDB Atlas connection details',
 			});
+		} finally {
+			void client.close().catch(() => {});
 		}
+	},
+
+	releaseVectorStoreClient(vectorStore) {
+		void vectorStore.mongoClient?.close().catch(() => {});
 	},
 }) {}

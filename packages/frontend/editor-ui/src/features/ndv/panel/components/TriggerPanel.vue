@@ -16,13 +16,15 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -50,11 +52,15 @@ const emit = defineEmits<{
 	execute: [];
 }>();
 
+const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const ndvStore = useNDVStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
+const ndvStore = injectNDVStore();
 
 const router = useRouter();
 const workflowHelpers = useWorkflowHelpers();
@@ -65,7 +71,9 @@ const executionsHelpEventBus = createEventBus();
 
 const help = ref<HTMLElement | null>(null);
 
-const node = computed<INodeUi | null>(() => workflowsStore.getNodeByName(props.nodeName));
+const node = computed<INodeUi | null>(
+	() => workflowDocumentStore?.value?.getNodeByName(props.nodeName) ?? null,
+);
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
 	if (node.value) {
@@ -90,12 +98,9 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
-			node.value,
-			hideContent,
-			'internal',
-			{},
-		);
+		const hideContentValue = workflowDocumentStore?.value
+			?.getExpressionHandler()
+			.getSimpleParameterValue(node.value, hideContent, 'internal', {});
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -170,20 +175,20 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!workflowsStore.executionWaitingForWebhook) {
+	if (!workflowExecutionStateStore.value.executionWaitingForWebhook) {
 		return false;
 	}
 
 	const executedNode = workflowsStore.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
-		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
 		: false;
 
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = workflowsStore.executedNode;
@@ -332,7 +337,7 @@ const expandExecutionHelp = () => {
 
 const openWebhookUrl = () => {
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: 'input',
 		type: 'open-chat',
@@ -355,12 +360,12 @@ const onLinkClick = (e: MouseEvent) => {
 			emit('activate');
 		} else if (target.dataset.key === 'executions') {
 			telemetry.track('User clicked ndv link', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 				push_ref: props.pushRef,
 				pane: 'input',
 				type: 'open-executions-log',
 			});
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 			void router.push({
 				name: VIEWS.EXECUTIONS,
 			});

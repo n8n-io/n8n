@@ -2,11 +2,12 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import type { LoadBalancerPolicy, Service, ServiceResult } from './types';
 
 export interface LoadBalancerConfig {
 	mainCount: number;
 	hostPort?: number;
+	policy: LoadBalancerPolicy;
 }
 
 export interface LoadBalancerMeta {
@@ -16,14 +17,13 @@ export interface LoadBalancerMeta {
 
 export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 
-function buildCaddyConfig(upstreamServers: string[]): string {
+function buildCaddyConfig(upstreamServers: string[], policy: LoadBalancerPolicy): string {
 	const backends = upstreamServers.join(' ');
 	return `
 :80 {
   # Reverse proxy with load balancing
   reverse_proxy ${backends} {
-    # Use first available backend for simpler debugging
-    lb_policy first
+    lb_policy ${policy}
 
     # Health check
     health_uri /healthz
@@ -52,6 +52,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 		return {
 			mainCount: ctx.mains,
 			hostPort: ctx.allocatedPorts.loadBalancer,
+			policy: ctx.config.lbPolicy ?? 'first',
 		} as LoadBalancerConfig;
 	},
 
@@ -63,7 +64,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {
-		const { mainCount, hostPort } = config as LoadBalancerConfig;
+		const { mainCount, hostPort, policy } = config as LoadBalancerConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		// Generate upstream server addresses
@@ -72,7 +73,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 			(_, index) => `${projectName}-n8n-main-${index + 1}:5678`,
 		);
 
-		const caddyConfig = buildCaddyConfig(upstreamServers);
+		const caddyConfig = buildCaddyConfig(upstreamServers, policy);
 
 		try {
 			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.caddy)

@@ -91,6 +91,19 @@ function mockNodeFromType(type: INodeTypeDescription) {
 	} as never);
 }
 
+function mockAiToolNode(typeName: string, typeVersion: number): INodeUi {
+	return vi.mocked<INodeUi>({ type: typeName, typeVersion } as never);
+}
+
+const AI_TOOL_CODEX: INodeTypeDescription = {
+	name: '',
+	codex: {
+		categories: ['AI'],
+		subcategories: { AI: ['Tools'] },
+	},
+	...MOCK_NODE_TYPE_MIXIN,
+};
+
 describe('makeOverrideValue', () => {
 	test.each<[string, ...Parameters<typeof makeOverrideValue>]>([
 		['null nodeType', makeContext(''), null],
@@ -148,6 +161,39 @@ describe('makeOverrideValue', () => {
 
 		expect(result).toBeDefined();
 		expect(result?.extraPropValues.description).not.toBeDefined();
+	});
+
+	it('creates an override for a parameter named "name" on an allowed AI tool node', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
+	});
+
+	describe('legacy tool-name node denylist', () => {
+		test.each<[string, string, number, boolean]>([
+			['toolWorkflow v2.0 denied', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.0, false],
+			['toolWorkflow v2.1 denied', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.1, false],
+			['toolWorkflow v2.2 allowed', '@n8n/n8n-nodes-langchain.toolWorkflow', 2.2, true],
+			['toolVectorStore v1 denied', '@n8n/n8n-nodes-langchain.toolVectorStore', 1, false],
+			['toolVectorStore v1.1 allowed', '@n8n/n8n-nodes-langchain.toolVectorStore', 1.1, true],
+		])('%s', (_name, typeName, typeVersion, shouldOverride) => {
+			getNodeType.mockReturnValue(AI_TOOL_CODEX);
+			const result = makeOverrideValue(
+				makeContext('', 'parameters.name'),
+				mockAiToolNode(typeName, typeVersion),
+			);
+
+			if (shouldOverride) {
+				expect(result).not.toBeNull();
+			} else {
+				expect(result).toBeNull();
+			}
+		});
 	});
 });
 

@@ -24,10 +24,22 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 };
 
 // Shared MCP tool types
+export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
+	'updatedAt:desc',
+	'updatedAt:asc',
+	'createdAt:desc',
+	'createdAt:asc',
+	'name:asc',
+	'name:desc',
+] as const;
+
+export type SearchWorkflowsSortBy = (typeof SEARCH_WORKFLOWS_SORT_BY_VALUES)[number];
+
 export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	sortBy?: SearchWorkflowsSortBy;
 };
 
 export type SearchWorkflowsItem = {
@@ -71,6 +83,7 @@ export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
 	client_name?: string;
 	client_version?: string;
+	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
 	error?: string;
 };
@@ -86,7 +99,9 @@ export type WorkflowNotFoundReason =
 	| 'workflow_archived'
 	| 'not_available_in_mcp'
 	| 'workflow_not_active'
-	| 'unsupported_trigger';
+	| 'unsupported_trigger'
+	| 'execution_not_found'
+	| 'invalid_pin_data';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
@@ -124,5 +139,7 @@ export type TelemetryAuthContext = {
 
 export type UserWithContext = {
 	user: User | null;
+	actor?: User;
 	context?: TelemetryAuthContext;
+	authType?: Mcpauth_type;
 };

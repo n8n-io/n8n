@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -153,5 +154,53 @@ describe('POST /eventbus/destination', () => {
 
 			expect(response.statusCode).toBe(400);
 		});
+	});
+});
+
+describe('when log streaming is managed by env', () => {
+	beforeAll(() => {
+		Container.get(InstanceSettingsLoaderConfig).logStreamingManagedByEnv = true;
+	});
+
+	afterAll(() => {
+		Container.get(InstanceSettingsLoaderConfig).logStreamingManagedByEnv = false;
+	});
+
+	test('POST /eventbus/destination is rejected with 403', async () => {
+		const webhookPayload = {
+			__type: '$$MessageEventBusDestinationWebhook',
+			url: 'http://localhost:3456',
+			method: 'POST',
+			label: 'Should not be created',
+			enabled: false,
+			subscribedEvents: ['n8n.test.message'],
+			options: {},
+		};
+
+		const response = await authOwnerAgent.post('/eventbus/destination').send(webhookPayload);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('DELETE /eventbus/destination is rejected with 403', async () => {
+		const response = await authOwnerAgent
+			.delete('/eventbus/destination')
+			.query({ id: '11111111-1111-4111-8111-111111111111' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('GET /eventbus/destination still succeeds', async () => {
+		const response = await authOwnerAgent.get('/eventbus/destination');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('GET /eventbus/testmessage still succeeds', async () => {
+		const response = await authOwnerAgent
+			.get('/eventbus/testmessage')
+			.query({ id: '11111111-1111-4111-8111-111111111111' });
+
+		expect(response.statusCode).toBe(200);
 	});
 });

@@ -123,7 +123,7 @@ export class ChatHubExecutionWatcherService {
 
 		if (!['success', 'waiting', 'canceled'].includes(runData.status)) {
 			const errorMessage =
-				this.chatHubExecutionService.extractErrorMessage(runData) ??
+				this.chatHubExecutionService.extractErrorMessage(runData.data) ??
 				'Failed to generate a response';
 			await this.pushErrorResults(context, errorMessage);
 			await this.executionStore.remove(executionId);

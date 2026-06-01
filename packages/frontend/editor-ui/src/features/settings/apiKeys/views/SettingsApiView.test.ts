@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { renderComponent } from '@/__tests__/render';
@@ -108,6 +108,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -117,6 +118,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -126,6 +128,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -167,6 +170,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -176,6 +180,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -185,6 +190,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -219,6 +225,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -228,7 +235,7 @@ describe('SettingsApiView', () => {
 		expect(screen.getByText('****Atcr')).toBeInTheDocument();
 		expect(screen.getByText('test-key-1')).toBeInTheDocument();
 
-		await fireEvent.click(screen.getByTestId('action-toggle'));
+		await fireEvent.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
 		await fireEvent.click(screen.getByTestId('action-delete'));
 
 		expect(screen.getByText('Delete this API Key?')).toBeInTheDocument();

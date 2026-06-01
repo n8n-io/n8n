@@ -108,12 +108,16 @@ function buildTriagePrompt(
 
 1. **build_workflow** — The user wants to create, modify, configure, or change a workflow.
    This includes any action request: adding nodes, setting up nodes, configuring parameters,
-   connecting nodes, or any instruction that implies "do this to my workflow."
+   connecting nodes, or any instruction that implies "do this to my workflow".
+   ALWAYS use build_workflow when the message contains a URL (http:// or https://) — the build
+   process includes web_fetch to retrieve page contents, the assistant cannot. This applies whether
+   the user asks to fetch the URL, references it as documentation, or provides it for context.
    You may include a brief transition before calling (e.g., "Let me build that for you.").
 
 2. **ask_assistant** — The user has a pure knowledge question about n8n concepts, needs help
    understanding how something works, or needs to diagnose a workflow error.
    Only use this when the user is asking for information, NOT when they want you to take action.
+   Never use for messages containing URLs — route those to build_workflow instead.
    You may include a brief transition before calling (e.g., "Let me look into that.").
 
 3. **Direct reply** — Simple conversational messages that don't need either tool.
@@ -139,7 +143,7 @@ General rules:
 		)
 		.section(
 			'examples',
-			`build_workflow: "Add a Slack node", "Configure the email settings", "Help me set up Gmail", "Can you fix the error?", "Fix the broken connection", "Set the timeout to 30 seconds", "Make it send to a different channel", "The timeout should be higher"
+			`build_workflow: "Add a Slack node", "Configure the email settings", "Help me set up Gmail", "Can you fix the error?", "Fix the broken connection", "Set the timeout to 30 seconds", "Make it send to a different channel", "The timeout should be higher", "Check this: https://api.example.com/docs", "Here's the API reference: https://...", "https://docs.stripe.com/api", "Use this documentation https://..."
 ask_assistant: "Why did my workflow fail?", "How do webhooks work?", "What's the difference between Set and Code?", "Explain this error", "How do I use expressions?", "This doesn't work" (diagnosis needed), "Something went wrong"`,
 		)
 		.sectionIf(conversationHistory && conversationHistory.length > 0, 'conversation history', () =>

@@ -196,12 +196,12 @@ export function createTestWorkflowObject({
 	return new Workflow({
 		id,
 		name,
-		nodes,
-		connections,
+		nodes: Array.isArray(nodes) ? nodes : [],
+		connections: typeof connections === 'object' && connections !== null ? connections : {},
 		active,
-		staticData,
-		settings,
-		pinData,
+		staticData: typeof staticData === 'object' && staticData !== null ? staticData : {},
+		settings: typeof settings === 'object' && settings !== null ? settings : {},
+		pinData: typeof pinData === 'object' && pinData !== null ? pinData : {},
 		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
@@ -254,6 +254,7 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
 	return {
 		displayName: 'Name',
+		displayOptions: undefined,
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -282,7 +283,7 @@ export function createMockEnterpriseSettings(
 		binaryDataS3: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
 		namedVersions: false,
 		projects: {
@@ -292,6 +293,7 @@ export function createMockEnterpriseSettings(
 		},
 		customRoles: false,
 		personalSpacePolicy: false,
+		dataRedaction: false,
 		...overrides, // Override with any passed properties
 	};
 }
@@ -327,17 +329,11 @@ export function createTestWorkflowExecutionResponse(
 export function createTestExpressionLocalResolveContext(
 	data: Partial<ExpressionLocalResolveContext> = {},
 ): ExpressionLocalResolveContext {
-	const workflow = data.workflow ?? createTestWorkflowObject();
-
 	return {
 		localResolve: true,
-		workflow,
 		nodeName: 'n0',
 		inputNode: { name: 'n1', runIndex: 0, branchIndex: 0 },
-		envVars: {},
 		additionalKeys: {},
-		connections: workflow.connectionsBySourceNode,
-		execution: null,
 		...data,
 	};
 }

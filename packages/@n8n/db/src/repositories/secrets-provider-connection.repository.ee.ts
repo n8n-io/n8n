@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 
 import { SecretsProviderConnection, SharedCredentials } from '../entities';
 
@@ -11,6 +11,26 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 	async findAll(): Promise<SecretsProviderConnection[]> {
 		return await this.find();
+	}
+
+	async findIdByProviderKey(providerKey: string): Promise<string | null> {
+		const connection = await this.findOne({
+			select: ['id'],
+			where: { providerKey },
+		});
+
+		return connection ? connection.id.toString() : null;
+	}
+
+	async findIdsByProviderKeys(providerKeys: string[]): Promise<string[]> {
+		if (providerKeys.length === 0) return [];
+
+		const connections = await this.find({
+			select: ['id'],
+			where: { providerKey: In(providerKeys) },
+		});
+
+		return connections.map(({ id }) => id.toString());
 	}
 
 	async hasGlobalProvider(providerKey: string): Promise<boolean> {
@@ -25,15 +45,17 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	}
 
 	/**
-	 * Retrieves global connections, i.e., connections that are not assigned to any project.
+	 * Retrieves enabled global connections, i.e., connections that are not assigned to any project.
 	 * A global connection has no associated entries in its projectAccess relation.
 	 *
 	 * @param filters - (Optional) Filters to apply to the query.
 	 * @param filters.providerKeys - (Optional) Limits results to connections of the specified provider keys.
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
-	async findGlobalConnections(
-		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+	async findEnabledGlobalConnections(
+		filters: {
+			providerKeys?: Array<SecretsProviderConnection['providerKey']>;
+		} = {},
 	): Promise<SecretsProviderConnection[]> {
 		const { providerKeys } = filters;
 		if (providerKeys && providerKeys.length === 0) {
@@ -42,7 +64,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		const connectionQuery = this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
-			.where('access.secretsProviderConnectionId IS NULL');
+			.where('access.secretsProviderConnectionId IS NULL')
+			.andWhere('connection.isEnabled = :isEnabled', { isEnabled: true });
 
 		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
@@ -52,7 +75,7 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	}
 
 	/**
-	 * Finds all secrets provider connections assigned to a given project.
+	 * Finds all enabled secrets provider connections assigned to a given project.
 	 * Optionally filters connections by provider keys.
 	 *
 	 * This returns only those connections explicitly linked to the project,
@@ -63,9 +86,11 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 * @param filters.providerKeys - (Optional) Limits results to connections of the specified provider keys.
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
-	async findByProjectId(
+	async findEnabledByProjectId(
 		projectId: string,
-		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+		filters: {
+			providerKeys?: Array<SecretsProviderConnection['providerKey']>;
+		} = {},
 	): Promise<SecretsProviderConnection[]> {
 		const { providerKeys } = filters;
 		if (providerKeys && providerKeys.length === 0) {
@@ -75,7 +100,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		const connectionQuery = this.createQueryBuilder('connection')
 			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
 			.leftJoinAndSelect('projectAccess.project', 'project')
-			.where('projectAccess.projectId = :projectId', { projectId });
+			.where('projectAccess.projectId = :projectId', { projectId })
+			.andWhere('connection.isEnabled = :isEnabled', { isEnabled: true });
 
 		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
@@ -151,7 +177,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		const rows = await this.createQueryBuilder('connection')
 			.select('connection.providerKey', 'providerKey')
 			.leftJoin('connection.projectAccess', 'access')
-			.where(
+			.where('connection.isEnabled = :isEnabled', { isEnabled: true })
+			.andWhere(
 				new Brackets((qb) => {
 					qb.where('access.secretsProviderConnectionId IS NULL') // Global
 						.orWhere(`access.projectId IN ${ownerProjectSubquery}`); // Owner project
@@ -202,22 +229,5 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.where('connection.providerKey = :providerKey', { providerKey })
 			.andWhere('projectAccess.projectId = :projectId', { projectId })
 			.getOne();
-	}
-
-	/**
-	 * Remove a connection by its providerKey, but only if it is assigned to the specified project.
-	 * Returns the removed connection, or null if no matching connection was found.
-	 */
-	async removeByProviderKeyAndProjectId(
-		providerKey: string,
-		projectId: string,
-	): Promise<SecretsProviderConnection | null> {
-		const connection = await this.findByProviderKeyAndProjectId(providerKey, projectId);
-
-		if (!connection) {
-			return null;
-		}
-
-		return await this.remove(connection);
 	}
 }

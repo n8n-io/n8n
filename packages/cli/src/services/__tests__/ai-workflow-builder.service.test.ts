@@ -1,6 +1,6 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -14,11 +14,21 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
-jest.mock('@n8n/ai-workflow-builder');
+jest.mock('@n8n/ai-workflow-builder', () => ({
+	AiWorkflowBuilderService: jest.fn(),
+	// Plain function (not jest.fn) so the global `restoreMocks` doesn't wipe its
+	// implementation between tests; the disabled SSRF path relies on its return value.
+	createPassthroughSsrfGuard: () => ({
+		validateUrl: jest.fn(),
+		validateRedirectSync: jest.fn(),
+		createSecureLookup: jest.fn(),
+	}),
+}));
 jest.mock('@n8n_io/ai-assistant-sdk');
 
 const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as jest.MockedClass<
@@ -39,6 +49,8 @@ describe('WorkflowBuilderService', () => {
 	let mockInstanceSettings: InstanceSettings;
 	let mockDynamicNodeParametersService: DynamicNodeParametersService;
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
+	let mockSsrfProtectionConfig: SsrfProtectionConfig;
+	let mockSsrfProtectionService: SsrfProtectionService;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -82,6 +94,11 @@ describe('WorkflowBuilderService', () => {
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
 		mockSessionRepository = mock<WorkflowBuilderSessionRepository>();
+		mockSsrfProtectionConfig = mock<SsrfProtectionConfig>();
+		// Deterministic default: SSRF protection disabled (passthrough guard). Individual
+		// gating tests override this.
+		mockSsrfProtectionConfig.enabled = false;
+		mockSsrfProtectionService = mock<SsrfProtectionService>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -91,7 +108,6 @@ describe('WorkflowBuilderService', () => {
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
 		mockConfig.aiAssistant = { baseUrl: '' };
-		(mockConfig.ai as { persistBuilderSessions: boolean }) = { persistBuilderSessions: false };
 
 		// Reset the mocked AiWorkflowBuilderService
 		MockedAiWorkflowBuilderService.mockClear();
@@ -108,6 +124,8 @@ describe('WorkflowBuilderService', () => {
 			mockInstanceSettings,
 			mockDynamicNodeParametersService,
 			mockSessionRepository,
+			mockSsrfProtectionConfig,
+			mockSsrfProtectionService,
 		);
 	});
 
@@ -138,7 +156,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
-				undefined, // No session storage when persistBuilderSessions is false
+				mockSessionRepository,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
 				'test-instance-id', // instanceId
@@ -148,6 +166,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -183,7 +202,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
-				undefined, // No session storage when persistBuilderSessions is false
+				mockSessionRepository,
 				expect.any(AiAssistantClient),
 				mockLogger,
 				'test-instance-id', // instanceId
@@ -193,6 +212,7 @@ describe('WorkflowBuilderService', () => {
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 		});
 
@@ -291,32 +311,16 @@ describe('WorkflowBuilderService', () => {
 			expect(result).toEqual(mockSessions);
 		});
 
-		it('should pass codeBuilder flag to underlying service', async () => {
-			const mockSessions = {
-				sessions: [{ sessionId: 'test-session-code', messages: [], lastUpdated: new Date() }],
-			};
-
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-
-			const result = await service.getSessions('workflow-123', mockUser, true);
-
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
-			expect(result).toEqual(mockSessions);
-		});
-
-		it('should pass codeBuilder=false to underlying service', async () => {
+		it('should forward the isCodeBuilder flag to the inner service', async () => {
 			const mockSessions = { sessions: [] };
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
 			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
 			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
 
-			const result = await service.getSessions('workflow-123', mockUser, false);
+			await service.getSessions('workflow-123', mockUser, true);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, false);
-			expect(result).toEqual(mockSessions);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
 		});
 	});
 
@@ -847,6 +851,8 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock<InstanceSettings>({ instanceId: 'test' }),
 			mock(),
 			mock(),
+			mock<SsrfProtectionConfig>(),
+			mock<SsrfProtectionService>(),
 		);
 
 		const mockUser = mock<IUser>();

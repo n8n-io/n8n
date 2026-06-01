@@ -48,6 +48,7 @@ export interface ProgressReporter {
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
+	setCustomTitle: (title: string) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
 }
 

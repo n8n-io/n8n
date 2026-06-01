@@ -106,7 +106,7 @@ describe('EnterpriseCredentialsService', () => {
 					apiKey: `={{ $secrets.${providerKey}.myApiKey }}`,
 					url: 'https://api.example.com',
 				};
-				credentialsService.decrypt.mockReturnValue(decryptedData);
+				credentialsService.decrypt.mockResolvedValue(decryptedData);
 				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
 					false,
 				);
@@ -127,7 +127,7 @@ describe('EnterpriseCredentialsService', () => {
 					apiKey: `={{ $secrets.${providerKey}.myApiKey }}`,
 					url: 'https://api.example.com',
 				};
-				credentialsService.decrypt.mockReturnValue(decryptedData);
+				credentialsService.decrypt.mockResolvedValue(decryptedData);
 				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
 					true,
 				);
@@ -147,7 +147,7 @@ describe('EnterpriseCredentialsService', () => {
 					apiKey: 'plain-api-key',
 					url: 'https://api.example.com',
 				};
-				credentialsService.decrypt.mockReturnValue(decryptedData);
+				credentialsService.decrypt.mockResolvedValue(decryptedData);
 				mockTransactionManager();
 
 				await expect(

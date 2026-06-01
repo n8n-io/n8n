@@ -1,21 +1,21 @@
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
-import { MODULE_NAMES } from '../modules.config';
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	process.env = {};
 	Container.reset();
 });
 
 describe('eligibleModules', () => {
-	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+	it('should not include opt-in modules by default', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).not.toContain('instance-ai');
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -36,13 +36,22 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
+			'favorites',
 			'redaction',
 			'instance-registry',
+			'otel',
+			'token-exchange',
+			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
+			'n8n-packages',
+			'runtime-credentials',
+			'mcp-registry',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'data-table';
+		process.env.N8N_ENABLED_MODULES = 'instance-ai';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
@@ -60,8 +69,18 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
+			'favorites',
 			'redaction',
 			'instance-registry',
+			'otel',
+			'token-exchange',
+			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
+			'n8n-packages',
+			'runtime-credentials',
+			'mcp-registry',
+			'instance-ai',
 		]);
 	});
 
@@ -78,13 +97,13 @@ describe('loadModules', () => {
 		const SecondEntity = class SecondEntityClass {};
 
 		const ModuleClass = {
-			entities: jest.fn().mockReturnValue([FirstEntity, SecondEntity]),
+			entities: vi.fn().mockReturnValue([FirstEntity, SecondEntity]),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
@@ -93,12 +112,12 @@ describe('loadModules', () => {
 	});
 
 	it('should load no entities if none are defined by modules', async () => {
-		const ModuleClass = { entities: jest.fn().mockReturnValue([]) };
+		const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
@@ -109,13 +128,13 @@ describe('loadModules', () => {
 
 describe('initModules', () => {
 	it('should init module if it has no feature flag', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -125,16 +144,16 @@ describe('initModules', () => {
 	});
 
 	it('should init module if it is licensed', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { licenseFlag: 'feat:testFeature', class: ModuleClass }],
 				]),
 		});
-		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(true) });
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(true) });
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
 
@@ -144,16 +163,16 @@ describe('initModules', () => {
 	});
 
 	it('should skip init for unlicensed module', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { licenseFlag: 'feat:testFeature', class: ModuleClass }],
 				]),
 		});
-		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(false) });
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const licenseState = mock<LicenseState>({ isLicensed: vi.fn().mockReturnValue(false) });
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
 
@@ -165,12 +184,12 @@ describe('initModules', () => {
 	it('should accept module without `init` method', async () => {
 		const ModuleClass = {};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { licenseFlag: undefined, class: ModuleClass }]]),
 		});
 
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -184,13 +203,13 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			settings: jest.fn().mockReturnValue(moduleSettings),
+			init: vi.fn(),
+			settings: vi.fn().mockReturnValue(moduleSettings),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -208,13 +227,13 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			settings: jest.fn().mockReturnValue(moduleSettings),
+			init: vi.fn(),
+			settings: vi.fn().mockReturnValue(moduleSettings),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -231,12 +250,12 @@ describe('initModules', () => {
 		// ARRANGE
 		const moduleName = 'test-module';
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
+			init: vi.fn(),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -254,13 +273,13 @@ describe('initModules', () => {
 		const moduleName = 'test-module';
 		const moduleContext = { proxy: 'test-proxy', config: { enabled: true } };
 		const ModuleClass: ModuleInterface = {
-			init: jest.fn(),
-			context: jest.fn().mockReturnValue(moduleContext),
+			init: vi.fn(),
+			context: vi.fn().mockReturnValue(moduleContext),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -276,11 +295,11 @@ describe('initModules', () => {
 	it('does not register context for module without `context` method', async () => {
 		// ARRANGE
 		const moduleName = 'test-module';
-		const ModuleClass: ModuleInterface = { init: jest.fn() };
+		const ModuleClass: ModuleInterface = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+			getEntries: vi.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -292,15 +311,15 @@ describe('initModules', () => {
 	});
 
 	it('should init module with matching instance type', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([
 					['test-module', { instanceTypes: ['main', 'worker'], class: ModuleClass }],
 				]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -310,13 +329,13 @@ describe('initModules', () => {
 	});
 
 	it('should skip init for module with non-matching instance type', async () => {
-		const ModuleClass = { init: jest.fn() };
+		const ModuleClass = { init: vi.fn() };
 		const moduleMetadata = mock<ModuleMetadata>({
-			getEntries: jest
+			getEntries: vi
 				.fn()
 				.mockReturnValue([['test-module', { instanceTypes: ['worker'], class: ModuleClass }]]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
@@ -326,21 +345,21 @@ describe('initModules', () => {
 	});
 });
 
-describe('loadDir', () => {
-	it('should load dirs defined by modules', async () => {
-		const TEST_LOAD_DIR = '/path/to/module/load/dir';
+describe('nodeLoaders', () => {
+	it('should collect node loaders defined by modules', async () => {
+		const TEST_LOADER = { packageName: 'test-loader' };
 		const ModuleClass = {
-			entities: jest.fn().mockReturnValue([]),
-			loadDir: jest.fn().mockReturnValue(TEST_LOAD_DIR),
+			entities: vi.fn().mockReturnValue([]),
+			nodeLoaders: vi.fn().mockResolvedValue([TEST_LOADER]),
 		};
 		const moduleMetadata = mock<ModuleMetadata>({
-			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+			getClasses: vi.fn().mockReturnValue([ModuleClass]),
 		});
-		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		Container.get = vi.fn().mockReturnValue(ModuleClass);
 		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
 
-		expect(moduleRegistry.loadDirs).toEqual([TEST_LOAD_DIR]);
+		expect(moduleRegistry.nodeLoaders).toEqual([TEST_LOADER]);
 	});
 });

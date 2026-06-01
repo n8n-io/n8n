@@ -4,7 +4,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -33,6 +33,7 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -56,8 +57,9 @@ const emit = defineEmits<{
 	closeDialog: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -73,12 +75,12 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
+	const nodes = workflowDocumentStore?.value?.getParentNodesByDepth(node.name) ?? [];
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -86,12 +88,12 @@ const parentNodes = computed(() => {
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowDocumentStore.value.getParentNodesByDepth(rootNode.value) ?? [];
 });
 
 watch(
@@ -110,9 +112,9 @@ watch(
 			const telemetryPayload = createExpressionTelemetryPayload(
 				segments.value,
 				props.modelValue.toString(),
-				workflowsStore.workflowId,
-				ndvStore.pushRef,
-				ndvStore.activeNode?.type ?? '',
+				workflowDocumentStore.value.workflowId,
+				ndvStore.value.pushRef,
+				ndvStore.value.activeNode?.type ?? '',
 			);
 
 			telemetry.track('User closed Expression Editor', telemetryPayload);
@@ -253,7 +255,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
 						<ExpressionOutput
 							ref="expressionResultRef"
-							:class="$style.editor"
+							:class="outputRenderMode === 'text' ? $style.editor : undefined"
 							:segments="segments"
 							:extensions="theme"
 							:render="outputRenderMode"
@@ -321,12 +323,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	display: flex;
 	flex: 1 1 0;
 	min-height: 0;
+	min-width: 0;
 }
 
 .io {
 	display: flex;
 	flex: 1 1 0;
 	gap: var(--spacing--sm);
+	min-width: 0;
 }
 
 .input,
@@ -335,6 +339,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
 }
 
 .output {

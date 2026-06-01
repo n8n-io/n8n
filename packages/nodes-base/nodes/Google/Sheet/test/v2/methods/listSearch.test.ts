@@ -231,11 +231,9 @@ describe('Google Sheets Search Functions', () => {
 
 			(apiRequest.call as jest.Mock).mockResolvedValue(undefined);
 
-			await expect(
-				sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions),
-			).rejects.toThrow(
-				new NodeOperationError(mockLoadOptionsFunctions.getNode(), 'No data got returned'),
-			);
+			const promise = sheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow('No data got returned');
 		});
 
 		it('should filter out non-GRID type sheets', async () => {

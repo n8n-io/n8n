@@ -1,13 +1,12 @@
 import type { EngineResponse } from 'n8n-workflow';
 
-import * as agentExecution from '../buildSteps';
-
-import type { RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
+import * as agentExecution from '../buildSteps';
+import type { RequestResponseMetadata } from '../types';
 
 // Mock the buildSteps function from agent-execution
-jest.mock('../buildSteps', () => ({
-	buildSteps: jest.fn((response) => {
+vi.mock('../buildSteps', () => ({
+	buildSteps: vi.fn((response) => {
 		// Mock implementation: return previous requests if they exist
 		if (response?.actionResponses) {
 			return response.actionResponses.map((ar: any) => ({
@@ -27,7 +26,7 @@ jest.mock('../buildSteps', () => ({
 
 describe('buildIterationMetadata', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return metadata with iterationCount 1 when response is undefined', () => {

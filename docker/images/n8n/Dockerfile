@@ -1,5 +1,21 @@
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.15.0
 ARG N8N_VERSION=snapshot
+
+# Builder stage exists because the runtime base image has no toolchain.
+FROM node:${NODE_VERSION}-alpine3.22 AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
+    # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
+    # loader picks the glibc binary and segfaults in musl pthread paths.
+    # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
+    # double-build behavior (built-in node-gyp + install-script node-gyp)
+    # which races on dep-file state.
+    rm -rf node_modules/isolated-vm/prebuilds && \
+    cd node_modules/isolated-vm && \
+    npx --yes node-gyp rebuild --release -j max
 
 FROM n8nio/base:${NODE_VERSION}
 
@@ -11,12 +27,10 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY ./compiled /usr/local/lib/node_modules/n8n
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 isolated-vm && \
-    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*

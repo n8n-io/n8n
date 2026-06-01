@@ -121,6 +121,50 @@ describe('buildSteps', () => {
 			expect(result[1].action.tool).toBe('Search');
 		});
 
+		it('should use input.tool as the tool name for toolkit tools (e.g., MCP Client)', () => {
+			// When an MCP Client node (a toolkit) exposes sub-tools, createEngineRequests stores
+			// the actual MCP tool name (e.g., "list_tickets") in input.tool.
+			// buildSteps must use this name — not nodeNameToToolName("MCP Client") = "MCP_Client" —
+			// so the LLM sees the correct tool name in the scratchpad and does not loop.
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'MCP Client',
+							input: {
+								id: 'call_123',
+								tool: 'list_tickets', // actual MCP tool name set by createEngineRequests
+								query: 'open tickets',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { tickets: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.tool).toBe('list_tickets');
+			// The messageLog AIMessage must also carry the correct name so the LLM history is accurate
+			expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]?.name).toBe('list_tickets');
+		});
+
 		it('should filter out responses for different item indexes', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [

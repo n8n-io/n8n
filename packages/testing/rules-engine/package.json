@@ -1,0 +1,31 @@
+{
+	"name": "@n8n/rules-engine",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Lightweight rules engine for registering, running, and reporting rule violations",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:unit": "vitest run",
+		"test:watch": "vitest",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"typecheck": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@n8n/vitest-config": "workspace:*",
+		"@vitest/coverage-v8": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

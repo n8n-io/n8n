@@ -3,13 +3,21 @@ import { DateTime } from 'luxon';
 import type { ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 
+// DIVERGENCE from packages/workflow/src/extensions/number-extensions.ts:
+// The original uses Intl.NumberFormat which is a Web API unavailable inside the
+// V8 isolate. toLocaleString is an ECMAScript built-in available in all V8
+// contexts and produces the same output.
 function format(value: number, extraArgs: unknown[]): string {
 	const [locales = 'en-US', config = {}] = extraArgs as [
 		string | string[],
 		Intl.NumberFormatOptions,
 	];
 
-	return new Intl.NumberFormat(locales, config).format(value);
+	try {
+		return value.toLocaleString(locales as string, config);
+	} catch {
+		return String(value);
+	}
 }
 
 function isEven(value: number) {

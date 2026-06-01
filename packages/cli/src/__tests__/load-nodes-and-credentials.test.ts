@@ -2,8 +2,7 @@ import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
-import type { DirectoryLoader } from 'n8n-core';
-import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
@@ -30,6 +29,55 @@ jest.mock('@/tool-generation', () => ({
 	createHitlTools: jest.fn(),
 }));
 
+/**
+ * Regression test for https://github.com/n8n-io/n8n/issues/24191
+ *
+ * LoadNodesAndCredentials.init() sets process.env.NODE_PATH to module.paths
+ * for node/credential resolution. It must PRESERVE any existing NODE_PATH
+ * (e.g. set by Docker ENV for global npm packages) so the task runner
+ * subprocess can resolve externally installed modules.
+ *
+ * The init() method cannot be called directly in tests (guarded by inTest),
+ * so this test validates the NODE_PATH preservation logic directly.
+ */
+describe('NODE_PATH preservation (issue #24191)', () => {
+	const originalNodePath = process.env.NODE_PATH;
+
+	afterEach(() => {
+		if (originalNodePath === undefined) {
+			delete process.env.NODE_PATH;
+		} else {
+			process.env.NODE_PATH = originalNodePath;
+		}
+	});
+
+	it('should preserve existing NODE_PATH when setting module paths', () => {
+		const existingPath = '/opt/nodejs/node-v24.14.1/lib/node_modules';
+		process.env.NODE_PATH = existingPath;
+
+		// This is the exact logic from LoadNodesAndCredentials.init()
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toContain(existingPath);
+		expect(process.env.NODE_PATH?.endsWith(existingPath)).toBe(true);
+	});
+
+	it('should work when no existing NODE_PATH is set', () => {
+		delete process.env.NODE_PATH;
+
+		const delimiter = process.platform === 'win32' ? ';' : ':';
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
+
+		expect(process.env.NODE_PATH).toBe(module.paths.join(delimiter));
+		expect(process.env.NODE_PATH).not.toContain('undefined');
+	});
+});
+
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
 		let instance: LoadNodesAndCredentials;
@@ -51,9 +99,9 @@ describe('LoadNodesAndCredentials', () => {
 		beforeEach(() => {
 			const mockInstance = (pkg: string, directory: string) => {
 				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-				mi.loaders[pkg] = mock<DirectoryLoader>({
-					directory,
-				});
+				const mockLoader = mock<DirectoryLoader>({ directory });
+				Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
+				mi.loaders[pkg] = mockLoader;
 				return mi;
 			};
 			instance = mockInstance(packageName, dir);
@@ -138,135 +186,6 @@ describe('LoadNodesAndCredentials', () => {
 				version: '1.0.0',
 			});
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
-		});
-	});
-
-	describe('shouldAddDomainRestrictions', () => {
-		let instance: LoadNodesAndCredentials;
-
-		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-		});
-		it('should return true for credentials with authenticate property', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				authenticate: {},
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials with genericAuth set to true', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				genericAuth: true,
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending oAuth2Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['oAuth2Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending oAuth1Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['oAuth1Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true for credentials extending googleOAuth2Api', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['googleOAuth2Api'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return true when extending multiple APIs including OAuth', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['someOtherApi', 'oAuth2Api', 'anotherApi'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return false for credentials without authenticate, genericAuth, or OAuth extensions', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
-		});
-
-		it('should return false for credentials with extends that does not include OAuth types', () => {
-			const credential = {
-				name: 'testCredential',
-				displayName: 'Test Credential',
-				extends: ['someOtherApi', 'anotherApi'],
-				properties: [],
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
-		});
-
-		it('should handle LoadedClass credential objects with type property', () => {
-			const credential = {
-				type: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					authenticate: {},
-					properties: [],
-				},
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(true);
-		});
-
-		it('should return false for LoadedClass credential objects without auth-related properties', () => {
-			const credential = {
-				type: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				},
-			};
-
-			const result = (instance as any).shouldAddDomainRestrictions(credential);
-			expect(result).toBe(false);
 		});
 	});
 
@@ -526,6 +445,7 @@ describe('LoadNodesAndCredentials', () => {
 			reset: jest.fn(),
 			loadAll: jest.fn(),
 		});
+		Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 
 		beforeEach(() => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
@@ -555,7 +475,6 @@ describe('LoadNodesAndCredentials', () => {
 
 			await instance.setupHotReload();
 
-			console.log(subscribe);
 			expect(subscribe).toHaveBeenCalledTimes(2);
 			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
 				ignore: ['**/node_modules/**/node_modules/**'],

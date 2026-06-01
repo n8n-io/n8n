@@ -229,7 +229,7 @@ describe('compacting cycle', () => {
 		expect(0 + +includesWf1 + +includesWf2 + +includesWf3).toBe(1);
 	});
 	describe('long term compaction', () => {
-		it('leaves one version every four hours for >10000 characters', async () => {
+		it('leaves one version every ten hours for >10000 characters', async () => {
 			// ARRANGE
 			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
 
@@ -261,13 +261,16 @@ describe('compacting cycle', () => {
 			await compactionService['trimLongRunningHistories']();
 
 			// ASSERT
+			// All versions span ~9.6 hours which is under the 10-hour threshold,
+			// so the algorithm merges all earlier versions into the last one
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
-			const expectedVersions = [wf1_history[0], wf1_history[2], wf1_history[5]].map((x) => x[1]);
+			const expectedVersions = [wf1_history[5]].map((x) => x[1]);
 			expect(allHistories.map((x) => x.versionId)).toEqual(
 				expect.arrayContaining(expectedVersions),
 			);
+			expect(allHistories).toHaveLength(1);
 		});
-		it('leaves one version every hour for >5000 characters', async () => {
+		it('leaves one version every five hours for >5000 characters', async () => {
 			// ARRANGE
 			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
 
@@ -299,17 +302,15 @@ describe('compacting cycle', () => {
 			await compactionService['trimLongRunningHistories']();
 
 			// ASSERT
+			// Total span is ~9.6 hours with a 5-hour threshold.
+			// The algorithm iterates backwards, merging consecutive pairs closer than 5 hours,
+			// leaving the first (lastWeekA) and last (lastWeekF) which are 9.6 hours apart.
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
-			const expectedVersions = [
-				wf1_history[0],
-				wf1_history[2],
-				wf1_history[3],
-				wf1_history[4],
-				wf1_history[5],
-			].map((x) => x[1]);
+			const expectedVersions = [wf1_history[0], wf1_history[5]].map((x) => x[1]);
 			expect(allHistories.map((x) => x.versionId)).toEqual(
 				expect.arrayContaining(expectedVersions),
 			);
+			expect(allHistories).toHaveLength(2);
 		});
 
 		it('leaves one version every five minutes for >100 characters', async () => {

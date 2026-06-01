@@ -7,11 +7,18 @@ const REASONING_FIRST_SUFFIX = `
 
 IMPORTANT: Write your full reasoning FIRST. Only AFTER completing your analysis, decide on pass or fail based on what you wrote. Do not decide pass/fail before reasoning.`;
 
-export function createLlmCheck(options: {
+interface LlmCheckOptions {
 	name: string;
 	systemPrompt: string;
 	humanTemplate: string;
-}): BinaryCheck {
+	/**
+	 * Optional early-exit check. Return a skip message to skip the check,
+	 * or undefined to proceed with evaluation.
+	 */
+	skipIf?: (workflow: SimpleWorkflow, ctx: BinaryCheckContext) => string | undefined;
+}
+
+export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 	const systemPrompt = options.systemPrompt + REASONING_FIRST_SUFFIX;
 
 	return {
@@ -20,6 +27,13 @@ export function createLlmCheck(options: {
 		async run(workflow: SimpleWorkflow, ctx: BinaryCheckContext) {
 			if (!ctx.llm) {
 				return { pass: true, comment: 'Skipped: no LLM' };
+			}
+
+			if (options.skipIf) {
+				const skipMessage = options.skipIf(workflow, ctx);
+				if (skipMessage) {
+					return { pass: true, comment: skipMessage };
+				}
 			}
 
 			const chain = createEvaluatorChain(
@@ -33,7 +47,9 @@ export function createLlmCheck(options: {
 				return await withTimeout({
 					promise: invokeEvaluatorChain(chain, {
 						userPrompt: ctx.prompt,
+						existingWorkflow: ctx.existingWorkflow,
 						generatedWorkflow: workflow,
+						agentTextResponse: ctx.agentTextResponse,
 					}),
 					timeoutMs: ctx.timeoutMs,
 					label: `binary-checks:${options.name}`,

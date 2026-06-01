@@ -13,7 +13,9 @@ import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
@@ -32,6 +34,12 @@ jest.mock('../source-control-helper.ee', () => ({
 	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
 
+// Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
+const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+const globalAdminUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
+const globalMemberUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
+
 describe('SourceControlService', () => {
 	const preferencesService = new SourceControlPreferencesService(
 		Container.get(InstanceSettings),
@@ -42,6 +50,7 @@ describe('SourceControlService', () => {
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const sourceControlExportService = mock<SourceControlExportService>();
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const gitService = mock<SourceControlGitService>();
 	const eventService = mock<EventService>();
@@ -51,6 +60,7 @@ describe('SourceControlService', () => {
 		preferencesService,
 		sourceControlExportService,
 		sourceControlImportService,
+		sourceControlContextFactory,
 		sourceControlScopedService,
 		eventService, // event service
 		mockStatusService as any, // status service
@@ -549,9 +559,7 @@ describe('SourceControlService', () => {
 	describe('getStatus', () => {
 		it('ensure updatedAt field for last deleted tag', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUser;
 
 			const mockResult = [
 				{
@@ -593,9 +601,7 @@ describe('SourceControlService', () => {
 
 		it('ensure updatedAt field for last deleted folder', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUser;
 
 			const mockResult = [
 				{
@@ -637,9 +643,7 @@ describe('SourceControlService', () => {
 
 		it('conflict depends on the value of `direction`', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUser;
 
 			const mockPullResult = [
 				{ type: 'workflow', conflict: true },
@@ -715,9 +719,7 @@ describe('SourceControlService', () => {
 
 		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				role: GLOBAL_MEMBER_ROLE,
-			});
+			const user = globalMemberUser;
 
 			mockStatusService.getStatus.mockRejectedValue(
 				new ForbiddenError('You do not have permission to pull from source control'),
@@ -746,7 +748,7 @@ describe('SourceControlService', () => {
 			'should return file content for $type',
 			async ({ type, id, content }) => {
 				jest.spyOn(gitService, 'getFileContent').mockResolvedValue(content);
-				const user = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
 
@@ -757,7 +759,7 @@ describe('SourceControlService', () => {
 		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
 			'should throw an error if the file type is not handled',
 			async (type) => {
-				const user = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 				await expect(
 					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
 				).rejects.toThrow(`Unsupported file type: ${type}`);
@@ -766,7 +768,7 @@ describe('SourceControlService', () => {
 
 		it('should fail if the git service fails to get the file content', async () => {
 			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
-			const user = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUserWithId;
 
 			await expect(
 				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
@@ -774,10 +776,7 @@ describe('SourceControlService', () => {
 		});
 
 		it('should throw an error if the user does not have access to the project', async () => {
-			const user = mock<User>({
-				id: 'user-id',
-				role: GLOBAL_MEMBER_ROLE,
-			});
+			const user = globalMemberUserWithId;
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([]);
@@ -788,7 +787,7 @@ describe('SourceControlService', () => {
 		});
 
 		it('should return content for an authorized workflow', async () => {
-			const user = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
+			const user = globalMemberUserWithId;
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
@@ -818,6 +817,8 @@ describe('SourceControlService', () => {
 				connected: true,
 				branchName: 'feature-branch',
 				repositoryUrl: 'https://github.com/test/repo.git',
+				branchReadOnly: true,
+				branchColor: '#ff0000',
 				connectionType: 'https' as const,
 			};
 			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
@@ -828,6 +829,8 @@ describe('SourceControlService', () => {
 				connected: false,
 				branchName: '',
 				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: 'https',
 			});
 			expect(result).toEqual(preferencesService.sourceControlPreferences);

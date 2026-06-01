@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { SsrfBridge, SsrfCheckResult } from 'n8n-core';
+import { createResultError, ensureError, Result, createResultOk } from 'n8n-workflow';
+import assert from 'node:assert';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
 import type { BlockList, LookupFunction } from 'node:net';
@@ -11,9 +13,7 @@ import { HostnameMatcher } from './hostname-matcher';
 import { buildIpRangeList } from './ip-range-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
 
-export type SsrfCheckResult =
-	| { allowed: true }
-	| { allowed: false; reason: string; ip?: string; hostname?: string; url?: string };
+export type LookAndValidateResult = Result<LookupAddress[], Error>;
 
 /**
  * Validates outbound HTTP requests against configurable blocklists and allowlists
@@ -26,7 +26,7 @@ export type SsrfCheckResult =
  * 4. Otherwise — request is allowed
  */
 @Service()
-export class SsrfProtectionService {
+export class SsrfProtectionService implements SsrfBridge {
 	private readonly logger: Logger;
 
 	private readonly blockedIps: BlockList;
@@ -68,57 +68,35 @@ export class SsrfProtectionService {
 	async validateUrl(url: string | URL): Promise<SsrfCheckResult> {
 		const parsed = this.tryParseUrl(url);
 		if (!parsed) {
-			this.logger.debug('Failed to parse URL for SSRF validation', {
-				url,
-			});
-			return { allowed: false, reason: 'Invalid URL', url: url ? String(url) : undefined };
+			return createResultError(new Error(`Invalid URL: ${url}`));
 		}
 
 		const { hostname } = parsed;
 
-		if (this.allowedHostnameMatcher.matches(hostname)) {
-			return { allowed: true };
+		const result = await this.lookupAndValidate(hostname, { all: true });
+		if (!result.ok) {
+			return result;
 		}
 
-		const cleanIp = this.normalizeIpInHostname(hostname);
-		if (isIP(cleanIp)) {
-			return this.validateAddress(cleanIp);
-		}
-
-		// Resolve hostname via DNS and validate all IPs
-		const ips = await this.dnsResolver.lookup(hostname, { all: true });
-		if (ips.length === 0) {
-			return { allowed: false, reason: 'DNS resolution failed', hostname };
-		}
-
-		for (const ip of ips) {
-			const result = this.validateAddress(ip.address);
-			if (!result.allowed) {
-				return result;
-			}
-		}
-
-		return { allowed: true };
+		return createResultOk(undefined);
 	}
 
 	/**
 	 * Validate a single IP address against the allowlist and blocklist.
 	 */
-	validateAddress(ip: string): SsrfCheckResult {
+	validateIp(ip: string): SsrfCheckResult {
 		const family = this.getIpFamily(ip);
-		if (family === null) {
-			return { allowed: false, reason: 'Invalid IP address', ip };
-		}
+		assert(family !== null, `Invalid IP address: ${ip}`);
 
 		if (this.allowedIps.check(ip, family)) {
-			return { allowed: true };
+			return createResultOk(undefined);
 		}
 
 		if (this.blockedIps.check(ip, family)) {
-			return { allowed: false, reason: 'IP address is blocked', ip };
+			return createResultError(new SsrfBlockedIpError(ip));
 		}
 
-		return { allowed: true };
+		return createResultOk(undefined);
 	}
 
 	/**
@@ -151,38 +129,95 @@ export class SsrfProtectionService {
 	}
 
 	/**
-	 * Validate a redirect target URL through the same validation flow.
+	 * Synchronous redirect validation for use in axios beforeRedirect callback.
+	 * Validates direct-IP redirect targets immediately. Hostname-based redirect
+	 * targets are covered by the secureLookup on the redirect agent.
+	 * Throws SsrfBlockedIpError if the redirect target is blocked.
 	 */
-	async validateRedirect(redirectUrl: string): Promise<SsrfCheckResult> {
-		return await this.validateUrl(redirectUrl);
+	validateRedirectSync(url: string): void {
+		const parsed = this.tryParseUrl(url);
+		if (!parsed) return;
+
+		const { hostname } = parsed;
+
+		if (this.allowedHostnameMatcher.matches(hostname)) return;
+
+		const cleanIp = this.normalizeIpInHostname(hostname);
+		if (isIP(cleanIp)) {
+			const result = this.validateIp(cleanIp);
+			if (!result.ok) {
+				throw result.error;
+			}
+		}
 	}
 
 	/**
 	 * Normalize IPv6 bracket notation from a URL hostname.
-	 * E.g. `[::1]` → `::1`, `127.0.0.1` → `127.0.0.1`.
+	 * E.g. `[::1]` -> `::1`, `127.0.0.1` -> `127.0.0.1`.
 	 */
 	private normalizeIpInHostname(hostname: string): string {
 		return hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
 	}
 
+	/**
+	 * @throws {SsrfBlockedIpError} if any resolved IP is blocked
+	 */
 	private async secureLookupAsync(
 		hostname: string,
 		options: LookupOptions,
 	): Promise<LookupAddress[]> {
+		const result = await this.lookupAndValidate(hostname, options);
+		if (!result.ok) {
+			throw result.error;
+		}
+
+		return result.result;
+	}
+
+	/**
+	 * Lookup a hostname and validate the resulting IP addresses. Direct IPs
+	 * are validated without DNS resolution.
+	 */
+	private async lookupAndValidate(
+		hostname: string,
+		options: LookupOptions,
+	): Promise<LookAndValidateResult> {
+		const cleanIp = this.normalizeIpInHostname(hostname);
+		const ipFamily = isIP(cleanIp);
+
+		if (ipFamily) {
+			// Direct IP, we don't need to lookup, just validate
+
+			const result = this.validateIp(cleanIp);
+			if (!result.ok) {
+				return result;
+			}
+
+			return createResultOk([
+				{
+					address: cleanIp,
+					family: ipFamily,
+				},
+			]);
+		}
+
+		// Hostname, we need to lookup first and then validate the IP(s)
 		const resolved = await this.dnsResolver.lookup(hostname, options);
+		// The resolves must always return result(s) or throw
+		assert(resolved.length > 0, `DNS lookup for ${hostname} returned no results`);
 
 		if (this.allowedHostnameMatcher.matches(hostname)) {
-			return resolved;
+			return createResultOk(resolved);
 		}
 
 		for (const ip of resolved) {
-			const result = this.validateAddress(ip.address);
-			if (!result.allowed) {
-				throw new SsrfBlockedIpError(ip.address, hostname);
+			const result = this.validateIp(ip.address);
+			if (!result.ok) {
+				return result;
 			}
 		}
 
-		return resolved;
+		return createResultOk(resolved);
 	}
 
 	private tryParseUrl(url: string | URL): URL | null {

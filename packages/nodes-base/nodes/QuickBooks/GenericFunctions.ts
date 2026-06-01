@@ -43,9 +43,6 @@ export async function quickBooksApiRequest(
 	const credentials = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 
 	const options: IRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-		},
 		method,
 		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
 		qs,

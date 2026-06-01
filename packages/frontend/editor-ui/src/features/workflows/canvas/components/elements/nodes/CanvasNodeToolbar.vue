@@ -5,7 +5,7 @@ import { useCanvasNode } from '../../../composables/useCanvasNode';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
@@ -23,11 +23,17 @@ const emit = defineEmits<{
 	'add:ai': [id: string];
 }>();
 
-const props = defineProps<{
-	readOnly?: boolean;
-	showStatusIcons: boolean;
-	itemsClass: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		readOnly?: boolean;
+		canExecute?: boolean;
+		showStatusIcons: boolean;
+		itemsClass: string;
+	}>(),
+	{
+		canExecute: false,
+	},
+);
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -35,12 +41,14 @@ const i18n = useI18n();
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 
-const node = computed(() => (name.value ? workflowsStore.getNodeByName(name.value) : null));
+const node = computed(() =>
+	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
+);
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
@@ -59,7 +67,7 @@ const classes = computed(() => ({
 
 const isExecuteNodeVisible = computed(() => {
 	return (
-		!props.readOnly &&
+		(!props.readOnly || props.canExecute) &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		(!render.value.options.configuration || isToolNode.value)

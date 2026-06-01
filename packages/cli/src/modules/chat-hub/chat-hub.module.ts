@@ -1,4 +1,4 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -9,6 +9,9 @@ export class ChatHubModule implements ModuleInterface {
 	async init() {
 		await import('./chat-hub.controller');
 		await import('./chat-hub.settings.controller');
+		const { ChatHubEventRelay } = await import('./chat-hub-event-relay.service');
+
+		Container.get(ChatHubEventRelay);
 
 		// In queue mode, only workers process Chat hub execution lifecycle events.
 		// Skip initializing the watcher on main instance to avoid unnecessary event subscriptions.
@@ -21,10 +24,19 @@ export class ChatHubModule implements ModuleInterface {
 
 	async settings() {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
-		const enabled = await Container.get(ChatHubSettingsService).getEnabled();
-		const providers = await Container.get(ChatHubSettingsService).getAllProviderSettings();
+		const service = Container.get(ChatHubSettingsService);
+		const [enabled, providers, semanticSearch] = await Promise.all([
+			service.getEnabled(),
+			service.getAllProviderSettings(),
+			service.getSemanticSearchSettings(),
+		]);
 
-		return { enabled, providers };
+		return {
+			enabled,
+			providers,
+			semanticSearch,
+			agentUploadMaxSizeMb: Container.get(GlobalConfig).endpoints.formDataFileSizeMax,
+		};
 	}
 
 	async entities() {

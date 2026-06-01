@@ -1,6 +1,6 @@
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User, Variables } from '@n8n/db';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import {
 	createProjectVariable,
 	createVariable,
@@ -114,6 +114,48 @@ describe('Variables in Public API', () => {
 			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+		});
+
+		it('should not return variables from projects the user is not a member of', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			const member = await createMemberWithApiKey();
+
+			const memberProject = await createTeamProject('Member Project');
+			await linkUserToProject(member, memberProject, 'project:admin');
+			const otherProject = await createTeamProject('Other Project');
+
+			const memberVar = await createProjectVariable('memberKey', 'memberValue', memberProject);
+			await createProjectVariable('secretKey', 'secretValue', otherProject);
+
+			/**
+			 * Act
+			 */
+			const allResponse = await testServer.publicApiAgentFor(member).get('/variables');
+
+			/**
+			 * Assert
+			 */
+			expect(allResponse.status).toBe(200);
+			const returnedIds = allResponse.body.data.map((v: Variables) => v.id);
+			expect(returnedIds).toContain(memberVar.id);
+			expect(allResponse.body.data).toHaveLength(1);
+
+			/**
+			 * Act
+			 */
+			const crossProjectResponse = await testServer
+				.publicApiAgentFor(member)
+				.get('/variables')
+				.query({ projectId: otherProject.id });
+
+			/**
+			 * Assert
+			 */
+			expect(crossProjectResponse.status).toBe(200);
+			expect(crossProjectResponse.body.data).toHaveLength(0);
 		});
 	});
 

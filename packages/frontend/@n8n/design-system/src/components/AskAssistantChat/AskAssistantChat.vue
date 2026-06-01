@@ -6,7 +6,12 @@ import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
+import {
+	isTaskAbortedMessage,
+	isToolMessage,
+	isThinkingGroupMessage,
+	isWorkflowUpdatedMessage,
+} from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
@@ -40,7 +45,6 @@ interface Props {
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
 	workflowId?: string;
-	pruneTimeHours?: number;
 	/** Custom message to show when all tools complete (instead of default "Workflow generated") */
 	thinkingCompletionMessage?: string;
 }
@@ -53,10 +57,6 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
-	restore: [versionId: string];
-	restoreConfirm: [versionId: string, messageId: string];
-	restoreCancel: [];
-	showVersion: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -334,16 +334,27 @@ const showFooterRating = computed(() => {
 		return false;
 	}
 
-	// Check if there's a workflow-updated message in the original messages
+	// Find the last workflow-updated message index.
 	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
-	// and check the last visible message (from normalizedMessages)
-	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
-	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+	const lastWorkflowUpdateIdx = props.messages.findLastIndex(isWorkflowUpdatedMessage);
+	if (lastWorkflowUpdateIdx === -1 || !normalizedMessages.value.length) {
 		return false;
 	}
 
+	// Don't show rating if the user has responded since the last workflow update
+	const hasUserAfterWorkflowUpdate = props.messages.some(
+		(msg, i) => i > lastWorkflowUpdateIdx && msg.role === 'user',
+	);
+	if (hasUserAfterWorkflowUpdate) {
+		return false;
+	}
+
+	// Show rating when the last visible message is from the assistant.
+	// This handles both the multi-agent builder (last visible message is a text response after
+	// workflow-updated) and the code builder (workflow-updated is the last real message and gets
+	// filtered from normalizedMessages, leaving a thinking-group with role 'assistant' as last).
 	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
-	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
+	return lastMsg.role !== 'user';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -453,6 +464,7 @@ defineExpose({
 	focusInput: () => {
 		promptInputRef.value?.focusInput();
 	},
+	scrollToBottom,
 });
 </script>
 
@@ -468,6 +480,7 @@ defineExpose({
 				</div>
 				<slot name="header" />
 			</div>
+			<slot name="headerActions" />
 			<N8nIconButton
 				icon="x"
 				variant="ghost"
@@ -485,7 +498,10 @@ defineExpose({
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div ref="messagesRef" :class="$style.messagesContent">
+					<div
+						ref="messagesRef"
+						:class="[$style.messagesContent, showFooterRating && $style.messagesContentWithRating]"
+					>
 						<div v-if="normalizedMessages?.length">
 							<data
 								v-for="(message, i) in normalizedMessages"
@@ -515,17 +531,9 @@ defineExpose({
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
 									:workflow-id="workflowId"
-									:prune-time-hours="pruneTimeHours"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
-									@restore="(versionId: string) => emit('restore', versionId)"
-									@restore-confirm="
-										(versionId: string, messageId: string) =>
-											emit('restoreConfirm', versionId, messageId)
-									"
-									@restore-cancel="emit('restoreCancel')"
-									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
@@ -734,6 +742,7 @@ defineExpose({
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	overflow: hidden;
 	line-height: var(--line-height--xl);
 
 	pre,
@@ -769,12 +778,16 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--3xl);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
 		line-height: var(--line-height--xl);
 	}
+}
+
+.messagesContentWithRating {
+	// Extra bottom padding so scroll-to-bottom clears the feedback-wrapper overlay
+	padding-bottom: var(--spacing--3xl);
 }
 
 .message {

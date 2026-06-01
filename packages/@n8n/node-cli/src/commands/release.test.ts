@@ -21,6 +21,8 @@ describe('release command', () => {
 		'--git.push',
 		'--git.changelog="npx auto-changelog --stdout --unreleased --commit-limit false -u --hide-credit"',
 		'--github.release',
+		'--hooks.before:init="pnpm run lint && pnpm run build"',
+		'--hooks.after:bump="npx auto-changelog -p"',
 	];
 
 	beforeEach(() => {
@@ -47,17 +49,29 @@ describe('release command', () => {
 		);
 		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
 
-		mockSpawn(
-			'pnpm',
-			[
-				...releaseItArgs,
-				'--hooks.before:init="pnpm run lint && pnpm run build"',
-				'--hooks.after:bump="npx auto-changelog -p"',
-			],
-			{ exitCode: 0 },
-		);
+		mockSpawn('pnpm', [...releaseItArgs, '--npm.publish=false'], { exitCode: 0 });
 
 		const result = await CommandTester.run('release');
+
+		expect(result).toBeDefined();
+	});
+
+	tmpdirTest('--publish flag - runs release-it with npm publish', async ({ tmpdir }) => {
+		await fs.writeFile(
+			`${tmpdir}/package.json`,
+			JSON.stringify({
+				name: 'test-node',
+				version: '1.0.0',
+				n8n: {
+					nodes: ['dist/nodes/TestNode.node.js'],
+				},
+			}),
+		);
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn('pnpm', releaseItArgs, { exitCode: 0 });
+
+		const result = await CommandTester.run('release --publish');
 
 		expect(result).toBeDefined();
 	});
@@ -106,6 +120,52 @@ describe('release command', () => {
 		const result = await CommandTester.run('release');
 
 		expect(result).toBeDefined();
+	});
+
+	tmpdirTest('local release without publish.yml - shows init-workflow hint', async ({ tmpdir }) => {
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn('pnpm', [...releaseItArgs, '--npm.publish=false'], { exitCode: 0 });
+
+		const result = await CommandTester.run('release');
+
+		expect(result.getLogMessages('info')).toEqual(
+			expect.arrayContaining([expect.stringContaining('--init-workflow')]),
+		);
+	});
+
+	tmpdirTest(
+		'--init-workflow - creates publish.yml with package manager rendered',
+		async ({ tmpdir }) => {
+			await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+			const result = await CommandTester.run('release --init-workflow');
+
+			const workflowPath = `${tmpdir}/.github/workflows/publish.yml`;
+			const content = await fs.readFile(workflowPath, 'utf-8');
+
+			expect(content).toContain('pnpm install');
+			expect(content).toContain('pnpm run release');
+			expect(content).not.toContain('{{packageManager');
+			expect(result.getLogMessages('success')).toEqual(
+				expect.arrayContaining([expect.stringContaining('publish.yml')]),
+			);
+		},
+	);
+
+	tmpdirTest('--init-workflow - skips if publish.yml already exists', async ({ tmpdir }) => {
+		await fs.mkdir(`${tmpdir}/.github/workflows`, { recursive: true });
+		const workflowPath = `${tmpdir}/.github/workflows/publish.yml`;
+		const originalContent = '# existing workflow';
+		await fs.writeFile(workflowPath, originalContent);
+
+		const result = await CommandTester.run('release --init-workflow');
+
+		const content = await fs.readFile(workflowPath, 'utf-8');
+		expect(content).toBe(originalContent);
+		expect(result.getLogMessages('warning')).toEqual(
+			expect.arrayContaining([expect.stringContaining('already exists')]),
+		);
 	});
 
 	tmpdirTest('CI mode - exits with error code on lint failure', async ({ tmpdir }) => {

@@ -10,6 +10,22 @@ import type {
 	RedactionContext,
 } from '../execution-redaction.interfaces';
 
+interface SensitiveFieldsResult {
+	sensitiveFields: Map<string, string[]>;
+	unknownNodes: Set<string>;
+}
+
+function isSensitiveFieldsResult(value: unknown): value is SensitiveFieldsResult {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'sensitiveFields' in value &&
+		'unknownNodes' in value &&
+		value.sensitiveFields instanceof Map &&
+		value.unknownNodes instanceof Set
+	);
+}
+
 @Service()
 export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'node-defined-field-redaction';
@@ -19,8 +35,14 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async apply(execution: RedactableExecution, _context: RedactionContext): Promise<void> {
-		const { sensitiveFields, unknownNodes } = this.buildSensitiveFieldsMap(execution);
+	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean {
+		if (!execution.data.resultData.runData) return false;
+		const { sensitiveFields, unknownNodes } = this.getSensitiveFieldsMap(execution, context);
+		return sensitiveFields.size > 0 || unknownNodes.size > 0;
+	}
+
+	async apply(execution: RedactableExecution, context: RedactionContext): Promise<void> {
+		const { sensitiveFields, unknownNodes } = this.getSensitiveFieldsMap(execution, context);
 		if (sensitiveFields.size === 0 && unknownNodes.size === 0) return;
 
 		const runData = execution.data.resultData.runData;
@@ -58,6 +80,18 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 				}
 			}
 		}
+	}
+
+	private getSensitiveFieldsMap(
+		execution: RedactableExecution,
+		context: RedactionContext,
+	): SensitiveFieldsResult {
+		const cached = context.memo.get(this.name);
+		if (isSensitiveFieldsResult(cached)) return cached;
+
+		const result = this.buildSensitiveFieldsMap(execution);
+		context.memo.set(this.name, result);
+		return result;
 	}
 
 	/**
@@ -132,26 +166,43 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 
 	private redactPath(obj: Record<string, unknown>, path: string): void {
 		const segments = path.split('.');
-		let current: Record<string, unknown> = obj;
+		this.redactPathRecursive(obj, segments, 0);
+	}
 
-		for (let i = 0; i < segments.length - 1; i++) {
-			const segment = segments[i];
-			const next = current[segment];
-			if (!this.isRecord(next)) {
-				// Fail fast — path does not exist, nothing to redact
-				return;
-			}
-			current = next;
+	private redactPathRecursive(
+		current: Record<string, unknown>,
+		segments: string[],
+		index: number,
+	): void {
+		if (index === segments.length - 1) {
+			const lastSegment = segments[index];
+			if (!(lastSegment in current)) return;
+			const marker: IRedactedFieldMarker = {
+				__redacted: true,
+				reason: 'node_defined_field',
+				canReveal: false,
+			};
+			current[lastSegment] = marker;
+			return;
 		}
 
-		const lastSegment = segments[segments.length - 1];
-		if (!(lastSegment in current)) return;
+		const segment = segments[index];
 
-		const marker: IRedactedFieldMarker = {
-			__redacted: true,
-			reason: 'node_defined_field',
-			canReveal: false,
-		};
-		current[lastSegment] = marker;
+		// Array wildcard: redact the remaining path in every array element
+		if (segment.endsWith('[*]')) {
+			const key = segment.slice(0, -3);
+			const arr = current[key];
+			if (!Array.isArray(arr)) return;
+			for (const element of arr) {
+				if (this.isRecord(element)) {
+					this.redactPathRecursive(element, segments, index + 1);
+				}
+			}
+			return;
+		}
+
+		const next = current[segment];
+		if (!this.isRecord(next)) return;
+		this.redactPathRecursive(next, segments, index + 1);
 	}
 }

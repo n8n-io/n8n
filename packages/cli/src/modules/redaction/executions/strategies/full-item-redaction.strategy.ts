@@ -17,12 +17,20 @@ import type {
 export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'full-item-redaction';
 
+	requiresRedaction(_execution: RedactableExecution, _context: RedactionContext): boolean {
+		// If this strategy is in the pipeline, it always modifies (clears all items).
+		return true;
+	}
+
 	async apply(execution: RedactableExecution, context: RedactionContext): Promise<void> {
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;
 
-		const reason =
-			context.redactExecutionData === true ? 'user_requested' : 'workflow_redaction_policy';
+		const reason = context.hasDynamicCredentials
+			? 'dynamic_credentials'
+			: context.redactExecutionData === true
+				? 'user_requested'
+				: 'workflow_redaction_policy';
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {

@@ -1,4 +1,5 @@
 import { randomValidPassword, uniqueId, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -415,6 +416,23 @@ describe('Login', () => {
 });
 
 describe('Enforce MFA', () => {
+	test('should return 403 when security policy is managed by env', async () => {
+		const instanceSettingsLoaderConfig = Container.get(InstanceSettingsLoaderConfig);
+		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+
+		try {
+			owner.mfaEnabled = true;
+			await testServer
+				.authAgentFor(owner)
+				.post('/mfa/enforce-mfa')
+				.send({ enforce: true })
+				.expect(403);
+		} finally {
+			owner.mfaEnabled = false;
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		}
+	});
+
 	test('Enforce MFA for the instance', async () => {
 		const settingsRepository = Container.get(SettingsRepository);
 		const cacheService = Container.get(CacheService);

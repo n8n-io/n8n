@@ -4,10 +4,10 @@ import type {
 	BreakingChangeWorkflowIssue,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,
@@ -21,7 +21,7 @@ interface ParentWorkflowInfo {
 	calledWorkflowId?: string;
 }
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule {
 	id: string = 'wait-node-subworkflow-v2';
 

@@ -4,6 +4,8 @@ import type { n8nPage } from '../../../pages/n8nPage';
 
 // Helper to open workflow builder and click a specific suggestion pill
 async function openBuilderAndClickSuggestion(n8n: n8nPage, suggestionText: string) {
+	await n8n.canvas.waitForBlankCanvasReady();
+	await n8n.aiBuilder.waitForCanvasBuildEntry();
 	await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
 	await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
 	await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
@@ -45,12 +47,16 @@ test.describe(
 		test('should show Build with AI button on empty canvas', async ({ n8n }) => {
 			await n8n.page.goto('/workflow/new');
 
+			await n8n.canvas.waitForBlankCanvasReady();
+			await n8n.aiBuilder.waitForCanvasBuildEntry();
 			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
 		});
 
 		test('should open workflow builder and show suggestions', async ({ n8n }) => {
 			await n8n.page.goto('/workflow/new');
 
+			await n8n.canvas.waitForBlankCanvasReady();
+			await n8n.aiBuilder.waitForCanvasBuildEntry();
 			await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
 
 			await expect(n8n.aiAssistant.getAskAssistantSidebar()).toBeVisible();

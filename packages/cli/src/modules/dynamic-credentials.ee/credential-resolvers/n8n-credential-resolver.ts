@@ -54,7 +54,7 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		if (!data) {
 			throw new CredentialResolverDataNotFoundError();
 		}
-		const plaintext = this.cipher.decrypt(data);
+		const plaintext = await this.cipher.decryptV2(data);
 		try {
 			const secret = jsonParse<ICredentialDataDecryptedObject>(plaintext);
 			return secret;
@@ -73,7 +73,7 @@ export class N8NCredentialResolver implements ICredentialResolver {
 	): Promise<void> {
 		const key = await this.resolveIdentifier(context, handle.configuration);
 
-		const encryptedData = this.cipher.encrypt(data);
+		const encryptedData = await this.cipher.encryptV2(data);
 
 		await this.storage.setCredentialData(
 			credentialId,

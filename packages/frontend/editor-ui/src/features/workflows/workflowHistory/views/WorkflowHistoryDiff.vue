@@ -12,6 +12,8 @@ import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import WorkflowHistoryVersionSelect from '../components/WorkflowHistoryVersionSelect.vue';
 import { useWorkflowHistoryVersionOptions } from '../useWorkflowHistoryVersionOptions';
+import { telemetry } from '@/app/plugins/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const props = defineProps<{
 	workflowId: string;
@@ -21,11 +23,13 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	close: [];
+	versionsChange: [{ sourceVersionId: string; targetVersionId: string }];
 }>();
 
 const i18n = useI18n();
 const toast = useToast();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const rootStore = useRootStore();
 const workflowsListStore = useWorkflowsListStore();
 const usersStore = useUsersStore();
 
@@ -93,12 +97,14 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 			versionId: sourceWorkflowVersion.versionId,
 			nodes: sourceWorkflowVersion.nodes,
 			connections: sourceWorkflowVersion.connections,
+			nodeGroups: sourceWorkflowVersion.nodeGroups ?? [],
 		};
 		targetWorkflow.value = {
 			...workflowWithoutPinData,
 			versionId: targetWorkflowVersion.versionId,
 			nodes: targetWorkflowVersion.nodes,
 			connections: targetWorkflowVersion.connections,
+			nodeGroups: targetWorkflowVersion.nodeGroups ?? [],
 		};
 
 		sourceLabel.value = getVersionLabelById(sourceWorkflowVersion.versionId);
@@ -119,7 +125,18 @@ const swapSelectedVersions = () => {
 	selectedTargetVersionId.value = previousSourceVersionId;
 };
 
+const trackVersionSelectionInDiff = (side: 'source' | 'target', versionId: string) => {
+	telemetry.track('user_selects_version_in_diff', {
+		instance_id: rootStore.instanceId,
+		workflow_id: props.workflowId,
+		version_id: versionId,
+		side,
+		source: 'version_history',
+	});
+};
+
 const onSourceVersionChange = (nextSourceVersionId: string) => {
+	trackVersionSelectionInDiff('source', nextSourceVersionId);
 	if (nextSourceVersionId === selectedTargetVersionId.value) {
 		swapSelectedVersions();
 		return;
@@ -129,6 +146,7 @@ const onSourceVersionChange = (nextSourceVersionId: string) => {
 };
 
 const onTargetVersionChange = (nextTargetVersionId: string) => {
+	trackVersionSelectionInDiff('target', nextTargetVersionId);
 	if (nextTargetVersionId === selectedSourceVersionId.value) {
 		swapSelectedVersions();
 		return;
@@ -148,6 +166,7 @@ watch(
 watch(
 	[selectedSourceVersionId, selectedTargetVersionId],
 	([sourceVersionId, targetVersionId]) => {
+		emit('versionsChange', { sourceVersionId, targetVersionId });
 		void loadComparedVersions(sourceVersionId, targetVersionId);
 	},
 	{ immediate: true },
@@ -166,6 +185,7 @@ watch(
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
 			:show-back-button="true"
+			source="version_history"
 			@back="emit('close')"
 		>
 			<template #sourceLabel>

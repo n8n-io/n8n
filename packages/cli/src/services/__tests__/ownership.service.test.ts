@@ -272,15 +272,26 @@ describe('OwnershipService', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
 			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner already setup');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith(
 				'Request to claim instance ownership failed because instance owner already exists',
 			);
+		});
+
+		it('should throw a BadRequestError if the shell user is not found', async () => {
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(null);
+
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner shell user not found');
+
+			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('should setup the instance owner successfully', async () => {
@@ -301,7 +312,7 @@ describe('OwnershipService', () => {
 			const expected = { ...user, ...payload, id: 'newUserId' };
 
 			userRepository.exists.mockResolvedValueOnce(false);
-			userRepository.findOneOrFail.mockResolvedValueOnce(user);
+			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(expected);
 
 			const actual = await ownershipService.setupOwner(payload);
@@ -311,6 +322,68 @@ describe('OwnershipService', () => {
 				userId: 'newUserId',
 			});
 			expect(actual.id).toEqual('newUserId');
+		});
+
+		it('should normalize email to lowercase', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const payload = {
+				email: 'Admin@Example.COM',
+				password: 'NewPassword123',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			};
+
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(payload);
+
+			expect(user.email).toBe('admin@example.com');
+		});
+
+		it('should skip hasInstanceOwner check when override is true', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(
+				{ email: 'a@b.com', password: 'hash', firstName: 'A', lastName: 'B' },
+				{ overwriteExisting: true },
+			);
+
+			expect(userRepository.exists).not.toHaveBeenCalled();
+		});
+
+		it('should use pre-hashed password when preHashed is true', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const preHashedPassword = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(
+				{ email: 'a@b.com', password: preHashedPassword, firstName: 'A', lastName: 'B' },
+				{ overwriteExisting: true, passwordIsHashed: true },
+			);
+
+			expect(user.password).toBe(preHashedPassword);
+			expect(passwordUtility.hash).not.toHaveBeenCalled();
 		});
 	});
 });

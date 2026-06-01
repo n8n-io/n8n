@@ -2,20 +2,31 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '../credentials.store';
+import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
+
+const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn(() => true);
+
+vi.mock('../composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
+	}),
+}));
 
 vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
@@ -25,6 +36,11 @@ vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 
 vi.mock('@/features/collaboration/projects/projects.api', () => ({
 	getProject: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflow-dependencies', () => ({
+	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
+	getResourceDependencies: vi.fn().mockResolvedValue({}),
 }));
 
 const router = createRouter({
@@ -77,7 +93,20 @@ describe('CredentialsView', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockAuthorize.mockReset();
 	});
+
+	const enableDynamicCredentials = () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = {
+			...settingsStore.settings,
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+			activeModules: ['dynamic-credentials'],
+		} as unknown as typeof settingsStore.settings;
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+	};
 
 	it('should render credentials', () => {
 		const credentialsStore = mockedStore(useCredentialsStore);
@@ -390,79 +419,84 @@ describe('CredentialsView', () => {
 		});
 	});
 
-	describe('external secrets', () => {
-		let externalSecretsStore: MockedStore<typeof useExternalSecretsStore>;
-		beforeEach(() => {
-			externalSecretsStore = mockedStore(useExternalSecretsStore);
-			externalSecretsStore.fetchGlobalSecrets.mockResolvedValue(undefined);
-			externalSecretsStore.fetchProjectSecrets.mockResolvedValue(undefined);
-		});
-		it('should fetch external secrets on mount', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
+	describe('private credentials connect flow', () => {
+		const buildPrivateUnconnectedCredential = (
+			overrides: Partial<ICredentialsResponse> = {},
+		): ICredentialsResponse =>
+			({
+				id: 'cred-1',
+				name: 'Private OAuth cred',
+				type: 'oAuth2Api',
+				createdAt: '2021-05-05T00:00:00Z',
+				updatedAt: '2021-05-05T00:00:00Z',
+				scopes: ['credential:update'],
+				isManaged: false,
+				isResolvable: true,
+				connectedByMe: false,
+				...overrides,
+			}) as ICredentialsResponse;
 
-			projectsStore.personalProject = createTestProject({ id: 'personal-123' });
-			projectsStore.isProjectHome = false;
+		it('maps connectedByMe and isResolvable to the credential card', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [buildPrivateUnconnectedCredential()];
 
-			renderComponent();
+			const { getByTestId } = renderComponent();
 
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledWith();
-		});
-
-		it('should not fetch project external secrets if on personal project page', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			// Set up matching personal project ID
-			const personalProjectId = 'personal-123';
-			projectsStore.personalProject = createTestProject({
-				id: personalProjectId,
-				type: ProjectTypes.Personal,
-			});
-			projectsStore.isProjectHome = false;
-
-			// Navigate to personal project route before rendering
-			await router.push({
-				name: VIEWS.CREDENTIALS,
-				params: { projectId: personalProjectId },
-			});
-
-			renderComponent();
-
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchProjectSecrets).not.toHaveBeenCalled();
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 
-		it('should fetch project external secrets when on team project page', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
+		it('renders the Connected label for connected private credentials', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildPrivateUnconnectedCredential({ connectedByMe: true }),
+			];
 
-			const personalProjectId = 'personal-123';
-			const teamProjectId = 'team-456';
-			projectsStore.personalProject = createTestProject({
-				id: personalProjectId,
-				type: ProjectTypes.Personal,
-			});
-			projectsStore.currentProject = createTestProject({
-				id: teamProjectId,
-				type: ProjectTypes.Team,
-			});
+			const { getByTestId, queryByTestId } = renderComponent();
 
-			// Navigate to team project route before rendering
-			await router.push({
-				name: VIEWS.CREDENTIALS,
-				params: { projectId: teamProjectId },
-			});
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			expect(getByTestId('credential-card-connected')).toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
 
-			renderComponent();
+		it('refetches credentials when the Connect button completes successfully', async () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credential = buildPrivateUnconnectedCredential();
+			credentialsStore.allCredentials = [credential];
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
 
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchProjectSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			expect(externalSecretsStore.fetchProjectSecrets).toHaveBeenCalledWith(teamProjectId);
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+			await flushPromises();
+
+			expect(mockAuthorize).toHaveBeenCalledWith(credential);
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+		});
+
+		it('does not refetch credentials when the Connect flow is cancelled or fails', async () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credential = buildPrivateUnconnectedCredential();
+			credentialsStore.allCredentials = [credential];
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(false);
+
+			const { getByTestId } = renderComponent();
+			await flushPromises();
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+			await flushPromises();
+
+			expect(mockAuthorize).toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 		});
 	});
 });

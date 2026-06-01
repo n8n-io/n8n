@@ -9,7 +9,8 @@ export class Set extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Set',
 			name: 'set',
-			icon: 'fa:pen',
+			icon: 'node:edit-fields',
+			iconColor: 'blue',
 			group: ['input'],
 			description: 'Add or edit fields on an input item and optionally remove other fields',
 			defaultVersion: 3.4,

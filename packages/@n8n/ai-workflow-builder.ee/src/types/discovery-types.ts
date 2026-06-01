@@ -1,4 +1,4 @@
-import type { ResourceInfo } from '../utils/resource-operation-extractor';
+import type { ResourceInfo } from '@n8n/ai-utilities/node-catalog';
 
 export interface DiscoveryContext {
 	nodesFound: Array<{
@@ -30,4 +30,11 @@ export interface DiscoveryContext {
 		availableResources?: ResourceInfo[];
 	}>;
 	bestPractices?: string;
+	/** Content fetched via web_fetch during discovery */
+	fetchedUrlContent?: Array<{
+		url: string;
+		status: 'success' | 'error';
+		title: string;
+		content: string;
+	}>;
 }

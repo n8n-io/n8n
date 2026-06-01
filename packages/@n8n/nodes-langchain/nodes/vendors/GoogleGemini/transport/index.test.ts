@@ -1,12 +1,13 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
+
 import { apiRequest } from '.';
 
 describe('GoogleGemini transport', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call httpRequestWithAuthentication with correct parameters', async () => {

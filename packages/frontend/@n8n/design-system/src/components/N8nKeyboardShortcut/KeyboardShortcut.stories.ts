@@ -5,6 +5,12 @@ import N8nKeyboardShorcut from './N8nKeyboardShortcut.vue';
 export default {
 	title: 'Core/KeyboardShortcut',
 	component: N8nKeyboardShorcut,
+
+	parameters: {
+		docs: {
+			description: { component: 'A visual representation of keyboard shortcut key combinations.' },
+		},
+	},
 };
 
 const template: StoryFn = (args, { argTypes }) => ({

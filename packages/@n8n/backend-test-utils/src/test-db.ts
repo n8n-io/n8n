@@ -106,7 +106,10 @@ type EntityName =
 	| 'UserConsent'
 	| 'DynamicCredentialEntry'
 	| 'DynamicCredentialResolver'
-	| 'DynamicCredentialUserEntry';
+	| 'DynamicCredentialUserEntry'
+	| 'TokenExchangeJti'
+	| 'TrustedKeySourceEntity'
+	| 'TrustedKeyEntity';
 
 /**
  * Truncate specific DB tables in a test DB.

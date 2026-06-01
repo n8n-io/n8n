@@ -78,7 +78,7 @@ describe('SettingsStore', () => {
 			const encryptedValue = JSON.stringify(mockSettings);
 			settingsRepo.findByKey.mockResolvedValue(mock<Settings>({ value: encryptedValue }));
 
-			const decryptSpy = jest.spyOn(cipher, 'decrypt');
+			const decryptSpy = jest.spyOn(cipher, 'decryptV2');
 
 			await store.load();
 
@@ -87,7 +87,7 @@ describe('SettingsStore', () => {
 
 		it('should throw error when decryption fails', async () => {
 			settingsRepo.findByKey.mockResolvedValue(mock<Settings>({ value: 'invalid-data' }));
-			jest.spyOn(cipher, 'decrypt').mockReturnValue('invalid-json');
+			jest.spyOn(cipher, 'decryptV2').mockResolvedValue('invalid-json');
 
 			await expect(store.load()).rejects.toThrow(
 				'External Secrets Settings could not be decrypted',
@@ -172,7 +172,7 @@ describe('SettingsStore', () => {
 		});
 
 		it('should encrypt settings before saving', async () => {
-			const encryptSpy = jest.spyOn(cipher, 'encrypt');
+			const encryptSpy = jest.spyOn(cipher, 'encryptV2');
 
 			await store.save(mockSettings);
 

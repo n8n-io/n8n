@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { createPasswordRules } from '@n8n/design-system';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -20,6 +21,7 @@ const toast = useToast();
 const locale = useI18n();
 const router = useRouter();
 
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 const loading = ref(false);
 const formConfig: IFormBoxConfig = reactive({
 	title: locale.baseText('auth.setup.setupOwner'),
@@ -62,8 +64,10 @@ const formConfig: IFormBoxConfig = reactive({
 				label: locale.baseText('auth.password'),
 				type: 'password',
 				required: true,
-				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-				infoText: locale.baseText('auth.defaultPasswordRequirements'),
+				validationRules: [createPasswordRules(passwordMinLength)],
+				infoText: locale.baseText('auth.defaultPasswordRequirements', {
+					interpolate: { minimum: passwordMinLength },
+				}),
 				autocomplete: 'new-password',
 				capitalize: true,
 			},

@@ -11,6 +11,15 @@ export default {
 			options: ['small', 'medium', 'large'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component:
+					'A user avatar component that renders profile images or initials in fixed sizes.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

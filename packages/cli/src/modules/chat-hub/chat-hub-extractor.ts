@@ -81,7 +81,9 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 
 		if (encryptedMetadataResult.success) {
 			try {
-				const decrypted = this.cipher.decrypt(encryptedMetadataResult.data.encryptedMetadata);
+				const decrypted = await this.cipher.decryptV2(
+					encryptedMetadataResult.data.encryptedMetadata,
+				);
 				const parsed = jsonParse(decrypted);
 				const chatHubInformation = ChatHubAuthenticationMetadataSchema.safeParse(parsed);
 				if (chatHubInformation.success) {

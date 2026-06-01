@@ -252,6 +252,32 @@ describe('WorkflowStatusController', () => {
 			});
 		});
 
+		it('should return readyToExecute false when credential has resolver_missing status', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+				headers: { authorization: 'Bearer token-123' },
+			});
+			const res = mock<Response>();
+
+			mockService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'My OAuth2 Credential',
+					status: 'resolver_missing',
+					credentialType: 'oauth2Api',
+				},
+			]);
+
+			const result = await controller.checkWorkflowForExecution(req, res);
+
+			expect(result.readyToExecute).toBe(false);
+			expect(result.workflowId).toBe('workflow-1');
+			expect(result.credentials).toHaveLength(1);
+			expect(result.credentials?.[0].credentialStatus).toBe('resolver_missing');
+			expect(result.credentials?.[0].authorizationUrl).toBeUndefined();
+			expect(result.credentials?.[0].revokeUrl).toBeUndefined();
+		});
+
 		it('should return readyToExecute true for empty credentials array', async () => {
 			const req = mock<Request>({
 				params: { workflowId: 'workflow-1' },

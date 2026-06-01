@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import { N8nIconButton } from '@n8n/design-system';
 const props = defineProps<{
 	stopping?: boolean;
+	size?: 'small' | 'medium' | 'large' | 'xlarge';
 }>();
 
 const i18n = useI18n();
@@ -20,7 +21,7 @@ const title = computed(() =>
 	<N8nIconButton
 		variant="subtle"
 		icon="square"
-		size="large"
+		:size="size ?? 'large'"
 		class="stop-execution"
 		:title="title"
 		:loading="stopping"

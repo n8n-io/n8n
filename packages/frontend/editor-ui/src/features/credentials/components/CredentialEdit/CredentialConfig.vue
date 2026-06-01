@@ -5,6 +5,7 @@ import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	INode,
 	INodeProperties,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
@@ -22,20 +23,19 @@ import {
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
-import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nInfoTip,
@@ -48,6 +48,7 @@ import { ElSwitch } from 'element-plus';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
 	mode: string;
@@ -67,10 +68,13 @@ type Props = {
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
+	contextNode?: INode | null;
+	hideAskAssistant?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -86,21 +90,23 @@ const emit = defineEmits<{
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
+	disconnect: [];
 	quickConnect: [];
+	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect();
+const { getQuickConnectOption } = useQuickConnect();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -123,23 +129,21 @@ onBeforeMount(async () => {
 	);
 });
 
-const appName = computed(() => {
-	if (!props.credentialType) {
-		return '';
-	}
-
-	return (
-		getAppNameFromCredType(props.credentialType.displayName) ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo')
-	);
-});
+const serviceName = computed(() =>
+	props.credentialType ? getAppNameFromCredType(props.credentialType.displayName) : '',
+);
+const appName = computed(
+	() =>
+		serviceName.value ||
+		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo'),
+);
 const credentialTypeName = computed(() => props.credentialType?.name);
 const credentialOwnerName = computed(() =>
 	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.value.activeNode;
 	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 	const docUrl = type?.documentationUrl;
@@ -189,12 +193,27 @@ const showOAuthSuccessBanner = computed(() => {
 	);
 });
 
+const showOAuthNotConnectedBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.isResolvable &&
+		props.requiredPropertiesFilled &&
+		!props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
+const showDisconnectButton = computed(
+	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+);
+
 const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
 const isAskAssistantAvailable = computed(
 	() =>
+		!props.hideAskAssistant &&
 		documentationUrl.value &&
 		documentationUrl.value.includes(DOCS_DOMAIN) &&
 		props.credentialProperties.length &&
@@ -217,7 +236,7 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const quickConnectOption = computed(() => {
 	if (!activeNode.value) return undefined;
@@ -241,7 +260,7 @@ function onDocumentationUrlClick(): void {
 		docs_link: documentationUrl.value,
 		credential_type: credentialTypeName.value,
 		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 
@@ -280,7 +299,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</N8nCallout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+			<FreeAiCreditsCallout
+				:credential-type-name="credentialType?.name"
+				@claimed="$emit('claimed')"
+			/>
 
 			<CredentialModeSelector
 				v-if="canWrite"
@@ -289,13 +311,18 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				:show-managed-oauth-options="managedOauthAvailable"
 				:quick-connect-available="quickConnectAvailable"
 				:is-quick-connect-mode="isQuickConnectMode"
+				:context-node="contextNode"
 				@update:auth-type="onAuthTypeChange"
 			/>
 
 			<template v-if="isQuickConnectMode">
-				<QuickConnectBanner v-if="quickConnectBannerText" :text="quickConnectBannerText" />
+				<QuickConnectBanner
+					v-if="quickConnectBannerText || quickConnectOption?.disclaimer"
+					:text="quickConnectBannerText"
+					:disclaimer="quickConnectOption?.disclaimer"
+				/>
 				<QuickConnectButton
-					:service-name="appName"
+					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
 					data-test-id="quick-connect-modal-button"
 					@click="$emit('quickConnect')"
@@ -304,7 +331,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -350,6 +377,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				/>
 
 				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<GoogleAuthButton @click="$emit('oauth')" />
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-not-connected-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
+
+				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"
 					theme="success"
 					:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
@@ -358,22 +409,33 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="oauth-connect-success-banner"
 					@click="$emit('oauth')"
 				>
-					<template v-if="isGoogleOAuthType" #button>
-						<p
-							:class="$style.googleReconnectLabel"
-							v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-						/>
-						<GoogleAuthButton @click="$emit('oauth')" />
-					</template>
-					<template v-else-if="isQuickConnectEnabled" #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="appName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-							data-test-id="quick-connect-reconnect-button"
-							@click="$emit('oauth')"
-						/>
+					<template #button>
+						<div :class="$style.bannerActions">
+							<template v-if="isGoogleOAuthType">
+								<p
+									:class="$style.googleReconnectLabel"
+									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+								/>
+								<GoogleAuthButton @click="$emit('oauth')" />
+							</template>
+							<QuickConnectButton
+								v-else
+								size="small"
+								:service-name="serviceName"
+								:credential-type-name="credentialType.name"
+								:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+								data-test-id="quick-connect-reconnect-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								v-if="showDisconnectButton"
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
 					</template>
 				</Banner>
 
@@ -469,25 +531,15 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@update="onDataChange"
 				/>
 
-				<template v-if="isOAuthType && !isOAuthConnected && canWrite">
-					<QuickConnectButton
-						v-if="isQuickConnectEnabled"
-						:service-name="appName"
-						:credential-type-name="credentialType.name"
-						:disabled="!requiredPropertiesFilled"
-						:disabled-tooltip="
-							i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')
-						"
-						data-test-id="quick-connect-button"
-						@click="$emit('oauth')"
-					/>
-					<OauthButton
-						v-else-if="requiredPropertiesFilled"
-						:is-google-o-auth-type="isGoogleOAuthType"
-						data-test-id="oauth-connect-button"
-						@click="$emit('oauth')"
-					/>
-				</template>
+				<QuickConnectButton
+					v-if="isOAuthType && !isOAuthConnected && canWrite"
+					:service-name="serviceName"
+					:credential-type-name="credentialType.name"
+					:disabled="!requiredPropertiesFilled"
+					:disabled-tooltip="i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')"
+					data-test-id="quick-connect-button"
+					@click="$emit('oauth')"
+				/>
 
 				<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 					{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
@@ -520,6 +572,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .googleReconnectLabel {
 	margin-right: var(--spacing--3xs);
+}
+
+.bannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .askAssistantButton {

@@ -10,7 +10,7 @@ import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
-import promClient, { type Counter, type Gauge } from 'prom-client';
+import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import { N8N_VERSION } from '@/constants';
@@ -35,7 +35,11 @@ export class PrometheusMetricsService {
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
+	private tokenExchangeListenersRegistered = false;
+
 	private readonly gauges: Record<string, Gauge<string>> = {};
+
+	private readonly histograms: Record<string, Histogram<string>> = {};
 
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
@@ -46,6 +50,8 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			workflowExecutionDuration:
+				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
 		},
 		labels: {
@@ -69,8 +75,10 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
+		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
 		this.initWorkflowStatisticsMetrics();
+		this.initTokenExchangeMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -343,6 +351,43 @@ export class PrometheusMetricsService {
 	}
 
 	/**
+	 * Set up histogram for workflow execution duration: `n8n_workflow_execution_duration_seconds`
+	 *
+	 * Observes duration from `startedAt` to `stoppedAt` on each completed workflow execution.
+	 * Labels: `status` (success/failed), `mode` (manual/trigger/webhook/etc.),
+	 * and optionally `workflow_id` (gated by existing config flag).
+	 */
+	private initWorkflowExecutionDurationMetric() {
+		if (!this.includes.metrics.workflowExecutionDuration) return;
+
+		const labelNames = ['status', 'mode'];
+		if (this.includes.labels.workflowId) labelNames.push('workflow_id');
+
+		this.histograms.workflowExecutionDuration = new promClient.Histogram({
+			name: this.prefix + 'workflow_execution_duration_seconds',
+			help: 'Workflow execution duration in seconds.',
+			labelNames,
+			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
+		});
+
+		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+			if (!runData?.stoppedAt) return;
+
+			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
+			const labels: Record<string, string> = {
+				status: runData.status === 'success' ? 'success' : 'failed',
+				mode: runData.mode,
+			};
+
+			if (this.includes.labels.workflowId) {
+				labels.workflow_id = String(workflow.id ?? 'unknown');
+			}
+
+			this.histograms.workflowExecutionDuration?.observe(labels, durationSeconds);
+		});
+	}
+
+	/**
 	 * Setup active workflow count metric
 	 *
 	 * This metric is updated every time metrics are collected.
@@ -574,6 +619,97 @@ export class PrometheusMetricsService {
 				licenseMetricsRepository,
 				cacheTtl,
 			);
+		});
+	}
+
+	/**
+	 * Set up counters for token exchange and embed login flows.
+	 *
+	 * These metrics are always registered when the `/metrics` endpoint is active
+	 * and require no additional configuration flag.
+	 *
+	 * Counters:
+	 * - `n8n_token_exchange_requests_total{result}` - success/failure rate
+	 * - `n8n_token_exchange_failures_total{reason}` - failure breakdown by reason
+	 * - `n8n_embed_login_requests_total{result}` - embed login success/failure rate
+	 * - `n8n_embed_login_failures_total{reason}` - embed login failure breakdown
+	 * - `n8n_token_exchange_jit_provisioning_total` - JIT-provisioned users
+	 * - `n8n_token_exchange_identity_linked_total` - identities linked to existing users
+	 */
+	private initTokenExchangeMetrics() {
+		// Token exchange (RFC 8693 flow)
+		this.counters.tokenExchangeRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_requests_total',
+			help: 'Total number of token exchange requests.',
+			labelNames: ['result'],
+		});
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.tokenExchangeRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.tokenExchangeFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_failures_total',
+			help: 'Total number of token exchange failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// Embed login flow
+		this.counters.embedLoginRequestsTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_requests_total',
+			help: 'Total number of embed login requests.',
+			labelNames: ['result'],
+		});
+		this.counters.embedLoginRequestsTotal.inc({ result: 'success' }, 0);
+		this.counters.embedLoginRequestsTotal.inc({ result: 'failure' }, 0);
+
+		this.counters.embedLoginFailuresTotal = new promClient.Counter({
+			name: this.prefix + 'embed_login_failures_total',
+			help: 'Total number of embed login failures broken down by reason.',
+			labelNames: ['reason'],
+		});
+
+		// JIT provisioning and identity linking
+		this.counters.tokenExchangeJitProvisioningTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_jit_provisioning_total',
+			help: 'Total number of users JIT-provisioned via token exchange.',
+		});
+		this.counters.tokenExchangeJitProvisioningTotal.inc(0);
+
+		this.counters.tokenExchangeIdentityLinkedTotal = new promClient.Counter({
+			name: this.prefix + 'token_exchange_identity_linked_total',
+			help: 'Total number of external identities linked to existing users via token exchange.',
+		});
+		this.counters.tokenExchangeIdentityLinkedTotal.inc(0);
+
+		// Listeners reference `this.counters.*` via `this`, so they automatically
+		// pick up newly created counter objects after a re-init. Register them only
+		// once to prevent double-counting if `init()` is called more than once.
+		if (this.tokenExchangeListenersRegistered) return;
+		this.tokenExchangeListenersRegistered = true;
+
+		this.eventService.on('token-exchange-succeeded', () => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('token-exchange-failed', ({ failureReason }) => {
+			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.tokenExchangeFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('embed-login', () => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'success' }, 1);
+		});
+
+		this.eventService.on('embed-login-failed', ({ failureReason }) => {
+			this.counters.embedLoginRequestsTotal?.inc({ result: 'failure' }, 1);
+			this.counters.embedLoginFailuresTotal?.inc({ reason: failureReason }, 1);
+		});
+
+		this.eventService.on('token-exchange-user-provisioned', () => {
+			this.counters.tokenExchangeJitProvisioningTotal?.inc(1);
+		});
+
+		this.eventService.on('token-exchange-identity-linked', () => {
+			this.counters.tokenExchangeIdentityLinkedTotal?.inc(1);
 		});
 	}
 }
