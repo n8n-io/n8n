@@ -93,7 +93,7 @@ async function installSlackApp() {
 	}
 }
 
-async function disconnectSlackApp() {
+async function onDisconnectSlackApp() {
 	if (!props.disconnectSlackApp || props.disabled || disconnectLoading.value) return;
 
 	disconnectLoading.value = true;
@@ -129,7 +129,7 @@ async function disconnectSlackApp() {
 				:loading="disconnectLoading"
 				:disabled="disabled || disconnectLoading"
 				data-testid="slack-disconnect-app"
-				@click="disconnectSlackApp"
+				@click="onDisconnectSlackApp"
 			>
 				{{ i18n.baseText('generic.disconnect') }}
 			</N8nButton>

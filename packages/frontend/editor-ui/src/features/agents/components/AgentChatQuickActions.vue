@@ -20,6 +20,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	connectedTriggers: string[];
+	isPublished: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -72,39 +73,46 @@ function handleChannelDisconnected(channelType: string) {
 </script>
 
 <template>
-	<div :class="$style.row" data-testid="agent-chat-quick-actions">
-		<AgentChipButton
-			variant="suggestion"
-			icon="wrench"
-			data-testid="agent-quick-action-add-tool"
-			@click="onAddTool"
-		>
-			{{ i18n.baseText('agents.builder.quickActions.addTool') }}
-		</AgentChipButton>
-		<AgentChipButton
-			variant="suggestion"
-			icon="zap"
-			data-testid="agent-quick-action-add-trigger"
-			@click="onAddTrigger"
-		>
-			{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
-		</AgentChipButton>
-	</div>
+	<div :class="$style.container">
+		<div :class="$style.row" data-testid="agent-chat-quick-actions">
+			<AgentChipButton
+				variant="suggestion"
+				icon="wrench"
+				data-testid="agent-quick-action-add-tool"
+				@click="onAddTool"
+			>
+				{{ i18n.baseText('agents.builder.quickActions.addTool') }}
+			</AgentChipButton>
+			<AgentChipButton
+				variant="suggestion"
+				icon="zap"
+				data-testid="agent-quick-action-add-trigger"
+				@click="onAddTrigger"
+			>
+				{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
+			</AgentChipButton>
+		</div>
 
-	<AgentChannelModal
-		v-if="channelModalOpen"
-		v-model:open="channelModalOpen"
-		v-model:view="channelModalView"
-		:agent-id="agentId"
-		:project-id="projectId"
-		:connected-channels="connectedTriggers"
-		@channel-connected="handleChannelConnected"
-		@channel-disconnected="handleChannelDisconnected"
-		@agent-changed="emit('agent-changed')"
-	/>
+		<AgentChannelModal
+			v-if="channelModalOpen"
+			v-model:open="channelModalOpen"
+			v-model:view="channelModalView"
+			:agent-id="agentId"
+			:project-id="projectId"
+			:connected-channels="connectedTriggers"
+			:is-published="isPublished"
+			@channel-connected="handleChannelConnected"
+			@channel-disconnected="handleChannelDisconnected"
+			@agent-changed="emit('agent-changed')"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>
+.container {
+	display: contents;
+}
+
 .row {
 	display: flex;
 	flex-wrap: wrap;

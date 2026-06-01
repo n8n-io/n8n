@@ -549,6 +549,7 @@ function handleChannelDisconnected(channelType: string) {
 			:agent-id="agentId"
 			:project-id="projectId"
 			:connected-channels="connectedTriggers"
+			:is-published="isPublished"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"
