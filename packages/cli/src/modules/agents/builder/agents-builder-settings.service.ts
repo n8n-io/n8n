@@ -1,4 +1,4 @@
-import { proxyFetch } from '@n8n/ai-utilities';
+import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	AGENT_BUILDER_DEFAULT_MODEL,
 	agentBuilderAdminSettingsSchema,

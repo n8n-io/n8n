@@ -1,12 +1,12 @@
 import type { McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer: McpRegistryServer = {
-	id: 42,
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
 	description:
 		"Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+	tagline: 'Connect to the Notion MCP Server',
 	version: '1.2.0',
 	updatedAt: '2026-04-22T10:00:00.000Z',
 	icons: [{ src: 'https://mcp.notion.com/notion-logo-block-main.svg', mimeType: 'image/svg+xml' }],
@@ -40,11 +40,11 @@ export const notionMockServer: McpRegistryServer = {
 };
 
 export const linearMockServer: McpRegistryServer = {
-	id: 101,
 	name: 'app.linear/linear',
 	slug: 'linear',
 	title: 'Linear',
 	description: 'MCP server for Linear project management and issue tracking',
+	tagline: 'Connect to the Linear MCP Server',
 	version: '1.0.0',
 	updatedAt: '2026-05-05T10:00:00.000Z',
 	icons: [

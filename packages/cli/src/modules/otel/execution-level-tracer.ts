@@ -46,6 +46,8 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
+						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
 				},
@@ -101,7 +103,7 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx shuold never be null
+			//	We should always have the node running in a workflow so parentCtx should never be null
 			const parentCtx = this.findWorkflowSpanContext(params.executionId);
 
 			if (!parentCtx) {
@@ -152,7 +154,6 @@ export class ExecutionLevelTracer {
 
 			const { span: activeNodeSpan } = nodeStart;
 			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
-			activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
@@ -160,6 +161,8 @@ export class ExecutionLevelTracer {
 				if (recordableException) {
 					activeNodeSpan.recordException(recordableException);
 				}
+			} else {
+				activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 			}
 
 			activeNodeSpan.end();
@@ -239,6 +242,18 @@ export class ExecutionLevelTracer {
 	}
 }
 
+function buildCustomAttributes(
+	prefix: string,
+	attrs: Record<string, string> | undefined,
+): Record<string, string> {
+	if (!attrs) return {};
+	const result: Record<string, string> = {};
+	for (const [k, v] of Object.entries(attrs)) {
+		result[`${prefix}${k}`] = v;
+	}
+	return result;
+}
+
 function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
 	const attrs: Record<string, string | number> = {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
@@ -247,7 +262,7 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 
 	if (params.customAttributes) {
 		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`n8n.node.custom.${key}`] = value;
+			attrs[`${ATTR.NODE_CUSTOM_PREFIX}${key}`] = value;
 		}
 	}
 

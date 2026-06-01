@@ -22,10 +22,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
 
-		const { AgentPublishedVersionRepository } = await import(
-			'./repositories/agent-published-version.repository'
-		);
-		Container.get(AgentPublishedVersionRepository);
+		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
+		Container.get(AgentHistoryRepository);
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
@@ -42,11 +40,6 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
-
-		// Warm the node catalog so the agent runtime can attach search/execute tools
-		// synchronously on each agent reconstruction. The underlying init is idempotent.
-		const { NodeCatalogService } = await import('@/node-catalog');
-		await Container.get(NodeCatalogService).initialize();
 
 		// Register Chat and Schedule services. Importing the services here also
 		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
@@ -93,31 +86,47 @@ export class AgentsModule implements ModuleInterface {
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
 		const { AgentExecution } = await import('./entities/agent-execution.entity');
-		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
+		const { AgentHistory } = await import('./entities/agent-history.entity');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
 		const { AgentObservationCursorEntity } = await import(
 			'./entities/agent-observation-cursor.entity'
 		);
 		const { AgentObservationLockEntity } = await import('./entities/agent-observation-lock.entity');
+		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity');
+		const { AgentMemoryEntryLockEntity } = await import(
+			'./entities/agent-memory-entry-lock.entity'
+		);
+		const { AgentMemoryEntrySourceEntity } = await import(
+			'./entities/agent-memory-entry-source.entity'
+		);
+		const { AgentMemoryEntryCursorEntity } = await import(
+			'./entities/agent-memory-entry-cursor.entity'
+		);
 
 		return [
 			Agent,
+			AgentFile,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
-			AgentPublishedVersion,
+			AgentHistory,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
+			AgentMemoryEntryEntity,
+			AgentMemoryEntryLockEntity,
+			AgentMemoryEntrySourceEntity,
+			AgentMemoryEntryCursorEntity,
 		];
 	}
 

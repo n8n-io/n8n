@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -32,7 +31,6 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
@@ -84,10 +82,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
@@ -101,7 +97,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!(response.updatedIds ?? []).includes(workflowId)) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(workflowId)) {
 			throw new Error(
 				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
 					interpolate: { workflowId },
@@ -128,7 +129,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds ?? []) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		for (const id of confirmedIds) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 

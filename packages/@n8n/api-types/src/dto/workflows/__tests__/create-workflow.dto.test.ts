@@ -59,6 +59,24 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'with nodeGroups',
+				request: {
+					name: 'Grouped Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'with empty nodeGroups array',
+				request: {
+					name: 'Empty Groups Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [],
+				},
+			},
+			{
 				name: 'with tags as objects (backward compatibility)',
 				request: {
 					name: 'Tagged Workflow',
@@ -137,6 +155,71 @@ describe('CreateWorkflowDto', () => {
 				name: 'pinData as array',
 				request: { name: 'Test', nodes: [], connections: {}, pinData: [] },
 				expectedErrorPath: ['pinData'],
+			},
+			{
+				name: 'nodeGroups as string',
+				request: { name: 'Test', nodes: [], connections: {}, nodeGroups: 'not-an-array' },
+				expectedErrorPath: ['nodeGroups'],
+			},
+			{
+				name: 'nodeGroups with missing id',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ name: 'Group', nodeIds: [] }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with missing name',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', nodeIds: [] }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with missing nodeIds',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group' }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds'],
+			},
+			{
+				name: 'nodeGroups with empty id',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: '', name: 'Group', nodeIds: [] }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with empty name',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: '', nodeIds: [] }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with empty nodeId string',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);

@@ -1,7 +1,15 @@
 import { mock } from 'jest-mock-extended';
-import type { IHookFunctions } from 'n8n-workflow';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
 import { BoxTrigger } from '../BoxTrigger.node';
+
+jest.mock('../BoxTriggerHelpers', () => ({
+	verifySignature: jest.fn(),
+}));
+
+import { verifySignature } from '../BoxTriggerHelpers';
+
+const mockedVerifySignature = verifySignature as jest.MockedFunction<typeof verifySignature>;
 
 describe('Box Trigger Webhook Lifecycle', () => {
 	const mockHookFunctions = mock<IHookFunctions>();
@@ -286,5 +294,65 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			expect(deleted).toBe(false);
 			expect(mockStaticData.webhookId).toBe('webhook_456');
 		});
+	});
+});
+
+describe('Box Trigger webhook()', () => {
+	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+	let mockResponseObject: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		mockWebhookFunctions = mock<IWebhookFunctions>();
+
+		mockResponseObject = {
+			status: jest.fn().mockReturnThis(),
+			send: jest.fn().mockReturnThis(),
+			end: jest.fn(),
+		};
+		mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponseObject as never);
+		mockWebhookFunctions.getBodyData.mockReturnValue({
+			type: 'webhook_event',
+			trigger: 'FILE.UPLOADED',
+		});
+		mockWebhookFunctions.helpers = {
+			...mockWebhookFunctions.helpers,
+			returnJsonArray: jest.fn().mockImplementation((data) => [{ json: data }]),
+		};
+	});
+
+	it('should return workflow data when signature is valid', async () => {
+		mockedVerifySignature.mockResolvedValue(true);
+
+		const boxTrigger = new BoxTrigger();
+		const result = await boxTrigger.webhook.call(mockWebhookFunctions);
+
+		expect(result.workflowData).toBeDefined();
+		expect(result.noWebhookResponse).toBeUndefined();
+		expect(mockResponseObject.status).not.toHaveBeenCalled();
+	});
+
+	it('should respond with 401 and noWebhookResponse when signature is invalid', async () => {
+		mockedVerifySignature.mockResolvedValue(false);
+
+		const boxTrigger = new BoxTrigger();
+		const result = await boxTrigger.webhook.call(mockWebhookFunctions);
+
+		expect(result.workflowData).toBeUndefined();
+		expect(result.noWebhookResponse).toBe(true);
+		expect(mockResponseObject.status).toHaveBeenCalledWith(401);
+		expect(mockResponseObject.send).toHaveBeenCalledWith('Unauthorized');
+		expect(mockResponseObject.end).toHaveBeenCalled();
+	});
+
+	it('should return workflow data when no signing keys are configured (backward compatibility)', async () => {
+		// verifySignature returns true when no keys are configured
+		mockedVerifySignature.mockResolvedValue(true);
+
+		const boxTrigger = new BoxTrigger();
+		const result = await boxTrigger.webhook.call(mockWebhookFunctions);
+
+		expect(result.workflowData).toBeDefined();
+		expect(mockResponseObject.status).not.toHaveBeenCalled();
 	});
 });

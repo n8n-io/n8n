@@ -1,4 +1,4 @@
-import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -103,18 +103,12 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		});
 	}
 
-	const workflowObject = createTestWorkflowObject({
-		nodes,
-		connections,
-	});
-
 	return createComponentRenderer(InputPanel, {
 		props: {
 			pushRef: 'pushRef',
 			runIndex: 0,
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
-			workflowObject,
 			displayMode: 'schema',
 			focusedMappableInput: '',
 			isMappingOnboarded: false,

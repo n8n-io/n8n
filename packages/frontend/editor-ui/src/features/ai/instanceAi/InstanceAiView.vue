@@ -40,6 +40,7 @@ function handleSidebarResize({ width }: { width: number }) {
 
 provide(SidebarStateKey, {
 	collapsed: sidebarCollapsed,
+	width: sidebarWidth,
 	toggle: toggleSidebarCollapse,
 });
 
@@ -128,16 +129,8 @@ onUnmounted(() => {
 	display: flex;
 	height: 100%;
 	width: 100%;
-	min-width: 900px;
+	min-width: 0;
 	overflow: hidden;
-	position: relative;
-	z-index: 0;
-
-	// Drop the stacking context while the workflow preview iframe NDV is
-	// fullscreen so its `z-index` can escape and paint above the sidebar.
-	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
-		z-index: auto;
-	}
 }
 
 .sidebar {

@@ -765,6 +765,7 @@ describe('GET /workflows/:id/:versionId', () => {
 			description: 'Version Description',
 			nodes: versionData.nodes,
 			connections: versionData.connections,
+			nodeGroups: [],
 			authors: 'Test User',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			createdAt: expect.any(String),

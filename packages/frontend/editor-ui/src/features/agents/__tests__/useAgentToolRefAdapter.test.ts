@@ -62,8 +62,9 @@ describe('useAgentToolRefAdapter', () => {
 
 		it('falls back to nodeType as name when ref.name is missing', () => {
 			const ref: AgentJsonToolRef = {
+				name: undefined as unknown as string,
 				type: 'node',
-				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1 },
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			expect(toolRefToNode(ref)?.name).toBe('n8n-nodes-base.slack');
 		});
@@ -75,7 +76,7 @@ describe('useAgentToolRefAdapter', () => {
 			const ref: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
-				node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1 },
+				node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			expect(toolRefToNode(ref)?.type).toBe('n8n-nodes-base.slackTool');
 		});
@@ -87,6 +88,7 @@ describe('useAgentToolRefAdapter', () => {
 				node: {
 					nodeType: 'n8n-nodes-base.slack',
 					nodeTypeVersion: 1,
+					nodeParameters: {},
 					credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
 				},
 			};
@@ -116,7 +118,7 @@ describe('useAgentToolRefAdapter', () => {
 		it('seeds empty parameters without persisting an input schema', () => {
 			const ref = nodeTypeToNewToolRef(makeNodeType());
 			expect(ref.node?.nodeParameters).toEqual({});
-			expect(ref.id).toBeUndefined();
+			expect((ref as any).id).toBeUndefined();
 			expect(ref).not.toHaveProperty('inputSchema');
 		});
 
@@ -209,7 +211,7 @@ describe('useAgentToolRefAdapter', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
-				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1 },
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			const node: INode = {
 				id: 'n-1',
@@ -223,7 +225,10 @@ describe('useAgentToolRefAdapter', () => {
 				},
 			};
 
-			const updated = updateToolRefFromNode(original, node);
+			const updated = updateToolRefFromNode(original, node) as Extract<
+				AgentJsonToolRef,
+				{ type: 'node' }
+			>;
 			expect(updated.node?.credentials).toBeUndefined();
 		});
 
@@ -231,7 +236,7 @@ describe('useAgentToolRefAdapter', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
-				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1 },
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			const node: INode = {
 				id: 'n-1',
@@ -245,7 +250,10 @@ describe('useAgentToolRefAdapter', () => {
 				},
 			};
 
-			const updated = updateToolRefFromNode(original, node);
+			const updated = updateToolRefFromNode(original, node) as Extract<
+				AgentJsonToolRef,
+				{ type: 'node' }
+			>;
 			expect(updated.node?.credentials).toEqual({
 				slackApi: { id: 'cred-1', name: 'Prod' },
 			});
@@ -287,7 +295,10 @@ describe('useAgentToolRefAdapter', () => {
 				},
 			};
 
-			const updated = updateToolRefFromNode(original, node);
+			const updated = updateToolRefFromNode(original, node) as Extract<
+				AgentJsonToolRef,
+				{ type: 'node' }
+			>;
 			expect(updated).not.toHaveProperty('inputSchema');
 			expect(updated.node?.nodeParameters).toEqual(node.parameters);
 		});
@@ -320,7 +331,7 @@ describe('useAgentToolRefAdapter', () => {
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
-			expect(ref.id).toBeUndefined();
+			expect((ref as any).id).toBeUndefined();
 		});
 
 		it('defaults description to empty when the workflow has none', () => {
@@ -356,7 +367,7 @@ describe('useAgentToolRefAdapter', () => {
 			const nodeRef: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
-				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1 },
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
 			};
 			expect(
 				updateWorkflowToolRef(nodeRef, { name: 'x', description: 'y', allOutputs: true }),

@@ -358,8 +358,7 @@ describe('workflow timeout with startedAt', () => {
 	let mockSetTimeout: jest.SpyInstance;
 	let recordedTimeout: number | undefined = undefined;
 
-	beforeAll(() => {
-		// Mock setTimeout globally to capture the timeout value
+	beforeEach(() => {
 		mockSetTimeout = jest.spyOn(global, 'setTimeout').mockImplementation((_fn, timeout) => {
 			// There can be multiple calls to setTimeout with 60000ms, these happen
 			// when accessing the database, we only capture the first one not equal to 60000ms
@@ -368,11 +367,6 @@ describe('workflow timeout with startedAt', () => {
 			}
 			return {} as NodeJS.Timeout;
 		});
-	});
-
-	afterAll(() => {
-		// Restore the original setTimeout after tests
-		mockSetTimeout.mockRestore();
 	});
 
 	it('should calculate timeout based on startedAt date when provided', async () => {

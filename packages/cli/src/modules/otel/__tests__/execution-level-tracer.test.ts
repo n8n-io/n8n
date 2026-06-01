@@ -39,6 +39,7 @@ describe('ExecutionLevelTracer', () => {
 				executionId: 'exec-1',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-1',
@@ -55,9 +56,80 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.workflow.id']).toBe('wf-1');
 			expect(span.attributes['n8n.workflow.name']).toBe('Test');
 			expect(span.attributes['n8n.execution.id']).toBe('exec-1');
+			expect(span.attributes['n8n.project.id']).toBe('project-1');
 			expect(span.attributes['n8n.execution.mode']).toBe('manual');
 			expect(span.attributes['n8n.execution.status']).toBe('success');
 			expect(span.status.code).toBe(SpanStatusCode.OK);
+		});
+
+		it('should attach project custom telemetry tags to the workflow span', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-custom-tags',
+				workflow: defaultWorkflow,
+				project: {
+					id: 'proj-tags',
+					customAttributes: { env: 'production', team: 'platform' },
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-custom-tags',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.project.custom.env']).toBe('production');
+			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
+		});
+
+		it('should not attach project custom attributes to node spans', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-node-no-tags',
+				workflow: defaultWorkflow,
+				project: {
+					id: 'proj-tags',
+					customAttributes: { env: 'staging' },
+				},
+			});
+			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+			tracer.startNode({ executionId: 'exec-node-no-tags', node });
+			tracer.endNode({
+				executionId: 'exec-node-no-tags',
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-node-no-tags',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel.getFinishedSpans();
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			// No project custom attributes should appear on the node span
+			const projectCustomKeys = Object.keys(nodeSpan.attributes).filter((k) =>
+				k.startsWith('n8n.project.custom.'),
+			);
+			expect(projectCustomKeys).toHaveLength(0);
+		});
+
+		it('should omit project id attribute when project is not provided', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-no-project',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-no-project',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			expect(otel.getFinishedSpans()[0].attributes['n8n.project.id']).toBeUndefined();
 		});
 
 		it('should set error status on failed executions', () => {

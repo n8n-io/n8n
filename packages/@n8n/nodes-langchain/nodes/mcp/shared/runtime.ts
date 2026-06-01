@@ -18,18 +18,17 @@ import {
 import {
 	buildMcpToolName,
 	createCallTool,
+	getErrorDescriptionFromToolCall,
 	getSelectedTools,
 	mcpToolToDynamicTool,
 } from '../McpClientTool/utils';
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import type { McpAuthenticationOption, McpServerTransport } from './types';
 import {
-	connectMcpClient,
+	connectMcpClientForCredential,
 	getAllTools,
-	getAuthHeaders,
 	isStructuredContent,
 	mapToNodeOperationError,
-	tryRefreshOAuth2Token,
 } from './utils';
 
 /**
@@ -61,16 +60,11 @@ async function connectAndGetTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	config: ResolvedMcpConfig,
 ) {
-	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
 	});
 
 	if (!client.ok) {
@@ -232,6 +226,12 @@ export async function executeMcpTool(
 					},
 				);
 
+				if (node.typeVersion >= 1.3 && result.isError) {
+					const errorMessage =
+						getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
+					throw new NodeOperationError(node, errorMessage, { itemIndex });
+				}
+
 				returnData.push({
 					json: {
 						response: result.content as IDataObject,
@@ -260,15 +260,11 @@ export async function loadMcpToolOptions(
 	config: McpConnectionConfig,
 ): Promise<INodePropertyOptions[]> {
 	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
 	});
 
 	if (!client.ok) {

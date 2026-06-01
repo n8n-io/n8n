@@ -17,6 +17,7 @@ test.use({
 test.describe(
 	'What is the runtime cost of enabling OTEL?',
 	{
+		tag: '@bench:webhook',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'webhook-otel-overhead' },

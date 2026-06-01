@@ -38,6 +38,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -539,14 +540,16 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 * 2. The workflow is currently open on the canvas
 	 * 3. The workflow has a chat trigger with availableInChat enabled
 	 */
-	function isCanvasManualExecution(model: ChatHubConversationModel): boolean {
+	function isCanvasManualExecution(
+		model: ChatHubConversationModel,
+		canvasWorkflowId: string,
+	): boolean {
 		if (model.provider !== 'n8n') return false;
 
-		const workflowsStore = useWorkflowsStore();
-		if (workflowsStore.workflowId !== model.workflowId) return false;
+		if (canvasWorkflowId !== model.workflowId) return false;
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(canvasWorkflowId),
 		);
 		const chatTrigger = workflowDocumentStore.allNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
@@ -561,11 +564,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 * Initialize workflowExecutionData scaffold so canvas push handlers can write
 	 * node results (makes nodes turn green during manual execution).
 	 */
-	function initManualExecutionScaffold() {
+	function initManualExecutionScaffold(workflowId: string) {
 		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		workflowsStore.setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
@@ -575,7 +576,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			createdAt: new Date(),
 			startedAt: new Date(),
 			stoppedAt: undefined,
-			workflowId: workflowsStore.workflowId,
+			workflowId,
 			data: createRunExecutionData({
 				resultData: { runData: {} },
 			}),
@@ -583,7 +584,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		workflowsStore.private.setActiveExecutionId(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setActiveExecutionId(null);
 	}
 
 	async function sendMessage(
@@ -592,6 +595,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
 		files: File[] = [],
+		canvasWorkflowId?: string,
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -617,7 +621,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 		};
 
-		const useManualMode = isCanvasManualExecution(agent.model);
+		const useManualMode =
+			!!canvasWorkflowId && isCanvasManualExecution(agent.model, canvasWorkflowId);
 		const mode = useManualMode ? 'manual' : 'production';
 		const source = useManualMode ? 'canvas' : 'chat_hub';
 
@@ -654,19 +659,22 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			}
 
 			if (useManualMode) {
-				initManualExecutionScaffold();
+				initManualExecutionScaffold(canvasWorkflowId);
 
 				// model is guaranteed to be n8n type here (checked in isCanvasManualMode)
-				const { workflowId } = agent.model as ChatHubN8nModel;
-				await sendMessageManualApi(rootStore.restApiContext, workflowId, {
-					messageId,
-					sessionId,
-					message,
-					previousMessageId,
-					attachments,
-					agentName: agent.name,
-					timeZone: payload.timeZone,
-				});
+				await sendMessageManualApi(
+					rootStore.restApiContext,
+					(agent.model as ChatHubN8nModel).workflowId,
+					{
+						messageId,
+						sessionId,
+						message,
+						previousMessageId,
+						attachments,
+						agentName: agent.name,
+						timeZone: payload.timeZone,
+					},
+				);
 			} else {
 				await sendMessageApi(rootStore.restApiContext, payload);
 			}
@@ -688,6 +696,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 		keepAttachmentIndices: number[] = [],
 		newFiles: File[] = [],
+		canvasWorkflowId?: string,
 	) {
 		const promptId = uuidv4();
 
@@ -737,7 +746,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
-		const useManualMode = isCanvasManualExecution(agent.model);
+		const useManualMode =
+			!!canvasWorkflowId && isCanvasManualExecution(agent.model, canvasWorkflowId);
 		const mode = useManualMode ? 'manual' : 'production';
 		const source = useManualMode ? 'canvas' : 'chat_hub';
 
@@ -752,7 +762,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		try {
 			if (useManualMode) {
-				initManualExecutionScaffold();
+				initManualExecutionScaffold(canvasWorkflowId);
 
 				await editMessageManualApi(rootStore.restApiContext, {
 					workflowId: (agent.model as ChatHubN8nModel).workflowId,
@@ -786,6 +796,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		retryId: ChatMessageId,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		canvasWorkflowId?: string,
 	) {
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
@@ -810,7 +821,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments: [],
 		};
 
-		const useManualMode = isCanvasManualExecution(agent.model);
+		const useManualMode =
+			!!canvasWorkflowId && isCanvasManualExecution(agent.model, canvasWorkflowId);
 		const mode = useManualMode ? 'manual' : 'production';
 		const source = useManualMode ? 'canvas' : 'chat_hub';
 
@@ -825,7 +837,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		try {
 			if (useManualMode) {
-				initManualExecutionScaffold();
+				initManualExecutionScaffold(canvasWorkflowId);
 
 				await regenerateMessageManualApi(rootStore.restApiContext, {
 					workflowId: (agent.model as ChatHubN8nModel).workflowId,

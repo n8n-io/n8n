@@ -220,7 +220,7 @@ export class WorkflowRunner {
 				await establishExecutionContext(
 					contextWorkflow,
 					data.executionData,
-					undefined,
+					{ encryptedRunnerIdentity: data.encryptedRunnerIdentity },
 					data.executionMode,
 				);
 			} catch (error) {
@@ -373,6 +373,7 @@ export class WorkflowRunner {
 		});
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
+		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 

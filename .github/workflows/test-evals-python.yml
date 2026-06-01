@@ -51,6 +51,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/coverage.xml
-          flags: tests
+          flags: python
           name: workflow-comparison-python
           fail_ci_if_error: false

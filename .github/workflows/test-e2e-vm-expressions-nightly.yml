@@ -36,11 +36,16 @@ jobs:
     name: Notify Slack on failure
     runs-on: ubuntu-slim
     needs: [e2e]
-    if: failure() && github.event_name == 'schedule'
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
     steps:
-      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          status: ${{ job.status }}
-          channel: '#project-secure-expression-evaluation'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: "VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#project-secure-expression-evaluation' \
+            --text 'VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

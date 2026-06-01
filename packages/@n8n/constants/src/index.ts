@@ -44,6 +44,7 @@ export const LICENSE_FEATURES = {
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
 	DATA_REDACTION: 'feat:dataRedaction',
+	N8N_PACKAGES: 'feat:n8nPackages',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -58,6 +59,7 @@ export const LICENSE_QUOTAS = {
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
+	EVALUATION_CONCURRENCY_LIMIT: 'quota:evaluations:concurrencyLimit',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
