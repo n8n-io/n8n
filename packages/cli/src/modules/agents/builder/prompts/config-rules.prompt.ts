@@ -15,7 +15,6 @@ const BuilderPromptMemoryWorkerModelSchema = z.object({
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.literal('n8n'),
-	lastMessages: z.number().int().min(1).max(200).optional(),
 	observationalMemory: z
 		.object({
 			enabled: z.boolean().optional(),
@@ -54,9 +53,9 @@ export function getConfigRulesSection(): string {
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
 - Fresh agents must include
-  \`memory: { "enabled": true, "storage": "n8n", "lastMessages": 50 }\`
+  \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
-- \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
+- \`memory.storage\` must be "n8n".
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;

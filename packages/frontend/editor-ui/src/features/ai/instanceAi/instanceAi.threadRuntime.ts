@@ -79,6 +79,11 @@ function collectPendingConfirmations(
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
 			!resolved.has(tc.confirmation.requestId) &&
+			// Expired cards render as a terminal "this action has expired" state
+			// in their inline slot; surfacing them in the floating/inline panel
+			// would block the chat input on a confirmation the user can no
+			// longer act on.
+			!tc.confirmation.expired &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {

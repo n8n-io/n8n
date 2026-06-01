@@ -239,7 +239,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				connections,
 				active: workflowDocumentActive.active.value,
-				settings: workflowDocumentSettings.settings.value,
+				settings: workflowDocumentSettings.getSettingsSnapshot(),
 				tags: [...workflowDocumentTags.tags.value],
 				versionId: workflowDocumentVersionData.versionId.value,
 				meta: workflowDocumentMeta.meta.value,
@@ -375,7 +375,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				updatedAt: workflowDocumentTimestamps.updatedAt.value,
 				nodes: workflowDocumentNodes.allNodes.value,
 				connections: workflowDocumentConnections.connectionsBySourceNode.value,
-				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
+				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.getSettingsSnapshot() },
 				tags: [...workflowDocumentTags.tags.value],
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
