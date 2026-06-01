@@ -224,11 +224,18 @@ export class CredentialsController {
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
 
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToPrivate = body.isResolvable === true && credential.isResolvable === false;
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToStatic = body.isResolvable === false && credential.isResolvable === true;
+
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
 			req.body,
 			credential,
+			{ clearOauthTokenData: isTogglingToPrivate },
 		);
+
 		const newCredentialData = await this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
@@ -259,6 +266,7 @@ export class CredentialsController {
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
+			{ deleteUserEntries: isTogglingToStatic },
 		);
 
 		if (responseData === null) {

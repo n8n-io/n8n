@@ -9,6 +9,7 @@ import {
 	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -16,12 +17,14 @@ import {
 	CreateAgentDto,
 	CreateAgentSkillDto,
 	isAgentCredentialIntegration,
+	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -33,6 +36,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -40,7 +44,6 @@ import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -129,19 +132,21 @@ export class AgentsController {
 		agent: Agent,
 		projectId: string,
 		user: User,
-	): Promise<Agent & { isRunnable: boolean }> {
+	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
-			agent.id,
-			projectId,
-			credentialProvider,
-		);
+		const [{ missing }, hasPublishHistory] = await Promise.all([
+			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentsService.hasPublishHistory(agent.id),
+		]);
 
-		return Object.assign(agent, { isRunnable: missing.length === 0 });
+		return Object.assign(agent, {
+			isRunnable: missing.length === 0,
+			hasPublishHistory,
+		});
 	}
 
 	@Post('/')
@@ -437,6 +442,38 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
+	@Post('/:agentId/revert-to-version')
+	@ProjectScope('agent:update')
+	async revertToVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: RevertAgentToVersionDto,
+	) {
+		const agent = await this.agentsService.revertToVersion(
+			agentId,
+			req.params.projectId,
+			payload.versionId,
+		);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ProjectScope('agent:read')
+	async listVersions(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentsService.listPublishHistory(
+			agentId,
+			req.params.projectId,
+			query.take,
+			query.skip,
+		);
+	}
+
 	@Post('/:agentId/chat', { usesTemplates: true })
 	@ProjectScope('agent:execute')
 	async chat(
@@ -716,10 +753,6 @@ export class AgentsController {
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.activeVersionId)
-			throw new ConflictError(
-				`Agent "${agentId}" must be published before connecting an integration`,
-			);
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			req.user,
@@ -733,6 +766,23 @@ export class AgentsController {
 			throw new BadRequestError(
 				`${integrationImpl.displayLabel} integrations do not support ${credential.type} credentials`,
 			);
+		}
+
+		if (!agent.activeVersionId) {
+			await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+			const publishedAgent = await this.agentsService.publishAgent(
+				agentId,
+				agent.projectId,
+				req.user,
+				undefined,
+				{ syncIntegrations: false },
+			);
+			await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+			await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
+			return {
+				status: 'connected',
+				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+			};
 		}
 
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);

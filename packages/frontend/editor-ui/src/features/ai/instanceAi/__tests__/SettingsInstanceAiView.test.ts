@@ -94,7 +94,6 @@ describe('SettingsInstanceAiView', () => {
 				enabled: true,
 				lastMessages: 20,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
