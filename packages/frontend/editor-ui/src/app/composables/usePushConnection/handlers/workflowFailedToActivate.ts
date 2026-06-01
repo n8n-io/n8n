@@ -3,13 +3,14 @@ import { useToast } from '@/app/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export async function workflowFailedToActivate({ data }: WorkflowFailedToActivate) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	if (workflowsStore.workflowId !== data.workflowId) {
+	if (getCurrentWorkflowId() !== data.workflowId) {
 		return;
 	}
 

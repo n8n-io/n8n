@@ -28,6 +28,23 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
+// Migration bridge: the handler reads the current workflow id via
+// getCurrentWorkflowId() (router singleton). Mirror it onto
+// workflowsStore.workflowId so the existing setWorkflowId() setup keeps driving the
+// handler guard. Replaced with direct route setup once workflowsStore.workflowId is removed.
+vi.mock('@/app/router', async () => {
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		default: {
+			currentRoute: {
+				get value() {
+					return { params: { workflowId: useWorkflowsStore().workflowId } };
+				},
+			},
+		},
+	};
+});
+
 const makeEvent = (
 	workflowId: string,
 	settings: Partial<IWorkflowSettings>,

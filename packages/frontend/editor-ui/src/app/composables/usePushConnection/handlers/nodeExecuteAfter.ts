@@ -1,6 +1,6 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
@@ -19,9 +19,9 @@ export async function nodeExecuteAfter(
 	{ data: pushData }: NodeExecuteAfter,
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = getCurrentWorkflowId();
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId),
 	);
 	const assistantStore = useAssistantStore();
 
@@ -65,7 +65,7 @@ export async function nodeExecuteAfter(
 		);
 
 		if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
-			void trackNodeExecution(pushDataWithPlaceholderOutputData, workflowsStore.workflowId);
+			void trackNodeExecution(pushDataWithPlaceholderOutputData, workflowId);
 		}
 	}
 
@@ -75,7 +75,7 @@ export async function nodeExecuteAfter(
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
 		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
 	} else if (pushData.data.executionStatus !== 'waiting') {
-		void trackNodeExecution(pushData, workflowsStore.workflowId);
+		void trackNodeExecution(pushData, workflowId);
 	}
 
 	void assistantStore.onNodeExecution(pushData);

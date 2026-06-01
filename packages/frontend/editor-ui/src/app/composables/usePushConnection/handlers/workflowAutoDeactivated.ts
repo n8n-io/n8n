@@ -1,5 +1,6 @@
 import type { WorkflowAutoDeactivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -16,7 +17,7 @@ export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated)
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
 
-	if (workflowsStore.workflowId === data.workflowId) {
+	if (getCurrentWorkflowId() === data.workflowId) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.workflowId);

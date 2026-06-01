@@ -55,6 +55,23 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	})),
 }));
 
+// Migration bridge: the handlers read the current workflow id via
+// getCurrentWorkflowId() (router singleton). Mirror it onto
+// workflowsStore.workflowId so the existing per-test id setup keeps driving the
+// handlers. Replaced with direct route setup once workflowsStore.workflowId is removed.
+vi.mock('@/app/router', async () => {
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		default: {
+			currentRoute: {
+				get value() {
+					return { params: { workflowId: useWorkflowsStore().workflowId } };
+				},
+			},
+		},
+	};
+});
+
 describe('continueEvaluationLoop()', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();

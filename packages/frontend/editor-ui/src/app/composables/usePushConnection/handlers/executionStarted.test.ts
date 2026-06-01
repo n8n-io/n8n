@@ -9,6 +9,23 @@ import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
+// Migration bridge: the handler reads the current workflow id via
+// getCurrentWorkflowId() (router singleton). Mirror it onto
+// workflowsStore.workflowId so the existing per-test id setup keeps driving the
+// handler. Replaced with direct route setup once workflowsStore.workflowId is removed.
+vi.mock('@/app/router', async () => {
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		default: {
+			currentRoute: {
+				get value() {
+					return { params: { workflowId: useWorkflowsStore().workflowId } };
+				},
+			},
+		},
+	};
+});
+
 describe('executionStarted', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;

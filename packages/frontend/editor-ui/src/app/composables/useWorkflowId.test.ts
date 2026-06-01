@@ -1,5 +1,5 @@
 import { VIEWS } from '@/app/constants';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useWorkflowId, getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { render } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,10 @@ const route = vi.hoisted(() => ({
 
 vi.mock('vue-router', () => ({
 	useRoute: () => route,
+}));
+
+vi.mock('@/app/router', () => ({
+	default: { currentRoute: { value: route } },
 }));
 
 describe('useWorkflowId', () => {
@@ -62,5 +66,35 @@ describe('useWorkflowId', () => {
 		});
 
 		expect(getByTestId('workflow-id')).toHaveTextContent('injected-workflow-id');
+	});
+});
+
+describe('getCurrentWorkflowId', () => {
+	beforeEach(() => {
+		route.name = VIEWS.WORKFLOW;
+		route.params = {};
+	});
+
+	it('reads the workflowId route parameter from the router singleton', () => {
+		route.params = { workflowId: 'workflow-123' };
+
+		expect(getCurrentWorkflowId()).toBe('workflow-123');
+	});
+
+	it('uses the first workflowId parameter when it is an array', () => {
+		route.params = { workflowId: ['workflow-123', 'node-456'] };
+
+		expect(getCurrentWorkflowId()).toBe('workflow-123');
+	});
+
+	it('returns an empty string when the workflowId parameter is missing', () => {
+		expect(getCurrentWorkflowId()).toBe('');
+	});
+
+	it.each([VIEWS.DEMO, VIEWS.DEMO_DIFF])('returns demo for %s routes', (routeName) => {
+		route.name = routeName;
+		route.params = { workflowId: 'workflow-123' };
+
+		expect(getCurrentWorkflowId()).toBe('demo');
 	});
 });

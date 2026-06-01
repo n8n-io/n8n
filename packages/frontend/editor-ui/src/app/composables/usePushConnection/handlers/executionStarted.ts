@@ -1,5 +1,5 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -14,9 +14,8 @@ import type { IRunExecutionData } from 'n8n-workflow';
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
  */
 export async function executionStarted({ data }: ExecutionStarted) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(getCurrentWorkflowId()),
 	);
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 		workflowDocumentStore.documentId,

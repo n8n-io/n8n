@@ -6,12 +6,11 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 
 export async function workflowSettingsUpdated({
 	data: { workflowId, settings, checksum },
 }: WorkflowSettingsUpdated) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 
 	// Keep the list entry in sync so other views (workflow cards, MCP
@@ -29,7 +28,7 @@ export async function workflowSettingsUpdated({
 	}
 
 	// Only the editor tab needs to resync the document store + checksum.
-	if (workflowId !== workflowsStore.workflowId) return;
+	if (workflowId !== getCurrentWorkflowId()) return;
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	workflowDocumentStore.mergeSettings(settings);

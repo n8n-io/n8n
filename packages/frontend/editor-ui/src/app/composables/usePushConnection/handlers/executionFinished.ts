@@ -6,6 +6,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
@@ -67,7 +68,6 @@ export async function executionFinished(
 	{ data }: ExecutionFinished,
 	options: ExecutionFinishedOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -77,7 +77,7 @@ export async function executionFinished(
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(getCurrentWorkflowId()),
 	);
 
 	// No workflow is actively running, therefore we ignore this event
@@ -214,7 +214,7 @@ export async function fetchExecutionData(
 ): Promise<SimplifiedExecution | undefined> {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(getCurrentWorkflowId()),
 	);
 
 	try {
@@ -259,9 +259,8 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 	if (execution.status === 'crashed') {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
-		const workflowsStore = useWorkflowsStore();
 		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(getCurrentWorkflowId()),
 		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
@@ -300,7 +299,7 @@ export function handleExecutionFinishedWithWaitTill(
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
+				if (!workflowsStore.isWorkflowSaved[getCurrentWorkflowId()])
 					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
@@ -321,10 +320,8 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const workflowId = getCurrentWorkflowId();
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
 
@@ -348,7 +345,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					workflowHelpers.getNodeTypes(),
 				).nodeGraph,
 			),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 		};
 
 		if (
@@ -423,7 +420,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(getCurrentWorkflowId()),
 	);
 	const workflowName = workflowDocumentStore.name;
 
@@ -483,9 +480,8 @@ export function setRunExecutionData(
 	runExecutionData: IRunExecutionData,
 	workflowState: WorkflowState,
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(getCurrentWorkflowId()),
 	);
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);

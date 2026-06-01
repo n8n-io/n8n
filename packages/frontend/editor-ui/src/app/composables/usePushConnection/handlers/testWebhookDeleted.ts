@@ -1,5 +1,5 @@
 import type { TestWebhookDeleted } from '@n8n/api-types/push/webhook';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getCurrentWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -11,11 +11,11 @@ export async function testWebhookDeleted(
 	{ data }: TestWebhookDeleted,
 	options: { workflowState: WorkflowState },
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = getCurrentWorkflowId();
 
-	if (data.workflowId === workflowsStore.workflowId) {
+	if (data.workflowId === workflowId) {
 		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId),
 		).setExecutionWaitingForWebhook(false);
 		options.workflowState.setActiveExecutionId(undefined);
 	}
