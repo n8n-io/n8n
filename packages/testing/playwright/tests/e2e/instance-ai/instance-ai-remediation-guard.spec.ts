@@ -7,13 +7,9 @@ test.use({
 	...instanceAiTestConfig,
 	capability: {
 		...instanceAiTestConfig.capability,
-		services: [...instanceAiTestConfig.capability.services, 'sandbox'],
 		env: {
 			...instanceAiTestConfig.capability.env,
 			N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN: 'false',
-			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
-			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox',
-			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
 		},
 	},
 });
