@@ -176,10 +176,10 @@ export class AgentTaskService {
 
 	/**
 	 * Reconcile an agent's task crons after a publish/unpublish/delete: apply the
-	 * change locally (registration is leader-only, see `reconcileAgent`) and, in
-	 * multi-main mode, broadcast so the leader picks it up even when a follower
-	 * handled the HTTP request. `registerEnabledForAgent` is idempotent, so a
-	 * self-delivered broadcast is harmless.
+	 * change locally when this main is leader and, in multi-main mode, broadcast
+	 * so the leader picks it up even when a follower handled the HTTP request.
+	 * `registerEnabledForAgent` is idempotent, so a self-delivered broadcast is
+	 * harmless.
 	 */
 	async requestReconcile(agentId: string): Promise<void> {
 		await this.registerEnabledForAgent(agentId);
@@ -188,9 +188,9 @@ export class AgentTaskService {
 
 	/**
 	 * Reconcile an agent's cron jobs against its PUBLISHED config. Registers
-	 * enabled tasks (leader only) and stops jobs that are no longer
-	 * enabled/present; deregisters everything when the agent is unpublished or
-	 * gone. Used by the local lifecycle path and the pubsub reconcile handler.
+	 * enabled tasks and stops jobs that are no longer enabled/present on the
+	 * leader; deregisters everything when the agent is unpublished or gone. Used
+	 * by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
 		const agent = await this.agentRepository.findOne({
@@ -205,8 +205,8 @@ export class AgentTaskService {
 	}
 
 	/**
-	 * Apply a peer main's task reconcile. Registration is leader-only, so on
-	 * followers this only deregisters stale jobs (a no-op when none are held).
+	 * Apply a peer main's task reconcile. Registration is leader-only, so
+	 * followers receive the event but do not own live task cron jobs.
 	 */
 	@OnPubSubEvent('agent-tasks-changed', { instanceType: 'main' })
 	async handleTasksChanged(payload: PubSubCommandMap['agent-tasks-changed']): Promise<void> {
@@ -266,7 +266,7 @@ export class AgentTaskService {
 		// Only the leader owns task crons — a cron firing on multiple mains would
 		// run the agent twice per tick. Followers skip registration entirely; the
 		// leader applies the change via the `agent-tasks-changed` pubsub reconcile.
-		// Deregistration paths stay ungated so a former leader still stops its jobs.
+		// A former leader drops its jobs via @OnLeaderStepdown/@OnShutdown.
 		if (!this.instanceSettings.isLeader) return;
 
 		const enabledIds = this.enabledTaskIds(agent);
