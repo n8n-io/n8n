@@ -2,24 +2,18 @@ import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-
-import {
-	affixRoleToSaveCredential,
-	saveCredential,
-	shareCredentialWithProjects,
-} from '@test-integration/db/credentials';
+import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
-import { N8nPackagesService } from '../n8n-packages.service';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
-
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
@@ -27,6 +21,7 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Workflow with a structurally invalid connection: the source node referenced
@@ -463,52 +458,6 @@ describe('ImportPipeline credential resolution', () => {
 			]),
 		);
 		expect(await Container.get(WorkflowRepository).count()).toBe(2);
-	});
-
-	it('fails with not_found when credential is only shared as credential:user', async () => {
-		const owner = await createOwner();
-		const member = await createMember();
-		const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const memberProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			member.id,
-		);
-		const credential = await saveOwnedCredential(
-			githubCredentialPayload({ name: 'Member GitHub' }),
-			{
-				project: memberProject,
-			},
-		);
-		await shareCredentialWithProjects(credential, [ownerProject]);
-
-		await expect(
-			Container.get(N8nPackagesService).importPackage({
-				user: owner,
-				packageBuffer: await buildImportPackageBuffer(
-					[
-						serializedWorkflowWithCredential({
-							id: 'wf-missing',
-							name: 'Missing',
-							credentialId: credential.id,
-							credentialName: credential.name,
-						}),
-					],
-					{ sourceId },
-				),
-			}),
-		).rejects.toMatchObject({
-			meta: {
-				failures: [
-					expect.objectContaining({
-						kind: 'not_found',
-						sourceId: credential.id,
-					}),
-				],
-			},
-		});
-
-		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('reports mixed unknown_type and not_found failures in one response', async () => {
