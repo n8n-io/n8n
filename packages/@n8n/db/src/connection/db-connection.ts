@@ -46,6 +46,7 @@ export class DbConnection {
 		const { connectionState, options } = this;
 		if (connectionState.connected) return;
 
+		// TODO(CAT-3314): Remove N8N_DB_PING_TIMEOUT fallback in v3.
 		if (process.env.N8N_DB_PING_TIMEOUT) {
 			this.logger.warn(
 				'N8N_DB_PING_TIMEOUT is deprecated, use DB_PING_TIMEOUT_MS instead. The legacy variable will be removed in a future release.',
