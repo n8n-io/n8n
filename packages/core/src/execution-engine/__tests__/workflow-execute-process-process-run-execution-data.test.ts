@@ -8,7 +8,12 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeConnectionTypes,
+	UnexpectedError,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
@@ -62,9 +67,10 @@ describe('processRunExecutionData', () => {
 		// ACT & ASSERT
 		// The function returns a Promise, but throws synchronously, so we can't await it.
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
-		expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
-			'Failed to run workflow due to missing execution data',
-		);
+		const execution = () => workflowExecute.processRunExecutionData(workflow);
+
+		expect(execution).toThrow(UnexpectedError);
+		expect(execution).toThrow('Failed to run workflow due to missing execution data');
 	});
 
 	test('returns input data verbatim', async () => {
@@ -246,7 +252,10 @@ describe('processRunExecutionData', () => {
 			// ACT & ASSERT
 			// The function returns a Promise, but throws synchronously, so we can't await it.
 			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
+			const execution = () => workflowExecute.processRunExecutionData(workflow);
+
+			expect(execution).toThrow(ApplicationError);
+			expect(execution).toThrow(
 				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
 			);
 		});

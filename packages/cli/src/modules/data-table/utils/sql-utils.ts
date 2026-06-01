@@ -61,7 +61,7 @@ function dataTableColumnTypeToSql(
 			return 'BOOLEAN';
 		case 'date':
 			if (dbType === 'postgres') {
-				return 'TIMESTAMP';
+				return 'TIMESTAMPTZ';
 			}
 			return 'DATETIME';
 		default:

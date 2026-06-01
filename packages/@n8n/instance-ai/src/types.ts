@@ -88,12 +88,89 @@ export interface NodeOutputResult {
 	returned: { from: number; to: number };
 }
 
+export interface ResolvedExpressionFailure {
+	/** Dot-path into the parameters tree, e.g. "headers.parameters[0].value". */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** Error message from the expression engine. */
+	error: string;
+	/**
+	 * `unreconstructable-context` flags failures stemming from expression contexts that
+	 * only exist during a live execution (e.g. `$ai`, `$response`, `$request`,
+	 * `$pageCount`, `$secrets`). These are expected and not real expression bugs.
+	 */
+	reason?: 'expression-error' | 'unreconstructable-context';
+}
+
+export interface EmptyExpressionResolution {
+	/** Dot-path into the parameters tree. */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** The resolved value — one of `null`, `undefined`, or `""`. */
+	resolved: null | undefined | '';
+	/** Set when the expression references a non-reconstructed context var (`$vars`, `$secrets`, `$ai`, `$response`, `$request`, `$pageCount`) */
+	reason?: 'unreconstructable-context';
+}
+
+export interface ResolvedNodeParametersResult {
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	/**
+	 * The node's parameters straight from the execution's workflow snapshot, with
+	 * `{{ ... }}` expressions intact. Pair with `resolved` to see which value came
+	 * from which expression. `null` when resolution was refused — see `suppressed`.
+	 */
+	parameters: Record<string, unknown> | null;
+	/**
+	 * Mirror of `parameters` with each expression leaf replaced by its resolved
+	 * value (or `null` if it threw). Oversized leaves are replaced with a
+	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * Returned as a JSON-stringified blob inside `<untrusted_data>` markers —
+	 * resolved values can echo content from upstream nodes (webhook bodies,
+	 * HTTP responses, etc.) and must be treated as untrusted by the agent.
+	 *
+	 * `null` when resolution was refused — see `suppressed`.
+	 */
+	resolved: string | null;
+	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
+	failedExpressions: ResolvedExpressionFailure[];
+	/**
+	 * Expressions that resolved to `null`, `undefined`, or `""` — common cause of
+	 * "this node ran but a parameter looked empty". Often the root cause for missing
+	 * fields downstream when the runtime did not throw.
+	 */
+	emptyResolutions: EmptyExpressionResolution[];
+	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
+	suppressed?: 'parameter-values-disabled';
+}
+
+/**
+ * Resolved-parameter bundle attached to a debug failedNode.
+ * Same payload as `ResolvedNodeParametersResult` minus `nodeName` (redundant —
+ * `failedNode.name` already carries it).
+ */
+export type ResolvedParametersDebugBundle = Omit<
+	ResolvedNodeParametersResult,
+	'nodeName' | 'suppressed'
+>;
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
 		type: string;
 		error: string;
 		inputData?: Record<string, unknown> | string;
+		/**
+		 * Re-resolved parameters for the failed node (parameters tree with expressions
+		 * intact + the same tree with expressions substituted + failed/empty expression
+		 * lists). Omitted when parameter values are gated off, when resolution itself
+		 * errors (debug must not fail), or when the snapshot lacks node-type info.
+		 */
+		resolvedParameters?: ResolvedParametersDebugBundle;
 	};
 	nodeTrace: Array<{
 		name: string;
@@ -261,6 +338,17 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+	/**
+	 * Re-resolve a node's parameter expressions against a saved execution's data.
+	 * Server-side replay of the editor's resolved-parameter view, so the agent can
+	 * see exactly what each parameter resolved to (and which expressions failed)
+	 * for a given item in a past run.
+	 */
+	getResolvedNodeParameters(
+		executionId: string,
+		nodeName: string,
+		options?: { itemIndex?: number; runIndex?: number },
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -829,7 +917,6 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	lastMessages?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 	observationalMemory?: {
@@ -1073,12 +1160,9 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
@@ -1132,6 +1216,34 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/**
+	 * Resume info for a suspended sub-agent of this thread, looked up from the
+	 * persisted checkpoint store by the deterministic sub-agent resourceId
+	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
+	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
+	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
+	 * + the persistence the planner was running under, so the resume path
+	 * can rebuild the sub-agent with the same persistence and call
+	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
+	 * without stashing anything across its own suspend/resume cycle.
+	 */
+	findSubAgentResumeInfo?: (agentKind: string) => Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	>;
+	/**
+	 * Persist the current user message to thread memory immediately, so it
+	 * survives a restart that happens while the orchestrator is suspended on
+	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
+	 * loop completion, which a suspended run never reaches — without this the
+	 * user's bubble is invisible on reload until the turn eventually completes.
+	 * Idempotent: safe to call multiple times within a run.
+	 */
+	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

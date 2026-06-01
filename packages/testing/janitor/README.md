@@ -243,6 +243,28 @@ plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.
 
+**Global triggers force a full workspace run.** Some changes are invisible to
+a per-package import-graph walk: a lockfile / root-manifest change, or an edit
+to a universal sink (`packages/@n8n/db`, `packages/workflow`, `packages/core`)
+whose runtime coupling to downstream packages isn't expressed as a static
+import the test file can see. For these, scoping to "files in this package"
+would find nothing and emit `SKIP` on every downstream — a silent false green.
+
+The trigger list lives in one place, `core/global-triggers.ts`
+(`GLOBAL_TRIGGER_FILES` for exact filenames, `GLOBAL_TRIGGER_PREFIXES` for
+directories), and is consulted at **both** layers of the pipeline:
+
+* `affectedPackages()` returns every package, so all jobs are listed as
+  affected; and
+* `computeScope()` returns `RUN_FULL` for the package, so each job actually
+  runs its full suite instead of skipping.
+
+Both checks are required — `affectedPackages` alone only decides which jobs are
+*listed*; without the `computeScope` check the job would still `SKIP`. The
+trade-off is over-testing on the rare PRs that touch these paths (the failure
+mode is "ran too much", never "ran nothing"). To add a new universal sink, add
+its directory prefix to `GLOBAL_TRIGGER_PREFIXES`.
+
 ## Rules
 
 ### Architecture Rules

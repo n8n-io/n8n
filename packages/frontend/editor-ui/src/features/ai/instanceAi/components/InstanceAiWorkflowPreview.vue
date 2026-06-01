@@ -4,10 +4,8 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
@@ -59,9 +57,9 @@ const pushStore = usePushConnectionStore();
 const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionStarted') return;
 	if (event.data.workflowId !== props.workflowId) return;
-	useWorkflowExecutionStateStore(
-		createWorkflowExecutionStateId(props.workflowId),
-	).setActiveExecutionId(null);
+	useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId)).setActiveExecutionId(
+		null,
+	);
 });
 
 // On executionFinished with errors, surface a structured failures report so

@@ -6,7 +6,6 @@ jest.mock('@n8n/instance-ai', () => {
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
-			getBrowserTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
