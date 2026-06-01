@@ -110,10 +110,68 @@ describe('AgentsController route access scopes', () => {
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],
 		['revertToPublished', 'agent:update'],
+		['revertToVersion', 'agent:update'],
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
+		['listVersions', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentsController publish history', () => {
+	it('lists publish history with pagination forwarded from the query', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.listPublishHistory.mockResolvedValue([
+			{
+				versionId: 'v2',
+				agentId: 'agent-1',
+				createdAt: '2026-01-02T00:00:00.000Z',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				author: 'Ada Lovelace',
+				isActive: true,
+			},
+		]);
+
+		const result = await controller.listVersions(
+			{ params: { projectId: 'project-1', agentId: 'agent-1' } } as never,
+			undefined as never,
+			'agent-1',
+			{ take: 5, skip: 10 } as never,
+		);
+
+		expect(agentsService.listPublishHistory).toHaveBeenCalledWith('agent-1', 'project-1', 5, 10);
+		expect(result).toHaveLength(1);
+		expect(result[0].isActive).toBe(true);
+	});
+});
+
+describe('AgentsController revert to version', () => {
+	it('forwards the parsed versionId to the service and returns the agent with runnable state', async () => {
+		const { controller, agentsService } = makeController();
+		agentsService.revertToVersion.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+		} as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+
+		const result = await controller.revertToVersion(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+			{ versionId: 'v1' } as never,
+		);
+
+		expect(agentsService.revertToVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v1');
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				isRunnable: true,
+			}),
+		);
 	});
 });
 
@@ -125,10 +183,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-allowed',
 				name: 'Allowed Slack',
 				type: 'slackApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
@@ -198,10 +261,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-oauth',
 				name: 'Slack OAuth',
 				type: 'slackOAuth2Api',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
@@ -250,10 +318,15 @@ describe('AgentsController integration credentials', () => {
 				id: 'cred-telegram',
 				name: 'Telegram Bot',
 				type: 'telegramApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
 				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
 			},
 		]);
 
@@ -311,6 +384,171 @@ describe('AgentsController integration credentials', () => {
 			credentialId: 'cred-telegram',
 			settings,
 		});
+	});
+
+	it('persists the integration before publishing when connecting an unpublished agent', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-slack',
+				name: 'Slack Bot',
+				type: 'slackApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: null,
+			integrations: [],
+		};
+		const savedAgent = {
+			...agent,
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		const publishedAgent = {
+			...savedAgent,
+			publishedVersion: {},
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const agentsService = mock<AgentsService>();
+		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
+		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.connect.mockResolvedValue(undefined);
+		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);
+		const { controller } = makeController({
+			agentsService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toMatchObject({
+			status: 'connected',
+			agent: {
+				id: 'agent-1',
+				publishedVersion: {},
+				isRunnable: true,
+			},
+		});
+
+		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
+			broadcast: false,
+		});
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ id: 'user-1' },
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'user-1',
+			'project-1',
+		);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'connect',
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
+		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{
+				id: 'cred-slack',
+				name: 'Slack Bot',
+				type: 'slackApi',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+				scopes: [],
+				isManaged: false,
+				isGlobal: false,
+				isResolvable: true,
+				currentUserHasAccess: true,
+				homeProject: null,
+				sharedWithProjects: [],
+			},
+		]);
+
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			publishedVersion: null,
+			integrations: [],
+		};
+		const savedAgent = {
+			...agent,
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		const publishedAgent = {
+			...savedAgent,
+			publishedVersion: {},
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const agentsService = mock<AgentsService>();
+		agentsService.saveCredentialIntegration.mockResolvedValue(savedAgent as never);
+		agentsService.publishAgent.mockResolvedValue(publishedAgent as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
+		const { controller } = makeController({
+			agentsService,
+			credentialsService,
+			chatIntegrationService,
+			agentRepository,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow('Slack connect failed');
+
+		expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});
 
 	it('returns Telegram integrations from the persisted agent entry even when the live bridge is empty', async () => {
@@ -411,7 +649,7 @@ describe('AgentsController integration credentials', () => {
 				features: {
 					app_home: {
 						home_tab_enabled: true,
-						messages_tab_enabled: false,
+						messages_tab_enabled: true,
 						messages_tab_read_only_enabled: false,
 					},
 					bot_user: {

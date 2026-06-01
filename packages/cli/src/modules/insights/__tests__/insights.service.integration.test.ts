@@ -994,12 +994,13 @@ describe('InsightsService (Integration)', () => {
 			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
 			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() =>
+			const execution = () =>
 				insightsService.validateDateFiltersLicense({
 					startDate: startDate.toJSDate(),
 					endDate: endDate.toJSDate(),
-				}),
-			).toThrowError(new UserError('Hourly data is not available with your current license'));
+				});
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow('Hourly data is not available with your current license');
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
@@ -1025,10 +1026,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = today.minus({ days: 8 }).toJSDate();
 			const endDate = today.toJSDate();
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError(
-					'The selected date range exceeds the maximum history allowed by your license',
-				),
+			const execution = () => insightsService.validateDateFiltersLicense({ startDate, endDate });
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow(
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		});
 

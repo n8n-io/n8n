@@ -30,9 +30,10 @@ describe('OwnerController', () => {
 				.spyOn(ownershipService, 'setupOwner')
 				.mockRejectedValueOnce(new BadRequestError('Instance owner already setup'));
 
-			await expect(controller.setupOwner(mock(), mock(), mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
+			const execution = controller.setupOwner(mock(), mock(), mock());
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner already setup');
 
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 		});

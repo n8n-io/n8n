@@ -35,6 +35,9 @@ export interface ChatIntegrationDescriptor {
 	label: string;
 	icon: string;
 	credentialTypes: string[];
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
 }
 
 export interface AgentScheduleConfig {
@@ -116,6 +119,15 @@ export interface AgentVersionDto {
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
 	author: string;
+}
+
+export interface AgentVersionListItemDto {
+	versionId: string;
+	agentId: string;
+	createdAt: string;
+	updatedAt: string;
+	author: string;
+	isActive: boolean;
 }
 
 export interface AgentPersistedMessageContentPart {
