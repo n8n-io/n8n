@@ -1,35 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import vm from 'node:vm';
 
-const workflowPaths = [
-	'workflows/video-clip-tts-workflow.json',
-	'workflows/video-clip-ai-podcast-workflow.json',
-	'workflows/presentation-ai-podcast-workflow.json',
-	'workflows/pdf-enhanced-ai-podcast-workflow.json',
-	'workflows/pdf-science-explainer-video-workflow.json',
-];
+const workflowPaths = fs
+	.readdirSync('workflows')
+	.filter((file) => file.endsWith('.json'))
+	.map((file) => path.join('workflows', file))
+	.sort();
 
 function loadWorkflow(workflowPath) {
 	return JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
 }
 
-function getNode(workflow, name) {
-	const node = workflow.nodes.find((candidate) => candidate.name === name);
-	assert.ok(node, `Expected node ${name} in ${workflow.name}`);
-
-	return node;
-}
-
-test('composer workflows run in a direct linear chain without polling loops', () => {
+test('workflows do not contain duplicate nodes or composer polling loops', () => {
 	for (const workflowPath of workflowPaths) {
 		const workflow = loadWorkflow(workflowPath);
-		const composerNode = workflow.nodes.find((node) => /Composer/.test(node.name));
-		assert.ok(composerNode, `${workflowPath} should have a composer node`);
-		const code = composerNode.parameters?.jsCode || '';
-		assert.doesNotMatch(code, /managed-job-runner\.mjs/, `${composerNode.name} should not use managed runner`);
-		assert.doesNotMatch(code, /detached:\s*true/, `${composerNode.name} should not detach a background runner`);
+		const nodeNames = workflow.nodes.map((node) => node.name);
+		const duplicateNodeNames = nodeNames.filter((name, index) => nodeNames.indexOf(name) !== index);
+		const code = workflow.nodes.map((node) => node.parameters?.jsCode || '').join('\n');
+
+		assert.deepEqual(duplicateNodeNames, [], `${workflowPath} should not contain duplicate node names`);
+		assert.doesNotMatch(code, /managed-job-runner\.mjs/, `${workflowPath} should not use managed runner`);
+		assert.doesNotMatch(code, /detached:\s*true/, `${workflowPath} should not detach a background runner`);
 		assert.equal(
 			workflow.nodes.some((node) => ['Wait For Composer', 'Check Composer Status', 'Composer Complete?'].includes(node.name)),
 			false,
@@ -40,6 +34,14 @@ test('composer workflows run in a direct linear chain without polling loops', ()
 			false,
 			`${workflowPath} should not contain composer polling connections`,
 		);
+
+		for (const [sourceNode, connection] of Object.entries(workflow.connections || {})) {
+			for (const output of connection.main || []) {
+				for (const edge of output || []) {
+					assert.notEqual(edge.node, sourceNode, `${workflowPath} should not contain self-loop ${sourceNode}`);
+				}
+			}
+		}
 	}
 });
 
