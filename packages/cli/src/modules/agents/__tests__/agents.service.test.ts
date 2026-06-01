@@ -457,7 +457,7 @@ describe('AgentsService', () => {
 				instructions: 'Old instructions',
 				description: 'previously stored description',
 				credential: 'cred-anthropic',
-				memory: { enabled: true, lastMessages: 20 },
+				memory: { enabled: true },
 				tools: [{ type: 'custom', id: 'tool-keep' } as const],
 			} as unknown as AgentJsonConfig;
 			const agent = makeAgent({ schema: previousSchema });
@@ -481,7 +481,7 @@ describe('AgentsService', () => {
 			expect(savedSchema.instructions).toBe('Updated instructions');
 			expect(savedSchema.description).toBe('previously stored description');
 			expect(savedSchema.credential).toBe('cred-anthropic');
-			expect(savedSchema.memory).toEqual({ enabled: true, lastMessages: 20 });
+			expect(savedSchema.memory).toEqual({ enabled: true });
 			expect(savedSchema.tools).toEqual([{ type: 'custom', id: 'tool-keep' }]);
 			// description column on the entity also stays untouched.
 			expect(savedEntity.description).toBe(agent.description);

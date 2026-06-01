@@ -38,7 +38,7 @@ async function mountColumn() {
 				name: 'Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Help the user.',
-				memory: { enabled: true, storage: 'n8n', lastMessages: 10 },
+				memory: { enabled: true, storage: 'n8n' },
 			},
 			agent: null,
 			projectId: 'project-1',

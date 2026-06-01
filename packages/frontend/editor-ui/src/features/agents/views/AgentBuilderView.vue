@@ -48,7 +48,6 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
@@ -460,7 +459,6 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 			...config.memory,
 			enabled: true,
 			storage: 'n8n',
-			lastMessages: config.memory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 		},
 	};
 }
