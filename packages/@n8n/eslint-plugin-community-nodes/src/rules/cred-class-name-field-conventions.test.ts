@@ -25,6 +25,19 @@ export class SomeHelper {
 }`;
 }
 
+// Embeds the raw literal text (including its quotes) verbatim, so tests can
+// exercise names containing quote characters that need escaping.
+function createCredentialCodeWithLiteral(literal: string): string {
+	return `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class TestApi implements ICredentialType {
+	name = ${literal};
+	displayName = 'Test API';
+	properties: INodeProperties[] = [];
+}`;
+}
+
 ruleTester.run('cred-class-name-field-conventions', CredClassNameFieldConventionsRule, {
 	valid: [
 		{
@@ -86,6 +99,23 @@ ruleTester.run('cred-class-name-field-conventions', CredClassNameFieldConvention
 			code: createCredentialCode('githubA'),
 			errors: [{ messageId: 'missingSuffix', data: { value: 'githubA' } }],
 			output: createCredentialCode('githubApi'),
+		},
+		{
+			name: 'autofix escapes single quotes in the name value',
+			filename: credFilePath,
+			code: createCredentialCodeWithLiteral("'git\\'hub'"),
+			errors: [{ messageId: 'missingSuffix', data: { value: "git'hub" } }],
+			output: createCredentialCodeWithLiteral("'git\\'hubApi'"),
+		},
+		{
+			name: 'autofix preserves double quotes and escapes them in the name value',
+			filename: credFilePath,
+			code: createCredentialCodeWithLiteral('"Git\\"hub"'),
+			errors: [
+				{ messageId: 'uppercaseFirstChar', data: { value: 'Git"hub' } },
+				{ messageId: 'missingSuffix', data: { value: 'Git"hub' } },
+			],
+			output: createCredentialCodeWithLiteral('"git\\"hubApi"'),
 		},
 	],
 });

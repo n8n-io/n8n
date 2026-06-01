@@ -17,6 +17,19 @@ function addApiSuffix(name: string): string {
 	return `${name}Api`;
 }
 
+// Serialize a value as a string literal using the original quote character,
+// escaping any characters that would otherwise break the literal so the
+// autofix never emits invalid code (e.g. names containing quotes).
+function toStringLiteral(value: string, quote: string): string {
+	const escaped = value
+		.replace(/\\/g, '\\\\')
+		.replace(/\n/g, '\\n')
+		.replace(/\r/g, '\\r')
+		.split(quote)
+		.join(`\\${quote}`);
+	return `${quote}${escaped}${quote}`;
+}
+
 export const CredClassNameFieldConventionsRule = createRule({
 	name: 'cred-class-name-field-conventions',
 	meta: {
@@ -63,7 +76,8 @@ export const CredClassNameFieldConventionsRule = createRule({
 				// same result in a single pass, regardless of which one applies.
 				const fixedValue = addApiSuffix(lowercaseFirstChar(nameValue));
 				const valueNode = nameProperty.value;
-				const replacement = `'${fixedValue}'`;
+				const quote = context.sourceCode.getText(valueNode).charAt(0);
+				const replacement = toStringLiteral(fixedValue, quote);
 
 				if (!startsLowercase) {
 					context.report({
