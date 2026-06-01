@@ -31,7 +31,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	errorReporter.error.mockClear();
+	jest.mocked(errorReporter.error).mockClear();
 	const workflowsDir = join(storagePath, 'workflows');
 	await rm(workflowsDir, { recursive: true, force: true }).catch(() => {});
 });
