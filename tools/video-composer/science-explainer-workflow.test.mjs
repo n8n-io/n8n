@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const workflow = JSON.parse(
 	fs.readFileSync('workflows/pdf-science-explainer-video-workflow.json', 'utf8'),
@@ -73,5 +74,17 @@ test('science explainer code nodes avoid modules blocked by n8n task runner', ()
 				`${node.name} must not require ${moduleName}`,
 			);
 		}
+	}
+});
+
+test('science explainer code nodes are valid n8n task-runner JavaScript', () => {
+	for (const node of workflow.nodes) {
+		const jsCode = node.parameters?.jsCode;
+		if (!jsCode) continue;
+
+		assert.doesNotThrow(
+			() => new vm.Script(`(async function(){\n${jsCode}\n})`),
+			`${node.name} must compile in the n8n task runner`,
+		);
 	}
 });

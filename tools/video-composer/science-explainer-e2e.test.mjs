@@ -4,9 +4,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 const repoRoot = path.resolve(new URL('../..', import.meta.url).pathname);
 const videoComposerDir = path.join(repoRoot, 'tools', 'video-composer');
+const requireFromTest = createRequire(import.meta.url);
+const workflow = JSON.parse(
+	fs.readFileSync(path.join(repoRoot, 'workflows', 'pdf-science-explainer-video-workflow.json'), 'utf8'),
+);
 
 function commandExists(command) {
 	const result = spawnSync('sh', ['-c', 'command -v "$1"', 'sh', command], { stdio: 'ignore' });
@@ -64,6 +70,55 @@ function makeMedia({ backgroundVideoPath, fixtureDir }) {
 		subtitles: [{ start: 0.05, end: 1, text: '这页的重点是七小时附近的低点。' }],
 	}, null, 2));
 	fs.writeFileSync(path.join(fixtureDir, 'page-001.txt'), '这页的重点是七小时附近的低点。', 'utf8');
+}
+
+function getNode(name) {
+	const node = workflow.nodes.find((candidate) => candidate.name === name);
+	assert.ok(node, `Expected workflow node: ${name}`);
+
+	return node;
+}
+
+async function runCodeNode({ name, item, uploadBuffers = {}, nodeResults = {} }) {
+	const node = getNode(name);
+	const jsCode = node.parameters?.jsCode;
+	assert.ok(jsCode, `${name} must have jsCode`);
+	const script = new vm.Script(`(async function(){\n${jsCode}\n}).call(contextThis)`);
+	const context = vm.createContext({
+		Buffer,
+		console,
+		Error,
+		JSON,
+		Math,
+		Number,
+		Promise,
+		String,
+		Date,
+		require: requireFromTest,
+		process,
+		contextThis: {
+			helpers: {
+				getBinaryDataBuffer: async (_index, key) => {
+					const buffer = uploadBuffers[key];
+					if (!buffer) throw new Error(`Missing upload buffer for ${key}`);
+
+					return buffer;
+				},
+			},
+		},
+		$env: process.env,
+		$input: {
+			first: () => item,
+		},
+		$: (nodeName) => ({
+			first: () => nodeResults[nodeName],
+		}),
+	});
+	const result = await script.runInContext(context, { timeout: 300000 });
+	assert.ok(Array.isArray(result), `${name} must return n8n items`);
+	assert.ok(result[0], `${name} must return at least one item`);
+
+	return result[0];
 }
 
 test('science explainer workflow scripts run end-to-end with offline fixtures', (t) => {
@@ -253,4 +308,136 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 	const subtitle = fs.readFileSync(paths.subtitlePath, 'utf8');
 	assert.match(subtitle, /,80,80,188,1/);
 	assert.match(subtitle, /这页的重点是七小时附近的低点。/);
+});
+
+test('science explainer workflow code nodes generate a final video end-to-end', async (t) => {
+	if (process.env.RUN_SCIENCE_EXPLAINER_E2E !== '1') {
+		t.skip('Set RUN_SCIENCE_EXPLAINER_E2E=1 to run the full offline workflow render');
+		return;
+	}
+	for (const command of ['ffmpeg', 'ffprobe', 'python3']) {
+		if (!commandExists(command)) {
+			t.skip(`${command} is not available; skipping full offline workflow render`);
+			return;
+		}
+	}
+
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'science-explainer-workflow-e2e-'));
+	const sourcePdfPath = path.join(root, 'upload.pdf');
+	const sourceBackgroundPath = path.join(root, 'upload-background.mp4');
+	const fixtureDir = path.join(root, 'fixtures');
+	fs.mkdirSync(fixtureDir, { recursive: true });
+	makePdf(sourcePdfPath);
+	makeMedia({ backgroundVideoPath: sourceBackgroundPath, fixtureDir });
+
+	const visualFixturePath = path.join(root, 'visual-fixture.json');
+	const scriptFixturePath = path.join(root, 'script-fixture.json');
+	fs.writeFileSync(visualFixturePath, JSON.stringify({
+		pages: [{
+			pageNumber: 1,
+			visualNotes: '标题为 Nature Sleep Study，页面强调 7 小时附近低点。',
+			layoutNotes: '竖版页面，上方标题，下方三行要点。',
+			evidenceNotes: '能支持睡眠时长存在 U 型提示的谨慎讲解。',
+			uncertaintyNotes: '不能证明因果关系。',
+		}],
+	}, null, 2));
+	fs.writeFileSync(scriptFixturePath, JSON.stringify({
+		title: '睡眠时长怎么理解',
+		summary: '用一页 PDF 讲清楚 7 小时低点的谨慎含义。',
+		mode: 'single_speaker',
+		pages: [{
+			pageNumber: 1,
+			pageTitle: '7 小时附近的低点',
+			visualNotes: '标题和要点均指向 7 小时附近。',
+			evidenceNotes: '页面支持趋势提示，不支持因果断言。',
+			speakerPrompt: '这一页我们先看结论：七小时附近像是一个低点，但它更适合作为谨慎参考，而不是绝对规则。',
+			spokenSummary: '七小时附近可以作为参考，但不能说它直接决定健康结果。',
+			targetSeconds: 12,
+		}],
+	}, null, 2));
+
+	const previousEnv = {
+		SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE: process.env.SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE,
+		SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE: process.env.SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE,
+		PRESENTATION_PODCAST_FIXTURE_DIR: process.env.PRESENTATION_PODCAST_FIXTURE_DIR,
+		VIDEO_COMPOSER_JOBS_DIR: process.env.VIDEO_COMPOSER_JOBS_DIR,
+	};
+	process.env.SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE = visualFixturePath;
+	process.env.SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE = scriptFixturePath;
+	process.env.PRESENTATION_PODCAST_FIXTURE_DIR = fixtureDir;
+	process.env.VIDEO_COMPOSER_JOBS_DIR = path.join(root, 'jobs');
+	try {
+		const uploadItem = {
+			json: {
+				viewpoint: '7 小时左右可能是更稳妥的睡眠时长。',
+				narration_mode: 'single_speaker',
+				voice: '男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts',
+				voice_a: '男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts',
+				voice_b: '女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts',
+				aspect_ratio: '9:16',
+				repo_dir: repoRoot,
+				jobs_dir: path.join(root, 'jobs'),
+				video_width: 360,
+				video_height: 640,
+				video_fps: 12,
+				page_pause_seconds: 0,
+			},
+			binary: {
+				background_video: {
+					fileName: 'background.mp4',
+					mimeType: 'video/mp4',
+				},
+				pdf_file: {
+					fileName: 'source.pdf',
+					mimeType: 'application/pdf',
+				},
+			},
+		};
+		const uploadBuffers = {
+			background_video: fs.readFileSync(sourceBackgroundPath),
+			pdf_file: fs.readFileSync(sourcePdfPath),
+		};
+		const nodeResults = {};
+		let item = await runCodeNode({
+			name: 'Prepare Science Explainer Job',
+			item: uploadItem,
+			uploadBuffers,
+			nodeResults,
+		});
+		nodeResults['Prepare Science Explainer Job'] = item;
+		for (const name of [
+			'Extract PDF Pages',
+			'Analyze PDF Page Visuals',
+			'Generate Science Explainer Script',
+			'Run Page TTS',
+			'Build Science Explainer Video Job',
+			'Run Science Explainer Composer',
+			'Prepare Response',
+		]) {
+			item = await runCodeNode({ name, item, uploadBuffers, nodeResults });
+			nodeResults[name] = item;
+		}
+
+		const finalVideo = item.json.finalVideo;
+		assert.equal(fs.existsSync(finalVideo), true, `${finalVideo} should exist`);
+		assert.ok(fs.statSync(finalVideo).size > 0, `${finalVideo} should be non-empty`);
+		assert.equal(fs.existsSync(item.json.audioPath), true);
+		assert.equal(fs.existsSync(item.json.subtitlePath), true);
+		const ffprobe = run('ffprobe', [
+			'-v',
+			'error',
+			'-show_entries',
+			'format=duration',
+			'-of',
+			'default=nw=1:nk=1',
+			finalVideo,
+		]);
+		assert.ok(Number(ffprobe.stdout.trim()) > 0, 'final video must have duration');
+		console.log(JSON.stringify({ finalVideo, reviewDir: item.json.reviewDir }));
+	} finally {
+		for (const [name, value] of Object.entries(previousEnv)) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+	}
 });
