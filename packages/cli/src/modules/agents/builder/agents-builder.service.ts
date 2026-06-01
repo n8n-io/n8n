@@ -188,16 +188,13 @@ export class AgentsBuilderService {
 			modelRecommendationsSection,
 			enabledModules,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({
-			enabledModules,
-		});
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
 			projectId,
 			credentialProvider,
 			user,
-			enabledModules,
 		);
 
 		const { Agent, Memory } = await import('@n8n/agents');

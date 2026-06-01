@@ -457,7 +457,6 @@ export {
 } from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
-export { xssCheck } from './utils/xss-check';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
