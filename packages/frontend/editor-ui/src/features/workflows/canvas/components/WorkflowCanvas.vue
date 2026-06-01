@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, provide, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
@@ -58,12 +58,19 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
+const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
+const readOnlyRef = computed(() => props.readOnly ?? false);
+
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
 	renderData,
+	nodeGroupIdToAutofocusTitle,
+	readOnly: readOnlyRef,
 });
+
+provide('canvasNodeGroupAutofocus', nodeGroupIdToAutofocusTitle);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

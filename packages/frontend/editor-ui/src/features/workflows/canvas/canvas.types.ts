@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	IConnections,
 	INodeConnections,
+	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
@@ -132,6 +133,21 @@ export interface CanvasNodeData {
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
+
+export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
+export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
+export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
+export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+
+export interface CanvasGroupViewState {
+	group: IWorkflowGroup;
+	memberRect: { x: number; y: number; width: number; height: number };
+	autofocusTitle: boolean;
+}
+
+export type CanvasGroupNode = Node<CanvasGroupViewState>;
+
+export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
