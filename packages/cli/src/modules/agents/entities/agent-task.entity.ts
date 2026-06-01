@@ -1,10 +1,9 @@
 import {
 	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
 	AGENT_TASK_ID_MAX_LENGTH,
-	AGENT_TASK_LAST_RUN_STATUS_MAX_LENGTH,
-	type AgentTaskRunStatus,
+	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 } from '@n8n/api-types';
-import { DateTimeColumn, WithTimestamps } from '@n8n/db';
+import { WithTimestamps } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -18,7 +17,7 @@ import {
 import { Agent } from './agent.entity';
 
 /** A scheduled, recurring objective an agent runs on its own cron. */
-@Entity({ name: 'agent_task' })
+@Entity({ name: 'agent_task_definition' })
 export class AgentTask extends WithTimestamps {
 	@PrimaryColumn({
 		type: 'varchar',
@@ -43,7 +42,8 @@ export class AgentTask extends WithTimestamps {
 	name: string;
 
 	@Column({
-		type: 'text',
+		type: 'varchar',
+		length: AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 		comment: 'User-authored instruction sent to the agent when this task runs',
 	})
 	objective: string;
@@ -54,19 +54,4 @@ export class AgentTask extends WithTimestamps {
 		comment: 'Cron schedule evaluated using the instance timezone',
 	})
 	cronExpression: string;
-
-	@DateTimeColumn({
-		precision: 3,
-		nullable: true,
-		comment: 'Timestamp of the most recent run attempt; null until first run',
-	})
-	lastRunAt: Date | null;
-
-	@Column({
-		type: 'varchar',
-		length: AGENT_TASK_LAST_RUN_STATUS_MAX_LENGTH,
-		nullable: true,
-		comment: 'Outcome of the most recent run; null until first run',
-	})
-	lastRunStatus: AgentTaskRunStatus | null;
 }

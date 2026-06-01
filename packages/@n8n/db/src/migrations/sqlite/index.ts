@@ -190,7 +190,7 @@ import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-Crea
 import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
 import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
-import { CreateAgentTaskTable1784000000021 } from './1784000000021-CreateAgentTaskTable';
+import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -384,7 +384,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentFilesTable1784000000018,
 	AddCustomTelemetryTagsToProject1784000000019,
 	CreateWorkflowPublicationOutboxTable1784000000020,
-	CreateAgentTaskTable1784000000021,
+	CreateAgentTaskDefinitionTable1784000000021,
 ];
 
 export { sqliteMigrations };

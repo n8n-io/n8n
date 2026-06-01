@@ -1,4 +1,4 @@
-import { CreateAgentTaskTable1784000000021 as BaseMigration } from '../common/1784000000021-CreateAgentTaskTable';
+import { CreateAgentTaskDefinitionTable1784000000021 as BaseMigration } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
 
 /**
  * Adding the `taskId` column recreates `agent_execution_threads` on SQLite,
@@ -6,6 +6,6 @@ import { CreateAgentTaskTable1784000000021 as BaseMigration } from '../common/17
  * during that recreate. Disable FKs for the migration's duration (the up/down
  * logic is inherited from the common base).
  */
-export class CreateAgentTaskTable1784000000021 extends BaseMigration {
+export class CreateAgentTaskDefinitionTable1784000000021 extends BaseMigration {
 	withFKsDisabled = true as const;
 }

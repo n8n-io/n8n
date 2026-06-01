@@ -1,9 +1,4 @@
-import type {
-	AgentTaskDto,
-	AgentTaskRunStatus,
-	CreateAgentTaskDto,
-	UpdateAgentTaskDto,
-} from '@n8n/api-types';
+import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
@@ -25,22 +20,22 @@ import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
 /**
- * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron + run
- * metadata) live in the `agent_task` table; membership and the `enabled` flag
- * live in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
- * skills). Scheduling is driven entirely by the PUBLISHED snapshot: enabled refs
- * come from `activeVersion.schema.tasks` and the body (cron/name/objective) from
- * the frozen `activeVersion.tasks` snapshot taken at publish. A `CronJob` is
- * registered per enabled ref of a published agent (leader-only). Adding,
- * removing, toggling, or editing a task is a draft change that only affects
- * scheduled runs once the agent is (re)published — "republish to apply". Manual
- * "Run now" deliberately runs the live draft body instead.
+ * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron) live
+ * in the `agent_task_definition` table; membership and the `enabled` flag live
+ * in the agent config as `{ type: 'task', id, enabled }` refs (mirroring
+ * skills). Scheduling is driven entirely by the PUBLISHED snapshot rows tied to
+ * `activeVersionId`. A `CronJob` is registered per enabled snapshot row of a
+ * published agent (leader-only). Adding, removing, toggling, or editing a task
+ * is a draft change that only affects scheduled runs once the agent is
+ * (re)published — "republish to apply". Manual "Run now" deliberately runs the
+ * live draft body instead.
  */
 @Service()
 export class AgentTaskService {
@@ -51,6 +46,7 @@ export class AgentTaskService {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRepository: AgentTaskRepository,
+		private readonly taskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentsService: AgentsService,
@@ -104,9 +100,9 @@ export class AgentTaskService {
 	/**
 	 * Update a task body (name/objective/cron) in the draft. Marks the agent draft
 	 * dirty but does NOT touch live scheduling: scheduled runs read the published
-	 * snapshot (`activeVersion.tasks`), so any body edit only takes effect on the
-	 * next (re)publish — the "republish to apply" contract. Manual "Run now" uses
-	 * the draft body immediately.
+	 * task snapshot rows, so any body edit only takes effect on the next
+	 * (re)publish — the "republish to apply" contract. Manual "Run now" uses the
+	 * draft body immediately.
 	 */
 	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
@@ -160,7 +156,6 @@ export class AgentTaskService {
 			if (agent) await em.save(agent);
 		});
 
-		this.deregister(taskId);
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });
 	}
 
@@ -188,9 +183,9 @@ export class AgentTaskService {
 
 	/**
 	 * Reconcile an agent's cron jobs against its PUBLISHED config. Registers
-	 * enabled tasks and stops jobs that are no longer enabled/present on the
-	 * leader; deregisters everything when the agent is unpublished or gone. Used
-	 * by the local lifecycle path and the pubsub reconcile handler.
+	 * enabled task snapshots and stops jobs that are no longer enabled/present on
+	 * the leader; deregisters everything when the agent is unpublished or gone.
+	 * Used by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
 		const agent = await this.agentRepository.findOne({
@@ -201,7 +196,7 @@ export class AgentTaskService {
 			this.deregisterAgentTasks(agentId);
 			return;
 		}
-		this.reconcileAgent(agent);
+		await this.reconcileAgent(agent);
 	}
 
 	/**
@@ -226,7 +221,7 @@ export class AgentTaskService {
 			);
 	}
 
-	/** Stop all cron jobs belonging to an agent — called on unpublish/delete. */
+	/** Stop all cron jobs belonging to an agent — called on unpublish/agent delete. */
 	deregisterAgentTasks(agentId: string): void {
 		const taskIds = [...this.jobs.entries()]
 			.filter(([, entry]) => entry.agentId === agentId)
@@ -243,7 +238,7 @@ export class AgentTaskService {
 		this.logger.debug('[AgentTaskService] Reconnecting published agents', { count: agents.length });
 		for (const agent of agents) {
 			try {
-				this.reconcileAgent(agent);
+				await this.reconcileAgent(agent);
 			} catch (error) {
 				this.logger.error('[AgentTaskService] Failed to reconnect agent tasks', {
 					agentId: agent.id,
@@ -262,14 +257,22 @@ export class AgentTaskService {
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
-	private reconcileAgent(agent: Agent): void {
+	private async reconcileAgent(agent: Agent): Promise<void> {
 		// Only the leader owns task crons — a cron firing on multiple mains would
 		// run the agent twice per tick. Followers skip registration entirely; the
 		// leader applies the change via the `agent-tasks-changed` pubsub reconcile.
 		// A former leader drops its jobs via @OnLeaderStepdown/@OnShutdown.
 		if (!this.instanceSettings.isLeader) return;
 
-		const enabledIds = this.enabledTaskIds(agent);
+		if (!agent.activeVersionId) {
+			this.deregisterAgentTasks(agent.id);
+			return;
+		}
+
+		const snapshots = await this.taskSnapshotRepository.findEnabledByVersionId(
+			agent.activeVersionId,
+		);
+		const enabledIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
 		for (const [taskId, entry] of this.jobs.entries()) {
 			if (entry.agentId === agent.id && !enabledIds.has(taskId)) this.deregister(taskId);
@@ -277,28 +280,11 @@ export class AgentTaskService {
 
 		if (enabledIds.size === 0) return;
 
-		// Bodies come from the PUBLISHED snapshot, so cron/name/objective are all
+		// Bodies come from PUBLISHED snapshot rows, so cron/name/objective are all
 		// frozen at publish time; draft edits only apply on the next publish.
-		const snapshot = agent.activeVersion?.tasks ?? {};
-		for (const taskId of enabledIds) {
-			const body = snapshot[taskId];
-			if (body) {
-				this.registerOrRefresh(taskId, agent.id, body.cronExpression);
-			} else {
-				this.logger.warn('[AgentTaskService] Enabled task ref has no published body', {
-					agentId: agent.id,
-					taskId,
-				});
-			}
+		for (const snapshot of snapshots) {
+			this.registerOrRefresh(snapshot.taskId, agent.id, snapshot.cronExpression);
 		}
-	}
-
-	/** Ids of tasks enabled in the agent's PUBLISHED config snapshot. */
-	private enabledTaskIds(agent: Agent): Set<string> {
-		const publishedConfig = agent.activeVersion?.schema;
-		return new Set(
-			(publishedConfig?.tasks ?? []).filter((ref) => ref.enabled).map((ref) => ref.id),
-		);
 	}
 
 	private registerOrRefresh(taskId: string, agentId: string, cronExpression: string): void {
@@ -369,20 +355,14 @@ export class AgentTaskService {
 				this.deregister(taskId);
 				return;
 			}
-			if (!this.enabledTaskIds(agent).has(taskId)) {
-				this.logger.warn('[AgentTaskService] Task fired but not enabled in published config', {
-					taskId,
-					agentId,
-				});
-				this.deregister(taskId);
-				return;
-			}
-
-			// Body comes from the PUBLISHED snapshot, so name/objective/cron reflect
-			// publish time rather than live draft edits.
-			const body = agent.activeVersion?.tasks?.[taskId];
-			if (!body) {
-				this.logger.warn('[AgentTaskService] Task fired but has no published body', {
+			// Body comes from the PUBLISHED snapshot row, so name/objective/cron
+			// reflect publish time rather than live draft edits.
+			const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(
+				agent.activeVersionId,
+				taskId,
+			);
+			if (!snapshot?.enabled) {
+				this.logger.warn('[AgentTaskService] Task fired but has no enabled published snapshot', {
 					taskId,
 					agentId,
 				});
@@ -392,9 +372,6 @@ export class AgentTaskService {
 
 			const executionUserId = await this.resolveExecutionUserId(agent);
 			if (!executionUserId) {
-				// Record an error so the misconfiguration surfaces in the UI instead of
-				// the cron silently failing the same way on every tick.
-				await this.recordRun(taskId, 'error');
 				this.logger.warn('[AgentTaskService] No project member available for task run', {
 					taskId,
 					agentId,
@@ -403,17 +380,16 @@ export class AgentTaskService {
 				return;
 			}
 
-			const { message, threadId } = this.buildTaskRunMessage(taskId, body.objective);
+			const { message, threadId } = this.buildTaskRunMessage(taskId, snapshot.objective);
 
 			this.logger.info('[AgentTaskService] Task fired', {
 				taskId,
 				agentId,
 				projectId,
-				cronExpression: body.cronExpression,
+				cronExpression: snapshot.cronExpression,
 			});
 
 			await this.consumeTaskRun(
-				taskId,
 				'Task run',
 				{ taskId, agentId, projectId },
 				this.agentsService.executeForTaskPublished({
@@ -425,22 +401,10 @@ export class AgentTaskService {
 				}),
 			);
 		} catch (error) {
-			await this.recordRun(taskId, 'error');
 			this.logger.error('[AgentTaskService] Task run failed', {
 				taskId,
 				agentId,
 				projectId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private async recordRun(taskId: string, status: AgentTaskRunStatus): Promise<void> {
-		try {
-			await this.taskRepository.update(taskId, { lastRunAt: new Date(), lastRunStatus: status });
-		} catch (error) {
-			this.logger.warn('[AgentTaskService] Failed to record task run metadata', {
-				taskId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -463,12 +427,11 @@ export class AgentTaskService {
 	}
 
 	/**
-	 * Drive a task-run stream to completion, recording the outcome
-	 * (`success`/`error`) on the task and logging it. Shared by the scheduled and
-	 * manual paths; the caller supplies the already-built stream and a log label.
+	 * Drive a task-run stream to completion and log it. Shared by the scheduled
+	 * and manual paths; the caller supplies the already-built stream and a log
+	 * label.
 	 */
 	private async consumeTaskRun(
-		taskId: string,
 		kind: 'Task run' | 'Manual task run',
 		context: Record<string, unknown>,
 		stream: AsyncGenerator<unknown>,
@@ -479,14 +442,12 @@ export class AgentTaskService {
 			for await (const _chunk of stream) {
 				chunkCount += 1;
 			}
-			await this.recordRun(taskId, 'success');
 			this.logger.info(`[AgentTaskService] ${kind} completed`, {
 				...context,
 				chunkCount,
 				durationMs: Date.now() - startedAt,
 			});
 		} catch (error) {
-			await this.recordRun(taskId, 'error');
 			this.logger.error(`[AgentTaskService] ${kind} failed`, {
 				...context,
 				error: error instanceof Error ? error.message : String(error),
@@ -520,7 +481,6 @@ export class AgentTaskService {
 		});
 
 		await this.consumeTaskRun(
-			task.id,
 			'Manual task run',
 			{ taskId: task.id, agentId: task.agentId, projectId },
 			this.agentsService.executeForTaskNow({
@@ -568,8 +528,6 @@ export class AgentTaskService {
 			name: task.name,
 			objective: task.objective,
 			cronExpression: task.cronExpression,
-			lastRunAt: task.lastRunAt ? task.lastRunAt.toISOString() : null,
-			lastRunStatus: task.lastRunStatus,
 			createdAt: task.createdAt.toISOString(),
 			updatedAt: task.updatedAt.toISOString(),
 		};

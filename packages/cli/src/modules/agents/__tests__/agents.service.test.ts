@@ -32,8 +32,10 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -71,6 +73,18 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
+function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot {
+	return {
+		versionId: 'published-version-id',
+		taskId: 'keep',
+		enabled: true,
+		name: 'Keep',
+		objective: 'Keep objective',
+		cronExpression: '0 9 * * *',
+		...overrides,
+	} as AgentTaskSnapshot;
+}
+
 // Publish/unpublish/delete call into AgentTaskService via the DI container; the
 // hooks await `requestReconcile(...)`, so the mock must resolve.
 function mockAgentTaskService(): ReturnType<typeof mock<AgentTaskService>> {
@@ -84,6 +98,7 @@ describe('AgentsService', () => {
 	let service: AgentsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
+	let agentTaskSnapshotRepository: jest.Mocked<AgentTaskSnapshotRepository>;
 	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
 	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
@@ -101,6 +116,8 @@ describe('AgentsService', () => {
 
 		agentRepository = mock<AgentRepository>();
 		agentTaskRepository = mock<AgentTaskRepository>();
+		agentTaskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
+		agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 		agentHistoryRepository = mock<AgentHistoryRepository>();
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
@@ -139,6 +156,7 @@ describe('AgentsService', () => {
 			agentHistoryRepository,
 			new AgentSkillsService(logger, agentRepository),
 			agentTaskRepository,
+			agentTaskSnapshotRepository,
 			publisher,
 			agentsConfig,
 			globalConfig,
@@ -584,7 +602,6 @@ describe('AgentsService', () => {
 					schema: agent.schema,
 					tools: null,
 					skills: null,
-					tasks: null,
 					publishedBy: testUser,
 				},
 				mockTrx,
@@ -625,6 +642,48 @@ describe('AgentsService', () => {
 						summarize_notes: skill,
 					},
 				}),
+				mockTrx,
+			);
+		});
+
+		it('snapshots configured task bodies when publishing', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
+			const taskRepo = {
+				findBy: jest.fn().mockResolvedValue([
+					{
+						id: 'task-1',
+						name: 'Daily summary',
+						objective: 'Summarize messages',
+						cronExpression: '0 9 * * *',
+					},
+				]),
+			};
+			(mockTrx as typeof mockTrx & { getRepository: jest.Mock }).getRepository = jest
+				.fn()
+				.mockReturnValue(taskRepo);
+
+			await service.publishAgent(agentId, projectId, testUser);
+
+			expect(agentTaskSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
+				[
+					{
+						versionId,
+						taskId: 'task-1',
+						enabled: true,
+						name: 'Daily summary',
+						objective: 'Summarize messages',
+						cronExpression: '0 9 * * *',
+					},
+				],
 				mockTrx,
 			);
 		});
@@ -1419,10 +1478,10 @@ describe('AgentsService', () => {
 					instructions: 'i',
 					tasks: [{ type: 'task', id: 'keep', enabled: true }],
 				},
-				tasks: { keep: { name: 'Keep', objective: 'Keep objective', cronExpression: '0 9 * * *' } },
 			});
 			const agent = makeAgent({ activeVersionId: 'published-version-id', activeVersion });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
 			// Draft has the published 'keep' row plus an 'added' row that isn't published.
 			taskRepo.findBy.mockResolvedValue([{ id: 'keep' }, { id: 'added' }]);
 

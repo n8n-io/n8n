@@ -13,7 +13,9 @@ import { AgentTaskService } from '../agent-task.service';
 import type { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 
 // Keep cron validation + next-occurrence real; only the live CronJob is mocked.
@@ -32,8 +34,6 @@ function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
 		name: 'Daily summary',
 		objective: 'Summarize messages',
 		cronExpression: '0 9 * * *',
-		lastRunAt: null,
-		lastRunStatus: null,
 		createdAt: new Date('2026-01-01T08:00:00.000Z'),
 		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
 		...overrides,
@@ -50,36 +50,38 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		projectId: 'project-1',
 		versionId: 'ver-1',
 		activeVersionId: 'ver-1',
-		activeVersion: { publishedById: 'user-1', schema: { tasks: [] }, tasks: {} },
+		activeVersion: { versionId: 'ver-1', publishedById: 'user-1', schema: { tasks: [] } },
 		schema: { name: 'A', model: 'anthropic/x', instructions: 'do', tasks: [] },
 		...overrides,
 	} as Agent;
 }
 
-/**
- * Published agent carrying enabled task refs plus the frozen snapshot bodies that
- * scheduling reads from (`activeVersion.tasks`).
- */
 function makePublishedAgent(
 	refs: Array<{ id: string; enabled: boolean }>,
 	overrides: Partial<Agent> = {},
 ): Agent {
-	const tasks: Record<string, { name: string; objective: string; cronExpression: string }> = {};
-	for (const ref of refs) {
-		tasks[ref.id] = {
-			name: 'Daily summary',
-			objective: 'Summarize messages',
-			cronExpression: '0 9 * * *',
-		};
-	}
 	return makeAgent({
 		activeVersion: {
+			versionId: 'ver-1',
 			publishedById: 'user-1',
 			schema: { tasks: refs.map((ref) => ({ type: 'task', id: ref.id, enabled: ref.enabled })) },
-			tasks,
 		},
 		...overrides,
 	} as Partial<Agent>);
+}
+
+function makeSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot {
+	return {
+		versionId: 'ver-1',
+		taskId: 'task-1',
+		enabled: true,
+		name: 'Daily summary',
+		objective: 'Summarize messages',
+		cronExpression: '0 9 * * *',
+		createdAt: new Date('2026-01-01T08:00:00.000Z'),
+		updatedAt: new Date('2026-01-02T08:00:00.000Z'),
+		...overrides,
+	} as AgentTaskSnapshot;
 }
 
 async function* emptyStream(): AsyncGenerator<never> {}
@@ -94,10 +96,12 @@ async function runTaskOf(service: AgentTaskService, taskId: string): Promise<voi
 }
 
 /** Seed the live jobs map so `runTask` can resolve the agentId without registering. */
-function seedJob(service: AgentTaskService, taskId: string, agentId: string): void {
+function seedJob(service: AgentTaskService, taskId: string, agentId: string): { stop: jest.Mock } {
+	const job = { stop: jest.fn() };
 	(
 		service as unknown as { jobs: Map<string, { agentId: string; job: { stop: jest.Mock } }> }
-	).jobs.set(taskId, { agentId, job: { stop: jest.fn() } });
+	).jobs.set(taskId, { agentId, job });
+	return job;
 }
 
 describe('AgentTaskService', () => {
@@ -107,6 +111,7 @@ describe('AgentTaskService', () => {
 		multiMainSetup: { enabled: false },
 	} as unknown as GlobalConfig;
 	let taskRepository: ReturnType<typeof mock<AgentTaskRepository>>;
+	let taskSnapshotRepository: ReturnType<typeof mock<AgentTaskSnapshotRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentsService: ReturnType<typeof mock<AgentsService>>;
@@ -124,6 +129,7 @@ describe('AgentTaskService', () => {
 			logger,
 			globalConfig,
 			taskRepository,
+			taskSnapshotRepository,
 			agentRepository,
 			projectRelationRepository,
 			agentsService,
@@ -137,6 +143,7 @@ describe('AgentTaskService', () => {
 		setMultiMain(false);
 		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
+		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
 		// `create` fills the body so `save`/`toDto` see a complete entity.
 		(taskRepository.create as unknown as jest.Mock).mockImplementation((data: Partial<AgentTask>) =>
 			makeTask(data),
@@ -234,16 +241,13 @@ describe('AgentTaskService', () => {
 			expect(result.map((task) => task.id)).toEqual(['t1', 't2']);
 		});
 
-		it('serializes dates to ISO strings and passes through lastRunStatus', async () => {
-			(taskRepository.findByAgentId as jest.Mock).mockResolvedValue([
-				makeTask({ lastRunAt: new Date('2026-03-03T03:03:03.000Z'), lastRunStatus: 'error' }),
-			]);
+		it('serializes timestamps to ISO strings', async () => {
+			(taskRepository.findByAgentId as jest.Mock).mockResolvedValue([makeTask()]);
 
 			const [dto] = await service.list(AGENT_ID);
 
-			expect(dto.lastRunAt).toBe('2026-03-03T03:03:03.000Z');
-			expect(dto.lastRunStatus).toBe('error');
 			expect(dto.createdAt).toBe('2026-01-01T08:00:00.000Z');
+			expect(dto.updatedAt).toBe('2026-01-02T08:00:00.000Z');
 		});
 	});
 
@@ -309,13 +313,27 @@ describe('AgentTaskService', () => {
 			expect(txManager.remove).toHaveBeenCalledWith(task);
 			expect(agent.schema?.tasks).toEqual([]);
 		});
+
+		it('does not stop a live cron job until the next publish reconcile', async () => {
+			const task = makeTask();
+			const job = seedJob(service, 'task-1', AGENT_ID);
+			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(task);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
+
+			await service.delete(AGENT_ID, 'task-1');
+
+			expect(job.stop).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('registerEnabledForAgent', () => {
-		it('registers a cron job for each enabled task in the published config', async () => {
+		it('registers a cron job for each enabled published task snapshot', async () => {
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
@@ -332,6 +350,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: false }]),
 			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([]);
 
 			await service.registerEnabledForAgent(AGENT_ID);
 
@@ -353,6 +372,9 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
 
 			await follower.registerEnabledForAgent(AGENT_ID);
 
@@ -391,6 +413,9 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(
 				makePublishedAgent([{ id: 'task-1', enabled: true }]),
 			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
 
 			await service.handleTasksChanged({ agentId: AGENT_ID });
 
@@ -413,6 +438,9 @@ describe('AgentTaskService', () => {
 				.mockResolvedValueOnce(
 					makePublishedAgent([{ id: 'b-task', enabled: true }], { id: 'agent-b' }),
 				);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock)
+				.mockResolvedValueOnce([makeSnapshot({ taskId: 'a-task' })])
+				.mockResolvedValueOnce([makeSnapshot({ taskId: 'b-task' })]);
 
 			await service.registerEnabledForAgent('agent-a');
 			await service.registerEnabledForAgent('agent-b');
@@ -430,9 +458,12 @@ describe('AgentTaskService', () => {
 		const publishedAgentWithTask = (enabled: boolean) =>
 			makePublishedAgent([{ id: 'task-1', enabled }]);
 
-		it('runs the published agent with the objective and records success', async () => {
+		it('runs the published agent with the objective', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
 			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(emptyStream());
 
@@ -447,19 +478,17 @@ describe('AgentTaskService', () => {
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
 			);
-			expect(taskRepository.update).toHaveBeenCalledWith(
-				'task-1',
-				expect.objectContaining({ lastRunStatus: 'success' }),
-			);
+			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
 
 		it('uses the published snapshot body, not the live draft row', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
-			const agent = makePublishedAgent([{ id: 'task-1', enabled: true }]);
-			// Distinguish the published snapshot objective from anything on a live row.
-			const snapshotBody = agent.activeVersion?.tasks?.['task-1'];
-			if (snapshotBody) snapshotBody.objective = 'Published objective';
-			(agentRepository.findOne as jest.Mock).mockResolvedValue(agent);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot({ objective: 'Published objective' }),
+			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
 			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(emptyStream());
 
@@ -483,40 +512,47 @@ describe('AgentTaskService', () => {
 			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
-		it('records an error run when no project member is available', async () => {
+		it('skips when no project member is available', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue([]);
 
 			await runTaskOf(service, 'task-1');
 
 			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
-			expect(taskRepository.update).toHaveBeenCalledWith(
-				'task-1',
-				expect.objectContaining({ lastRunStatus: 'error' }),
-			);
+			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
 
-		it('skips when the ref is not enabled in the published config', async () => {
+		it('skips when the published task snapshot is not enabled', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
-			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(false));
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot({ enabled: false }),
+			);
 
 			await runTaskOf(service, 'task-1');
 
 			expect(agentsService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
-		it('records error status when execution throws', async () => {
+		it('logs when execution throws', async () => {
 			seedJob(service, 'task-1', AGENT_ID);
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
 			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(throwingStream());
 
 			await runTaskOf(service, 'task-1');
 
-			expect(taskRepository.update).toHaveBeenCalledWith(
-				'task-1',
-				expect.objectContaining({ lastRunStatus: 'error' }),
+			expect(taskRepository.update).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				'[AgentTaskService] Task run failed',
+				expect.objectContaining({ taskId: 'task-1' }),
 			);
 		});
 	});
@@ -550,7 +586,7 @@ describe('AgentTaskService', () => {
 			expect(agentsService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
-		it('records a successful manual run', async () => {
+		it('does not write the task row after a manual run', async () => {
 			(taskRepository.findByIdAndAgentId as jest.Mock).mockResolvedValue(makeTask());
 			(agentRepository.findOne as jest.Mock).mockResolvedValue(makeAgent());
 			(agentsService.executeForTaskNow as jest.Mock).mockReturnValue(emptyStream());
@@ -558,10 +594,7 @@ describe('AgentTaskService', () => {
 			await service.runNow(AGENT_ID, 'task-1', 'user-9');
 			await new Promise((resolve) => setImmediate(resolve));
 
-			expect(taskRepository.update).toHaveBeenCalledWith(
-				'task-1',
-				expect.objectContaining({ lastRunStatus: 'success' }),
-			);
+			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,0 +1,75 @@
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
+
+/**
+ * Sets up the agent task definitions schema in one migration: the
+ * `agent_task_definition` table (the 1:many scheduled-objective model), the
+ * immutable `agent_task_snapshot` rows tied to published agent versions, and a
+ * nullable `taskId` on `agent_execution_threads` so a session can preserve
+ * which task triggered it. They ship together because they form one feature's
+ * schema.
+ */
+export class CreateAgentTaskDefinitionTable1784000000021 implements ReversibleMigration {
+	async up({ schemaBuilder: { createTable, column, addColumns } }: MigrationContext) {
+		await createTable('agent_task_definition')
+			.withColumns(
+				column('id')
+					.varchar(32)
+					.primary.comment('Application-generated task ID referenced from agent JSON config'),
+				column('agentId')
+					.varchar(36)
+					.notNull.comment('Owning agent; task definitions are deleted when the agent is deleted'),
+				column('name').varchar(128).notNull,
+				column('objective')
+					.varchar(10_000)
+					.notNull.comment('User-authored instruction sent to the agent when this task runs'),
+				column('cronExpression')
+					.varchar(128)
+					.notNull.comment('Cron schedule evaluated using the instance timezone'),
+			)
+			.withIndexOn('agentId')
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		await createTable('agent_task_snapshot')
+			.withColumns(
+				column('versionId')
+					.varchar(36)
+					.primary.comment('Published agent_history version this task snapshot belongs to'),
+				column('taskId')
+					.varchar(32)
+					.primary.comment('Stable task ID referenced from the published agent JSON config'),
+				column('enabled').bool.notNull.comment(
+					'Published enabled state for this task at publish time',
+				),
+				column('name').varchar(128).notNull,
+				column('objective')
+					.varchar(10_000)
+					.notNull.comment('User-authored instruction sent to the agent when this task runs'),
+				column('cronExpression')
+					.varchar(128)
+					.notNull.comment('Cron schedule evaluated using the instance timezone'),
+			)
+			.withForeignKey('versionId', {
+				tableName: 'agent_history',
+				columnName: 'versionId',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		await addColumns('agent_execution_threads', [
+			column('taskId')
+				.varchar(32)
+				.comment(
+					'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
+				),
+		]);
+	}
+
+	async down({ schemaBuilder: { dropColumns, dropTable } }: MigrationContext) {
+		await dropColumns('agent_execution_threads', ['taskId']);
+		await dropTable('agent_task_snapshot');
+		await dropTable('agent_task_definition');
+	}
+}

@@ -20,7 +20,6 @@ import {
 	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
-	type AgentTaskConfig,
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
@@ -99,6 +98,7 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
@@ -323,6 +323,7 @@ export class AgentsService {
 		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentTaskRepository: AgentTaskRepository,
+		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
@@ -588,11 +589,11 @@ export class AgentsService {
 							agent.schema,
 							agent.skills ?? {},
 						),
-						tasks: await this.snapshotConfiguredTasks(trx, agent.id, agent.schema),
 						publishedBy: user,
 					},
 					trx,
 				);
+				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.id, agent.schema);
 				agent.activeVersionId = agent.versionId;
 			}
 
@@ -698,13 +699,13 @@ export class AgentsService {
 			}
 
 			await trx.save(agent);
-			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.tasks ?? null);
+			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 
 		this.clearRuntimes(agentId);
 
 		// No task reconcile needed: scheduling follows `activeVersion`, which revert
-		// leaves untouched. The restore above only brings the draft `agent_task`
+		// leaves untouched. The restore above only brings the draft task definition
 		// rows back in line with the published snapshot so the UI matches.
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
@@ -1776,7 +1777,7 @@ export class AgentsService {
 
 		this.validateConfigRefs(result.config, entity);
 
-		// Task refs resolve against `agent_task` bodies (a separate table), so
+		// Task refs resolve against task definition bodies (a separate table), so
 		// validate them here where the DB is reachable. Orphan bodies are pruned
 		// after the save below. `tasksProvided` also gates the schema overlay.
 		const tasksProvided = result.config.tasks !== undefined;
@@ -2176,20 +2177,20 @@ export class AgentsService {
 	}
 
 	/**
-	 * Freeze the referenced task bodies (name/objective/cron) into the published
-	 * snapshot so scheduled runs read publish-time content, not live draft edits.
-	 * Run metadata (`lastRunAt`/`lastRunStatus`) stays on the live row and is not
-	 * snapshotted. Bodies are read through the publish transaction for
+	 * Freeze the referenced task bodies (enabled/name/objective/cron) into
+	 * published snapshot rows so scheduled runs read publish-time content, not
+	 * live draft edits. Bodies are read through the publish transaction for
 	 * consistency; throws if a referenced task has no body.
 	 */
 	private async snapshotConfiguredTasks(
 		trx: EntityManager,
+		versionId: string,
 		agentId: string,
 		config: AgentJsonConfig | null,
-	): Promise<Record<string, AgentTaskConfig> | null> {
-		if (!config) return null;
+	): Promise<void> {
+		if (!config) return;
 		const refs = config.tasks ?? [];
-		if (refs.length === 0) return {};
+		if (refs.length === 0) return;
 
 		const bodies = await trx.getRepository(AgentTask).findBy({ agentId });
 		const byId = new Map(bodies.map((body) => [body.id, body]));
@@ -2198,56 +2199,59 @@ export class AgentsService {
 			throw new UserError(`Cannot publish agent with missing task bodies: ${missing.join(', ')}`);
 		}
 
-		const snapshot: Record<string, AgentTaskConfig> = {};
-		for (const ref of refs) {
-			const body = byId.get(ref.id);
-			if (body) {
-				snapshot[ref.id] = {
+		await this.agentTaskSnapshotRepository.saveForVersion(
+			refs.map((ref) => {
+				const body = byId.get(ref.id);
+				if (!body) {
+					throw new UserError(`Cannot publish agent with missing task body: ${ref.id}`);
+				}
+				return {
+					versionId,
+					taskId: ref.id,
+					enabled: ref.enabled,
 					name: body.name,
 					objective: body.objective,
 					cronExpression: body.cronExpression,
 				};
-			}
-		}
-		return snapshot;
+			}),
+			trx,
+		);
 	}
 
 	/**
-	 * Bring the draft `agent_task` rows back in line with a published snapshot on
-	 * revert: drop rows added since publish, restore name/objective/cron on rows
-	 * that still exist (preserving their run metadata), and re-insert any that
-	 * were deleted in the draft. Runs inside the revert transaction.
+	 * Bring the draft task definition rows back in line with a published snapshot
+	 * on revert: drop rows added since publish, restore name/objective/cron on
+	 * rows that still exist, and re-insert any that were deleted in the draft.
+	 * Runs inside the revert transaction.
 	 */
 	private async restoreTasksFromSnapshot(
 		trx: EntityManager,
 		agentId: string,
-		snapshot: Record<string, AgentTaskConfig> | null,
+		versionId: string,
 	): Promise<void> {
 		const repo = trx.getRepository(AgentTask);
 		const existing = await repo.findBy({ agentId });
-		const snapshotEntries = Object.entries(snapshot ?? {});
-		const snapshotIds = new Set(snapshotEntries.map(([id]) => id));
+		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
+		const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
 		const orphanIds = existing.filter((row) => !snapshotIds.has(row.id)).map((row) => row.id);
 		if (orphanIds.length > 0) await repo.delete(orphanIds);
 
 		const existingIds = new Set(existing.map((row) => row.id));
-		for (const [id, body] of snapshotEntries) {
-			if (existingIds.has(id)) {
-				await repo.update(id, {
-					name: body.name,
-					objective: body.objective,
-					cronExpression: body.cronExpression,
+		for (const snapshot of snapshots) {
+			if (existingIds.has(snapshot.taskId)) {
+				await repo.update(snapshot.taskId, {
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
 				});
 			} else {
 				await repo.insert({
-					id,
+					id: snapshot.taskId,
 					agentId,
-					name: body.name,
-					objective: body.objective,
-					cronExpression: body.cronExpression,
-					lastRunAt: null,
-					lastRunStatus: null,
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
 				});
 			}
 		}

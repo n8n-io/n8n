@@ -448,6 +448,7 @@ async function onReverted(updated: AgentResource) {
 	agent.value = updated;
 	agentName.value = updated.name;
 	await fetchConfig(projectId.value, agentId.value);
+	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
 }

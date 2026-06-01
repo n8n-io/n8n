@@ -49,14 +49,14 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 
 	/**
 	 * Published task ID that triggered this session. Intentionally not a live
-	 * FK: published task runs can outlive mutable draft `agent_task` rows.
+	 * FK: published task runs can outlive mutable draft task definition rows.
 	 */
 	@Column({
 		type: 'varchar',
 		length: AGENT_TASK_ID_MAX_LENGTH,
 		nullable: true,
 		comment:
-			'Published task ID that triggered this session; not an FK because published runs can outlive draft task rows',
+			'Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows',
 	})
 	taskId: string | null;
 

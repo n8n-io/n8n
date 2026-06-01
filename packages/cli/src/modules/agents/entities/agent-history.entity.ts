@@ -1,5 +1,5 @@
 import type { ToolDescriptor } from '@n8n/agents';
-import { type AgentJsonConfig, type AgentSkill, type AgentTaskConfig } from '@n8n/api-types';
+import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -45,18 +45,6 @@ export class AgentHistory extends WithTimestamps {
 
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;
-
-	/**
-	 * Frozen map of `taskId → { name, objective, cronExpression }` at publish
-	 * time. Scheduled runs read the task body from here so the whole body (not
-	 * just membership/enabled) is gated behind publish.
-	 */
-	@JsonColumn({
-		nullable: true,
-		default: null,
-		comment: 'Frozen map of taskId to { name, objective, cronExpression } at publish time',
-	})
-	tasks: Record<string, AgentTaskConfig> | null;
 
 	/**
 	 * Runtime pointer to the publishing user. Auto-nulls when the user is
