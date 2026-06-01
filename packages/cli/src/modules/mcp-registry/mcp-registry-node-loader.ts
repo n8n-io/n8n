@@ -68,7 +68,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
 		const isKnownCredentialType = (name: string): boolean =>
-			name in this.loadNodesAndCredentials.knownCredentials;
+			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
 
 		for (const server of this.servers) {
 			const nodeDescription = serverToNodeDescription(

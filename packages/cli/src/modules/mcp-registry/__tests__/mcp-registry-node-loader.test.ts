@@ -280,6 +280,26 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loadedNode.sourcePath).toBe(sourcePath);
 		});
 
+		it('skips servers whose extendsCredential parent matches an inherited prototype key', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['slackOAuth2Api'],
+			});
+			const prototypeKeyServer: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'toString',
+					authUrl: 'https://example.com/oauth/authorize',
+				},
+			};
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([prototypeKeyServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
+		});
+
 		it('skips extendsCredential servers whose parent credential type is not registered (no overrides)', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: [],

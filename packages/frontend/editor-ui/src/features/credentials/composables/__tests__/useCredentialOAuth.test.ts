@@ -359,6 +359,25 @@ describe('useCredentialOAuth', () => {
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
 		});
+
+		it('should not stack-overflow when the extends chain has a cycle', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.cyclicA = {
+				name: 'cyclicA',
+				extends: ['cyclicB'],
+				displayName: 'Cyclic A',
+				properties: [],
+			};
+			credentialsStore.state.credentialTypes.cyclicB = {
+				name: 'cyclicB',
+				extends: ['cyclicA', 'oAuth2Api'],
+				displayName: 'Cyclic B',
+				properties: [],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
+		});
 	});
 
 	describe('authorize', () => {

@@ -131,14 +131,20 @@ export function useCredentialOAuth() {
 		});
 	}
 
-	function getMergedCredentialProperties(credentialTypeName: string): INodeProperties[] {
+	function getMergedCredentialProperties(
+		credentialTypeName: string,
+		visited = new Set<string>(),
+	): INodeProperties[] {
+		if (visited.has(credentialTypeName)) return [];
+		visited.add(credentialTypeName);
+
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) return [];
 		if (credentialType.extends === undefined) return credentialType.properties;
 
 		const merged: INodeProperties[] = [];
 		for (const parentName of credentialType.extends) {
-			NodeHelpers.mergeNodeProperties(merged, getMergedCredentialProperties(parentName));
+			NodeHelpers.mergeNodeProperties(merged, getMergedCredentialProperties(parentName, visited));
 		}
 		NodeHelpers.mergeNodeProperties(merged, credentialType.properties);
 		return merged;
