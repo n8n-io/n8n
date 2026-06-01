@@ -404,12 +404,13 @@ export class AgentsController {
 	@Get('/:agentId/files')
 	@ProjectScope('agent:read')
 	async listFiles(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		return await this.agentKnowledgeService.listFiles(agentId, req.params.projectId);
+		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
 	@Post('/:agentId/files', {
@@ -422,6 +423,7 @@ export class AgentsController {
 			fileUploadError?: Error;
 		},
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
 		const files = req.files ?? [];
@@ -439,7 +441,7 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, req.params.projectId, files);
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -452,13 +454,14 @@ export class AgentsController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, req.params.projectId, fileId);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		return { success: true };
 	}
 

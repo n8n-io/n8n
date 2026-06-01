@@ -140,6 +140,7 @@ describe('AgentsController file uploads', () => {
 			controller.uploadFiles(
 				{ params: { projectId: 'project-1' }, files: [] } as never,
 				undefined as never,
+				'project-1',
 				'agent-1',
 			),
 		).rejects.toThrow(BadRequestError);
@@ -155,6 +156,7 @@ describe('AgentsController file uploads', () => {
 					fileUploadError: new multer.MulterError('LIMIT_FILE_COUNT'),
 				} as never,
 				undefined as never,
+				'project-1',
 				'agent-1',
 			),
 		).rejects.toThrow(BadRequestError);
@@ -170,6 +172,7 @@ describe('AgentsController knowledge base gating', () => {
 			controller.listFiles(
 				{ params: { projectId: 'project-1' } } as never,
 				undefined as never,
+				'project-1',
 				'agent-1',
 			),
 		).rejects.toThrow(NotFoundError);
@@ -177,6 +180,7 @@ describe('AgentsController knowledge base gating', () => {
 			controller.uploadFiles(
 				{ params: { projectId: 'project-1' }, files: [] } as never,
 				undefined as never,
+				'project-1',
 				'agent-1',
 			),
 		).rejects.toThrow(NotFoundError);
@@ -184,6 +188,7 @@ describe('AgentsController knowledge base gating', () => {
 			controller.deleteFile(
 				{ params: { projectId: 'project-1' } } as never,
 				undefined as never,
+				'project-1',
 				'agent-1',
 				'file-1',
 			),

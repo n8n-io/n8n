@@ -11,10 +11,12 @@ export class CreateAgentFilesTable1784000000018 implements ReversibleMigration {
 
 		await createTable('agent_files')
 			.withColumns(
-				column('id')
+				column('id').varchar(16).primary.comment('Application-generated n8n nano ID'),
+				// FK to agents.id, which is declared varchar(36); the column type
+				// mirrors the referenced primary key.
+				column('agentId')
 					.varchar(36)
-					.primary.comment('Application-generated n8n string ID, not a database UUID'),
-				column('agentId').varchar(36).notNull.comment('Agent that owns this uploaded file'),
+					.notNull.comment('Agent that owns this uploaded file'),
 				column('binaryDataId').text.notNull.comment(
 					'Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:<uuid>"); not an FK to binary_data, which only has rows in DB storage mode',
 				),
