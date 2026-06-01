@@ -18,10 +18,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
-	/** Number of recent messages to include in context. */
-	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
-	lastMessages: number = 20;
-
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
@@ -37,10 +33,6 @@ export class InstanceAiConfig {
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
-
-	/** Enable Chrome DevTools MCP for browser-assisted credential setup. */
-	@Env('N8N_INSTANCE_AI_BROWSER_MCP')
-	browserMcp: boolean = false;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')

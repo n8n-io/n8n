@@ -917,7 +917,6 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	lastMessages?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 	observationalMemory?: {
@@ -1161,12 +1160,9 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
@@ -1220,6 +1216,34 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/**
+	 * Resume info for a suspended sub-agent of this thread, looked up from the
+	 * persisted checkpoint store by the deterministic sub-agent resourceId
+	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
+	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
+	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
+	 * + the persistence the planner was running under, so the resume path
+	 * can rebuild the sub-agent with the same persistence and call
+	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
+	 * without stashing anything across its own suspend/resume cycle.
+	 */
+	findSubAgentResumeInfo?: (agentKind: string) => Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	>;
+	/**
+	 * Persist the current user message to thread memory immediately, so it
+	 * survives a restart that happens while the orchestrator is suspended on
+	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
+	 * loop completion, which a suspended run never reaches — without this the
+	 * user's bubble is invisible on reload until the turn eventually completes.
+	 * Idempotent: safe to call multiple times within a run.
+	 */
+	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

@@ -14,13 +14,12 @@ afterEach(() => {
 });
 
 describe('semantic recall', () => {
-	it('recalls relevant info beyond the lastMessages window', async () => {
+	it('recalls relevant info from earlier in the thread via semantic search', async () => {
 		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const mem = new Memory()
 			.storage(memory)
-			.lastMessages(3)
 			.semanticRecall({ topK: 3, embedder: 'openai/text-embedding-3-small' });
 
 		const agent = new Agent('semantic-test')
@@ -32,13 +31,13 @@ describe('semantic recall', () => {
 		const resourceId = 'test-user';
 		const options = { persistence: { threadId, resourceId } };
 
-		// Turn 1: unique fact that will be pushed out of the 3-message window
+		// Turn 1: unique fact recalled later via semantic search
 		await agent.generate(
 			'The annual rainfall in Timbuktu is approximately 200mm. Just acknowledge.',
 			options,
 		);
 
-		// Filler turns to push turn 1 out of the lastMessages window
+		// Filler turns between the fact and the later question
 		await agent.generate('What is 2 + 2?', options);
 		await agent.generate('Tell me a one-word synonym for happy.', options);
 		await agent.generate('What color is the sky?', options);

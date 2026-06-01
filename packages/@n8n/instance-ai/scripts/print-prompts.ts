@@ -14,7 +14,6 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import { buildBrowserAgentPrompt } from '../src/tools/orchestration/browser-credential-setup.prompt';
 import { createSandboxBuilderAgentPrompt } from '../src/tools/orchestration/build-workflow-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
@@ -127,24 +126,6 @@ function collectAgents(): AgentEntry[] {
 					file: 'sandbox',
 					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',
 					body: createSandboxBuilderAgentPrompt('/workspace'),
-				},
-			],
-		},
-		{
-			folder: 'browser-credential-setup',
-			displayName: 'Sub-Agent — Browser Credential Setup',
-			source:
-				'src/tools/orchestration/browser-credential-setup.prompt.ts → buildBrowserAgentPrompt',
-			variants: [
-				{
-					file: 'gateway',
-					label: "source: 'gateway' (local gateway browser tools)",
-					body: buildBrowserAgentPrompt('gateway'),
-				},
-				{
-					file: 'chrome-mcp',
-					label: "source: 'chrome-devtools-mcp' (Chrome DevTools MCP server)",
-					body: buildBrowserAgentPrompt('chrome-devtools-mcp'),
 				},
 			],
 		},

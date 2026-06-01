@@ -187,6 +187,40 @@ describe('update-workflow MCP tool', () => {
 			expect(b.parameters).toEqual({ url: 'https://new', method: 'GET' });
 		});
 
+		test('applies setNodeSettings and persists node-level settings', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeSettings',
+						nodeName: 'B',
+						settings: {
+							onError: 'continueErrorOutput',
+							retryOnFail: true,
+							maxTries: 3,
+							waitBetweenTries: 1000,
+							alwaysOutputData: true,
+							executeOnce: true,
+						},
+					},
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.appliedOperations).toBe(1);
+
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			const b = saved.nodes.find((n) => n.name === 'B')!;
+			expect(b.onError).toBe('continueErrorOutput');
+			expect(b.retryOnFail).toBe(true);
+			expect(b.maxTries).toBe(3);
+			expect(b.waitBetweenTries).toBe(1000);
+			expect(b.alwaysOutputData).toBe(true);
+			expect(b.executeOnce).toBe(true);
+			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
+		});
+
 		test('returns error when workflow has active write lock', async () => {
 			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
 				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),

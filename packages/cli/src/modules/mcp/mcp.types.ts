@@ -24,10 +24,22 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 };
 
 // Shared MCP tool types
+export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
+	'updatedAt:desc',
+	'updatedAt:asc',
+	'createdAt:desc',
+	'createdAt:asc',
+	'name:asc',
+	'name:desc',
+] as const;
+
+export type SearchWorkflowsSortBy = (typeof SEARCH_WORKFLOWS_SORT_BY_VALUES)[number];
+
 export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	sortBy?: SearchWorkflowsSortBy;
 };
 
 export type SearchWorkflowsItem = {

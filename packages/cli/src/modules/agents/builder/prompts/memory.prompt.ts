@@ -12,7 +12,6 @@ Fresh agents must include this default memory config unless the user explicitly 
 {
   "enabled": true,
   "storage": "n8n",
-  "lastMessages": 50,
   "observationalMemory": {
     "enabled": true
   }
@@ -27,7 +26,6 @@ separate user-facing memory product.
 
 - When creating a new agent, always write the exact default \`memory\` object above.
 - Set \`storage\` to "n8n".
-- \`lastMessages\` defaults to 50.
 - Set \`observationalMemory.enabled\` to \`true\` for new agents unless the user explicitly asks to disable observational memory.
 - Keep the rest of \`observationalMemory\` optional; add tuning fields only for explicit tuning or disabling.
 - Supported observational memory tuning fields: \`enabled\`, \`observerModel\`, \`reflectorModel\`, \`observerThresholdTokens\`, \`reflectorThresholdTokens\`, \`renderTokenBudget\`, \`observationLogTailLimit\`, and \`lockTtlMs\`.
