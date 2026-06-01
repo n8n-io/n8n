@@ -1,0 +1,102 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"public": true,
+				"options": {}
+			},
+			"id": "8a51eb50-2144-452e-9156-18c8b01f5e7a",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.3,
+			"position": [0, 0],
+			"webhookId": "ai-2511-test"
+		},
+		{
+			"parameters": {
+				"options": {
+					"systemMessage": "You are a helpful assistant with one tool: `secret_box`.\n\nThe user wants the secret inside the box. You don't know the password yet — call `secret_box` with your best guess (any plausible word). The tool will tell you the correct password in its error message if you guess wrong. Read the error carefully and call `secret_box` AGAIN with the corrected password.\n\nKeep going until the tool returns the secret, then report the secret to the user.\n\nIMPORTANT: If the workflow stops after the first failed call (red error on the canvas with no agent recovery), the AI-2511 fix is NOT working. With the fix, the canvas should show `secret_box` as RED on its first run (the failure is still recorded) and GREEN on its second run (the retry succeeded)."
+				}
+			},
+			"id": "62ede0f7-0819-4520-bcc0-26b3bb89fe20",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [320, 0]
+		},
+		{
+			"parameters": {
+				"description": "Returns a secret. Takes a single string input `query` containing the password. The correct password is hidden — guess once, and the tool will tell you the right password in its error message if you guess wrong.",
+				"jsCode": "const password = (query ?? '').trim().toLowerCase();\nconst CORRECT = 'open_sesame';\nif (password !== CORRECT) {\n\tthrow new Error(`Access denied. You provided: \"${query}\". The correct password is \"${CORRECT}\". Call this tool again with that exact value.`);\n}\nreturn JSON.stringify({ secret: 'The AI-2511 fix is working — tool errors are now surfaced back to the agent.' });"
+			},
+			"id": "a0245723-3b76-45b8-98bc-56e418bba744",
+			"name": "secret_box",
+			"type": "@n8n/n8n-nodes-langchain.toolCode",
+			"typeVersion": 1.3,
+			"position": [560, 240],
+			"notes": "Throws on the first call (wrong password) and returns the secret on the second call (password discovered from the error). Leave `onError` UNSET on this node — the AI-2511 fix should default it to `continueRegularOutput` at runtime."
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-6",
+					"cachedResultName": "Claude Sonnet 4.6"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.5,
+			"position": [192, 208],
+			"id": "14c7f996-df1a-4a3d-a976-47d0a7c142a3",
+			"name": "Anthropic Chat Model",
+			"credentials": {
+				"anthropicApi": {
+					"id": "Gn2WhkBTeIIEYAIV",
+					"name": "Anthropic account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"secret_box": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "fd25babfdc35ef59835d181b7ef5f8f6144d8e080a8f0a77709b7528b9121f98"
+	}
+}
