@@ -64,7 +64,6 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	lastMessages?: number;
 	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
@@ -158,7 +157,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
@@ -192,7 +190,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
@@ -494,7 +491,6 @@ export class InstanceAiSettingsService {
 	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
 		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
 		'n8nSandboxCredentialId',
-		'lastMessages',
 		'subAgentMaxSteps',
 		'mcpServers',
 	];
@@ -547,7 +543,6 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.permissions) {
 			this.permissions = {
@@ -578,7 +573,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,

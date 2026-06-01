@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * pattern. Each row represents a pending (or in-progress / completed)
  * publication request that the outbox consumer will process asynchronously.
  */
-export class CreateWorkflowPublicationOutboxTable1784000000018 implements ReversibleMigration {
+export class CreateWorkflowPublicationOutboxTable1784000000020 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('workflow_publication_outbox').withColumns(
 			column('id').int.primary.autoGenerate2,
