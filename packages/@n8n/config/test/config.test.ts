@@ -52,6 +52,7 @@ describe('GlobalConfig', () => {
 				samesite: 'lax',
 				secure: true,
 			},
+			oauthBrowserBinding: false,
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
