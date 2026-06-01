@@ -158,6 +158,11 @@ jobs:
         if: ${{ always() && inputs.build-variant == 'coverage' }}
         shell: bash
         working-directory: packages/testing/playwright
+        env:
+          # monocart's generate() is memory-hungry; even one shard's ~16k backend
+          # entries OOMs the default heap. The containers are stopped by now, so
+          # the runner's RAM is free for the merge.
+          NODE_OPTIONS: --max-old-space-size=12288
         run: |
           cid=$(docker create "$TEST_IMAGE_N8N")
           rm -rf img-dist
