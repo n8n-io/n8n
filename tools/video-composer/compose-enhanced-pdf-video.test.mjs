@@ -37,6 +37,7 @@ test('validateEnhancedJob returns defaults and required fields', () => {
 	const {
 		introCoverSeconds,
 		introIllustrationSeconds,
+		pagePauseSeconds,
 		overlayWidth,
 		width,
 		height,
@@ -47,6 +48,7 @@ test('validateEnhancedJob returns defaults and required fields', () => {
 
 	assert.equal(job.introCoverSeconds, 4);
 	assert.equal(job.introIllustrationSeconds, 4);
+	assert.equal(job.pagePauseSeconds, 0.3);
 	assert.equal(job.overlayWidth, 260);
 	assert.equal(job.width, 1920);
 	assert.equal(job.height, 1080);
