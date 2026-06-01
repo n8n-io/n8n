@@ -31,6 +31,25 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		jest.resetAllMocks();
 	});
 
+	describe('enqueue', () => {
+		it('saves a new record with status pending', async () => {
+			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+
+			const result = await repository.enqueue('wf-1', 'v-1');
+
+			expect(entityManager.save).toHaveBeenCalledWith(
+				WorkflowPublicationOutbox,
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					publishedVersionId: 'v-1',
+					status: 'pending',
+				}),
+				undefined,
+			);
+			expect(result.status).toBe('pending');
+		});
+	});
+
 	describe('claimNextPendingRecord', () => {
 		describe('on sqlite', () => {
 			beforeEach(() => {

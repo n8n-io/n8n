@@ -13,6 +13,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		super(WorkflowPublicationOutbox, dataSource.manager);
 	}
 
+	/** Enqueue a new pending publication record. */
+	async enqueue(
+		workflowId: string,
+		publishedVersionId: string,
+	): Promise<WorkflowPublicationOutbox> {
+		return await this.save({
+			workflowId,
+			publishedVersionId,
+			status: 'pending',
+		});
+	}
+
 	/**
 	 * Atomically claim the oldest pending record by transitioning its status
 	 * to `in_progress`. On Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
