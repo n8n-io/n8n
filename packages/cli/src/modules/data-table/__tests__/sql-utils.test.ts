@@ -219,6 +219,15 @@ describe('sql-utils', () => {
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "email" DOUBLE PRECISION');
 		});
+
+		it('should use timestamptz for date columns on postgres', () => {
+			const tableName = 'data_table_user_abc';
+			const column = { name: 'registeredAt', type: 'date' as const };
+
+			const query = addColumnQuery(tableName, column, 'postgres');
+
+			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "registeredAt" TIMESTAMPTZ');
+		});
 	});
 
 	describe('deleteColumnQuery', () => {
