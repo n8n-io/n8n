@@ -31,6 +31,7 @@ const testApiKey: ApiKeyWithRawValue = {
 	rawApiKey: '123456',
 	expiresAt: 0,
 	scopes: ['user:create', 'user:list'],
+	lastUsedAt: null,
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
@@ -89,6 +90,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			rawApiKey: '***456',
 			expiresAt: 0,
 			scopes: ['user:create', 'user:list'],
+			lastUsedAt: null,
 		});
 
 		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
