@@ -61,12 +61,17 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
  * Serialises arbitrary error causes for logging. `util.inspect` is circular-ref
  * safe, so values like `fetch` `Response` objects carried on `oauth4webapi`
  * errors get fully rendered instead of swallowed by `JSON.stringify`.
+ * `breakLength: 120` keeps individual log lines within typical shipper limits.
  */
 function safeStringify(value: unknown): string {
 	try {
-		return inspect(value, { depth: 3, breakLength: Infinity });
+		return inspect(value, { depth: 3, breakLength: 120 });
 	} catch {
-		return Object.prototype.toString.call(value);
+		try {
+			return Object.prototype.toString.call(value);
+		} catch {
+			return '[unserializable]';
+		}
 	}
 }
 
@@ -278,7 +283,7 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
 		}
 
@@ -453,7 +458,7 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
 		}
 
@@ -464,26 +469,23 @@ export class OidcService {
 	}
 
 	/**
-	 * Logs a token-exchange failure with structured oauth2 fields and a safely
-	 * serialised `cause`. The previous implementation used `JSON.stringify(cause)`,
-	 * which silently produced `"[object Object]"` whenever the underlying error
-	 * carried a circular reference (e.g. a `fetch` `Response` on `oauth4webapi`
-	 * errors), masking the real reason for the failure in logs.
+	 * Logs a token-exchange failure with structured oauth2 fields.
+	 * Uses a type guard rather than `as`-cast so TypeScript narrows the shape
+	 * safely; reads fields defensively for any non-object thrown value.
+	 * `cause` is omitted because oauth4webapi's ResponseBodyError stores the
+	 * parsed {error, error_description} JSON as its `.cause`, which would
+	 * duplicate the top-level `oauthError`/`oauthErrorDescription` fields.
 	 */
 	private logTokenExchangeError(error: unknown): void {
-		const e = error as {
-			error?: string;
-			error_description?: string;
-			code?: string;
-			cause?: unknown;
-			message?: string;
-		};
+		const isOAuthError = (e: unknown): e is Record<string, unknown> =>
+			typeof e === 'object' && e !== null;
+		const e = isOAuthError(error) ? error : {};
 		this.logger.error('Failed to exchange authorization code for tokens', {
-			oauthError: e.error,
-			oauthErrorDescription: e.error_description,
-			code: e.code,
-			message: e.message,
-			cause: e.cause === undefined ? undefined : safeStringify(e.cause),
+			oauthError: typeof e.error === 'string' ? e.error : undefined,
+			oauthErrorDescription:
+				typeof e.error_description === 'string' ? e.error_description : undefined,
+			code: typeof e.code === 'string' ? e.code : undefined,
+			message: error instanceof Error ? error.message : safeStringify(error),
 		});
 	}
 

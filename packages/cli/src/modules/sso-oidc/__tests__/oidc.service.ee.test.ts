@@ -361,24 +361,18 @@ describe('OidcService', () => {
 			await expect(promise).rejects.toThrow('Invalid authorization code');
 		});
 
-		it('logs token-exchange errors with a serialised cause even when cause contains circular refs', async () => {
+		it('logs token-exchange errors with structured oauth fields', async () => {
 			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
 			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
 			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
 
-			// Simulate an oauth4webapi-style error whose `cause` carries a circular
-			// reference (e.g. a fetch Response). JSON.stringify would silently
-			// collapse this to "[object Object]" — util.inspect must render it.
-			const circularCause: Record<string, unknown> = { status: 200, body: 'token-body' };
-			circularCause.self = circularCause;
 			const tokenError = Object.assign(
 				new Error('expected expires_in to be a non-negative number'),
 				{
 					error: 'invalid_token_response',
 					error_description: 'expires_in was zero',
 					code: 'OAUTH_INVALID_RESPONSE_BODY',
-					cause: circularCause,
 				},
 			);
 			jest.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
@@ -398,13 +392,8 @@ describe('OidcService', () => {
 					oauthErrorDescription: 'expires_in was zero',
 					code: 'OAUTH_INVALID_RESPONSE_BODY',
 					message: 'expected expires_in to be a non-negative number',
-					cause: expect.stringContaining('token-body'),
 				}),
 			);
-			// Verify the circular ref didn't collapse the cause to a useless string.
-			const causeArg = (logger.error as jest.Mock).mock.calls[0][1].cause as string;
-			expect(causeArg).not.toBe('[object Object]');
-			expect(causeArg).toContain('Circular');
 		});
 
 		it('throws an error if claims() throws an error', async () => {
