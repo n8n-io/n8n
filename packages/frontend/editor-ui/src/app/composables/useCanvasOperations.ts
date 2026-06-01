@@ -485,6 +485,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const wasTrigger = nodeTypesStore.isTriggerNode(node.type);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -505,6 +507,12 @@ export function useCanvasOperations() {
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
 			}
+		}
+
+		// Removing a trigger node can flip private-credential validity on every
+		// other node — re-evaluate credential issues across the workflow.
+		if (wasTrigger) {
+			nodeHelpers.updateNodesCredentialsIssues();
 		}
 
 		trackDeleteNode(id);
@@ -905,6 +913,12 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
+
+			// Adding a trigger node can flip private-credential validity on every
+			// other node — re-evaluate credential issues across the workflow.
+			if (nodeTypesStore.isTriggerNode(nodeData.type)) {
+				nodeHelpers.updateNodesCredentialsIssues();
+			}
 
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
 			const nextView =

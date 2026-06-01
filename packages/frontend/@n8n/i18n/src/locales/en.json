@@ -3727,6 +3727,7 @@
 	"nodeIssues.credentials.doNotExist.hint": "You can create credentials with the exact name and then they get auto-selected on refresh..",
 	"nodeIssues.credentials.notIdentified": "Credentials with name {name} exist for {type}.",
 	"nodeIssues.credentials.notIdentified.hint": "Credentials are not clearly identified. Please select the correct credentials.",
+	"nodeIssues.credentials.privateRequiresManualTrigger": "Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.",
 	"nodeIssues.input.missing": "No node connected to required input \"{inputName}\"",
 	"ndv.trigger.moreInfo": "More info",
 	"ndv.trigger.copiedTestUrl": "Test URL copied to clipboard",
