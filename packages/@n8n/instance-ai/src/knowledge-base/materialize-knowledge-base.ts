@@ -103,11 +103,11 @@ export function buildKnowledgeBaseWorkspaceBundle({
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 
-function loadPrebakedKnowledgeBaseBundle(
-	workspace: SandboxWorkspace,
-	root: string,
-	logger: Logger | undefined,
-): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
+export function loadPrebakedKnowledgeBaseBundle({
+	workspace,
+	root,
+	logger,
+}: MaterializeKnowledgeBaseOptions): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
 	const bundle = buildKnowledgeBaseWorkspaceBundle({ root });
 
 	return loadPrebakedWorkspaceBundle({
@@ -135,26 +135,18 @@ function loadPrebakedKnowledgeBaseBundle(
 	});
 }
 
-export async function createPrebakedKnowledgeBaseFromWorkspace(
+export async function materializeKnowledgeBaseIntoWorkspace(
 	options: MaterializeKnowledgeBaseOptions,
-): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
-	return await loadPrebakedKnowledgeBaseBundle(options.workspace, options.root, options.logger);
-}
-
-export async function materializeKnowledgeBaseIntoWorkspace({
-	workspace,
-	root,
-	logger,
-}: MaterializeKnowledgeBaseOptions): Promise<KnowledgeBaseWorkspaceBundle> {
+): Promise<KnowledgeBaseWorkspaceBundle> {
 	return await materializeWorkspaceBundle({
-		workspace,
+		workspace: options.workspace,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger,
-		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(workspace, root, logger),
-		buildBundle: () => buildKnowledgeBaseWorkspaceBundle({ root }),
+		logger: options.logger,
+		loadPrebaked: () => loadPrebakedKnowledgeBaseBundle(options),
+		buildBundle: () => buildKnowledgeBaseWorkspaceBundle({ root: options.root }),
 		materializedLogMessage: 'Materialized knowledge base into workspace',
 		materializedLogContext: (bundle) => ({
-			root,
+			root: options.root,
 			knowledgeBaseRoot: bundle.rootDir,
 			contentHash: bundle.contentHash,
 			fileCount: bundle.files.size,

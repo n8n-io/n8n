@@ -4,6 +4,7 @@ import {
 	buildKnowledgeBaseWorkspaceBundle,
 	createPrebakedKnowledgeBaseFromWorkspace,
 	KNOWLEDGE_BASE_MANIFEST_FILE,
+	loadPrebakedKnowledgeBaseBundle,
 	materializeKnowledgeBaseIntoWorkspace,
 	SANDBOX_KNOWLEDGE_BASE_DIR,
 } from '../materialize-knowledge-base';
@@ -91,7 +92,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 		]);
 		const { workspace, writes } = createSandboxWorkspace(files);
 
-		const prebaked = await createPrebakedKnowledgeBaseFromWorkspace({
+		const prebaked = await loadPrebakedKnowledgeBaseBundle({
 			workspace,
 			root: ROOT,
 		});
