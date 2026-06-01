@@ -10,12 +10,11 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
 import { TraceContextService } from './tracing-context';
+import { OwnershipService } from '../../services/ownership.service';
 
 const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
 	typeof value === 'object' &&
@@ -75,7 +74,12 @@ export class OtelLifecycleHandler {
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -110,7 +114,12 @@ export class OtelLifecycleHandler {
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -192,6 +201,17 @@ export class OtelLifecycleHandler {
 
 		return customAttributes;
 	}
+}
+
+function buildProjectCustomAttributes(
+	tags: Array<{ key: string; value: string }>,
+): Record<string, string> | undefined {
+	if (!tags?.length) return undefined;
+	const attrs: Record<string, string> = {};
+	for (const { key, value } of tags) {
+		attrs[key] = value;
+	}
+	return attrs;
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {

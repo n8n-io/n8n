@@ -52,6 +52,7 @@ export class ExecutionLevelTracer {
 						[ATTR.EXECUTION_ID]: params.executionId,
 						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
 						...customAttributes,
+						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
 				},
@@ -110,10 +111,7 @@ export class ExecutionLevelTracer {
 	startNode(params: StartNodeParams): void {
 		try {
 			//	We should always have the node running in a workflow so parentCtx should never be null
-			const trackedWorkflowSpan = this.activeWorkflowSpans.get(params.executionId);
-			const parentCtx = trackedWorkflowSpan
-				? trace.setSpan(context.active(), trackedWorkflowSpan.span)
-				: undefined;
+			const parentCtx = this.findWorkflowSpanContext(params.executionId);
 
 			if (!parentCtx) {
 				this.logger.warn(
@@ -226,6 +224,11 @@ export class ExecutionLevelTracer {
 		];
 	}
 
+	private findWorkflowSpanContext(executionId: string) {
+		const tracked = this.activeWorkflowSpans.get(executionId);
+		return tracked ? trace.setSpan(context.active(), tracked.span) : undefined;
+	}
+
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
 		return (
 			(nodeName
@@ -246,25 +249,24 @@ export class ExecutionLevelTracer {
 	}
 }
 
-function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number | boolean> {
-	return {
+function buildCustomAttributes(
+	prefix: string,
+	attrs: Record<string, string> | undefined,
+): Record<string, string> {
+	if (!attrs) return {};
+	const result: Record<string, string> = {};
+	for (const [k, v] of Object.entries(attrs)) {
+		result[`${prefix}${k}`] = v;
+	}
+	return result;
+}
+
+function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
+	const attrs: Record<string, string | number> = {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
-}
-
-function buildCustomAttributes(
-	prefix: string,
-	customAttributes?: Record<string, string>,
-): Record<string, string> {
-	if (!customAttributes) return {};
-
-	const attrs: Record<string, string> = {};
-	for (const [key, value] of Object.entries(customAttributes)) {
-		attrs[`${prefix}${key}`] = value;
-	}
-
 	return attrs;
 }
 
