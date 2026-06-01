@@ -61,18 +61,6 @@ export class PublicApiKeyService {
 			order: { createdAt: 'DESC' },
 			take: options.take,
 			skip: options.skip,
-			select: {
-				id: true,
-				userId: true,
-				label: true,
-				apiKey: true,
-				scopes: true,
-				audience: true,
-				createdAt: true,
-				updatedAt: true,
-				lastUsedAt: true,
-				user: { id: true, firstName: true, lastName: true, email: true },
-			},
 		});
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
