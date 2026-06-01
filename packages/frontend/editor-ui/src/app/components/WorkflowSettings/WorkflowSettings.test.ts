@@ -10,7 +10,7 @@ import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
+import WorkflowSettingsVue from '@/app/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -82,20 +82,77 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
+const workflowSettingsStubs = {
+	Modal: {
+		template:
+			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+	},
+	// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
+	// userEvent.click simulates pointer movement that can trigger the switch
+	// during mouse path traversal, toggling executionTimeout and breaking save.
+	ElSwitch: {
+		props: ['modelValue', 'disabled'],
+		emits: ['update:modelValue'],
+		template:
+			'<button type="button" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
+	ParameterInputFull: {
+		props: ['value', 'isReadOnly', 'path'],
+		emits: ['update'],
+		template: `
+			<input
+				:data-test-id="$attrs['data-test-id']"
+				:value="value"
+				:disabled="isReadOnly"
+				@input="$emit('update', { name: path, value: $event.target.value })"
+			/>
+		`,
+	},
+};
+
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
+		stubs: workflowSettingsStubs,
+	},
+});
+
+const createComponentWithCustomTelemetryTagsStub = createComponentRenderer(WorkflowSettingsVue, {
+	global: {
 		stubs: {
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-			},
-			// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
-			// userEvent.click simulates pointer movement that can trigger the switch
-			// during mouse path traversal, toggling executionTimeout and breaking save.
-			ElSwitch: {
-				props: ['modelValue', 'disabled'],
-				template:
-					'<span :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" />',
+			...workflowSettingsStubs,
+			WorkflowCustomTelemetryTags: {
+				props: ['modelValue', 'isReadOnly', 'saveTags'],
+				emits: ['update:modelValue', 'validity-change'],
+				methods: {
+					async saveCustomTelemetryTags() {
+						const tags = [{ key: 'env', value: 'production' }];
+						try {
+							await this.saveTags(tags);
+						} catch {
+							return;
+						}
+						this.$emit('update:modelValue', tags);
+					},
+				},
+				template: `
+					<div data-test-id="workflow-settings-custom-telemetry-tags">
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-update"
+							@click="$emit('update:modelValue', [{ key: 'env', value: 'production' }])"
+						/>
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-save-immediate"
+							@click="saveCustomTelemetryTags"
+						/>
+						<button
+							type="button"
+							data-test-id="workflow-settings-custom-telemetry-tags-invalid"
+							@click="$emit('validity-change', true)"
+						/>
+					</div>
+				`,
 			},
 		},
 	},
@@ -176,6 +233,88 @@ describe('WorkflowSettingsVue', () => {
 		await flushPromises();
 
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
+	});
+
+	describe('Custom telemetry tags', () => {
+		beforeEach(() => {
+			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+		});
+
+		it('should show custom telemetry tag settings when OTel is enabled', async () => {
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
+		});
+
+		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+			settingsStore.moduleSettings = { otel: { enabled: false } };
+			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
+		});
+
+		it('should save workflow settings with custom telemetry tags emitted by the child', async () => {
+			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-update'));
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
+					}),
+				}),
+			);
+		});
+
+		it('should persist custom telemetry tags immediately with a partial settings payload', async () => {
+			workflowDocumentStore.setChecksum('test-checksum');
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith('1', {
+				settings: {
+					customTelemetryTags: [{ key: 'env', value: 'production' }],
+				},
+				expectedChecksum: 'test-checksum',
+			});
+			expect(workflowDocumentStore.settings.customTelemetryTags).toEqual([
+				{ key: 'env', value: 'production' },
+			]);
+		});
+
+		it('should show an error when immediate custom telemetry tag persistence fails', async () => {
+			const error = new Error('Save failed');
+			workflowsStore.updateWorkflow.mockRejectedValue(error);
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
+
+			await waitFor(() => {
+				expect(toast.showError).toHaveBeenCalledWith(error, 'Problem saving settings');
+			});
+			expect(workflowDocumentStore.settings.customTelemetryTags).toBeUndefined();
+		});
+
+		it('should disable workflow settings save when custom telemetry tags are invalid', async () => {
+			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-invalid'));
+
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+		});
 	});
 
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {

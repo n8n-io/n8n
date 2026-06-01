@@ -67,3 +67,16 @@ properties:
       Security note: When a workflow is available in MCP, it can be discovered and executed
       by any MCP client that has the appropriate API credentials for your n8n instance.
     example: false
+  customTelemetryTags:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          type: string
