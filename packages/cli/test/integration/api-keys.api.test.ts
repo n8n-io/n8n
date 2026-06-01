@@ -608,14 +608,14 @@ describe('Cross-user behavior (admin scope)', () => {
 		expect(ids).toEqual([memberWithKey.apiKeys[0].id]);
 	});
 
-	test('DELETE /api-keys/:id forbids a member from revoking another user’s key', async () => {
+	test('DELETE /api-keys/:id 404s when a member targets another user’s key', async () => {
 		const ownerWithKey = await createOwnerWithApiKey();
 		const member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
 		await testServer
 			.authAgentFor(member)
 			.delete(`/api-keys/${ownerWithKey.apiKeys[0].id}`)
-			.expect(403);
+			.expect(404);
 
 		// Owner's key still exists.
 		const ownerKeys = await Container.get(ApiKeyRepository).findBy({ userId: ownerWithKey.id });
