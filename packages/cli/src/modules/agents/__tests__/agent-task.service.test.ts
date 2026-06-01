@@ -15,6 +15,10 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type {
+	AgentTaskRunLockHandle,
+	AgentTaskRunLockRepository,
+} from '../repositories/agent-task-run-lock.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 
@@ -84,6 +88,16 @@ function makeSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnap
 	} as AgentTaskSnapshot;
 }
 
+function makeRunLock(overrides: Partial<AgentTaskRunLockHandle> = {}): AgentTaskRunLockHandle {
+	return {
+		agentId: AGENT_ID,
+		taskId: 'task-1',
+		holderId: 'holder-1',
+		heldUntil: new Date('2026-01-01T08:05:00.000Z'),
+		...overrides,
+	};
+}
+
 async function* emptyStream(): AsyncGenerator<never> {}
 
 // eslint-disable-next-line require-yield
@@ -122,6 +136,7 @@ describe('AgentTaskService', () => {
 	} as unknown as GlobalConfig;
 	let taskRepository: ReturnType<typeof mock<AgentTaskRepository>>;
 	let taskSnapshotRepository: ReturnType<typeof mock<AgentTaskSnapshotRepository>>;
+	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentsService: ReturnType<typeof mock<AgentsService>>;
@@ -140,6 +155,7 @@ describe('AgentTaskService', () => {
 			globalConfig,
 			taskRepository,
 			taskSnapshotRepository,
+			taskRunLockRepository,
 			agentRepository,
 			projectRelationRepository,
 			agentsService,
@@ -154,6 +170,10 @@ describe('AgentTaskService', () => {
 		CronJobMock.mockImplementation(() => ({ start: jest.fn(), stop: jest.fn() }));
 		taskRepository = mock<AgentTaskRepository>();
 		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
+		taskRunLockRepository = mock<AgentTaskRunLockRepository>();
+		taskRunLockRepository.acquire.mockResolvedValue(makeRunLock());
+		taskRunLockRepository.renew.mockResolvedValue(true);
+		taskRunLockRepository.release.mockResolvedValue(undefined);
 		// `create` fills the body so `save`/`toDto` see a complete entity.
 		(taskRepository.create as unknown as jest.Mock).mockImplementation((data: Partial<AgentTask>) =>
 			makeTask(data),
@@ -408,6 +428,10 @@ describe('AgentTaskService', () => {
 				makeSnapshot(),
 			);
 			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
+			taskRunLockRepository.acquire
+				.mockResolvedValueOnce(makeRunLock())
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce(makeRunLock({ holderId: 'holder-2' }));
 			(agentsService.executeForTaskPublished as jest.Mock)
 				.mockReturnValueOnce(blockingStream())
 				.mockReturnValueOnce(emptyStream());
@@ -432,6 +456,51 @@ describe('AgentTaskService', () => {
 			await flushAsyncWork();
 
 			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(2);
+		});
+
+		it('uses the shared lock to skip a tick after leader handoff while a previous leader run is active', async () => {
+			let finishRun!: () => void;
+			async function* blockingStream(): AsyncGenerator<never> {
+				await new Promise<void>((resolve) => {
+					finishRun = resolve;
+				});
+			}
+			const previousLeader = service;
+			const nextLeader = buildService(true);
+			(agentRepository.findOne as jest.Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findEnabledByVersionId as jest.Mock).mockResolvedValue([
+				makeSnapshot(),
+			]);
+			(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+				makeSnapshot(),
+			);
+			(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue(['user-1']);
+			taskRunLockRepository.acquire
+				.mockResolvedValueOnce(makeRunLock({ holderId: 'old-leader' }))
+				.mockResolvedValueOnce(null);
+			(agentsService.executeForTaskPublished as jest.Mock).mockReturnValueOnce(blockingStream());
+
+			await previousLeader.registerEnabledForAgent(AGENT_ID);
+			const previousLeaderTick = CronJobMock.mock.calls[0][1] as () => void;
+			previousLeaderTick();
+			await flushAsyncWork();
+
+			await nextLeader.registerEnabledForAgent(AGENT_ID);
+			const nextLeaderTick = CronJobMock.mock.calls[1][1] as () => void;
+			nextLeaderTick();
+			await flushAsyncWork();
+
+			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(
+				'[AgentTaskService] Skipping task because previous run is still active',
+				expect.objectContaining({ taskId: 'task-1', agentId: AGENT_ID }),
+			);
+
+			finishRun();
+			await flushAsyncWork();
 		});
 	});
 
@@ -624,28 +693,55 @@ describe('AgentTaskService', () => {
 			await runScheduledTaskOf(service, 'task-1');
 
 			expect(agentsService.executeForTaskPublished).toHaveBeenCalledTimes(2);
+			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(2);
+		});
+
+		it('renews the task run lock while a scheduled run is active', async () => {
+			jest.useFakeTimers();
+			try {
+				let finishRun!: () => void;
+				async function* blockingStream(): AsyncGenerator<never> {
+					await new Promise<void>((resolve) => {
+						finishRun = resolve;
+					});
+				}
+				seedJob(service, 'task-1', AGENT_ID);
+				(agentRepository.findOne as jest.Mock).mockResolvedValue(publishedAgentWithTask(true));
+				(taskSnapshotRepository.findByVersionAndTaskId as jest.Mock).mockResolvedValue(
+					makeSnapshot(),
+				);
+				(projectRelationRepository.findUserIdsByProjectId as jest.Mock).mockResolvedValue([
+					'user-1',
+				]);
+				(agentsService.executeForTaskPublished as jest.Mock).mockReturnValue(blockingStream());
+
+				const run = runScheduledTaskOf(service, 'task-1');
+				await Promise.resolve();
+				await Promise.resolve();
+
+				await jest.advanceTimersByTimeAsync(60_000);
+
+				expect(taskRunLockRepository.renew).toHaveBeenCalledWith(
+					expect.objectContaining({ agentId: AGENT_ID, taskId: 'task-1' }),
+					expect.any(Number),
+				);
+
+				finishRun();
+				await run;
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 
 	describe('stopAll', () => {
-		it('clears stale running state as well as cron jobs', async () => {
+		it('stops local cron jobs without touching distributed run locks', async () => {
 			const job = seedJob(service, 'task-1', AGENT_ID);
-			(
-				service as unknown as {
-					runningTaskIds: Set<string>;
-				}
-			).runningTaskIds.add('task-1');
 
 			service.stopAll();
 
 			expect(job.stop).toHaveBeenCalled();
-			expect(
-				(
-					service as unknown as {
-						runningTaskIds: Set<string>;
-					}
-				).runningTaskIds.has('task-1'),
-			).toBe(false);
+			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
 		});
 	});
 

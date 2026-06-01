@@ -20,11 +20,18 @@ import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
+import {
+	type AgentTaskRunLockHandle,
+	AgentTaskRunLockRepository,
+} from './repositories/agent-task-run-lock.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+
+const TASK_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
+const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
 
 /**
  * Owns an agent's scheduled tasks. Draft task bodies (name/objective/cron) live
@@ -42,13 +49,12 @@ export class AgentTaskService {
 	/** Live cron jobs keyed by taskId; the agentId is kept so a whole agent's jobs can be stopped. */
 	private readonly jobs = new Map<string, { agentId: string; job: CronJob }>();
 
-	private readonly runningTaskIds = new Set<string>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly taskRepository: AgentTaskRepository,
 		private readonly taskSnapshotRepository: AgentTaskSnapshotRepository,
+		private readonly taskRunLockRepository: AgentTaskRunLockRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly agentsService: AgentsService,
@@ -256,7 +262,6 @@ export class AgentTaskService {
 		for (const taskId of [...this.jobs.keys()]) {
 			this.deregister(taskId);
 		}
-		this.runningTaskIds.clear();
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
@@ -329,20 +334,70 @@ export class AgentTaskService {
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runScheduledTask(taskId: string): Promise<void> {
-		if (this.runningTaskIds.has(taskId)) {
-			this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
-				taskId,
-				agentId: this.jobs.get(taskId)?.agentId,
-			});
+		const agentId = this.jobs.get(taskId)?.agentId;
+		if (!agentId) {
+			await this.runTask(taskId);
 			return;
 		}
 
-		this.runningTaskIds.add(taskId);
+		const holderId = randomUUID();
+		let lock: AgentTaskRunLockHandle | null = null;
+		let renewInterval: ReturnType<typeof setInterval> | undefined;
 		try {
+			lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
+				holderId,
+				ttlMs: TASK_RUN_LOCK_TTL_MS,
+			});
+			if (!lock) {
+				this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
+					taskId,
+					agentId,
+				});
+				return;
+			}
+
+			renewInterval = this.startTaskRunLockRenewal(lock);
 			await this.runTask(taskId);
+		} catch (error) {
+			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
+				taskId,
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		} finally {
-			this.runningTaskIds.delete(taskId);
+			if (renewInterval) clearInterval(renewInterval);
+			if (lock) {
+				await this.taskRunLockRepository.release(lock).catch((error) => {
+					this.logger.warn('[AgentTaskService] Failed to release task run lock', {
+						taskId,
+						agentId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+			}
 		}
+	}
+
+	private startTaskRunLockRenewal(lock: AgentTaskRunLockHandle): ReturnType<typeof setInterval> {
+		return setInterval(() => {
+			void this.taskRunLockRepository
+				.renew(lock, TASK_RUN_LOCK_TTL_MS)
+				.then((renewed) => {
+					if (!renewed) {
+						this.logger.warn('[AgentTaskService] Failed to renew task run lock', {
+							taskId: lock.taskId,
+							agentId: lock.agentId,
+						});
+					}
+				})
+				.catch((error) => {
+					this.logger.warn('[AgentTaskService] Failed to renew task run lock', {
+						taskId: lock.taskId,
+						agentId: lock.agentId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
 	private async runTask(taskId: string): Promise<void> {
