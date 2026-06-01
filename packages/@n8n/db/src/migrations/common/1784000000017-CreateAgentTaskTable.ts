@@ -33,7 +33,9 @@ export class CreateAgentTaskTable1784000000017 implements ReversibleMigration {
 		await addColumns('agent_execution_threads', [
 			column('taskId')
 				.varchar(32)
-				.comment('Task that triggered this session; null for non-task runs'),
+				.comment(
+					'Published task ID that triggered this session; not an FK because published runs can outlive draft task rows',
+				),
 		]);
 
 		await addColumns('agent_history', [

@@ -47,8 +47,17 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	projectId: string;
 
-	/** Set when this session was triggered by a scheduled task; null otherwise. */
-	@Column({ type: 'varchar', length: AGENT_TASK_ID_MAX_LENGTH, nullable: true })
+	/**
+	 * Published task ID that triggered this session. Intentionally not a live
+	 * FK: published task runs can outlive mutable draft `agent_task` rows.
+	 */
+	@Column({
+		type: 'varchar',
+		length: AGENT_TASK_ID_MAX_LENGTH,
+		nullable: true,
+		comment:
+			'Published task ID that triggered this session; not an FK because published runs can outlive draft task rows',
+	})
 	taskId: string | null;
 
 	/** Stable, project-scoped incrementing counter assigned at creation. */
