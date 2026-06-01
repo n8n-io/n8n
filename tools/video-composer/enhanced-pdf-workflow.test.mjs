@@ -40,3 +40,25 @@ test('enhanced PDF workflow defaults to execution binary previews for final vide
 	assert.match(responseCode, /finalVideo: await this\.helpers\.prepareBinaryData\(video, 'final\.mp4', 'video\/mp4'\)/);
 	assert.match(responseCode, /podcastAudio: await this\.helpers\.prepareBinaryData\(audio, 'merged-audio\.mp3', 'audio\/mpeg'\)/);
 });
+
+test('enhanced PDF workflow uses continuous research podcast generation', () => {
+	const prepareJobCode = getNode('Prepare Enhanced PDF Job').parameters.jsCode;
+	const scriptNode = getNode('Generate Research Podcast Script');
+	const podcastNode = getNode('Run Continuous AI Podcast');
+	const oldScriptNode = workflow.nodes.find((node) => node.name === 'Generate Page Podcast Script');
+	const oldPodcastNode = workflow.nodes.find((node) => node.name === 'Run Page AI Podcast');
+
+	assert.equal(oldScriptNode, undefined);
+	assert.equal(oldPodcastNode, undefined);
+	assert.match(prepareJobCode, /researchScriptPath: scriptDir \+ '\/research-podcast-script\.json'/);
+	assert.match(prepareJobCode, /researchScriptJobPath/);
+	assert.match(prepareJobCode, /researchScriptPath: paths\.researchScriptPath/);
+	assert.match(prepareJobCode, /整篇 PDF 作为一整集连续双人播客/);
+	assert.match(prepareJobCode, /页面只作为视频画面的视觉锚点/);
+	assert.doesNotMatch(prepareJobCode, /每页只解释当前页面/);
+	assert.doesNotMatch(prepareJobCode, /pageScriptPath: paths\.pageScriptPath, audioDir/);
+	assert.match(scriptNode.parameters.jsCode, /research-podcast-script-client\.mjs/);
+	assert.match(scriptNode.parameters.jsCode, /item\.researchScriptJobPath/);
+	assert.match(podcastNode.parameters.jsCode, /continuous-podcast-client\.mjs/);
+	assert.match(podcastNode.parameters.jsCode, /item\.podcastJobPath/);
+});
