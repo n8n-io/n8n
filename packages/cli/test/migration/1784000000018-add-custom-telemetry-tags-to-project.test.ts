@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000017';
+const MIGRATION_NAME = 'AddCustomTelemetryTagsToProject1784000000018';
 
 interface SqliteColumnInfo {
 	name: string;

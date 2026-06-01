@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddCustomTelemetryTagsToProject1784000000017 implements ReversibleMigration {
+export class AddCustomTelemetryTagsToProject1784000000018 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column, createIndex } }: MigrationContext) {
 		await addColumns('project', [column('customTelemetryTags').json.notNull.default("'[]'")]);
 		await createIndex('shared_workflow', ['projectId']);

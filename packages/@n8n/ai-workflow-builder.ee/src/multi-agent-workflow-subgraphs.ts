@@ -26,6 +26,7 @@ import {
 import { ParentGraphState } from './parent-graph-state';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { SsrfGuard } from './tools/utils/ssrf-guard';
 import {
 	type CoordinationLogEntry,
 	type CoordinationMetadata,
@@ -89,6 +90,8 @@ export interface MultiAgentSubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Assistant handler for routing help/debug queries via the SDK */
 	assistantHandler?: AssistantHandler;
+	/** SSRF guard for web_fetch, threaded down to the discovery subgraph. */
+	ssrf?: SsrfGuard;
 }
 
 type ParentState = typeof ParentGraphState.State;
@@ -214,6 +217,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
 		assistantHandler,
+		ssrf,
 	} = config;
 
 	const mergeAskBuild = featureFlags?.mergeAskBuild === true && !!assistantHandler;
@@ -237,6 +241,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
+		ssrf,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
