@@ -272,7 +272,7 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('fetchGlobalSecrets()', () => {
-		it('should use legacy endpoint when no module settings', async () => {
+		it('should use legacy endpoint when module has no feature flags', async () => {
 			setLegacyMode();
 			setHasPermission(true);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);

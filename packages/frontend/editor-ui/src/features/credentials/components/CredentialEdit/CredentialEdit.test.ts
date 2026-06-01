@@ -225,6 +225,18 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 		},
 	}),
 });
+
+const modalLoadingStub = {
+	props: ['loading'],
+	template: `
+		<div data-test-id="credential-edit-modal-stub" :data-loading="String(loading)">
+			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="content" />
+			<slot v-if="!loading" name="footer" />
+		</div>
+	`,
+};
+
 describe('CredentialEdit', () => {
 	beforeEach(() => {
 		const externalSecretsStore = mockedStore(useExternalSecretsStore);
@@ -445,11 +457,49 @@ describe('CredentialEdit', () => {
 
 			const { getByTestId } = renderComponent({
 				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
 			});
 
 			await waitFor(() => {
+				expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute('data-loading', 'false');
 				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 			});
+		});
+
+		it('should stop loading when credential loading fails', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockRejectedValueOnce(new Error('Failed to load'));
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: 'missing-credential',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
+			});
+
+			try {
+				await waitFor(() => {
+					expect(credentialsStore.getCredentialData).toHaveBeenCalled();
+					expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute(
+						'data-loading',
+						'false',
+					);
+				});
+			} finally {
+				consoleErrorSpy.mockRestore();
+			}
 		});
 	});
 

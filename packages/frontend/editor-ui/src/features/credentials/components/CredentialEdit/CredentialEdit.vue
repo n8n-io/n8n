@@ -476,6 +476,7 @@ watch(
 );
 
 onMounted(async () => {
+	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
 	try {
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		requiredCredentials.value =
@@ -543,6 +544,7 @@ onMounted(async () => {
 			}
 		}
 
+		// External hooks are fire-and-forget so slow or failing hooks cannot keep the modal loading.
 		void externalHooks
 			.run('credentialsEdit.credentialModalOpened', {
 				credentialType: credentialTypeName.value,
