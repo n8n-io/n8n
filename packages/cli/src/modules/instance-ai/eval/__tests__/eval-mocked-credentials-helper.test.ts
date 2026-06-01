@@ -11,6 +11,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
@@ -414,12 +415,12 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted — schema synthesis when id is null', () => {
-		// Core's eval-mode bypass passes `{ id: null, name: type }` when a node
-		// has no credentials configured at all. The inner helper throws
-		// CredentialNotFoundError on a null id; the catch below schema-synthesizes
-		// (and applies the URL rewrite) so vendor SDK traffic stays inside the
-		// wire server instead of escaping to the real provider with 401.
+	describe('getDecrypted — schema synthesis when id is null or missing', () => {
+		// Core's eval-mode bypass may pass `{ id: null, name: type }`, and saved
+		// MCP workflows can contain a credential reference with no id. In both
+		// cases the catch below schema-synthesizes (and applies the URL rewrite)
+		// so vendor SDK traffic stays inside the wire server instead of escaping
+		// to the real provider with 401.
 		const propsSchema = [
 			{
 				name: 'apiKey',
@@ -437,12 +438,22 @@ describe('EvalMockedCredentialsHelper', () => {
 		];
 
 		const nullNodeCreds: INodeCredentialsDetails = { id: null, name: 'openAiApi' };
+		const noIdNodeCreds = { name: 'openAiApi' } as unknown as INodeCredentialsDetails;
 
 		function makeSynthesizingInner(): ICredentialsHelper {
 			return makeInner({
 				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
 				// Inner throws on a null-id lookup → catch fires → schema synthesis.
 				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+			});
+		}
+
+		function makeNoIdInner(): ICredentialsHelper {
+			return makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getDecrypted: jest
+					.fn()
+					.mockRejectedValue(new UnexpectedError('Found credential with no ID.')),
 			});
 		}
 
@@ -566,6 +577,29 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			expect(result.url).toBe('https://api.openai.com/v1');
 			expect(helper.rewrittenCredentials).toEqual([]);
+		});
+
+		it('synthesizes a credential when the inner helper reports a missing id', async () => {
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				noIdNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(typeof result.apiKey).toBe('string');
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
 		});
 	});
 

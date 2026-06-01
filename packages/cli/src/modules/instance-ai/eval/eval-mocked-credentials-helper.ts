@@ -19,7 +19,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ICredentialsHelper } from 'n8n-workflow';
+import { ICredentialsHelper, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
@@ -30,6 +30,13 @@ const MOCK_MARKER = '__evalMockedCredential' as const;
 export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix: string }> = {
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
+
+function isMockableMissingCredentialError(error: unknown): boolean {
+	return (
+		error instanceof CredentialNotFoundError ||
+		(error instanceof UnexpectedError && error.message === 'Found credential with no ID.')
+	);
+}
 
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
@@ -116,13 +123,15 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 				expressionResolveValues,
 			);
 		} catch (error) {
-			if (!(error instanceof CredentialNotFoundError)) throw error;
+			if (!isMockableMissingCredentialError(error)) throw error;
 
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
 				credentialId: nodeCredentials.id ?? undefined,
 			});
+
+			const hasCredentialId = nodeCredentials.id !== undefined && nodeCredentials.id !== null;
 
 			// When called with no credential id (eval-mode bypass for nodes
 			// with no credentials of any type configured), schema-synthesize
@@ -133,13 +142,12 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			// schema defaults can be richer than `CredentialInformation`, but
 			// at runtime emits only JSON-shaped values, which is what the
 			// rewrite path consumes.
-			credentials =
-				nodeCredentials.id === null
-					? ({
-							...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
-							[MOCK_MARKER]: true,
-						} as ICredentialDataDecryptedObject)
-					: { [MOCK_MARKER]: true };
+			credentials = !hasCredentialId
+				? ({
+						...buildEvalMockCredentials(this.inner.getCredentialsProperties(type)),
+						[MOCK_MARKER]: true,
+					} as ICredentialDataDecryptedObject)
+				: { [MOCK_MARKER]: true };
 		}
 
 		return this.applyServerUrlRewrite(credentials, type, nodeCredentials, executeData);
