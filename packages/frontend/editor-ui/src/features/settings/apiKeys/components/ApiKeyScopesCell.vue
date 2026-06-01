@@ -27,16 +27,13 @@ const emit = defineEmits<{
 	background: none;
 	border: none;
 	padding: 0;
-	color: var(--color--primary);
+	color: inherit;
 	font: inherit;
 	cursor: pointer;
-	text-decoration: underline;
-	text-underline-offset: 2px;
 
 	&:disabled {
 		color: var(--color--text--tint-1);
 		cursor: default;
-		text-decoration: none;
 	}
 }
 </style>

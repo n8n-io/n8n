@@ -142,11 +142,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
-			<N8nButton
-				v-if="isPublicApiEnabled && apiKeys.length"
-				size="large"
-				@click="onCreateApiKey"
-			>
+			<N8nButton v-if="isPublicApiEnabled && apiKeys.length" size="large" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
 		</div>
@@ -183,8 +179,38 @@ function onOpenScopes(apiKey: ApiKey) {
 			@open-scopes="onOpenScopes"
 		/>
 
-		<div v-if="apiKeysCount > pageSize" :class="$style.pagination">
+		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.footer">
+			<div :class="$style.bottomHint">
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText(
+							`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
+						)
+					}}
+				</N8nText>
+				{{ ' ' }}
+				<N8nLink
+					v-if="isSwaggerUIEnabled"
+					data-test-id="api-playground-link"
+					:to="apiDocsURL"
+					:new-window="true"
+					size="small"
+				>
+					{{ i18n.baseText('settings.api.view.apiPlayground') }}
+				</N8nLink>
+				<N8nLink
+					v-else
+					data-test-id="api-endpoint-docs-link"
+					:to="apiDocsURL"
+					:new-window="true"
+					size="small"
+				>
+					{{ i18n.baseText(`settings.api.view.external-docs`) }}
+				</N8nLink>
+			</div>
+
 			<N8nPagination
+				v-if="apiKeysCount > pageSize"
 				:current-page="page"
 				:page-size="pageSize"
 				:total="apiKeysCount"
@@ -192,35 +218,6 @@ function onOpenScopes(apiKey: ApiKey) {
 				data-test-id="api-keys-pagination"
 				@current-change="onPageChange"
 			/>
-		</div>
-
-		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.BottomHint">
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText(
-						`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-					)
-				}}
-			</N8nText>
-			{{ ' ' }}
-			<N8nLink
-				v-if="isSwaggerUIEnabled"
-				data-test-id="api-playground-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
-			>
-				{{ i18n.baseText('settings.api.view.apiPlayground') }}
-			</N8nLink>
-			<N8nLink
-				v-else
-				data-test-id="api-endpoint-docs-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
-			>
-				{{ i18n.baseText(`settings.api.view.external-docs`) }}
-			</N8nLink>
 		</div>
 
 		<N8nActionBox
@@ -283,19 +280,23 @@ function onOpenScopes(apiKey: ApiKey) {
 	}
 }
 
-.BottomHint {
-	margin-bottom: var(--spacing--sm);
-	margin-top: var(--spacing--sm);
-}
-
 .container {
 	display: flex;
 	flex-direction: column;
 }
 
-.pagination {
+.footer {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	margin-top: var(--spacing--sm);
+}
+
+.bottomHint {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--5xs);
 }
 </style>

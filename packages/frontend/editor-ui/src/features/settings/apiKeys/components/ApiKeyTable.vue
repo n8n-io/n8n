@@ -20,8 +20,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-function formatCreated(iso: string): string {
-	return DateTime.fromISO(iso).toFormat('d LLL yyyy');
+function formatExpiration(expiresAt: number | null): string {
+	if (!expiresAt) return i18n.baseText('settings.api.expiration.never');
+	return DateTime.fromSeconds(expiresAt).toFormat('d LLL yyyy');
 }
 
 function formatLastUsed(iso: string | null): string {
@@ -33,6 +34,11 @@ function isOwn(apiKey: ApiKey): boolean {
 	if (!props.currentUserId) return true;
 	return apiKey.owner?.id === props.currentUserId;
 }
+
+function onRowClick(apiKey: ApiKey) {
+	if (isOwn(apiKey)) emit('edit', apiKey);
+	else emit('revoke', apiKey);
+}
 </script>
 
 <template>
@@ -42,8 +48,8 @@ function isOwn(apiKey: ApiKey): boolean {
 				<tr>
 					<th>{{ i18n.baseText('settings.api.columns.name') }}</th>
 					<th>{{ i18n.baseText('settings.api.columns.owner') }}</th>
-					<th :class="$style.center">{{ i18n.baseText('settings.api.columns.scopes') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.created') }}</th>
+					<th>{{ i18n.baseText('settings.api.columns.scopes') }}</th>
+					<th>{{ i18n.baseText('settings.api.columns.expiration') }}</th>
 					<th>{{ i18n.baseText('settings.api.columns.lastUsed') }}</th>
 					<th :class="$style.actions"></th>
 				</tr>
@@ -52,8 +58,10 @@ function isOwn(apiKey: ApiKey): boolean {
 				<tr
 					v-for="apiKey in apiKeys"
 					:key="apiKey.id"
+					:class="$style.row"
 					data-test-id="api-key-row"
 					:data-key-id="apiKey.id"
+					@click="onRowClick(apiKey)"
 				>
 					<td>
 						<div :class="$style.name">
@@ -64,13 +72,17 @@ function isOwn(apiKey: ApiKey): boolean {
 						</div>
 					</td>
 					<td>
-						<ApiKeyOwnerCell v-if="apiKey.owner" :owner="apiKey.owner" />
+						<ApiKeyOwnerCell
+							v-if="apiKey.owner"
+							:owner="apiKey.owner"
+							:is-current-user="isOwn(apiKey)"
+						/>
 					</td>
-					<td :class="$style.center">
+					<td>
 						<ApiKeyScopesCell :api-key="apiKey" @open="emit('open-scopes', $event)" />
 					</td>
 					<td>
-						<N8nText size="small">{{ formatCreated(apiKey.createdAt) }}</N8nText>
+						<N8nText size="small">{{ formatExpiration(apiKey.expiresAt) }}</N8nText>
 					</td>
 					<td>
 						<N8nText size="small" :color="apiKey.lastUsedAt ? undefined : 'text-light'">
@@ -83,7 +95,7 @@ function isOwn(apiKey: ApiKey): boolean {
 								v-if="isOwn(apiKey)"
 								icon="pencil"
 								type="tertiary"
-								size="small"
+								size="medium"
 								:title="i18n.baseText('settings.api.actions.edit')"
 								data-test-id="api-key-edit-action"
 								@click.stop="emit('edit', apiKey)"
@@ -91,7 +103,7 @@ function isOwn(apiKey: ApiKey): boolean {
 							<N8nIconButton
 								icon="trash-2"
 								type="tertiary"
-								size="small"
+								size="medium"
 								:title="i18n.baseText('settings.api.actions.revoke')"
 								data-test-id="api-key-revoke-action"
 								@click.stop="emit('revoke', apiKey)"
@@ -150,6 +162,10 @@ function isOwn(apiKey: ApiKey): boolean {
 	}
 }
 
+.row {
+	cursor: pointer;
+}
+
 .name {
 	display: flex;
 	flex-direction: column;
@@ -161,12 +177,8 @@ function isOwn(apiKey: ApiKey): boolean {
 	font-family: var(--font-family--monospace);
 }
 
-.center {
-	text-align: center;
-}
-
 .actions {
-	width: 92px;
+	width: 120px;
 	text-align: right;
 }
 
@@ -174,5 +186,12 @@ function isOwn(apiKey: ApiKey): boolean {
 	display: flex;
 	gap: var(--spacing--3xs);
 	justify-content: flex-end;
+	opacity: 0;
+	transition: opacity var(--transition--fast);
+}
+
+.row:hover .rowActions,
+.row:focus-within .rowActions {
+	opacity: 1;
 }
 </style>
