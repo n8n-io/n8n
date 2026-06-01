@@ -52,6 +52,7 @@ describe('GlobalConfig', () => {
 				samesite: 'lax',
 				secure: true,
 			},
+			oauthBrowserBinding: false,
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -262,6 +263,10 @@ describe('GlobalConfig', () => {
 		},
 		chatTrigger: {
 			disablePublicChat: false,
+		},
+		compressionNode: {
+			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
+			maxZipEntries: 5000,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
