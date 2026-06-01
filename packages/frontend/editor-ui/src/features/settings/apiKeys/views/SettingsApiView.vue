@@ -17,7 +17,14 @@ import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { ElCol, ElRow } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nHeading, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nHeading,
+	N8nLink,
+	N8nPagination,
+	N8nText,
+} from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 import ApiKeyCard from '../components/ApiKeyCard.vue';
 
@@ -34,8 +41,8 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { fetchApiKeys, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
-const { apiKeys } = storeToRefs(apiKeysStore);
+const { fetchApiKeys, setPage, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
+const { apiKeys, apiKeysCount, page, pageSize } = storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
 
@@ -72,6 +79,17 @@ async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
 		await Promise.all([fetchApiKeys(), getApiKeyAvailableScopes()]);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+async function onPageChange(newPage: number) {
+	try {
+		loading.value = true;
+		await setPage(newPage);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -155,6 +173,16 @@ function onEdit(id: string) {
 					</ElCol>
 				</ElRow>
 			</template>
+		</div>
+
+		<div v-if="apiKeysCount > pageSize" :class="$style.pagination">
+			<N8nPagination
+				:current-page="page"
+				:page-size="pageSize"
+				:total="apiKeysCount"
+				data-test-id="api-keys-pagination"
+				@current-change="onPageChange"
+			/>
 		</div>
 
 		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.BottomHint">
@@ -260,5 +288,11 @@ function onEdit(id: string) {
 	overflow-y: auto;
 	overflow-x: hidden;
 	scrollbar-width: none;
+}
+
+.pagination {
+	display: flex;
+	justify-content: center;
+	margin-top: var(--spacing--sm);
 }
 </style>
