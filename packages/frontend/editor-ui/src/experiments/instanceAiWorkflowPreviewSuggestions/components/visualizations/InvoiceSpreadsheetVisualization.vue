@@ -69,28 +69,24 @@ onUnmounted(clearTimers);
 <template>
 	<div :class="[$style.card, visible && $style.cardVisible]">
 		<div :class="$style.table">
-			<!-- Header row -->
 			<div :class="[$style.row, $style.rowHeader]">
 				<span :class="[$style.cell, $style.th]">Invoice</span>
 				<span :class="[$style.cell, $style.th]">Date</span>
 				<span :class="[$style.cell, $style.th]">Discrepancy</span>
 			</div>
 
-			<!-- Row 1: pre-filled -->
 			<div :class="$style.row">
 				<span :class="$style.cell">INV-2024-045</span>
 				<span :class="$style.cell">May 14</span>
 				<span :class="[$style.cell, $style.tdMuted]">—</span>
 			</div>
 
-			<!-- Row 2: pre-filled -->
 			<div :class="$style.row">
 				<span :class="$style.cell">INV-2024-046</span>
 				<span :class="$style.cell">May 21</span>
 				<span :class="[$style.cell, $style.tdMuted]">—</span>
 			</div>
 
-			<!-- Row 3: animates open as a whole row -->
 			<div :class="[$style.rowCollapse, rowVisible && $style.rowCollapseOpen]">
 				<div :class="[$style.row, $style.rowLast]">
 					<span :class="$style.cell">INV-2024-047</span>
@@ -156,7 +152,6 @@ $border: light-dark(
 	grid-template-columns: 2fr 1.2fr 1.3fr;
 }
 
-/* Header tinted background */
 .rowHeader {
 	background: light-dark(
 		oklch(from var(--color--neutral-black) l c h / 0.04),
@@ -164,7 +159,6 @@ $border: light-dark(
 	);
 }
 
-/* Height-collapse wrapper for the animated row */
 .rowCollapse {
 	display: grid;
 	grid-template-rows: 0fr;
@@ -175,7 +169,6 @@ $border: light-dark(
 	grid-template-rows: 1fr;
 }
 
-/* Inner row must have min-height: 0 and overflow: hidden for the collapse to work */
 .rowLast {
 	min-height: 0;
 	overflow: hidden;
@@ -197,12 +190,10 @@ $border: light-dark(
 	}
 }
 
-/* Last data row (the pre-filled second row) has no bottom border */
 .row:last-of-type .cell {
 	border-bottom: none;
 }
 
-/* The animated last row also has no bottom border */
 .rowLast .cell {
 	border-bottom: none;
 }

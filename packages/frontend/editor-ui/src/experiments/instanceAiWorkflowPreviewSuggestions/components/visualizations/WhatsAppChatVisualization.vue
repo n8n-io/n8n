@@ -78,7 +78,6 @@ onUnmounted(clearTimers);
 	<div
 		:class="[$style.card, visible && $style.cardVisible, slideFrom === 'left' && $style.slideLeft]"
 	>
-		<!-- Header: avatar + sender name -->
 		<div :class="$style.header">
 			<div :class="$style.avatar">
 				<img :src="WHATSAPP_ICON" :class="$style.avatarIcon" alt="" />
@@ -86,11 +85,9 @@ onUnmounted(clearTimers);
 			<span :class="$style.sender">{{ sender }}</span>
 		</div>
 
-		<!-- Chat bubble -->
 		<div v-if="bubbleVisible" :class="[$style.bubbleRow, isOutgoing && $style.bubbleRowOutgoing]">
 			<div :class="[$style.bubble, isOutgoing ? $style.bubbleOutgoing : $style.bubbleIncoming]">
 				<p :class="$style.bubbleText">{{ message }}</p>
-				<!-- Two overlapping ticks mirroring WhatsApp read receipt style -->
 				<svg
 					v-if="isOutgoing"
 					:class="$style.readTicks"
@@ -99,7 +96,6 @@ onUnmounted(clearTimers);
 					viewBox="0 0 18 12"
 					fill="none"
 				>
-					<!-- Back tick (slightly behind) -->
 					<path
 						d="M1 6 L4.5 9.5 L10 2"
 						stroke="currentColor"
@@ -107,7 +103,6 @@ onUnmounted(clearTimers);
 						stroke-linecap="round"
 						stroke-linejoin="round"
 					/>
-					<!-- Front tick (offset right + down) -->
 					<path
 						d="M5 6 L8.5 9.5 L14 2"
 						stroke="currentColor"
@@ -180,7 +175,6 @@ onUnmounted(clearTimers);
 	color: var(--color--text--base);
 }
 
-/* Row that controls bubble alignment */
 .bubbleRow {
 	display: flex;
 	justify-content: flex-start;

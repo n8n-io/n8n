@@ -153,7 +153,6 @@ const iconSrc = computed(() =>
 	text-align: center;
 }
 
-/* Swipe transition for CRM icon cycling */
 .swipe:global(-enter-active),
 .swipe:global(-leave-active) {
 	transition:

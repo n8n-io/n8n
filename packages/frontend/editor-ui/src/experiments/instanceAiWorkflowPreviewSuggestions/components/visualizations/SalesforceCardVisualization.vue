@@ -119,7 +119,6 @@ onUnmounted(clearTimers);
 	flex-shrink: 0;
 }
 
-/* Swipe transition for CRM icon cycling */
 .swipe:global(-enter-active),
 .swipe:global(-leave-active) {
 	transition:

@@ -8,7 +8,6 @@ export interface PreviewWorkflowNode {
 	id: string;
 	label: string;
 	icon: PreviewWorkflowNodeIcon;
-	/** Maps to --node--icon--color--{iconColor} CSS variable (e.g. 'blue', 'magenta', 'amber') */
 	iconColor?: string;
 	position: { x: number; y: number };
 }
