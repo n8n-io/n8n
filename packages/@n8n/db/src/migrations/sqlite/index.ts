@@ -53,6 +53,7 @@ import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessa
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
+import { AddScopeColumnToOAuthTables1784000000021 } from './1784000000021-AddScopeColumnToOAuthTables';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -383,6 +384,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentFilesTable1784000000018,
 	AddCustomTelemetryTagsToProject1784000000019,
 	CreateWorkflowPublicationOutboxTable1784000000020,
+	AddScopeColumnToOAuthTables1784000000021,
 ];
 
 export { sqliteMigrations };
