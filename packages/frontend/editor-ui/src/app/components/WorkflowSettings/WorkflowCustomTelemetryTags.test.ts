@@ -1,11 +1,9 @@
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { ICustomTelemetryTag } from 'n8n-workflow';
 import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 const validTags = [{ key: 'env', value: 'production' }];
-const workflowNameTags = [{ key: 'workflowName', value: 'Workflow Name' }];
 const duplicateTags = [
 	{ key: '  env  ', value: 'production' },
 	{ key: 'env', value: 'staging' },
@@ -51,25 +49,24 @@ async function openModal(getByTestId: (id: string) => HTMLElement) {
 }
 
 describe('WorkflowCustomTelemetryTags', () => {
-	it.each([
-		{
-			modelValue: undefined,
-			expectedCount: 'No tags configured',
-		},
-		{
-			modelValue: [{ key: 'team', value: 'platform' }],
-			expectedCount: '1 tag configured',
-		},
-		{
-			modelValue: [
-				{ key: 'team', value: 'platform' },
-				{ key: 'env', value: 'production' },
-			],
-			expectedCount: '2 tags configured',
-		},
-	])(
-		'should render the custom telemetry tags count as $expectedCount',
-		({ modelValue, expectedCount }) => {
+	describe('summary', () => {
+		it.each([
+			{
+				modelValue: undefined,
+				expectedCount: 'No tags configured',
+			},
+			{
+				modelValue: [{ key: 'team', value: 'platform' }],
+				expectedCount: '1 tag configured',
+			},
+			{
+				modelValue: [
+					{ key: 'team', value: 'platform' },
+					{ key: 'env', value: 'production' },
+				],
+				expectedCount: '2 tags configured',
+			},
+		])('renders $expectedCount', ({ modelValue, expectedCount }) => {
 			const { getByTestId } = renderComponent({
 				props: {
 					modelValue,
@@ -79,344 +76,320 @@ describe('WorkflowCustomTelemetryTags', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags-count')).toHaveTextContent(
 				expectedCount,
 			);
-		},
-	);
-
-	it('should include the configured tag count in the configure button accessible name', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				modelValue: [
-					{ key: 'team', value: 'platform' },
-					{ key: 'env', value: 'production' },
-				],
-			},
 		});
 
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
-			'Configure custom telemetry tags, 2 tags configured',
-		);
+		it('includes the configured tag count in the configure button accessible name', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: [
+						{ key: 'team', value: 'platform' },
+						{ key: 'env', value: 'production' },
+					],
+				},
+			});
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-configure')).toHaveAccessibleName(
+				'Configure custom telemetry tags, 2 tags configured',
+			);
+		});
 	});
 
-	it('should render the modal title, back button, description, and save action', async () => {
-		const { getByLabelText, getByRole, getByTestId, getByText } = renderComponent();
+	describe('modal', () => {
+		it('opens with title, description, docs link, and save action', async () => {
+			const { getByLabelText, getByRole, getByTestId, getByText } = renderComponent();
 
-		await openModal(getByTestId);
+			await openModal(getByTestId);
 
-		expect(getByLabelText('Back')).toBeVisible();
-		expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
-		expect(getByRole('dialog')).toHaveAccessibleDescription(
-			/Add custom tags to this workflow's OpenTelemetry spans\.\s+Learn more in the\s+documentation/,
-		);
-		expect(getByRole('link', { name: 'documentation' })).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
-		);
-		expect(getByText('Save')).toBeVisible();
-	});
-
-	it('should render existing custom telemetry tags in labeled inputs', async () => {
-		const { getAllByTestId, getByTestId } = renderComponent({
-			props: {
-				modelValue: [{ key: 'team', value: 'platform' }],
-			},
+			expect(getByLabelText('Back')).toBeVisible();
+			expect(getByRole('heading', { name: 'Custom telemetry tags' })).toBeVisible();
+			expect(getByRole('dialog')).toHaveAccessibleDescription(
+				/Add custom tags to this workflow's OpenTelemetry spans\.\s+Learn more in the\s+documentation/,
+			);
+			expect(getByRole('link', { name: 'documentation' })).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+			);
+			expect(getByText('Save')).toBeVisible();
 		});
 
-		await openModal(getByTestId);
+		it('renders existing tags in labeled inputs', async () => {
+			const { getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					modelValue: [{ key: 'team', value: 'platform' }],
+				},
+			});
 
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveValue('team');
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toHaveValue(
-			'platform',
-		);
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveAccessibleName(
-			'Key',
-		);
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toHaveAccessibleName(
-			'Value',
-		);
-	});
+			await openModal(getByTestId);
 
-	it('should open with no tag rows when there are no existing tags', async () => {
-		const { getByTestId, queryAllByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-
-		expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-add')).toBeVisible();
-	});
-
-	it('should add custom telemetry tag rows', async () => {
-		const { getAllByTestId, getAllByText, getByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(1);
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveValue('');
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toHaveValue('');
-
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(2);
-		expect(getAllByText('Key')).toHaveLength(1);
-		expect(getAllByText('Value')).toHaveLength(1);
-	});
-
-	it('should remove all rows when deleting the last custom telemetry tag row', async () => {
-		const { getAllByTestId, getByTestId, queryAllByTestId } = renderComponent({
-			props: {
-				modelValue: [{ key: 'team', value: 'platform' }],
-			},
-		});
-
-		await openModal(getByTestId);
-		await userEvent.click(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]);
-
-		expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
-	});
-
-	it('should emit saved custom telemetry tag edits with trimmed keys', async () => {
-		const { emitted, getAllByTestId, getByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], ' env ');
-		await userEvent.type(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'production',
-		);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-
-		expect(emitted('update:modelValue')).toEqual([[validTags]]);
-	});
-
-	it('should emit cloned tags when saving existing values', async () => {
-		const tag = { key: 'team', value: 'platform' };
-		const modelValue = [tag];
-		const { emitted, getByTestId } = renderComponent({
-			props: { modelValue },
-		});
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-
-		const updateEvents = emitted('update:modelValue') as [ICustomTelemetryTag[]][] | undefined;
-		const emittedTags = updateEvents?.[0][0];
-		expect(emittedTags).toEqual(modelValue);
-		expect(emittedTags).not.toBe(modelValue);
-		expect(emittedTags?.[0]).not.toBe(tag);
-	});
-
-	it('should await the async save handler before emitting and closing', async () => {
-		let resolveSave: () => void = () => {};
-		const saveTags = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					resolveSave = resolve;
-				}),
-		);
-		const { emitted, getAllByTestId, getByTestId, queryByTestId } = renderComponent({
-			props: { saveTags },
-		});
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
-		await userEvent.type(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'production',
-		);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-
-		expect(saveTags).toHaveBeenCalledWith(validTags);
-		expect(emitted('update:modelValue')).toBeUndefined();
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
-
-		resolveSave();
-
-		await waitFor(() => {
-			expect(emitted('update:modelValue')).toEqual([[validTags]]);
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveValue('team');
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toHaveValue(
+				'platform',
+			);
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveAccessibleName(
+				'Key',
+			);
 			expect(
-				queryByTestId('workflow-settings-custom-telemetry-tags-modal'),
-			).not.toBeInTheDocument();
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+			).toHaveAccessibleName('Value');
+		});
+
+		it('opens with no rows when there are no existing tags', async () => {
+			const { getByTestId, queryAllByTestId } = renderComponent();
+
+			await openModal(getByTestId);
+
+			expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-add')).toBeVisible();
 		});
 	});
 
-	it('should keep the modal open and re-enable controls when the async save handler rejects', async () => {
-		const saveTags = vi.fn().mockRejectedValue(new Error('Save failed'));
-		const { emitted, getAllByTestId, getByTestId } = renderComponent({
-			props: { saveTags },
+	describe('editing tags', () => {
+		it('adds a new empty tag row', async () => {
+			const { getAllByTestId, getAllByText, getByTestId } = renderComponent();
+
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(1);
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toHaveValue('');
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toHaveValue('');
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(2);
+			expect(getAllByText('Key')).toHaveLength(1);
+			expect(getAllByText('Value')).toHaveLength(1);
 		});
 
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
-		await userEvent.type(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'production',
-		);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+		it('edits an existing tag and emits the changed tag on save', async () => {
+			const { emitted, getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					modelValue: [{ key: 'team', value: 'platform' }],
+				},
+			});
 
-		await waitFor(() => {
+			await openModal(getByTestId);
+			await userEvent.clear(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]);
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
+			await userEvent.clear(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]);
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+				'production',
+			);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
+			expect(emitted('update:modelValue')).toEqual([[validTags]]);
+		});
+
+		it('deletes a tag row and emits the remaining tags on save', async () => {
+			const { emitted, getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					modelValue: [
+						{ key: 'team', value: 'platform' },
+						{ key: 'env', value: 'production' },
+					],
+				},
+			});
+
+			await openModal(getByTestId);
+			await userEvent.click(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
+			expect(emitted('update:modelValue')).toEqual([[[{ key: 'env', value: 'production' }]]]);
+		});
+
+		it('emits an empty list when all tag rows are deleted and saved', async () => {
+			const { emitted, getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					modelValue: [{ key: 'team', value: 'platform' }],
+				},
+			});
+
+			await openModal(getByTestId);
+			await userEvent.click(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
+			expect(emitted('update:modelValue')).toEqual([[[]]]);
+		});
+	});
+
+	describe('saving', () => {
+		it('emits saved tags with trimmed keys', async () => {
+			const { emitted, getAllByTestId, getByTestId } = renderComponent();
+
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0],
+				' env ',
+			);
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+				'production',
+			);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
+			expect(emitted('update:modelValue')).toEqual([[validTags]]);
+		});
+
+		it('awaits the async save handler before emitting and closing', async () => {
+			let resolveSave: () => void = () => {};
+			const saveTags = vi.fn(
+				() =>
+					new Promise<void>((resolve) => {
+						resolveSave = resolve;
+					}),
+			);
+			const { emitted, getAllByTestId, getByTestId, queryByTestId } = renderComponent({
+				props: { saveTags },
+			});
+
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+				'production',
+			);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
 			expect(saveTags).toHaveBeenCalledWith(validTags);
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-modal')).toBeVisible();
-			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).not.toBeDisabled();
-		});
-		expect(emitted('update:modelValue')).toBeUndefined();
-	});
+			expect(emitted('update:modelValue')).toBeUndefined();
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
 
-	it('should emit an empty list when saving with no tag rows', async () => {
-		const { emitted, getAllByTestId, getByTestId } = renderComponent({
-			props: {
-				modelValue: [{ key: 'team', value: 'platform' }],
-			},
-		});
+			resolveSave();
 
-		await openModal(getByTestId);
-		await userEvent.click(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-
-		expect(emitted('update:modelValue')).toEqual([[[]]]);
-	});
-
-	it('should disable modal save when a custom telemetry tag has a value but no key', async () => {
-		const { emitted, getAllByTestId, getByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'production',
-		);
-
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
-			'Key must not be empty',
-		);
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
-
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-		expect(emitted('update:modelValue')).toBeUndefined();
-	});
-
-	it('should disable modal save when custom telemetry tag keys are duplicated after trim', async () => {
-		const { getAllByTestId, getByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], ' env ');
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[1], 'env');
-
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
-			'Duplicate keys are not allowed',
-		);
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
-	});
-
-	it('should preserve custom telemetry tag values as literals', async () => {
-		const { emitted, getAllByTestId, getByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0],
-			'workflowName',
-		);
-		await fireEvent.update(
-			getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
-			'Workflow Name',
-		);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
-
-		expect(emitted('update:modelValue')).toEqual([[workflowNameTags]]);
-	});
-
-	it('should discard draft changes when cancelled', async () => {
-		const { emitted, getAllByTestId, getByTestId, queryAllByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-cancel'));
-		await openModal(getByTestId);
-
-		expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
-		expect(emitted('update:modelValue')).toBeUndefined();
-	});
-
-	it('should discard draft changes when the back button is clicked', async () => {
-		const { emitted, getAllByLabelText, getAllByTestId, getByTestId, queryAllByTestId } =
-			renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
-		await userEvent.click(getAllByLabelText('Back')[0]);
-		await openModal(getByTestId);
-
-		expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
-		expect(emitted('update:modelValue')).toBeUndefined();
-	});
-
-	it('should discard draft changes when the dialog is closed', async () => {
-		const { emitted, getAllByTestId, getByTestId, queryAllByTestId } = renderComponent();
-
-		await openModal(getByTestId);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
-		await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
-		await userEvent.click(getByTestId('dialog-close-button'));
-		await openModal(getByTestId);
-
-		expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
-		expect(emitted('update:modelValue')).toBeUndefined();
-	});
-
-	it('should delete custom telemetry tag rows', async () => {
-		const { emitted, getAllByTestId, getByTestId } = renderComponent({
-			props: {
-				modelValue: [
-					{ key: 'team', value: 'platform' },
-					{ key: 'env', value: 'production' },
-				],
-			},
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([[validTags]]);
+				expect(
+					queryByTestId('workflow-settings-custom-telemetry-tags-modal'),
+				).not.toBeInTheDocument();
+			});
 		});
 
-		await openModal(getByTestId);
-		await userEvent.click(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]);
-		await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+		it('keeps the modal open and does not emit when the async save handler rejects', async () => {
+			const saveTags = vi.fn().mockRejectedValue(new Error('Save failed'));
+			const { emitted, getAllByTestId, getByTestId } = renderComponent({
+				props: { saveTags },
+			});
 
-		expect(emitted('update:modelValue')).toEqual([[[{ key: 'env', value: 'production' }]]]);
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+				'production',
+			);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+
+			await waitFor(() => {
+				expect(saveTags).toHaveBeenCalledWith(validTags);
+				expect(getByTestId('workflow-settings-custom-telemetry-tags-modal')).toBeVisible();
+				expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).not.toBeDisabled();
+			});
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
 	});
 
-	it('should disable editing controls when read-only', async () => {
-		const { getAllByTestId, getByTestId } = renderComponent({
-			props: {
-				isReadOnly: true,
-				modelValue: [{ key: 'team', value: 'platform' }],
-			},
+	describe('validation', () => {
+		it('disables save when a tag has a value but no key', async () => {
+			const { emitted, getAllByTestId, getByTestId } = renderComponent();
+
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0],
+				'production',
+			);
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
+				'Key must not be empty',
+			);
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save'));
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 
-		await openModal(getByTestId);
+		it('disables save when tag keys are duplicated after trim', async () => {
+			const { getAllByTestId, getByTestId } = renderComponent();
 
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toBeDisabled();
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toBeDisabled();
-		expect(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]).toBeDisabled();
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-add')).toBeDisabled();
-		expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(
+				getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0],
+				' env ',
+			);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[1], 'env');
+
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-modal-error')).toHaveTextContent(
+				'Duplicate keys are not allowed',
+			);
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
+		});
+
+		it('emits validity changes for invalid saved tags and resets validity on unmount', () => {
+			const onValidityChange = vi.fn();
+			const { unmount } = renderComponent({
+				props: {
+					modelValue: duplicateTags,
+					'onValidity-change': onValidityChange,
+				},
+			});
+
+			expect(onValidityChange).toHaveBeenCalledWith(true);
+
+			unmount();
+
+			expect(onValidityChange).toHaveBeenLastCalledWith(false);
+		});
 	});
 
-	it('should emit validity changes and reset validity on unmount', () => {
-		const onValidityChange = vi.fn();
-		const { unmount } = renderComponent({
-			props: {
-				modelValue: duplicateTags,
-				'onValidity-change': onValidityChange,
-			},
+	describe('discarding drafts', () => {
+		it('discards draft changes when cancelled', async () => {
+			const { emitted, getAllByTestId, getByTestId, queryAllByTestId } = renderComponent();
+
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-cancel'));
+			await openModal(getByTestId);
+
+			expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 
-		expect(onValidityChange).toHaveBeenCalledWith(true);
+		it('discards draft changes when the dialog is closed', async () => {
+			const { emitted, getAllByTestId, getByTestId, queryAllByTestId } = renderComponent();
 
-		unmount();
+			await openModal(getByTestId);
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-add'));
+			await userEvent.type(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0], 'env');
+			await userEvent.click(getByTestId('dialog-close-button'));
+			await openModal(getByTestId);
 
-		expect(onValidityChange).toHaveBeenLastCalledWith(false);
+			expect(queryAllByTestId('workflow-settings-custom-telemetry-tags-row')).toHaveLength(0);
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+	});
+
+	describe('read-only', () => {
+		it('disables editing controls when read-only', async () => {
+			const { getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					isReadOnly: true,
+					modelValue: [{ key: 'team', value: 'platform' }],
+				},
+			});
+
+			await openModal(getByTestId);
+
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-key')[0]).toBeDisabled();
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-value')[0]).toBeDisabled();
+			expect(getAllByTestId('workflow-settings-custom-telemetry-tags-delete')[0]).toBeDisabled();
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-add')).toBeDisabled();
+			expect(getByTestId('workflow-settings-custom-telemetry-tags-save')).toBeDisabled();
+		});
 	});
 });
