@@ -57,6 +57,7 @@ export interface CliOptions {
 	// Affected-packages / scope options
 	changedFiles?: string;
 	runner?: 'jest' | 'vitest';
+	jestVariant?: 'unit' | 'integration';
 	packageDir?: string;
 	/** Anything after `--` — forwarded to the test runner by `test-scoped`. */
 	passthroughArgs: string[];
@@ -193,6 +194,13 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 			throw new Error(`Unknown --runner=${value}. Expected 'jest' or 'vitest'.`);
 		}
 	},
+	'--jest-variant=': (opts, value) => {
+		if (value === 'unit' || value === 'integration') {
+			opts.jestVariant = value;
+		} else {
+			throw new Error(`Unknown --jest-variant=${value}. Expected 'unit' or 'integration'.`);
+		}
+	},
 	'--package-dir=': (opts, value) => {
 		opts.packageDir = value;
 	},
@@ -231,6 +239,7 @@ function createDefaultOptions(): CliOptions {
 		impact: false,
 		changedFiles: undefined,
 		runner: undefined,
+		jestVariant: undefined,
 		packageDir: undefined,
 		passthroughArgs: [],
 		url: undefined,

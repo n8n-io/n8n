@@ -55,3 +55,11 @@ export function summariseInteractiveOutput(
 
 	return undefined;
 }
+
+export function summariseToolCall(
+	toolName: string,
+	output?: unknown,
+	input?: unknown,
+): string | undefined {
+	return summariseInteractiveOutput(toolName, output, input);
+}

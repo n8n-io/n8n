@@ -82,6 +82,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBeNull();
@@ -122,6 +123,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -154,6 +156,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -186,6 +189,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -215,6 +219,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['user:create', 'workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -271,6 +276,7 @@ describe('Owner shell', () => {
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -283,6 +289,7 @@ describe('Owner shell', () => {
 			expiresAt: null,
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
@@ -347,6 +354,7 @@ describe('Member', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
@@ -379,6 +387,7 @@ describe('Member', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -411,6 +420,7 @@ describe('Member', () => {
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -461,6 +471,7 @@ describe('Member', () => {
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -473,6 +484,7 @@ describe('Member', () => {
 			expiresAt: null,
 			scopes: ['workflow:create'],
 			audience: 'public-api',
+			lastUsedAt: null,
 		});
 	});
 
