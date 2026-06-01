@@ -1,0 +1,386 @@
+{
+  "name": "MVP - PDF Science Explainer Video Composer",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "pdf-science-explainer-upload",
+        "formTitle": "PDF Science Explainer Video Composer",
+        "formDescription": "Upload a PDF, background video, viewpoint, narration mode, and voices to generate a science explainer video.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "background_video",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "pdf_file",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "viewpoint",
+              "fieldType": "textarea",
+              "requiredField": false,
+              "placeholder": "可选：输入你的观点、看法、选题角度或想强调的问题。"
+            },
+            {
+              "fieldLabel": "narration_mode",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "single_speaker",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "single_speaker"
+                  },
+                  {
+                    "option": "two_speaker"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice",
+              "fieldType": "dropdown",
+              "requiredField": false,
+              "defaultValue": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 渊博小叔｜zh_male_yuanboxiaoshu_uranus_bigtts"
+                  },
+                  {
+                    "option": "女主持 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice_a",
+              "fieldType": "dropdown",
+              "requiredField": false,
+              "defaultValue": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 渊博小叔｜zh_male_yuanboxiaoshu_uranus_bigtts"
+                  },
+                  {
+                    "option": "女主持 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "voice_b",
+              "fieldType": "dropdown",
+              "requiredField": false,
+              "defaultValue": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 渊博小叔｜zh_male_yuanboxiaoshu_uranus_bigtts"
+                  },
+                  {
+                    "option": "女主持 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "aspect_ratio",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "9:16",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "9:16"
+                  },
+                  {
+                    "option": "16:9"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "upload-science-explainer-assets",
+      "name": "Upload Science Explainer Assets",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "webhookId": "pdf-science-explainer-upload",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nfunction trimTrailingSlash(value) { return String(value || '').replace(/\\/+$/, ''); }\nfunction cleanText(value) {\n  const lf = String.fromCharCode(10);\n  const cr = String.fromCharCode(13);\n  let text = String(value || '').split(String.fromCharCode(0)).join('').split(cr + lf).join(lf).split(cr).join(lf);\n  while (text.includes(lf + lf + lf)) text = text.split(lf + lf + lf).join(lf + lf);\n  return text.trim();\n}\nfunction normalizeChoice(value, fallback) {\n  const text = String(value || '').trim();\n  if (!text) return fallback;\n  const separatorIndex = text.lastIndexOf('｜');\n  return separatorIndex >= 0 ? text.slice(separatorIndex + 1).trim() : text;\n}\nfunction extensionFromUpload(binary, key) {\n  const meta = binary[key] || {};\n  const name = String(meta.fileName || '').toLowerCase();\n  for (const extension of ['.mp4', '.mov', '.webm', '.pdf']) if (name.endsWith(extension)) return extension;\n  const mime = String(meta.mimeType || '').toLowerCase();\n  if (mime.includes('quicktime')) return '.mov';\n  if (mime.includes('webm')) return '.webm';\n  if (mime.includes('mp4') || mime.includes('mpeg')) return '.mp4';\n  if (mime.includes('pdf')) return '.pdf';\n  return '';\n}\nfunction requireUpload(binary, key) {\n  if (!binary[key]) throw new Error('Missing uploaded file: ' + key);\n}\nconst item = $input.first();\nconst binary = item.binary || {};\nrequireUpload(binary, 'background_video');\nrequireUpload(binary, 'pdf_file');\nconst backgroundExtension = extensionFromUpload(binary, 'background_video');\nif (!['.mp4', '.mov', '.webm'].includes(backgroundExtension)) throw new Error('background_video must be an MP4, MOV, or WEBM video.');\nconst pdfExtension = extensionFromUpload(binary, 'pdf_file');\nif (pdfExtension !== '.pdf') throw new Error('pdf_file must be a PDF file.');\nconst narrationMode = normalizeChoice(item.json.narration_mode, 'single_speaker');\nif (!['single_speaker', 'two_speaker'].includes(narrationMode)) throw new Error('narration_mode must be single_speaker or two_speaker.');\nconst aspectRatio = normalizeChoice(item.json.aspect_ratio, '9:16');\nif (!['9:16', '16:9'].includes(aspectRatio)) throw new Error('aspect_ratio must be 9:16 or 16:9.');\nconst voice = normalizeChoice(item.json.voice, 'zh_male_wennuanahu_uranus_bigtts');\nconst voiceA = normalizeChoice(item.json.voice_a, voice);\nconst voiceB = normalizeChoice(item.json.voice_b, 'zh_female_yingyujiaoxue_uranus_bigtts');\nif (narrationMode === 'single_speaker' && !voice) throw new Error('single_speaker mode requires voice');\nif (narrationMode === 'two_speaker' && (!voiceA || !voiceB)) throw new Error('two_speaker mode requires voice_a and voice_b');\nconst now = new Date();\nconst stamp = now.toISOString().slice(0, 19).split('-').join('').split(':').join('').split('T').join('-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = stamp + '-' + random;\nconst repoDir = trimTrailingSlash(item.json.repo_dir || $env.VIDEO_COMPOSER_REPO_DIR || $env.N8N_VIDEO_COMPOSER_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n');\nconst composerDir = repoDir + '/tools/video-composer';\nif (!fs.existsSync(composerDir)) throw new Error('Video composer repo directory is not configured or does not contain tools/video-composer: ' + composerDir);\nconst tmpDir = repoDir + '/tmp';\nconst baseDir = trimTrailingSlash(item.json.jobs_dir || $env.VIDEO_COMPOSER_JOBS_DIR || $env.N8N_VIDEO_COMPOSER_JOBS_DIR || tmpDir + '/n8n-video-jobs');\nconst jobDir = baseDir + '/' + jobId;\nconst inputDir = jobDir + '/inputs';\nconst presentationDir = jobDir + '/presentation';\nconst pagesDir = jobDir + '/pages';\nconst analysisDir = jobDir + '/analysis';\nconst scriptDir = jobDir + '/script';\nconst audioDir = jobDir + '/audio';\nconst timingDir = jobDir + '/timing';\nconst transcriptDir = jobDir + '/transcript';\nconst renderDir = jobDir + '/render';\nfor (const dir of [inputDir, presentationDir, pagesDir, analysisDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir]) fs.mkdirSync(dir, { recursive: true });\nconst backgroundVideoPath = path.join(inputDir, 'background' + backgroundExtension);\nconst pdfPath = path.join(presentationDir, 'source.pdf');\nfs.writeFileSync(backgroundVideoPath, await this.helpers.getBinaryDataBuffer(0, 'background_video'));\nfs.writeFileSync(pdfPath, await this.helpers.getBinaryDataBuffer(0, 'pdf_file'));\nconst pagesManifestPath = jobDir + '/pages.json';\nconst pageVisualAnalysisPath = analysisDir + '/page-visual-analysis.json';\nconst pageScriptPath = scriptDir + '/science-explainer-script.json';\nconst llmPromptPath = scriptDir + '/science-explainer-prompt.txt';\nconst llmResponsePath = scriptDir + '/science-explainer-response.json';\nconst pageAudioManifestPath = audioDir + '/page-audio.json';\nconst pageTimingPath = timingDir + '/page-timing.json';\nconst subtitlePath = renderDir + '/subtitles.ass';\nconst outputVideoPath = renderDir + '/final.mp4';\nconst outputAudioPath = audioDir + '/merged-audio.mp3';\nconst ffmpegLogPath = renderDir + '/ffmpeg.log';\nconst costPath = jobDir + '/cost.json';\nconst extractJobPath = jobDir + '/extract-job.json';\nconst visualAnalysisJobPath = jobDir + '/visual-analysis-job.json';\nconst scriptJobPath = jobDir + '/science-script-job.json';\nconst podcastJobPath = jobDir + '/podcast-job.json';\nconst composerJobPath = jobDir + '/science-video-job.json';\nfs.writeFileSync(extractJobPath, JSON.stringify({ jobId, sourcePath: pdfPath, presentationDir, pagesDir, pagesManifestPath }, null, 2));\nconst viewpoint = cleanText(item.json.viewpoint);\nreturn [{ json: { ...item.json, jobId, repoDir, tmpDir, baseDir, jobDir, inputDir, presentationDir, pagesDir, analysisDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir, backgroundVideoPath, pdfPath, pagesManifestPath, pageVisualAnalysisPath, pageScriptPath, llmPromptPath, llmResponsePath, pageAudioManifestPath, pageTimingPath, subtitlePath, outputVideoPath, outputAudioPath, ffmpegLogPath, costPath, extractJobPath, visualAnalysisJobPath, scriptJobPath, podcastJobPath, composerJobPath, viewpoint, narrationMode, aspectRatio, voice, voiceA, voiceB } }];"
+      },
+      "id": "prepare-science-explainer-job",
+      "name": "Prepare Science Explainer Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\n').trim();\n      reject(new Error('PDF extraction failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/extract-presentation.mjs', [item.extractJobPath]);\nreturn [{ json: { ...item, extractStdout: result.stdout, extractStderr: result.stderr } }];"
+      },
+      "id": "extract-pdf-pages",
+      "name": "Extract PDF Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nfs.writeFileSync(item.visualAnalysisJobPath, JSON.stringify({ jobId: item.jobId, pagesManifestPath: item.pagesManifestPath, pageVisualAnalysisPath: item.pageVisualAnalysisPath, visualPromptPath: item.analysisDir + '/visual-analysis-prompt.txt', visualResponsePath: item.analysisDir + '/visual-analysis-response.json', viewpoint: item.viewpoint }, null, 2));\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\n').trim();\n      reject(new Error('PDF page visual analysis failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/science-visual-analysis-client.mjs', [item.visualAnalysisJobPath]);\nreturn [{ json: { ...item, visualAnalysisStdout: result.stdout, visualAnalysisStderr: result.stderr } }];"
+      },
+      "id": "analyze-pdf-page-visuals",
+      "name": "Analyze PDF Page Visuals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nfs.writeFileSync(item.scriptJobPath, JSON.stringify({ jobId: item.jobId, pagesManifestPath: item.pagesManifestPath, pageVisualAnalysisPath: item.pageVisualAnalysisPath, pageScriptPath: item.pageScriptPath, llmPromptPath: item.llmPromptPath, llmResponsePath: item.llmResponsePath, viewpoint: item.viewpoint, narrationMode: item.narrationMode, aspectRatio: item.aspectRatio }, null, 2));\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\n').trim();\n      reject(new Error('Science explainer script generation failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/science-explainer-script-client.mjs', [item.scriptJobPath]);\nreturn [{ json: { ...item, scriptStdout: result.stdout, scriptStderr: result.stderr } }];"
+      },
+      "id": "generate-science-explainer-script",
+      "name": "Generate Science Explainer Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nconst script = JSON.parse(fs.readFileSync(item.pageScriptPath, 'utf8'));\nconst podcastSpeakerA = item.narrationMode === 'single_speaker' ? item.voice : item.voiceA;\nconst podcastSpeakerB = item.narrationMode === 'single_speaker' ? item.voice : item.voiceB;\nfs.writeFileSync(item.podcastJobPath, JSON.stringify({ jobId: item.jobId, pageScriptPath: item.pageScriptPath, audioDir: item.audioDir, timingDir: item.timingDir, transcriptDir: item.transcriptDir, pageAudioManifestPath: item.pageAudioManifestPath, costPath: item.costPath, podcastSpeakerA, podcastSpeakerB, narrationMode: item.narrationMode, pageCount: script.pages.length }, null, 2));\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\n').trim();\n      reject(new Error('Per-page TTS failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/presentation-podcast-client.mjs', [item.podcastJobPath]);\nreturn [{ json: { ...item, podcastSpeakerA, podcastSpeakerB, ttsStdout: result.stdout, ttsStderr: result.stderr } }];"
+      },
+      "id": "run-page-tts",
+      "name": "Run Page TTS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst dimensions = item.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };\nconst job = { jobId: item.jobId, aspectRatio: item.aspectRatio, backgroundVideoPath: item.backgroundVideoPath, pagesManifestPath: item.pagesManifestPath, pageAudioManifestPath: item.pageAudioManifestPath, pageTimingPath: item.pageTimingPath, subtitlePath: item.subtitlePath, renderDir: item.renderDir, outputVideoPath: item.outputVideoPath, outputAudioPath: item.outputAudioPath, ffmpegLogPath: item.ffmpegLogPath, pagePauseSeconds: Number(item.page_pause_seconds || 0.3), bottomVideoHeightRatio: Number(item.bottom_video_height_ratio || 0.2), width: Number(item.video_width || dimensions.width), height: Number(item.video_height || dimensions.height), fps: Number(item.video_fps || 30) };\nfs.writeFileSync(item.composerJobPath, JSON.stringify(job, null, 2));\nreturn [{ json: { ...item, composerJob: job } }];"
+      },
+      "id": "build-science-explainer-video-job",
+      "name": "Build Science Explainer Video Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nif (!String(item.composerJobPath || '').endsWith('science-video-job.json')) throw new Error('Expected composer job file science-video-job.json');\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\n').trim();\n      reject(new Error('Science explainer composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/compose-science-explainer-video.mjs', [item.composerJobPath]);\nreturn [{ json: { ...item, composerStdout: result.stdout, composerStderr: result.stderr } }];"
+      },
+      "id": "run-science-explainer-composer",
+      "name": "Run Science Explainer Composer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nif (!fs.existsSync(item.outputVideoPath) || fs.statSync(item.outputVideoPath).size === 0) throw new Error('final.mp4 missing or empty');\nif (!fs.existsSync(item.outputAudioPath) || fs.statSync(item.outputAudioPath).size === 0) throw new Error('merged audio missing or empty');\nreturn [{ json: { finalVideo: item.outputVideoPath, reviewDir: item.jobDir, videoPath: item.outputVideoPath, audioPath: item.outputAudioPath, pagesManifestPath: item.pagesManifestPath, pageVisualAnalysisPath: item.pageVisualAnalysisPath, pageScriptPath: item.pageScriptPath, pageTimingPath: item.pageTimingPath, subtitlePath: item.subtitlePath, costPath: item.costPath, ffmpegLog: item.ffmpegLogPath, aspectRatio: item.aspectRatio, narrationMode: item.narrationMode } }];"
+      },
+      "id": "prepare-response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2340,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Upload Science Explainer Assets": {
+      "main": [
+        [
+          {
+            "node": "Prepare Science Explainer Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Science Explainer Job": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Pages": {
+      "main": [
+        [
+          {
+            "node": "Analyze PDF Page Visuals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze PDF Page Visuals": {
+      "main": [
+        [
+          {
+            "node": "Generate Science Explainer Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Science Explainer Script": {
+      "main": [
+        [
+          {
+            "node": "Run Page TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Page TTS": {
+      "main": [
+        [
+          {
+            "node": "Build Science Explainer Video Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Science Explainer Video Job": {
+      "main": [
+        [
+          {
+            "node": "Run Science Explainer Composer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Science Explainer Composer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-01T00:00:00.000Z",
+  "versionId": "pdf-science-explainer-video-workflow-v1"
+}
