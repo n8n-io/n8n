@@ -98,13 +98,4 @@ describe('get-workflow-best-practices MCP tool', () => {
 		expect(result.structuredContent?.documentation).toBeUndefined();
 		expect(result.structuredContent?.message).toContain('does not have detailed best-practices');
 	});
-
-	test('returns an unknown-technique message and points to "list"', async () => {
-		const tool = createTool();
-		const result = await tool.handler({ technique: 'not-a-real-technique' }, {} as never);
-
-		expect(result.structuredContent?.technique).toBe('not-a-real-technique');
-		expect(result.structuredContent?.message).toContain('Unknown technique');
-		expect(result.structuredContent?.message).toContain('technique="list"');
-	});
 });

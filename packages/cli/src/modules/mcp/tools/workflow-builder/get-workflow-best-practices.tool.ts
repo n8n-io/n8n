@@ -15,15 +15,11 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const LIST_SENTINEL = 'list';
 
-const techniqueDescriptions = Object.entries(TechniqueDescription)
-	.map(([key, description]) => `"${key}" — ${description}`)
-	.join('; ');
-
 const inputSchema = {
 	technique: z
-		.string()
+		.union([z.nativeEnum(WorkflowTechnique), z.literal(LIST_SENTINEL)])
 		.describe(
-			`Workflow technique key (e.g. "chatbot", "scheduling", "triage") to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques. Available techniques: ${techniqueDescriptions}.`,
+			`Workflow technique key (e.g. "chatbot", "scheduling", "triage") to fetch best-practices guidance for. Pass "${LIST_SENTINEL}" to discover all available techniques.`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -71,6 +67,7 @@ function buildListResponse() {
 
 	return {
 		text,
+		hasDocumentation: false,
 		structured: {
 			technique: LIST_SENTINEL,
 			message,
@@ -79,14 +76,14 @@ function buildListResponse() {
 	};
 }
 
-function buildTechniqueResponse(technique: string) {
-	const techniqueKey = technique as WorkflowTechniqueType;
-	const doc = bestPracticesRegistry[techniqueKey];
+function buildTechniqueResponse(technique: WorkflowTechniqueType) {
+	const doc = bestPracticesRegistry[technique];
 
 	if (doc) {
 		const documentation = doc.getDocumentation();
 		return {
 			text: documentation,
+			hasDocumentation: true,
 			structured: {
 				technique,
 				message: `Best-practices documentation for "${technique}" retrieved.`,
@@ -95,15 +92,9 @@ function buildTechniqueResponse(technique: string) {
 		};
 	}
 
-	const description = TechniqueDescription[techniqueKey];
-	if (description) {
-		const message = `Technique "${technique}" (${description}) does not have detailed best-practices documentation yet — proceed with general n8n knowledge.`;
-		return { text: message, structured: { technique, message } };
-	}
-
-	const knownTechniques = Object.values(WorkflowTechnique).join(', ');
-	const message = `Unknown technique "${technique}". Call this tool with technique="${LIST_SENTINEL}" to see all available techniques. Known techniques: ${knownTechniques}.`;
-	return { text: message, structured: { technique, message } };
+	const description = TechniqueDescription[technique];
+	const message = `Technique "${technique}" (${description}) does not have detailed best-practices documentation yet — proceed with general n8n knowledge.`;
+	return { text: message, hasDocumentation: false, structured: { technique, message } };
 }
 
 /**
@@ -128,7 +119,7 @@ export const createGetWorkflowBestPracticesTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ technique }: { technique: string }) => {
+	handler: async ({ technique }: { technique: WorkflowTechniqueType | typeof LIST_SENTINEL }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
@@ -143,7 +134,7 @@ export const createGetWorkflowBestPracticesTool = (
 				success: true,
 				data: {
 					technique,
-					hasDocumentation: 'documentation' in response.structured,
+					hasDocumentation: response.hasDocumentation,
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
