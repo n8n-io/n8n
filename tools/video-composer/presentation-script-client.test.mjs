@@ -58,9 +58,13 @@ test('presentation-script-client writes normalized page-script from fixture resp
 	assert.match(prompt, /提炼真实有用的信息/);
 	assert.match(prompt, /不要逐段总结所有文字/);
 	assert.match(prompt, /不要写成论文全文综述或全面解读/);
+	assert.match(prompt, /参考 pdf-science-explainer-script skill 的观点主导/);
 	assert.match(prompt, /优先围绕这些观点组织脚本/);
 	assert.match(prompt, /作为支持、限定或纠偏/);
 	assert.match(prompt, /不要脱离用户观点去全面复述论文/);
+	assert.match(prompt, /重磅.*顶级期刊.*新标杆.*改写临床实践/);
+	assert.match(prompt, /每一页都是同一个长视频播客的连续片段/);
+	assert.match(prompt, /不要写感谢收听、下期再见、拜拜/);
 	assert.match(prompt, /可能.*更像是.*至少可以看到.*还不能直接说明/);
 });
 
@@ -166,5 +170,7 @@ test('pdf-to-podcast-script skill documents page-grounded podcast rules', () => 
 	assert.match(skill, /must not summarize all text on every page/);
 	assert.match(skill, /speakerPrompt/);
 	assert.match(skill, /spokenSummary/);
+	assert.match(skill, /continuous segments of one long video podcast/);
+	assert.match(skill, /Do not write repeated episode endings/);
 	assert.match(skill, /Subtitles must come from the actual TTS or AI Podcast transcript/);
 });

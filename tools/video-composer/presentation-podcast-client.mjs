@@ -27,6 +27,7 @@ function readTiming(timingPath, fallbackDuration) {
 		duration: Number(timing.duration) || fallbackDuration,
 		subtitleEvents: Array.isArray(timing.subtitles) ? timing.subtitles : [],
 		source: timing.source || 'unknown',
+		raw: timing,
 	};
 }
 
@@ -36,11 +37,91 @@ function copyFixturePage({ fixtureDir, name, audioPath, timingPath, transcriptPa
 	fs.copyFileSync(path.join(fixtureDir, `${name}.txt`), transcriptPath);
 }
 
-function buildPagePodcastInput(page) {
+function isClosingSpeech(text) {
+	const compact = String(text || '').replace(/\s+/g, '');
+	if (!compact) return false;
+
+	return [
+		/感谢.*(收听|观看|大家)/,
+		/(下期|下次).*(再见|见)/,
+		/(拜拜|再见吧|咱们下期)/,
+		/(今天|本期|这期|这一期|节目|内容).*(到这里|到这|就到这里|就到这)/,
+		/(以上就是|全部内容)/,
+	].some((pattern) => pattern.test(compact));
+}
+
+function trimAudio({ audioPath, duration }) {
+	const tempPath = `${audioPath}.trimmed-${process.pid}.mp3`;
+	const result = spawnSync('ffmpeg', [
+		'-y',
+		'-i',
+		audioPath,
+		'-t',
+		String(duration),
+		'-c:a',
+		'libmp3lame',
+		tempPath,
+	], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 20 });
+	if (result.status !== 0) {
+		fs.rmSync(tempPath, { force: true });
+		throw new Error(`ffmpeg failed to trim AI podcast closing speech: ${result.stderr || result.stdout}`);
+	}
+	fs.renameSync(tempPath, audioPath);
+}
+
+function removeClosingSpeech({ paths, timing, transcript, duration }) {
+	const subtitleEvents = Array.isArray(timing.subtitleEvents) ? timing.subtitleEvents : [];
+	const closingIndex = subtitleEvents.findIndex((event) => isClosingSpeech(event.text));
+	if (closingIndex < 0) {
+		return { duration, transcript, subtitleEvents, trimmedClosingSpeech: false };
+	}
+	const cutAt = Number(subtitleEvents[closingIndex]?.start);
+	if (!Number.isFinite(cutAt) || cutAt <= 0.1) {
+		return { duration, transcript, subtitleEvents, trimmedClosingSpeech: false };
+	}
+	const keptEvents = subtitleEvents
+		.slice(0, closingIndex)
+		.map((event) => ({
+			...event,
+			end: Math.min(Number(event.end), cutAt),
+		}))
+		.filter((event) => event.text && Number(event.end) > Number(event.start));
+	if (keptEvents.length === 0) {
+		return { duration, transcript, subtitleEvents, trimmedClosingSpeech: false };
+	}
+
+	trimAudio({ audioPath: paths.audioPath, duration: cutAt });
+	const cleanedTranscript = keptEvents.map((event) => event.text).join('\n');
+	const cleanedTiming = {
+		...timing.raw,
+		duration: cutAt,
+		subtitles: keptEvents,
+		trimmedClosingSpeech: true,
+		originalDuration: duration,
+	};
+	fs.writeFileSync(paths.timingPath, JSON.stringify(cleanedTiming, null, 2), 'utf8');
+	fs.writeFileSync(paths.transcriptPath, cleanedTranscript, 'utf8');
+
+	return {
+		duration: cutAt,
+		transcript: cleanedTranscript,
+		subtitleEvents: keptEvents,
+		trimmedClosingSpeech: true,
+	};
+}
+
+function buildPagePodcastInput(page, { pageCount = 1, previousPage = null, nextPage = null } = {}) {
+	const pageNumber = Number(page.pageNumber) || 1;
 	const lines = [
 		'请生成一段中文播客访谈式口播。',
 		'必须严格围绕“本页页面内容”和“本页讲解稿”展开，不要引入页面没有出现的新主题、产品、API、公司案例或背景知识。',
 		'如果页面信息较少，就解释页面本身的作用、目标和观看重点；不要扩写成其他选题。',
+		`当前是第 ${pageNumber} 页，共 ${pageCount} 页。请把它当作同一个长视频播客中的一个连续段落。`,
+		pageNumber === 1
+			? '第 1 页可以自然开场，但不要提前总结整期节目。'
+			: '除第 1 页外，不要重新说“今天我们要聊”“开始今天的话题”等新节目开场，直接承接上一页继续讲。',
+		previousPage ? `上一页主题：${previousPage.pageTitle || previousPage.speakerPrompt || `第 ${pageNumber - 1} 页`}` : '上一页主题：无。',
+		nextPage ? `下一页主题：${nextPage.pageTitle || nextPage.speakerPrompt || `第 ${pageNumber + 1} 页`}。本页结尾只做一句自然过渡，不要做节目收尾。` : '这是最后一页，也不要说感谢收听、下期再见或拜拜；只用一句观点收束即可。',
 		'这一页只是完整视频中的连续片段，不要在每一页结尾加入播客结束语。',
 		'不要说“感谢收听”“本期节目到这里”“我们下期再见”“以上就是本页全部内容”等收尾话术。',
 		'输出应自然像播客，不要朗读这些规则。',
@@ -61,7 +142,7 @@ function runAiPodcastPage(job, page, paths) {
 	const pageJobPath = path.join(job.audioDir, `${paths.name}-ai-podcast-job.json`);
 	fs.writeFileSync(pageJobPath, JSON.stringify({
 		jobId: `${job.jobId}-${paths.name}`,
-		podcastInputText: buildPagePodcastInput(page),
+		podcastInputText: buildPagePodcastInput(page, paths.context),
 		podcastSpeakerA: job.podcastSpeakerA,
 		podcastSpeakerB: job.podcastSpeakerB,
 		useHeadMusic: false,
@@ -88,7 +169,7 @@ function main() {
 	const job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));
 	for (const dir of [job.audioDir, job.timingDir, job.transcriptDir]) fs.mkdirSync(dir, { recursive: true });
 	const script = JSON.parse(fs.readFileSync(job.pageScriptPath, 'utf8'));
-	const pages = script.pages.map((page) => {
+	const pages = script.pages.map((page, index) => {
 		const name = safePageName(page.pageNumber);
 		const paths = {
 			name,
@@ -98,6 +179,11 @@ function main() {
 			costPath: path.join(job.audioDir, `${name}-cost.json`),
 			metadataPath: path.join(job.audioDir, `${name}-metadata.json`),
 			rawResponsePath: path.join(job.audioDir, `${name}-response.binlog`),
+			context: {
+				pageCount: script.pages.length,
+				previousPage: script.pages[index - 1] || null,
+				nextPage: script.pages[index + 1] || null,
+			},
 		};
 		if (process.env.PRESENTATION_PODCAST_FIXTURE_DIR) {
 			copyFixturePage({ fixtureDir: process.env.PRESENTATION_PODCAST_FIXTURE_DIR, ...paths });
@@ -110,6 +196,7 @@ function main() {
 		if (!transcript) throw new Error(`AI podcast transcript is empty on page ${page.pageNumber}`);
 		const duration = ffprobeDuration(paths.audioPath);
 		const timing = readTiming(paths.timingPath, duration);
+		const cleaned = removeClosingSpeech({ paths, timing, transcript, duration: timing.duration });
 
 		return {
 			pageNumber: page.pageNumber,
@@ -117,10 +204,11 @@ function main() {
 			timingPath: paths.timingPath,
 			transcriptPath: paths.transcriptPath,
 			costPath: paths.costPath,
-			duration: timing.duration,
-			transcript,
-			subtitleEvents: timing.subtitleEvents,
+			duration: cleaned.duration,
+			transcript: cleaned.transcript,
+			subtitleEvents: cleaned.subtitleEvents,
 			subtitleSource: timing.source,
+			trimmedClosingSpeech: cleaned.trimmedClosingSpeech,
 		};
 	});
 	fs.writeFileSync(job.pageAudioManifestPath, JSON.stringify({ pages }, null, 2), 'utf8');

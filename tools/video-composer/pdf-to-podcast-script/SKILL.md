@@ -11,6 +11,8 @@ Turn parsed PDF pages into a page-by-page Chinese podcast script that can be sen
 
 This skill is for document-grounded video workflows where each PDF page is shown on screen while the audio explains that page.
 
+Treat PDF pages as continuous segments of one long video podcast, not separate episodes. The first page may open naturally, but later pages should continue the same conversation.
+
 ## Inputs
 
 - `pages`: ordered pages extracted from the uploaded PDF.
@@ -69,10 +71,12 @@ Default to a two-person knowledge podcast rhythm:
 - Host A opens, frames the page, and explains the main idea.
 - Host B acts as the listener proxy: confirms value, asks short questions, or restates confusion.
 - The first page must have a natural podcast opening. It may start with `今天我们要聊的话题是...`, `今天咱们来聊...`, or a more natural variant.
+- Later pages must continue the same long video podcast instead of restarting a new episode.
 - Each page should sound conversational, not like OCR text being read aloud.
 - Use short sentences and natural Chinese connectors such as `其实`, `简单来说`, `那就是说`, `对`, `嗯`.
 - Keep page explanations compact. Prefer 20-60 seconds per page unless the user requests longer.
 - Make cautious claims. Use `可能`, `更像是`, `至少可以看到`, `还不能直接说明` when the PDF page is not enough to support a strong conclusion.
+- Do not write repeated episode endings such as `感谢收听`, `下期再见`, `拜拜`, `本期节目到这里`, or `今天内容就到这里`. Page endings should be a short transition, and even the final page should close with a grounded viewpoint instead of a podcast farewell.
 
 ## Output Schema
 
@@ -112,6 +116,8 @@ Before returning JSON, verify:
 - No page script discusses a topic absent from the PDF page and `extraContext`.
 - The first page has a podcast-style opening.
 - Later pages naturally connect to the previous page.
+- Pages read as continuous segments of one long video podcast, not separate mini episodes.
+- No page repeats episode-ending language such as thanks, next time, bye-bye, or this episode ends here.
 - The text can be read aloud without exposing prompt instructions.
 - The output is valid JSON.
 
@@ -121,3 +127,4 @@ Before returning JSON, verify:
 - **Using prompt text as subtitles:** Subtitles must come from the actual TTS or AI Podcast transcript/timestamps.
 - **Inventing examples:** If the PDF does not contain an example, say `可以理解为...` only when it is directly implied by the page.
 - **Overlong page audio:** Keep each page focused. Do not turn one sparse page into a full lesson.
+- **Repeated closings per page:** Do not write repeated episode endings. Each page is one segment in a continuous video, so avoid `感谢收听`, `下期再见`, `拜拜`, and similar farewell phrases.
