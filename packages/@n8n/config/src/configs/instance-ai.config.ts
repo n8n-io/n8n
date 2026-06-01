@@ -38,10 +38,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
 
-	/** Enable Chrome DevTools MCP for browser-assisted credential setup. */
-	@Env('N8N_INSTANCE_AI_BROWSER_MCP')
-	browserMcp: boolean = false;
-
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
@@ -88,7 +84,7 @@ export class InstanceAiConfig {
 
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
-	builderSandboxTtlMs: number = 10 * 60 * 1000;
+	builderSandboxTtlMs: number = 15 * 60 * 1000;
 
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')

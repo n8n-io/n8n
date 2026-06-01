@@ -460,13 +460,9 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
-				new NodeOperationError(loadOptionsFunctions.getNode(), 'No user attributes provided', {
-					description: 'At least one user attribute must be provided for the update operation.',
-				}),
-			);
+			const execution = preSendAttributes.call(loadOptionsFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('No user attributes provided');
 		});
 
 		it('should throw an error if a user attribute is invalid (empty value) (create operation)', async () => {
@@ -478,13 +474,9 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
-				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
-					description: 'Each attribute must have a valid name and value.',
-				}),
-			);
+			const execution = preSendAttributes.call(loadOptionsFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Invalid User Attribute');
 		});
 
 		it('should throw an error if email_verified is true but email is missing (create operation)', async () => {
@@ -496,18 +488,9 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
-				new NodeOperationError(
-					loadOptionsFunctions.getNode(),
-					'Missing required "email" attribute',
-					{
-						description:
-							'"email_verified" is set to true, but the corresponding "email" attribute is not provided.',
-					},
-				),
-			);
+			const execution = preSendAttributes.call(loadOptionsFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Missing required "email" attribute');
 		});
 
 		it('should throw an error if phone_number_verified is true but phone_number is missing (create operation)', async () => {
@@ -521,18 +504,9 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
-				new NodeOperationError(
-					loadOptionsFunctions.getNode(),
-					'Missing required "phone_number" attribute',
-					{
-						description:
-							'"phone_number_verified" is set to true, but the corresponding "phone_number" attribute is not provided.',
-					},
-				),
-			);
+			const execution = preSendAttributes.call(loadOptionsFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Missing required "phone_number" attribute');
 		});
 
 		it('should add the user attribute to the body when valid (create operation)', async () => {
@@ -594,13 +568,9 @@ describe('AWS Cognito - Helpers functions', () => {
 				return undefined;
 			});
 
-			await expect(
-				preSendAttributes.call(loadOptionsFunctions, requestOptions),
-			).rejects.toThrowError(
-				new NodeOperationError(loadOptionsFunctions.getNode(), 'Invalid User Attribute', {
-					description: 'Each attribute must have a valid name and value.',
-				}),
-			);
+			const execution = preSendAttributes.call(loadOptionsFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Invalid User Attribute');
 		});
 	});
 

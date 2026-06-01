@@ -138,24 +138,21 @@ graph TD
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
     O -->|direct| T4[plan]
+    O -->|direct| T5[data-tables]
 
     S3 -->|kind: build-workflow| S4[Builder Agent]
-    S3 -->|kind: manage-data-tables| S5[Data Table Agent]
-    S3 -->|kind: research| S6[Research Agent]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
-    S2 -->|tools| T8[build-workflow]
+    S1 -->|tools| T6[get-execution]
+    S1 -->|tools| T7[get-workflow]
+    S2 -->|tools| T8[search-nodes]
+    S2 -->|tools| T9[build-workflow]
 
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
     style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
-    style S6 fill:#bbf,stroke:#333
     style S7 fill:#bbf,stroke:#333
 ```
 
@@ -172,7 +169,7 @@ graph TD
 
 **Multi-task plans** (`plan` tool):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured agent (builder, data-table, research, or delegate)
+- Each task dispatched to a preconfigured executor (builder, checkpoint, or delegate)
 - User approves the plan before execution starts
 
 The orchestrator decides what to delegate based on complexity — simple reads
@@ -186,7 +183,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `browser-credential-setup`
+- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
@@ -313,7 +310,7 @@ suspension/resume cycles. Two control modes:
 
 ### Background Task Manager
 
-Long-running tasks (workflow builds, data table operations, research) run as
+Long-running tasks (workflow builds and delegated work) run as
 background tasks with concurrency limits (default: 5 per thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
@@ -342,13 +339,17 @@ task has a `kind` that determines its executor:
 | Kind | Executor | Tools |
 |------|----------|-------|
 | `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
-| `research` | Research agent | web-search, fetch-url |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
+| `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
 
-Tasks run detached as background agents. Dependencies are respected — a task
-only starts when all its `deps` have succeeded. The plan is shown to the user
-for approval before execution begins.
+Standalone data-table work bypasses planned tasks: the orchestrator loads the
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly.
+
+Build and delegate tasks run detached as background agents. Checkpoint
+tasks run as orchestrator follow-ups so they can inspect the latest workflow
+state before verifying. Dependencies are respected — a task only starts when all
+its `deps` have succeeded. The plan is shown to the user for approval before
+execution begins.
 
 ### Workflow Loop State Machine
 
@@ -384,9 +385,7 @@ The processor is configurable via `disableDeferredTools` flag.
 External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
 The cli's `InstanceAiService` holds one manager instance and passes it to
 `createInstanceAgent` via options; the agent factory calls
-`mcpManager.getRegularTools(mcpServers)` and
-`mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig)`. Tool
-descriptions are:
+`mcpManager.getRegularTools(mcpServers)`. Tool descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
@@ -397,9 +396,10 @@ descriptions are:
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
 
-Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
-context bloat from screenshots. They're available to `browser-credential-setup`
-sub-agents.
+The local Computer Use server is separate from external MCP configuration. Its
+browser tools are available directly to the orchestrator and are guided by the
+`credential-setup-with-computer-use` skill when credential setup requires a
+browser.
 
 ## Tracing & Observability
 

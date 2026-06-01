@@ -32,10 +32,6 @@ jest.mock('../nodes.tool', () => ({
 	})),
 }));
 
-jest.mock('../orchestration/browser-credential-setup.tool', () => ({
-	createBrowserCredentialSetupTool: jest.fn(() => ({ id: 'browser-credential-setup' })),
-}));
-
 jest.mock('../orchestration/build-workflow-agent.tool', () => ({
 	createBuildWorkflowAgentTool: jest.fn(() => ({ id: 'build-workflow-with-agent' })),
 }));
@@ -157,7 +153,7 @@ describe('domain tool construction', () => {
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
-			'data-tables': { id: 'data-tables-orchestrator' },
+			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			nodes: { id: 'nodes-orchestrator' },
@@ -165,7 +161,9 @@ describe('domain tool construction', () => {
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

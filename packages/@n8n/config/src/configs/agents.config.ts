@@ -33,8 +33,9 @@ export class AgentsConfig {
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Currently known: `node-tools-searcher` (surfaces the "Built-in node tools"
-	 * toggle in the agent editor).
+	 * Currently known:
+	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
+	 *   the agent editor.
 	 *
 	 * Gates the UI surface only — existing agents persisted with a given
 	 * capability turned on continue to run even if its token is removed here.
