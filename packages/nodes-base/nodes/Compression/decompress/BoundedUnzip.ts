@@ -62,7 +62,9 @@ export async function boundedUnzip(
 		try {
 			feedInChunks({
 				data,
-				push: (slice, isFinal) => unzipper.push(slice, isFinal) as unknown,
+				push: (slice, isFinal) => {
+					unzipper.push(slice, isFinal);
+				},
 				shouldStop: () => isSettled || zipOutputAccumulator.isLimitExceeded,
 			});
 			inputFinished = true;
