@@ -28,6 +28,7 @@ import { IdentifierValidationError } from '../../credential-resolvers/identifier
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
+import { SYSTEM_RESOLVER_TYPE } from '../../constants';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -428,8 +429,9 @@ describe('DynamicCredentialService', () => {
 				);
 			});
 
-			it('resolver throws CredentialResolverDataNotFoundError', async () => {
+			it('external-identity resolver throws CredentialResolverDataNotFoundError keeps the generic message', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
+				// Default resolver type is an external (non-n8n) resolver
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver(false, true); // Throws CredentialResolverDataNotFoundError
 				const executionContext = createMockExecutionContext('encrypted-credentials');
@@ -454,9 +456,9 @@ describe('DynamicCredentialService', () => {
 				);
 			});
 
-			it('resolver throws CredentialResolverDataNotFoundError from a manual editor-triggered run', async () => {
+			it('n8n private-credential resolver throws CredentialResolverDataNotFoundError surfaces the not-connected message', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
-				const resolverEntity = createMockResolverEntity();
+				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
 				const mockResolver = createMockResolver(false, true);
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext({ source: 'manual-execution' });
@@ -480,14 +482,13 @@ describe('DynamicCredentialService', () => {
 				);
 			});
 
-			it('resolver throws CredentialResolverDataNotFoundError from a chat-hub-injected run keeps the generic message', async () => {
+			it('n8n private-credential resolver surfaces the not-connected message regardless of trigger source', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
-				const resolverEntity = createMockResolverEntity();
+				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
 				const mockResolver = createMockResolver(false, true);
 				const executionContext = createMockExecutionContext('encrypted-credentials');
-				const credentialContext = createMockCredentialContext({
-					source: 'chat-hub-injected',
-				});
+				// Chat-hub triggered run still resolves to an n8n user, so the message applies
+				const credentialContext = createMockCredentialContext({ source: 'chat-hub-injected' });
 				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
@@ -504,7 +505,7 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(
-					'Failed to resolve dynamic credentials for "Test Credential": No data found available for the requested credential and context combination.',
+					"You haven't connected the credential 'Test Credential' yet. Open it and connect to run this workflow.",
 				);
 			});
 
