@@ -1577,13 +1577,13 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<N8nTooltip placement="top" :disabled="!isWorkflowSettingsReadOnly">
+							<N8nTooltip placement="top" :disabled="!mcpToggleDisabled">
 								<template #content>
 									{{ mcpToggleTooltip }}
 								</template>
 								<ElSwitch
 									ref="inputField"
-									:disabled="isWorkflowSettingsReadOnly"
+									:disabled="mcpToggleDisabled"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
