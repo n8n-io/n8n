@@ -22,3 +22,9 @@ test('enhanced PDF workflow stores generated tmp files under the project root tm
 	);
 	assert.match(prepareJobCode, /return \[\{ json: \{ \.\.\.item\.json, jobId, repoDir, tmpDir, baseDir,/);
 });
+
+test('enhanced PDF workflow avoids disallowed Code node modules', () => {
+	for (const node of workflow.nodes.filter((candidate) => candidate.type === 'n8n-nodes-base.code')) {
+		assert.doesNotMatch(node.parameters.jsCode, /require\(['"]path['"]\)/, node.name);
+	}
+});
