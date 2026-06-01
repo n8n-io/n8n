@@ -5560,6 +5560,8 @@
 	"instanceAi.mcp.error.connect": "Failed to connect MCP server",
 	"instanceAi.mcp.error.updateSettings": "Failed to update MCP server settings",
 	"instanceAi.mcp.error.disconnect": "Failed to disconnect MCP server",
+	"instanceAi.mcp.error.autoConnectAmbiguous.title": "Credential created",
+	"instanceAi.mcp.error.autoConnectAmbiguous.message": "Multiple new credentials appeared. Please pick the one you just created from the credential picker.",
 	"instanceAi.browserUse.step.extension.title": "Install the Chrome extension",
 	"instanceAi.browserUse.step.extension.description": "Install the n8n Browser Use extension for Google Chrome so the agent can control your browser.",
 	"instanceAi.browserUse.step.extension.cta": "Install Chrome extension",
