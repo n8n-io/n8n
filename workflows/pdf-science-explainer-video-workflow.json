@@ -208,10 +208,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nconst script = JSON.parse(fs.readFileSync(item.pageScriptPath, 'utf8'));\nconst podcastSpeakerA = item.narrationMode === 'single_speaker' ? item.voice : item.voiceA;\nconst podcastSpeakerB = item.narrationMode === 'single_speaker' ? item.voice : item.voiceB;\nfs.writeFileSync(item.podcastJobPath, JSON.stringify({ jobId: item.jobId, pageScriptPath: item.pageScriptPath, audioDir: item.audioDir, timingDir: item.timingDir, transcriptDir: item.transcriptDir, pageAudioManifestPath: item.pageAudioManifestPath, costPath: item.costPath, podcastSpeakerA, podcastSpeakerB, narrationMode: item.narrationMode, pageCount: script.pages.length }, null, 2));\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join(String.fromCharCode(10)).trim();\n      reject(new Error('Per-page TTS failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':' + String.fromCharCode(10) + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/presentation-podcast-client.mjs', [item.podcastJobPath]);\nreturn [{ json: { ...item, podcastSpeakerA, podcastSpeakerB, ttsStdout: result.stdout, ttsStderr: result.stderr } }];"
+        "jsCode": "const fs = require('fs');\nconst { spawn } = require('child_process');\nconst item = $input.first().json;\nconst script = JSON.parse(fs.readFileSync(item.pageScriptPath, 'utf8'));\nconst podcastSpeakerA = item.narrationMode === 'single_speaker' ? item.voice : item.voiceA;\nconst podcastSpeakerB = item.narrationMode === 'single_speaker' ? item.voice : item.voiceB;\nconst pageCount = Array.isArray(script.pageAnchors) ? script.pageAnchors.length : Array.isArray(script.pages) ? script.pages.length : 0;\nfs.writeFileSync(item.podcastJobPath, JSON.stringify({ jobId: item.jobId, researchScriptPath: item.pageScriptPath, audioDir: item.audioDir, timingDir: item.timingDir, transcriptDir: item.transcriptDir, pageAudioManifestPath: item.pageAudioManifestPath, costPath: item.costPath, podcastSpeakerA, podcastSpeakerB, narrationMode: item.narrationMode, pageCount }, null, 2));\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join(String.fromCharCode(10)).trim();\n      reject(new Error('Continuous science narration failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':' + String.fromCharCode(10) + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/continuous-podcast-client.mjs', [item.podcastJobPath]);\nreturn [{ json: { ...item, podcastSpeakerA, podcastSpeakerB, ttsStdout: result.stdout, ttsStderr: result.stderr } }];"
       },
       "id": "run-page-tts",
-      "name": "Run Page TTS",
+      "name": "Run Continuous Science Narration",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -322,18 +322,7 @@
       "main": [
         [
           {
-            "node": "Run Page TTS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Run Page TTS": {
-      "main": [
-        [
-          {
-            "node": "Build Science Explainer Video Job",
+            "node": "Run Continuous Science Narration",
             "type": "main",
             "index": 0
           }
@@ -367,6 +356,17 @@
         [
           {
             "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Continuous Science Narration": {
+      "main": [
+        [
+          {
+            "node": "Build Science Explainer Video Job",
             "type": "main",
             "index": 0
           }

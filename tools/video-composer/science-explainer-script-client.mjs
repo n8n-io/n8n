@@ -108,7 +108,7 @@ async function main() {
 	console.log(JSON.stringify({
 		ok: true,
 		pageScriptPath: job.pageScriptPath,
-		pageCount: script.pages.length,
+		pageCount: Array.isArray(script.pageAnchors) ? script.pageAnchors.length : script.pages.length,
 		mode: script.mode,
 	}));
 }

@@ -59,17 +59,24 @@ function makeMedia({ backgroundVideoPath, fixtureDir }) {
 		'-f',
 		'lavfi',
 		'-i',
-		'sine=frequency=440:duration=1.2',
+		'sine=frequency=440:duration=2.4',
 		'-ar',
 		'44100',
-		path.join(fixtureDir, 'page-001.mp3'),
+		path.join(fixtureDir, 'podcast.mp3'),
 	]);
-	fs.writeFileSync(path.join(fixtureDir, 'page-001.json'), JSON.stringify({
-		duration: 1.2,
+	fs.writeFileSync(path.join(fixtureDir, 'podcast.json'), JSON.stringify({
+		duration: 2.4,
 		source: 'fixture',
-		subtitles: [{ start: 0.05, end: 1, text: '这页的重点是七小时附近的低点。' }],
+		subtitles: [
+			{ start: 0.05, end: 1.2, text: '这项最新文献首先把问题指向睡眠时长。' },
+			{ start: 1.2, end: 2.25, text: '七小时附近更像风险低点，而不是因果规则。' },
+		],
 	}, null, 2));
-	fs.writeFileSync(path.join(fixtureDir, 'page-001.txt'), '这页的重点是七小时附近的低点。', 'utf8');
+	fs.writeFileSync(
+		path.join(fixtureDir, 'podcast.txt'),
+		'这项最新文献首先把问题指向睡眠时长。\n七小时附近更像风险低点，而不是因果规则。',
+		'utf8',
+	);
 }
 
 function getNode(name) {
@@ -219,16 +226,22 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 	});
 
 	fs.writeFileSync(scriptFixturePath, JSON.stringify({
-		title: '睡眠时长怎么理解',
+		title: '最新睡眠文献解读',
 		summary: '用一页 PDF 讲清楚 7 小时低点的谨慎含义。',
 		mode: 'single_speaker',
-		pages: [{
+		thesis: '七小时附近更像风险低点，而不是因果规则。',
+		audience: '关注健康研究的普通观众',
+		deliveryStyle: 'news_science_explainer',
+		pageAnchors: [{
 			pageNumber: 1,
-			pageTitle: '7 小时附近的低点',
-			visualNotes: '标题和要点均指向 7 小时附近。',
-			evidenceNotes: '页面支持趋势提示，不支持因果断言。',
-			speakerPrompt: '这一页我们先看结论：七小时附近像是一个低点，但它更适合作为谨慎参考，而不是绝对规则。',
-			spokenSummary: '七小时附近可以作为参考，但不能说它直接决定健康结果。',
+			topic: '7 小时附近的低点',
+			visualRole: '显示标题和核心要点。',
+		}],
+		segments: [{
+			role: 'A',
+			text: '这项最新文献首先把问题指向睡眠时长。七小时附近更像风险低点，而不是因果规则。',
+			pageNumber: 1,
+			evidenceRefs: ['page:1 title', 'page:1 text'],
 			targetSeconds: 12,
 		}],
 	}, null, 2));
@@ -250,7 +263,7 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 
 	fs.writeFileSync(podcastJobPath, JSON.stringify({
 		jobId: 'science-e2e',
-		pageScriptPath: paths.pageScriptPath,
+		researchScriptPath: paths.pageScriptPath,
 		audioDir,
 		timingDir,
 		transcriptDir,
@@ -261,9 +274,9 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 		narrationMode: 'single_speaker',
 		pageCount: 1,
 	}, null, 2));
-	run('node', [path.join(videoComposerDir, 'presentation-podcast-client.mjs'), podcastJobPath], {
+	run('node', [path.join(videoComposerDir, 'continuous-podcast-client.mjs'), podcastJobPath], {
 		cwd: repoRoot,
-		env: { ...process.env, PRESENTATION_PODCAST_FIXTURE_DIR: fixtureDir },
+		env: { ...process.env, CONTINUOUS_PODCAST_FIXTURE_DIR: fixtureDir },
 	});
 
 	fs.writeFileSync(composerJobPath, JSON.stringify({
@@ -304,10 +317,10 @@ test('science explainer workflow scripts run end-to-end with offline fixtures', 
 	}
 	const timing = JSON.parse(fs.readFileSync(paths.pageTimingPath, 'utf8'));
 	assert.equal(timing.pages.length, 1);
-	assert.equal(timing.subtitles[0].text, '这页的重点是七小时附近的低点。');
+	assert.equal(timing.subtitles[0].text, '这项最新文献首先把问题指向睡眠时长。');
 	const subtitle = fs.readFileSync(paths.subtitlePath, 'utf8');
 	assert.match(subtitle, /,80,80,72,1/);
-	assert.match(subtitle, /这页的重点是七小时附近的低点。/);
+	assert.match(subtitle, /七小时附近更像风险低点/);
 });
 
 test('science explainer workflow code nodes generate a final video end-to-end', async (t) => {
@@ -342,16 +355,22 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 		}],
 	}, null, 2));
 	fs.writeFileSync(scriptFixturePath, JSON.stringify({
-		title: '睡眠时长怎么理解',
+		title: '最新睡眠文献解读',
 		summary: '用一页 PDF 讲清楚 7 小时低点的谨慎含义。',
 		mode: 'single_speaker',
-		pages: [{
+		thesis: '七小时附近更像风险低点，而不是因果规则。',
+		audience: '关注健康研究的普通观众',
+		deliveryStyle: 'news_science_explainer',
+		pageAnchors: [{
 			pageNumber: 1,
-			pageTitle: '7 小时附近的低点',
-			visualNotes: '标题和要点均指向 7 小时附近。',
-			evidenceNotes: '页面支持趋势提示，不支持因果断言。',
-			speakerPrompt: '这一页我们先看结论：七小时附近像是一个低点，但它更适合作为谨慎参考，而不是绝对规则。',
-			spokenSummary: '七小时附近可以作为参考，但不能说它直接决定健康结果。',
+			topic: '7 小时附近的低点',
+			visualRole: '显示标题和核心要点。',
+		}],
+		segments: [{
+			role: 'A',
+			text: '这项最新文献首先把问题指向睡眠时长。七小时附近更像风险低点，而不是因果规则。',
+			pageNumber: 1,
+			evidenceRefs: ['page:1 title', 'page:1 text'],
 			targetSeconds: 12,
 		}],
 	}, null, 2));
@@ -359,12 +378,12 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 	const previousEnv = {
 		SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE: process.env.SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE,
 		SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE: process.env.SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE,
-		PRESENTATION_PODCAST_FIXTURE_DIR: process.env.PRESENTATION_PODCAST_FIXTURE_DIR,
+		CONTINUOUS_PODCAST_FIXTURE_DIR: process.env.CONTINUOUS_PODCAST_FIXTURE_DIR,
 		VIDEO_COMPOSER_JOBS_DIR: process.env.VIDEO_COMPOSER_JOBS_DIR,
 	};
 	process.env.SCIENCE_EXPLAINER_VISUAL_FIXTURE_RESPONSE = visualFixturePath;
 	process.env.SCIENCE_EXPLAINER_SCRIPT_FIXTURE_RESPONSE = scriptFixturePath;
-	process.env.PRESENTATION_PODCAST_FIXTURE_DIR = fixtureDir;
+	process.env.CONTINUOUS_PODCAST_FIXTURE_DIR = fixtureDir;
 	process.env.VIDEO_COMPOSER_JOBS_DIR = path.join(root, 'jobs');
 	try {
 		const uploadItem = {
@@ -409,7 +428,7 @@ test('science explainer workflow code nodes generate a final video end-to-end', 
 			'Extract PDF Pages',
 			'Analyze PDF Page Visuals',
 			'Generate Science Explainer Script',
-			'Run Page TTS',
+			'Run Continuous Science Narration',
 			'Build Science Explainer Video Job',
 			'Run Science Explainer Composer',
 		]) {

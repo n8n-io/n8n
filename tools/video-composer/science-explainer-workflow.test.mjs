@@ -23,7 +23,7 @@ test('science explainer workflow has the expected import name and nodes', () => 
 		'Extract PDF Pages',
 		'Analyze PDF Page Visuals',
 		'Generate Science Explainer Script',
-		'Run Page TTS',
+		'Run Continuous Science Narration',
 		'Build Science Explainer Video Job',
 		'Run Science Explainer Composer',
 		'Prepare Response',
@@ -59,6 +59,16 @@ test('science explainer workflow calls the science composer script', () => {
 	assert.match(composerCode, /compose-science-explainer-video\.mjs/);
 	assert.match(composerCode, /item\.composerJobPath/);
 	assert.doesNotMatch(composerCode, /managed-job-runner\.mjs/);
+});
+
+test('science explainer workflow generates one continuous narration before slicing by page', () => {
+	const narrationCode = getNode('Run Continuous Science Narration').parameters.jsCode;
+
+	assert.match(narrationCode, /continuous-podcast-client\.mjs/);
+	assert.match(narrationCode, /researchScriptPath: item\.pageScriptPath/);
+	assert.match(narrationCode, /pageAudioManifestPath/);
+	assert.doesNotMatch(narrationCode, /presentation-podcast-client\.mjs/);
+	assert.doesNotMatch(narrationCode, /pageScriptPath:/);
 });
 
 test('science explainer code nodes avoid modules blocked by n8n task runner', () => {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	buildScienceExplainerPrompt,
 	buildSciencePromptPageBriefs,
 	normalizeScienceScript,
 	normalizeVisualAnalysis,
@@ -105,6 +106,90 @@ test('normalizeScienceScript bounds target seconds', () => {
 
 	assert.equal(script.pages[0].targetSeconds, 12);
 	assert.equal(script.pages[1].targetSeconds, 60);
+});
+
+test('normalizeScienceScript accepts continuous news-style science narration', () => {
+	const script = normalizeScienceScript(JSON.stringify({
+		title: '最新睡眠文献解读',
+		summary: '用整篇 PDF 梳理睡眠时长研究的证据边界。',
+		mode: 'single_speaker',
+		thesis: '7 小时附近可以作为风险提示，但不能被解读成因果规则。',
+		pageAnchors: [
+			{ pageNumber: 1, topic: '研究问题', visualRole: '显示研究标题和核心问题。' },
+			{ pageNumber: 2, topic: '关键结果', visualRole: '显示 U 型趋势图。' },
+		],
+		segments: [
+			{
+				role: 'A',
+				text: '一项最新睡眠研究把问题指向同一个核心：睡眠时长和健康风险之间，可能不是越多越好。',
+				pageNumber: 1,
+				evidenceRefs: ['page:1 title'],
+				targetSeconds: 14,
+			},
+			{
+				role: 'A',
+				text: '第二页给出的图形更像是在提示 U 型关系，七小时附近是观察到的低点，但这仍然不是因果证明。',
+				pageNumber: 2,
+				evidenceRefs: ['page:2 chart'],
+				targetSeconds: 18,
+			},
+		],
+	}), 2);
+
+	assert.equal(script.mode, 'single_speaker');
+	assert.equal(script.pageAnchors.length, 2);
+	assert.equal(script.segments.length, 2);
+	assert.equal(script.segments[1].pageNumber, 2);
+	assert.equal(script.segments[1].targetSeconds, 18);
+	assert.doesNotMatch(script.segments.map((segment) => segment.text).join('\n'), /感谢收听|下期再见|拜拜/);
+});
+
+test('normalizeScienceScript rejects continuous scripts with repeated openings or closings', () => {
+	assert.throws(
+		() => normalizeScienceScript(JSON.stringify({
+			title: '错误脚本',
+			summary: '',
+			mode: 'single_speaker',
+			pageAnchors: [
+				{ pageNumber: 1, topic: '第一页', visualRole: '标题。' },
+				{ pageNumber: 2, topic: '第二页', visualRole: '图表。' },
+			],
+			segments: [
+				{ role: 'A', text: '今天我们聊一项研究。', pageNumber: 1, evidenceRefs: ['page:1'], targetSeconds: 12 },
+				{ role: 'A', text: '今天我们继续聊第二页。感谢收听。', pageNumber: 2, evidenceRefs: ['page:2'], targetSeconds: 12 },
+			],
+		}), 2),
+		/Science script must not contain repeated openings or closing phrases/,
+	);
+});
+
+test('buildScienceExplainerPrompt asks for latest-literature news explainer segments', () => {
+	const prompt = buildScienceExplainerPrompt({
+		pagesManifest: {
+			pages: [
+				{ pageNumber: 1, text: 'Anti-PD-1 antibody penpulimab plus chemotherapy for recurrent or metastatic nasopharyngeal carcinoma.' },
+				{ pageNumber: 2, text: 'Progression-free survival improved in the treatment arm.' },
+			],
+		},
+		visualAnalysis: {
+			pages: [
+				{ pageNumber: 1, visualNotes: '论文标题页。', layoutNotes: '期刊信息。', evidenceNotes: '可说明研究对象。', uncertaintyNotes: '不能扩展到所有癌种。' },
+				{ pageNumber: 2, visualNotes: '结果图表。', layoutNotes: '左右分栏。', evidenceNotes: '可说明主要结果。', uncertaintyNotes: '需要谨慎表达。' },
+			],
+		},
+		viewpoint: '关注鼻咽癌一线治疗新证据。',
+		narrationMode: 'single_speaker',
+		aspectRatio: '9:16',
+	});
+
+	assert.match(prompt, /最新科普文献/);
+	assert.match(prompt, /新闻联播式科普解说/);
+	assert.match(prompt, /segments/);
+	assert.match(prompt, /pageAnchors/);
+	assert.match(prompt, /不要输出 pages/);
+	assert.match(prompt, /不要播客式互动/);
+	assert.match(prompt, /短句/);
+	assert.match(prompt, /字幕/);
 });
 
 test('buildSciencePromptPageBriefs combines text and visual analysis by page', () => {

@@ -34,6 +34,7 @@ function copyFixturePodcast({ fixtureDir, wholeAudioPath, wholeTimingPath, whole
 }
 
 function buildPodcastInput(script) {
+	const isNewsScience = script.deliveryStyle === 'news_science_explainer';
 	const pageAnchors = Array.isArray(script.pageAnchors) && script.pageAnchors.length > 0
 		? script.pageAnchors
 		: Array.from(new Set((Array.isArray(script.segments) ? script.segments : []).map((segment) => Number(segment.pageNumber))))
@@ -41,11 +42,14 @@ function buildPodcastInput(script) {
 			.sort((a, b) => a - b)
 			.map((pageNumber) => ({ pageNumber, topic: `第 ${pageNumber} 页`, visualRole: '根据本页证据承接讲解' }));
 	const lines = [
-		'请生成一段中文双人播客访谈式口播。',
-		'这是整集论文播客脚本，不是每页生成一段。',
-		'请保持一整段连续录音的感觉：只有开头可以自然开场，后续不要重新说“今天我们要聊”或“那我们开始吧”。',
+		isNewsScience ? '请生成一段中文新闻联播式科普解说口播。' : '请生成一段中文双人播客访谈式口播。',
+		isNewsScience ? '这是整集最新科普文献解读脚本，不是每页生成一段。' : '这是整集论文播客脚本，不是每页生成一段。',
+		isNewsScience
+			? '请保持正式、克制、短句、证据导向的连续解说；只有开头可以自然引入主题，后续不要重新开场。'
+			: '请保持一整段连续录音的感觉：只有开头可以自然开场，后续不要重新说“今天我们要聊”或“那我们开始吧”。',
 		'不要说感谢收听、下期再见、拜拜、本期到这里等结束语。',
 		'不要朗读页码、视觉锚点、证据引用或这些规则。',
+		isNewsScience ? '不要生成播客式互动、寒暄、感叹或博客式个人感想。' : '',
 		'',
 		`标题：${script.title || ''}`,
 		`摘要：${script.summary || ''}`,
@@ -54,10 +58,10 @@ function buildPodcastInput(script) {
 		'视觉锚点：',
 		...pageAnchors.map((anchor) => `第 ${anchor.pageNumber} 页视觉锚点：${anchor.topic || ''} ${anchor.visualRole || ''}`.trim()),
 		'',
-		'整集论文播客脚本：',
+		isNewsScience ? '整集新闻式科普解说脚本：' : '整集论文播客脚本：',
 		...(Array.isArray(script.segments) ? script.segments : [])
 			.map((segment) => `${segment.role}：${segment.text}`),
-	];
+	].filter((line) => line !== '');
 
 	return lines.join('\n').trim();
 }
@@ -177,8 +181,8 @@ function subtitleEventsForWindow(events, window) {
 		.filter((event) => event.text && event.end > event.start);
 }
 
-function sliceAudio({ inputPath, outputPath, start, duration }) {
-	run('ffmpeg', [
+export function buildAudioSliceArgs({ inputPath, outputPath, start, duration }) {
+	return [
 		'-y',
 		'-ss',
 		String(Math.max(0, start)),
@@ -187,9 +191,13 @@ function sliceAudio({ inputPath, outputPath, start, duration }) {
 		'-t',
 		String(duration),
 		'-c:a',
-		'libmp3lame',
+		'copy',
 		outputPath,
-	], 'ffmpeg audio slice');
+	];
+}
+
+function sliceAudio({ inputPath, outputPath, start, duration }) {
+	run('ffmpeg', buildAudioSliceArgs({ inputPath, outputPath, start, duration }), 'ffmpeg audio slice');
 }
 
 function writePageOutputs({ job, script, timing, wholeAudioPath }) {
@@ -281,9 +289,11 @@ function main() {
 	}));
 }
 
-try {
-	main();
-} catch (error) {
-	console.error(error.stack || error.message);
-	process.exit(1);
+if (import.meta.url === `file://${process.argv[1]}`) {
+	try {
+		main();
+	} catch (error) {
+		console.error(error.stack || error.message);
+		process.exit(1);
+	}
 }

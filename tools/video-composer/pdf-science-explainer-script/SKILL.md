@@ -1,15 +1,15 @@
 ---
 name: pdf-science-explainer-script
-description: Use when converting PDF page text and page screenshot visual analysis into viewpoint-led Chinese science explainer scripts for short-form videos.
+description: Use when converting latest science PDF text and page screenshot visual analysis into continuous Chinese news-style science explainer scripts for short-form videos.
 ---
 
 # PDF Science Explainer Script
 
 ## Purpose
 
-Turn parsed PDF pages and page screenshot visual analysis into concise Chinese science explainer narration.
+Turn parsed PDF pages and page screenshot visual analysis into a continuous Chinese science explainer narration for short-form video.
 
-The workflow is viewpoint-led and PDF-checked. The user's opinion or angle provides the narrative spine. The PDF page text and page screenshot visual analysis provide evidence, limits, and corrections.
+The workflow is latest-literature-led and PDF-checked. The PDF provides the research question, evidence chain, conclusions, and limits. The user's opinion or angle may provide focus, but it must not override the uploaded literature.
 
 ## Inputs
 
@@ -22,13 +22,19 @@ The workflow is viewpoint-led and PDF-checked. The user's opinion or angle provi
 ## Core Rules
 
 - Do not read the PDF line by line.
-- Each page should explain one to three useful points.
-- Use the user's viewpoint to decide what matters.
+- Treat the full PDF as one continuous literature explainer, not page-by-page mini episodes.
+- Use the user's viewpoint to decide emphasis, but keep the literature as the source of truth.
 - Use PDF text and screenshot analysis to support, limit, or correct that viewpoint.
 - If a page does not support the viewpoint, say so carefully.
 - Visual analysis may describe titles, hierarchy, highlighted boxes, charts, tables, diagrams, labels, and visible relationships.
 - Do not invent chart values, methods, study conclusions, or background facts not visible in the PDF text or page screenshot.
 - Prefer cautious science language: `这一页只能说明`, `更像是在提示`, `还不能直接证明`, `至少可以看到`.
+- Use a news-broadcast science style: formal, concise, evidence-led, and restrained.
+- Avoid blog/podcast filler such as `今天咱们聊`, `欢迎大家`, `我们来看一下`, `嗯`, `没错`, `哇`, `那我们开始吧`.
+- Use short spoken sentences so generated subtitles can align tightly to the timing data.
+- Page numbers are visual anchors only. A segment's `pageNumber` means the video should show that page while speaking the segment.
+- Only the first segment may open the topic. Later segments must continue the same narrative.
+- Do not include closing phrases such as `感谢收听`, `下期再见`, `拜拜`, or `本期到这里`.
 
 ## Output
 
@@ -39,14 +45,22 @@ Return strict JSON only:
   "title": "视频标题",
   "summary": "一句话摘要",
   "mode": "single_speaker",
-  "pages": [
+  "thesis": "整集主论点",
+  "audience": "目标听众",
+  "deliveryStyle": "news_science_explainer",
+  "pageAnchors": [
     {
       "pageNumber": 1,
-      "pageTitle": "本页主题",
-      "visualNotes": "页面截图里的图表、重点框、层级或表格信息",
-      "evidenceNotes": "本页如何支持、限制或修正用户观点",
-      "speakerPrompt": "可直接用于 TTS 的中文口播内容",
-      "spokenSummary": "用于审阅的本页口播摘要",
+      "topic": "画面对应的文献主题",
+      "visualRole": "这页作为画面锚点时承担的视觉作用"
+    }
+  ],
+  "segments": [
+    {
+      "role": "A",
+      "text": "可直接用于 TTS 的中文口播内容，一到两个短句。",
+      "pageNumber": 1,
+      "evidenceRefs": ["page:1 title", "page:1 figure"],
       "targetSeconds": 35
     }
   ]
@@ -55,15 +69,17 @@ Return strict JSON only:
 
 ## Mode Rules
 
-For `single_speaker`, write natural Chinese science explainer narration without speaker labels.
+For `single_speaker`, use role `A` for every segment. Write formal Chinese science narration.
 
-For `two_speaker`, write short question-answer turns. Keep the turns compact and page-grounded.
+For `two_speaker`, use `A` and `B` only when the user requests it. Keep turns compact, serious, and page-grounded. Do not use casual podcast banter.
 
 ## Checklist
 
-- `pages.length` equals the extracted PDF page count.
-- Page numbers are sequential from 1.
-- `speakerPrompt` is spoken Chinese, not instructions.
+- `pageAnchors.length` equals the extracted PDF page count.
+- Page anchor numbers are sequential from 1.
+- `segments` form one continuous narrative.
+- Every segment has a valid `pageNumber`.
+- `text` is spoken Chinese, not instructions.
 - No Markdown fences.
 - No page introduces unrelated facts.
 - Sparse or visually unclear pages produce shorter and more cautious narration.

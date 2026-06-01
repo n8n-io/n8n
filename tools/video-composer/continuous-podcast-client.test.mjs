@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import { buildAudioSliceArgs } from './continuous-podcast-client.mjs';
+
 const scriptPath = new URL('./continuous-podcast-client.mjs', import.meta.url).pathname;
 
 function commandExists(command) {
@@ -165,4 +167,81 @@ test('continuous-podcast-client builds a single AI podcast input for the whole r
 	assert.match(aiPodcastJob.podcastInputText, /接着自然承接到证据/);
 	assert.doesNotMatch(aiPodcastJob.podcastInputText, /每一页生成一段/);
 	assert.equal(aiPodcastJob.useHeadMusic, false);
+});
+
+test('continuous-podcast-client slices mp3 pages without re-encoding corrupt frames', () => {
+	const args = buildAudioSliceArgs({
+		inputPath: '/tmp/whole.mp3',
+		outputPath: '/tmp/page-001.mp3',
+		start: 12.5,
+		duration: 30,
+	});
+
+	assert.deepEqual(args, [
+		'-y',
+		'-ss',
+		'12.5',
+		'-i',
+		'/tmp/whole.mp3',
+		'-t',
+		'30',
+		'-c:a',
+		'copy',
+		'/tmp/page-001.mp3',
+	]);
+	assert.equal(args.includes('libmp3lame'), false);
+});
+
+test('continuous-podcast-client preserves news-style science explainer instructions', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-science-input-'));
+	const audioDir = path.join(root, 'audio');
+	const timingDir = path.join(root, 'timing');
+	const transcriptDir = path.join(root, 'transcript');
+	for (const dir of [audioDir, timingDir, transcriptDir]) fs.mkdirSync(dir);
+	const researchScriptPath = path.join(root, 'science-script.json');
+	fs.writeFileSync(researchScriptPath, JSON.stringify({
+		title: '最新文献解读',
+		summary: '新闻式讲解研究证据。',
+		thesis: '结论需要回到 PDF 证据边界。',
+		deliveryStyle: 'news_science_explainer',
+		mode: 'single_speaker',
+		pageAnchors: [{ pageNumber: 1, topic: '研究问题', visualRole: '标题页。' }],
+		segments: [
+			{ role: 'A', text: '这项最新文献首先明确了研究对象和治疗场景。', pageNumber: 1, evidenceRefs: ['page:1 title'], targetSeconds: 2 },
+		],
+	}));
+	const fixtureFramesPath = path.join(root, 'frames.json');
+	fs.writeFileSync(fixtureFramesPath, JSON.stringify([
+		{ round_id: 0, text: '这项最新文献首先明确了研究对象和治疗场景。' },
+		{ start_time: 0, end_time: 2, audio_duration: 2 },
+		{ audio: Buffer.from('audio').toString('base64') },
+	]));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'continuous-science-input-test',
+		researchScriptPath,
+		audioDir,
+		timingDir,
+		transcriptDir,
+		pageAudioManifestPath: path.join(root, 'page-audio.json'),
+		podcastSpeakerA: 'speaker-a',
+		podcastSpeakerB: 'speaker-a',
+	}));
+
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: {
+			...process.env,
+			AI_PODCAST_FIXTURE_FRAMES: fixtureFramesPath,
+			DOUBAO_AI_PODCAST_API_KEY: 'test-key',
+			CONTINUOUS_PODCAST_SKIP_SLICE: '1',
+		},
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	const aiPodcastJob = JSON.parse(fs.readFileSync(path.join(audioDir, 'research-ai-podcast-job.json'), 'utf8'));
+	assert.match(aiPodcastJob.podcastInputText, /新闻联播式科普解说/);
+	assert.match(aiPodcastJob.podcastInputText, /短句/);
+	assert.doesNotMatch(aiPodcastJob.podcastInputText, /双人播客访谈式/);
+	assert.doesNotMatch(aiPodcastJob.podcastInputText, /整集论文播客脚本/);
 });
