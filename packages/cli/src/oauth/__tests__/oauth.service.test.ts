@@ -5,7 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
@@ -27,6 +27,7 @@ import {
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
+	type CreateCsrfStateData,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
@@ -2039,6 +2040,84 @@ describe('OauthService', () => {
 					cid: '1',
 				}),
 			);
+		});
+
+		describe('browser binding', () => {
+			it('does not apply binding when called without req/res', async () => {
+				const credential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2Api' });
+				const oauthCredentials: OAuth2CredentialData = {
+					clientId: 'client-id',
+					authUrl: 'https://example.domain/oauth/authorize',
+					accessTokenUrl: 'https://example.domain/oauth/token',
+				} as OAuth2CredentialData;
+
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				browserBindingService.isEnabled.mockReturnValue(true);
+
+				const csrfData: CreateCsrfStateData = {
+					cid: credential.id,
+					origin: 'static-credential',
+				};
+				await service.generateAOauth2AuthUri(credential, csrfData);
+
+				expect(browserBindingService.ensureBindingCookie).not.toHaveBeenCalled();
+				expect(csrfData.bindingHash).toBeUndefined();
+			});
+
+			it('does not apply binding when the feature flag is off', async () => {
+				const credential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2Api' });
+				const oauthCredentials: OAuth2CredentialData = {
+					clientId: 'client-id',
+					authUrl: 'https://example.domain/oauth/authorize',
+					accessTokenUrl: 'https://example.domain/oauth/token',
+				} as OAuth2CredentialData;
+
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				browserBindingService.isEnabled.mockReturnValue(false);
+
+				const csrfData: CreateCsrfStateData = {
+					cid: credential.id,
+					origin: 'static-credential',
+				};
+				const req = mock<Request>();
+				const res = mock<Response>();
+				await service.generateAOauth2AuthUri(credential, csrfData, req, res);
+
+				expect(browserBindingService.ensureBindingCookie).not.toHaveBeenCalled();
+				expect(csrfData.bindingHash).toBeUndefined();
+			});
+
+			it('applies bindingHash when flag is on and req/res are provided', async () => {
+				const credential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2Api' });
+				const oauthCredentials: OAuth2CredentialData = {
+					clientId: 'client-id',
+					authUrl: 'https://example.domain/oauth/authorize',
+					accessTokenUrl: 'https://example.domain/oauth/token',
+				} as OAuth2CredentialData;
+
+				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				browserBindingService.isEnabled.mockReturnValue(true);
+				browserBindingService.ensureBindingCookie.mockReturnValue('nonce-value');
+				browserBindingService.computeHash.mockReturnValue('hash-value');
+
+				const csrfData: CreateCsrfStateData = {
+					cid: credential.id,
+					origin: 'static-credential',
+				};
+				const req = mock<Request>();
+				const res = mock<Response>();
+				await service.generateAOauth2AuthUri(credential, csrfData, req, res);
+
+				expect(browserBindingService.ensureBindingCookie).toHaveBeenCalledWith(req, res);
+				expect(browserBindingService.computeHash).toHaveBeenCalledWith('nonce-value');
+				expect(csrfData.bindingHash).toBe('hash-value');
+			});
 		});
 	});
 

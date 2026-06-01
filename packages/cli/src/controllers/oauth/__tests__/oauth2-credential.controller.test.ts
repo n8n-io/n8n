@@ -53,6 +53,8 @@ describe('OAuth2CredentialController', () => {
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
 				mockResolvedCredential,
 				mockCsrfData,
+				req,
+				res,
 			);
 		});
 	});

@@ -527,10 +527,31 @@ export class OauthService {
 		}
 	}
 
+	/**
+	 * Mutates `csrfData` to include a `bindingHash` when browser binding is
+	 * enabled and a request/response pair is available. No-op otherwise — so
+	 * server-initiated flows (e.g. workflow-execution credential checks) that
+	 * don't carry a browser context naturally skip binding.
+	 */
+	private applyBrowserBindingIfEnabled(
+		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
+	): void {
+		if (!req || !res) return;
+		if (!this.browserBindingService.isEnabled()) return;
+		const nonce = this.browserBindingService.ensureBindingCookie(req, res);
+		csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
+	}
+
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth2CredentialData =
 			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 
@@ -746,7 +767,11 @@ export class OauthService {
 	async generateAOauth1AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
 

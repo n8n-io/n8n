@@ -11,7 +11,6 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
@@ -36,7 +35,6 @@ export class DynamicCredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialConnectionStatusService: CredentialConnectionStatusService,
 		private readonly eventService: EventService,
-		private readonly browserBindingService: OAuthBrowserBindingService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -163,18 +161,13 @@ export class DynamicCredentialsController {
 			authMetadata: credentialContext.metadata,
 			credentialResolverId: req.query.resolverId,
 		};
-		if (this.browserBindingService.isEnabled()) {
-			const nonce = this.browserBindingService.ensureBindingCookie(req, res);
-			csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
-		}
-		const callerData: [CredentialsEntity, CreateCsrfStateData] = [credential, csrfData];
 
 		if (credential.type.toLowerCase().includes('oauth2')) {
-			return await this.oauthService.generateAOauth2AuthUri(...callerData);
+			return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
 		}
 
 		if (credential.type.toLowerCase().includes('oauth1')) {
-			return await this.oauthService.generateAOauth1AuthUri(...callerData);
+			return await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 		}
 
 		throw new BadRequestError('Credential type not supported');
