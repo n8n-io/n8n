@@ -1643,6 +1643,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@typescript-eslint/typescript-estree':
+        specifier: ^8.35.0
+        version: 8.35.0(typescript@6.0.2)
       '@typescript-eslint/utils':
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
