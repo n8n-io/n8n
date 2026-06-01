@@ -86,6 +86,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		workerResourceQuota,
 		services: enabledServices = [],
 		external = false,
+		networkName,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -115,7 +116,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let network: StartedNetwork;
 	try {
 		const networkStart = performance.now();
-		network = await new Network().start();
+		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
+		network = await new Network(uuid).start();
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

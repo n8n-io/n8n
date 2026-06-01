@@ -64,9 +64,10 @@ const writeFileTool = new Tool('write-file')
 // Memory
 // ---------------------------------------------------------------------------
 
-const memory = new Memory()
-	.lastMessages(20)
-	.semanticRecall({ topK: 4, messageRange: { before: 1, after: 1 } });
+const memory = new Memory().semanticRecall({
+	topK: 4,
+	messageRange: { before: 1, after: 1 },
+});
 
 // ---------------------------------------------------------------------------
 // Agents
