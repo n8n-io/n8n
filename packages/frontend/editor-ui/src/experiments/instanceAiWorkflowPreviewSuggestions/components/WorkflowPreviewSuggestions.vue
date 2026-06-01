@@ -2,7 +2,8 @@
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onUnmounted, ref } from 'vue';
-import type { WorkflowPreviewSuggestion } from '../suggestions';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type WorkflowPreviewSuggestion } from '../suggestions';
 
 const PREVIEW_HOVER_DELAY_MS = 300;
 
@@ -25,8 +26,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const activePreview = ref<string | null>(null);
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+const hoverStartTimes = new Map<string, number>();
 
 function clearHoverTimer() {
 	if (!hoverTimer) return;
@@ -34,8 +37,22 @@ function clearHoverTimer() {
 	hoverTimer = null;
 }
 
+function trackHoverEnd(suggestionId: string) {
+	const startTime = hoverStartTimes.get(suggestionId);
+	if (startTime === undefined) return;
+	hoverStartTimes.delete(suggestionId);
+
+	telemetry.track('AI Assistant suggestion button hovered', {
+		suggestion_id: suggestionId,
+		seconds: Math.floor((Date.now() - startTime) / 1000),
+	});
+}
+
 function clearPreview() {
 	clearHoverTimer();
+	for (const id of hoverStartTimes.keys()) {
+		trackHoverEnd(id);
+	}
 	activePreview.value = null;
 	emit('preview-change', null);
 	emit('workflow-preview', null);
@@ -44,6 +61,7 @@ function clearPreview() {
 function handleSuggestionEnter(suggestion: WorkflowPreviewSuggestion) {
 	if (props.disabled) return;
 
+	hoverStartTimes.set(suggestion.id, Date.now());
 	clearHoverTimer();
 	hoverTimer = setTimeout(() => {
 		hoverTimer = null;
@@ -63,9 +81,13 @@ function handleSuggestionFocus(suggestion: WorkflowPreviewSuggestion) {
 
 function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	if (props.disabled) return;
-	clearPreview();
 
 	const position = props.suggestions.indexOf(suggestion) + 1;
+	telemetry.track('AI Assistant suggestion button clicked', {
+		suggestion_id: suggestion.id,
+	});
+
+	clearPreview();
 	emit('submit-suggestion', {
 		promptKey: suggestion.promptKey,
 		suggestionId: suggestion.id,
