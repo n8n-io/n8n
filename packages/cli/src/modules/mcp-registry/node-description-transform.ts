@@ -48,8 +48,7 @@ function getMcpRegistryCredentialHeader(
 }
 
 /**
- * Picks the server's remote endpoint and parses its hostname. Returns `null`
- * when no supported remote exists or the URL is malformed.
+ * Picks the server's remote endpoint and parses its hostname.
  */
 function resolveCredentialRemote(
 	server: McpRegistryServer,
@@ -64,8 +63,7 @@ function resolveCredentialRemote(
 }
 
 /**
- * Locks the synthetic credential to the MCP server's hostname so it can't be
- * used to call other domains via the HTTP Request node.
+ * Locks the synthetic credential's HTTP requests to the MCP server's hostname.
  */
 function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
 	return [
@@ -113,12 +111,9 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 }
 
 /**
- * Parses and validates `server.extendsCredential`, applies the
- * known-credential predicate, and strips null/undefined override values.
- * Returns null when the payload is missing, fails validation, or the parent
- * type is not registered.
+ * Parses `extendsCredential`, applies the predicate, and drops null/undefined override values.
  */
-function classifyExtendsCredential(
+function getValidatedExtendsCredential(
 	server: McpRegistryServer,
 	isKnownCredentialType?: (name: string) => boolean,
 ) {
@@ -137,26 +132,23 @@ function classifyExtendsCredential(
 		NonNullable<McpRegistryExtendsCredential[keyof Omit<McpRegistryExtendsCredential, 'extends'>]>
 	>;
 
-	return { parentType, overrides, hasOverrides: Object.keys(overrides).length > 0 };
+	return { parentType, overrides };
 }
 
 /**
- * Registry MCP server → dedicated credential type extending a known n8n
- * credential. Always emitted (even with zero overrides) so future override
- * additions don't break workflows referencing the credential type. Returns
- * `null` only when the payload is invalid or the parent isn't registered.
+ * Builds a dedicated credential type extending a known n8n credential.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
 	isKnownCredentialType?: (name: string) => boolean,
 ): ICredentialType | null {
-	const classified = classifyExtendsCredential(server, isKnownCredentialType);
-	if (!classified) return null;
+	const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
+	if (!validated) return null;
 
 	const remote = resolveCredentialRemote(server);
 	if (!remote) return null;
 
-	const overrideProperties: INodeProperties[] = Object.entries(classified.overrides).map(
+	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
 		([name, value]) => ({
 			displayName: name,
 			name,
@@ -167,7 +159,7 @@ function serverToExtendedCredentialDescription(
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
-		extends: [classified.parentType],
+		extends: [validated.parentType],
 		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
 	};
 }
@@ -183,8 +175,8 @@ function getNodeDescriptionCredentials(
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		case 'extendsCredential': {
-			const classified = classifyExtendsCredential(server, isKnownCredentialType);
-			if (!classified) return [];
+			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
+			if (!validated) return [];
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		}
 		default:
