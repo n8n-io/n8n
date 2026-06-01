@@ -121,6 +121,15 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export interface AgentFileDto {
+	id: string;
+	agentId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	createdAt: string;
+}
+
 export interface AgentVersionListItemDto {
 	versionId: string;
 	agentId: string;

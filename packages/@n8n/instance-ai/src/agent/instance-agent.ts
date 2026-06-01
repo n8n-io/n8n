@@ -164,8 +164,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	}
 
 	if (options.memory) {
-		const lastMessages = memoryConfig.lastMessages ?? 20;
-		const mem = new Memory().storage(options.memory).lastMessages(lastMessages);
+		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
 			const { observerThresholdTokens, reflectorThresholdTokens } =
@@ -187,7 +186,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			modelId,
 			memory: options.memory
 				? {
-						lastMessages: memoryConfig.lastMessages ?? 20,
 						...(memoryConfig.observationalMemory
 							? {
 									observationalMemory: {
