@@ -24,6 +24,7 @@ import {
 	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -520,6 +521,12 @@ export class AgentsService {
 			return agent;
 		}
 
+		// Idempotent fast-path for re-publishing the already-active version —
+		// no pointer to flip, no need to disturb the draft's versionId.
+		if (versionId !== undefined && versionId === agent.activeVersionId) {
+			return agent;
+		}
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
 				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
@@ -532,6 +539,11 @@ export class AgentsService {
 				}
 				agent.activeVersionId = existing.versionId;
 				agent.activeVersion = existing;
+				// The previously-active versionId may already own a history row
+				// (e.g. the draft was in sync with the old active version). Bump
+				// to a fresh UUID so the next regular publish writes a new row
+				// instead of colliding on that PK.
+				agent.versionId = uuid();
 			} else {
 				// Snapshot the current draft. agent.versionId is the snapshot's PK,
 				// so make sure it's set before inserting.
@@ -656,6 +668,82 @@ export class AgentsService {
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
+	}
+
+	async revertToVersion(agentId: string, projectId: string, versionId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
+				versionId,
+				agentId,
+				trx,
+			);
+			if (!target) {
+				throw new NotFoundError(`Version "${versionId}" not found`);
+			}
+
+			agent.schema = target.schema ? deepCopy(target.schema) : null;
+			agent.tools = deepCopy(target.tools ?? {});
+			agent.skills = deepCopy(target.skills ?? {});
+			// Fresh UUID so a follow-up publish writes a new history row.
+			// Re-using target.versionId would collide on the snapshot insert
+			// (target already owns that PK), and leaving the previous
+			// versionId in place could equal activeVersionId — that hits the
+			// idempotent fast-path in publishAgent and silently discards the
+			// revert.
+			agent.versionId = uuid();
+
+			if (agent.schema) {
+				agent.name = agent.schema.name;
+				agent.description = agent.schema.description ?? null;
+			}
+
+			await trx.save(agent);
+		});
+
+		this.clearRuntimes(agentId);
+
+		this.logger.debug('Reverted SDK agent to a specific version', {
+			agentId,
+			projectId,
+			versionId,
+		});
+		return agent;
+	}
+
+	/**
+	 * Cheap existence check used by the editor to gate the version-history
+	 * panel button. Survives unpublish, unlike `agent.activeVersionId`.
+	 */
+	async hasPublishHistory(agentId: string): Promise<boolean> {
+		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	async listPublishHistory(
+		agentId: string,
+		projectId: string,
+		take: number,
+		skip: number,
+	): Promise<AgentVersionListItemDto[]> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
+
+		return versions.map((v) => ({
+			versionId: v.versionId,
+			agentId: v.agentId,
+			createdAt: v.createdAt.toISOString(),
+			updatedAt: v.updatedAt.toISOString(),
+			author: v.author,
+			isActive: v.versionId === agent.activeVersionId,
+		}));
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {
