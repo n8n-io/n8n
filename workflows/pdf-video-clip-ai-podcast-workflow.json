@@ -1,0 +1,326 @@
+{
+  "name": "MVP - PDF Video Clip AI Podcast Composer",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "pdf-video-clip-ai-podcast-upload",
+        "formTitle": "PDF Video Clip AI Podcast Composer",
+        "formDescription": "Upload a cover, screenshot, PDF paper, viewpoint, and background video to generate a blog-style AI podcast video clip.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "cover_image",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "proof_screenshot",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "pdf_file",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "viewpoint",
+              "fieldType": "textarea",
+              "requiredField": false,
+              "placeholder": "可选：补充你的观点、立场、受众、想强调或反驳的内容。"
+            },
+            {
+              "fieldLabel": "background_video",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "podcast_speaker_a",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "男主持 - 温柔阿虎｜zh_male_wennuanahu_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  },
+                  {
+                    "option": "男主持 - 渊博小叔｜zh_male_yuanboxiaoshu_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_speaker_b",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "女嘉宾 - Tina 老师｜zh_female_yingyujiaoxue_uranus_bigtts"
+                  },
+                  {
+                    "option": "女嘉宾 - 小何｜zh_female_xiaohe_uranus_bigtts"
+                  },
+                  {
+                    "option": "男嘉宾 - 刘飞｜zh_male_liufei_uranus_bigtts"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "podcast_style",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "defaultValue": "podcast_interview",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "podcast_interview"
+                  },
+                  {
+                    "option": "short_video_podcast"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "include_execution_binary_preview",
+              "fieldType": "dropdown",
+              "requiredField": false,
+              "defaultValue": "include_execution_binary_preview",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "include_execution_binary_preview"
+                  },
+                  {
+                    "option": "metadata_only"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "8b424144-7439-4b4f-85c3-5f150011577e",
+      "name": "Upload PDF Video Clip Assets",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1200,
+        0
+      ],
+      "webhookId": "c1affa5d-f3e5-4a5f-8215-55e0bb18b7d2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first();\nconst binary = item.binary || {};\nfunction trimTrailingSlash(value) { let text = String(value || ''); while (text.endsWith('/')) text = text.slice(0, -1); return text; }\nfunction cleanText(value) { const lf = String.fromCharCode(10); const cr = String.fromCharCode(13); let text = String(value || '').split(String.fromCharCode(0)).join('').split(cr + lf).join(lf).split(cr).join(lf); while (text.includes(lf + lf + lf)) text = text.split(lf + lf + lf).join(lf + lf); return text.trim(); }\nfunction normalizeChoice(value, fallback) { const text = String(value || '').trim(); if (!text) return fallback; const separatorIndex = text.lastIndexOf('｜'); return separatorIndex >= 0 ? text.slice(separatorIndex + 1).trim() : text; }\nfunction extensionFromUpload(key) {\n  const meta = binary[key] || {};\n  const name = String(meta.fileName || '').toLowerCase();\n  for (const extension of ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.mov', '.webm', '.pdf']) {\n    if (name.endsWith(extension)) return extension;\n  }\n  const mime = String(meta.mimeType || '').toLowerCase();\n  if (mime.includes('png')) return '.png';\n  if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';\n  if (mime.includes('webp')) return '.webp';\n  if (mime.includes('quicktime')) return '.mov';\n  if (mime.includes('webm')) return '.webm';\n  if (mime.includes('mp4') || mime.includes('mpeg')) return '.mp4';\n  if (mime.includes('pdf')) return '.pdf';\n  return '';\n}\nfunction requireUpload(key) { if (!binary[key]) throw new Error('Missing uploaded file: ' + key); return key; }\nfunction requireImageExtension(key) { const extension = extensionFromUpload(key); if (!['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) throw new Error(key + ' must be a PNG, JPG, JPEG, or WEBP image.'); return extension; }\nfunction requireVideoExtension(key) { const extension = extensionFromUpload(key); if (!['.mp4', '.mov', '.webm'].includes(extension)) throw new Error(key + ' must be an MP4, MOV, or WEBM video.'); return extension; }\nfunction requireNonEmptyBuffer(buffer, key) { if (buffer.length === 0) throw new Error(key + ' upload is empty'); return buffer; }\nconst coverKey = requireUpload('cover_image');\nconst screenshotKey = requireUpload('proof_screenshot');\nconst pdfKey = requireUpload('pdf_file');\nconst backgroundKey = requireUpload('background_video');\nconst coverExtension = requireImageExtension(coverKey);\nconst screenshotExtension = requireImageExtension(screenshotKey);\nconst backgroundExtension = requireVideoExtension(backgroundKey);\nconst pdfExtension = extensionFromUpload(pdfKey);\nif (pdfExtension !== '.pdf') throw new Error('pdf_file must be a PDF file.');\nconst now = new Date();\nconst stamp = now.toISOString().slice(0, 19).split('-').join('').split(':').join('').split('T').join('-');\nconst random = Math.random().toString(16).slice(2, 8).padEnd(6, '0');\nconst jobId = stamp + '-' + random;\nconst repoDir = trimTrailingSlash(item.json.repo_dir || $env.VIDEO_COMPOSER_REPO_DIR || $env.N8N_VIDEO_COMPOSER_REPO_DIR || '/Users/stephenqiu/Desktop/Repository/n8n');\nconst composerDir = repoDir + '/tools/video-composer';\nif (!fs.existsSync(composerDir)) throw new Error('Video composer repo directory is not configured or does not contain tools/video-composer: ' + composerDir);\nconst tmpDir = repoDir + '/tmp';\nconst baseDir = trimTrailingSlash(item.json.jobs_dir || $env.VIDEO_COMPOSER_JOBS_DIR || $env.N8N_VIDEO_COMPOSER_JOBS_DIR || tmpDir + '/n8n-video-jobs');\nconst jobDir = baseDir + '/' + jobId;\nconst inputsDir = jobDir + '/inputs';\nconst presentationDir = jobDir + '/presentation';\nconst pagesDir = jobDir + '/pages';\nconst scriptDir = jobDir + '/script';\nconst audioDir = jobDir + '/audio';\nconst timingDir = jobDir + '/timing';\nconst transcriptDir = jobDir + '/transcript';\nconst renderDir = jobDir + '/render';\nfor (const dir of [inputsDir, presentationDir, pagesDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir]) fs.mkdirSync(dir, { recursive: true });\nconst coverImagePath = inputsDir + '/cover' + coverExtension;\nconst screenshotImagePath = inputsDir + '/screenshot' + screenshotExtension;\nconst backgroundVideoPath = inputsDir + '/background' + backgroundExtension;\nconst sourcePath = presentationDir + '/source.pdf';\nfs.writeFileSync(coverImagePath, requireNonEmptyBuffer(await this.helpers.getBinaryDataBuffer(0, coverKey), 'cover_image'));\nfs.writeFileSync(screenshotImagePath, requireNonEmptyBuffer(await this.helpers.getBinaryDataBuffer(0, screenshotKey), 'proof_screenshot'));\nfs.writeFileSync(backgroundVideoPath, requireNonEmptyBuffer(await this.helpers.getBinaryDataBuffer(0, backgroundKey), 'background_video'));\nfs.writeFileSync(sourcePath, requireNonEmptyBuffer(await this.helpers.getBinaryDataBuffer(0, pdfKey), 'pdf_file'));\nconst paths = {\n  coverImagePath,\n  screenshotImagePath,\n  backgroundVideoPath,\n  sourcePath,\n  pagesManifestPath: jobDir + '/pages.json',\n  researchScriptPath: scriptDir + '/research-podcast-script.json',\n  narrationTextPath: scriptDir + '/blog-narration.txt',\n  llmPromptPath: scriptDir + '/prompt.txt',\n  llmResponsePath: scriptDir + '/response.json',\n  pageAudioManifestPath: audioDir + '/page-audio.json',\n  subtitleTimingPath: timingDir + '/whole-podcast.json',\n  outputAudioPath: audioDir + '/whole-podcast.mp3',\n  subtitlePath: renderDir + '/subtitles.ass',\n  outputVideoPath: renderDir + '/final.mp4',\n  ffmpegLogPath: renderDir + '/ffmpeg.log',\n  costPath: jobDir + '/cost.json'\n};\nconst podcastSpeakerA = normalizeChoice(item.json.podcast_speaker_a, 'zh_male_wennuanahu_uranus_bigtts');\nconst podcastSpeakerB = normalizeChoice(item.json.podcast_speaker_b, 'zh_female_yingyujiaoxue_uranus_bigtts');\nconst podcastStyle = item.json.podcast_style || 'podcast_interview';\nconst includeBinaryPreview = normalizeChoice(item.json.include_execution_binary_preview, 'include_execution_binary_preview');\nconst aiPodcastTimeoutMs = Number(item.json.ai_podcast_timeout_ms || 270000);\nconst viewpoint = cleanText(item.json.viewpoint);\nconst blogContext = [\n  '请根据 PDF 页面文本信息，生成博客式讲解内容。',\n  '整篇 PDF 作为一篇连续博客式讲解，不要把每页写成独立小节目。',\n  '用户观点优先：如果用户提供观点，先围绕用户观点组织主线；PDF 页面文本用于校验、补证和纠偏。',\n  '讲解需要有文章感：开头提出观点，中段用论文证据推进，结尾收束成可传播的结论。',\n  '不要过度设计，不要每段重新开场，不要说感谢收听、下期再见、拜拜。',\n  viewpoint ? '用户观点：' + viewpoint : ''\n].filter(Boolean).join('\\n');\nconst extractJobPath = jobDir + '/extract-job.json';\nconst researchScriptJobPath = jobDir + '/research-script-job.json';\nconst podcastJobPath = jobDir + '/podcast-job.json';\nconst composerJobPath = jobDir + '/composer-job.json';\nfs.writeFileSync(extractJobPath, JSON.stringify({ jobId, sourcePath, presentationDir, pagesDir, pagesManifestPath: paths.pagesManifestPath }, null, 2));\nfs.writeFileSync(researchScriptJobPath, JSON.stringify({ jobId, pagesManifestPath: paths.pagesManifestPath, researchScriptPath: paths.researchScriptPath, llmPromptPath: paths.llmPromptPath, llmResponsePath: paths.llmResponsePath, extraContext: blogContext, podcastStyle }, null, 2));\nfs.writeFileSync(podcastJobPath, JSON.stringify({ jobId, researchScriptPath: paths.researchScriptPath, audioDir, timingDir, transcriptDir, pageAudioManifestPath: paths.pageAudioManifestPath, costPath: paths.costPath, podcastSpeakerA, podcastSpeakerB, aiPodcastTimeoutMs }, null, 2));\nreturn [{ json: { ...item.json, jobId, repoDir, tmpDir, baseDir, jobDir, inputsDir, presentationDir, pagesDir, scriptDir, audioDir, timingDir, transcriptDir, renderDir, ...paths, extractJobPath, researchScriptJobPath, podcastJobPath, composerJobPath, viewpoint, extraContext: blogContext, podcastSpeakerA, podcastSpeakerB, podcastStyle, aiPodcastTimeoutMs, includeBinaryPreview } }];"
+      },
+      "id": "774d7c22-80a5-4e03-863c-7c0b0c256b6c",
+      "name": "Prepare PDF Video Clip Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Presentation extraction failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/extract-presentation.mjs', [item.extractJobPath]);\nreturn [{ json: { ...item, extractStdout: result.stdout, extractStderr: result.stderr } }];"
+      },
+      "id": "da9d153b-1b39-48d4-a050-5fe89c3ff75d",
+      "name": "Extract PDF Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Blog podcast script generation failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/research-podcast-script-client.mjs', [item.researchScriptJobPath]);\nreturn [{ json: { ...item, scriptStdout: result.stdout, scriptStderr: result.stderr } }];"
+      },
+      "id": "9f524948-288a-4cb7-ae77-1a7bd090cf88",
+      "name": "Generate Blog Podcast Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('Continuous AI podcast failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/continuous-podcast-client.mjs', [item.podcastJobPath]);\nreturn [{ json: { ...item, podcastStdout: result.stdout, podcastStderr: result.stderr } }];"
+      },
+      "id": "46a2670f-c6bf-42e9-83bf-e890653ae922",
+      "name": "Run Continuous AI Podcast",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nconst script = JSON.parse(fs.readFileSync(item.researchScriptPath, 'utf8'));\nconst lines = [];\nif (script.title) lines.push(script.title);\nif (script.summary) lines.push(script.summary);\nfor (const segment of Array.isArray(script.segments) ? script.segments : []) {\n  const role = String(segment.role || '').trim();\n  const text = String(segment.text || '').trim();\n  if (!text) continue;\n  lines.push(role ? role + '：' + text : text);\n}\nfs.writeFileSync(item.narrationTextPath, lines.join('\\n').trim() || '这是一段根据 PDF 论文生成的博客式讲解。');\nconst composerJob = {\n  jobId: item.jobId,\n  inputs: {\n    coverImage: item.coverImagePath,\n    screenshotImage: item.screenshotImagePath,\n    backgroundVideo: item.backgroundVideoPath,\n    scriptText: item.narrationTextPath,\n    ttsAudio: item.outputAudioPath,\n    subtitleTiming: item.subtitleTimingPath\n  },\n  output: {\n    video: item.outputVideoPath,\n    subtitles: item.subtitlePath,\n    ffmpegLog: item.ffmpegLogPath\n  },\n  video: {\n    width: Number(item.video_width || 1920),\n    height: Number(item.video_height || 1080),\n    fps: Number(item.video_fps || 30),\n    layoutMode: 'cover-screenshot-podcast',\n    coverDuration: Number(item.cover_duration_seconds || 3),\n    screenshotTopDuration: Number(item.screenshot_top_seconds || 3),\n    screenshotDuration: 0\n  },\n  layout: {\n    coverTop: { x: Number(item.cover_top_x || 80), y: Number(item.cover_top_y || 60), width: Number(item.cover_top_width || 520) },\n    screenshotTop: { x: Number(item.screenshot_top_x || 1280), y: Number(item.screenshot_top_y || 60), width: Number(item.screenshot_top_width || 560) },\n    cornerImageTreatment: { enabled: true, opacity: Number(item.corner_opacity || 0.88), blur: 0, borderColor: 'white', borderWidth: 6 },\n    subtitleBottomMargin: Number(item.subtitle_bottom_margin || 90)\n  }\n};\nfs.writeFileSync(item.composerJobPath, JSON.stringify(composerJob, null, 2));\nreturn [{ json: { ...item, composerJob } }];"
+      },
+      "id": "a4948795-02a8-4989-86ba-31fe5e945272",
+      "name": "Build PDF Video Clip Job Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { spawn } = require('child_process');\nconst item = $input.first().json;\nfunction runNode(scriptPath, args) {\n  return new Promise((resolve, reject) => {\n    const child = spawn('node', [scriptPath, ...args], { cwd: item.repoDir, stdio: ['ignore', 'pipe', 'pipe'] });\n    let stdout = ''; let stderr = ''; const maxOutput = 1024 * 1024 * 20;\n    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8'); if (stdout.length > maxOutput) stdout = stdout.slice(-maxOutput); });\n    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8'); if (stderr.length > maxOutput) stderr = stderr.slice(-maxOutput); });\n    child.on('error', reject);\n    child.on('close', (code, signal) => {\n      if (code === 0) { resolve({ stdout, stderr }); return; }\n      const detail = [stdout, stderr].filter(Boolean).join('\\n').trim();\n      reject(new Error('PDF video clip composer failed with exit code ' + code + (signal ? ' signal ' + signal : '') + (detail ? ':\\n' + detail : '')));\n    });\n  });\n}\nconst result = await runNode(item.repoDir + '/tools/video-composer/compose-video.mjs', [item.composerJobPath]);\nreturn [{ json: { ...item, composerStdout: result.stdout, composerStderr: result.stderr } }];"
+      },
+      "id": "6c327663-4e5b-4a2f-a221-976ba21b111b",
+      "name": "Run PDF Video Clip Composer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst item = $input.first().json;\nif (!fs.existsSync(item.outputVideoPath)) throw new Error('Final video was not created: ' + item.outputVideoPath);\nif (!fs.existsSync(item.outputAudioPath)) throw new Error('Merged audio was not created: ' + item.outputAudioPath);\nconst videoStats = fs.statSync(item.outputVideoPath);\nconst audioStats = fs.statSync(item.outputAudioPath);\nif (videoStats.size === 0) throw new Error('Final video is empty: ' + item.outputVideoPath);\nif (audioStats.size === 0) throw new Error('Merged audio is empty: ' + item.outputAudioPath);\nconst pageScript = fs.existsSync(item.researchScriptPath) ? JSON.parse(fs.readFileSync(item.researchScriptPath, 'utf8')) : null;\nconst cost = item.costPath && fs.existsSync(item.costPath) ? JSON.parse(fs.readFileSync(item.costPath, 'utf8')) : null;\nconst includeBinaryPreview = item.includeBinaryPreview === 'include_execution_binary_preview' || item.include_execution_binary_preview === 'include_execution_binary_preview';\nconst json = { jobId: item.jobId, tmpDir: item.tmpDir, baseDir: item.baseDir, reviewDir: item.jobDir, videoPath: item.outputVideoPath, audioPath: item.outputAudioPath, coverImagePath: item.coverImagePath, screenshotImagePath: item.screenshotImagePath, backgroundVideoPath: item.backgroundVideoPath, pagesManifestPath: item.pagesManifestPath, researchScriptPath: item.researchScriptPath, narrationTextPath: item.narrationTextPath, subtitlePath: item.subtitlePath, subtitleTimingPath: item.subtitleTimingPath, costPath: item.costPath, ffmpegLog: item.ffmpegLogPath, size: videoStats.size, audioSize: audioStats.size, generatedScriptTitle: pageScript ? pageScript.title : '', generatedScriptSummary: pageScript ? pageScript.summary : '', cost };\nif (!includeBinaryPreview) return [{ json }];\nconst video = fs.readFileSync(item.outputVideoPath);\nconst audio = fs.readFileSync(item.outputAudioPath);\nreturn [{ json, binary: { finalVideo: await this.helpers.prepareBinaryData(video, 'final.mp4', 'video/mp4'), podcastAudio: await this.helpers.prepareBinaryData(audio, 'whole-podcast.mp3', 'audio/mpeg') } }];"
+      },
+      "id": "b55450ae-4f3c-40d5-8a97-7f93b66fb615",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, jobId: $json.jobId, reviewDir: $json.reviewDir, videoPath: $json.videoPath, audioPath: $json.audioPath, coverImagePath: $json.coverImagePath, screenshotImagePath: $json.screenshotImagePath, backgroundVideoPath: $json.backgroundVideoPath, pagesManifestPath: $json.pagesManifestPath, researchScriptPath: $json.researchScriptPath, narrationTextPath: $json.narrationTextPath, subtitlePath: $json.subtitlePath, subtitleTimingPath: $json.subtitleTimingPath, costPath: $json.costPath, ffmpegLog: $json.ffmpegLog, size: $json.size, audioSize: $json.audioSize, generatedScriptTitle: $json.generatedScriptTitle, generatedScriptSummary: $json.generatedScriptSummary, cost: $json.cost } }}"
+      },
+      "id": "a6a61e0a-dbec-4911-ae0c-4b560fe24ddc",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Upload PDF Video Clip Assets": {
+      "main": [
+        [
+          {
+            "node": "Prepare PDF Video Clip Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare PDF Video Clip Job": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Pages": {
+      "main": [
+        [
+          {
+            "node": "Generate Blog Podcast Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Blog Podcast Script": {
+      "main": [
+        [
+          {
+            "node": "Run Continuous AI Podcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Continuous AI Podcast": {
+      "main": [
+        [
+          {
+            "node": "Build PDF Video Clip Job Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PDF Video Clip Job Config": {
+      "main": [
+        [
+          {
+            "node": "Run PDF Video Clip Composer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run PDF Video Clip Composer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false,
+  "versionId": "d8752a9d-fc00-4874-8805-aabad50a78dc",
+  "id": "pdf-video-clip-ai-podcast-workflow",
+  "tags": []
+}

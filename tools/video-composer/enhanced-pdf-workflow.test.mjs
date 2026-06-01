@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-
 const workflow = JSON.parse(
 	fs.readFileSync('workflows/pdf-enhanced-ai-podcast-workflow.json', 'utf8'),
 );
@@ -61,4 +60,24 @@ test('enhanced PDF workflow uses continuous research podcast generation', () => 
 	assert.match(scriptNode.parameters.jsCode, /item\.researchScriptJobPath/);
 	assert.match(podcastNode.parameters.jsCode, /continuous-podcast-client\.mjs/);
 	assert.match(podcastNode.parameters.jsCode, /item\.podcastJobPath/);
+});
+
+test('enhanced PDF composer avoids excluded Execute Command nodes', () => {
+	const composerNode = getNode('Run Enhanced PDF Composer');
+
+	assert.equal(workflow.nodes.some((node) => node.type === 'n8n-nodes-base.executeCommand'), false);
+	assert.equal(composerNode.type, 'n8n-nodes-base.code');
+	assert.match(composerNode.parameters.jsCode, /require\('child_process'\)/);
+	assert.match(composerNode.parameters.jsCode, /compose-enhanced-pdf-video\.mjs/);
+	assert.match(composerNode.parameters.jsCode, /item\.repoDir/);
+	assert.match(composerNode.parameters.jsCode, /item\.composerJobPath/);
+});
+
+test('enhanced PDF response uses composer result fields from the Code node output', () => {
+	const responseCode = getNode('Prepare Response').parameters.jsCode;
+
+	assert.match(responseCode, /const commandResult = \$input\.first\(\)\.json;/);
+	assert.match(responseCode, /const item = commandResult;/);
+	assert.match(responseCode, /composerStdout: commandResult\.stdout/);
+	assert.match(responseCode, /composerStderr: commandResult\.stderr/);
 });

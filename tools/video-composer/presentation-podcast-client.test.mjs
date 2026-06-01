@@ -142,6 +142,63 @@ test('presentation-podcast-client sends page source text and full script to AI p
 	assert.match(pageJob.podcastInputText, /不要说“感谢收听”/);
 });
 
+test('presentation-podcast-client can use science video narration prompts while keeping page audio output', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-podcast-science-'));
+	const audioDir = path.join(root, 'audio');
+	const timingDir = path.join(root, 'timing');
+	const transcriptDir = path.join(root, 'transcript');
+	fs.mkdirSync(audioDir);
+	fs.mkdirSync(timingDir);
+	fs.mkdirSync(transcriptDir);
+	const pageScriptPath = path.join(root, 'page-script.json');
+	fs.writeFileSync(pageScriptPath, JSON.stringify({
+		title: '睡眠研究科普',
+		pages: [{
+			pageNumber: 1,
+			pageTitle: 'U 型关系',
+			speakerPrompt: '这页研究提示睡眠时长和风险可能存在 U 型关系。',
+			spokenSummary: '讲解时要保留相关性和不确定性。',
+			sourceText: 'Sleep duration and risk show a U-shaped association.',
+		}],
+	}));
+	const fixtureFramesPath = path.join(root, 'frames.json');
+	fs.writeFileSync(fixtureFramesPath, JSON.stringify([
+		{ round_id: 0, text: '这页研究提示睡眠时长和风险可能存在 U 型关系。' },
+		{ start_time: 0, end_time: 2, audio_duration: 2 },
+		{ audio: Buffer.from('audio').toString('base64') },
+	]));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'podcast-science-test',
+		pageScriptPath,
+		audioDir,
+		timingDir,
+		transcriptDir,
+		pageAudioManifestPath: path.join(root, 'page-audio.json'),
+		podcastSpeakerA: 'speaker-a',
+		podcastSpeakerB: 'speaker-b',
+		podcastStyle: 'science_explainer_video',
+	}));
+
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: {
+			...process.env,
+			AI_PODCAST_FIXTURE_FRAMES: fixtureFramesPath,
+			DOUBAO_AI_PODCAST_API_KEY: 'test-key',
+		},
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	const pageJob = JSON.parse(fs.readFileSync(path.join(audioDir, 'page-001-ai-podcast-job.json'), 'utf8'));
+	assert.match(pageJob.podcastInputText, /中文新闻联播式科普视频讲解口播/);
+	assert.match(pageJob.podcastInputText, /单人新闻播报式节奏/);
+	assert.match(pageJob.podcastInputText, /正式、克制、证据导向/);
+	assert.match(pageJob.podcastInputText, /不要生成播客式寒暄/);
+	assert.match(pageJob.podcastInputText, /本页页面证据摘录/);
+	assert.equal(fs.existsSync(path.join(root, 'page-audio.json')), true);
+});
+
 test('presentation-podcast-client compacts long page source text before AI podcast generation', () => {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-podcast-compact-'));
 	const audioDir = path.join(root, 'audio');

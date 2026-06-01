@@ -13,6 +13,7 @@ import {
 	createAssSubtitle,
 	createSubtitleOverlayFrames,
 	ffmpegHasFilter,
+	assertPlayableVideo,
 	normalizeJob,
 	readTtsSubtitleEvents,
 	render,
@@ -107,6 +108,23 @@ test('buildTimeline skips the optional chapter-two stage when absent', () => {
 		chapterTwo: { start: 3, end: 3, duration: 0 },
 		screenshot: { start: 3, end: 7, duration: 4 },
 		body: { start: 7, end: 20, duration: 13 },
+	});
+});
+
+test('buildTimeline supports a cover and screenshot podcast layout', () => {
+	assert.deepEqual(buildTimeline(20, {
+		coverDuration: 3,
+		screenshotTopDuration: 3,
+		screenshotDuration: 0,
+		hasChapterTwo: false,
+		layoutMode: 'cover-screenshot-podcast',
+	}), {
+		totalDuration: 20,
+		cover: { start: 0, end: 3, duration: 3 },
+		chapterTwo: { start: 3, end: 3, duration: 0 },
+		screenshotTop: { start: 3, end: 6, duration: 3 },
+		screenshot: { start: 6, end: 6, duration: 0 },
+		body: { start: 6, end: 20, duration: 14 },
 	});
 });
 
@@ -367,6 +385,36 @@ test('buildFfmpegArgs includes expected media inputs and output settings', () =>
 	assert.equal(args.includes('-filter_complex'), true);
 	assert.equal(args.includes('-c:v'), true);
 	assert.equal(args.includes('libx264'), true);
+	assert.equal(args.includes('-preset'), true);
+	assert.equal(args.includes('veryfast'), true);
+	assert.equal(args.includes('-movflags'), true);
+	assert.equal(args.includes('+faststart'), true);
+});
+
+test('buildFfmpegArgs allows a faster x264 preset without changing CRF quality', () => {
+	const job = normalizeJob({
+		jobId: 'custom-preset',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+		video: {
+			x264Preset: 'ultrafast',
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 12 });
+
+	assert.equal(args[args.indexOf('-preset') + 1], 'ultrafast');
+	assert.equal(args[args.indexOf('-crf') + 1], '23');
 });
 
 test('buildFfmpegArgs pads short audio instead of stopping at audio length', () => {
@@ -469,6 +517,43 @@ test('buildFfmpegArgs uses two-image body layout when optional chapter-two image
 	assert.doesNotMatch(filter, /chaptertwo/);
 	assert.match(filter, /\[bodybg\]\[covertop\]overlay=80:60:eof_action=pass\[body1\]/);
 	assert.match(filter, /\[body1\]\[screentop\]overlay=1280:60:eof_action=pass\[body\]/);
+});
+
+test('buildFfmpegArgs keeps cover top-left while centering screenshot after top-right intro', () => {
+	const job = normalizeJob({
+		jobId: 'cover-screenshot-podcast',
+		inputs: {
+			coverImage: '/tmp/job/inputs/cover.png',
+			screenshotImage: '/tmp/job/inputs/screenshot.png',
+			backgroundVideo: '/tmp/job/inputs/background.mp4',
+			scriptText: '/tmp/job/inputs/script.txt',
+			ttsAudio: '/tmp/job/tts/audio.mp3',
+		},
+		output: {
+			video: '/tmp/job/render/final.mp4',
+			subtitles: '/tmp/job/render/subtitles.ass',
+			ffmpegLog: '/tmp/job/render/ffmpeg.log',
+		},
+		video: {
+			layoutMode: 'cover-screenshot-podcast',
+			coverDuration: 3,
+			screenshotTopDuration: 3,
+			screenshotDuration: 0,
+		},
+	});
+
+	const args = buildFfmpegArgs(job, { audioDuration: 20 });
+	const filter = args[args.indexOf('-filter_complex') + 1];
+
+	assert.match(filter, /\[0:v\]trim=start=0:duration=3/);
+	assert.match(filter, /\[0:v\]trim=start=3:duration=3/);
+	assert.match(filter, /\[0:v\]trim=start=6:duration=14/);
+	assert.match(filter, /concat=n=3:v=1:a=0/);
+	assert.match(filter, /\[2:v\]split=2\[screenintrotsrc\]\[screenmainsrc\]/);
+	assert.match(filter, /\[screentopintrobg\]\[screenintro\]overlay=1280:60:eof_action=pass\[screenintrostage\]/);
+	assert.match(filter, /\[bodybg\]\[screenmain\]overlay=\(W-w\)\/2:\(H-h\)\/2:shortest=1\[bodycenter\]/);
+	assert.match(filter, /\[bodycenter\]\[covertop\]overlay=80:60:eof_action=pass\[body\]/);
+	assert.doesNotMatch(filter, /\[body1\]\[screentop\]overlay=1280:60/);
 });
 
 test('buildFfmpegArgs uses three-image body layout when optional chapter-two image is present', () => {
@@ -636,6 +721,22 @@ test('buildFfmpegArgs can burn subtitles via one overlay frame sequence', () => 
 	assert.match(filter, /\[5:v\]format=rgba\[subtitles\]/);
 	assert.match(filter, /\[basev\]\[subtitles\]overlay=0:H-h-90:eof_action=pass:format=auto\[vout\]/);
 	assert.equal(args.includes('-c:s'), false);
+});
+
+test('assertPlayableVideo rejects non-video files with a clear error', (t) => {
+	if (!commandExists('ffprobe')) {
+		t.skip('ffprobe is not available; skipping video validation test');
+		return;
+	}
+
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'video-composer-invalid-video-'));
+	const videoPath = path.join(tmp, 'final.mp4');
+	fs.writeFileSync(videoPath, 'not a playable mp4');
+
+	assert.throws(
+		() => assertPlayableVideo(videoPath),
+		/Output video is not playable/,
+	);
 });
 
 test('buildFfmpegArgs adjusts image subtitle input index when optional chapter-two image is absent', () => {

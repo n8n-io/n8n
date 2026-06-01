@@ -43,12 +43,44 @@ function buildPrompt({ pagesManifest, extraContext = '', podcastStyle = 'podcast
 		`文本摘录：${compactSourceText(page.text, { maxChars: 1400 }) || '这一页文字较少，请结合上下文用口语解释页面重点。'}`,
 	].join('\n')).join('\n\n');
 	const hasExtraContext = String(extraContext || '').trim().length > 0;
+	const isScienceVideo = podcastStyle === 'science_explainer_video';
+
+	if (isScienceVideo) {
+		return [
+			'你是一个中文科普视频逐页讲解脚本作者。',
+			'请把下面 PDF/PPTX 的逐页内容改写成新闻联播式科普解说脚本，不要写成播客访谈、博客文章、论文全文综述或全面解读。',
+			'遵循 pdf-to-podcast-script skill 的页面证据约束：PDF 页面是唯一事实来源。',
+			'同时采用观点主导方式：用户观点提供叙事主线，PDF 页面文本负责校验、支持、限制和纠偏。',
+			'生成目标：先阅读页面证据摘录，从中提炼真实有用的信息，再写成新闻播报式、单人口播感、正式、克制、证据导向、适合 TTS 和字幕对齐的科普视频口播。',
+			'语言节奏要像科普类新闻播报：短句、清晰、少口头禅，不要使用博客式叙事、个人感想或闲聊铺垫。',
+			hasExtraContext
+				? '用户已经提供补充观点/看法/受众，请优先围绕这些观点组织脚本，并用 PDF 页面中的信息作为支持、限定或纠偏。不要脱离用户观点去全面复述论文。'
+				: '用户没有提供明确观点，请由 AI 基于 PDF 页面自行提炼一个克制的科普解读角度，但仍不要试图覆盖论文的全部内容。',
+			'必须忠于每一页给出的页面证据，只能提炼页面里出现的信息和用户补充观点；不要逐段总结所有文字，也不要引入页面没有出现的新主题、产品、论文、API、公司案例或背景知识。',
+			'不要使用页面或用户观点中没有出现的营销化判断；“重磅”“顶级期刊”“新标杆”“改写临床实践”等强判断必须来自当前页面文本或用户补充观点，否则不要写。',
+			'学术内容必须保留不确定性：页面证据不足时，用“可能”“更像是”“至少可以看到”“还不能直接说明”等克制表达。',
+			'如果页面文字很少，就围绕页面上已有标题、目标和用途做视频讲解，不要自行扩写成其他话题。',
+			'每一页都是同一个长视频的连续片段，不是独立节目。第一页可以自然引入主题，后续页面不要重复开场。',
+			'返回严格 JSON，不要 Markdown，不要解释。',
+			'JSON 字段必须是 title, summary, audience, pages。',
+			'pages 中每一项必须包含 pageNumber, pageTitle, speakerPrompt, spokenSummary, targetSeconds。',
+			'speakerPrompt 和 spokenSummary 都必须是可以直接交给语音服务生成科普视频讲解的中文口播内容，不要只写一个选题。',
+			'每一页 speakerPrompt 控制在 40-90 个中文字符，spokenSummary 控制在 120-260 个中文字符。',
+			'targetSeconds 必须在 20 到 45 秒之间。不要输出 60 秒以上的页面讲解。',
+			'speakerPrompt 和 spokenSummary 不能包含 JSON 字段名、Markdown、角色标签、系统指令、工作流说明或提示词。',
+			'speakerPrompt 和 spokenSummary 不要写感谢收听、下期再见、拜拜、本期到这里等结束语；除最后一页外最多写一句自然过渡。',
+			'后续页面要自然承接上一页。',
+			'补充观点/受众：' + (extraContext || '无'),
+			'逐页内容：',
+			pageBriefs,
+		].join('\n');
+	}
 
 	return [
 		'你是一个中文播客节目策划和 PDF 逐页讲解脚本作者。',
 		'请把下面 PDF/PPTX 的逐页内容改写成逐页播客式讲解脚本，但不要写成论文全文综述或全面解读。',
 		'遵循 pdf-to-podcast-script skill：PDF 页面是唯一事实来源。',
-		'同时参考 pdf-science-explainer-script skill 的观点主导方式：用户观点提供叙事主线，PDF 页面文本负责校验、支持、限制和纠偏。',
+		'同时采用观点主导方式：用户观点提供叙事主线，PDF 页面文本负责校验、支持、限制和纠偏。',
 		'生成目标：先阅读页面证据摘录，从中提炼真实有用的信息，再写成严谨、克制、可信的截图式播客讲解，让观众理解当前页面和观点之间的关系。',
 		hasExtraContext
 			? '用户已经提供补充观点/看法/受众，请优先围绕这些观点组织脚本，并用 PDF 页面中的信息作为支持、限定或纠偏。不要脱离用户观点去全面复述论文。'

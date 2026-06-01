@@ -1,6 +1,6 @@
 import { compactSourceText, extractJsonObject } from './presentation-utils.mjs';
 
-const SUPPORTED_MODES = new Set(['single_speaker', 'two_speaker']);
+const SUPPORTED_MODES = new Set(['single_speaker']);
 const CLOSING_PATTERN = /感谢收听|下期再见|拜拜|本期到这里|今天的内容.*到这里/;
 const OPENING_PATTERN = /今天(我们|咱们)?(来|要)?(聊|看|讲|解读)|欢迎(大家|收看)|那我们开始|我们先来/;
 
@@ -65,6 +65,8 @@ export function normalizeScienceScript(rawText, expectedPageCount) {
 			if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > expectedPageCount) {
 				throw new Error(`Science script segment ${index + 1} has invalid pageNumber`);
 			}
+			const role = String(segment?.role || 'A').trim() || 'A';
+			if (role !== 'A') throw new Error('Single-speaker science script only allows role A');
 			const text = String(segment?.text || '').trim();
 			if (!text) throw new Error(`Science script segment ${index + 1} text is required`);
 			if (CLOSING_PATTERN.test(text) || (index > 0 && OPENING_PATTERN.test(text))) {
@@ -76,7 +78,7 @@ export function normalizeScienceScript(rawText, expectedPageCount) {
 			}
 
 			return {
-				role: String(segment?.role || 'A').trim() || 'A',
+				role,
 				text,
 				pageNumber,
 				evidenceRefs: Array.isArray(segment?.evidenceRefs)
@@ -145,6 +147,37 @@ export function buildSciencePromptPageBriefs({ pages, analysisPages }) {
 	}).join('\n\n');
 }
 
+export function scienceScriptToPageScript(script) {
+	const pageAnchors = Array.isArray(script?.pageAnchors) ? script.pageAnchors : [];
+	const segments = Array.isArray(script?.segments) ? script.segments : [];
+	const pages = pageAnchors.map((anchor) => {
+		const pageNumber = Number(anchor.pageNumber);
+		const pageSegments = segments.filter((segment) => Number(segment.pageNumber) === pageNumber);
+		const [firstSegment, ...remainingSegments] = pageSegments;
+		const speakerPrompt = String(firstSegment?.text || '').trim();
+		if (!speakerPrompt) throw new Error(`Science script page ${pageNumber} has no TTS segment`);
+
+		return {
+			pageNumber,
+			pageTitle: String(anchor.topic || `第 ${pageNumber} 页`).trim(),
+			speakerPrompt,
+			spokenSummary: remainingSegments.map((segment) => String(segment.text || '').trim()).filter(Boolean).join('\n'),
+			targetSeconds: pageSegments.reduce((sum, segment) => sum + (Number(segment.targetSeconds) || 0), 0) || 35,
+			visualNotes: String(anchor.visualRole || '').trim(),
+		};
+	});
+
+	return {
+		title: String(script?.title || '').trim(),
+		summary: String(script?.summary || '').trim(),
+		audience: String(script?.audience || '').trim(),
+		mode: 'single_speaker',
+		deliveryStyle: 'single_tts_science_explainer',
+		thesis: String(script?.thesis || '').trim(),
+		pages,
+	};
+}
+
 export function buildScienceExplainerPrompt({
 	pagesManifest,
 	visualAnalysis,
@@ -160,14 +193,14 @@ export function buildScienceExplainerPrompt({
 
 	return [
 		'你是中文最新科普文献的新闻联播式科普解说作者。',
-		'请遵循 pdf-science-explainer-script skill：以最新科普文献为核心，先提炼研究问题、证据链、关键结论、限制和听众价值，再组织成整集连续解说。',
+		'这是单人 TTS 科普解说，不是博客，不是播客访谈。以最新科普文献为核心，先提炼研究问题、证据链、关键结论、限制和听众价值，再组织成整集连续解说。',
 		hasViewpoint
 			? '用户已经提供观点/看法。脚本可以围绕这个观点组织，但每个结论都必须被当前 PDF 页面文本或页面截图视觉信息约束，观点不能盖过文献证据。'
 			: '用户没有提供明确观点。请从 PDF 页面中提炼一个克制、适合短视频的文献解读主线。',
 		'不要把 PDF 逐字读出来。每页只选择 1 到 3 个最适合口播的重点。',
 		'视觉理解只能描述页面可见的标题层级、重点框、图表、表格、示意图、标签或趋势。不要编造页面外数据和科学结论。',
 		'如果页面证据不足，必须用“这一页只能说明”“还不能直接证明”“更像是在提示”等谨慎表达。',
-		'表达风格要接近新闻联播式科普解说：正式、克制、短句、信息密度高，有文献解读感，不要播客式互动，不要过度博客式感想。',
+		'表达风格要接近新闻联播式科普解说：正式、克制、短句、信息密度高，有文献解读感，不要播客式互动，不要博客式段落或个人感想。',
 		'为提高字幕和音频时间轴对齐度，请把每个 segment 写成 1 到 2 个短句，不要写超长复句。',
 		'所有页面只是同一个长视频的视觉锚点，不是彼此独立的小节目；整集脚本必须连续推进。',
 		'只允许第一段自然开场，后续 segment 不要重新开场，不要重复说“今天我们要聊”“欢迎大家”“我们来看”。',
@@ -176,8 +209,7 @@ export function buildScienceExplainerPrompt({
 		'JSON 字段必须是 title, summary, mode, thesis, audience, deliveryStyle, pageAnchors, segments；不要输出 pages。',
 		'pageAnchors 中每一项必须包含 pageNumber, topic, visualRole，页码必须从 1 连续到 PDF 页数。',
 		'segments 中每一项必须包含 role, text, pageNumber, evidenceRefs, targetSeconds。',
-		'narration_mode 为 single_speaker 时，所有 segment 的 role 使用 A，并写成单人口播新闻式解说。',
-		'narration_mode 为 two_speaker 时，可以使用 A/B，但仍然是严谨科普解说，不要轻松播客式寒暄。',
+		'所有 segment 的 role 都必须使用 A，写成同一个讲述者的单人 TTS 科普口播。',
 		'targetSeconds 必须在 12 到 60 秒之间，按信息量分配；pageNumber 表示这段话讲到时画面显示哪一页。',
 		`输出比例：${aspectRatio}`,
 		`narration_mode：${narrationMode}`,

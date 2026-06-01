@@ -112,6 +112,33 @@ function removeClosingSpeech({ paths, timing, transcript, duration }) {
 
 function buildPagePodcastInput(page, { pageCount = 1, previousPage = null, nextPage = null } = {}) {
 	const pageNumber = Number(page.pageNumber) || 1;
+	const isScienceVideo = page.podcastStyle === 'science_explainer_video';
+	if (isScienceVideo) {
+		const lines = [
+			'请生成一段中文新闻联播式科普视频讲解口播。',
+			'必须严格围绕“本页页面内容”和“本页讲解稿”展开，不要引入页面没有出现的新主题、产品、API、公司案例或背景知识。',
+			'如果页面信息较少，就解释页面本身的作用、目标和观看重点；不要扩写成其他选题。',
+			`当前是第 ${pageNumber} 页，共 ${pageCount} 页。请把它当作同一个长视频中的一个连续片段。`,
+			pageNumber === 1
+				? '第 1 页可以自然引入主题，但不要提前总结整期视频。'
+				: '除第 1 页外，不要重新说“今天我们要聊”“开始今天的话题”等新视频开场，直接承接上一页继续讲。',
+			previousPage ? `上一页主题：${previousPage.pageTitle || previousPage.speakerPrompt || `第 ${pageNumber - 1} 页`}` : '上一页主题：无。',
+			nextPage ? `下一页主题：${nextPage.pageTitle || nextPage.speakerPrompt || `第 ${pageNumber + 1} 页`}。本页结尾只做一句自然过渡，不要做视频收尾。` : '这是最后一页，也不要说感谢收听、下期再见或拜拜；只用一句观点收束即可。',
+			'保持单人新闻播报式节奏，正式、克制、证据导向；不要生成播客式寒暄、双人互动、感叹或博客式个人感想。',
+			'不要说“感谢收听”“本期节目到这里”“我们下期再见”“以上就是本页全部内容”等收尾话术。',
+			'输出应自然像科普视频解说，不要朗读这些规则。',
+			'',
+			'本页页面证据摘录：',
+			compactSourceText(page.sourceText, { maxChars: 1200 }) || '(页面文字较少，请只围绕标题和上下文解释。)',
+			'',
+			'本页讲解稿：',
+			[String(page.speakerPrompt || '').trim(), String(page.spokenSummary || '').trim()]
+				.filter(Boolean)
+				.join('\n'),
+		];
+
+		return lines.join('\n').trim();
+	}
 	const lines = [
 		'请生成一段中文播客访谈式口播。',
 		'必须严格围绕“本页页面内容”和“本页讲解稿”展开，不要引入页面没有出现的新主题、产品、API、公司案例或背景知识。',
@@ -185,6 +212,7 @@ function main() {
 				nextPage: script.pages[index + 1] || null,
 			},
 		};
+		page.podcastStyle = job.podcastStyle;
 		if (process.env.PRESENTATION_PODCAST_FIXTURE_DIR) {
 			copyFixturePage({ fixtureDir: process.env.PRESENTATION_PODCAST_FIXTURE_DIR, ...paths });
 		} else {

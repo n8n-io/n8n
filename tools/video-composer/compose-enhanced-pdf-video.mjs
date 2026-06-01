@@ -75,6 +75,10 @@ function aacOutputArgs() {
 	return ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2'];
 }
 
+function h264OutputArgs() {
+	return ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p'];
+}
+
 export function createAssSubtitle({ width = 1920, height = 1080, events = [], marginV = 90 }) {
 	const lines = [
 		'[Script Info]',
@@ -123,10 +127,7 @@ export function buildCoverIntroFfmpegArgs({
 		String(duration),
 		'-r',
 		String(fps),
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
+		...h264OutputArgs(),
 		...aacOutputArgs(),
 		outputPath,
 	];
@@ -173,10 +174,7 @@ export function buildIllustrationIntroFfmpegArgs({
 		String(duration),
 		'-r',
 		String(fps),
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
+		...h264OutputArgs(),
 		...aacOutputArgs(),
 		outputPath,
 	];
@@ -188,6 +186,7 @@ export function buildEnhancedSegmentFfmpegArgs({
 	audioPath,
 	subtitlePath,
 	outputPath,
+	duration,
 	coverImagePath,
 	illustrationImagePath,
 	overlayWidth = 260,
@@ -236,11 +235,10 @@ export function buildEnhancedSegmentFfmpegArgs({
 			'1:a',
 			'-r',
 			String(fps),
-			'-c:v',
-			'libx264',
-			'-pix_fmt',
-			'yuv420p',
+			...h264OutputArgs(),
 			...aacOutputArgs(),
+			'-t',
+			String(duration),
 			'-shortest',
 			outputPath,
 		];
@@ -279,11 +277,10 @@ export function buildEnhancedSegmentFfmpegArgs({
 		'1:a',
 		'-r',
 		String(fps),
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
+		...h264OutputArgs(),
 		...aacOutputArgs(),
+		'-t',
+		String(duration),
 		'-shortest',
 		outputPath,
 	];
@@ -316,10 +313,7 @@ export function buildPauseSegmentFfmpegArgs({
 		String(duration),
 		'-r',
 		String(fps),
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
+		...h264OutputArgs(),
 		...aacOutputArgs(),
 		outputPath,
 	];
@@ -361,18 +355,8 @@ export function buildFinalConcatFfmpegArgs({ concatListPath, outputVideoPath }) 
 		'0',
 		'-i',
 		concatListPath,
-		'-c:v',
-		'libx264',
-		'-pix_fmt',
-		'yuv420p',
-		'-c:a',
-		'aac',
-		'-b:a',
-		'192k',
-		'-ar',
-		'48000',
-		'-ac',
-		'2',
+		'-c',
+		'copy',
 		outputVideoPath,
 	];
 }
@@ -430,6 +414,7 @@ function render() {
 			audioPath: page.audioPath,
 			subtitlePath: pageSubtitlePath,
 			outputPath: segmentPath,
+			duration: page.duration,
 			coverImagePath: job.coverImagePath,
 			illustrationImagePath: job.illustrationImagePath,
 			overlayWidth: job.overlayWidth,

@@ -22,8 +22,6 @@
   - Responsibility: unit-test strict page count validation, mode validation, page number validation, and required spoken prompt fields.
 - Create `tools/video-composer/science-explainer-script-client.mjs`
   - Responsibility: build the science explainer LLM prompt from `pages.json`, `page-visual-analysis.json`, `viewpoint`, and `narration_mode`; call the existing OpenAI-compatible endpoint shape; write strict script JSON.
-- Create `tools/video-composer/pdf-science-explainer-script/SKILL.md`
-  - Responsibility: encode the viewpoint-led, PDF-checked Chinese science explainer behavior used by the script client prompt.
 - Create `workflows/pdf-science-explainer-video-workflow.json`
   - Responsibility: importable n8n workflow with form upload, job setup, PDF extraction, visual analysis, script generation, TTS, composer job building, composer execution, and response.
 - Create `tools/video-composer/science-explainer-workflow.test.mjs`
@@ -973,10 +971,9 @@ git commit -m "feat: add science explainer script utilities"
 
 ---
 
-## Task 4: Science Explainer Script Skill And Client
+## Task 4: Science Explainer Script Client
 
 **Files:**
-- Create: `tools/video-composer/pdf-science-explainer-script/SKILL.md`
 - Create: `tools/video-composer/science-explainer-script-client.mjs`
 - Create: `tools/video-composer/science-explainer-script-client.test.mjs`
 - Modify: `tools/video-composer/science-explainer-utils.mjs`
@@ -1011,7 +1008,7 @@ export function buildScienceExplainerPrompt({
 
 	return [
 		'你是中文科普短视频脚本作者。',
-		'请遵循 pdf-science-explainer-script skill：观点主导，PDF 文本和页面截图视觉信息负责校验、支持、限制和纠偏。',
+		'观点主导，PDF 文本和页面截图视觉信息负责校验、支持、限制和纠偏。',
 		hasViewpoint
 			? '用户已经提供观点/看法。脚本要围绕这个观点组织，但每个结论都必须被当前 PDF 页面文本或页面截图视觉信息约束。'
 			: '用户没有提供明确观点。请从 PDF 页面中提炼一个克制、适合短视频的科普主线。',
@@ -1033,25 +1030,11 @@ export function buildScienceExplainerPrompt({
 }
 ```
 
-- [ ] **Step 3: Create the script skill**
+- [ ] **Step 3: Keep script rules inline**
 
-Create `tools/video-composer/pdf-science-explainer-script/SKILL.md`:
-
-```markdown
----
-name: pdf-science-explainer-script
-description: Use when converting PDF page text and page screenshot visual analysis into viewpoint-led Chinese science explainer scripts for short-form videos.
----
-
-# PDF Science Explainer Script
-
-## Purpose
-
-Turn parsed PDF pages and page screenshot visual analysis into concise Chinese science explainer narration.
-
-The workflow is viewpoint-led and PDF-checked. The user's opinion or angle provides the narrative spine. The PDF page text and page screenshot visual analysis provide evidence, limits, and corrections.
-
-## Inputs
+Keep the viewpoint-led, PDF-checked Chinese science explainer behavior in
+`tools/video-composer/science-explainer-utils.mjs` so the workflow does not
+depend on a separate project-local skill file.
 
 - `pages`: ordered PDF pages with extracted text.
 - `visualAnalysis`: ordered page screenshot analysis.
@@ -1327,10 +1310,10 @@ node --test tools/video-composer/science-explainer-script-client.test.mjs
 
 Expected: both PASS.
 
-- [ ] **Step 8: Commit skill and client**
+- [ ] **Step 8: Commit client**
 
 ```bash
-git add tools/video-composer/pdf-science-explainer-script/SKILL.md tools/video-composer/science-explainer-utils.mjs tools/video-composer/science-explainer-script-client.mjs tools/video-composer/science-explainer-script-client.test.mjs
+git add tools/video-composer/science-explainer-utils.mjs tools/video-composer/science-explainer-script-client.mjs tools/video-composer/science-explainer-script-client.test.mjs
 git commit -m "feat: add science explainer script client"
 ```
 

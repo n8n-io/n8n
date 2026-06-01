@@ -86,6 +86,21 @@ workflow at the video composer repository. Use `VIDEO_COMPOSER_JOBS_DIR` or
 `N8N_VIDEO_COMPOSER_JOBS_DIR` to override the review artifact and render output
 directory.
 
+## PDF Video Clip AI Podcast Workflow
+
+The video-clip PDF version is
+`workflows/pdf-video-clip-ai-podcast-workflow.json`. It accepts a cover image,
+proof screenshot, PDF paper, optional viewpoint, and background video, then
+generates one continuous blog-style AI podcast video clip.
+
+By default, `include_execution_binary_preview` is set to
+`include_execution_binary_preview`, so the final `Prepare Response` node returns
+binary previews for `finalVideo` and `podcastAudio`. The workflow then ends with
+`Respond to Webhook`, so the form request receives a clean JSON summary while
+the generated MP4 and podcast audio remain available from the `Prepare Response`
+binary output in the n8n execution view. Choose `metadata_only` only when the
+execution should avoid storing large binary previews.
+
 ## Prerequisites
 
 Install and verify local tools:

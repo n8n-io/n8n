@@ -207,11 +207,11 @@ Rules:
 - If a page screenshot is mostly blank or unreadable, say so and let the script
   generator produce a cautious, shorter segment.
 
-## Science Explainer Script Skill
+## Science Explainer Script Rules
 
-Add a dedicated skill:
+Keep the science explainer prompt rules inline in:
 
-`tools/video-composer/pdf-science-explainer-script/SKILL.md`
+`tools/video-composer/science-explainer-utils.mjs`
 
 Purpose:
 

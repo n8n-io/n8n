@@ -58,7 +58,7 @@ test('presentation-script-client writes normalized page-script from fixture resp
 	assert.match(prompt, /提炼真实有用的信息/);
 	assert.match(prompt, /不要逐段总结所有文字/);
 	assert.match(prompt, /不要写成论文全文综述或全面解读/);
-	assert.match(prompt, /参考 pdf-science-explainer-script skill 的观点主导/);
+	assert.match(prompt, /采用观点主导方式/);
 	assert.match(prompt, /优先围绕这些观点组织脚本/);
 	assert.match(prompt, /作为支持、限定或纠偏/);
 	assert.match(prompt, /不要脱离用户观点去全面复述论文/);
@@ -110,6 +110,55 @@ test('presentation-script-client allows AI interpretation only when no viewpoint
 	assert.match(prompt, /自行提炼一个克制的解读角度/);
 	assert.match(prompt, /不要试图覆盖论文的全部内容/);
 	assert.doesNotMatch(prompt, /优先围绕这些观点组织脚本/);
+});
+
+test('presentation-script-client can switch the page script prompt to science video narration', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'presentation-script-science-'));
+	const pagesManifestPath = path.join(root, 'pages.json');
+	const pageScriptPath = path.join(root, 'page-script.json');
+	const llmPromptPath = path.join(root, 'prompt.txt');
+	const llmResponsePath = path.join(root, 'response.json');
+	fs.writeFileSync(pagesManifestPath, JSON.stringify({
+		sourceType: 'pdf',
+		pageCount: 1,
+		pages: [
+			{ pageNumber: 1, imagePath: '/tmp/page-001.png', textPath: '/tmp/page-001.txt', text: '研究显示睡眠时长与风险呈 U 型关系。', isTextSparse: false },
+		],
+	}));
+	const fixtureResponse = path.join(root, 'fixture-response.txt');
+	fs.writeFileSync(fixtureResponse, JSON.stringify({
+		title: '睡眠研究科普',
+		summary: '克制解释研究页面',
+		audience: '普通观众',
+		pages: [
+			{ pageNumber: 1, pageTitle: 'U 型关系', speakerPrompt: '这页研究提示睡眠时长和风险可能存在 U 型关系。', spokenSummary: '这里需要强调相关性和不确定性。', targetSeconds: 30 },
+		],
+	}));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'script-science-test',
+		pagesManifestPath,
+		pageScriptPath,
+		llmPromptPath,
+		llmResponsePath,
+		extraContext: '讲给普通健康科普观众',
+		podcastStyle: 'science_explainer_video',
+	}));
+
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: { ...process.env, PRESENTATION_SCRIPT_FIXTURE_RESPONSE: fixtureResponse },
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	const prompt = fs.readFileSync(llmPromptPath, 'utf8');
+	assert.match(prompt, /中文科普视频逐页讲解脚本作者/);
+	assert.match(prompt, /新闻联播式科普解说/);
+	assert.match(prompt, /新闻播报式、单人口播感/);
+	assert.match(prompt, /正式、克制、证据导向/);
+	assert.match(prompt, /不要写成播客访谈/);
+	assert.match(prompt, /不要使用博客式叙事/);
+	assert.doesNotMatch(prompt, /播客节目策划/);
 });
 
 test('presentation-script-client compacts dense page text before sending it to the LLM and podcast step', () => {

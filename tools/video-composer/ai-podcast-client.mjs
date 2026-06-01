@@ -115,12 +115,13 @@ async function collectFramesWithWebSocket(config, request, job) {
 		let settled = false;
 		let sessionId = '';
 		const socket = new WebSocket(config.url, { headers });
+		const timeoutMs = Number(job.aiPodcastTimeoutMs || process.env.AI_PODCAST_TIMEOUT_MS || 180000);
 		const timeout = setTimeout(() => {
 			if (settled) return;
 			settled = true;
 			socket.terminate();
 			reject(new Error('AI podcast WebSocket timed out'));
-		}, Number(process.env.AI_PODCAST_TIMEOUT_MS || 180000));
+		}, timeoutMs);
 
 		function finish(error) {
 			if (settled) return;

@@ -81,6 +81,7 @@ function runAiPodcast(job, script, paths) {
 		costPath: paths.wholeCostPath,
 		podcastMetadataPath: paths.metadataPath,
 		podcastRawResponsePath: paths.rawResponsePath,
+		aiPodcastTimeoutMs: job.aiPodcastTimeoutMs,
 	}, null, 2), 'utf8');
 	const result = spawnSync('node', [new URL('./ai-podcast-client.mjs', import.meta.url).pathname, aiPodcastJobPath], {
 		encoding: 'utf8',

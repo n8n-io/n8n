@@ -197,19 +197,24 @@ export function toAssTime(seconds) {
 export function buildTimeline(audioDuration, options = {}) {
 	const coverDuration = Number(options.coverDuration ?? 3);
 	const hasChapterTwo = options.hasChapterTwo ?? true;
+	const layoutMode = options.layoutMode ?? 'default';
+	const isCoverScreenshotPodcast = layoutMode === 'cover-screenshot-podcast' && !hasChapterTwo;
 	const chapterTwoDuration = hasChapterTwo ? Number(options.chapterTwoDuration ?? 4) : 0;
 	const screenshotDuration = Number(options.screenshotDuration ?? 4);
-	const introDuration = coverDuration + chapterTwoDuration + screenshotDuration;
+	const screenshotTopDuration = isCoverScreenshotPodcast
+		? Number(options.screenshotTopDuration ?? 3)
+		: 0;
+	const introDuration = coverDuration + chapterTwoDuration + screenshotTopDuration + screenshotDuration;
 	const totalDuration = Math.max(Number(audioDuration) || 0, introDuration);
 	const chapterTwoStart = coverDuration;
-	const screenshotStart = coverDuration + chapterTwoDuration;
-
-	return {
+	const screenshotTopStart = coverDuration + chapterTwoDuration;
+	const screenshotStart = screenshotTopStart + screenshotTopDuration;
+	const timeline = {
 		totalDuration,
 		cover: { start: 0, end: coverDuration, duration: coverDuration },
 		chapterTwo: {
 			start: chapterTwoStart,
-			end: screenshotStart,
+			end: screenshotTopStart,
 			duration: chapterTwoDuration,
 		},
 		screenshot: {
@@ -223,6 +228,16 @@ export function buildTimeline(audioDuration, options = {}) {
 			duration: Math.max(0, totalDuration - introDuration),
 		},
 	};
+
+	if (isCoverScreenshotPodcast) {
+		timeline.screenshotTop = {
+			start: screenshotTopStart,
+			end: screenshotStart,
+			duration: screenshotTopDuration,
+		};
+	}
+
+	return timeline;
 }
 
 export function normalizeJob(rawJob) {
@@ -239,6 +254,9 @@ export function normalizeJob(rawJob) {
 			coverDuration: 3,
 			chapterTwoDuration: 4,
 			screenshotDuration: 4,
+			layoutMode: 'default',
+			x264Preset: 'veryfast',
+			crf: 23,
 			...(rawJob.video ?? {}),
 		},
 		layout: {
@@ -590,6 +608,7 @@ export function buildFfmpegArgs(
 	const hasChapterTwo = Boolean(job.inputs.chapterTwoImage);
 	const timeline = buildTimeline(audioDuration, { ...job.video, hasChapterTwo });
 	const { width, height, fps } = job.video;
+	const isCoverScreenshotPodcast = job.video.layoutMode === 'cover-screenshot-podcast' && !hasChapterTwo;
 	const coverTopHeight = Math.round((job.layout.coverTop.width * 9) / 16);
 	const screenshotTopHeight = Math.round((job.layout.screenshotTop.width * 9) / 16);
 	const chapterTwoTopHeight = Math.round((job.layout.chapterTwoTop.width * 9) / 16);
@@ -605,7 +624,22 @@ export function buildFfmpegArgs(
 	const coverMainInput = hasBodyStage ? '[covermainsrc]' : '[1:v]';
 	const chapterTwoMainInput = `[${chapterTwoInputIndex}:v]`;
 	const screenshotMainInput = hasBodyStage ? '[screenmainsrc]' : `[${screenshotInputIndex}:v]`;
-	const bodyOverlayFilters = hasChapterTwo
+	const bodyOverlayFilters = isCoverScreenshotPodcast
+		? [
+				scaleAndPad('[screenmainsrc]', 1600, 780, '[screenmain]'),
+				'[bodybg][screenmain]overlay=(W-w)/2:(H-h)/2:shortest=1[bodycenter]',
+				scaleStaticOverlay(
+					'[covertopsrc]',
+					job.layout.coverTop.width,
+					coverTopHeight,
+					timeline.body.duration,
+					fps,
+					'[covertop]',
+					job.layout.cornerImageTreatment,
+				),
+				`[bodycenter][covertop]overlay=${job.layout.coverTop.x}:${job.layout.coverTop.y}:eof_action=pass[body]`,
+			]
+		: hasChapterTwo
 		? [
 				scaleStaticOverlay(
 					'[chaptertwotopsrc]',
@@ -636,24 +670,28 @@ export function buildFfmpegArgs(
 						height,
 						'[bodybg]',
 					),
-					scaleStaticOverlay(
-						'[covertopsrc]',
-						job.layout.coverTop.width,
-						coverTopHeight,
-						timeline.body.duration,
-						fps,
-						'[covertop]',
-						job.layout.cornerImageTreatment,
-					),
-					scaleStaticOverlay(
-						'[screentopsrc]',
-						job.layout.screenshotTop.width,
-						screenshotTopHeight,
-						timeline.body.duration,
-						fps,
-						'[screentop]',
-						job.layout.cornerImageTreatment,
-					),
+					...(isCoverScreenshotPodcast ? [] : [
+						scaleStaticOverlay(
+							'[covertopsrc]',
+							job.layout.coverTop.width,
+							coverTopHeight,
+							timeline.body.duration,
+							fps,
+							'[covertop]',
+							job.layout.cornerImageTreatment,
+						),
+					]),
+					...(isCoverScreenshotPodcast ? [] : [
+						scaleStaticOverlay(
+							'[screentopsrc]',
+							job.layout.screenshotTop.width,
+							screenshotTopHeight,
+							timeline.body.duration,
+							fps,
+							'[screentop]',
+							job.layout.cornerImageTreatment,
+						),
+					]),
 					...bodyOverlayFilters,
 				]
 			: [`color=c=black:s=${width}x${height}:d=0.01[body]`];
@@ -663,7 +701,9 @@ export function buildFfmpegArgs(
 			? [
 					'[1:v]split=2[covermainsrc][covertopsrc]',
 					...(hasChapterTwo ? ['[2:v]split=2[chaptertwomainsrc][chaptertwotopsrc]'] : []),
-					`[${screenshotInputIndex}:v]split=2[screenmainsrc][screentopsrc]`,
+					isCoverScreenshotPodcast
+						? `[${screenshotInputIndex}:v]split=2[screenintrotsrc][screenmainsrc]`
+						: `[${screenshotInputIndex}:v]split=2[screenmainsrc][screentopsrc]`,
 				]
 			: []),
 		backgroundSegment('[0:v]', timeline.cover.start, timeline.cover.duration, width, height, '[coverbg]'),
@@ -688,18 +728,41 @@ export function buildFfmpegArgs(
 					'[chaptertwobg][chaptertwomain]overlay=(W-w)/2:(H-h)/2:shortest=1[chaptertwo]',
 				]
 			: []),
-		backgroundSegment(
-			'[0:v]',
-			timeline.screenshot.start,
-			timeline.screenshot.duration,
-			width,
-			height,
-			'[screenbg]',
-		),
-		scaleAndPad(screenshotMainInput, 1600, 780, '[screenmain]'),
-		'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2:shortest=1[screen]',
+		...(isCoverScreenshotPodcast
+			? [
+					backgroundSegment(
+						'[0:v]',
+						timeline.screenshotTop.start,
+						timeline.screenshotTop.duration,
+						width,
+						height,
+						'[screentopintrobg]',
+					),
+					scaleStaticOverlay(
+						'[screenintrotsrc]',
+						job.layout.screenshotTop.width,
+						screenshotTopHeight,
+						timeline.screenshotTop.duration,
+						fps,
+						'[screenintro]',
+						job.layout.cornerImageTreatment,
+					),
+					`[screentopintrobg][screenintro]overlay=${job.layout.screenshotTop.x}:${job.layout.screenshotTop.y}:eof_action=pass[screenintrostage]`,
+				]
+			: [
+					backgroundSegment(
+						'[0:v]',
+						timeline.screenshot.start,
+						timeline.screenshot.duration,
+						width,
+						height,
+						'[screenbg]',
+					),
+					scaleAndPad(screenshotMainInput, 1600, 780, '[screenmain]'),
+					'[screenbg][screenmain]overlay=(W-w)/2:(H-h)/2:shortest=1[screen]',
+				]),
 		...bodyFilters,
-		`${hasChapterTwo ? '[cover][chaptertwo][screen][body]concat=n=4' : '[cover][screen][body]concat=n=3'}:v=1:a=0${burnSubtitles ? `,subtitles=filename=${escapedSubtitlePath}` : ''}[basev]`,
+		`${hasChapterTwo ? '[cover][chaptertwo][screen][body]concat=n=4' : isCoverScreenshotPodcast ? '[cover][screenintrostage][body]concat=n=3' : '[cover][screen][body]concat=n=3'}:v=1:a=0${burnSubtitles ? `,subtitles=filename=${escapedSubtitlePath}` : ''}[basev]`,
 	];
 
 	if (imageSubtitles) {
@@ -770,10 +833,16 @@ export function buildFfmpegArgs(
 		String(fps),
 		'-c:v',
 		'libx264',
+		'-preset',
+		String(job.video.x264Preset || 'veryfast'),
+		'-crf',
+		String(job.video.crf ?? 23),
 		'-pix_fmt',
 		'yuv420p',
 		'-c:a',
 		'aac',
+		'-movflags',
+		'+faststart',
 	);
 
 	if (softSubtitles) {
@@ -814,6 +883,37 @@ export function getAudioDuration(audioPath) {
 	return duration;
 }
 
+export function assertPlayableVideo(videoPath) {
+	if (!fs.existsSync(videoPath)) {
+		throw new Error(`Output video was not created: ${videoPath}`);
+	}
+
+	if (fs.statSync(videoPath).size === 0) {
+		throw new Error(`Output video is empty: ${videoPath}`);
+	}
+
+	const result = spawnSync(
+		'ffprobe',
+		[
+			'-v',
+			'error',
+			'-select_streams',
+			'v:0',
+			'-show_entries',
+			'stream=codec_name',
+			'-show_entries',
+			'format=duration',
+			'-of',
+			'default=noprint_wrappers=1',
+			videoPath,
+		],
+		{ encoding: 'utf8' },
+	);
+	if (result.status !== 0 || !/codec_name=/.test(result.stdout) || !/duration=/.test(result.stdout)) {
+		throw new Error(`Output video is not playable: ${videoPath}\n${result.stderr || result.stdout}`.trim());
+	}
+}
+
 export function render(job) {
 	assertInputFiles(job);
 	const scriptText = fs.readFileSync(job.inputs.scriptText, 'utf8');
@@ -852,11 +952,21 @@ export function render(job) {
 
 	fs.mkdirSync(path.dirname(job.output.video), { recursive: true });
 	fs.mkdirSync(path.dirname(job.output.ffmpegLog), { recursive: true });
+	const finalVideoPath = job.output.video;
+	const temporaryVideoPath = `${finalVideoPath}.tmp-${process.pid}-${Date.now()}.mp4`;
+	fs.rmSync(finalVideoPath, { force: true });
 
 	try {
+		const renderJob = {
+			...job,
+			output: {
+				...job.output,
+				video: temporaryVideoPath,
+			},
+		};
 		const result = spawnSync(
 			'ffmpeg',
-			buildFfmpegArgs(job, {
+			buildFfmpegArgs(renderJob, {
 				audioDuration,
 				subtitlePath: ffmpegSubtitlePath,
 				subtitleMode,
@@ -872,11 +982,12 @@ export function render(job) {
 			throw new Error(`ffmpeg failed with exit code ${result.status}; see ${job.output.ffmpegLog}`);
 		}
 
-		if (fs.statSync(job.output.video).size === 0) {
-			throw new Error(`Output video is empty: ${job.output.video}`);
-		}
+		assertPlayableVideo(temporaryVideoPath);
+		fs.renameSync(temporaryVideoPath, finalVideoPath);
+		assertPlayableVideo(finalVideoPath);
 	} finally {
 		fs.rmSync(ffmpegSubtitlePath, { force: true });
+		fs.rmSync(temporaryVideoPath, { force: true });
 	}
 }
 

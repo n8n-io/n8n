@@ -6,6 +6,7 @@ import {
 	buildSciencePromptPageBriefs,
 	normalizeScienceScript,
 	normalizeVisualAnalysis,
+	scienceScriptToPageScript,
 } from './science-explainer-utils.mjs';
 
 test('normalizeVisualAnalysis validates page count and page numbers', () => {
@@ -61,26 +62,6 @@ test('normalizeScienceScript validates single-speaker script JSON', () => {
 	assert.equal(script.pages[0].targetSeconds, 35);
 });
 
-test('normalizeScienceScript validates two-speaker mode', () => {
-	const script = normalizeScienceScript(JSON.stringify({
-		title: '双人讲解',
-		summary: '短问答解释 PDF。',
-		mode: 'two_speaker',
-		pages: [
-			{
-				pageNumber: 1,
-				pageTitle: '第一页',
-				visualNotes: '',
-				evidenceNotes: '',
-				speakerPrompt: 'A：先看这页。B：所以不能直接下结论，对吗？',
-				targetSeconds: 20,
-			},
-		],
-	}), 1);
-
-	assert.equal(script.mode, 'two_speaker');
-});
-
 test('normalizeScienceScript rejects unsupported narration mode', () => {
 	assert.throws(
 		() => normalizeScienceScript(JSON.stringify({
@@ -90,6 +71,18 @@ test('normalizeScienceScript rejects unsupported narration mode', () => {
 			pages: [{ pageNumber: 1, speakerPrompt: '文本' }],
 		}), 1),
 		/Unsupported narration mode: panel/,
+	);
+});
+
+test('normalizeScienceScript rejects two-speaker science scripts', () => {
+	assert.throws(
+		() => normalizeScienceScript(JSON.stringify({
+			title: '双人讲解',
+			summary: '短问答解释 PDF。',
+			mode: 'two_speaker',
+			pages: [{ pageNumber: 1, speakerPrompt: 'A：先看这页。B：所以不能直接下结论，对吗？' }],
+		}), 1),
+		/Unsupported narration mode: two_speaker/,
 	);
 });
 
@@ -144,6 +137,35 @@ test('normalizeScienceScript accepts continuous news-style science narration', (
 	assert.doesNotMatch(script.segments.map((segment) => segment.text).join('\n'), /感谢收听|下期再见|拜拜/);
 });
 
+test('scienceScriptToPageScript converts continuous science segments into page TTS input', () => {
+	const script = normalizeScienceScript(JSON.stringify({
+		title: '最新睡眠文献解读',
+		summary: '用整篇 PDF 梳理睡眠时长研究的证据边界。',
+		mode: 'single_speaker',
+		thesis: '7 小时附近可以作为风险提示。',
+		pageAnchors: [
+			{ pageNumber: 1, topic: '研究问题', visualRole: '显示标题。' },
+			{ pageNumber: 2, topic: '关键结果', visualRole: '显示图表。' },
+		],
+		segments: [
+			{ role: 'A', text: '这项研究先把问题放在睡眠时长和健康风险之间的关系。', pageNumber: 1, evidenceRefs: ['page:1'], targetSeconds: 14 },
+			{ role: 'A', text: '第二页进一步提示，七小时附近更像观察到的风险低点。', pageNumber: 2, evidenceRefs: ['page:2'], targetSeconds: 18 },
+			{ role: 'A', text: '但这仍然不能被讲成因果规则。', pageNumber: 2, evidenceRefs: ['page:2'], targetSeconds: 12 },
+		],
+	}), 2);
+
+	const pageScript = scienceScriptToPageScript(script);
+
+	assert.equal(pageScript.mode, 'single_speaker');
+	assert.equal(pageScript.deliveryStyle, 'single_tts_science_explainer');
+	assert.equal(pageScript.pages.length, 2);
+	assert.equal(pageScript.pages[0].speakerPrompt, '这项研究先把问题放在睡眠时长和健康风险之间的关系。');
+	assert.equal(pageScript.pages[0].spokenSummary, '');
+	assert.equal(pageScript.pages[1].speakerPrompt, '第二页进一步提示，七小时附近更像观察到的风险低点。');
+	assert.equal(pageScript.pages[1].spokenSummary, '但这仍然不能被讲成因果规则。');
+	assert.doesNotMatch(JSON.stringify(pageScript), /博客|播客|A：|B：/);
+});
+
 test('normalizeScienceScript rejects continuous scripts with repeated openings or closings', () => {
 	assert.throws(
 		() => normalizeScienceScript(JSON.stringify({
@@ -188,6 +210,8 @@ test('buildScienceExplainerPrompt asks for latest-literature news explainer segm
 	assert.match(prompt, /pageAnchors/);
 	assert.match(prompt, /不要输出 pages/);
 	assert.match(prompt, /不要播客式互动/);
+	assert.match(prompt, /单人 TTS/);
+	assert.doesNotMatch(prompt, /two_speaker/);
 	assert.match(prompt, /短句/);
 	assert.match(prompt, /字幕/);
 });

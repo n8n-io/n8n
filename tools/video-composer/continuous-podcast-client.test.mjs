@@ -169,6 +169,56 @@ test('continuous-podcast-client builds a single AI podcast input for the whole r
 	assert.equal(aiPodcastJob.useHeadMusic, false);
 });
 
+test('continuous-podcast-client passes a job-level AI podcast timeout through to the WebSocket client', () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-podcast-timeout-'));
+	const audioDir = path.join(root, 'audio');
+	const timingDir = path.join(root, 'timing');
+	const transcriptDir = path.join(root, 'transcript');
+	for (const dir of [audioDir, timingDir, transcriptDir]) fs.mkdirSync(dir);
+	const researchScriptPath = path.join(root, 'research-podcast-script.json');
+	fs.writeFileSync(researchScriptPath, JSON.stringify({
+		title: '长论文博客式讲解',
+		summary: '整集讲解需要更长等待窗口。',
+		thesis: '不能因为生成耗时就降低内容质量。',
+		segments: [
+			{ role: 'A', text: '先完整建立观点。', pageNumber: 1, targetSeconds: 2 },
+			{ role: 'B', text: '再用 PDF 证据校验。', pageNumber: 2, targetSeconds: 2 },
+		],
+	}));
+	const fixtureFramesPath = path.join(root, 'frames.json');
+	fs.writeFileSync(fixtureFramesPath, JSON.stringify([
+		{ round_id: 0, text: '先完整建立观点。再用 PDF 证据校验。' },
+		{ start_time: 0, end_time: 4, audio_duration: 4 },
+		{ audio: Buffer.from('audio').toString('base64') },
+	]));
+	const jobPath = path.join(root, 'job.json');
+	fs.writeFileSync(jobPath, JSON.stringify({
+		jobId: 'continuous-podcast-timeout-test',
+		researchScriptPath,
+		audioDir,
+		timingDir,
+		transcriptDir,
+		pageAudioManifestPath: path.join(root, 'page-audio.json'),
+		podcastSpeakerA: 'speaker-a',
+		podcastSpeakerB: 'speaker-b',
+		aiPodcastTimeoutMs: 270000,
+	}));
+
+	const result = spawnSync('node', [scriptPath, jobPath], {
+		encoding: 'utf8',
+		env: {
+			...process.env,
+			AI_PODCAST_FIXTURE_FRAMES: fixtureFramesPath,
+			DOUBAO_AI_PODCAST_API_KEY: 'test-key',
+			CONTINUOUS_PODCAST_SKIP_SLICE: '1',
+		},
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	const aiPodcastJob = JSON.parse(fs.readFileSync(path.join(audioDir, 'research-ai-podcast-job.json'), 'utf8'));
+	assert.equal(aiPodcastJob.aiPodcastTimeoutMs, 270000);
+});
+
 test('continuous-podcast-client slices mp3 pages without re-encoding corrupt frames', () => {
 	const args = buildAudioSliceArgs({
 		inputPath: '/tmp/whole.mp3',

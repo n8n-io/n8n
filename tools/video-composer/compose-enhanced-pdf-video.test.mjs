@@ -152,6 +152,7 @@ test('buildEnhancedSegmentFfmpegArgs starts page 1 audio while showing cover and
 		audioPath: '/tmp/page-001.mp3',
 		subtitlePath: '/tmp/page-001.ass',
 		outputPath: '/tmp/render/segment-001.mp4',
+		duration: 32.5,
 		coverImagePath: '/tmp/cover.png',
 		illustrationImagePath: '/tmp/illustration.png',
 		overlayWidth: 260,
@@ -169,6 +170,9 @@ test('buildEnhancedSegmentFfmpegArgs starts page 1 audio while showing cover and
 	assert.match(filter, /enable='between\(t,4,8\)'/);
 	assert.match(filter, /subtitles=filename=/);
 	assert.match(filter, /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
+	assert.equal(args[args.indexOf('-t') + 1], '32.5');
+	assert.equal(args[args.indexOf('-preset') + 1], 'veryfast');
+	assert.equal(args[args.indexOf('-crf') + 1], '23');
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -180,6 +184,7 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 		audioPath: '/tmp/page-002.mp3',
 		subtitlePath: '/tmp/page-002.ass',
 		outputPath: '/tmp/render/segment-002.mp4',
+		duration: 41.25,
 		coverImagePath: '/tmp/cover.png',
 		illustrationImagePath: '/tmp/illustration.png',
 		overlayWidth: 260,
@@ -196,6 +201,9 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 	assert.match(filter, /overlay=40:716/);
 	assert.match(filter, /overlay=1620:716/);
 	assert.match(filter, /scale=1920:1080:force_original_aspect_ratio=disable:reset_sar=1\[vout\]/);
+	assert.equal(args[args.indexOf('-t') + 1], '41.25');
+	assert.equal(args[args.indexOf('-preset') + 1], 'veryfast');
+	assert.equal(args[args.indexOf('-crf') + 1], '23');
 	assert.equal(args[args.indexOf('-ar') + 1], '48000');
 	assert.equal(args[args.indexOf('-ac') + 1], '2');
 });
@@ -203,6 +211,7 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 test('buildSubtitleEventsForSegment returns segment-relative subtitle times', () => {
 	const events = buildSubtitleEventsForSegment({
 		page: {
+			pageNumber: 2,
 			start: 5,
 			subtitleEvents: [
 				{ start: 5.5, end: 7, text: '第二页开始。' },
@@ -267,21 +276,16 @@ test('buildEnhancedConcatList places page pause only between page segments', () 
 	);
 });
 
-test('buildFinalConcatFfmpegArgs re-encodes concatenated segments', () => {
+test('buildFinalConcatFfmpegArgs stream-copies pre-rendered segments like the presentation composer', () => {
 	const args = buildFinalConcatFfmpegArgs({
 		concatListPath: '/tmp/render/segments.txt',
 		outputVideoPath: '/tmp/final.mp4',
 	});
 
-	assert.equal(args.includes('-c'), false);
-	assert.equal(args.includes('copy'), false);
 	assert.deepEqual(args.slice(0, 7), ['-y', '-f', 'concat', '-safe', '0', '-i', '/tmp/render/segments.txt']);
-	assert.equal(args[args.indexOf('-c:v') + 1], 'libx264');
-	assert.equal(args[args.indexOf('-pix_fmt') + 1], 'yuv420p');
-	assert.equal(args[args.indexOf('-c:a') + 1], 'aac');
-	assert.equal(args[args.indexOf('-b:a') + 1], '192k');
-	assert.equal(args[args.indexOf('-ar') + 1], '48000');
-	assert.equal(args[args.indexOf('-ac') + 1], '2');
+	assert.equal(args[args.indexOf('-c') + 1], 'copy');
+	assert.equal(args.includes('-c:v'), false);
+	assert.equal(args.includes('-c:a'), false);
 	assert.equal(args.at(-1), '/tmp/final.mp4');
 });
 
@@ -405,5 +409,17 @@ test('enhanced PDF composer renders a real video with portrait PDF page and wide
 		assert.match(subtitle, /Style: Default,[^\n]*,2,80,80,90,1/);
 	}
 	assert.match(fs.readFileSync(path.join(renderDir, 'subtitles.ass'), 'utf8'), /Dialogue: 0,0:00:00\.00,0:00:00\.50,Default,,0,0,0,,第一页/);
+	assert.match(fs.readFileSync(path.join(renderDir, 'page-001.ass'), 'utf8'), /Dialogue: 0,0:00:00\.00,0:00:00\.50,Default,,0,0,0,,第一页/);
+	assert.match(fs.readFileSync(path.join(renderDir, 'page-002.ass'), 'utf8'), /Dialogue: 0,0:00:00\.00,0:00:00\.50,Default,,0,0,0,,第二页/);
+	const segmentOneDuration = Number(run('ffprobe', [
+		'-v',
+		'error',
+		'-show_entries',
+		'format=duration',
+		'-of',
+		'default=nw=1:nk=1',
+		path.join(renderDir, 'segment-001.mp4'),
+	]));
+	assert.ok(Math.abs(segmentOneDuration - 0.5) < 0.08, `segment duration ${segmentOneDuration} should match page audio duration`);
 	assert.ok(fs.statSync(outputVideoPath).size > 0);
 });
