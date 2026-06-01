@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -7,14 +6,34 @@ import type {
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { IWorkflowBase } from 'n8n-workflow';
-
-import { OwnershipService } from '@/services/ownership.service';
+import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
+import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelConfig } from './otel.config';
 import { TraceContextService } from './tracing-context';
+import { OwnershipService } from '../../services/ownership.service';
+
+const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
+	typeof value === 'object' &&
+	value !== null &&
+	!Array.isArray(value) &&
+	'key' in value &&
+	'value' in value &&
+	typeof value.key === 'string' &&
+	typeof value.value === 'string';
+
+const getCustomTelemetryTags = (value: unknown): ICustomTelemetryTag[] | undefined => {
+	if (Array.isArray(value)) return value.filter(isCustomTelemetryTag);
+	if (typeof value !== 'object' || value === null || !('tag' in value)) {
+		return undefined;
+	}
+
+	const { tag } = value;
+	return Array.isArray(tag) ? tag.filter(isCustomTelemetryTag) : undefined;
+};
 
 @Service()
 export class OtelLifecycleHandler {
@@ -55,12 +74,18 @@ export class OtelLifecycleHandler {
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
+				customAttributes: this.buildWorkflowCustomAttributes(ctx),
 			},
 		});
 
@@ -89,12 +114,18 @@ export class OtelLifecycleHandler {
 		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			linkTo: previousWorkflowExecution,
-			project: project ? { id: project.id } : undefined,
+			project: project
+				? {
+						id: project.id,
+						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+					}
+				: undefined,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
+				customAttributes: this.buildWorkflowCustomAttributes(ctx),
 			},
 		});
 	}
@@ -150,6 +181,37 @@ export class OtelLifecycleHandler {
 			customAttributes,
 		});
 	}
+
+	private buildWorkflowCustomAttributes(
+		ctx: WorkflowExecuteBeforeContext | WorkflowExecuteResumeContext,
+	): CustomAttributes | undefined {
+		const tags = getCustomTelemetryTags(ctx.workflow.settings?.customTelemetryTags);
+		if (!tags?.length) return;
+
+		const customAttributes: CustomAttributes = {};
+
+		for (const { key, value } of tags) {
+			const trimmedKey = key.trim();
+			if (!trimmedKey) continue;
+
+			customAttributes[trimmedKey] = value;
+		}
+
+		if (Object.keys(customAttributes).length === 0) return;
+
+		return customAttributes;
+	}
+}
+
+function buildProjectCustomAttributes(
+	tags: Array<{ key: string; value: string }>,
+): Record<string, string> | undefined {
+	if (!tags?.length) return undefined;
+	const attrs: Record<string, string> = {};
+	for (const { key, value } of tags) {
+		attrs[key] = value;
+	}
+	return attrs;
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {
