@@ -23,4 +23,21 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 			order: { createdAt: 'DESC' },
 		});
 	}
+
+	/**
+	 * Find the most recent active (non-expired) checkpoint for a given
+	 * resourceId. Used by the orchestrator's `plan` tool resume path to
+	 * locate the suspended planner sub-agent: sub-agent resourceIds are
+	 * deterministically derived from the parent thread (e.g.
+	 * `instance-ai-subagent:{threadId}:planner`), so the orchestrator can
+	 * compute the resourceId and look up the planner's runId here without
+	 * having to stash anything across its own suspend/resume cycle.
+	 */
+	async findActiveByResourceId(resourceId: string): Promise<InstanceAiCheckpoint | undefined> {
+		const row = await this.findOne({
+			where: { resourceId, expiredAt: IsNull() },
+			order: { createdAt: 'DESC' },
+		});
+		return row ?? undefined;
+	}
 }
