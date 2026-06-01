@@ -291,7 +291,7 @@ describe('serverToNodeDescription', () => {
 			expect(description?.credentials).toEqual([{ name: 'slackMcpOAuth2Api', required: true }]);
 		});
 
-		it('wires the parent credential directly when no overrides are present', () => {
+		it('wires the synthetic credential name even when no overrides are present', () => {
 			const description = serverToNodeDescription(
 				gmailDirectExtendMockServer,
 				baseDescription,
@@ -299,7 +299,7 @@ describe('serverToNodeDescription', () => {
 			);
 
 			expect(description).not.toBeNull();
-			expect(description?.credentials).toEqual([{ name: 'gmailOAuth2', required: true }]);
+			expect(description?.credentials).toEqual([{ name: 'gmailMcpOAuth2Api', required: true }]);
 		});
 
 		it('omits credentials when the parent type is not registered', () => {
@@ -419,6 +419,18 @@ describe('serverToCredentialDescription', () => {
 						type: 'hidden',
 						default: '',
 					},
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: 'mcp.slack.com',
+					},
 				],
 			});
 		});
@@ -442,6 +454,18 @@ describe('serverToCredentialDescription', () => {
 					name: 'authUrl',
 					type: 'hidden',
 					default: 'https://slack.com/oauth/v2_user/authorize',
+				},
+				{
+					displayName: 'Allowed HTTP Request Domains',
+					name: 'allowedHttpRequestDomains',
+					type: 'hidden',
+					default: 'domains',
+				},
+				{
+					displayName: 'Allowed Domains',
+					name: 'allowedDomains',
+					type: 'hidden',
+					default: 'mcp.slack.com',
 				},
 			]);
 		});
@@ -482,13 +506,32 @@ describe('serverToCredentialDescription', () => {
 			expect(description?.extends).toEqual(['slackOAuth2Api']);
 		});
 
-		it('returns null when extendsCredential has no overrides (direct-extend path uses the parent as-is)', () => {
+		it('creates a synthetic credential extending the parent even when no overrides are present', () => {
 			const description = serverToCredentialDescription(
 				gmailDirectExtendMockServer,
 				(name) => name === 'gmailOAuth2',
 			);
 
-			expect(description).toBeNull();
+			expect(description).toEqual({
+				name: 'gmailMcpOAuth2Api',
+				displayName: 'Gmail MCP OAuth2',
+				extends: ['gmailOAuth2'],
+				icon: 'node:@n8n/mcp-registry.gmail',
+				properties: [
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: 'mcp.gmail.com',
+					},
+				],
+			});
 		});
 
 		it('is ignored when authType is "oauth2"', () => {

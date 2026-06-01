@@ -9,6 +9,7 @@ import type {
 
 import {
 	mcpRegistryExtendsCredentialSchema,
+	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
 } from './registry/mcp-registry.types';
@@ -36,11 +37,9 @@ function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
 /**
  * Shared identity fields for every synthetic credential the registry produces.
  */
-function getMcpRegistryCredentialHeader(server: McpRegistryServer): {
-	name: string;
-	icon: string;
-	displayName: string;
-} {
+function getMcpRegistryCredentialHeader(
+	server: McpRegistryServer,
+): Pick<ICredentialType, 'name' | 'icon' | 'displayName'> {
 	return {
 		name: getMcpRegistryCredentialTypeName(server),
 		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
@@ -49,19 +48,48 @@ function getMcpRegistryCredentialHeader(server: McpRegistryServer): {
 }
 
 /**
- * Registry MCP server → service-specific credential type for OAuth2 auth type
+ * Picks the server's remote endpoint and parses its hostname. Returns `null`
+ * when no supported remote exists or the URL is malformed.
  */
-function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
+function resolveCredentialRemote(
+	server: McpRegistryServer,
+): { endpointUrl: string; hostname: string } | null {
 	const remote = pickRemote(server);
 	if (!remote) return null;
-
-	let hostname: string;
 	try {
-		const url = new URL(remote.endpointUrl);
-		hostname = url.hostname;
+		return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * Locks the synthetic credential to the MCP server's hostname so it can't be
+ * used to call other domains via the HTTP Request node.
+ */
+function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'domains',
+		},
+		{
+			displayName: 'Allowed Domains',
+			name: 'allowedDomains',
+			type: 'hidden',
+			default: hostname,
+		},
+	];
+}
+
+/**
+ * Registry MCP server → service-specific credential type for OAuth2 auth type
+ */
+function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	const remote = resolveCredentialRemote(server);
+	if (!remote) return null;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -79,18 +107,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				type: 'hidden',
 				default: remote.endpointUrl,
 			},
-			{
-				displayName: 'Allowed HTTP Request Domains',
-				name: 'allowedHttpRequestDomains',
-				type: 'hidden',
-				default: 'domains',
-			},
-			{
-				displayName: 'Allowed Domains',
-				name: 'allowedDomains',
-				type: 'hidden',
-				default: hostname,
-			},
+			...buildDomainRestrictionProperties(remote.hostname),
 		],
 	};
 }
@@ -104,7 +121,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 function classifyExtendsCredential(
 	server: McpRegistryServer,
 	isKnownCredentialType?: (name: string) => boolean,
-): { parentType: string; overrides: Record<string, unknown>; hasOverrides: boolean } | null {
+) {
 	if (!server.extendsCredential) return null;
 
 	const parseResult = mcpRegistryExtendsCredentialSchema.safeParse(server.extendsCredential);
@@ -113,28 +130,33 @@ function classifyExtendsCredential(
 	const { extends: parentType, ...rawOverrides } = parseResult.data;
 	if (isKnownCredentialType && !isKnownCredentialType(parentType)) return null;
 
-	const overrides: Record<string, unknown> = {};
-	for (const [name, value] of Object.entries(rawOverrides)) {
-		if (value !== null && value !== undefined) overrides[name] = value;
-	}
+	const overrides = Object.fromEntries(
+		Object.entries(rawOverrides).filter(([, value]) => value !== null && value !== undefined),
+	) as Record<
+		keyof Omit<McpRegistryExtendsCredential, 'extends'>,
+		NonNullable<McpRegistryExtendsCredential[keyof Omit<McpRegistryExtendsCredential, 'extends'>]>
+	>;
 
 	return { parentType, overrides, hasOverrides: Object.keys(overrides).length > 0 };
 }
 
 /**
- * Registry MCP server → credential extending a known n8n credential type with
- * the values supplied by `extendsCredential`. Returns `null` when the payload
- * is invalid, the parent isn't registered, or there are no overrides to apply
- * (in which case the parent credential is used as-is by the node description).
+ * Registry MCP server → dedicated credential type extending a known n8n
+ * credential. Always emitted (even with zero overrides) so future override
+ * additions don't break workflows referencing the credential type. Returns
+ * `null` only when the payload is invalid or the parent isn't registered.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
 	isKnownCredentialType?: (name: string) => boolean,
 ): ICredentialType | null {
 	const classified = classifyExtendsCredential(server, isKnownCredentialType);
-	if (!classified || !classified.hasOverrides) return null;
+	if (!classified) return null;
 
-	const properties: INodeProperties[] = Object.entries(classified.overrides).map(
+	const remote = resolveCredentialRemote(server);
+	if (!remote) return null;
+
+	const overrideProperties: INodeProperties[] = Object.entries(classified.overrides).map(
 		([name, value]) => ({
 			displayName: name,
 			name,
@@ -146,7 +168,7 @@ function serverToExtendedCredentialDescription(
 	return {
 		...getMcpRegistryCredentialHeader(server),
 		extends: [classified.parentType],
-		properties,
+		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
 	};
 }
 
@@ -163,10 +185,7 @@ function getNodeDescriptionCredentials(
 		case 'extendsCredential': {
 			const classified = classifyExtendsCredential(server, isKnownCredentialType);
 			if (!classified) return [];
-			const name = classified.hasOverrides
-				? getMcpRegistryCredentialTypeName(server)
-				: classified.parentType;
-			return [{ name, required: true }];
+			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		}
 		default:
 			return [];

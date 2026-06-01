@@ -245,7 +245,7 @@ describe('McpRegistryNodeLoader', () => {
 			});
 		});
 
-		it('registers the node but no synthetic credential when extendsCredential has no overrides', async () => {
+		it('registers a synthetic credential extending the parent even when no overrides are present', async () => {
 			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['gmailOAuth2'],
 			});
@@ -257,17 +257,30 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0]).toMatchObject({
 				name: 'gmail',
-				credentials: [{ name: 'gmailOAuth2', required: true }],
+				credentials: [{ name: 'gmailMcpOAuth2Api', required: true }],
 			});
 
-			expect(loader.types.credentials).toHaveLength(0);
-			expect(loader.known.credentials).toEqual({});
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0]).toMatchObject({
+				name: 'gmailMcpOAuth2Api',
+				extends: ['gmailOAuth2'],
+				properties: [
+					{ name: 'allowedHttpRequestDomains', type: 'hidden', default: 'domains' },
+					{ name: 'allowedDomains', type: 'hidden', default: 'mcp.gmail.com' },
+				],
+			});
+
+			expect(loader.known.credentials.gmailMcpOAuth2Api).toMatchObject({
+				className: 'McpRegistryApi',
+				extends: ['gmailOAuth2'],
+				supportedNodes: ['gmail'],
+			});
 
 			const loadedNode = loader.getNode('gmail');
 			expect(loadedNode.sourcePath).toBe(sourcePath);
 		});
 
-		it('skips direct-extend servers whose parent credential type is not registered', async () => {
+		it('skips extendsCredential servers whose parent credential type is not registered (no overrides)', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: [],
 			});
