@@ -33,88 +33,36 @@ export const workflowConnectionsSchema = z.custom<IConnections>(
 	},
 );
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
+const customTelemetryTagSchema = z
+	.object(
+		{
+			key: z
+				.string({ invalid_type_error: 'Key must be a string' })
+				.refine((key) => key.trim().length > 0, { message: 'Key must not be empty' }),
+			value: z.string({ invalid_type_error: 'Value must be a string' }),
+		},
+		{ invalid_type_error: 'Custom telemetry tag must be an object' },
+	)
+	.strict({ message: 'Custom telemetry tag must only include key and value' });
 
-const workflowSettingsObjectSchema = z
-	.object({})
+const customTelemetryTagsSchema = z
+	.array(customTelemetryTagSchema, {
+		invalid_type_error: 'Custom telemetry tags must be an array',
+	})
+	.refine(
+		(tags) => {
+			const trimmedKeys = tags.map((tag) => tag.key.trim());
+			return trimmedKeys.length === new Set(trimmedKeys).size;
+		},
+		{ message: 'Duplicate keys are not allowed in customTelemetryTags' },
+	);
+
+export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
+	.object({
+		customTelemetryTags: customTelemetryTagsSchema.optional(),
+	})
 	.passthrough()
-	.superRefine((settings, ctx) => {
-		const customTelemetryTags: unknown = settings.customTelemetryTags;
-		if (customTelemetryTags === undefined) return;
-
-		if (!Array.isArray(customTelemetryTags)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['customTelemetryTags'],
-				message: 'Custom telemetry tags must be an array',
-			});
-			return;
-		}
-
-		const trimmedKeys: string[] = [];
-
-		customTelemetryTags.forEach((item, index) => {
-			if (!isRecord(item)) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['customTelemetryTags', index],
-					message: 'Custom telemetry tag must be an object',
-				});
-				return;
-			}
-
-			const unsupportedKeys = Object.keys(item).filter(
-				(field) => !['key', 'value'].includes(field),
-			);
-			if (unsupportedKeys.length > 0) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['customTelemetryTags', index],
-					message: 'Custom telemetry tag must only include key and value',
-				});
-			}
-
-			const key = item.key;
-			if (typeof key !== 'string') {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['customTelemetryTags', index, 'key'],
-					message: 'Key must be a string',
-				});
-			} else if (key.trim().length === 0) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['customTelemetryTags', index, 'key'],
-					message: 'Key must not be empty',
-				});
-			} else {
-				trimmedKeys.push(key.trim());
-			}
-
-			const value = item.value;
-			if (typeof value !== 'string') {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['customTelemetryTags', index, 'value'],
-					message: 'Value must be a string',
-				});
-			}
-		});
-
-		if (trimmedKeys.length !== new Set(trimmedKeys).size) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['customTelemetryTags'],
-				message: 'Duplicate keys are not allowed in customTelemetryTags',
-			});
-		}
-	});
-
-export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z.union([
-	z.null(),
-	workflowSettingsObjectSchema,
-]);
+	.nullable();
 
 export const workflowStaticDataSchema = z.preprocess(
 	(val) => {
