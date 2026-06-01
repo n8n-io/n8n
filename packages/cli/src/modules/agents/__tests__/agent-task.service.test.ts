@@ -413,6 +413,7 @@ describe('AgentTaskService', () => {
 
 		it('skips a cron tick while the same task is already running', async () => {
 			let finishRun!: () => void;
+			// eslint-disable-next-line require-yield
 			async function* blockingStream(): AsyncGenerator<never> {
 				await new Promise<void>((resolve) => {
 					finishRun = resolve;
@@ -461,6 +462,7 @@ describe('AgentTaskService', () => {
 
 		it('uses the shared lock to skip a tick after leader handoff while a previous leader run is active', async () => {
 			let finishRun!: () => void;
+			// eslint-disable-next-line require-yield
 			async function* blockingStream(): AsyncGenerator<never> {
 				await new Promise<void>((resolve) => {
 					finishRun = resolve;
@@ -700,6 +702,7 @@ describe('AgentTaskService', () => {
 			jest.useFakeTimers();
 			try {
 				let finishRun!: () => void;
+				// eslint-disable-next-line require-yield
 				async function* blockingStream(): AsyncGenerator<never> {
 					await new Promise<void>((resolve) => {
 						finishRun = resolve;
