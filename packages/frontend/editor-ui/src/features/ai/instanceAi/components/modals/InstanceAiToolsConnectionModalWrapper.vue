@@ -2,6 +2,7 @@
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
@@ -36,18 +37,43 @@ const isOpen = computed({
 
 const detailItem = ref<ToolConnectionItem | null>(null);
 
+const detailMode = computed<'detail' | 'settings'>(() =>
+	detailItem.value?.isConnected ? 'settings' : 'detail',
+);
+
+interface PendingCredentialContext {
+	serverSlug: string;
+	credentialType: string;
+	snapshotIds: Set<string>;
+}
+
+const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
+
 // ModalRoot only renders this wrapper while the modal is open, so isOpen is
 // already true on mount — kick off the lazy catalog fetch here rather than via
 // a transition watcher (which wouldn't fire on initial true).
-onMounted(() => {
+onMounted(async () => {
 	void mcpStore.fetchCatalogLazy();
 	// Also ensure connections are loaded if the user opens the modal before
 	// ConnectionsCard has mounted (e.g. opened via a deep link).
 	void mcpStore.fetchConnections();
+
+	const payload = modalState.value?.data as { connectionId?: string } | undefined;
+	const connectionId = payload?.connectionId;
+	if (!connectionId) return;
+
+	// Deep-link from a sidebar row: wait for both data sources, then snap to
+	// the connection's settings view.
+	await Promise.all([mcpStore.fetchCatalogLazy(), mcpStore.fetchConnections()]);
+	const item = items.value.find((i) => i.id === connectionId);
+	if (item) detailItem.value = item;
 });
 
 watch(isOpen, (open) => {
-	if (!open) detailItem.value = null;
+	if (!open) {
+		detailItem.value = null;
+		pendingCredentialContext.value = null;
+	}
 });
 
 function categoryForTool(tool: McpRegistryServerToolResponse): 'read' | 'write' | undefined {
@@ -112,6 +138,14 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 		return creds.map((c) => ({ id: c.id, name: c.name, type: c.type }));
 	},
 	openNewCredential: (authType: string) => {
+		const server = detailItem.value ? findServerForItem(detailItem.value) : undefined;
+		if (server) {
+			pendingCredentialContext.value = {
+				serverSlug: server.slug,
+				credentialType: authType,
+				snapshotIds: new Set(credentialsStore.getCredentialsByType(authType).map((c) => c.id)),
+			};
+		}
 		uiStore.openNewCredential(
 			authType,
 			false,
@@ -128,6 +162,35 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 };
 
 provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
+
+// Auto-connect after credential creation: when the credential modal closes
+// after the user opened it from our picker, defensively refresh credentials
+// (because `CredentialEdit.vue` fires `fetchAllCredentials()` without await
+// on the OAuth callback), then connect if exactly one new credential of the
+// expected type appeared. Swap `detailItem` to the connected version so the
+// modal flips to the settings view (via `detailMode` computed).
+watch(
+	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open,
+	async (isCredentialModalOpen, wasOpen) => {
+		const ctx = pendingCredentialContext.value;
+		if (!ctx || !wasOpen || isCredentialModalOpen) return;
+		pendingCredentialContext.value = null;
+
+		await credentialsStore.fetchAllCredentials();
+		const current = credentialsStore.getCredentialsByType(ctx.credentialType);
+		const newCreds = current.filter((c) => !ctx.snapshotIds.has(c.id));
+		if (newCreds.length !== 1) return;
+
+		const created = await mcpStore.connect({
+			serverSlug: ctx.serverSlug,
+			credentialId: newCreds[0].id,
+		});
+		if (!created) return;
+
+		const next = items.value.find((i) => i.id === created.id);
+		if (next) detailItem.value = next;
+	},
+);
 
 function findServerForItem(item: ToolConnectionItem): McpRegistryServerResponse | undefined {
 	if (item.kind !== 'mcp-server') return undefined;
@@ -173,6 +236,7 @@ async function handleDisconnect(item: ToolConnectionItem) {
 		:items="items"
 		:sections="['connected', 'nodes']"
 		:detail-item="detailItem"
+		:detail-mode="detailMode"
 		@update:detail-item="(item) => (detailItem = item)"
 		@select-credential="handleSelectCredential"
 		@save="handleSave"
