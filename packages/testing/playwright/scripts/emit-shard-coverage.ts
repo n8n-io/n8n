@@ -16,7 +16,7 @@
  * safe here; the OOM only happened when merging all shards at once.
  */
 import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { CoverageReport } from 'monocart-coverage-reports';
@@ -113,9 +113,11 @@ async function addBackendCoverage(report: CoverageReport): Promise<number> {
 					const map = JSON.parse(readFileSync(`${r.bytesFile}.map`, 'utf8')) as {
 						sources?: string[];
 					};
-					// Resolve map sources to the checkout's repo src/*.ts (absolute),
-					// so the owning package is unambiguous after sourcePath().
-					map.sources = (map.sources ?? []).map((s) => resolve(r.repoDistDir, s));
+					// Resolve map sources to the checkout's repo src/*.ts (absolute).
+					// Sources are relative to the .js.map's OWN dir (e.g. a file at
+					// dist/commands/x.js.map has `../../src/commands/x.ts`), so anchor
+					// at the dist file's dir — not the package dist root.
+					map.sources = (map.sources ?? []).map((s) => resolve(dirname(r.repoDistFile), s));
 					const b64 = Buffer.from(JSON.stringify(map)).toString('base64');
 					source =
 						source.replace(/\n?\/\/# sourceMappingURL=.*\s*$/, '\n') +
