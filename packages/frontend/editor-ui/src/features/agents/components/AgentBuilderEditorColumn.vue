@@ -14,7 +14,6 @@ import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
-import AgentTasksSection from './AgentTasksSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -100,6 +99,8 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -110,6 +111,8 @@ const i18n = useI18n();
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
@@ -118,21 +121,6 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							embedded
 							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
-
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentTasksSection
-							:project-id="projectId"
-							:agent-id="agentId"
-							:disabled="childrenDisabled"
-							:is-published="Boolean(agent?.activeVersionId)"
-							:task-refs="localConfig?.tasks ?? []"
-							:published-task-refs="agent?.activeVersion?.schema?.tasks ?? []"
-							:reload-key="tasksReloadKey"
-							data-testid="agent-tasks-panel"
-							@toggle="emit('toggle-task', $event)"
-							@changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 

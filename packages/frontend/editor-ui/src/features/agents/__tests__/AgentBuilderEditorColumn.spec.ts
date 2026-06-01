@@ -26,6 +26,9 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
 
+// First mount of this SFC eats the Vite transform cost; give it headroom.
+vi.setConfig({ testTimeout: 30_000 });
+
 async function mountColumn() {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
@@ -57,7 +60,6 @@ async function mountColumn() {
 				AgentInfoPanel: true,
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
-				AgentTasksSection: true,
 				AgentSessionsListView: true,
 			},
 		},

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
@@ -23,9 +24,24 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 const createAgentTaskSpy = vi.fn();
 const updateAgentTaskSpy = vi.fn();
+const deleteAgentTaskSpy = vi.fn();
+const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
+	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
+	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
+}));
+
+const showMessageSpy = vi.fn();
+const showErrorSpy = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
+}));
+
+const confirmSpy = vi.fn();
+vi.mock('../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirmSpy }),
 }));
 
 const MODAL_NAME = 'AgentTaskModal';
@@ -38,11 +54,17 @@ const stubs = {
 			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 	},
 	N8nHeading: { template: '<h2><slot /></h2>' },
-	N8nText: { template: '<span><slot /></span>' },
+	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
+	N8nTooltip: { template: '<span><slot /></span>' },
+	N8nIcon: { template: '<span />' },
 	N8nButton: {
-		props: ['disabled'],
+		props: ['disabled', 'loading'],
 		template:
-			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+	},
+	N8nSwitch2: {
+		props: ['modelValue'],
+		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -71,6 +93,20 @@ function renderModal(dataOverrides: Record<string, unknown> = {}) {
 	return { ...result, onSaved };
 }
 
+function makeTask(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
+	return {
+		id: 'task-9',
+		name: 'Existing',
+		objective: 'Obj',
+		cronExpression: '0 9 * * *',
+		lastRunAt: null,
+		lastRunStatus: null,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
 describe('AgentTaskModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
@@ -80,6 +116,7 @@ describe('AgentTaskModal', () => {
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
+		confirmSpy.mockResolvedValue(MODAL_CONFIRM);
 	});
 
 	it('creates a published task with the form values', async () => {
@@ -133,17 +170,7 @@ describe('AgentTaskModal', () => {
 
 	it('updates an existing task without changing enabled', async () => {
 		updateAgentTaskSpy.mockResolvedValue({});
-		const task: AgentTaskDto = {
-			id: 'task-9',
-			name: 'Existing',
-			objective: 'Obj',
-			cronExpression: '0 9 * * *',
-			lastRunAt: null,
-			lastRunStatus: null,
-			createdAt: '2026-01-01T00:00:00.000Z',
-			updatedAt: '2026-01-01T00:00:00.000Z',
-		};
-		const { getByTestId } = renderModal({ task });
+		const { getByTestId } = renderModal({ task: makeTask() });
 
 		await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
 		await fireEvent.click(getByTestId('agent-task-save'));
@@ -156,5 +183,63 @@ describe('AgentTaskModal', () => {
 			'task-9',
 			expect.objectContaining({ name: 'Renamed' }),
 		);
+	});
+
+	it('toggles an existing task through the modal callback', async () => {
+		const onToggle = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask(),
+			taskState: { enabled: true },
+			onToggle,
+		});
+
+		await fireEvent.click(getByTestId('agent-task-toggle'));
+
+		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
+	});
+
+	it('runs an existing task and shows a success toast', async () => {
+		runAgentTaskSpy.mockResolvedValue({ success: true });
+		const { getByTestId } = renderModal({
+			task: makeTask(),
+			taskState: { enabled: true },
+		});
+
+		await fireEvent.click(getByTestId('agent-task-run'));
+
+		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
+		expect(showMessageSpy).toHaveBeenCalled();
+	});
+
+	it('deletes an existing task after confirmation', async () => {
+		deleteAgentTaskSpy.mockResolvedValue({ success: true });
+		const { getByTestId, onSaved } = renderModal({
+			task: makeTask(),
+			taskState: { enabled: true },
+		});
+
+		await fireEvent.click(getByTestId('agent-task-delete'));
+
+		await waitFor(() => expect(deleteAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
+		expect(onSaved).toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('keeps task actions in the header for existing tasks only', async () => {
+		const { getByTestId, rerender, queryByTestId } = renderModal({
+			task: makeTask(),
+			taskState: { enabled: true },
+		});
+
+		expect(getByTestId('agent-task-toggle')).toBeTruthy();
+		expect(getByTestId('agent-task-run')).toBeTruthy();
+
+		await rerender({
+			modalName: MODAL_NAME,
+			data: { projectId: 'p1', agentId: 'a1', isPublished: true, onSaved: vi.fn() },
+		});
+
+		expect(queryByTestId('agent-task-toggle')).toBeNull();
+		expect(queryByTestId('agent-task-run')).toBeNull();
 	});
 });

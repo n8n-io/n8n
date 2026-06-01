@@ -6270,6 +6270,8 @@
 	"agents.builder.tasks.nextRun": "Next run {time}",
 	"agents.builder.tasks.lastRun": "Last run {time}",
 	"agents.builder.tasks.neverRun": "Not run yet",
+	"agents.builder.tasks.enabled": "Enabled",
+	"agents.builder.tasks.status.title": "Task status",
 	"agents.builder.tasks.status.success": "Success",
 	"agents.builder.tasks.status.error": "Failed",
 	"agents.builder.tasks.delete": "Delete task",

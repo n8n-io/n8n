@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { getAgentTasks } from '../composables/useAgentApi';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
@@ -26,8 +31,10 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished: boolean;
+		taskRefs?: AgentJsonTaskConfig[];
+		reloadKey?: number;
 	}>(),
-	{ disabled: false },
+	{ disabled: false, taskRefs: () => [] },
 );
 
 const emit = defineEmits<{
@@ -41,12 +48,20 @@ const emit = defineEmits<{
 	'remove-skill': [id: string];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
+const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const { catalog } = useAgentIntegrationsCatalog();
+
+type TaskRow = AgentTaskDto & {
+	enabled: boolean;
+};
 
 function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
@@ -72,6 +87,67 @@ const hasTriggers = computed(() => triggerRows.value.length > 0);
 const mcpServers = computed(() => props.config?.mcpServers ?? []);
 const hasTools = computed(() => props.tools.length + mcpServers.value.length > 0);
 const hasSkills = computed(() => props.skills.length > 0);
+const taskBodies = ref<AgentTaskDto[]>([]);
+const taskErrorMessage = ref('');
+
+const taskRows = computed<TaskRow[]>(() => {
+	const bodiesById = new Map(taskBodies.value.map((body) => [body.id, body]));
+	return props.taskRefs
+		.map((taskRef) => {
+			const body = bodiesById.get(taskRef.id);
+			if (!body) return null;
+			return {
+				...body,
+				enabled: taskRef.enabled,
+			};
+		})
+		.filter((task): task is TaskRow => task !== null);
+});
+const hasTasks = computed(() => taskRows.value.length > 0);
+
+async function reloadTasks() {
+	taskErrorMessage.value = '';
+	try {
+		taskBodies.value = await getAgentTasks(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+	} catch (error) {
+		taskErrorMessage.value =
+			error instanceof Error && error.message
+				? error.message
+				: i18n.baseText('agents.builder.tasks.loadError');
+	}
+}
+
+onMounted(reloadTasks);
+
+watch(
+	() => props.reloadKey,
+	() => {
+		void reloadTasks();
+	},
+);
+
+function openTaskModal(task: TaskRow | null) {
+	uiStore.openModalWithData({
+		name: AGENT_TASK_MODAL_KEY,
+		data: {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			task,
+			isPublished: props.isPublished,
+			taskState: task
+				? {
+						enabled: task.enabled,
+					}
+				: undefined,
+			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
+			onSaved: () => emit('tasks-changed'),
+		},
+	});
+}
 
 type CapabilityToolEntry =
 	| {
@@ -389,6 +465,48 @@ function onToolMenuSelect(key: string) {
 				</N8nTooltip>
 			</div>
 		</div>
+
+		<div :class="$style.capabilityRow">
+			<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				{{ i18n.baseText('agents.builder.tasks.title') }}
+			</N8nText>
+
+			<div :class="$style.chips">
+				<AgentChipButton
+					v-for="task in taskRows"
+					:key="task.id"
+					icon="clipboard-list"
+					data-testid="agent-capabilities-task-row"
+					@click="openTaskModal(task)"
+				>
+					{{ task.name }}
+				</AgentChipButton>
+
+				<N8nTooltip
+					:disabled="!hasTasks"
+					:content="i18n.baseText('agents.builder.tasks.add')"
+					placement="top"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						:icon-only="hasTasks"
+						:disabled="props.disabled"
+						data-testid="agent-capabilities-add-task"
+						@click="openTaskModal(null)"
+					>
+						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
+						<template v-if="!hasTasks">
+							{{ i18n.baseText('agents.builder.tasks.add') }}
+						</template>
+					</N8nButton>
+				</N8nTooltip>
+
+				<N8nText v-if="taskErrorMessage" size="small" :class="$style.error">
+					{{ taskErrorMessage }}
+				</N8nText>
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -432,6 +550,10 @@ function onToolMenuSelect(key: string) {
 .disabled {
 	opacity: 0.5;
 	pointer-events: none;
+}
+
+.error {
+	color: var(--color--danger);
 }
 
 @media (max-width: 768px) {

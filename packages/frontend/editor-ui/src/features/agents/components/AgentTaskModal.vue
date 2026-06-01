@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { AGENT_TASK_NAME_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nInput, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nMarkdownEditor,
+	N8nSwitch2,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import { useI18n } from '@n8n/i18n';
@@ -8,8 +17,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createAgentTask, updateAgentTask } from '../composables/useAgentApi';
+import {
+	createAgentTask,
+	deleteAgentTask,
+	runAgentTask,
+	updateAgentTask,
+} from '../composables/useAgentApi';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import {
 	buildCron,
 	DEFAULT_SCHEDULE_PARTS,
@@ -26,6 +43,10 @@ export type AgentTaskModalData = {
 	agentId: string;
 	task?: AgentTaskDto | null;
 	isPublished: boolean;
+	taskState?: {
+		enabled: boolean;
+	};
+	onToggle?: (payload: { id: string; enabled: boolean }) => void;
 	onSaved: () => void;
 };
 
@@ -39,12 +60,17 @@ const props = defineProps<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const toast = useToast();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const task = computed(() => props.data.task ?? null);
 const isEditing = computed(() => Boolean(task.value));
 // Editing a task on a published agent only changes the live schedule on the
 // next publish (see AgentTaskService), so warn before the edit silently no-ops.
 const showRepublishHint = computed(() => isEditing.value && props.data.isPublished);
+const enabled = ref(props.data.taskState?.enabled ?? true);
+const running = ref(false);
+const deleting = ref(false);
 
 const name = ref('');
 const objective = ref('');
@@ -171,6 +197,67 @@ function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
+function onToggleEnabled(value: boolean) {
+	const current = task.value;
+	if (!current) return;
+	enabled.value = value;
+	props.data.onToggle?.({ id: current.id, enabled: value });
+}
+
+async function onRun() {
+	const current = task.value;
+	if (!current || running.value) return;
+	running.value = true;
+	try {
+		await runAgentTask(
+			rootStore.restApiContext,
+			props.data.projectId,
+			props.data.agentId,
+			current.id,
+		);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.tasks.executeStarted'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.tasks.executeError'));
+	} finally {
+		running.value = false;
+	}
+}
+
+async function onDelete() {
+	const current = task.value;
+	if (!current || deleting.value) return;
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agents.builder.tasks.deleteConfirm.title'),
+		description: i18n.baseText('agents.builder.tasks.deleteConfirm.description'),
+		confirmButtonText: i18n.baseText('agents.builder.tasks.deleteConfirm.confirm'),
+		cancelButtonText: i18n.baseText('agents.builder.tasks.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	deleting.value = true;
+	errorMessage.value = '';
+	try {
+		await deleteAgentTask(
+			rootStore.restApiContext,
+			props.data.projectId,
+			props.data.agentId,
+			current.id,
+		);
+		props.data.onSaved();
+		closeModal();
+	} catch (error) {
+		errorMessage.value =
+			error instanceof Error && error.message
+				? error.message
+				: i18n.baseText('agents.builder.tasks.deleteError');
+	} finally {
+		deleting.value = false;
+	}
+}
+
 async function onSave() {
 	submitted.value = true;
 	if (!canSave.value) return;
@@ -215,15 +302,46 @@ async function onSave() {
 </script>
 
 <template>
-	<Modal :name="modalName" width="640px" data-testid="agent-task-modal">
+	<Modal :name="modalName" width="860px" data-testid="agent-task-modal">
 		<template #header>
-			<N8nHeading tag="h2" size="large">
-				{{
-					i18n.baseText(
-						isEditing ? 'agents.builder.tasks.edit.title' : 'agents.builder.tasks.create.title',
-					)
-				}}
-			</N8nHeading>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">
+					{{
+						i18n.baseText(
+							isEditing ? 'agents.builder.tasks.edit.title' : 'agents.builder.tasks.create.title',
+						)
+					}}
+				</N8nHeading>
+				<div v-if="isEditing" :class="$style.headerActions">
+					<N8nTooltip
+						:content="
+							props.data.isPublished
+								? i18n.baseText('agents.builder.tasks.republishHint')
+								: i18n.baseText('agents.builder.tasks.publishHint')
+						"
+						placement="top"
+					>
+						<N8nSwitch2
+							:model-value="enabled"
+							data-testid="agent-task-toggle"
+							@update:model-value="(value) => onToggleEnabled(Boolean(value))"
+						/>
+					</N8nTooltip>
+					<N8nTooltip :content="i18n.baseText('agents.builder.tasks.execute')" placement="top">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							icon-only
+							:loading="running"
+							:aria-label="i18n.baseText('agents.builder.tasks.execute')"
+							data-testid="agent-task-run"
+							@click="onRun"
+						>
+							<template #icon><N8nIcon icon="play" :size="16" /></template>
+						</N8nButton>
+					</N8nTooltip>
+				</div>
+			</div>
 		</template>
 
 		<template #content>
@@ -388,24 +506,50 @@ async function onSave() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeModal">
-					{{ i18n.baseText('agents.builder.tasks.cancel') }}
-				</N8nButton>
 				<N8nButton
-					variant="solid"
-					:disabled="!canSave"
-					:loading="saving"
-					data-testid="agent-task-save"
-					@click="onSave"
+					v-if="isEditing"
+					variant="subtle"
+					:loading="deleting"
+					data-testid="agent-task-delete"
+					@click="onDelete"
 				>
-					{{ i18n.baseText('agents.builder.tasks.save') }}
+					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+					{{ i18n.baseText('agents.builder.tasks.delete') }}
 				</N8nButton>
+				<div :class="$style.footerActions">
+					<N8nButton variant="subtle" @click="closeModal">
+						{{ i18n.baseText('agents.builder.tasks.cancel') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						:disabled="!canSave"
+						:loading="saving"
+						data-testid="agent-task-save"
+						@click="onSave"
+					>
+						{{ i18n.baseText('agents.builder.tasks.save') }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style module>
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding-right: var(--spacing--xl);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -461,7 +605,13 @@ async function onSave() {
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 </style>
