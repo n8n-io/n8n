@@ -275,7 +275,7 @@ function openSlackAppAuthorizationPopup(installUrl: string): Window | null {
 	}
 
 	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700,noopener';
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
 	return window.open(parsedUrl.toString(), 'Slack App Authorization', params);
 }
 

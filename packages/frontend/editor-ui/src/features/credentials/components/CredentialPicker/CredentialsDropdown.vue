@@ -50,7 +50,6 @@ const onFilter = (newFilter = '') => {
 };
 
 const closeSelect = () => {
-	selectRefs.value?.innerSelect?.handleClose();
 	selectRefs.value?.blur();
 };
 

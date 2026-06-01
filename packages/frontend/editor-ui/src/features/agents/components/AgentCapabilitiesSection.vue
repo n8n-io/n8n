@@ -322,7 +322,8 @@ function openChannelModal() {
 }
 
 function openChannelEdit(channelType: string) {
-	channelModalView.value = `${channelType}_edit` as ChannelView;
+	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
+	channelModalView.value = hasEditableChannelView ? (`${channelType}_edit` as ChannelView) : 'list';
 	channelModalOpen.value = true;
 }
 

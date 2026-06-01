@@ -27,7 +27,7 @@ defineSlots<{
 </script>
 
 <template>
-	<ol :class="$style.list">
+	<ol v-bind="$attrs" :class="$style.list">
 		<li v-for="(step, index) in steps" :key="step.id">
 			<aside :class="$style.aside">
 				<div v-if="showIndex" :class="$style.index">
@@ -73,9 +73,7 @@ defineSlots<{
 	isolation: isolate;
 }
 .rail {
-	inset-block: 0;
 	width: 1px;
-	left: calc(var(--height--md) / 2);
 	height: 100%;
 	background-color: var(--border-color);
 	pointer-events: none;
