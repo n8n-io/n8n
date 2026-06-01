@@ -14,6 +14,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { NodeTypes } from '@/node-types';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-helpers');
@@ -28,6 +29,7 @@ describe('WorkflowCreationService', () => {
 	let licenseStateMock: MockProxy<LicenseState>;
 	let projectServiceMock: MockProxy<ProjectService>;
 	let projectRepositoryMock: MockProxy<ProjectRepository>;
+	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -37,6 +39,10 @@ describe('WorkflowCreationService', () => {
 		licenseStateMock = mock<LicenseState>();
 		projectServiceMock = mock<ProjectService>();
 		projectRepositoryMock = mock<ProjectRepository>();
+		workflowValidationServiceMock = mock<WorkflowValidationService>();
+		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
+			isValid: true,
+		});
 
 		workflowCreationService = new WorkflowCreationService(
 			mock(), // logger
@@ -55,6 +61,7 @@ describe('WorkflowCreationService', () => {
 			mock(), // folderService
 			enterpriseWorkflowServiceMock,
 			mock<NodeTypes>(),
+			workflowValidationServiceMock,
 		);
 	});
 

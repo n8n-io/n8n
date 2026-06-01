@@ -81,6 +81,8 @@ function makeService(
 		mock<Telemetry>(),
 		mock(),
 		mock(),
+		mock(),
+		mock(),
 	);
 }
 
@@ -186,7 +188,7 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 	});
 });
 
-describe('AgentsService.reconstructFromConfig — MCP gating', () => {
+describe('AgentsService.reconstructFromConfig — MCP wiring', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
@@ -204,16 +206,16 @@ describe('AgentsService.reconstructFromConfig — MCP gating', () => {
 		});
 	});
 
-	function setup(options: { mcpModuleEnabled?: boolean } = {}) {
+	function setup() {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeService(agentsToolsService, options.mcpModuleEnabled ? ['mcp'] : []);
+		const service = makeService(agentsToolsService);
 		return { service, credentialProvider };
 	}
 
 	it('does not call the MCP factory when no mcpServers are configured', async () => {
-		const { service, credentialProvider } = setup({ mcpModuleEnabled: true });
+		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity();
 
 		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
@@ -221,31 +223,8 @@ describe('AgentsService.reconstructFromConfig — MCP gating', () => {
 		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
 	});
 
-	it('skips MCP wiring when the module is disabled, even if mcpServers are present', async () => {
-		const { service, credentialProvider } = setup({ mcpModuleEnabled: false });
-		const entity = makeAgentEntity(undefined, {
-			mcpServers: [
-				{
-					name: 'github',
-					url: 'https://api.example.test/mcp',
-					transport: 'streamableHttp',
-					authentication: 'none',
-				},
-			],
-		});
-
-		// We pass an `options` to buildFromJson with `buildMcpClient: undefined`,
-		// so the mock's loop is a no-op and the factory is never called.
-		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
-
-		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
-		const lastCall = buildFromJsonMock.mock.calls.at(-1) as unknown[];
-		const opts = lastCall[2] as { buildMcpClient: unknown };
-		expect(opts.buildMcpClient).toBeUndefined();
-	});
-
-	it('builds one MCP client per configured server when the module is enabled', async () => {
-		const { service, credentialProvider } = setup({ mcpModuleEnabled: true });
+	it('builds one MCP client per configured server', async () => {
+		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity(undefined, {
 			mcpServers: [
 				{

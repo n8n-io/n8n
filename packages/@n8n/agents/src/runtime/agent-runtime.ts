@@ -194,7 +194,6 @@ export interface AgentRuntimeConfig {
 	};
 	providerTools?: BuiltProviderTool[];
 	memory?: BuiltMemory;
-	lastMessages?: number;
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
@@ -656,7 +655,6 @@ export class AgentRuntime {
 		}
 
 		return await memory.getMessages(threadId, {
-			limit: this.config.lastMessages ?? 10,
 			resourceId,
 		});
 	}
