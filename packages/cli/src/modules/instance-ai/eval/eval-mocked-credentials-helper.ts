@@ -104,17 +104,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		// A credential reference with no id can never resolve to a stored
-		// credential. In eval mode that happens two ways: core's bypass passes
-		// `{ id: null }` for a fully-unconfigured node, and the builder attaches
-		// a named placeholder with no id ("I'll set up credentials later") for a
-		// node it knows needs one. In BOTH cases the inner helper throws
-		// `UnexpectedError('Found credential with no ID.')` — not a
-		// `CredentialNotFoundError` — so we must short-circuit and synthesize
-		// before delegating, otherwise the catch below re-throws and the node
-		// crashes. Schema-synthesizing gives the wire-server URL rewrite a real
-		// `url` field to augment; otherwise vendor SDK traffic would escape to
-		// the real provider with placeholder values and 401 at the wire layer.
+		// Id-less refs make the inner helper throw UnexpectedError (not CredentialNotFoundError),
+		// which the catch below won't handle — synthesize a mock here instead of delegating.
 		if (!nodeCredentials.id) {
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
@@ -142,9 +133,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			if (!(error instanceof CredentialNotFoundError)) throw error;
 
-			// id was present but no matching credential exists in the DB. A bare
-			// marker stub is enough; `applyServerUrlRewrite` still injects the
-			// wire-server `url` for vendor LLM credential types.
+			// id present but absent from the DB — a bare marker stub is enough; URL rewrite still runs below.
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
