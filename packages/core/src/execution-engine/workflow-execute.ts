@@ -47,7 +47,6 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
-	BaseError,
 	sleep,
 	Node,
 	UnexpectedError,
@@ -1894,7 +1893,7 @@ export class WorkflowExecute {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
 							let toReport: Error | undefined;
-							if (error instanceof ApplicationError || error instanceof BaseError) {
+							if (error instanceof ApplicationError) {
 								// Report any unhandled errors that were wrapped in by one of our error classes
 								if (error.cause instanceof Error) toReport = error.cause;
 							} else {
