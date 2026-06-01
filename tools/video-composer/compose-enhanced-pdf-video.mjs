@@ -14,6 +14,14 @@ const REQUIRED_JOB_FIELDS = [
 	'ffmpegLogPath',
 ];
 
+function optionalNumber(value, defaultValue, minimum) {
+	if (value === undefined || value === null || value === '') return defaultValue;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed < minimum) return defaultValue;
+
+	return parsed;
+}
+
 export function validateEnhancedJob(raw) {
 	if (!raw || typeof raw !== 'object') throw new Error('Enhanced PDF composer job must be an object');
 	for (const field of REQUIRED_JOB_FIELDS) {
@@ -24,13 +32,13 @@ export function validateEnhancedJob(raw) {
 
 	return {
 		...raw,
-		introCoverSeconds: Math.max(0, Number(raw.introCoverSeconds ?? 4) || 0),
-		introIllustrationSeconds: Math.max(0, Number(raw.introIllustrationSeconds ?? 4) || 0),
-		pagePauseSeconds: Math.max(0, Number(raw.pagePauseSeconds ?? 0.3) || 0),
-		overlayWidth: Math.max(80, Number(raw.overlayWidth ?? 260) || 260),
-		width: Math.max(320, Number(raw.width ?? 1920) || 1920),
-		height: Math.max(240, Number(raw.height ?? 1080) || 1080),
-		fps: Math.max(1, Number(raw.fps ?? 30) || 30),
+		introCoverSeconds: optionalNumber(raw.introCoverSeconds, 4, 0),
+		introIllustrationSeconds: optionalNumber(raw.introIllustrationSeconds, 4, 0),
+		pagePauseSeconds: optionalNumber(raw.pagePauseSeconds, 0.3, 0),
+		overlayWidth: optionalNumber(raw.overlayWidth, 260, 80),
+		width: optionalNumber(raw.width, 1920, 320),
+		height: optionalNumber(raw.height, 1080, 240),
+		fps: optionalNumber(raw.fps, 30, 1),
 	};
 }
 
@@ -38,8 +46,8 @@ export function scaleImageToCanvasFilter(input, width, height, label) {
 	return `${input}scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=white${label}`;
 }
 
-export function scaleOverlayFilter(input, overlayWidth, label) {
-	return `${input}scale=${overlayWidth}:-2:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1${label}`;
+export function scaleOverlayFilter(input, overlayWidth, maxHeight, label) {
+	return `${input}scale=${overlayWidth}:${maxHeight}:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1${label}`;
 }
 
 function escapeForFilterPath(filePath) {
@@ -119,9 +127,11 @@ export function buildIllustrationIntroFfmpegArgs({
 	height = 1080,
 	fps = 30,
 }) {
+	const illustrationWidth = Math.round(width * 0.55);
+	const illustrationMaxHeight = Math.round(height * 0.65);
 	const filter = [
 		scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
-		scaleOverlayFilter('[1:v]', Math.round(width * 0.55), '[illustrationv]'),
+		scaleOverlayFilter('[1:v]', illustrationWidth, illustrationMaxHeight, '[illustrationv]'),
 		'[pagev][illustrationv]overlay=(W-w)/2:(H-h)/2[vout]',
 	].join(';');
 
@@ -195,10 +205,11 @@ export function buildEnhancedSegmentFfmpegArgs({
 		];
 	}
 
+	const overlayMaxHeight = Math.round(height * 0.3);
 	const filter = [
 		scaleImageToCanvasFilter('[0:v]', width, height, '[pagev]'),
-		scaleOverlayFilter('[2:v]', overlayWidth, '[coverOverlay]'),
-		scaleOverlayFilter('[3:v]', overlayWidth, '[illustrationOverlay]'),
+		scaleOverlayFilter('[2:v]', overlayWidth, overlayMaxHeight, '[coverOverlay]'),
+		scaleOverlayFilter('[3:v]', overlayWidth, overlayMaxHeight, '[illustrationOverlay]'),
 		'[pagev][coverOverlay]overlay=40:H-h-40[leftv]',
 		'[leftv][illustrationOverlay]overlay=W-w-40:H-h-40[overlayv]',
 		`[overlayv]${subtitles}[vout]`,
@@ -270,13 +281,13 @@ export function buildPauseSegmentFfmpegArgs({
 	];
 }
 
-export function buildSubtitleEventsForSegment({ page, introDuration }) {
-	const intro = Number(introDuration) || 0;
+export function buildSubtitleEventsForSegment({ page }) {
+	const pageStart = Number(page.start) || 0;
 
 	return (Array.isArray(page.subtitleEvents) ? page.subtitleEvents : []).map((event) => ({
 		...event,
-		start: Number(event.start) + intro,
-		end: Number(event.end) + intro,
+		start: Number(event.start) - pageStart,
+		end: Number(event.end) - pageStart,
 	}));
 }
 
@@ -289,7 +300,7 @@ export function buildEnhancedConcatList({
 	const paths = [introCoverPath, introIllustrationPath];
 	for (const [index, segmentPath] of segmentPaths.entries()) {
 		paths.push(segmentPath);
-		if (pausePaths[index]) paths.push(pausePaths[index]);
+		if (index < segmentPaths.length - 1 && pausePaths[index]) paths.push(pausePaths[index]);
 	}
 
 	return paths.filter(Boolean);

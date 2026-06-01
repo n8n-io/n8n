@@ -55,6 +55,27 @@ test('validateEnhancedJob returns defaults and required fields', () => {
 	assert.equal(job.fps, 30);
 });
 
+test('validateEnhancedJob falls back to defaults for invalid optional numbers', () => {
+	const job = validateEnhancedJob({
+		...baseJob,
+		introCoverSeconds: 'nope',
+		introIllustrationSeconds: Number.NaN,
+		pagePauseSeconds: Number.POSITIVE_INFINITY,
+		overlayWidth: 'bad',
+		width: undefined,
+		height: null,
+		fps: 0,
+	});
+
+	assert.equal(job.introCoverSeconds, 4);
+	assert.equal(job.introIllustrationSeconds, 4);
+	assert.equal(job.pagePauseSeconds, 0.3);
+	assert.equal(job.overlayWidth, 260);
+	assert.equal(job.width, 1920);
+	assert.equal(job.height, 1080);
+	assert.equal(job.fps, 30);
+});
+
 test('validateEnhancedJob rejects missing cover and illustration paths', () => {
 	assert.throws(
 		() => validateEnhancedJob({ ...baseJob, coverImagePath: '' }),
@@ -75,8 +96,8 @@ test('scaleImageToCanvasFilter centers images on white canvas without cropping',
 
 test('scaleOverlayFilter creates a stable lower-corner overlay image', () => {
 	assert.equal(
-		scaleOverlayFilter('[1:v]', 260, '[coverOverlay]'),
-		'[1:v]scale=260:-2:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1[coverOverlay]',
+		scaleOverlayFilter('[1:v]', 260, 324, '[coverOverlay]'),
+		'[1:v]scale=260:324:force_original_aspect_ratio=decrease:force_divisible_by=2:reset_sar=1[coverOverlay]',
 	);
 });
 
@@ -110,6 +131,7 @@ test('buildIllustrationIntroFfmpegArgs uses PDF page 1 as background', () => {
 	assert.deepEqual(args.slice(0, 5), ['-y', '-loop', '1', '-i', '/tmp/page-001.png']);
 	assert.equal(args.includes('/tmp/illustration.png'), true);
 	assert.equal(args.includes('/tmp/render/intro-illustration.mp4'), true);
+	assert.match(args[args.indexOf('-filter_complex') + 1], /scale=1056:702/);
 	assert.match(args[args.indexOf('-filter_complex') + 1], /overlay=\(W-w\)\/2:\(H-h\)\/2/);
 });
 
@@ -151,11 +173,12 @@ test('buildEnhancedSegmentFfmpegArgs adds lower-corner overlays for page 2', () 
 	assert.equal(args.includes('/tmp/cover.png'), true);
 	assert.equal(args.includes('/tmp/illustration.png'), true);
 	const filter = args[args.indexOf('-filter_complex') + 1];
+	assert.match(filter, /scale=260:324/);
 	assert.match(filter, /overlay=40:H-h-40/);
 	assert.match(filter, /overlay=W-w-40:H-h-40/);
 });
 
-test('buildSubtitleEventsForSegment offsets subtitles by intro duration', () => {
+test('buildSubtitleEventsForSegment returns segment-relative subtitle times', () => {
 	const events = buildSubtitleEventsForSegment({
 		page: {
 			start: 5,
@@ -167,7 +190,7 @@ test('buildSubtitleEventsForSegment offsets subtitles by intro duration', () => 
 	});
 
 	assert.deepEqual(events, [
-		{ start: 13.5, end: 15, text: '第二页开始。' },
+		{ start: 0.5, end: 2, text: '第二页开始。' },
 	]);
 });
 
@@ -178,6 +201,24 @@ test('buildEnhancedConcatList orders intro segments before page segments and pau
 			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
 			segmentPaths: ['/tmp/render/segment-001.mp4', '/tmp/render/segment-002.mp4'],
 			pausePaths: ['/tmp/render/pause-001.mp4'],
+		}),
+		[
+			'/tmp/render/intro-cover.mp4',
+			'/tmp/render/intro-illustration.mp4',
+			'/tmp/render/segment-001.mp4',
+			'/tmp/render/pause-001.mp4',
+			'/tmp/render/segment-002.mp4',
+		],
+	);
+});
+
+test('buildEnhancedConcatList ignores extra pauses after the final segment', () => {
+	assert.deepEqual(
+		buildEnhancedConcatList({
+			introCoverPath: '/tmp/render/intro-cover.mp4',
+			introIllustrationPath: '/tmp/render/intro-illustration.mp4',
+			segmentPaths: ['/tmp/render/segment-001.mp4', '/tmp/render/segment-002.mp4'],
+			pausePaths: ['/tmp/render/pause-001.mp4', '/tmp/render/pause-002.mp4'],
 		}),
 		[
 			'/tmp/render/intro-cover.mp4',
