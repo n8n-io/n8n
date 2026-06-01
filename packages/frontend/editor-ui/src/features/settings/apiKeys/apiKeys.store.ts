@@ -5,10 +5,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
 import { computed, ref } from 'vue';
 import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
+	/** Total number of API keys on the server across every page, not the size of the current page. */
 	const apiKeysCount = ref(0);
 	const availableScopes = ref<ApiKeyScope[]>([]);
 
@@ -29,11 +31,12 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		return availableScopes.value;
 	};
 
-	const DEFAULT_PAGE_SIZE = 250;
-
+	// Bridge default: the current card view has no pagination affordance, so
+	// fetch the server max so admins on small instances still see everything.
+	// The redesigned table will drive proper paging via N8nDataTableServer.
 	const fetchApiKeys = async (options: { take?: number; skip?: number } = {}) => {
 		const response = await publicApiApi.getApiKeys(rootStore.restApiContext, {
-			take: options.take ?? DEFAULT_PAGE_SIZE,
+			take: options.take ?? MAX_ITEMS_PER_PAGE,
 			skip: options.skip ?? 0,
 		});
 		apiKeys.value = response.items;

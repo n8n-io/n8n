@@ -45,8 +45,8 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Retrieves and redacts API keys for a given user.
-	 * @param user - The user for whom to retrieve and redact API keys.
+	 * Retrieves a page of redacted API keys for a given user, ordered by
+	 * `createdAt` descending. `count` is the total across all pages.
 	 */
 	async getRedactedApiKeysForUser(user: User, options: { take?: number; skip?: number } = {}) {
 		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({

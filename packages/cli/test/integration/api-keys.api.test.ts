@@ -520,14 +520,21 @@ describe('Member', () => {
 });
 
 describe('Pagination', () => {
-	test('GET /api-keys honors `take` and returns total count', async () => {
-		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
-		for (let i = 0; i < 3; i++) {
-			await testServer
-				.authAgentFor(owner)
+	const seedKeys = async (user: User, count: number): Promise<string[]> => {
+		const agent = testServer.authAgentFor(user);
+		const ids: string[] = [];
+		for (let i = 0; i < count; i++) {
+			const res = await agent
 				.post('/api-keys')
 				.send({ label: `Key ${i}`, expiresAt: null, scopes: ['workflow:create'] });
+			ids.push(res.body.data.id);
 		}
+		return ids;
+	};
+
+	test('GET /api-keys honors `take` and returns total count', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await seedKeys(owner, 3);
 
 		const response = await testServer.authAgentFor(owner).get('/api-keys?take=2').expect(200);
 
@@ -537,31 +544,18 @@ describe('Pagination', () => {
 
 	test('GET /api-keys honors `skip` to page through results', async () => {
 		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
-		const createdIds: string[] = [];
-		for (let i = 0; i < 3; i++) {
-			const res = await testServer
-				.authAgentFor(owner)
-				.post('/api-keys')
-				.send({ label: `Key ${i}`, expiresAt: null, scopes: ['workflow:create'] });
-			createdIds.push(res.body.data.id);
-		}
+		const createdIds = await seedKeys(owner, 3);
 
-		const firstPage = await testServer
-			.authAgentFor(owner)
-			.get('/api-keys?take=2&skip=0')
-			.expect(200);
-		const secondPage = await testServer
-			.authAgentFor(owner)
-			.get('/api-keys?take=2&skip=2')
-			.expect(200);
+		const agent = testServer.authAgentFor(owner);
+		const firstPage = await agent.get('/api-keys?take=2&skip=0').expect(200);
+		const secondPage = await agent.get('/api-keys?take=2&skip=2').expect(200);
 
 		expect(firstPage.body.data.items).toHaveLength(2);
 		expect(secondPage.body.data.items).toHaveLength(1);
 
-		const firstPageIds = (firstPage.body.data.items as Array<{ id: string }>).map((k) => k.id);
-		const secondPageIds = (secondPage.body.data.items as Array<{ id: string }>).map((k) => k.id);
-		const union = new Set([...firstPageIds, ...secondPageIds]);
-		expect(union.size).toBe(3);
-		expect([...union].sort()).toEqual(createdIds.slice().sort());
+		const pagedIds = [...firstPage.body.data.items, ...secondPage.body.data.items].map(
+			(k: { id: string }) => k.id,
+		);
+		expect(new Set(pagedIds)).toEqual(new Set(createdIds));
 	});
 });
