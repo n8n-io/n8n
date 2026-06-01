@@ -478,7 +478,7 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(
-					"You haven't connected the credential 'Test Credential' yet. Open it and connect to run this workflow.",
+					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
 				);
 			});
 
@@ -505,7 +505,7 @@ describe('DynamicCredentialService', () => {
 						undefined,
 					),
 				).rejects.toThrow(
-					"You haven't connected the credential 'Test Credential' yet. Open it and connect to run this workflow.",
+					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
 				);
 			});
 

@@ -212,7 +212,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
 			// via EventService once the relay event is defined in RelayEventMap.
 			throw new CredentialResolutionError(
-				`You haven't connected the credential '${credentialsResolveMetadata.name}' yet. Open it and connect to run this workflow.`,
+				`'${credentialsResolveMetadata.name}' private credential is not connected for you. Connect yours to execute this workflow manually.`,
 				{ cause: error },
 			);
 		}
