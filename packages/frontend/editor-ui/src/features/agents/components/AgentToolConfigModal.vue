@@ -2,10 +2,10 @@
 /**
  * Configure one agent tool entry (node/workflow/custom) or one MCP server.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nRadioButtons, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 
@@ -74,6 +74,7 @@ const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
 const activeView = ref<'config' | 'raw'>('config');
+const approvalRequired = ref(false);
 
 const initialNode = computed<INode | null>(() =>
 	isMcpTool.value
@@ -124,6 +125,16 @@ const viewOptions = computed(() => [
 const canRender = computed(
 	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
 );
+const canSave = computed(() => isCustomTool.value || isValid.value);
+const showApprovalSetting = computed(() => !isMcpTool.value && toolModalData.value !== null);
+
+watch(
+	() => toolModalData.value?.toolRef,
+	(toolRef) => {
+		approvalRequired.value = Boolean(toolRef?.requireApproval);
+	},
+	{ immediate: true },
+);
 
 const headerKind = computed<'node' | 'workflow' | 'custom' | 'mcp'>(() => {
 	if (isCustomTool.value) return 'custom';
@@ -152,8 +163,21 @@ function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
 
+function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
+	const updatedRef = { ...ref };
+	if (approvalRequired.value) {
+		updatedRef.requireApproval = true;
+	} else {
+		delete updatedRef.requireApproval;
+	}
+	return updatedRef;
+}
+
 function handleConfirm() {
 	if (isCustomTool.value) {
+		const toolData = toolModalData.value;
+		if (!toolData) return;
+		toolData.onConfirm(withApprovalRequirement(toolData.toolRef));
 		closeDialog();
 		return;
 	}
@@ -179,7 +203,7 @@ function handleConfirm() {
 			description: wc.getDescription(),
 			allOutputs: wc.getAllOutputs(),
 		});
-		toolData.onConfirm(updatedRef);
+		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();
 		return;
 	}
@@ -189,7 +213,7 @@ function handleConfirm() {
 	if (!currentNode) return;
 	if (!toolData) return;
 	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentNode);
-	toolData.onConfirm(updatedRef);
+	toolData.onConfirm(withApprovalRequirement(updatedRef));
 	closeDialog();
 }
 
@@ -246,6 +270,17 @@ function handleNodeNameUpdate(name: string) {
 					(isCustomTool || activeView === 'raw') && $style.codeContentWrapper,
 				]"
 			>
+				<div v-if="showApprovalSetting" :class="$style.approvalRow">
+					<div :class="$style.approvalText">
+						<N8nText size="small" :bold="true">
+							{{ i18n.baseText('agents.toolConfig.approval.label') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.toolConfig.approval.hint') }}
+						</N8nText>
+					</div>
+					<N8nSwitch2 v-model="approvalRequired" data-test-id="agent-tool-approval-toggle" />
+				</div>
 				<AgentToolConfigCustomContent
 					v-if="isCustomTool"
 					:code="customToolCode"
@@ -311,16 +346,11 @@ function handleNodeNameUpdate(name: string) {
 				</N8nButton>
 				<div :class="$style.footerActions">
 					<N8nButton variant="subtle" @click="handleCancel">
-						{{
-							isCustomTool
-								? i18n.baseText('generic.close')
-								: i18n.baseText('agents.toolConfig.cancel')
-						}}
+						{{ i18n.baseText('agents.toolConfig.cancel') }}
 					</N8nButton>
 					<N8nButton
-						v-if="!isCustomTool"
 						variant="solid"
-						:disabled="!isValid"
+						:disabled="!canSave"
 						data-test-id="agent-tool-config-save"
 						@click="handleConfirm"
 					>
@@ -362,6 +392,25 @@ function handleNodeNameUpdate(name: string) {
 	:global(.ndv-connection-hint-notice) {
 		display: none;
 	}
+}
+
+.approvalRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	margin-right: var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-background-light);
+}
+
+.approvalText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
 }
 
 .codeContentWrapper {

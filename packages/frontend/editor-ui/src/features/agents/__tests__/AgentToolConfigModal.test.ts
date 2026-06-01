@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, onMounted, ref, nextTick } from 'vue';
+import { defineComponent, onMounted, nextTick } from 'vue';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -31,18 +31,19 @@ function createToolSettingsStub(emitValid: boolean) {
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
 			// the initialNode's credentials so we can assert the round-trip keeps them.
+			const node = {
+				id: 'mocked-uuid',
+				name: props.initialNode?.name ?? '',
+				type: props.initialNode?.type ?? '',
+				typeVersion: props.initialNode?.typeVersion ?? 1,
+				parameters: { edited: true },
+				credentials: props.initialNode?.credentials,
+				position: [0, 0],
+			};
 			expose({
-				node: ref({
-					id: 'mocked-uuid',
-					name: props.initialNode?.name ?? '',
-					type: props.initialNode?.type ?? '',
-					typeVersion: props.initialNode?.typeVersion ?? 1,
-					parameters: { edited: true },
-					credentials: props.initialNode?.credentials,
-					position: [0, 0],
-				}),
+				getNode: () => node,
 				handleChangeName: vi.fn(),
-				nodeTypeDescription: ref({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+				getNodeTypeDescription: () => ({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
 			});
 			onMounted(() => {
 				emit('update:valid', emitValid);
@@ -60,9 +61,9 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 		emits: ['update:valid', 'update:node-name'],
 		setup(props, { emit, expose }) {
 			expose({
-				name: ref(props.initialRef?.name ?? ''),
-				description: ref(props.initialRef?.description ?? ''),
-				allOutputs: ref(props.initialRef?.allOutputs ?? false),
+				getName: () => props.initialRef?.name ?? '',
+				getDescription: () => props.initialRef?.description ?? '',
+				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {
@@ -141,9 +142,15 @@ function renderModal({
 			stubs: {
 				ElDialog: ElDialogStub,
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
-				NodeToolSettingsContent: createToolSettingsStub(valid),
-				WorkflowToolConfigContent: createWorkflowToolConfigStub(valid),
-				AgentCustomToolViewer: {
+				AgentToolConfigNodeContent: createToolSettingsStub(valid),
+				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
+				N8nSwitch2: {
+					props: ['modelValue'],
+					emits: ['update:modelValue'],
+					template:
+						'<button data-test-id="agent-tool-approval-toggle" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
+				},
+				AgentToolConfigCustomContent: {
 					props: ['code'],
 					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
 				},
@@ -220,6 +227,18 @@ describe('AgentToolConfigModal', () => {
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
 	});
 
+	it('saves the approval requirement on node tool refs', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({ valid: true, onConfirm, ref: toolRef() });
+
+		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [updated] = onConfirm.mock.calls[0];
+		expect(updated).toMatchObject({ type: 'node', requireApproval: true });
+	});
+
 	it('closes the modal on Cancel without calling onConfirm', async () => {
 		const onConfirm = vi.fn();
 		const { getAllByRole } = renderModal({ valid: true, onConfirm });
@@ -257,7 +276,39 @@ describe('AgentToolConfigModal', () => {
 		expect(getByTestId('agent-custom-tool-viewer').textContent).toContain(customTool.code);
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
 		expect(queryByTestId('workflow-tool-config-content')).toBeNull();
-		expect(queryByTestId('agent-tool-config-save')).toBeNull();
+		expect(queryByTestId('agent-tool-config-save')).not.toBeNull();
+	});
+
+	it('saves the approval requirement on custom tool refs', async () => {
+		const onConfirm = vi.fn();
+		const customTool: CustomToolEntry = {
+			code: 'export default new Tool("lookup")',
+			descriptor: {
+				name: 'Lookup customer',
+				description: 'Finds a customer',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		};
+		const { getByTestId } = renderModal({
+			valid: true,
+			onConfirm,
+			ref: { type: 'custom', id: 'custom-tool-1' },
+			customTool,
+		});
+
+		await fireEvent.click(getByTestId('agent-tool-approval-toggle'));
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [updated] = onConfirm.mock.calls[0];
+		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
 	});
 
 	it('renders the workflow-tool config content for workflow refs', () => {

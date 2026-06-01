@@ -29,7 +29,7 @@ export interface ApprovalConfig {
 /**
  * Wrap a BuiltTool with an approval gate that suspends before execution and
  * waits for human confirmation. Used by Tool.build() (when .requireApproval()
- * or .needsApprovalFn() is set) and by Agent.build() (for global approval).
+ * or .needsApprovalFn() is set) and per-tool JSON config reconstruction.
  *
  * The wrapped tool has suspendSchema/resumeSchema set, making it an
  * interruptible tool that uses the existing suspend/resume mechanism.

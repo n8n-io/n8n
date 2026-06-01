@@ -5,7 +5,7 @@ import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
+import { Tool } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
@@ -79,8 +79,6 @@ export interface AgentSnapshot {
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
-	/** Whether `.requireToolApproval()` was called. */
-	requireToolApproval: boolean;
 }
 
 /**
@@ -143,8 +141,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private telemetryConfig?: BuiltTelemetry;
 
 	private middlewares: AgentMiddleware[] = [];
-
-	private requireToolApprovalValue = false;
 
 	private mcpClients: McpClient[] = [];
 
@@ -407,16 +403,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Require human approval before any tool executes.
-	 * Tools that already have .suspend()/.resume() (suspendSchema) are skipped.
-	 * Requires .checkpoint() to be set.
-	 */
-	requireToolApproval(): this {
-		this.requireToolApprovalValue = true;
-		return this;
-	}
-
-	/**
 	 * Attach a workspace to this agent. Workspace tools and instructions
 	 * are injected at build time.
 	 */
@@ -591,7 +577,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
-			requireToolApproval: this.requireToolApprovalValue,
 		};
 	}
 
@@ -746,27 +731,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalTools.push(...wsTools);
 		}
 
-		let finalStaticTools = finalTools;
-		let finalDeferredTools = configuredDeferredTools;
-		if (this.requireToolApprovalValue) {
-			finalStaticTools = finalTools.map((t) =>
-				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
-					? t
-					: wrapToolForApproval(t, { requireApproval: true }),
-			);
-			finalDeferredTools = configuredDeferredTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const finalStaticTools = finalTools;
+		const finalDeferredTools = configuredDeferredTools;
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
 		const staticNeedsCheckpoint =
 			finalStaticTools.some((t) => t.suspendSchema) ||
 			finalDeferredTools.some((t) => t.suspendSchema);
-		const mcpNeedsCheckpoint =
-			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
-			this.mcpClients.some((c) => c.declaresApproval());
+		const mcpNeedsCheckpoint = this.mcpClients.some((c) => c.declaresApproval());
 		if ((staticNeedsCheckpoint || mcpNeedsCheckpoint) && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -777,15 +750,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		let mcpTools = mcpToolLists.flat();
-
-		// Apply global requireToolApproval to MCP tools (per-server approval is already
-		// handled inside McpClient/McpConnection.listTools()).
-		if (this.requireToolApprovalValue) {
-			mcpTools = mcpTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const mcpTools = mcpToolLists.flat();
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);

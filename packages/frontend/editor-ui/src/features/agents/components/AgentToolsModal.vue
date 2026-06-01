@@ -286,6 +286,7 @@ interface ConfiguredToolView {
 	node: INode;
 	nodeType: INodeTypeDescription;
 	missingCredentials: boolean;
+	requireApproval: boolean;
 }
 
 interface ConfiguredMcpServerView {
@@ -314,6 +315,7 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 			node,
 			nodeType,
 			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+			requireApproval: ref.requireApproval === true,
 		});
 	}
 	return out;
@@ -351,6 +353,7 @@ interface ConfiguredWorkflowView {
 	ref: AgentJsonToolRef;
 	name: string;
 	description?: string;
+	requireApproval: boolean;
 }
 
 interface WorkingWorkflowEntry extends WorkingToolEntry {
@@ -365,6 +368,7 @@ const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
 			ref,
 			name: ref.name ?? (ref.workflow as string),
 			description: ref.description,
+			requireApproval: ref.requireApproval === true,
 		})),
 );
 
@@ -677,6 +681,7 @@ function commit() {
 							:node-type="tool.nodeType"
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
+							:require-approval="tool.requireApproval"
 							mode="configured"
 							:class="$style.toolsListItem"
 							@configure="handleConfigureTool(tool)"
@@ -687,6 +692,7 @@ function commit() {
 							mode="configured"
 							:name="wf.name"
 							:description="wf.description"
+							:require-approval="wf.requireApproval"
 							row-test-id="agent-tools-connected-workflow-row"
 							configure-test-id="agent-tools-connected-workflow-configure"
 							@configure="handleConfigureTool(wf)"

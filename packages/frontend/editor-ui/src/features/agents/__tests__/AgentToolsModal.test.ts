@@ -54,6 +54,7 @@ vi.mock('@n8n/i18n', () => {
 				'agents.tools.configure': 'Configure',
 				'agents.tools.added': 'Tool added',
 				'agents.tools.addCredentials': 'Add credentials',
+				'agents.tools.needsApproval': 'Needs approval',
 			};
 			return map[key] ?? key;
 		},
@@ -310,6 +311,14 @@ describe('AgentToolsModal', () => {
 		const { getByTestId } = renderComponent(defaultProps([toolRef(SLACK.name)]));
 		const connected = getByTestId('agent-tools-connected-list');
 		expect(connected.textContent).toContain(SLACK.name);
+	});
+
+	it('shows an approval badge for configured tools that require approval', () => {
+		const { getByTestId } = renderComponent(
+			defaultProps([{ ...toolRef(SLACK.name), requireApproval: true }]),
+		);
+		const connected = getByTestId('agent-tools-connected-list');
+		expect(connected.textContent).toContain('Needs approval');
 	});
 
 	it('surfaces the "Add credentials" chip on rows missing credentials', () => {

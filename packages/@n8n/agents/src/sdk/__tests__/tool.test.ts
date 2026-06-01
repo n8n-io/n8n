@@ -249,10 +249,10 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 });
 
 // ---------------------------------------------------------------------------
-// wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)
+// wrapToolForApproval — config: { requireApproval: true }
 // ---------------------------------------------------------------------------
 
-describe('wrapToolForApproval — config: { requireApproval: true } (agent-level wrapping)', () => {
+describe('wrapToolForApproval — config: { requireApproval: true }', () => {
 	it('always suspends regardless of original tool settings', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
