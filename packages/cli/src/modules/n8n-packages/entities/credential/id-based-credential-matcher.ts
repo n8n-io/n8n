@@ -69,29 +69,29 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 			},
 			select: { credentialsId: true },
 		});
-		const candidateIds = new Set(ownedByTargetProject.map((row) => row.credentialsId));
+		const successfullyMatchedIds = new Set(ownedByTargetProject.map((row) => row.credentialsId));
 
-		const unownedIds = uniqueIds.filter((id) => !candidateIds.has(id));
-		if (unownedIds.length > 0) {
+		const idsNotOwnedByTargetProject = uniqueIds.filter((id) => !successfullyMatchedIds.has(id));
+		if (idsNotOwnedByTargetProject.length > 0) {
 			const globalCredentials = await this.credentialsRepository.find({
-				where: { id: In(unownedIds), isGlobal: true },
+				where: { id: In(idsNotOwnedByTargetProject), isGlobal: true },
 				select: { id: true },
 			});
 			for (const credential of globalCredentials) {
-				candidateIds.add(credential.id);
+				successfullyMatchedIds.add(credential.id);
 			}
 		}
 
-		if (candidateIds.size === 0) {
-			return candidateIds;
+		if (successfullyMatchedIds.size === 0) {
+			return successfullyMatchedIds;
 		}
 
 		const readableIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
-			[...candidateIds],
+			[...successfullyMatchedIds],
 			user,
 			READ_SCOPE,
 		);
 
-		return new Set([...candidateIds].filter((id) => readableIds.has(id)));
+		return new Set([...successfullyMatchedIds].filter((id) => readableIds.has(id)));
 	}
 }

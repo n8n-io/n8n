@@ -23,8 +23,15 @@ export interface CredentialBinding {
 	targetId: string;
 }
 
+/**
+ * Maps each source credential id to the target credential id it resolved to. A `Map` (rather
+ * than a `CredentialBinding[]`) both encodes the one-target-per-source invariant and gives the
+ * remapping step an O(1) `get(sourceId)` lookup when rewriting node credential references.
+ */
+export type CredentialBindings = Map<string, string>;
+
 export interface CredentialResolution {
-	successes: CredentialBinding[];
+	successes: CredentialBindings;
 	failures: CredentialResolutionFailure[];
 }
 
@@ -61,8 +68,9 @@ export function createFailure(
 	};
 }
 
+/** Flattens the internal lookup `Map` into the serializable pairs exposed via events/responses. */
 export function resolvedBindingsToSummaries(
-	bindings: CredentialBinding[],
+	successes: CredentialBindings,
 ): Array<{ sourceId: string; targetId: string }> {
-	return bindings.map(({ sourceId, targetId }) => ({ sourceId, targetId }));
+	return [...successes].map(([sourceId, targetId]) => ({ sourceId, targetId }));
 }

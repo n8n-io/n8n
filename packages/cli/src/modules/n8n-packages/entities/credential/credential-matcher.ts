@@ -29,11 +29,11 @@ export abstract class CredentialMatcher {
 	): Promise<CredentialResolution> {
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
 
-		const successes = await this.resolve(known, context);
-		const matchedSourceIds = new Set(successes.map((binding) => binding.sourceId));
+		const bindings = await this.resolve(known, context);
+		const successes = new Map(bindings.map(({ sourceId, targetId }) => [sourceId, targetId]));
 
 		const notFoundFailures = known
-			.filter((reference) => !matchedSourceIds.has(reference.id))
+			.filter((reference) => !successes.has(reference.id))
 			.map((reference) => createFailure(reference, 'not_found'));
 
 		return { successes, failures: [...unknownTypeFailures, ...notFoundFailures] };
