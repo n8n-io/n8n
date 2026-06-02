@@ -39,7 +39,6 @@ import {
 	type SandboxWorkspace,
 	writeFileViaSandbox,
 } from './sandbox-fs';
-import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
 
 const hostRequire = createRequire(__filename);
 const NOOP_LOGGER: Logger = {
@@ -58,7 +57,6 @@ type SandboxWorkspaceSetupStep =
 	| 'list-node-types'
 	| 'write-workspace-files'
 	| 'write-curated-examples'
-	| 'materialize-knowledge-base'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
@@ -732,13 +730,6 @@ export async function setupSandboxWorkspace(
 				context.logger,
 			),
 	);
-	await setupStep('materialize-knowledge-base', async () => {
-		await materializeKnowledgeBaseIntoWorkspace({
-			workspace,
-			root,
-			logger: context.logger,
-		});
-	});
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {
