@@ -9,10 +9,13 @@ import {
 	type AgentModelsByProvider,
 } from '../model-providers';
 
-// The catalog is project-scoped (the API call is keyed by project), so cache and
-// de-duplicate in-flight requests per project rather than globally.
+// The catalog is project-scoped (the API call is keyed by project), so cache,
+// de-duplicate in-flight requests, and track loading state per project rather
+// than globally. A single loading flag would be flipped off by whichever
+// concurrent fetch finishes first, even if the active project is still loading.
 const catalogByProject = ref<Record<string, ProviderCatalog>>({});
 const fetchPromises = new Map<string, Promise<void>>();
+const loadingProjects = ref(new Set<string>());
 
 function createEmptyModelsResponse(): AgentModelsByProvider {
 	const response: AgentModelsByProvider = {};
@@ -39,10 +42,15 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 export function useModelCatalog() {
 	const rootStore = useRootStore();
 	const activeProjectId = ref<string | null>(null);
-	const isLoading = ref(false);
 
 	const catalog = computed<ProviderCatalog>(() =>
 		activeProjectId.value ? (catalogByProject.value[activeProjectId.value] ?? {}) : {},
+	);
+
+	// Loading reflects the project this instance last requested, so a concurrent
+	// fetch for a different project can't clear it prematurely.
+	const isLoading = computed(() =>
+		activeProjectId.value ? loadingProjects.value.has(activeProjectId.value) : false,
 	);
 
 	async function ensureLoaded(projectId: string) {
@@ -51,22 +59,21 @@ export function useModelCatalog() {
 
 		let fetchPromise = fetchPromises.get(projectId);
 		if (!fetchPromise) {
+			loadingProjects.value.add(projectId);
 			fetchPromise = getModelCatalog(rootStore.restApiContext, projectId)
 				.then((result) => {
 					catalogByProject.value = { ...catalogByProject.value, [projectId]: result };
 				})
 				.catch(() => {
 					fetchPromises.delete(projectId);
+				})
+				.finally(() => {
+					loadingProjects.value.delete(projectId);
 				});
 			fetchPromises.set(projectId, fetchPromise);
 		}
 
-		isLoading.value = true;
-		try {
-			await fetchPromise;
-		} finally {
-			isLoading.value = false;
-		}
+		await fetchPromise;
 	}
 
 	function getModelsForProvider(provider: string): ModelInfo[] {
