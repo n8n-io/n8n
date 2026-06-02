@@ -1652,7 +1652,7 @@ describe('AgentRuntime.generate() — structured output', () => {
 
 describe('AgentRuntime.stream() — provider-executed tool timing', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('emits tool-execution-start/end for a provider-executed tool result', async () => {

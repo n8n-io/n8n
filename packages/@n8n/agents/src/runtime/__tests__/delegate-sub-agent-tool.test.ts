@@ -35,7 +35,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('passes model input and parent runtime context to the runner callback', async () => {
-		const runSubAgent = jest
+		const runSubAgent = vi
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({
 				status: 'completed',
@@ -66,7 +66,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('forwards the parent persistence thread id and resource id', async () => {
-		const runSubAgent = jest
+		const runSubAgent = vi
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
@@ -85,7 +85,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('omits parent persistence fields when the parent run has no persistence scope', async () => {
-		const runSubAgent = jest
+		const runSubAgent = vi
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
@@ -98,7 +98,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
-		const runSubAgent = jest
+		const runSubAgent = vi
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
@@ -156,7 +156,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('tracks child count per parent run id', async () => {
-		const runSubAgent = jest
+		const runSubAgent = vi
 			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
 			.mockResolvedValue({
 				status: 'completed',
@@ -208,7 +208,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('returns a failed output for invalid task names', async () => {
-		const runSubAgent = jest.fn();
+		const runSubAgent = vi.fn();
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
 		await expect(
