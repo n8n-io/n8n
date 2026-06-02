@@ -516,9 +516,9 @@ describe('McpOAuthService', () => {
 			} as AuthorizationCode;
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
-			authorizationCodeService.markAuthorizationCodeAsUsed.mockImplementation(() =>
-				Promise.reject(new OAuthError('invalid_grant', 'Authorization code already used')),
-			);
+			authorizationCodeService.markAuthorizationCodeAsUsed.mockImplementation(async () => {
+				throw new OAuthError('invalid_grant', 'Authorization code already used');
+			});
 
 			await expect(
 				service.exchangeAuthorizationCode(
