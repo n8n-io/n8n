@@ -5,9 +5,14 @@ import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
 
 const updateNodeMock = vi.fn();
-vi.mock('@vue-flow/core', () => ({
-	useVueFlow: () => ({ updateNode: updateNodeMock }),
-}));
+const findNodeMock = vi.fn();
+vi.mock('@vue-flow/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@vue-flow/core')>();
+	return {
+		...actual,
+		useVueFlow: () => ({ updateNode: updateNodeMock, findNode: findNodeMock }),
+	};
+});
 
 function makeGroupGraphNode(id: string, x: number, y: number): GraphNode {
 	return {
@@ -48,13 +53,16 @@ function makeSelectionEvent(...nodes: GraphNode[]): NodeDragEvent {
 describe('useCanvasNodeGroupDrag', () => {
 	function setup() {
 		updateNodeMock.mockClear();
+		findNodeMock.mockReset();
 		const store = new Map<string, INodeUi>([
 			['a', makeStoredNode('a', 100, 200)],
 			['b', makeStoredNode('b', 300, 200)],
 		]);
+		const groups = [{ id: 'g1', nodeIds: ['a', 'b'] }];
 		const drag = useCanvasNodeGroupDrag({
 			getNodeById: (id) => store.get(id),
-			getGroupById: (id) => (id === 'g1' ? { nodeIds: ['a', 'b'] } : undefined),
+			getGroupById: (id) => groups.find((g) => g.id === id),
+			getAllGroups: () => groups,
 		});
 		return { drag };
 	}
@@ -187,6 +195,33 @@ describe('useCanvasNodeGroupDrag', () => {
 			const aMoves = moves.filter((m) => m.id === 'a');
 			expect(aMoves).toHaveLength(1);
 			expect(aMoves[0].position).toEqual({ x: 110, y: 210 });
+		});
+
+		it('syncs the owning group title bar from live member positions when a member is dragged', () => {
+			// Regression: without this, the title bar's bounding rect only
+			// updates on drag stop, because the canonical mapping reads from
+			// store positions that don't update until then.
+			const { drag } = setup();
+			findNodeMock.mockImplementation((id: string) => {
+				if (id === 'a')
+					return { computedPosition: { x: 120, y: 220 }, dimensions: { width: 100, height: 80 } };
+				if (id === 'b')
+					return { computedPosition: { x: 300, y: 200 }, dimensions: { width: 100, height: 80 } };
+				return undefined;
+			});
+			const member = makeRegularGraphNode('a', 120, 220);
+			drag.onNodeDrag(makeEvent(member));
+			expect(updateNodeMock).toHaveBeenCalledWith('group:g1', expect.any(Function));
+			const updater = updateNodeMock.mock.calls.find((call) => call[0] === 'group:g1')![1];
+			const patch = updater({ data: { foo: 'bar' } });
+			// Live member rect: x=[120..400], y=[200..300].
+			expect(patch.position).toEqual({
+				x: 120 - 56, // GROUP_PADDING_X
+				y: 200 - 40 - 40, // GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT
+			});
+			expect(patch.width).toBe(280 + 2 * 56);
+			expect(patch.data.foo).toBe('bar'); // preserves other data fields
+			expect(patch.data.memberRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
 		});
 
 		it('returns only ordinary-node moves when no group title bar is in the selection', () => {

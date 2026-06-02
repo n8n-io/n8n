@@ -539,6 +539,7 @@ const groupDrag = useCanvasNodeGroupDrag({
 	canvasId: props.id,
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
+	getAllGroups: () => workflowDocumentStore.value.allGroups,
 });
 
 function onNodeDragStart(event: NodeDragEvent) {

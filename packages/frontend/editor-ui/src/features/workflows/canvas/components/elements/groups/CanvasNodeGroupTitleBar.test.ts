@@ -7,6 +7,8 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 
 // Handle requires a <VueFlow> ancestor. Mock it as an inert div so the
 // title bar can render in isolation. Other VueFlow imports are type-only.
+const removeSelectedNodesMock = vi.fn();
+const selectedNodesRef = { value: [] as Array<{ id: string }> };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
@@ -19,6 +21,10 @@ vi.mock('@vue-flow/core', () => ({
 		},
 	},
 	Position: { Left: 'left', Right: 'right' },
+	useVueFlow: () => ({
+		getSelectedNodes: selectedNodesRef,
+		removeSelectedNodes: removeSelectedNodesMock,
+	}),
 }));
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
@@ -119,6 +125,34 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			const root = wrapper.getByTestId('canvas-node-group');
 			expect(root.querySelectorAll('.vue-flow__handle').length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
+	describe('selection clearing on pointerdown', () => {
+		it('clears any pre-existing selection so VueFlow does not drag those nodes along with the group', () => {
+			const prior = [{ id: 'unrelated-node' }];
+			selectedNodesRef.value = prior;
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			const root = wrapper.getByTestId('canvas-node-group');
+			void fireEvent.pointerDown(root);
+			expect(removeSelectedNodesMock).toHaveBeenCalledWith(prior);
+		});
+
+		it('does not clear selection when pointerdown lands on a nodrag interactive child', () => {
+			selectedNodesRef.value = [{ id: 'unrelated-node' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group-ungroup'));
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+
+		it('does not call removeSelectedNodes when nothing is selected', () => {
+			selectedNodesRef.value = [];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
 		});
 	});
 

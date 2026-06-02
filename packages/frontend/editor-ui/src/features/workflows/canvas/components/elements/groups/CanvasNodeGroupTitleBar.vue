@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
-import { Handle, Position } from '@vue-flow/core';
+import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
@@ -92,6 +92,17 @@ watch(
 	},
 	{ immediate: true },
 );
+
+const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
+
+// Clear any pre-existing selection before VueFlow's drag handler
+// snapshots which nodes to drag
+function onWrapperPointerDown(event: PointerEvent) {
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('.nodrag')) return;
+	const selected = getSelectedNodes.value;
+	if (selected.length > 0) removeSelectedNodes(selected);
+}
 </script>
 
 <template>
@@ -103,6 +114,7 @@ watch(
 		}"
 		data-test-id="canvas-node-group"
 		:data-group-id="group.id"
+		@pointerdown="onWrapperPointerDown"
 	>
 		<div :class="$style.titleBar">
 			<Handle
