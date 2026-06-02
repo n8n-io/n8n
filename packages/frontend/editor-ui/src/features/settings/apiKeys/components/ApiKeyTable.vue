@@ -93,6 +93,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 			:items="rows"
 			:items-length="itemsLength"
 			:page-sizes="[10, 25, 50]"
+			:row-props="{ class: $style.row }"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
 		>
@@ -157,5 +158,12 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: flex-end;
+	opacity: 0;
+	transition: opacity var(--transition--fast);
+}
+
+.row:hover .rowActions,
+.row:focus-within .rowActions {
+	opacity: 1;
 }
 </style>
