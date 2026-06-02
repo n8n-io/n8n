@@ -8,6 +8,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
@@ -130,7 +132,9 @@ function setupStores(opts: {
 }) {
 	const pinia = createTestingPinia({ stubActions: false });
 
-	const ndvStore = mockedStore(useNDVStore);
+	const workflowsStore = useWorkflowsStore();
+	workflowsStore.setWorkflowId('test-workflow-id');
+	const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 	ndvStore.activeNode = opts.node;
 
 	const nodeTypesStore = mockedStore(useNodeTypesStore);

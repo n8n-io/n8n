@@ -1,12 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { AgentExecution } from './entities/agent-execution.entity';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -17,8 +17,12 @@ export interface RecordMessageParams {
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
-	/** Where the message originated from, e.g. 'chat', 'slack'. */
+	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
+	/** When the run was triggered by a scheduled task, the task's id (stamped on the session). */
+	taskId?: string;
+	/** Published agent_history version that supplied the scheduled task snapshot. */
+	taskVersionId?: string;
 }
 
 export interface ThreadDetail {
@@ -44,7 +48,17 @@ export class AgentExecutionService {
 	 * Creates or updates the thread, then inserts one row into agent_execution.
 	 */
 	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, agentName, projectId, record, source, hitlStatus } = params;
+		const {
+			threadId,
+			agentId,
+			agentName,
+			projectId,
+			record,
+			source,
+			hitlStatus,
+			taskId,
+			taskVersionId,
+		} = params;
 
 		// Ensure the thread exists and bump its updatedAt
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
@@ -52,6 +66,8 @@ export class AgentExecutionService {
 			agentId,
 			agentName,
 			projectId,
+			taskId,
+			taskVersionId,
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);

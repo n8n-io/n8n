@@ -1,7 +1,7 @@
 /**
  * Prepares and caches a Daytona Image descriptor with config files,
  * node_modules, and runtime skills pre-installed, and resolves a versioned
- * named snapshot (`n8n/instance-ai:<n8nVersion>-<setupHash>`) for sandbox
+ * named snapshot (`n8n/instance-ai:<n8nVersion>-<skillsHash>-<knowledgeBaseHash>`) for sandbox
  * creation.
  *
  * Two strategies for `ensureSnapshot`:
@@ -20,10 +20,13 @@
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
-import { createHash } from 'node:crypto';
 import { dirname as posixDirname } from 'node:path/posix';
 
 import { loadDaytona } from './lazy-daytona';
+import {
+	buildKnowledgeBaseWorkspaceBundle,
+	type KnowledgeBaseWorkspaceBundle,
+} from '../knowledge-base/materialize-knowledge-base';
 import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
@@ -37,7 +40,8 @@ export interface CreateSnapshotOptions {
 }
 
 const DAYTONA_WORKSPACE_ROOT = '/home/daytona/workspace';
-const SETUP_HASH_LENGTH = 12;
+const EMPTY_RUNTIME_SKILLS_HASH = '000000000000';
+const EMPTY_KNOWLEDGE_BASE_HASH = '000000000000';
 
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
 function b64(s: string): string {
@@ -46,6 +50,12 @@ function b64(s: string): string {
 
 function shellQuote(value: string): string {
 	return `'${value.replaceAll("'", "'\"'\"'")}'`;
+}
+
+function workspaceFilesToImageRunCommands(files: Map<string, string>): string[] {
+	return Array.from(files, ([filePath, content]) => {
+		return `mkdir -p ${shellQuote(posixDirname(filePath))} && echo '${b64(content)}' | base64 -d > ${shellQuote(filePath)}`;
+	});
 }
 
 function isAlreadyExistsError(error: unknown): error is TDaytonaError {
@@ -60,10 +70,12 @@ export class SnapshotManager {
 
 	private snapshotPromise: Promise<string | null> | null = null;
 
-	private setupHashPromise: Promise<string> | null = null;
+	private snapshotSuffixPromise: Promise<string> | null = null;
 
 	private runtimeSkillBundlePromise: ReturnType<typeof buildRuntimeSkillWorkspaceBundle> | null =
 		null;
+
+	private knowledgeBaseBundleCache: KnowledgeBaseWorkspaceBundle | null = null;
 
 	constructor(
 		private readonly baseImage: string | undefined,
@@ -82,17 +94,16 @@ export class SnapshotManager {
 	private async prepareImage(): Promise<Image> {
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
 		const runtimeSkillBundle = await this.runtimeSkillBundle();
-		const runtimeSkillCommands =
-			runtimeSkillBundle === undefined
-				? []
-				: [...runtimeSkillBundle.files].map(([filePath, content]) => {
-						return `mkdir -p ${shellQuote(posixDirname(filePath))} && echo '${b64(content)}' | base64 -d > ${shellQuote(filePath)}`;
-					});
+		const knowledgeBaseBundle = this.knowledgeBaseBundle();
+		const bakedWorkspaceCommands = [
+			...(runtimeSkillBundle ? workspaceFilesToImageRunCommands(runtimeSkillBundle.files) : []),
+			...workspaceFilesToImageRunCommands(knowledgeBaseBundle.files),
+		];
 
 		const { Image } = loadDaytona();
 		let image = Image.base(base)
 			.runCommands(
-				`mkdir -p ${DAYTONA_WORKSPACE_ROOT}/src ${DAYTONA_WORKSPACE_ROOT}/chunks ${DAYTONA_WORKSPACE_ROOT}/node-types`,
+				`mkdir -p ${DAYTONA_WORKSPACE_ROOT}/src ${DAYTONA_WORKSPACE_ROOT}/chunks ${DAYTONA_WORKSPACE_ROOT}/node-types ${DAYTONA_WORKSPACE_ROOT}/knowledge-base/best-practices`,
 			)
 			.runCommands(
 				`echo '${b64(PACKAGE_JSON)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/package.json`,
@@ -100,8 +111,8 @@ export class SnapshotManager {
 				`echo '${b64(BUILD_MJS)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/build.mjs`,
 			);
 
-		if (runtimeSkillCommands.length > 0) {
-			image = image.runCommands(...runtimeSkillCommands);
+		if (bakedWorkspaceCommands.length > 0) {
+			image = image.runCommands(...bakedWorkspaceCommands);
 		}
 
 		image = image.runCommands(`cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`);
@@ -111,6 +122,8 @@ export class SnapshotManager {
 			dockerfileLength: image.dockerfile.length,
 			runtimeSkillsHash: runtimeSkillBundle?.skillsHash,
 			runtimeSkillFiles: runtimeSkillBundle?.files.size ?? 0,
+			knowledgeBaseHash: knowledgeBaseBundle.contentHash,
+			knowledgeBaseFiles: knowledgeBaseBundle.files.size,
 		});
 
 		return image;
@@ -180,24 +193,16 @@ export class SnapshotManager {
 		return result;
 	}
 
-	private async setupHash(): Promise<string> {
-		this.setupHashPromise ??= (async () => {
+	private async snapshotSuffix(): Promise<string> {
+		this.snapshotSuffixPromise ??= (async () => {
 			const runtimeSkillBundle = await this.runtimeSkillBundle();
-			return createHash('sha256')
-				.update(
-					JSON.stringify({
-						baseImage: this.baseImage ?? 'daytonaio/sandbox:0.5.0',
-						packageJson: PACKAGE_JSON,
-						tsconfigJson: TSCONFIG_JSON,
-						buildMjs: BUILD_MJS,
-						skillsHash: runtimeSkillBundle?.skillsHash ?? '',
-					}),
-				)
-				.digest('hex')
-				.slice(0, SETUP_HASH_LENGTH);
+			const knowledgeBaseBundle = this.knowledgeBaseBundle();
+			const skillsHash = runtimeSkillBundle?.skillsHash ?? EMPTY_RUNTIME_SKILLS_HASH;
+			const knowledgeBaseHash = knowledgeBaseBundle.contentHash ?? EMPTY_KNOWLEDGE_BASE_HASH;
+			return `${skillsHash}-${knowledgeBaseHash}`;
 		})();
 
-		return await this.setupHashPromise;
+		return await this.snapshotSuffixPromise;
 	}
 
 	private async runtimeSkillBundle(): ReturnType<typeof buildRuntimeSkillWorkspaceBundle> {
@@ -210,18 +215,27 @@ export class SnapshotManager {
 		return await this.runtimeSkillBundlePromise;
 	}
 
+	private knowledgeBaseBundle(): KnowledgeBaseWorkspaceBundle {
+		this.knowledgeBaseBundleCache ??= buildKnowledgeBaseWorkspaceBundle({
+			root: DAYTONA_WORKSPACE_ROOT,
+		});
+
+		return this.knowledgeBaseBundleCache;
+	}
+
 	private async snapshotName(): Promise<string> {
 		if (!this.n8nVersion) {
 			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
-		return `n8n/instance-ai:${this.n8nVersion}-${await this.setupHash()}`;
+		return `n8n/instance-ai:${this.n8nVersion}-${await this.snapshotSuffix()}`;
 	}
 
 	/** Invalidate cached image (e.g., when base image changes). */
 	invalidate(): void {
 		this.cachedImage = null;
 		this.snapshotPromise = null;
-		this.setupHashPromise = null;
+		this.snapshotSuffixPromise = null;
 		this.runtimeSkillBundlePromise = null;
+		this.knowledgeBaseBundleCache = null;
 	}
 }

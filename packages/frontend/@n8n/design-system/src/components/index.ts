@@ -41,6 +41,7 @@ export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
+export { default as N8nHoverCard } from './N8nHoverCard';
 export {
 	default as N8nIcon,
 	type IconName,
@@ -66,6 +67,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nPagination } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
