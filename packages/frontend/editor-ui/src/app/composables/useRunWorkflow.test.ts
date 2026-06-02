@@ -14,11 +14,6 @@ import type {
 } from 'n8n-workflow';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useChat } from '@n8n/chat/composables';
 import type { INodeUi, IStartRunData } from '@/Interface';
@@ -265,16 +260,6 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
-let workflowState: WorkflowState;
-
 describe('useRunWorkflow({ router })', () => {
 	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -298,9 +283,6 @@ describe('useRunWorkflow({ router })', () => {
 		workflowsStore = useWorkflowsStore();
 		agentRequestStore = useAgentRequestStore();
 		executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('123'));
-
-		workflowState = vi.mocked(useWorkflowState());
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers();
@@ -333,22 +315,6 @@ describe('useRunWorkflow({ router })', () => {
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
 				'workflowRun.noActiveConnectionToTheServer',
 			);
-		});
-
-		it('should use the passed-in workflowState when injection is unavailable', async () => {
-			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
-
-			const setActiveExecutionId = vi.spyOn(executionStateStore, 'setActiveExecutionId');
-			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
-
-			vi.mocked(pushConnectionStore).isConnected = true;
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
-				executionId: '123',
-				waitingForWebhook: false,
-			});
-
-			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
-			expect(setActiveExecutionId).toHaveBeenCalled();
 		});
 
 		it('should successfully run a workflow', async () => {
@@ -1477,7 +1443,7 @@ describe('useRunWorkflow({ router })', () => {
 				startedAt: new Date('2025-04-01T00:00:00.000Z'),
 				createdAt: new Date('2025-04-01T00:00:00.000Z'),
 			};
-			const markStoppedSpy = vi.spyOn(workflowState, 'markExecutionAsStopped');
+			const markStoppedSpy = vi.spyOn(executionStateStore, 'markExecutionAsStopped');
 			const getExecutionSpy = vi.spyOn(workflowsStore, 'getExecution');
 
 			const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');

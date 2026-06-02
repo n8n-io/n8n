@@ -2,7 +2,6 @@ import { WorkflowStateKey } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -10,13 +9,8 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import type { IExecutionsStopData } from '@/features/execution/executions/executions.types';
-import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { hasInjectionContext, inject, toValue, type MaybeRefOrGetter } from 'vue';
-import { useDocumentTitle } from './useDocumentTitle';
-import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 export interface UseWorkflowStateOptions {
 	/**
@@ -52,60 +46,6 @@ export function useWorkflowState(options: UseWorkflowStateOptions = {}) {
 		return createWorkflowDocumentId(resolveWorkflowId());
 	}
 
-	////
-	// Workflow editing state
-	////
-
-	////
-	// Execution
-	////
-
-	const documentTitle = useDocumentTitle();
-
-	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const workflowDocumentStore = useWorkflowDocumentStore(resolveDocumentId());
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			workflowDocumentStore.documentId,
-		);
-		const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-
-		workflowExecutionStateStore.setActiveExecutionId(undefined);
-		workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
-		workflowExecutionStateStore.setExecutionWaitingForWebhook(false);
-
-		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-
-		if (typeof activeExecutionId === 'string') {
-			const executionDataStore = useExecutionDataStore(createExecutionDataId(activeExecutionId));
-			executionDataStore.clearExecutionStartedData();
-			executionDataStore.markAsStopped(stopData);
-		} else if (activeExecutionId === null) {
-			// Pending scaffold: filter the IN_PROGRESS placeholder data and
-			// mirror status onto the pendingExecution ref so the UI sees the canceled state.
-			const executionDataStore = useExecutionDataStore(
-				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
-			);
-			executionDataStore.clearExecutionStartedData();
-			executionDataStore.markAsStopped(stopData);
-			if (stopData) {
-				workflowExecutionStateStore.applyStopDataToPendingExecution(stopData);
-			}
-		} else {
-			// activeExecutionId === undefined: fall back to displayedExecutionId for the
-			// stop-race-with-finished case where active was just cleared.
-			const displayedExecutionId = workflowExecutionStateStore.displayedExecutionId;
-			if (typeof displayedExecutionId === 'string') {
-				const executionDataStore = useExecutionDataStore(
-					createExecutionDataId(displayedExecutionId),
-				);
-				executionDataStore.clearExecutionStartedData();
-				executionDataStore.markAsStopped(stopData);
-			}
-		}
-
-		clearPopupWindowState();
-	}
-
 	function resetState() {
 		const wid = resolveWorkflowId();
 		if (!wid) {
@@ -124,11 +64,7 @@ export function useWorkflowState(options: UseWorkflowStateOptions = {}) {
 	}
 
 	return {
-		// Workflow editing state
 		resetState,
-
-		// Execution
-		markExecutionAsStopped,
 	};
 }
 

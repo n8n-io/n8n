@@ -15,9 +15,9 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
-import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { createRunExecutionData, type ExecutionSummary } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
@@ -179,6 +179,176 @@ describe('workflowExecutionState.store', () => {
 			expect(store.activeExecutionId).toBe('exec-active');
 			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-9'));
 			expect(executionDataStore.execution?.id).toBe('exec-9');
+		});
+	});
+
+	describe('markExecutionAsStopped', () => {
+		const documentId = createWorkflowDocumentId('test-wf');
+		let store: ReturnType<typeof useWorkflowExecutionStateStore>;
+		let executionDataStore: ReturnType<typeof useExecutionDataStore>;
+
+		beforeEach(() => {
+			store = useWorkflowExecutionStateStore(documentId);
+			store.setActiveExecutionId('test-exec-id');
+
+			executionDataStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
+			executionDataStore.setExecution(
+				createTestWorkflowExecutionResponse({
+					id: 'test-exec-id',
+					status: 'running',
+					startedAt: new Date('2023-01-01T09:00:00Z'),
+					stoppedAt: undefined,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'error' }),
+									createTestTaskData({ executionStatus: 'running' }),
+								],
+								node2: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'waiting' }),
+								],
+							},
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should remove non successful node runs', () => {
+			store.markExecutionAsStopped();
+
+			const runData = executionDataStore.execution?.data?.resultData?.runData;
+			expect(runData?.node1).toHaveLength(1);
+			expect(runData?.node1[0].executionStatus).toBe('success');
+			expect(runData?.node2).toHaveLength(1);
+			expect(runData?.node2[0].executionStatus).toBe('success');
+		});
+
+		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
+			store.markExecutionAsStopped({
+				status: 'canceled',
+				startedAt: new Date('2023-01-01T10:00:00Z'),
+				stoppedAt: new Date('2023-01-01T10:05:00Z'),
+				mode: 'manual',
+			});
+
+			expect(executionDataStore.execution?.status).toBe('canceled');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
+		});
+
+		it('should not update execution data when stopData is not provided', () => {
+			store.markExecutionAsStopped();
+
+			expect(executionDataStore.execution?.status).toBe('running');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
+		});
+
+		describe('when activeExecutionId is null (pending scaffold)', () => {
+			beforeEach(() => {
+				// Reset to pending state instead of the string-id default from outer beforeEach.
+				store.setActiveExecutionId(undefined);
+				store.setPendingExecution(
+					createTestWorkflowExecutionResponse({
+						id: IN_PROGRESS_EXECUTION_ID,
+						status: 'running',
+					}),
+				);
+				// Re-set since promotePendingExecution would have moved it; emulate raw scaffold state.
+				store.setActiveExecutionId(null);
+
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					createTestWorkflowExecutionResponse({
+						id: IN_PROGRESS_EXECUTION_ID,
+						status: 'running',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									node1: [
+										createTestTaskData({ executionStatus: 'success' }),
+										createTestTaskData({ executionStatus: 'error' }),
+									],
+								},
+							},
+						}),
+					}),
+				);
+			});
+
+			it('filters non-success runs in the IN_PROGRESS placeholder store', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				const placeholder = useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID));
+				expect(placeholder.execution?.data?.resultData?.runData?.node1).toHaveLength(1);
+				expect(placeholder.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe(
+					'success',
+				);
+				expect(placeholder.execution?.status).toBe('canceled');
+			});
+
+			it('mirrors stopData onto the pendingExecution ref', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				expect(store.pendingExecution?.status).toBe('canceled');
+				expect(store.pendingExecution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+				expect(store.pendingExecution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
+			});
+		});
+
+		describe('when activeExecutionId is undefined and displayedExecutionId is set', () => {
+			beforeEach(() => {
+				// Simulate post-stop-race: active was just cleared, but displayed still points
+				// at the freshly-fetched finished execution.
+				store.setActiveExecutionId('display-exec');
+				store.setActiveExecutionId(undefined);
+				expect(store.activeExecutionId).toBeUndefined();
+				expect(store.displayedExecutionId).toBe('display-exec');
+
+				useExecutionDataStore(createExecutionDataId('display-exec')).setExecution(
+					createTestWorkflowExecutionResponse({
+						id: 'display-exec',
+						status: 'running',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									node1: [
+										createTestTaskData({ executionStatus: 'success' }),
+										createTestTaskData({ executionStatus: 'error' }),
+									],
+								},
+							},
+						}),
+					}),
+				);
+			});
+
+			it('falls back to displayedExecutionId for filtering and status update', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				const ds = useExecutionDataStore(createExecutionDataId('display-exec'));
+				expect(ds.execution?.data?.resultData?.runData?.node1).toHaveLength(1);
+				expect(ds.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe('success');
+				expect(ds.execution?.status).toBe('canceled');
+			});
 		});
 	});
 

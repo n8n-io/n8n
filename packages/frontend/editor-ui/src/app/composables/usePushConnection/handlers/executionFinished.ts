@@ -7,7 +7,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
@@ -198,13 +197,12 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		// useRunWorkflow needs a workflowState and a workflow document store; inject()
-		// doesn't resolve in this async, non-setup context, so bind both explicitly to
-		// the document whose execution just finished — otherwise the rerun targets the
-		// globally-current workflow instead of this one.
+		// useRunWorkflow needs a workflow document store; inject() doesn't resolve in
+		// this async, non-setup context, so bind it explicitly to the document whose
+		// execution just finished — otherwise the rerun targets the globally-current
+		// workflow instead of this one.
 		const { runWorkflow } = useRunWorkflow({
 			router: opts.router,
-			workflowState: useWorkflowState({ documentId: opts.documentId }),
 			workflowDocumentStore: computed(() => useWorkflowDocumentStore(opts.documentId)),
 		});
 		void runWorkflow({

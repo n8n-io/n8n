@@ -1,8 +1,7 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
-import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
@@ -12,7 +11,6 @@ describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowState: WorkflowState;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
-	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -24,176 +22,6 @@ describe('useWorkflowState', () => {
 		workflowExecutionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId('test-wf'),
 		);
-	});
-
-	describe('markExecutionAsStopped', () => {
-		beforeEach(() => {
-			// Set up active execution in the facade stores
-			workflowExecutionStateStore.setActiveExecutionId('test-exec-id');
-
-			executionDataStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
-			executionDataStore.setExecution(
-				createTestWorkflowExecutionResponse({
-					id: 'test-exec-id',
-					status: 'running',
-					startedAt: new Date('2023-01-01T09:00:00Z'),
-					stoppedAt: undefined,
-					data: createRunExecutionData({
-						resultData: {
-							runData: {
-								node1: [
-									createTestTaskData({ executionStatus: 'success' }),
-									createTestTaskData({ executionStatus: 'error' }),
-									createTestTaskData({ executionStatus: 'running' }),
-								],
-								node2: [
-									createTestTaskData({ executionStatus: 'success' }),
-									createTestTaskData({ executionStatus: 'waiting' }),
-								],
-							},
-						},
-					}),
-				}),
-			);
-		});
-
-		it('should remove non successful node runs', () => {
-			workflowState.markExecutionAsStopped();
-
-			const runData = executionDataStore.execution?.data?.resultData?.runData;
-			expect(runData?.node1).toHaveLength(1);
-			expect(runData?.node1[0].executionStatus).toBe('success');
-			expect(runData?.node2).toHaveLength(1);
-			expect(runData?.node2[0].executionStatus).toBe('success');
-		});
-
-		it('should update execution status, startedAt and stoppedAt when data is provided', () => {
-			workflowState.markExecutionAsStopped({
-				status: 'canceled',
-				startedAt: new Date('2023-01-01T10:00:00Z'),
-				stoppedAt: new Date('2023-01-01T10:05:00Z'),
-				mode: 'manual',
-			});
-
-			expect(executionDataStore.execution?.status).toBe('canceled');
-			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
-			expect(executionDataStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
-		});
-
-		it('should not update execution data when stopData is not provided', () => {
-			workflowState.markExecutionAsStopped();
-
-			expect(executionDataStore.execution?.status).toBe('running');
-			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
-			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
-		});
-
-		describe('when activeExecutionId is null (pending scaffold)', () => {
-			beforeEach(() => {
-				// Reset to pending state instead of the string-id default from outer beforeEach.
-				workflowExecutionStateStore.setActiveExecutionId(undefined);
-				workflowExecutionStateStore.setPendingExecution(
-					createTestWorkflowExecutionResponse({
-						id: IN_PROGRESS_EXECUTION_ID,
-						status: 'running',
-					}),
-				);
-				// Re-set since promotePendingExecution would have moved it; emulate raw scaffold state.
-				workflowExecutionStateStore.setActiveExecutionId(null);
-
-				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
-					createTestWorkflowExecutionResponse({
-						id: IN_PROGRESS_EXECUTION_ID,
-						status: 'running',
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									node1: [
-										createTestTaskData({ executionStatus: 'success' }),
-										createTestTaskData({ executionStatus: 'error' }),
-									],
-								},
-							},
-						}),
-					}),
-				);
-			});
-
-			it('filters non-success runs in the IN_PROGRESS placeholder store', () => {
-				workflowState.markExecutionAsStopped({
-					status: 'canceled',
-					startedAt: new Date('2023-01-01T10:00:00Z'),
-					stoppedAt: new Date('2023-01-01T10:05:00Z'),
-					mode: 'manual',
-				});
-
-				const placeholder = useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID));
-				expect(placeholder.execution?.data?.resultData?.runData?.node1).toHaveLength(1);
-				expect(placeholder.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe(
-					'success',
-				);
-				expect(placeholder.execution?.status).toBe('canceled');
-			});
-
-			it('mirrors stopData onto the pendingExecution ref', () => {
-				workflowState.markExecutionAsStopped({
-					status: 'canceled',
-					startedAt: new Date('2023-01-01T10:00:00Z'),
-					stoppedAt: new Date('2023-01-01T10:05:00Z'),
-					mode: 'manual',
-				});
-
-				expect(workflowExecutionStateStore.pendingExecution?.status).toBe('canceled');
-				expect(workflowExecutionStateStore.pendingExecution?.startedAt).toEqual(
-					new Date('2023-01-01T10:00:00Z'),
-				);
-				expect(workflowExecutionStateStore.pendingExecution?.stoppedAt).toEqual(
-					new Date('2023-01-01T10:05:00Z'),
-				);
-			});
-		});
-
-		describe('when activeExecutionId is undefined and displayedExecutionId is set', () => {
-			beforeEach(() => {
-				// Simulate post-stop-race: active was just cleared, but displayed still points
-				// at the freshly-fetched finished execution.
-				workflowExecutionStateStore.setActiveExecutionId('display-exec');
-				workflowExecutionStateStore.setActiveExecutionId(undefined);
-				expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
-				expect(workflowExecutionStateStore.displayedExecutionId).toBe('display-exec');
-
-				useExecutionDataStore(createExecutionDataId('display-exec')).setExecution(
-					createTestWorkflowExecutionResponse({
-						id: 'display-exec',
-						status: 'running',
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									node1: [
-										createTestTaskData({ executionStatus: 'success' }),
-										createTestTaskData({ executionStatus: 'error' }),
-									],
-								},
-							},
-						}),
-					}),
-				);
-			});
-
-			it('falls back to displayedExecutionId for filtering and status update', () => {
-				workflowState.markExecutionAsStopped({
-					status: 'canceled',
-					startedAt: new Date('2023-01-01T10:00:00Z'),
-					stoppedAt: new Date('2023-01-01T10:05:00Z'),
-					mode: 'manual',
-				});
-
-				const ds = useExecutionDataStore(createExecutionDataId('display-exec'));
-				expect(ds.execution?.data?.resultData?.runData?.node1).toHaveLength(1);
-				expect(ds.execution?.data?.resultData?.runData?.node1[0].executionStatus).toBe('success');
-				expect(ds.execution?.status).toBe('canceled');
-			});
-		});
 	});
 
 	describe('resetState', () => {

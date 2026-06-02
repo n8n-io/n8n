@@ -60,14 +60,12 @@ import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
 	/**
 	 * Binds this instance to a specific workflow document. Pass this from
 	 * async, non-setup callers (e.g. push handlers) where `inject()` can't
@@ -93,10 +91,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowExecutionState = computed(() =>
 		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 	);
-	// `inject()` only resolves inside a setup context; callers from async event
-	// handlers must pass `workflowState` in.
-	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
-
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
 		router: useRunWorkflowOpts.router,
@@ -580,7 +574,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				async () => {
 					const execution = await workflowsStore.getExecution(executionId);
 					if (!['running', 'waiting'].includes(execution?.status as string)) {
-						workflowState.markExecutionAsStopped(stopData);
+						workflowExecutionState.value.markExecutionAsStopped(stopData);
 						return true;
 					}
 
@@ -591,7 +585,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			);
 
 			if (!markedAsStopped) {
-				workflowState.markExecutionAsStopped(stopData);
+				workflowExecutionState.value.markExecutionAsStopped(stopData);
 			}
 		}
 	}

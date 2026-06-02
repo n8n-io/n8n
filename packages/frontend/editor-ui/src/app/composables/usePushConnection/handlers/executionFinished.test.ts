@@ -27,7 +27,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
@@ -56,12 +55,6 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: vi.fn(() => ({
 		runWorkflow,
 	})),
-}));
-
-// continueEvaluationLoop builds a workflowState for useRunWorkflow; useRunWorkflow
-// is mocked, so a no-op workflowState is enough and avoids needing a Pinia here.
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	useWorkflowState: vi.fn(),
 }));
 
 describe('continueEvaluationLoop()', () => {
@@ -114,11 +107,8 @@ describe('continueEvaluationLoop()', () => {
 			nodeData: evalTriggerNodeData,
 			rerunTriggerNode: true,
 		});
-		// The rerun must target the document whose execution just finished, not the
-		// globally-current workflow.
-		expect(useWorkflowState).toHaveBeenCalledWith({ documentId });
-		// useRunWorkflow must also be bound to that same document store so the rerun
-		// serializes and saves the correct workflow rather than the globally-current one.
+		// The rerun must be bound to the document whose execution just finished (not the
+		// globally-current workflow) so it serializes and saves the correct workflow.
 		const runWorkflowOptions = vi.mocked(useRunWorkflow).mock.calls.at(-1)?.[0];
 		expect(runWorkflowOptions?.workflowDocumentStore?.value.documentId).toBe(documentId);
 	});

@@ -4,7 +4,10 @@ import { computed, inject, readonly, ref, type ComputedRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { ExecutionSummary, IRunExecutionData } from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
@@ -15,6 +18,8 @@ import {
 	useExecutionDataStore,
 } from './executionData.store';
 import { useWorkflowDocumentStore, type WorkflowDocumentId } from './workflowDocument.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
@@ -628,6 +633,51 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
+		/**
+		 * Resets this document's execution session after a stop: clears the active
+		 * execution id / executing-node queue / webhook-wait, restores the IDLE
+		 * document title, and marks the relevant executionData store as stopped
+		 * (active id → IN_PROGRESS scaffold → displayed-id fallback for the
+		 * stop-race-with-finished case).
+		 */
+		function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+			const activeId = activeExecutionId.value;
+
+			setActiveExecutionId(undefined);
+			executingNode.clearNodeExecutionQueue();
+			setExecutionWaitingForWebhook(false);
+
+			useDocumentTitle().setDocumentTitle(useWorkflowDocumentStore(documentId).name, 'IDLE');
+
+			if (typeof activeId === 'string') {
+				const executionDataStore = useExecutionDataStore(createExecutionDataId(activeId));
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+			} else if (activeId === null) {
+				// Pending scaffold: filter the IN_PROGRESS placeholder data and
+				// mirror status onto the pendingExecution ref so the UI sees the canceled state.
+				const executionDataStore = useExecutionDataStore(
+					createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+				);
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+				if (stopData) {
+					applyStopDataToPendingExecution(stopData);
+				}
+			} else {
+				// activeExecutionId === undefined: fall back to displayedExecutionId for the
+				// stop-race-with-finished case where active was just cleared.
+				const displayedId = displayedExecutionId.value;
+				if (typeof displayedId === 'string') {
+					const executionDataStore = useExecutionDataStore(createExecutionDataId(displayedId));
+					executionDataStore.clearExecutionStartedData();
+					executionDataStore.markAsStopped(stopData);
+				}
+			}
+
+			clearPopupWindowState();
+		}
+
 		return {
 			documentId,
 			workflowId,
@@ -688,6 +738,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			addActiveNodeExecutionStartedData,
 			renameActiveExecutionNode,
 			resetExecutionState,
+			markExecutionAsStopped,
 			// Events
 			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,
 		};
