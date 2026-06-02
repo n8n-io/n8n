@@ -12,6 +12,7 @@ import {
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
 	isNodeToolsEnabled,
+	isSubAgentsEnabled,
 	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -23,6 +24,8 @@ import {
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
+	type SubAgentSource,
+	type SubAgentRunPolicy,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
@@ -106,6 +109,8 @@ import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -115,9 +120,15 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	subAgentDelegation?: SubAgentDelegationConfig;
 	credentialIntegrations: AgentIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
+}
+
+interface SubAgentDelegationConfig {
+	sourcesById: Record<string, SubAgentSource>;
+	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
 }
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
@@ -396,6 +407,10 @@ export class AgentsService {
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
 		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
+
+	private shouldAttachSubAgents(config: AgentJsonConfig): boolean {
+		return isSubAgentsEnabled(config.subAgents);
 	}
 
 	/**
@@ -982,6 +997,7 @@ export class AgentsService {
 			projectId,
 			credentialProvider,
 			nodeToolsEnabled,
+			subAgentDelegation,
 			credentialIntegrations,
 			integrationType,
 		} = params;
@@ -1062,6 +1078,16 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
+		if (subAgentDelegation !== undefined) {
+			this.attachSubAgentDelegationTool({
+				agent,
+				agentId,
+				projectId,
+				credentialProvider,
+				delegation: subAgentDelegation,
+			});
+		}
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
@@ -1080,6 +1106,38 @@ export class AgentsService {
 		projectId: string,
 	): void {
 		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
+	}
+
+	private attachSubAgentDelegationTool(params: {
+		agent: RuntimeAgent;
+		agentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		delegation: SubAgentDelegationConfig;
+	}): void {
+		const { agent, agentId, projectId, credentialProvider, delegation } = params;
+		agent.tool(
+			createN8nDelegateSubAgentTool({
+				runner: Container.get(SubAgentForegroundRunner),
+				...delegation,
+				projectId,
+				parentAgentId: agentId,
+				credentialProvider,
+				policy: this.buildSubAgentPolicy(),
+				createToolExecutor: (toolCodeByName) =>
+					this.secureRuntime.createToolExecutor(toolCodeByName),
+				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
+			}),
+		);
+		this.logger.debug('Injected delegate_subagent tool', { agentId });
+	}
+
+	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */
+	private buildSubAgentPolicy(): SubAgentRunPolicy {
+		return {
+			maxChildren: this.agentsConfig.subAgentMaxChildren,
+			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+		};
 	}
 
 	/**
@@ -1781,6 +1839,7 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		await this.validateSubAgentRefs(result.config, entity);
 		this.validateConfigRefs(result.config, entity);
 
 		// Task refs resolve against task definition bodies (a separate table), so
@@ -1820,6 +1879,7 @@ export class AgentsService {
 		const descriptionProvided = result.config.description !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
+		const subAgentsProvided = result.config.subAgents !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 		const mcpServersProvided = result.config.mcpServers !== undefined;
@@ -1840,6 +1900,7 @@ export class AgentsService {
 			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
+			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
 			...(tasksProvided ? { tasks: decomposedSchema.tasks } : {}),
@@ -1847,6 +1908,7 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
+		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -2144,6 +2206,46 @@ export class AgentsService {
 		}
 	}
 
+	/**
+	 * Resolve configured sub-agent refs to their saved agents, de-duplicated
+	 * (order preserved) and fetched once each. `agent` is null when the id no
+	 * longer resolves in the project. Shared by save-time validation and
+	 * runtime delegation config.
+	 */
+	private async fetchUniqueSubAgents(
+		refs: Array<{ agentId: string }>,
+		projectId: string,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		const seen = new Set<string>();
+		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
+		for (const { agentId } of refs) {
+			if (seen.has(agentId)) continue;
+			seen.add(agentId);
+			resolved.push({
+				agentId,
+				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
+			});
+		}
+		return resolved;
+	}
+
+	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
+		const refs = config.subAgents?.agents ?? [];
+		if (refs.length === 0) return;
+
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+			if (agentId === entity.id) {
+				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
+			}
+			if (!agent) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
+			}
+			if (!agent.activeVersionId) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
+			}
+		}
+	}
+
 	private getMissingCustomToolIds(
 		config: AgentJsonConfig | null,
 		tools: AgentToolEntries,
@@ -2316,12 +2418,17 @@ export class AgentsService {
 			buildMcpClient,
 		});
 
+		const subAgentDelegation = this.shouldAttachSubAgents(config)
+			? await this.createSubAgentDelegationConfig(config, agentEntity.projectId)
+			: undefined;
+
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
 			agentId: agentEntity.id,
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
+			...(subAgentDelegation !== undefined ? { subAgentDelegation } : {}),
 			credentialIntegrations: agentEntity.integrations ?? [],
 			integrationType,
 		});
@@ -2329,9 +2436,40 @@ export class AgentsService {
 		const toolRegistry = buildToolRegistry(resolvedTools);
 		return { agent: reconstructed, toolRegistry };
 	}
+
+	private async createSubAgentDelegationConfig(
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<SubAgentDelegationConfig | undefined> {
+		const configuredAgents = config.subAgents?.agents ?? [];
+		if (configuredAgents.length === 0) return undefined;
+
+		const sourcesById: Record<string, SubAgentSource> = {};
+		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
+
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
+			if (!agent?.activeVersionId) continue;
+
+			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
+			availableSubAgents.push({
+				id: agentId,
+				name: agent.name,
+				...(agent.description ? { description: agent.description } : {}),
+			});
+		}
+
+		return availableSubAgents.length > 0 ? { sourcesById, availableSubAgents } : undefined;
+	}
 }
 
 function getProviderPrefix(modelId: string): string {
 	const slashIdx = modelId.indexOf('/');
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+}
+
+function normalizeSubAgentsConfig(
+	subAgents: AgentJsonConfig['subAgents'],
+): AgentJsonConfig['subAgents'] {
+	if (!subAgents) return undefined;
+	return { agents: subAgents.agents ?? [] };
 }
