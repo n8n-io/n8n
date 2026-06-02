@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { User, ProjectRepository } from '@n8n/db';
+import type { ProjectRepository, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
@@ -8,20 +8,25 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
+import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { NodeTypes } from '@/node-types';
-import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-helpers');
 jest.mock('@/generic-helpers');
+jest.mock('@/modules/redaction/redaction-enforcement.feature-flag');
 
 describe('WorkflowCreationService', () => {
 	const userHasScopesMock = jest.mocked(userHasScopes);
+	const isRedactionEnforcementEnabledMock = jest.mocked(isRedactionEnforcementEnabled);
 
 	let workflowCreationService: WorkflowCreationService;
 	let credentialsServiceMock: MockProxy<CredentialsService>;
@@ -30,6 +35,7 @@ describe('WorkflowCreationService', () => {
 	let projectServiceMock: MockProxy<ProjectService>;
 	let projectRepositoryMock: MockProxy<ProjectRepository>;
 	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
+	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -40,6 +46,7 @@ describe('WorkflowCreationService', () => {
 		projectServiceMock = mock<ProjectService>();
 		projectRepositoryMock = mock<ProjectRepository>();
 		workflowValidationServiceMock = mock<WorkflowValidationService>();
+		instanceRedactionEnforcementServiceMock = mock<InstanceRedactionEnforcementService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
 		});
@@ -62,6 +69,7 @@ describe('WorkflowCreationService', () => {
 			enterpriseWorkflowServiceMock,
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
+			instanceRedactionEnforcementServiceMock,
 		);
 	});
 
@@ -335,6 +343,195 @@ describe('WorkflowCreationService', () => {
 			 * Assert
 			 */
 			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('redaction policy floor enforcement on create', () => {
+		beforeEach(() => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+			isRedactionEnforcementEnabledMock.mockReturnValue(true);
+		});
+
+		it('seeds non-manual when floor is production-only and no policy is provided', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: false,
+			});
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBe('non-manual');
+		});
+
+		it('seeds all when floor is production+manual and no policy is provided', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: true,
+			});
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBe('all');
+		});
+
+		it('does not seed when floor is not enforced', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: false,
+				production: false,
+				manual: false,
+			});
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+		});
+
+		it('does not seed when user lacks workflow:enableRedaction', async () => {
+			userHasScopesMock.mockResolvedValue(false);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: false,
+			});
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+		});
+
+		it('does not consult the floor when the enforcement feature flag is off', async () => {
+			isRedactionEnforcementEnabledMock.mockReturnValue(false);
+			userHasScopesMock.mockResolvedValue(true);
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			expect(instanceRedactionEnforcementServiceMock.get).not.toHaveBeenCalled();
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+		});
+
+		it('rejects a none policy when the floor requires production redaction', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: false,
+			});
+			setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { redactionPolicy: 'none' };
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toBeInstanceOf(UnprocessableRequestError);
+		});
+
+		it('rejects a manual-only policy when the floor requires production redaction', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: false,
+			});
+			setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { redactionPolicy: 'manual-only' };
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toBeInstanceOf(UnprocessableRequestError);
+		});
+
+		it('accepts a stricter-than-floor policy unchanged', async () => {
+			userHasScopesMock.mockResolvedValue(true);
+			instanceRedactionEnforcementServiceMock.get.mockResolvedValue({
+				enforced: true,
+				production: true,
+				manual: false,
+			});
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { redactionPolicy: 'all' };
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBe('all');
+		});
+
+		it('drops redactionPolicy when the instance lacks the data-redaction license', async () => {
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			const { transactionManager } = setupTransactionMocks();
+
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { redactionPolicy: 'all' };
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			expect(instanceRedactionEnforcementServiceMock.get).not.toHaveBeenCalled();
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 		});
 	});
 
