@@ -152,6 +152,53 @@ describe('AgentsBuilderToolsService', () => {
 			]);
 		});
 
+		it('list_sub_agents returns published same-project agents except the target agent', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findByProjectId.mockResolvedValue([
+				{
+					id: agentId,
+					name: 'Current Agent',
+					description: 'The agent being edited',
+					activeVersionId: 'active-current',
+				},
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					description: 'Finds information on the web',
+					activeVersionId: 'active-research',
+				},
+				{
+					id: 'agent-draft',
+					name: 'Draft Agent',
+					description: 'Not published yet',
+					activeVersionId: null,
+				},
+				{
+					id: 'agent-risk',
+					name: 'Risk Agent',
+					description: null,
+					activeVersionId: 'active-risk',
+				},
+			] as Agent[]);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_SUB_AGENTS).handler!({}, ctx);
+
+			expect(agentsService.findByProjectId).toHaveBeenCalledWith(projectId);
+			expect(result).toEqual({
+				agents: [
+					{
+						agentId: 'agent-research',
+						name: 'Research Agent',
+						description: 'Finds information on the web',
+					},
+					{
+						agentId: 'agent-risk',
+						name: 'Risk Agent',
+					},
+				],
+			});
+		});
+
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
