@@ -178,6 +178,37 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
+	/**
+	 * Finds owned workflows in a project whose `sourceWorkflowId` matches one
+	 * of the given package source workflow ids. New workflows default
+	 * `sourceWorkflowId` to their own id on insert, so a package exported from
+	 * this instance matches its originals on re-import without a separate id
+	 * fallback.
+	 */
+	async findOwnedWorkflowsBySourceWorkflowIds(
+		projectId: string,
+		sourceWorkflowIds: string[],
+		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (sourceWorkflowIds.length === 0) return [];
+
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: {
+				projectId,
+				role: 'workflow:owner',
+				workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
+			},
+			relations: {
+				workflow: {
+					activeVersion: options.includeActiveVersion,
+					parentFolder: options.includeParentFolder,
+				},
+			},
+		});
+
+		return sharedWorkflows.map(({ workflow }) => workflow);
+	}
+
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {
 		return await userHasScopes(user, scopes, false, { projectId });
 	}

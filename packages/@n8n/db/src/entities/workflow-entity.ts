@@ -1,4 +1,5 @@
 import {
+	BeforeInsert,
 	Column,
 	Entity,
 	Index,
@@ -129,11 +130,16 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	testRuns: TestRun[];
 
 	/**
-	 * Workflow id from the source package when this workflow was imported.
-	 * Null for workflows created directly. Used by import to detect re-imports
-	 * of the same source workflow on the target instance.
+	 * Source workflow id used by package import to match re-imports. Defaults to
+	 * the workflow's own id on insert (see {@link defaultSourceWorkflowId}), so a
+	 * workflow exported from this instance matches its original on re-import.
 	 */
 	@Index()
 	@Column({ type: 'varchar', nullable: true })
 	sourceWorkflowId: string | null;
+
+	@BeforeInsert()
+	defaultSourceWorkflowId() {
+		this.sourceWorkflowId ??= this.id;
+	}
 }

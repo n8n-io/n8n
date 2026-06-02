@@ -1,6 +1,10 @@
 import type { Project, User } from '@n8n/db';
 
-import type { CredentialMatchingMode, CredentialMissingMode } from '../../n8n-packages.types';
+import type {
+	BindingMap,
+	CredentialMatchingMode,
+	CredentialMissingMode,
+} from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowCredentialRequirement {
@@ -18,20 +22,8 @@ export type CredentialResolutionFailure = {
 	usedByWorkflows: string[];
 };
 
-export interface CredentialBinding {
-	sourceId: string;
-	targetId: string;
-}
-
-/**
- * Maps each source credential id to the target credential id it resolved to. A `Map` (rather
- * than a `CredentialBinding[]`) both encodes the one-target-per-source invariant and gives the
- * remapping step an O(1) `get(sourceId)` lookup when rewriting node credential references.
- */
-export type CredentialBindings = Map<string, string>;
-
 export interface CredentialResolution {
-	successes: CredentialBindings;
+	successes: BindingMap;
 	failures: CredentialResolutionFailure[];
 }
 
@@ -53,10 +45,6 @@ export interface CredentialMissingModeContext {
 	user: User;
 }
 
-export function createSuccessBinding(sourceId: string, targetId: string): CredentialBinding {
-	return { sourceId, targetId };
-}
-
 export function createFailure(
 	reference: PackageCredentialRequirement,
 	kind: CredentialResolutionFailureKind,
@@ -70,7 +58,7 @@ export function createFailure(
 
 /** Flattens the internal lookup `Map` into the serializable pairs exposed via events/responses. */
 export function resolvedBindingsToSummaries(
-	successes: CredentialBindings,
+	successes: BindingMap,
 ): Array<{ sourceId: string; targetId: string }> {
 	return [...successes].map(([sourceId, targetId]) => ({ sourceId, targetId }));
 }

@@ -89,7 +89,9 @@ export class WorkflowCreationService {
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 
-		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
+		if (sourceWorkflowId !== undefined) {
+			newWorkflow.sourceWorkflowId = sourceWorkflowId;
+		}
 
 		await validateEntity(newWorkflow);
 

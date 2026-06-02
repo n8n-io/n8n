@@ -5,10 +5,10 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 
 import {
 	createFailure,
-	type CredentialBinding,
 	type CredentialResolution,
 	type CredentialResolutionFailure,
 } from './credential.types';
+import type { BindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface CredentialMatcherContext {
@@ -29,8 +29,7 @@ export abstract class CredentialMatcher {
 	): Promise<CredentialResolution> {
 		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
 
-		const bindings = await this.resolve(known, context);
-		const successes = new Map(bindings.map(({ sourceId, targetId }) => [sourceId, targetId]));
+		const successes = await this.resolve(known, context);
 
 		const notFoundFailures = known
 			.filter((reference) => !successes.has(reference.id))
@@ -42,7 +41,7 @@ export abstract class CredentialMatcher {
 	protected abstract resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<CredentialBinding[]>;
+	): Promise<BindingMap>;
 }
 
 function partitionByKnownType(

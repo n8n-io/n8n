@@ -1,18 +1,15 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User } from '@n8n/db';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
 
+export type WorkflowConflictPolicy = 'new-version' | 'fail' | 'skip';
+
 export interface ExportWorkflowsRequest {
 	user: User;
 	workflowIds: string[];
-}
-
-export interface PreparedWorkflow {
-	entity: WorkflowEntity;
-	sourceId: string;
 }
 
 export interface ImportPackageRequest {
@@ -22,15 +19,48 @@ export interface ImportPackageRequest {
 	packageBuffer: Buffer;
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	workflowConflictPolicy: WorkflowConflictPolicy;
 }
 
 export interface ImportedWorkflowSummary {
-	sourceId: string;
+	sourceWorkflowId: string;
 	localId: string;
 	name: string;
 	projectId: string;
 	parentFolderId: string | null;
 	activeVersionId: string | null;
+	status: 'created' | 'updated' | 'skipped';
+}
+
+/** Source id → target id mapping for one entity type within an imported package. */
+export type BindingMap = Map<string, string>;
+
+/**
+ * Source→target id mappings accumulated while importing a package, one map per
+ * entity type.
+ */
+export interface PackageImportBindings {
+	workflows: BindingMap;
+	credentials: BindingMap;
+}
+
+export function createBindings(seed: Partial<PackageImportBindings> = {}): PackageImportBindings {
+	return {
+		workflows: new Map(),
+		credentials: new Map(),
+		...seed,
+	};
+}
+
+/** Plain-object form of {@link PackageImportBindings}, suitable for JSON responses. */
+export type SerializedBindings = Record<keyof PackageImportBindings, Record<string, string>>;
+
+/** Flattens the internal binding `Map`s into the plain objects exposed over the wire. */
+export function serializeBindings(bindings: PackageImportBindings): SerializedBindings {
+	return {
+		workflows: Object.fromEntries(bindings.workflows),
+		credentials: Object.fromEntries(bindings.credentials),
+	};
 }
 
 export interface ImportResult {
@@ -40,7 +70,5 @@ export interface ImportResult {
 		exportedAt: string;
 	};
 	workflows: ImportedWorkflowSummary[];
-	credentials: {
-		matched: Array<{ sourceId: string; targetId: string }>;
-	};
+	bindings: SerializedBindings;
 }
