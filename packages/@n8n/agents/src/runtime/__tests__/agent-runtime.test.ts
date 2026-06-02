@@ -1709,6 +1709,14 @@ describe('AgentRuntime.stream() — provider-executed tool timing', () => {
 		expect(end).toBeDefined();
 		expect(end?.isError).toBe(true);
 		expect(typeof end?.endTime).toBe('number');
+
+		const toolResult = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-result' }> =>
+				c.type === 'tool-result' && c.toolCallId === 'tc-ws-err',
+		);
+		expect(toolResult).toBeDefined();
+		expect(toolResult?.isError).toBe(true);
+		expect(toolResult?.output).toEqual(new Error('search failed'));
 	});
 });
 

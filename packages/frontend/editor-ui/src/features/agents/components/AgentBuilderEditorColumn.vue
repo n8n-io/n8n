@@ -328,19 +328,6 @@ function onRemoveSubAgent(agentId: string) {
 						/>
 					</N8nCard>
 
-					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
-						<AgentFilesPanel
-							:files="agentFiles"
-							:disabled="childrenDisabled"
-							:loading="agentFilesLoading"
-							:uploading="agentFilesUploading"
-							:deleting-file-id="deletingAgentFileId"
-							data-testid="agent-files-card"
-							@upload-files="emit('upload-files', $event)"
-							@delete-file="emit('delete-file', $event)"
-						/>
-					</N8nCard>
-
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentAdvancedPanel
 							:config="localConfig"
