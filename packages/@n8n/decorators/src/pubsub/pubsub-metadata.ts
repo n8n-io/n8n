@@ -31,7 +31,8 @@ export type PubSubEventName =
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
-	| 'agent-config-changed';
+	| 'agent-config-changed'
+	| 'agent-tasks-changed';
 
 export type PubSubEventFilter =
 	| {

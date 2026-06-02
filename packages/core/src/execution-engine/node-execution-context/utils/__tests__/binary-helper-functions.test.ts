@@ -274,7 +274,9 @@ describe('test binary data helper methods', () => {
 			const inputData: ITaskDataConnections = { main: [] };
 
 			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
-			expect(result).toEqual(largeBuffer);
+			expect(result.equals(largeBuffer)).toBe(true);
+			expect(result.length).equals(largeBuffer.length);
+
 			expect(result.length).toBe(1024 * 1024);
 		}, 20000);
 
