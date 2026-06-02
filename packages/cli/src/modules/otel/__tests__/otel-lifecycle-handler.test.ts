@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowRepository } from '@n8n/db';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -45,6 +46,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const workflowRepository = mock<WorkflowRepository>();
 		let handler: OtelLifecycleHandler;
 
 		const parentTracingContext: TracingContext = {
@@ -82,6 +84,7 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				workflowRepository,
 			);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
@@ -288,6 +291,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const workflowRepository = mock<WorkflowRepository>();
 		let handler: OtelLifecycleHandler;
 
 		const prePauseContext: TracingContext = {
@@ -306,6 +310,7 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				workflowRepository,
 			);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
@@ -411,6 +416,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const workflowRepository = mock<WorkflowRepository>();
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
@@ -422,6 +428,7 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				workflowRepository,
 			);
 		});
 
@@ -443,8 +450,8 @@ describe('OtelLifecycleHandler', () => {
 				},
 			}) as unknown as WorkflowExecuteAfterContext;
 
-		it('should delegate to tracer.endWorkflow with mapped runData fields', () => {
-			handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'webhook' }));
+		it('should delegate to tracer.endWorkflow with mapped runData fields', async () => {
+			await handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'webhook' }));
 
 			expect(tracer.endWorkflow).toHaveBeenCalledWith({
 				executionId: 'exec-1',
@@ -456,7 +463,7 @@ describe('OtelLifecycleHandler', () => {
 			});
 		});
 
-		it('should forward error from runData.data.resultData', () => {
+		it('should forward error from runData.data.resultData', async () => {
 			const error = new Error('boom');
 			const ctx = makeCtx({
 				status: 'error',
@@ -464,15 +471,15 @@ describe('OtelLifecycleHandler', () => {
 				data: { resultData: { runData: {}, pinData: {}, error } },
 			} as unknown as Partial<IRun>);
 
-			handler.onWorkflowEnd(ctx);
+			await handler.onWorkflowEnd(ctx);
 
 			expect(tracer.endWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ status: 'error', error }),
 			);
 		});
 
-		it('should derive isRetry from mode=retry and pass retryOf', () => {
-			handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'retry' }, 'exec-original'));
+		it('should derive isRetry from mode=retry and pass retryOf', async () => {
+			await handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'retry' }, 'exec-original'));
 
 			expect(tracer.endWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ isRetry: true, retryOf: 'exec-original' }),
@@ -486,6 +493,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const workflowRepository = mock<WorkflowRepository>();
 		let handler: OtelLifecycleHandler;
 
 		const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
@@ -527,10 +535,11 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				workflowRepository,
 			);
 		});
 
-		it('should skip node spans when includeNodeSpans is false', () => {
+		it('should skip node spans when includeNodeSpans is false', async () => {
 			config.includeNodeSpans = false;
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -538,28 +547,29 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				workflowRepository,
 			);
 
-			handler.onNodeStart(makeStartCtx());
-			handler.onNodeEnd(makeEndCtx());
+			await handler.onNodeStart(makeStartCtx());
+			await handler.onNodeEnd(makeEndCtx());
 
 			expect(tracer.startNode).not.toHaveBeenCalled();
 			expect(tracer.endNode).not.toHaveBeenCalled();
 		});
 
-		it('should call tracer.startNode with the resolved node', () => {
-			handler.onNodeStart(makeStartCtx());
+		it('should call tracer.startNode with the resolved node', async () => {
+			await handler.onNodeStart(makeStartCtx());
 
 			expect(tracer.startNode).toHaveBeenCalledWith({ executionId: 'exec-1', node });
 		});
 
-		it('should not call tracer.startNode when node is not found in workflow', () => {
-			handler.onNodeStart(makeStartCtx('MissingNode'));
+		it('should not call tracer.startNode when node is not found in workflow', async () => {
+			await handler.onNodeStart(makeStartCtx('MissingNode'));
 
 			expect(tracer.startNode).not.toHaveBeenCalled();
 		});
 
-		it('should call tracer.endNode with counted items and coerced customAttributes', () => {
+		it('should call tracer.endNode with counted items and coerced customAttributes', async () => {
 			const ctx = makeEndCtx({
 				source: [{ previousNode: 'Trigger', previousNodeRun: 0 }],
 				data: { main: [[{ json: {} }, { json: {} }]] },
@@ -577,7 +587,7 @@ describe('OtelLifecycleHandler', () => {
 				],
 			};
 
-			handler.onNodeEnd(ctx);
+			await handler.onNodeEnd(ctx);
 
 			expect(tracer.endNode).toHaveBeenCalledWith({
 				executionId: 'exec-1',
@@ -589,25 +599,25 @@ describe('OtelLifecycleHandler', () => {
 			});
 		});
 
-		it('should pass undefined customAttributes when metadata.tracing is absent', () => {
-			handler.onNodeEnd(makeEndCtx());
+		it('should pass undefined customAttributes when metadata.tracing is absent', async () => {
+			await handler.onNodeEnd(makeEndCtx());
 
 			expect(tracer.endNode).toHaveBeenCalledWith(
 				expect.objectContaining({ customAttributes: undefined }),
 			);
 		});
 
-		it('should forward taskData.error to tracer.endNode', () => {
+		it('should forward taskData.error to tracer.endNode', async () => {
 			const error = new Error('node failure');
-			handler.onNodeEnd(
+			await handler.onNodeEnd(
 				makeEndCtx({ error } as unknown as Partial<NodeExecuteAfterContext['taskData']>),
 			);
 
 			expect(tracer.endNode).toHaveBeenCalledWith(expect.objectContaining({ error }));
 		});
 
-		it('should not call tracer.endNode when node is not found in workflow', () => {
-			handler.onNodeEnd(makeEndCtx({}, 'MissingNode'));
+		it('should not call tracer.endNode when node is not found in workflow', async () => {
+			await handler.onNodeEnd(makeEndCtx({}, 'MissingNode'));
 
 			expect(tracer.endNode).not.toHaveBeenCalled();
 		});
@@ -620,13 +630,15 @@ describe('publishedOnly filter', () => {
 	let config = makeOtelConfig();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
+	const workflowRepository = mock<WorkflowRepository>();
 	let handler: OtelLifecycleHandler;
 
-	const inactiveWorkflow = {
+	// active and activeVersionId are zeroed by executeManually() for all manual executions
+	const workflow = {
 		id: 'wf-1',
 		name: 'Test',
 		versionId: 'v1',
-		nodes: [],
+		nodes: [{ id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 }],
 		connections: {},
 		active: false,
 		isArchived: false,
@@ -635,20 +647,18 @@ describe('publishedOnly filter', () => {
 		activeVersionId: null,
 	};
 
-	const activeWorkflow = { ...inactiveWorkflow, active: true };
-
-	const makeWorkflowStartCtx = (workflow: object): WorkflowExecuteBeforeContext => ({
+	const makeWorkflowStartCtx = (executionId = 'exec-1'): WorkflowExecuteBeforeContext => ({
 		type: 'workflowExecuteBefore',
 		workflow: workflow as never,
 		workflowInstance: undefined as never,
-		executionId: 'exec-1',
+		executionId,
 	});
 
-	const makeWorkflowEndCtx = (workflow: object): WorkflowExecuteAfterContext =>
+	const makeWorkflowEndCtx = (executionId = 'exec-1'): WorkflowExecuteAfterContext =>
 		({
 			type: 'workflowExecuteAfter',
 			workflow,
-			executionId: 'exec-1',
+			executionId,
 			newStaticData: {},
 			runData: {
 				status: 'success',
@@ -657,20 +667,20 @@ describe('publishedOnly filter', () => {
 			},
 		}) as unknown as WorkflowExecuteAfterContext;
 
-	const makeNodeStartCtx = (workflow: object): NodeExecuteBeforeContext =>
+	const makeNodeStartCtx = (executionId = 'exec-1'): NodeExecuteBeforeContext =>
 		({
 			type: 'nodeExecuteBefore',
 			workflow,
 			nodeName: 'Node1',
-			executionId: 'exec-1',
+			executionId,
 		}) as unknown as NodeExecuteBeforeContext;
 
-	const makeNodeEndCtx = (workflow: object): NodeExecuteAfterContext =>
+	const makeNodeEndCtx = (executionId = 'exec-1'): NodeExecuteAfterContext =>
 		({
 			type: 'nodeExecuteAfter',
 			workflow,
 			nodeName: 'Node1',
-			executionId: 'exec-1',
+			executionId,
 			taskData: {
 				startTime: 0,
 				executionTime: 10,
@@ -686,20 +696,24 @@ describe('publishedOnly filter', () => {
 		config = makeOtelConfig({ publishedOnly: true, includeNodeSpans: true });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
+		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 		handler = new OtelLifecycleHandler(
 			tracer,
 			traceContextService,
 			config,
 			ownershipService,
 			logger,
+			workflowRepository,
 		);
 	});
 
-	it('should skip all tracing for an inactive workflow when publishedOnly is true', async () => {
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
-		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
-		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
-		handler.onNodeEnd(makeNodeEndCtx(inactiveWorkflow));
+	it('should not trace a manual execution of an unpublished workflow', async () => {
+		workflowRepository.isActive.mockResolvedValue(false);
+
+		await handler.onWorkflowStart(makeWorkflowStartCtx());
+		await handler.onWorkflowEnd(makeWorkflowEndCtx());
+		await handler.onNodeStart(makeNodeStartCtx());
+		await handler.onNodeEnd(makeNodeEndCtx());
 
 		expect(tracer.startWorkflow).not.toHaveBeenCalled();
 		expect(traceContextService.persist).not.toHaveBeenCalled();
@@ -708,31 +722,117 @@ describe('publishedOnly filter', () => {
 		expect(tracer.endNode).not.toHaveBeenCalled();
 	});
 
-	it('should trace an active workflow when publishedOnly is true', async () => {
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	it('should trace a manual execution of a published workflow', async () => {
+		workflowRepository.isActive.mockResolvedValue(true);
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx());
+		await handler.onNodeStart(makeNodeStartCtx());
+		await handler.onNodeEnd(makeNodeEndCtx());
+		await handler.onWorkflowEnd(makeWorkflowEndCtx());
 
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 		expect(traceContextService.persist).toHaveBeenCalled();
+		expect(tracer.startNode).toHaveBeenCalled();
+		expect(tracer.endNode).toHaveBeenCalled();
+		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
-	it('should trace an inactive workflow when publishedOnly is false', async () => {
+	it('should load published state once per execution, not on every node hook', async () => {
+		workflowRepository.isActive.mockResolvedValue(true);
+
+		await handler.onWorkflowStart(makeWorkflowStartCtx());
+		await handler.onNodeStart(makeNodeStartCtx());
+		await handler.onNodeEnd(makeNodeEndCtx());
+		await handler.onNodeStart(makeNodeStartCtx());
+		await handler.onNodeEnd(makeNodeEndCtx());
+		await handler.onWorkflowEnd(makeWorkflowEndCtx());
+
+		expect(workflowRepository.isActive).toHaveBeenCalledTimes(1);
+	});
+
+	it('should trace when publishedOnly is false, regardless of published state', async () => {
 		config.publishedOnly = false;
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
+		await handler.onWorkflowStart(makeWorkflowStartCtx());
 
+		expect(workflowRepository.isActive).not.toHaveBeenCalled();
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 	});
 
-	it('should also treat activeVersionId as published', async () => {
-		const workflowWithVersionId = { ...inactiveWorkflow, active: false, activeVersionId: 'v123' };
-		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+	it('should isolate published state per executionId', async () => {
+		workflowRepository.isActive.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
-		await handler.onWorkflowStart(makeWorkflowStartCtx(workflowWithVersionId));
+		await handler.onWorkflowStart(makeWorkflowStartCtx('exec-published'));
+		await handler.onWorkflowStart(makeWorkflowStartCtx('exec-unpublished'));
 
+		await handler.onNodeStart(makeNodeStartCtx('exec-published'));
+		await handler.onNodeStart(makeNodeStartCtx('exec-unpublished'));
+
+		expect(tracer.startWorkflow).toHaveBeenCalledTimes(1);
+		expect(tracer.startNode).toHaveBeenCalledTimes(1);
+	});
+
+	it('should clean up publishedExecutions entry on workflowExecuteAfter', async () => {
+		workflowRepository.isActive.mockResolvedValue(true);
+
+		await handler.onWorkflowStart(makeWorkflowStartCtx());
+
+		const map = (handler as unknown as { publishedExecutions: Map<string, boolean> })
+			.publishedExecutions;
+		expect(map.has('exec-1')).toBe(true);
+
+		await handler.onWorkflowEnd(makeWorkflowEndCtx());
+
+		expect(map.has('exec-1')).toBe(false);
+	});
+
+	it('should load published state from DB on resume when there is no cache entry', async () => {
+		workflowRepository.isActive.mockResolvedValue(true);
+
+		await handler.onWorkflowResume({
+			type: 'workflowExecuteResume',
+			workflow: workflow as never,
+			workflowInstance: undefined as never,
+			executionData: undefined as never,
+			executionId: 'exec-resumed',
+		} as never);
+
+		expect(workflowRepository.isActive).toHaveBeenCalledWith('wf-1');
 		expect(tracer.startWorkflow).toHaveBeenCalled();
+	});
+
+	it('should not trace resume of an unpublished workflow when there is no cache entry', async () => {
+		workflowRepository.isActive.mockResolvedValue(false);
+
+		await handler.onWorkflowResume({
+			type: 'workflowExecuteResume',
+			workflow: workflow as never,
+			workflowInstance: undefined as never,
+			executionData: undefined as never,
+			executionId: 'exec-resumed',
+		} as never);
+
+		expect(workflowRepository.isActive).toHaveBeenCalledWith('wf-1');
+		expect(tracer.startWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('should not call DB on resume when cache entry is already set', async () => {
+		workflowRepository.isActive.mockResolvedValue(true);
+
+		// onWorkflowStart populates the cache
+		await handler.onWorkflowStart(makeWorkflowStartCtx('exec-resumed'));
+
+		await handler.onWorkflowResume({
+			type: 'workflowExecuteResume',
+			workflow: workflow as never,
+			workflowInstance: undefined as never,
+			executionData: undefined as never,
+			executionId: 'exec-resumed',
+		} as never);
+
+		// DB called once (on start), not again on resume
+		expect(workflowRepository.isActive).toHaveBeenCalledTimes(1);
+		expect(tracer.startWorkflow).toHaveBeenCalledTimes(2);
 	});
 });
 

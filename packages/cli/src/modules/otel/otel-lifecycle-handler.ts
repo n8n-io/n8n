@@ -1,14 +1,16 @@
+import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
+	LifecycleContext,
 	WorkflowExecuteBeforeContext,
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteResumeContext,
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
+import type { ICustomTelemetryTag } from 'n8n-workflow';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';
 import type { CustomAttributes } from './execution-level-tracer.types';
@@ -37,21 +39,34 @@ const getCustomTelemetryTags = (value: unknown): ICustomTelemetryTag[] | undefin
 
 @Service()
 export class OtelLifecycleHandler {
+	private readonly publishedExecutions = new Map<string, boolean>();
+
 	constructor(
 		private readonly tracer: ExecutionLevelTracer,
 		private readonly traceContextService: TraceContextService,
 		private readonly config: OtelConfig,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
-	private isPublishedWorkflow(workflow: IWorkflowBase): boolean {
-		return !!(workflow.activeVersionId ?? workflow.active);
+	private async shouldTrace(ctx: LifecycleContext): Promise<boolean> {
+		if (this.config.publishedOnly) {
+			if (!this.publishedExecutions.has(ctx.executionId)) {
+				const isPublished = await this.workflowRepository.isActive(ctx.workflow.id);
+				this.publishedExecutions.set(ctx.executionId, isPublished);
+			}
+			if (!this.publishedExecutions.get(ctx.executionId)) return false;
+		}
+		if (ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') {
+			return this.config.includeNodeSpans;
+		}
+		return true;
 	}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (!(await this.shouldTrace(ctx))) return;
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
@@ -96,7 +111,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (!(await this.shouldTrace(ctx))) return;
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
@@ -131,8 +146,10 @@ export class OtelLifecycleHandler {
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
-	onWorkflowEnd(ctx: WorkflowExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+	async onWorkflowEnd(ctx: WorkflowExecuteAfterContext): Promise<void> {
+		const traced = await this.shouldTrace(ctx);
+		this.publishedExecutions.delete(ctx.executionId);
+		if (!traced) return;
 
 		this.tracer.endWorkflow({
 			executionId: ctx.executionId,
@@ -145,9 +162,8 @@ export class OtelLifecycleHandler {
 	}
 
 	@OnLifecycleEvent('nodeExecuteBefore')
-	onNodeStart(ctx: NodeExecuteBeforeContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
-		if (!this.config.includeNodeSpans) return;
+	async onNodeStart(ctx: NodeExecuteBeforeContext): Promise<void> {
+		if (!(await this.shouldTrace(ctx))) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
 		if (!node) return;
@@ -159,9 +175,8 @@ export class OtelLifecycleHandler {
 	}
 
 	@OnLifecycleEvent('nodeExecuteAfter')
-	onNodeEnd(ctx: NodeExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
-		if (!this.config.includeNodeSpans) return;
+	async onNodeEnd(ctx: NodeExecuteAfterContext): Promise<void> {
+		if (!(await this.shouldTrace(ctx))) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
 		if (!node) return;
