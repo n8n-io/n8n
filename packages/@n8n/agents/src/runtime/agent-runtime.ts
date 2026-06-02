@@ -83,6 +83,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
+import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
@@ -269,6 +270,12 @@ type ToolCallOutcome =
 			outcome: 'suspended';
 			payload: unknown;
 			resumeSchema: JsonSchema7Type;
+	  }
+	| {
+			outcome: 'cancelled';
+			toolEntry: ToolResultEntry;
+			modelOutput: string;
+			userMessage: string;
 	  }
 	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
@@ -495,7 +502,8 @@ export class AgentRuntime {
 		if (!toolForValidation) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
-		if (toolForValidation.resumeSchema) {
+
+		if (!isCancellation(resumeData) && toolForValidation.resumeSchema) {
 			const parseResult = await parseWithSchema(toolForValidation.resumeSchema, data);
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
@@ -2102,6 +2110,25 @@ export class AgentRuntime {
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
 			});
+		} else if (processResult.outcome === 'cancelled') {
+			results.push({
+				toolCallId: resumedEntry.toolCallId,
+				toolName: resumedToolName,
+				input: resumedEntry.input,
+				toolEntry: processResult.toolEntry,
+				modelOutput: processResult.modelOutput,
+			});
+			list.addInput([
+				{ role: 'user', content: [{ type: 'text', text: processResult.userMessage }] },
+			]);
+
+			for (const id of Object.keys(pendingResume.pendingToolCalls)) {
+				if (id !== resumedId) {
+					list.setToolCallResult(id, '[Skipped: a sibling tool call was cancelled]');
+				}
+			}
+
+			return { results, suspensions, errors, pending };
 		} else if (processResult.outcome === 'error') {
 			errors.push({
 				toolCallId: resumedEntry.toolCallId,
@@ -2236,6 +2263,29 @@ export class AgentRuntime {
 			});
 			// the error is written to message list earlier, when processing stream output
 			return { outcome: 'noop' };
+		}
+
+		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
+			const modelOutput = `[Tool call cancelled. User said: "${resumeData.message}"]`;
+			this.eventBus.emit({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId,
+				toolName,
+				result: modelOutput,
+				isError: false,
+			});
+			list.setToolCallResult(toolCallId, modelOutput);
+			return {
+				outcome: 'cancelled',
+				toolEntry: {
+					tool: toolName,
+					input: toolInput,
+					output: modelOutput,
+					transformed: false,
+				},
+				modelOutput,
+				userMessage: resumeData.message,
+			};
 		}
 
 		if (countToolCall) {

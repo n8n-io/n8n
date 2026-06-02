@@ -5,6 +5,7 @@ import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	CancellationResumeData,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import {
@@ -330,6 +331,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 				break;
 			}
+			case 'tool-call-cancelled': {
+				// The user cancelled a suspended tool by sending a steering message.
+				// Mark the interactive card as resolved-cancelled so it shows a
+				// "Cancelled" state rather than its normal resolved state.
+				const found = findToolCallById(event.toolCallId);
+				if (found) {
+					found.tc.state = TOOL_CALL_STATE.DONE;
+					if (found.msg.interactive) {
+						found.msg.interactive = {
+							...found.msg.interactive,
+							resolvedAt: Date.now(),
+							cancelled: true,
+						};
+					}
+					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+					}
+				}
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
@@ -490,7 +511,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended build interaction. Posts to the build/resume endpoint
+	 * Resume a suspended interaction. Posts to the /{endpoint}/resume endpoint
 	 * and re-enters the same SSE handler. The `runId` is required — it comes
 	 * from the original `tool-call-suspended` chunk (live) or from the
 	 * `openSuspensions` sidecar applied during history reload.
@@ -537,7 +558,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
+		const endpoint = params.endpoint.value;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/resume`;
 		const { ok } = await postAndConsume(url, payload);
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
@@ -545,6 +567,85 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
 			snapshot.msg.interactive = snapshot.prevInteractive;
+		}
+	}
+
+	/**
+	 * Cancel a suspended interactive tool and steer the agent with a new message.
+	 * Finds the open interactive question, posts to the resume endpoint with a
+	 * cancellation payload, and pushes an optimistic user bubble.
+	 *
+	 * Unlike a normal resume, the interactive card shows a "cancelled" state and
+	 * the agent continues generating with the steering message as context.
+	 */
+	async function cancelAndSteer(text: string): Promise<void> {
+		const trimmed = text.trim();
+		if (!trimmed) return;
+
+		// Find the open interactive message to get runId + toolCallId
+		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
+		if (!openMsg?.interactive?.runId) return;
+
+		const { runId, toolCallId } = openMsg.interactive;
+
+		// Snapshot for rollback on failure
+		const tc = openMsg.toolCalls?.find((t) => t.toolCallId === toolCallId);
+		const snapshot = tc
+			? {
+					tc,
+					prevState: tc.state,
+					prevOutput: tc.output,
+					prevSummary: tc.displaySummary,
+					prevStatus: openMsg.status,
+					prevInteractive: openMsg.interactive,
+				}
+			: null;
+
+		// Optimistic: mark the interactive card as cancelled
+		if (tc) {
+			tc.state = TOOL_CALL_STATE.DONE;
+		}
+		openMsg.interactive = {
+			...openMsg.interactive,
+			resolvedAt: Date.now(),
+			cancelled: true,
+		};
+		if (openMsg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+			openMsg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+		}
+
+		// Optimistic user bubble with the steering message
+		fatalError.value = null;
+		messages.value.push({
+			id: crypto.randomUUID(),
+			role: 'user',
+			content: trimmed,
+			status: 'success',
+		});
+
+		const cancellationPayload: CancellationResumeData = {
+			_type: 'agent.cancellation',
+			message: trimmed,
+		};
+
+		const { baseUrl } = rootStore.restApiContext;
+		const endpoint = params.endpoint.value;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/resume`;
+		const { ok } = await postAndConsume(url, {
+			runId,
+			toolCallId,
+			resumeData: cancellationPayload,
+		});
+
+		if (!ok && snapshot) {
+			// Roll back optimistic state
+			snapshot.tc.state = snapshot.prevState;
+			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.tc.displaySummary = snapshot.prevSummary;
+			openMsg.status = snapshot.prevStatus;
+			openMsg.interactive = snapshot.prevInteractive;
+			// Remove the optimistic user bubble
+			messages.value = messages.value.filter((m) => !(m.role === 'user' && m.content === trimmed));
 		}
 	}
 
@@ -580,6 +681,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		sendMessage,
 		stopGenerating,
 		resume,
+		cancelAndSteer,
 		dismissFatalError,
 	};
 }

@@ -18,6 +18,7 @@ export {
 	askQuestionOptionSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 	interactiveResumeDataSchema,
 	type InteractiveToolName,
 	type AskLlmInput,
@@ -27,5 +28,6 @@ export {
 	type AskQuestionOption,
 	type AskQuestionInput,
 	type AskQuestionResume,
+	type CancellationResumeData,
 	type InteractiveResumeData,
 } from '../agent-builder-interactive';

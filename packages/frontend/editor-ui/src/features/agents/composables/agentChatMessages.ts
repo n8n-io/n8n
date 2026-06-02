@@ -59,6 +59,8 @@ interface InteractivePayloadBase {
 	runId?: string;
 	/** Wall-clock timestamp when the user submitted; absent when card is open. */
 	resolvedAt?: number;
+	/** Set when the tool was cancelled via a steering message rather than answered. */
+	cancelled?: boolean;
 }
 
 /**

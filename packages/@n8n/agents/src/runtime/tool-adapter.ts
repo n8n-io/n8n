@@ -3,6 +3,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { loadAi } from './lazy-ai';
+import { isCancellation } from '../sdk/cancellation';
 import {
 	type BuiltProviderTool,
 	type BuiltTool,
@@ -153,11 +154,13 @@ export async function executeTool(
 	}
 
 	if (builtTool.suspendSchema) {
+		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown): Promise<never> => {
 				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
 			},
-			resumeData,
+			resumeData: isCancelled ? undefined : resumeData,
+			cancellation: isCancelled ? { message: resumeData.message } : undefined,
 			parentTelemetry,
 			toolCallId,
 			runId: executionContext.runId,
