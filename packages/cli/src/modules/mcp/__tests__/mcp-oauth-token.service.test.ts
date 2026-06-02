@@ -70,6 +70,7 @@ describe('McpOAuthTokenService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 	});
 
 	describe('generateTokenPair', () => {
@@ -193,7 +194,7 @@ describe('McpOAuthTokenService', () => {
 	});
 
 	describe('verifyAccessToken', () => {
-		it('should verify valid access token and return auth info', async () => {
+		it('should verify valid access token with canonical resource URL audience', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
 			const { accessToken } = service.generateTokenPair(userId, clientId);
@@ -210,6 +211,38 @@ describe('McpOAuthTokenService', () => {
 
 			expect(result).toEqual({
 				token: accessToken,
+				clientId,
+				scopes: [],
+				extra: {
+					userId,
+				},
+			});
+		});
+
+		it('should verify legacy tokens with mcp-server-api audience for backward compatibility', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+
+			// Create a token with the legacy audience
+			const legacyToken = jwtService.sign({
+				sub: userId,
+				aud: 'mcp-server-api',
+				client_id: clientId,
+				meta: { isOAuth: true },
+			});
+
+			const accessTokenRecord = mock<AccessToken>({
+				token: legacyToken,
+				clientId,
+				userId,
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
+
+			const result = await service.verifyAccessToken(legacyToken);
+
+			expect(result).toEqual({
+				token: legacyToken,
 				clientId,
 				scopes: [],
 				extra: {
