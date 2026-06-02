@@ -21,6 +21,8 @@ interface CreateStateAdapterOptions {
 
 type SubscriptionAction = PubSubCommandMap['agent-chat-subscription-changed']['action'];
 
+const NEGATIVE_SUBSCRIPTION_CACHE_TTL_MS = 30_000;
+
 function toScope(agentId: string, integration: AgentIntegrationConfig): AgentChatSubscriptionScope {
 	return {
 		agentId,
@@ -35,6 +37,8 @@ function scopeKey(scope: AgentChatSubscriptionScope): string {
 
 class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	private connected = false;
+
+	private readonly negativeSubscriptionCache = new Map<string, number>();
 
 	constructor(
 		private readonly scope: AgentChatSubscriptionScope,
@@ -56,6 +60,7 @@ class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	async connect(): Promise<void> {
 		await this.delegate.connect();
 		this.connected = true;
+		this.negativeSubscriptionCache.clear();
 		for (const threadId of await this.repository.listThreadIdsForConnection(this.scope)) {
 			await this.delegate.subscribe(threadId);
 		}
@@ -72,6 +77,7 @@ class AgentChatSubscriptionStateAdapter implements StateAdapter {
 
 	async subscribe(threadId: string): Promise<void> {
 		await this.repository.subscribe(this.scope, threadId);
+		this.negativeSubscriptionCache.delete(threadId);
 		await this.delegate.subscribe(threadId);
 		await this.publishChange(this.integration, threadId, 'subscribe');
 	}
@@ -79,20 +85,47 @@ class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	async unsubscribe(threadId: string): Promise<void> {
 		await this.repository.unsubscribe(this.scope, threadId);
 		await this.delegate.unsubscribe(threadId);
+		this.rememberNegativeSubscription(threadId);
 		await this.publishChange(this.integration, threadId, 'unsubscribe');
 	}
 
 	async isSubscribed(threadId: string): Promise<boolean> {
-		return await this.repository.isSubscribed(this.scope, threadId);
+		if (await this.delegate.isSubscribed(threadId)) return true;
+		if (!this.connected) return false;
+
+		if (this.hasFreshNegativeSubscription(threadId)) return false;
+
+		if (await this.repository.isSubscribed(this.scope, threadId)) {
+			this.negativeSubscriptionCache.delete(threadId);
+			await this.delegate.subscribe(threadId);
+			return true;
+		}
+
+		this.rememberNegativeSubscription(threadId);
+		return false;
 	}
 
 	async applyRemoteChange(threadId: string, action: SubscriptionAction): Promise<void> {
 		if (!this.connected) return;
 		if (action === 'subscribe') {
+			this.negativeSubscriptionCache.delete(threadId);
 			await this.delegate.subscribe(threadId);
 			return;
 		}
 		await this.delegate.unsubscribe(threadId);
+		this.rememberNegativeSubscription(threadId);
+	}
+
+	private hasFreshNegativeSubscription(threadId: string): boolean {
+		const expiresAt = this.negativeSubscriptionCache.get(threadId);
+		if (expiresAt === undefined) return false;
+		if (expiresAt > Date.now()) return true;
+		this.negativeSubscriptionCache.delete(threadId);
+		return false;
+	}
+
+	private rememberNegativeSubscription(threadId: string): void {
+		this.negativeSubscriptionCache.set(threadId, Date.now() + NEGATIVE_SUBSCRIPTION_CACHE_TTL_MS);
 	}
 
 	async acquireLock(threadId: string, ttlMs: number): Promise<Lock | null> {

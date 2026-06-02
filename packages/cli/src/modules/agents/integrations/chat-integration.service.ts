@@ -18,12 +18,12 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@/services/url.service';
 
-import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
 import { AgentChatBridge } from './agent-chat-bridge';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
+import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
@@ -231,23 +231,26 @@ export class ChatIntegrationService {
 			integration,
 		);
 
-		// Initialize the Chat instance (connects adapters, state adapter, etc.)
-		await chat.initialize();
+		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
+		// run post-initialize hooks (e.g. Telegram setWebhook) once it is live.
+		// If either step throws we must tear the chat down, otherwise adapters,
+		// timers, and the registered subscription state adapter leak — chat.shutdown()
+		// drives the state adapter's disconnect(), which unregisters it from the
+		// AgentChatSubscriptionStateService.
+		try {
+			await chat.initialize();
 
-		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
-		// If one throws we must shut the chat down, otherwise adapters/timers leak.
-		if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
-			try {
+			if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 				await integrationImpl.onAfterConnect(ctx);
-			} catch (error) {
-				await chat.shutdown().catch((shutdownError: unknown) => {
-					this.logger.warn(
-						`[ChatIntegrationService] Shutdown after failed onAfterConnect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
-					);
-				});
-				bridge.dispose();
-				throw error;
 			}
+		} catch (error) {
+			await chat.shutdown().catch((shutdownError: unknown) => {
+				this.logger.warn(
+					`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+				);
+			});
+			bridge.dispose();
+			throw error;
 		}
 
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
