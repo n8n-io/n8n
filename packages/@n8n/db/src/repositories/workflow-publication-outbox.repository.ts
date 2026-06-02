@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, Repository } from '@n8n/typeorm';
 
 import { WorkflowPublicationOutbox } from '../entities/workflow-publication-outbox';
 
@@ -14,12 +14,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a publication for `workflowId`. If a pending record already exists
-	 * for the same workflow, its `publishedVersionId` is updated in place (the
-	 * partial unique index `(workflowId) WHERE status = 'pending'` enforces this
-	 * one-pending-per-workflow invariant). Re-enqueueing a newer version while a
-	 * publication is still pending supersedes the older `publishedVersionId`
-	 * rather than queueing redundant work.
+	 * Enqueue a publication for `workflowId`. If a pending record is already in
+	 * place for the same workflow, its `publishedVersionId` is updated in place,
+	 * superseding the previous requested version.
 	 */
 	async enqueue(
 		workflowId: string,
@@ -29,7 +26,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			return await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
 		}
 
-		return await this.enqueueWithSimpleUpsert(workflowId, publishedVersionId);
+		// n8n's sqlite-pooled driver starts transactions with `BEGIN IMMEDIATE`,
+		// which acquires SQLite's RESERVED lock up front. That serializes
+		// concurrent callers and removes the find-then-update race.
+		return await this.manager.transaction((tx) =>
+			this.enqueueInTransaction(tx, workflowId, publishedVersionId),
+		);
 	}
 
 	private async enqueueWithPostgresUpsert(
@@ -50,26 +52,36 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		return result[0];
 	}
 
-	private async enqueueWithSimpleUpsert(
+	private async enqueueInTransaction(
+		mgr: EntityManager,
 		workflowId: string,
 		publishedVersionId: string,
 	): Promise<WorkflowPublicationOutbox> {
-		const existing = await this.findOne({ where: { workflowId, status: 'pending' } });
+		const existing = await mgr.findOne(WorkflowPublicationOutbox, {
+			where: { workflowId, status: 'pending' },
+		});
 
 		if (existing) {
-			await this.update(existing.id, { publishedVersionId });
+			await mgr.update(WorkflowPublicationOutbox, existing.id, { publishedVersionId });
 			existing.publishedVersionId = publishedVersionId;
 			return existing;
 		}
 
-		return await this.save({ workflowId, publishedVersionId, status: 'pending' });
+		return await mgr.save(
+			mgr.create(WorkflowPublicationOutbox, {
+				workflowId,
+				publishedVersionId,
+				status: 'pending',
+			}),
+		);
 	}
 
 	/**
-	 * Atomically claim the oldest pending record by transitioning its status
-	 * to `in_progress`. On Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
-	 * consumers never receive the same record. On SQLite (single-process) a
-	 * plain `findOne` + `update` is sufficient.
+	 * Atomically claim the oldest pending record by transitioning its status to
+	 * `in_progress`. Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
+	 * consumers never receive the same row; SQLite serializes the find-then-update
+	 * via the sqlite-pooled driver's `BEGIN IMMEDIATE` transactions, so
+	 * concurrent claimers can't both see the same pending row.
 	 *
 	 * Returns the claimed record, or `null` when nothing is pending.
 	 */
@@ -78,13 +90,15 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			return await this.claimWithPostgresLocking();
 		}
 
-		return await this.claimWithSimpleUpdate();
+		return await this.manager.transaction((tx) => this.claimInTransaction(tx));
 	}
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
 		const tableName = this.metadata.tableName;
 
 		const result: WorkflowPublicationOutbox[] = await this.query(
+			// Ordering by id gives us FIFO behaviour: ids are monotonically
+			// assigned at insert, so oldest pending row is processed first.
 			`UPDATE "${tableName}"
 			 SET "status" = 'in_progress', "updatedAt" = NOW()
 			 WHERE "id" = (
@@ -100,17 +114,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		return result[0] ?? null;
 	}
 
-	private async claimWithSimpleUpdate(): Promise<WorkflowPublicationOutbox | null> {
-		const record = await this.findOne({
+	private async claimInTransaction(mgr: EntityManager): Promise<WorkflowPublicationOutbox | null> {
+		// Ordering by id gives us FIFO behaviour: ids are monotonically
+		// assigned at insert, so oldest pending row is processed first.
+		const record = await mgr.findOne(WorkflowPublicationOutbox, {
 			where: { status: 'pending' },
 			order: { id: 'ASC' },
 		});
 
 		if (!record) return null;
 
-		await this.update(record.id, { status: 'in_progress' });
+		await mgr.update(WorkflowPublicationOutbox, record.id, { status: 'in_progress' });
 		record.status = 'in_progress';
-
 		return record;
 	}
 

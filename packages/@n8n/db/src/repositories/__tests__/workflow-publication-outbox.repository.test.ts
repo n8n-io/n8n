@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { EntityMetadata } from '@n8n/typeorm';
+import type { EntityManager, EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { WorkflowPublicationOutbox } from '../../entities/workflow-publication-outbox';
@@ -27,8 +27,19 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		configurable: true,
 	});
 
+	// SQLite paths run `manager.transaction(fn)`. Stub the call so it forwards
+	// to a transaction-scoped EntityManager mock and we can assert on what was
+	// done inside.
+	let txManager: ReturnType<typeof mock<EntityManager>>;
+
 	beforeEach(() => {
 		jest.resetAllMocks();
+		txManager = mock<EntityManager>();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(entityManager.transaction as any).mockImplementation(
+			async (runInTransaction: (mgr: EntityManager) => Promise<unknown>) =>
+				await runInTransaction(txManager),
+		);
 	});
 
 	describe('enqueue', () => {
@@ -38,22 +49,22 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			});
 
 			it('inserts a new pending record when none exists for the workflow', async () => {
-				entityManager.findOne.mockResolvedValueOnce(null);
-				entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+				const created = Object.assign(new WorkflowPublicationOutbox(), {
+					id: 1,
+					workflowId: 'wf-1',
+					publishedVersionId: 'v-1',
+					status: 'pending',
+					errorMessage: null,
+				});
+				txManager.findOne.mockResolvedValueOnce(null);
+				txManager.create.mockReturnValueOnce(created as never);
+				txManager.save.mockResolvedValueOnce(created as never);
 
 				const result = await repository.enqueue('wf-1', 'v-1');
 
-				expect(entityManager.save).toHaveBeenCalledWith(
-					WorkflowPublicationOutbox,
-					expect.objectContaining({
-						workflowId: 'wf-1',
-						publishedVersionId: 'v-1',
-						status: 'pending',
-					}),
-					undefined,
-				);
-				expect(entityManager.update).not.toHaveBeenCalled();
-				expect(result.status).toBe('pending');
+				expect(entityManager.transaction).toHaveBeenCalled();
+				expect(txManager.save).toHaveBeenCalledWith(created);
+				expect(result).toBe(created);
 			});
 
 			it('supersedes the publishedVersionId on an existing pending record', async () => {
@@ -64,14 +75,14 @@ describe('WorkflowPublicationOutboxRepository', () => {
 					status: 'pending',
 					errorMessage: null,
 				});
-				entityManager.findOne.mockResolvedValueOnce(existing);
+				txManager.findOne.mockResolvedValueOnce(existing);
 
 				const result = await repository.enqueue('wf-1', 'v-new');
 
-				expect(entityManager.update).toHaveBeenCalledWith(WorkflowPublicationOutbox, 9, {
+				expect(txManager.update).toHaveBeenCalledWith(WorkflowPublicationOutbox, 9, {
 					publishedVersionId: 'v-new',
 				});
-				expect(entityManager.save).not.toHaveBeenCalled();
+				expect(txManager.save).not.toHaveBeenCalled();
 				expect(result.publishedVersionId).toBe('v-new');
 				expect(result.id).toBe(9);
 			});
@@ -101,7 +112,6 @@ describe('WorkflowPublicationOutboxRepository', () => {
 				expect(sql).toContain('DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId"');
 				expect(sql).toContain('RETURNING *');
 				expect(params).toEqual(['wf-1', 'v-1']);
-				expect(entityManager.findOne).not.toHaveBeenCalled();
 				expect(result).toBe(row);
 			});
 		});
@@ -113,16 +123,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 				globalConfig.database.type = 'sqlite';
 			});
 
-			it('returns null when no record is pending', async () => {
-				entityManager.findOne.mockResolvedValueOnce(null);
-
-				const result = await repository.claimNextPendingRecord();
-
-				expect(result).toBeNull();
-				expect(entityManager.update).not.toHaveBeenCalled();
-			});
-
-			it('claims the oldest pending record and transitions it to in_progress', async () => {
+			it('claims the oldest pending record inside a transaction', async () => {
 				const pending = Object.assign(new WorkflowPublicationOutbox(), {
 					id: 7,
 					workflowId: 'wf-1',
@@ -130,19 +131,29 @@ describe('WorkflowPublicationOutboxRepository', () => {
 					status: 'pending',
 					errorMessage: null,
 				});
-				entityManager.findOne.mockResolvedValueOnce(pending);
+				txManager.findOne.mockResolvedValueOnce(pending);
 
 				const result = await repository.claimNextPendingRecord();
 
-				expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowPublicationOutbox, {
+				expect(entityManager.transaction).toHaveBeenCalled();
+				expect(txManager.findOne).toHaveBeenCalledWith(WorkflowPublicationOutbox, {
 					where: { status: 'pending' },
 					order: { id: 'ASC' },
 				});
-				expect(entityManager.update).toHaveBeenCalledWith(WorkflowPublicationOutbox, 7, {
+				expect(txManager.update).toHaveBeenCalledWith(WorkflowPublicationOutbox, 7, {
 					status: 'in_progress',
 				});
 				expect(result?.status).toBe('in_progress');
 				expect(result?.id).toBe(7);
+			});
+
+			it('returns null without writing when nothing is pending', async () => {
+				txManager.findOne.mockResolvedValueOnce(null);
+
+				const result = await repository.claimNextPendingRecord();
+
+				expect(result).toBeNull();
+				expect(txManager.update).not.toHaveBeenCalled();
 			});
 		});
 
@@ -170,8 +181,6 @@ describe('WorkflowPublicationOutboxRepository', () => {
 				expect(sql).toContain("'pending'");
 				expect(sql).toContain('FOR UPDATE SKIP LOCKED');
 				expect(sql).toContain('RETURNING *');
-				// We never read the SQLite path on postgres.
-				expect(entityManager.findOne).not.toHaveBeenCalled();
 				expect(result).toBe(claimed);
 			});
 
