@@ -96,7 +96,7 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	});
 }
 
-onUnmounted(clearHoverTimer);
+onUnmounted(clearPreview);
 </script>
 
 <template>

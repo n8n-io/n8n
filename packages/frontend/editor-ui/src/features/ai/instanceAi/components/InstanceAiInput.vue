@@ -145,6 +145,7 @@ watch(
 		}
 
 		previewPromptKey.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
