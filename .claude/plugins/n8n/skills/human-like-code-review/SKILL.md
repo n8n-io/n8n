@@ -93,13 +93,18 @@ detailed write-up.
 
 ### General summary comment
 
-Before the line-by-line comments, include a `## General` section for top-level, PR-wide feedback
-that doesn't belong on a single line - e.g. design or architecture concerns, an implicit/type-unsafe
-contract between files, repeated patterns, scope, or missing test coverage of the actual change.
+Before the line-by-line comments, include a `## General` section that can be
+pasted as the review summary. Make it sound human and natural - it is okay to
+start with something short and friendly like "Hey, nice job on this" when the
+change deserves it. Then add any top-level, PR-wide feedback that doesn't belong
+on a single line - e.g. design or architecture concerns, an implicit/type-unsafe
+contract between files, repeated patterns, scope, or missing test coverage of
+the actual change.
 
-- Keep it short. Don't repeat or summarize the individual line comments here.
+- Keep it short and conversational. Don't repeat or summarize the individual line comments here.
 - The exception is a big design issue with the overall solution: when the whole approach is wrong or has a structural problem, explain the overall idea here rather than scattering it across individual comments.
-- If there's genuinely nothing PR-wide to raise, write a single line saying the change looks reasonable and scoped, and move on - do not pad it.
+- If there's genuinely nothing PR-wide to raise, write a short positive review
+  summary and move on - do not pad it.
 
 ## Line number rules
 
@@ -119,7 +124,7 @@ Before suggesting a change to a pattern (naming, structure, style), check whethe
 
 - Never use long dashes or em-dashes. Use `-` instead.
 - Keep comments as short as possible. One sentence is ideal.
-- No filler or "friendly" remarks like "Nice work!", "Looks great!", "Good job here." - only actionable or questioning comments.
+- For line comments, avoid filler like "Nice work!", "Looks great!", or "Good job here." - keep them actionable or questioning.
 
 ## Tone
 
