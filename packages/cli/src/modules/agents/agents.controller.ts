@@ -1,12 +1,10 @@
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
-	AgentCredentialIntegrationSchema,
+	AgentIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
-	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
 	type AgentVersionListItemDto,
@@ -16,14 +14,15 @@ import {
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
 	CreateAgentSkillDto,
-	isAgentCredentialIntegration,
 	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	CreateAgentTaskDto,
+	UpdateAgentTaskDto,
+	type AgentTaskDto,
 	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -39,8 +38,10 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
+import multer from 'multer';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -48,23 +49,28 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
+import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
 	initSseStream,
 	pumpChunks,
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
+import { AgentTaskService } from './agent-task.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
+import { filterOfferedAgentModelProviders } from './model-catalog';
 import { AgentRepository } from './repositories/agent.repository';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { Agent } from './entities/agent.entity';
+
+const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 
 /**
  * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
@@ -94,6 +100,10 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
+			if (name === BUILDER_TOOLS.CREATE_TASK) {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
 			if (name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
 				send({ type: 'tool-updated' });
 				streamingToolName = undefined;
@@ -109,15 +119,16 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly agentTaskService: AgentTaskService,
+		private readonly agentKnowledgeService: AgentKnowledgeService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
-		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
+		const integrationParseResult = await AgentIntegrationSchema.safeParseAsync(dto);
 		if (!integrationParseResult.success) {
 			throw new BadRequestError(integrationParseResult.error.message);
 		}
@@ -272,7 +283,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
-		return await fetchProviderCatalog();
+		return filterOfferedAgentModelProviders(await fetchProviderCatalog());
 	}
 
 	@Get('/catalog/integrations')
@@ -385,6 +396,77 @@ export class AgentsController {
 		}
 
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
+	private assertKnowledgeBaseEnabled() {
+		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
+			throw new NotFoundError('Agent knowledge base is not enabled');
+		}
+	}
+
+	@Get('/:agentId/files')
+	@ProjectScope('agent:read')
+	async listFiles(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		this.assertKnowledgeBaseEnabled();
+		return await this.agentKnowledgeService.listFiles(agentId, projectId);
+	}
+
+	@Post('/:agentId/files', {
+		middlewares: [agentUploadMiddleware.array('files')],
+	})
+	@ProjectScope('agent:update')
+	async uploadFiles(
+		req: AuthenticatedRequest<{ projectId: string }> & {
+			files?: Express.Multer.File[];
+			fileUploadError?: Error;
+		},
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		const files = req.files ?? [];
+		try {
+			this.assertKnowledgeBaseEnabled();
+			if (req.fileUploadError) {
+				const error = req.fileUploadError;
+				if (error instanceof multer.MulterError) {
+					throw new BadRequestError(`File upload error: ${error.message}`);
+				}
+				throw error;
+			}
+
+			if (files.length === 0) {
+				throw new BadRequestError('No files uploaded');
+			}
+
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+		} catch (error) {
+			// Multer wrote temp files to disk before this handler ran. The success
+			// path hands them to AgentKnowledgeService (which cleans up its own temp
+			// files), but these early bail-outs return first, so clean up here.
+			await cleanupUploadedTempFiles(files);
+			throw error;
+		}
+	}
+
+	@Delete('/:agentId/files/:fileId')
+	@ProjectScope('agent:update')
+	async deleteFile(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('fileId') fileId: string,
+	) {
+		this.assertKnowledgeBaseEnabled();
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		return { success: true };
 	}
 
 	@Delete('/:agentId')
@@ -884,61 +966,72 @@ export class AgentsController {
 		return { status: 'disconnected' };
 	}
 
-	@Get('/:agentId/integrations/schedule')
+	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	@Get('/:agentId/tasks')
 	@ProjectScope('agent:read')
-	async getScheduleIntegration(
+	async listTasks(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return this.agentScheduleService.getConfig(agent);
+	): Promise<AgentTaskDto[]> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.list(agentId);
 	}
 
-	@Put('/:agentId/integrations/schedule')
+	@Post('/:agentId/tasks')
 	@ProjectScope('agent:update')
-	async updateScheduleIntegration(
+	async createTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentScheduleDto,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.saveConfig(
-			agent,
-			payload.cronExpression,
-			payload.wakeUpPrompt,
-		);
+		@Body payload: CreateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.create(agentId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/activate')
+	@Patch('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async activateScheduleIntegration(
+	async updateTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.activate(agent);
+		@Param('taskId') taskId: string,
+		@Body payload: UpdateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.update(agentId, taskId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/deactivate')
+	@Delete('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async deactivateScheduleIntegration(
+	async deleteTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		@Param('taskId') taskId: string,
+	): Promise<{ success: true }> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await this.agentTaskService.delete(agentId, taskId);
+		return { success: true };
+	}
 
-		return await this.agentScheduleService.deactivate(agent);
+	@Post('/:agentId/tasks/:taskId/run')
+	@ProjectScope('agent:execute')
+	async runTaskNow(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('taskId') taskId: string,
+	): Promise<{ success: true }> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await this.agentTaskService.runNow(agentId, taskId, req.user.id);
+		return { success: true };
 	}
 
 	@Get('/:agentId/integrations/status')
@@ -951,20 +1044,14 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? [])
-			.filter(isAgentCredentialIntegration)
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...('settings' in i ? { settings: i.settings } : {}),
-			}));
-		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
-
+		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
+			type: i.type,
+			credentialId: i.credentialId,
+			...('settings' in i ? { settings: i.settings } : {}),
+		}));
 		return {
-			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
-			integrations: connectedIntegrations,
+			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: chatIntegrations,
 		};
 	}
 
