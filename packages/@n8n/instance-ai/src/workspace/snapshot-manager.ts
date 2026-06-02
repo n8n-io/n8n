@@ -195,7 +195,7 @@ export class SnapshotManager {
 			const knowledgeBaseBundle = this.knowledgeBaseBundle();
 			const skillsHash = runtimeSkillBundle?.skillsHash ?? EMPTY_RUNTIME_SKILLS_HASH;
 			const knowledgeBaseHash = knowledgeBaseBundle.contentHash ?? EMPTY_KNOWLEDGE_BASE_HASH;
-			return `${skillsHash}-2-${knowledgeBaseHash}`;
+			return `${skillsHash}-${knowledgeBaseHash}`;
 		})();
 
 		return await this.snapshotSuffixPromise;
