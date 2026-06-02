@@ -828,7 +828,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 												data-test-id="credential-option-private-badge"
 											>
 												<span :class="$style.dynamicBadgeText">
-													<N8nIcon icon="key-round" size="medium" />
+													<N8nIcon icon="key-round" size="small" />
 													{{ i18n.baseText('credentials.private.badge') }}
 												</span>
 											</N8nBadge>
@@ -860,7 +860,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									data-test-id="node-credential-private-icon"
 								>
 									<span :class="$style.dynamicBadgeText">
-										<N8nIcon icon="key-round" size="medium" />
+										<N8nIcon icon="key-round" size="small" />
 										{{ i18n.baseText('credentials.private.badge') }}
 									</span>
 								</N8nBadge>
@@ -893,35 +893,26 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div v-if="getSelectedPrivateCredential(type.name)" :class="$style.noticesContainer">
-					<N8nNotice
-						v-if="getSelectedPrivateCredential(type.name)"
-						:theme="isPrivateConnected(type.name) ? 'info' : 'warning'"
-						data-test-id="node-credential-private-callout"
-					>
+				<div
+					v-if="getSelectedPrivateCredential(type.name) && !isPrivateConnected(type.name)"
+					:class="$style.noticesContainer"
+				>
+					<N8nNotice theme="warning" data-test-id="node-credential-private-callout">
 						<div :class="$style.privateNoticeContent">
 							<N8nIcon icon="user" size="small" :class="$style.privateNoticeIcon" />
 							<div>
 								<span>{{ i18n.baseText('credentials.private.callout.title') }}</span>
 								<div :class="$style.privateStatusRow">
-									<template v-if="isPrivateConnected(type.name)">
-										<N8nIcon icon="circle-check" color="success" size="small" />
-										<N8nText size="small">{{
-											i18n.baseText('credentials.private.callout.connected')
-										}}</N8nText>
-									</template>
-									<template v-else>
-										<N8nText size="small" :class="$style.privateNotConnectedText">{{
-											i18n.baseText('credentials.private.callout.notConnected')
-										}}</N8nText>
-										<N8nLink
-											v-if="canConnectPrivateCredential(type.name)"
-											data-test-id="node-credential-private-connect"
-											@click="editCredential(type.name)"
-										>
-											{{ i18n.baseText('credentials.private.callout.connect') }}
-										</N8nLink>
-									</template>
+									<N8nText size="small" :class="$style.privateNotConnectedText">{{
+										i18n.baseText('credentials.private.callout.notConnected')
+									}}</N8nText>
+									<N8nLink
+										v-if="canConnectPrivateCredential(type.name)"
+										data-test-id="node-credential-private-connect"
+										@click="editCredential(type.name)"
+									>
+										{{ i18n.baseText('credentials.private.callout.connect') }}
+									</N8nLink>
 								</div>
 							</div>
 						</div>
@@ -1025,8 +1016,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
+	font-size: var(--font-size--2xs);
 }
 
 .noticesContainer {

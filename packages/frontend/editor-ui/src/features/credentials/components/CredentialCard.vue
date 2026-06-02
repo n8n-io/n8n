@@ -258,7 +258,7 @@ function moveResource() {
 						data-test-id="credential-card-dynamic"
 					>
 						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
+							<N8nIcon icon="key-round" size="small" />
 							{{ locale.baseText('credentials.dynamic.badge') }}
 						</span>
 					</N8nBadge>
@@ -377,8 +377,7 @@ function moveResource() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
+	font-size: var(--font-size--2xs);
 }
 
 .tooltipContent {
