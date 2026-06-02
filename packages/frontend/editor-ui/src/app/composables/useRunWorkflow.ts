@@ -22,7 +22,7 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -39,7 +39,10 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	injectWorkflowDocumentStore,
+	type WorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -65,6 +68,13 @@ import type { WorkflowObjectAccessors } from '../types';
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
 	workflowState?: WorkflowState;
+	/**
+	 * Binds this instance to a specific workflow document. Pass this from
+	 * async, non-setup callers (e.g. push handlers) where `inject()` can't
+	 * resolve the current document; otherwise it falls back to the injected
+	 * document store for normal setup-context callers.
+	 */
+	workflowDocumentStore?: Readonly<Ref<WorkflowDocumentStore>>;
 }) {
 	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
@@ -78,7 +88,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore =
+		useRunWorkflowOpts.workflowDocumentStore ?? injectWorkflowDocumentStore();
 	const workflowExecutionState = computed(() =>
 		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 	);
@@ -169,9 +180,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
+			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId];
 			if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
-				await workflowSaving.saveCurrentWorkflow();
+				await workflowSaving.saveCurrentWorkflow({ id: workflowDocumentStore.value.workflowId });
 			}
 
 			const workflowData = workflowDocumentStore.value.serialize();
@@ -405,7 +416,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					},
 				}),
 				workflowData: {
-					id: workflowsStore.workflowId,
+					id: workflowDocumentStore.value.workflowId,
 					name: workflowData.name!,
 					active: workflowData.active!,
 					createdAt: 0,

@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -68,9 +69,6 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	workflowExecutionStateStore.executingNode.lastAddedExecutingNode = null;
-	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
-
 	// Only act on the finish of the execution this document is actually tracking.
 	// Normal match is on the execution id; when the active execution is still
 	// pending (null) because this finish raced ahead of `executionStarted`, fall
@@ -82,6 +80,16 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	const belongsToThisDocument =
 		activeExecutionId === data.executionId ||
 		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId);
+
+	// Clear the per-node spinner queue when this finish is ours, or when this
+	// document isn't tracking any run (`undefined`, e.g. idle or iframe preview)
+	// so stale spinners don't get stuck. Skip clearing only while a different live
+	// execution is being tracked, so a foreign finish can't wipe this document's
+	// running state. `clearNodeExecutionQueue` also resets `lastAddedExecutingNode`.
+	if (belongsToThisDocument || activeExecutionId === undefined) {
+		workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
+	}
+
 	if (!belongsToThisDocument) {
 		return;
 	}
@@ -190,13 +198,14 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 	const rowsLeft = mainData ? (mainData[0]?.json?._rowsLeft as number) : 0;
 
 	if (rowsLeft && rowsLeft > 0) {
-		// useRunWorkflow needs a workflowState; inject() doesn't resolve in this async,
-		// non-setup context, so construct one explicitly bound to the document whose
-		// execution just finished — otherwise the rerun targets the globally-current
-		// workflow instead of this one.
+		// useRunWorkflow needs a workflowState and a workflow document store; inject()
+		// doesn't resolve in this async, non-setup context, so bind both explicitly to
+		// the document whose execution just finished — otherwise the rerun targets the
+		// globally-current workflow instead of this one.
 		const { runWorkflow } = useRunWorkflow({
 			router: opts.router,
 			workflowState: useWorkflowState({ documentId: opts.documentId }),
+			workflowDocumentStore: computed(() => useWorkflowDocumentStore(opts.documentId)),
 		});
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,

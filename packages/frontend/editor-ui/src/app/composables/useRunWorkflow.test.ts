@@ -501,6 +501,79 @@ describe('useRunWorkflow({ router })', () => {
 			});
 		});
 
+		describe('scoped workflow document store (eval-loop reruns)', () => {
+			// Async push handlers (e.g. evaluation-loop reruns) pass their own document
+			// store. The run must target that document, not whatever workflow happens to
+			// be globally current — otherwise navigating away mid-evaluation reruns the
+			// wrong workflow.
+			function createScopedDocumentStore(workflowId: string) {
+				return shallowRef({
+					...mockDocumentStore,
+					documentId: createWorkflowDocumentId(workflowId),
+					workflowId,
+					name: `Workflow ${workflowId}`,
+					serialize: vi.fn().mockReturnValue({
+						id: workflowId,
+						name: `Workflow ${workflowId}`,
+						active: false,
+						nodes: [],
+						pinData: {},
+					} as unknown as WorkflowData),
+				} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
+			}
+
+			beforeEach(() => {
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: 'exec-1' });
+				vi.mocked(workflowsStore).getWorkflowRunData = null;
+				// The injected (globally-current) document store is workflow '123'. The
+				// scoped store passed per-call is a *different* workflow ('456'), so any
+				// fallback to global state surfaces as a wrong id in the assertions below.
+				// We deliberately leave `workflowsStore.workflowId` at its '123' default so
+				// later tests that rely on the global id aren't affected.
+				mockDocumentStore.serialize.mockReturnValue({
+					id: '123',
+					name: 'Globally current workflow',
+					active: false,
+					nodes: [],
+					pinData: {},
+				} as unknown as WorkflowData);
+			});
+
+			it('stages execution and start data with the scoped document workflow id, not the global one', async () => {
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true, '456': true };
+				const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+				const dataCaptor = captor();
+
+				const { runWorkflow } = useRunWorkflow({
+					router,
+					workflowDocumentStore: createScopedDocumentStore('456'),
+				});
+				await runWorkflow({});
+
+				expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+					expect.objectContaining({ workflowId: '456' }),
+				);
+				expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+				expect(dataCaptor.value).toMatchObject({ workflowData: { id: '456' } });
+			});
+
+			it('saves the scoped workflow (not the global one) when a save is required before running', async () => {
+				// Scoped '456' is not yet saved -> save required; global '123' is saved, so a
+				// fallback to the global id would wrongly skip the save entirely.
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
+				const workflowSaving = useWorkflowSaving({ router });
+
+				const { runWorkflow } = useRunWorkflow({
+					router,
+					workflowDocumentStore: createScopedDocumentStore('456'),
+				});
+				await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledWith({ id: '456' });
+			});
+		});
+
 		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);

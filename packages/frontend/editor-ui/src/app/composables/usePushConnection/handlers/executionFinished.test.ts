@@ -28,6 +28,7 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import type { PushHandlerOptions } from './types';
 
 const documentId = createWorkflowDocumentId('1');
@@ -69,6 +70,8 @@ describe('continueEvaluationLoop()', () => {
 	});
 
 	it('should call runWorkflow() if workflow has eval trigger that executed successfully with rows left', () => {
+		setActivePinia(createTestingPinia());
+
 		const evalTriggerNodeName = 'eval-trigger';
 		const evalTriggerNodeData = mock<ITaskData>({
 			data: {
@@ -114,6 +117,10 @@ describe('continueEvaluationLoop()', () => {
 		// The rerun must target the document whose execution just finished, not the
 		// globally-current workflow.
 		expect(useWorkflowState).toHaveBeenCalledWith({ documentId });
+		// useRunWorkflow must also be bound to that same document store so the rerun
+		// serializes and saves the correct workflow rather than the globally-current one.
+		const runWorkflowOptions = vi.mocked(useRunWorkflow).mock.calls.at(-1)?.[0];
+		expect(runWorkflowOptions?.workflowDocumentStore?.value.documentId).toBe(documentId);
 	});
 
 	it('should not call runWorkflow() if workflow execution status is not success', () => {
@@ -580,8 +587,14 @@ describe('executionFinished', () => {
 		const workflowsStore = useWorkflowsStore();
 		// This document is tracking a different execution (e.g. a concurrent
 		// scheduled run of the same workflow finished). Even though the workflow id
-		// matches, the finish must not clear this document's active execution.
+		// matches, the finish must not clear this document's active execution nor its
+		// per-node spinner queue.
 		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('our-exec');
+		workflowExecutionStateStore.executingNode.lastAddedExecutingNode = 'busy-node';
+		const clearNodeExecutionQueue = vi.spyOn(
+			workflowExecutionStateStore.executingNode,
+			'clearNodeExecutionQueue',
+		);
 		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
 
 		await executionFinished(
@@ -594,6 +607,8 @@ describe('executionFinished', () => {
 
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
+		expect(clearNodeExecutionQueue).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('busy-node');
 	});
 
 	it('processes a pending finish (null active) when the workflow id matches', async () => {
