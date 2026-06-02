@@ -38,7 +38,26 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Final Runtime Image
+# STAGE 4: Native Module Builder (isolated-vm musl rebuild)
+# ==============================================================================
+# Rebuild isolated-vm from source for musl libc. node-gyp-build's musl
+# detection relies on /etc/alpine-release, which the hardened runtime base
+# omits, so the bundled prebuilt loader picks the glibc binary and segfaults
+# in musl pthread paths. Removing prebuilds and invoking node-gyp directly
+# avoids npm rebuild's double-build behavior (built-in node-gyp + install-script
+# node-gyp) which races on dep-file state. Build tooling stays in this throwaway
+# stage so the runtime image ships no compilers.
+FROM node:${NODE_VERSION}-alpine3.22 AS native-builder
+
+COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+
+RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/isolated-vm && \
+    rm -rf prebuilds && \
+    npx --yes node-gyp rebuild --release -j max
+
+# ==============================================================================
+# STAGE 5: Final Runtime Image
 # ==============================================================================
 FROM system-deps AS runtime
 
@@ -53,11 +72,14 @@ WORKDIR /home/node
 
 COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+# Overlay the musl-rebuilt isolated-vm binary (see native-builder stage).
+COPY --from=native-builder /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
 
 RUN cd /usr/local/lib/node_modules/n8n && \
 		npm rebuild sqlite3 && \
+		rm -rf node_modules/isolated-vm/prebuilds && \
 		ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node

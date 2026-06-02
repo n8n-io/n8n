@@ -1614,6 +1614,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../@n8n/expression-runtime
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
@@ -1635,6 +1638,9 @@ importers:
       '@n8n_io/license-sdk':
         specifier: 2.24.1
         version: 2.24.1
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@parcel/watcher':
         specifier: ^2.5.1
         version: 2.5.1

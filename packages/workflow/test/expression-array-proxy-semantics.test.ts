@@ -25,6 +25,16 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 	});
 	const expression = workflow.expression;
 
+	// acquireIsolate/releaseIsolate are no-ops for the legacy engine, so these
+	// hooks are safe to register unconditionally; under the vm engine they
+	// reserve the isolate this suite's expressions evaluate against.
+	beforeAll(async () => {
+		await expression.acquireIsolate();
+	});
+	afterAll(async () => {
+		await expression.releaseIsolate();
+	});
+
 	const evaluate = (value: string, json: unknown) => {
 		const data: INodeExecutionData[] = [{ json: json as INodeExecutionData['json'] }];
 		return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', {});
