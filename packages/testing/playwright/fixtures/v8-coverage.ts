@@ -59,27 +59,34 @@ export const v8CoverageFixtures = {
 
 		await use(context);
 
-		const spec = specId(testInfo);
-		const specDir = join(BY_SPEC_DIR, slugify(spec));
 		const sharedReport = new CoverageReport(coverageOptions);
-		const specReport = new CoverageReport({ ...coverageOptions, name: spec, outputDir: specDir });
-		let collected = false;
+		// Capture this test's RAW page.coverage for the per-spec map. We clone the
+		// entries before handing the originals to MCR — `add()` runs them through
+		// initV8ListAndSourcemap which can mutate in place, so the same object must
+		// not be fed to two reports (that silently lost per-spec data before). The
+		// emitter does the MCR work later from this raw, off the test's hot path.
+		const perSpecRaw: unknown[] = [];
 		for (const page of tracked) {
 			if (page.isClosed()) continue;
 			try {
 				const coverage = await page.coverage.stopJSCoverage();
 				if (coverage?.length) {
+					perSpecRaw.push(...coverage.map((entry) => structuredClone(entry)));
 					await sharedReport.add(coverage);
-					await specReport.add(coverage);
-					collected = true;
 				}
 			} catch {
 				// Page closed before collection — ignore.
 			}
 		}
-		// Record the real spec id so the emitter can tag the per-spec lcov's TN.
-		if (collected) {
+		if (perSpecRaw.length) {
+			const spec = specId(testInfo);
+			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
+			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
+			writeFileSync(
+				join(specDir, `raw-${slugify(testInfo.testId)}.json`),
+				JSON.stringify(perSpecRaw),
+			);
 			writeFileSync(join(specDir, '.spec'), spec);
 		}
 	},

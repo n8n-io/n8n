@@ -82,27 +82,12 @@ jobs:
       - name: Build janitor (tested merge-coverage)
         run: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      # Two merges via the property-tested janitor merge-coverage:
-      #  - REPORT: shard-level lcovs (frontend+backend) → unified lcov for Codecov.
-      #  - IMPACT MAP: per-spec frontend lcovs (TN-tagged) → spec-keyed map for
-      #    test selection. Both bounded-memory; no raw, no OOM.
-      - name: Merge coverage report + build impact map
+      # Report (shard lcovs → unified lcov) + impact map (per-spec lcovs →
+      # spec-keyed map), both via the property-tested janitor merge-coverage.
+      # Logic lives in the tested aggregate-coverage.mjs, not inline bash.
+      - name: Aggregate coverage + build impact map
         working-directory: packages/testing/playwright
-        run: |
-          CLI=../../janitor/dist/cli.js
-          mkdir -p coverage /tmp/report-in /tmp/spec-in
-          i=0; while IFS= read -r f; do cp "$f" "/tmp/report-in/shard-$i.info"; i=$((i+1)); done \
-            < <(find /tmp/shards -name 'lcov.info' -type f)
-          echo "Report: merging $i shard lcov(s)"
-          node "$CLI" merge-coverage --inputs-dir=/tmp/report-in \
-            --out-lcov=coverage/lcov.info --out-map=/tmp/report-map.json
-          # Per-spec frontend lcovs from every shard (unique names; attribution is
-          # by TN inside each file, so filename collisions are harmless).
-          find /tmp/shards -path '*/by-spec/*.lcov' -type f \
-            -exec sh -c 'cp "$1" "/tmp/spec-in/$(echo "$1" | md5sum | cut -c1-12).lcov"' _ {} \;
-          n=$(find /tmp/spec-in -name '*.lcov' | wc -l); echo "Impact map: merging $n per-spec lcov(s)"
-          node "$CLI" merge-coverage --inputs-dir=/tmp/spec-in \
-            --out-lcov=/tmp/spec-frontend.lcov --out-map=coverage/impact-map.json
+        run: node scripts/aggregate-coverage.mjs --shards=/tmp/shards --out=coverage
 
       - name: Upload Coverage Report Artifact
         if: always()
