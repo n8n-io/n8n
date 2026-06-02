@@ -18,10 +18,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
-	/** Number of recent messages to include in context. */
-	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
-	lastMessages: number = 20;
-
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;

@@ -1,4 +1,5 @@
 import type { INode } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	parseToolResult,
@@ -16,31 +17,30 @@ import type { FetchWorkflowsResult } from '../web/templates';
 import * as templates from '../web/templates';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 // Mock the templates module
-jest.mock('../web/templates');
+vi.mock('../web/templates');
 
 describe('GetWorkflowExamplesTool', () => {
 	let getWorkflowExamplesTool: ReturnType<typeof createGetWorkflowExamplesTool>['tool'];
-	const mockFetchWorkflowsFromTemplates =
-		templates.fetchWorkflowsFromTemplates as jest.MockedFunction<
-			typeof templates.fetchWorkflowsFromTemplates
-		>;
+	const mockFetchWorkflowsFromTemplates = templates.fetchWorkflowsFromTemplates as MockedFunction<
+		typeof templates.fetchWorkflowsFromTemplates
+	>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		getWorkflowExamplesTool = createGetWorkflowExamplesTool().tool;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	// Helper to create mock workflow nodes

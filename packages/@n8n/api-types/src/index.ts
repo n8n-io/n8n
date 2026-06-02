@@ -421,6 +421,12 @@ export {
 } from './schemas/evaluations.schema';
 
 export {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+} from './schemas/mcp.schema';
+
+export {
 	EVAL_COLLECTIONS_FLAG,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
@@ -457,7 +463,6 @@ export {
 } from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
-export { xssCheck } from './utils/xss-check';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

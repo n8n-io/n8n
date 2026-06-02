@@ -57,7 +57,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
 	name: string,
-	value: NodeParameterValue,
+	value: NodeParameterValueType,
 ) {
 	const nameParts = name.split('.');
 	let lastNamePart: string | undefined = nameParts.pop();

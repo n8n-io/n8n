@@ -48,16 +48,15 @@ export class EvaluationConfigValidator {
 	// z.string().min(1) accepts whitespace but the runtime checks don't.
 	private checkMetricInputsNonEmpty(args: ValidateArgs, errors: EvaluationApiError[]): void {
 		for (const metric of args.config.metrics) {
-			const inputs = collectMetricInputStrings(metric);
-			for (const [field, value] of Object.entries(inputs)) {
+			for (const { name, path, value } of collectMetricInputStrings(metric)) {
 				if (typeof value !== 'string' || value.trim().length === 0) {
 					errors.push({
 						code: EvaluationErrorCode.METRIC_INPUT_EMPTY,
-						message: `Metric "${metric.name}" input "${field}" must not be empty`,
+						message: `Metric "${metric.name}" input "${name}" must not be empty`,
 						details: {
 							metricId: metric.id,
 							metricName: metric.name,
-							field: `config.inputs.${field}`,
+							field: path,
 						},
 					});
 				}
@@ -267,30 +266,58 @@ export class EvaluationConfigValidator {
 	}
 }
 
-function collectMetricInputStrings(metric: EvaluationMetric): Record<string, unknown> {
+type MetricInputField = { name: string; path: string; value: unknown };
+
+function collectMetricInputStrings(metric: EvaluationMetric): MetricInputField[] {
 	if (metric.type === 'expression') {
-		return { expression: metric.config.expression };
+		return [{ name: 'expression', path: 'config.expression', value: metric.config.expression }];
 	}
 	if (metric.type === 'llm_judge') {
 		const { actualAnswer, expectedAnswer, userQuery } = metric.config.inputs;
-		const out: Record<string, unknown> = { actualAnswer };
-		if (expectedAnswer !== undefined) out.expectedAnswer = expectedAnswer;
-		if (userQuery !== undefined) out.userQuery = userQuery;
+		const out: MetricInputField[] = [
+			{ name: 'actualAnswer', path: 'config.inputs.actualAnswer', value: actualAnswer },
+		];
+		if (expectedAnswer !== undefined) {
+			out.push({
+				name: 'expectedAnswer',
+				path: 'config.inputs.expectedAnswer',
+				value: expectedAnswer,
+			});
+		}
+		if (userQuery !== undefined) {
+			out.push({ name: 'userQuery', path: 'config.inputs.userQuery', value: userQuery });
+		}
 		return out;
 	}
 	if (metric.type === 'string_similarity' || metric.type === 'categorization') {
-		return {
-			actualAnswer: metric.config.inputs.actualAnswer,
-			expectedAnswer: metric.config.inputs.expectedAnswer,
-		};
+		return [
+			{
+				name: 'actualAnswer',
+				path: 'config.inputs.actualAnswer',
+				value: metric.config.inputs.actualAnswer,
+			},
+			{
+				name: 'expectedAnswer',
+				path: 'config.inputs.expectedAnswer',
+				value: metric.config.inputs.expectedAnswer,
+			},
+		];
 	}
 	if (metric.type === 'tools_used') {
-		return {
-			expectedTools: metric.config.inputs.expectedTools,
-			intermediateSteps: metric.config.inputs.intermediateSteps,
-		};
+		return [
+			{
+				name: 'expectedTools',
+				path: 'config.inputs.expectedTools',
+				value: metric.config.inputs.expectedTools,
+			},
+			{
+				name: 'intermediateSteps',
+				path: 'config.inputs.intermediateSteps',
+				value: metric.config.inputs.intermediateSteps,
+			},
+		];
 	}
-	return {};
+	return [];
 }
 
 /**

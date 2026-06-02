@@ -11,7 +11,7 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -107,11 +107,11 @@ describe('AgentChatBridge — consumeStream', () => {
 	const bufferedIntegration = {
 		type: 'test-buffered',
 		credentialId: 'cred-1',
-	} as unknown as AgentCredentialIntegrationConfig;
+	} as unknown as AgentIntegrationConfig;
 	const streamingIntegration = {
 		type: 'test-streaming',
 		credentialId: 'cred-1',
-	} as unknown as AgentCredentialIntegrationConfig;
+	} as unknown as AgentIntegrationConfig;
 
 	beforeEach(() => {
 		registry = new ChatIntegrationRegistry();
@@ -278,7 +278,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		const slackIntegration = {
 			type: 'slack',
 			credentialId: 'cred-1',
-		} as unknown as AgentCredentialIntegrationConfig;
+		} as unknown as AgentIntegrationConfig;
 
 		it('sets a thinking status before executing a Slack thread message', async () => {
 			const { bot, handlers } = makeBot();
@@ -464,7 +464,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentCredentialIntegrationConfig,
+				} as unknown as AgentIntegrationConfig,
 				messageContextStore,
 			);
 

@@ -6,7 +6,7 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/app/constants';
 
-import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionTypes, MANUAL_TRIGGER_NODE_TYPES } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -414,11 +414,20 @@ export function useNodeHelpers() {
 		return null;
 	}
 
+	function workflowHasIncompatibleTrigger(): boolean {
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
+		return triggers.some(
+			(trigger) => !trigger.disabled && !MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type),
+		);
+	}
+
 	function collectPrivateCredentialIssues(
 		node: INodeUi,
 		foundIssues: INodeIssueObjectProperty,
 	): void {
 		if (!isDynamicCredentialsEnabled.value) return;
+
+		const incompatibleTrigger = workflowHasIncompatibleTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -432,6 +441,10 @@ export function useNodeHelpers() {
 					i18n.baseText('nodeIssues.credentials.privateNotConnected', {
 						interpolate: { name: credential.name },
 					}),
+				];
+			} else if (incompatibleTrigger) {
+				foundIssues[credTypeName] = [
+					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
 				];
 			}
 		}
