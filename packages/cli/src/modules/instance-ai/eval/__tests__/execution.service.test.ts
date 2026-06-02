@@ -232,6 +232,20 @@ function makeStartNode(): INode {
 	} as INode;
 }
 
+function mockWorkflowConstructorWithEntityNodes() {
+	jest.mocked(Workflow).mockImplementation((options: ConstructorParameters<typeof Workflow>[0]) => {
+		const nodes = Object.fromEntries(options.nodes.map((node) => [node.name, node]));
+		return {
+			getStartNode: mockGetStartNode,
+			nodes,
+		} as unknown as Workflow;
+	});
+}
+
+function placeholderValue(hint: string): string {
+	return `<__PLACEHOLDER_VALUE__${hint}__>`;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -733,6 +747,107 @@ describe('EvalExecutionService', () => {
 				// 'real' (from config-issue pre-marking) gets upgraded to 'mocked'.
 				expect(result.nodeResults['HTTP Request']).toBeDefined();
 				expect(result.nodeResults['HTTP Request'].executionMode).toBe('mocked');
+			});
+		});
+	});
+
+	// ── Parameter issue patching ─────────────────────────────────────
+
+	describe('parameter issue patching', () => {
+		beforeEach(() => {
+			mockWorkflowConstructorWithEntityNodes();
+		});
+
+		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+				if (nodeType !== 'n8n-nodes-base.httpRequest') {
+					return {
+						description: { properties: [] } as unknown as INodeTypeDescription,
+					} as never;
+				}
+
+				return {
+					description: {
+						properties: [
+							{
+								name: 'requiredField',
+								type: 'string',
+								required: true,
+								default: '',
+								displayName: 'Required Field',
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never;
+			});
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'HTTP Request': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { ok: true } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			const workflowArg = mockProcessRunExecutionData.mock.calls[0][0] as Workflow;
+
+			expect(workflowArg.nodes['HTTP Request'].parameters).toMatchObject({
+				requiredField: '__evalMockValue',
+			});
+			expect(result.nodeResults['HTTP Request'].configIssues).toBeDefined();
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual(
+				expect.arrayContaining([expect.stringContaining('HTTP Request')]),
+			);
+		});
+
+		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Resource Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								calendarId: placeholderValue('Select a calendar'),
+								documentId: placeholderValue('Select spreadsheet'),
+								folderId: placeholderValue('Select folder'),
+								sheetName: placeholderValue('Select sheet'),
+								fileId: placeholderValue('Select file'),
+								driveId: placeholderValue('Select drive'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const workflowArg = mockProcessRunExecutionData.mock.calls[0][0] as Workflow;
+
+			expect(workflowArg.nodes['Resource Node'].parameters).toMatchObject({
+				calendarId: 'eval-calendar-id',
+				documentId: 'eval-spreadsheet-id',
+				folderId: 'eval-folder-id',
+				sheetName: '0',
+				fileId: 'eval-file-id',
+				driveId: 'eval-drive-id',
 			});
 		});
 	});

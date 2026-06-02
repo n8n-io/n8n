@@ -3,6 +3,7 @@ export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-task.schema';
 export * from './dto';
+export * from './model-providers';
 export * from './provider-capabilities';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';

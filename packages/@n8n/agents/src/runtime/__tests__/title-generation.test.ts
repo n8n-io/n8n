@@ -11,10 +11,12 @@ type GenerateTextCall = {
 
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
 
-const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
@@ -156,9 +158,9 @@ describe('generateTitleFromMessage', () => {
 	it('counts title generation tokens when usage is available', async () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert', usage: { totalTokens: 9 } });
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow', {
