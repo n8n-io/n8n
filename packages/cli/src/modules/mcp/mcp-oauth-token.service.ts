@@ -299,11 +299,8 @@ export class McpOAuthTokenService {
 	}
 
 	private getStringClaim(payload: unknown, claim: string): string | null {
-		if (!payload || typeof payload !== 'object') {
-			return null;
-		}
-
-		const claimValue = Reflect.get(payload, claim);
+		if (!payload || typeof payload !== 'object') return null;
+		const claimValue = (payload as Record<string, unknown>)[claim];
 		return typeof claimValue === 'string' ? claimValue : null;
 	}
 }
