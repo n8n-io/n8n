@@ -1,3 +1,16 @@
+# [2.25.0](https://github.com/n8n-io/n8n/compare/n8n@2.24.0...n8n@2.25.0) (2026-06-02)
+
+
+### Bug Fixes
+
+* **core:** Error workflows show up as separate span in otel traces ([#31252](https://github.com/n8n-io/n8n/issues/31252)) ([fb51c30](https://github.com/n8n-io/n8n/commit/fb51c309e8b3e9b4eb5c7c3ea66121019f3b99de))
+
+
+### Features
+
+* **core:** Add validate_node_config MCP tool for per-node validation ([#31047](https://github.com/n8n-io/n8n/issues/31047)) ([166eb85](https://github.com/n8n-io/n8n/commit/166eb85509b2409eb5e59f37dea96c849d0df790))
+
+
 # [2.24.0](https://github.com/n8n-io/n8n/compare/n8n@2.23.0...n8n@2.24.0) (2026-06-02)
 
 
