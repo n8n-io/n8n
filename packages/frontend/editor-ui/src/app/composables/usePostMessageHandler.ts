@@ -103,9 +103,10 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			useWorkflowExecutionStateStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
-			).setActiveExecutionId(null);
+			const documentId = currentWorkflowDocumentStore.value?.documentId;
+			if (documentId) {
+				useWorkflowExecutionStateStore(documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -201,9 +202,10 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 
 		await importWorkflowExact(json);
 
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution(data);
+		const documentId = currentWorkflowDocumentStore.value?.documentId;
+		if (documentId) {
+			useWorkflowExecutionStateStore(documentId).setActiveExecution(data);
+		}
 		currentWorkflowDocumentStore.value?.setPinData({});
 
 		canvasStore.stopLoading();

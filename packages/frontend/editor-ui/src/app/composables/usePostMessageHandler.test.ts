@@ -578,7 +578,8 @@ describe('usePostMessageHandler', () => {
 	describe('openExecutionPreview command', () => {
 		it('should call importWorkflowExact and set execution data', async () => {
 			const mockSetPinData = vi.fn();
-			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+			const documentId = createWorkflowDocumentId('preview-wf');
+			const storeRef = shallowRef({ documentId, setPinData: mockSetPinData } as never);
 			const mockExecutionData = {
 				workflowData: { id: 'w1' },
 			} as unknown as IExecutionResponse;
@@ -604,9 +605,7 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			const executionStateStore = useWorkflowExecutionStateStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
+			const executionStateStore = useWorkflowExecutionStateStore(documentId);
 			expect(executionStateStore.setActiveExecution).toHaveBeenCalledWith(mockExecutionData);
 			expect(mockSetPinData).toHaveBeenCalledWith({});
 

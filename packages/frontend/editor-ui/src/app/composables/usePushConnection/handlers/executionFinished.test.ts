@@ -696,7 +696,7 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(incrementSpy).toHaveBeenCalledWith('success');
 		});
@@ -708,7 +708,7 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther('success', true);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -720,7 +720,7 @@ describe('manual execution stats tracking', () => {
 			const builderStore = mockedStore(useBuilderStore);
 			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
+			handleExecutionFinishedWithSuccessOrOther('error', false);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
@@ -758,7 +758,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
@@ -788,7 +788,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+			handleExecutionFinishedWithSuccessOrOther('success', false);
 
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 		});
@@ -818,7 +818,7 @@ describe('manual execution stats tracking', () => {
 			nodeTypesStore.getNodeType = () =>
 				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
-			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+			handleExecutionFinishedWithSuccessOrOther('success', true);
 
 			expect(mockShowMessage).not.toHaveBeenCalled();
 		});

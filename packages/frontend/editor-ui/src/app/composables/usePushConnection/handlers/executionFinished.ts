@@ -126,11 +126,7 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
-			data.status,
-			successToastAlreadyShown,
-		);
+		handleExecutionFinishedWithSuccessOrOther(data.status, successToastAlreadyShown);
 		successToastAlreadyShown = true;
 	}
 
@@ -155,11 +151,7 @@ export async function executionFinished(
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(
-			options.workflowState,
-			execution.status,
-			successToastAlreadyShown,
-		);
+		handleExecutionFinishedWithSuccessOrOther(execution.status, successToastAlreadyShown);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
@@ -413,7 +405,6 @@ function handleExecutionFinishedSuccessfully(workflowName: string, message: stri
  * Handle the case when the workflow execution finished successfully.
  */
 export function handleExecutionFinishedWithSuccessOrOther(
-	workflowState: WorkflowState,
 	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
 ) {
