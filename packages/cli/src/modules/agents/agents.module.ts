@@ -86,6 +86,7 @@ export class AgentsModule implements ModuleInterface {
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity');
 		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
@@ -115,6 +116,7 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
+			AgentChatSubscription,
 			AgentFile,
 			AgentCheckpoint,
 			AgentResourceEntity,

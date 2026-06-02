@@ -207,6 +207,19 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Mirror Chat SDK thread subscription changes across live main instances.
+	 * The originating main persists the subscription before publishing; peers
+	 * update their local Chat SDK memory adapter so load-balanced follow-up
+	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 */
+	'agent-chat-subscription-changed': {
+		agentId: string;
+		integration: AgentIntegrationConfig;
+		threadId: string;
+		action: 'subscribe' | 'unsubscribe';
+	};
+
+	/**
 	 * Drop the cached agent runtime in `AgentsService.runtimes` across mains.
 	 * Published by the main that handled an agent mutation (publish, unpublish,
 	 * config update, tool/skill change, delete) after the change is persisted.

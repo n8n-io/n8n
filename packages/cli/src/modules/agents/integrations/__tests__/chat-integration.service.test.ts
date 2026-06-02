@@ -15,6 +15,7 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
+import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
 import { ChatIntegrationService } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
@@ -92,6 +93,7 @@ function buildServiceWith(
 		instanceSettings,
 		publisher,
 		globalConfig,
+		mock<AgentChatSubscriptionStateService>(),
 	);
 
 	return { service, registry, agentRepository, publisher, projectRelationRepository };
@@ -99,12 +101,13 @@ function buildServiceWith(
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
+	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let connectSpy: jest.SpyInstance;
 	let disconnectSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		Container.reset();
-		({ service } = buildServiceWith());
+		({ service, projectRelationRepository } = buildServiceWith());
 		connectSpy = jest.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 	});
@@ -125,6 +128,17 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
+
+	it('does not reconnect an already-live integration when republishing', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
+		const internal = service as unknown as { connections: Map<string, unknown> };
+		internal.connections.set('agent-1:slack:cred-1', {});
+
+		await service.syncToConfig(agent, [], [slackIntegration]);
+
+		expect(connectSpy).not.toHaveBeenCalled();
+	});
 });
 
 describe('ChatIntegrationService', () => {
@@ -141,6 +155,7 @@ describe('ChatIntegrationService', () => {
 			mock<InstanceSettings>({ isLeader: true }),
 			mock(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
+			mock<AgentChatSubscriptionStateService>(),
 		);
 
 	describe('disconnectAll', () => {

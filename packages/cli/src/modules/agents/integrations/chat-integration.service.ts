@@ -18,6 +18,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@/services/url.service';
 
+import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
 import { AgentChatBridge } from './agent-chat-bridge';
 import {
 	ChatIntegrationRegistry,
@@ -103,6 +104,7 @@ export class ChatIntegrationService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly globalConfig: GlobalConfig,
+		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 	) {}
 
 	/**
@@ -199,10 +201,16 @@ export class ChatIntegrationService {
 
 		// Use the platform type as the adapter key (e.g. 'slack') so that
 		// bot.webhooks.slack maps correctly to the handler.
+		const state = this.chatSubscriptionStateService.createStateAdapter({
+			agentId,
+			integration,
+			delegate: createMemoryState(),
+		});
+
 		const chat = new Chat({
 			userName: `n8n-agent-${agentId}`,
 			adapters: { [integration.type]: adapter } as Record<string, never>,
-			state: createMemoryState(),
+			state,
 		});
 
 		// Create supporting infrastructure
@@ -374,6 +382,9 @@ export class ChatIntegrationService {
 			: [];
 
 		for (const integration of additions) {
+			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
+			if (this.connections.has(key)) continue;
+
 			let connected = false;
 			for (const userId of userIds) {
 				try {

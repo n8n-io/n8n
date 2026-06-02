@@ -1,0 +1,221 @@
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import type { Lock, QueueEntry, StateAdapter } from 'chat';
+
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+
+import {
+	AgentChatSubscriptionRepository,
+	type AgentChatSubscriptionScope,
+} from '../repositories/agent-chat-subscription.repository';
+
+interface CreateStateAdapterOptions {
+	agentId: string;
+	integration: AgentIntegrationConfig;
+	delegate: StateAdapter;
+}
+
+type SubscriptionAction = PubSubCommandMap['agent-chat-subscription-changed']['action'];
+
+function toScope(agentId: string, integration: AgentIntegrationConfig): AgentChatSubscriptionScope {
+	return {
+		agentId,
+		integrationType: integration.type,
+		credentialId: integration.credentialId,
+	};
+}
+
+function scopeKey(scope: AgentChatSubscriptionScope): string {
+	return `${scope.agentId}:${scope.integrationType}:${scope.credentialId}`;
+}
+
+class AgentChatSubscriptionStateAdapter implements StateAdapter {
+	private connected = false;
+
+	constructor(
+		private readonly scope: AgentChatSubscriptionScope,
+		private readonly integration: AgentIntegrationConfig,
+		private readonly delegate: StateAdapter,
+		private readonly repository: AgentChatSubscriptionRepository,
+		private readonly publishChange: (
+			integration: AgentIntegrationConfig,
+			threadId: string,
+			action: SubscriptionAction,
+		) => Promise<void>,
+		private readonly onDisconnect: (state: AgentChatSubscriptionStateAdapter) => void,
+	) {}
+
+	get key(): string {
+		return scopeKey(this.scope);
+	}
+
+	async connect(): Promise<void> {
+		await this.delegate.connect();
+		this.connected = true;
+		for (const threadId of await this.repository.listThreadIdsForConnection(this.scope)) {
+			await this.delegate.subscribe(threadId);
+		}
+	}
+
+	async disconnect(): Promise<void> {
+		try {
+			await this.delegate.disconnect();
+		} finally {
+			this.connected = false;
+			this.onDisconnect(this);
+		}
+	}
+
+	async subscribe(threadId: string): Promise<void> {
+		await this.repository.subscribe(this.scope, threadId);
+		await this.delegate.subscribe(threadId);
+		await this.publishChange(this.integration, threadId, 'subscribe');
+	}
+
+	async unsubscribe(threadId: string): Promise<void> {
+		await this.repository.unsubscribe(this.scope, threadId);
+		await this.delegate.unsubscribe(threadId);
+		await this.publishChange(this.integration, threadId, 'unsubscribe');
+	}
+
+	async isSubscribed(threadId: string): Promise<boolean> {
+		return await this.repository.isSubscribed(this.scope, threadId);
+	}
+
+	async applyRemoteChange(threadId: string, action: SubscriptionAction): Promise<void> {
+		if (!this.connected) return;
+		if (action === 'subscribe') {
+			await this.delegate.subscribe(threadId);
+			return;
+		}
+		await this.delegate.unsubscribe(threadId);
+	}
+
+	async acquireLock(threadId: string, ttlMs: number): Promise<Lock | null> {
+		return await this.delegate.acquireLock(threadId, ttlMs);
+	}
+
+	async appendToList(
+		key: string,
+		value: unknown,
+		options?: { maxLength?: number; ttlMs?: number },
+	): Promise<void> {
+		await this.delegate.appendToList(key, value, options);
+	}
+
+	async delete(key: string): Promise<void> {
+		await this.delegate.delete(key);
+	}
+
+	async dequeue(threadId: string): Promise<QueueEntry | null> {
+		return await this.delegate.dequeue(threadId);
+	}
+
+	async enqueue(threadId: string, entry: QueueEntry, maxSize: number): Promise<number> {
+		return await this.delegate.enqueue(threadId, entry, maxSize);
+	}
+
+	async extendLock(lock: Lock, ttlMs: number): Promise<boolean> {
+		return await this.delegate.extendLock(lock, ttlMs);
+	}
+
+	async forceReleaseLock(threadId: string): Promise<void> {
+		await this.delegate.forceReleaseLock(threadId);
+	}
+
+	async get<T = unknown>(key: string): Promise<T | null> {
+		return await this.delegate.get<T>(key);
+	}
+
+	async getList<T = unknown>(key: string): Promise<T[]> {
+		return await this.delegate.getList<T>(key);
+	}
+
+	async queueDepth(threadId: string): Promise<number> {
+		return await this.delegate.queueDepth(threadId);
+	}
+
+	async releaseLock(lock: Lock): Promise<void> {
+		await this.delegate.releaseLock(lock);
+	}
+
+	async set<T = unknown>(key: string, value: T, ttlMs?: number): Promise<void> {
+		await this.delegate.set<T>(key, value, ttlMs);
+	}
+
+	async setIfNotExists(key: string, value: unknown, ttlMs?: number): Promise<boolean> {
+		return await this.delegate.setIfNotExists(key, value, ttlMs);
+	}
+}
+
+@Service()
+export class AgentChatSubscriptionStateService {
+	private readonly activeStates = new Map<string, AgentChatSubscriptionStateAdapter>();
+
+	constructor(
+		private readonly logger: Logger,
+		private readonly repository: AgentChatSubscriptionRepository,
+		private readonly publisher: Publisher,
+		private readonly globalConfig: GlobalConfig,
+	) {}
+
+	createStateAdapter(options: CreateStateAdapterOptions): StateAdapter {
+		const scope = toScope(options.agentId, options.integration);
+		const state = new AgentChatSubscriptionStateAdapter(
+			scope,
+			options.integration,
+			options.delegate,
+			this.repository,
+			async (integration, threadId, action) =>
+				await this.publishSubscriptionChanged(options.agentId, integration, threadId, action),
+			(disconnectedState) => this.unregister(disconnectedState),
+		);
+		this.activeStates.set(state.key, state);
+		return state;
+	}
+
+	@OnPubSubEvent('agent-chat-subscription-changed', { instanceType: 'main' })
+	async handleSubscriptionChanged(
+		payload: PubSubCommandMap['agent-chat-subscription-changed'],
+	): Promise<void> {
+		const state = this.activeStates.get(scopeKey(toScope(payload.agentId, payload.integration)));
+		await state?.applyRemoteChange(payload.threadId, payload.action);
+	}
+
+	private unregister(state: AgentChatSubscriptionStateAdapter): void {
+		if (this.activeStates.get(state.key) === state) {
+			this.activeStates.delete(state.key);
+		}
+	}
+
+	private async publishSubscriptionChanged(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		threadId: string,
+		action: SubscriptionAction,
+	): Promise<void> {
+		if (!this.globalConfig.multiMainSetup.enabled) return;
+		try {
+			await this.publisher.publishCommand({
+				command: 'agent-chat-subscription-changed',
+				payload: { agentId, integration, threadId, action },
+			});
+		} catch (error) {
+			this.logger.warn(
+				'[AgentChatSubscriptionStateService] Failed to publish subscription change',
+				{
+					agentId,
+					integrationType: integration.type,
+					credentialId: integration.credentialId,
+					threadId,
+					action,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+		}
+	}
+}

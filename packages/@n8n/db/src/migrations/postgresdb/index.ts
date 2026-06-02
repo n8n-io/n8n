@@ -199,6 +199,7 @@ import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/178
 import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
 import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { CreateAgentChatSubscriptions1784000000024 } from '../common/1784000000024-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -403,4 +404,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTaskDefinitionTable1784000000021,
 	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	CreateAgentChatSubscriptions1784000000024,
 ];
