@@ -1,4 +1,4 @@
-import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { CreateApiKeyRequestDto, PaginationDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -8,6 +8,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
@@ -64,9 +65,11 @@ export class ApiKeysController {
 	 */
 	@GlobalScope('apiKey:manage')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest) {
-		const apiKeys = await this.publicApiKeyService.getRedactedApiKeysForUser(req.user);
-		return apiKeys;
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
+		return await this.publicApiKeyService.getRedactedApiKeysForUser(req.user, {
+			take: query.take,
+			skip: query.skip,
+		});
 	}
 
 	/**

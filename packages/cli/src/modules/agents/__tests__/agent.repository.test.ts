@@ -124,16 +124,9 @@ describe('AgentRepository', () => {
 			expect(result.map((a) => a.id)).toEqual(['agent-a']);
 		});
 
-		it('ignores schedule integrations when matching on credentialId', async () => {
+		it('ignores integrations with a non-matching credentialId', async () => {
 			const agents = [
-				makeAgent('agent-schedule', [
-					{
-						type: 'schedule',
-						active: true,
-						cronExpression: '* * * * *',
-						wakeUpPrompt: 'Automated message',
-					},
-				]),
+				makeAgent('agent-other', [{ type: 'slack', credentialId: 'cred-other' }]),
 				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);

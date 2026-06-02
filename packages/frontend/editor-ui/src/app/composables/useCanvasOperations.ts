@@ -56,6 +56,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -139,6 +140,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import {
+	createWorkflowDocumentId,
 	pinDataToExecutionData,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
@@ -483,6 +485,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const wasTrigger = nodeTypesStore.isTriggerNode(node.type);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -503,6 +507,12 @@ export function useCanvasOperations() {
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
 			}
+		}
+
+		// Removing a trigger node can flip private-credential validity on every
+		// other node — re-evaluate credential issues across the workflow.
+		if (wasTrigger) {
+			nodeHelpers.updateNodesCredentialsIssues();
 		}
 
 		trackDeleteNode(id);
@@ -903,6 +913,12 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
+
+			// Adding a trigger node can flip private-credential validity on every
+			// other node — re-evaluate credential issues across the workflow.
+			if (nodeTypesStore.isTriggerNode(nodeData.type)) {
+				nodeHelpers.updateNodesCredentialsIssues();
+			}
 
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
 			const nextView =
@@ -2311,7 +2327,10 @@ export function useCanvasOperations() {
 		});
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		const executionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (executionStateStore.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}

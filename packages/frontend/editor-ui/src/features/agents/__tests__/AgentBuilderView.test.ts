@@ -432,6 +432,22 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
+	it('reloads task bodies after reverting to a published version', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasksReloadKey')).toBe(0);
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('reverted', makeAgentResponse({ activeVersionId: 'published-version' }));
+		await flushPromises();
+
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasksReloadKey'),
+		).toBe(1);
+	});
+
 	it('renders only the full-page preview chat on the preview route', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
@@ -714,7 +730,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-tool', 0);
+		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-tool', {
+			kind: 'tool',
+			toolType: 'custom',
+			id: 'custom_tool',
+		});
 		await nextTick();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -938,7 +938,7 @@
     "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
     "kafkajs": "catalog:",
-    "ldapts": "4.2.6",
+    "ldapts": "catalog:",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
     "luxon": "catalog:",
@@ -966,7 +966,7 @@
     "rrule": "2.8.1",
     "rss-parser": "3.13.0",
     "sanitize-html": "2.12.1",
-    "semver": "7.5.4",
+    "semver": "catalog:",
     "showdown": "2.1.0",
     "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",

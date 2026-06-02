@@ -5,6 +5,24 @@ import { jsonParse } from 'n8n-workflow';
 
 import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run-snapshot.repository';
 
+/**
+ * Walk a saved agent tree and flip everything in-flight to a terminal state.
+ * Active sub-agents become `cancelled`, loading tool calls stop loading, and
+ * unresolved HITL confirmation cards get a `denied` status so the frontend
+ * stops rendering Allow / Request-changes buttons. Mutates `node` in place.
+ */
+function cancelInFlightNodes(node: InstanceAiAgentNode): void {
+	if (node.status === 'active') node.status = 'cancelled';
+	for (const call of node.toolCalls) {
+		if (!call.isLoading) continue;
+		call.isLoading = false;
+		if (call.confirmation && !call.confirmationStatus) {
+			call.confirmationStatus = 'denied';
+		}
+	}
+	for (const child of node.children) cancelInFlightNodes(child);
+}
+
 export interface SaveSnapshotOptions {
 	messageGroupId?: string;
 	runIds?: string[];
@@ -131,6 +149,27 @@ export class DbSnapshotStorage {
 
 		// No existing row — insert
 		await this.save(threadId, agentTree, runId, options);
+	}
+
+	/**
+	 * Mark an existing snapshot as a cancelled run, terminalising every
+	 * `active` node and every in-flight tool call (including unresolved HITL
+	 * confirmations) in the saved tree. Used when a run is being marked
+	 * terminal after the in-memory event bus is gone — e.g. handling a
+	 * confirmation orphaned by a restart — because rebuilding the tree from
+	 * an empty bus would clobber the saved plan / ask card with an empty
+	 * cancelled tree. Keeps the planner output, tool calls, and confirmation
+	 * payload intact so the user can still see what was being planned, just
+	 * without interactive buttons.
+	 */
+	async markRunCancelled(threadId: string, runId: string): Promise<void> {
+		const key = { threadId, runId };
+		const row = await this.repo.findOneBy(key);
+		if (!row) return;
+
+		const tree = jsonParse<InstanceAiAgentNode>(row.tree);
+		cancelInFlightNodes(tree);
+		await this.repo.update(key, { tree: JSON.stringify(tree) });
 	}
 
 	async getAll(threadId: string): Promise<AgentTreeSnapshot[]> {

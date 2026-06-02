@@ -1,14 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import pLimit from 'p-limit';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { runJudgePanel } from './judge-panel';
 
-const mockEvaluateWorkflowPairwise = jest.fn();
+const mockEvaluateWorkflowPairwise = vi.fn();
 
-jest.mock('./judge-chain', () => ({
+vi.mock('./judge-chain', () => ({
 	evaluateWorkflowPairwise: (...args: unknown[]): unknown => mockEvaluateWorkflowPairwise(...args),
 }));
 
@@ -18,7 +18,7 @@ function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 
 describe('runJudgePanel()', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should respect llmCallLimiter concurrency', async () => {
