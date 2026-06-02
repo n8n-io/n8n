@@ -253,6 +253,21 @@ export function buildContext(
 		},
 	});
 
+	// $items — global accessor for a node's execution data. Unlike $() and
+	// $input this is a plain typed-RPC function (not a synthetic Proxy):
+	// the host enforces nothing structural here, the schema validates the
+	// args, and the host's `WorkflowDataProxy.$items` applies its own
+	// defaults when fields are undefined.
+	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'getItems', nodeName, outputIndex, runIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target

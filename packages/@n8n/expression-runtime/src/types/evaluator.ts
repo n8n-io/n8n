@@ -136,15 +136,16 @@ export interface InputProxy {
 /**
  * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
  *
- * `$` and `$input` are the typed-RPC accessors (`$('NodeName').first()`,
- * `$input.first()`, etc.) and are called directly from typed-RPC handlers.
- * Everything else flows through the generic data-access primitives
- * (`getValueAtPath`, `getArrayElement`), which read paths off the index
- * signature without needing per-key types.
+ * `$`, `$input`, and `$items` are typed-RPC accessors (`$('NodeName').first()`,
+ * `$input.first()`, `$items(...)`, etc.) and are called directly from
+ * typed-RPC handlers. Everything else flows through the generic data-access
+ * primitives (`getValueAtPath`, `getArrayElement`), which read paths off
+ * the index signature without needing per-key types.
  */
 export interface WorkflowData {
 	$?: (nodeName: string) => NodeProxy | null | undefined;
 	$input?: InputProxy;
+	$items?: (nodeName?: string, outputIndex?: number, runIndex?: number) => unknown;
 	[key: string]: unknown;
 }
 
