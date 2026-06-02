@@ -73,8 +73,13 @@ const mockGetStartNode = jest.fn();
 jest.mock('n8n-workflow', () => {
 	const actual = jest.requireActual('n8n-workflow');
 	class MockWorkflow {
-		nodes = {};
+		nodes: Record<string, unknown>;
 		getStartNode = mockGetStartNode;
+		constructor(options: { nodes?: Array<{ name: string }> }) {
+			// Key the entity's node objects by name (same references, so the SUT's
+			// in-place parameter patching propagates to the executed workflow).
+			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
+		}
 	}
 	return {
 		...actual,
@@ -173,6 +178,10 @@ function makeStartNode(): INode {
 		position: [0, 0] as [number, number],
 		parameters: {},
 	} as INode;
+}
+
+function placeholderValue(hint: string): string {
+	return `<__PLACEHOLDER_VALUE__${hint}__>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -763,6 +772,105 @@ describe('EvalExecutionService', () => {
 				// 'real' (from config-issue pre-marking) gets upgraded to 'mocked'.
 				expect(result.nodeResults['HTTP Request']).toBeDefined();
 				expect(result.nodeResults['HTTP Request'].executionMode).toBe('mocked');
+			});
+		});
+	});
+
+	// ── Parameter issue patching ─────────────────────────────────────
+
+	describe('parameter issue patching', () => {
+		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+				if (nodeType !== 'n8n-nodes-base.httpRequest') {
+					return {
+						description: { properties: [] } as unknown as INodeTypeDescription,
+					} as never;
+				}
+
+				return {
+					description: {
+						properties: [
+							{
+								name: 'requiredField',
+								type: 'string',
+								required: true,
+								default: '',
+								displayName: 'Required Field',
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never;
+			});
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'HTTP Request': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { ok: true } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const httpNode = runArg.workflowData.nodes.find((node) => node.name === 'HTTP Request');
+
+			expect(httpNode?.parameters).toMatchObject({
+				requiredField: '__evalMockValue',
+			});
+			expect(result.nodeResults['HTTP Request'].configIssues).toBeDefined();
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual(
+				expect.arrayContaining([expect.stringContaining('HTTP Request')]),
+			);
+		});
+
+		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Resource Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								calendarId: placeholderValue('Select a calendar'),
+								documentId: placeholderValue('Select spreadsheet'),
+								folderId: placeholderValue('Select folder'),
+								sheetName: placeholderValue('Select sheet'),
+								fileId: placeholderValue('Select file'),
+								driveId: placeholderValue('Select drive'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const resourceNode = runArg.workflowData.nodes.find((node) => node.name === 'Resource Node');
+
+			expect(resourceNode?.parameters).toMatchObject({
+				calendarId: 'eval-calendar-id',
+				documentId: 'eval-spreadsheet-id',
+				folderId: 'eval-folder-id',
+				sheetName: '0',
+				fileId: 'eval-file-id',
+				driveId: 'eval-drive-id',
 			});
 		});
 	});

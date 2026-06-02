@@ -23,6 +23,7 @@ import {
 	type IHttpRequestOptions,
 	type INode,
 	type INodeExecutionData,
+	type INodeParameters,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
@@ -101,9 +102,19 @@ export class EvalExecutionService {
 			);
 		}
 
-		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		// Retry transient lookup misses from concurrent eval runs.
+		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
+		if (!workflowEntity) {
+			for (const delayMs of [200, 500, 1000]) {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (workflowEntity) break;
+			}
+		}
 
 		if (!workflowEntity) {
 			return this.errorResult(randomUUID(), `Workflow ${workflowId} not found or not accessible`);
@@ -296,6 +307,7 @@ export class EvalExecutionService {
 
 		// Check config completeness before execution — detect missing required parameters
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -453,6 +465,42 @@ export class EvalExecutionService {
 				});
 				entry.configIssues = issues.parameters;
 			}
+		}
+	}
+
+	/**
+	 * Keep recorded config issues, but patch eval-only placeholders and empty
+	 * params so one incomplete node does not stop the entire mocked execution.
+	 */
+	private patchParameterIssuesForEval(workflow: Workflow, pinDataNodeNames: string[]): void {
+		for (const node of Object.values(workflow.nodes)) {
+			if (node.disabled) continue;
+			if (pinDataNodeNames.includes(node.name)) continue;
+
+			if (node.parameters) {
+				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+			}
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType) continue;
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+				pinDataNodeNames,
+			);
+
+			const paramIssues = issues?.parameters;
+			if (!paramIssues || Object.keys(paramIssues).length === 0) continue;
+
+			const params = node.parameters ?? {};
+			for (const paramName of Object.keys(paramIssues)) {
+				params[paramName] = synthesizeMissingParamValue(
+					params[paramName],
+				) as INodeParameters[string];
+			}
+			node.parameters = params;
 		}
 	}
 
@@ -753,12 +801,14 @@ export class EvalExecutionService {
 		if (executionError) {
 			errors.push(`Workflow error: ${executionError.message}`);
 		}
+		const configIssueErrors = collectConfigIssueErrors(nodeResults);
+		const allErrors = [...errors, ...configIssueErrors];
 
 		return {
 			executionId,
-			success: executionError === undefined && errors.length === 0,
+			success: allErrors.length === 0,
 			nodeResults,
-			errors,
+			errors: allErrors,
 			hints,
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
@@ -782,4 +832,92 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+
+function synthesizePlaceholderValue(hint: string): string {
+	const h = hint.toLowerCase();
+	if (h.includes('email')) return 'eval-mock@example.com';
+	if (h.includes('url') || h.includes('endpoint') || h.includes('webhook')) {
+		return 'https://eval-mock.invalid/';
+	}
+	if (h.includes('phone')) return '+10000000000';
+	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
+	if (h.includes('chat') && h.includes('id')) return '100000000';
+	if (h.includes('telegram')) return '100000000';
+	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
+	if (selectedResourceValue) return selectedResourceValue;
+	return '__evalMockValue';
+}
+
+function synthesizeSelectedResourcePlaceholderValue(hint: string): string | undefined {
+	if (!hint.includes('select')) return undefined;
+	if (hint.includes('spreadsheet') || hint.includes('document')) return 'eval-spreadsheet-id';
+	if (hint.includes('sheet')) return '0';
+	if (hint.includes('calendar')) return 'eval-calendar-id';
+	if (hint.includes('folder')) return 'eval-folder-id';
+	if (hint.includes('file')) return 'eval-file-id';
+	if (hint.includes('drive')) return 'eval-drive-id';
+	return undefined;
+}
+
+function scrubPlaceholderValues(value: unknown): unknown {
+	if (typeof value === 'string') {
+		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) {
+			return value;
+		}
+		const hint = value.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
+		return synthesizePlaceholderValue(hint);
+	}
+	if (Array.isArray(value)) return value.map(scrubPlaceholderValues);
+	if (value !== null && typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			out[key] = scrubPlaceholderValues(child);
+		}
+		return out;
+	}
+	return value;
+}
+
+function synthesizeMissingParamValue(current: unknown): unknown {
+	if (
+		current !== null &&
+		typeof current === 'object' &&
+		!Array.isArray(current) &&
+		'__rl' in (current as Record<string, unknown>)
+	) {
+		const rl = current as Record<string, unknown>;
+		const mode = typeof rl.mode === 'string' && rl.mode.length > 0 ? rl.mode : 'id';
+		const rawValue = rl.value;
+		const hasValue =
+			(typeof rawValue === 'string' && rawValue.length > 0) ||
+			(typeof rawValue === 'number' && Number.isFinite(rawValue));
+		return {
+			...rl,
+			mode,
+			value: hasValue ? rawValue : '__evalMockResource',
+		};
+	}
+
+	if (typeof current === 'string' && current.length === 0) return '__evalMockValue';
+	if (current === null || current === undefined) return '__evalMockValue';
+
+	return current;
+}
+
+function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {
+	const errors: string[] = [];
+	for (const [nodeName, result] of Object.entries(nodeResults)) {
+		const issues = result.configIssues;
+		if (!issues || Object.keys(issues).length === 0) continue;
+		const issueMessages = Object.values(issues).flat();
+		if (issueMessages.length === 0) continue;
+		errors.push(
+			`Node "${nodeName}" has missing or invalid configuration: ${issueMessages.join('; ')}`,
+		);
+	}
+	return errors;
 }
