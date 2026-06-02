@@ -5,6 +5,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -200,6 +201,50 @@ export async function getPublishedWorkflowData(
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
 		extra: { workflowId: workflowInfo.id },
 	});
+}
+
+/**
+ * Determines a workflow's deadline given its start time, its settings
+ * and global execution config.
+ */
+function determineWorkflowDeadline(
+	startTime: number,
+	workflowSettings: IWorkflowSettings | undefined,
+	executionsConfig: ExecutionsConfig,
+): number | undefined {
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	if (executionsConfig.timeout > 0) {
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	return undefined;
+}
+
+/**
+ * Resolves a sub-workflow deadline depending on its parent.
+ */
+function resolveSubworkflowDeadline(
+	subWorkflowDeadline: number | undefined,
+	parentDeadline: number | undefined,
+	doNotWaitToFinish: boolean | undefined,
+): number | undefined {
+	if (doNotWaitToFinish) {
+		return subWorkflowDeadline;
+	}
+	if (parentDeadline !== undefined && subWorkflowDeadline !== undefined) {
+		return Math.min(parentDeadline, subWorkflowDeadline);
+	}
+	return parentDeadline ?? subWorkflowDeadline;
 }
 
 /**
@@ -441,35 +486,13 @@ async function startExecution(
 
 		const executionsConfig = Container.get(ExecutionsConfig);
 
-		// Compute a sub-workflow's own deadline independent of its parent
-		const effectiveMaxTimeout =
-			executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+		const subworkflowDeadline = resolveSubworkflowDeadline(
+			determineWorkflowDeadline(startTime, workflowSettings, executionsConfig),
+			additionalData.executionTimeoutTimestamp,
+			options.doNotWaitToFinish,
+		);
 
-		let ownDeadline: number | undefined;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			ownDeadline =
-				startTime + Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds;
-		} else if (executionsConfig.timeout > 0) {
-			ownDeadline = startTime + Math.min(executionsConfig.timeout, effectiveMaxTimeout) * 1000;
-		}
-
-		let subworkflowTimeout: number | undefined;
-		if (options.doNotWaitToFinish) {
-			// Parent workflow will not receive the result, so sub-workflow is independent of it
-			// use its own deadline instead
-			subworkflowTimeout = ownDeadline;
-		} else {
-			// If the parent times out, its result is discarded
-			// use the earlier of the parent's deadline and the sub's own deadline
-			const parentDeadline = additionalData.executionTimeoutTimestamp;
-			if (parentDeadline !== undefined && ownDeadline !== undefined) {
-				subworkflowTimeout = Math.min(parentDeadline, ownDeadline);
-			} else {
-				subworkflowTimeout = parentDeadline ?? ownDeadline;
-			}
-		}
-
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowDeadline;
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
