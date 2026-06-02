@@ -3,10 +3,6 @@ name: 'Test: E2E Coverage Nightly'
 on:
   schedule:
     - cron: '0 2 * * *' # Nightly at 02:00 UTC
-  # Track the full-suite coverage run on the V8 branch. Remove before merge.
-  push:
-    branches:
-      - devp-205-frontend-v8-coverage
   workflow_dispatch:
 
 concurrency:
