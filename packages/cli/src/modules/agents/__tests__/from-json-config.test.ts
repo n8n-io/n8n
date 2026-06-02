@@ -81,7 +81,6 @@ describe('buildFromJson()', () => {
 		(
 			agent as {
 				memoryConfig?: {
-					lastMessages: number;
 					observationLog?: {
 						renderTokenBudget?: number;
 					};
@@ -749,7 +748,6 @@ describe('buildFromJson()', () => {
 			memory: {
 				enabled: true,
 				storage: 'n8n',
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 4_000,
 					reflectorThresholdTokens: 12_000,
@@ -774,7 +772,6 @@ describe('buildFromJson()', () => {
 
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
-		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
 		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 4_000 });
 		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
 			observerThresholdTokens: 4_000,
@@ -995,6 +992,101 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasMemory).toBe(false);
 		expect(getMemoryConfig(agent)).toBeUndefined();
 	});
+
+	// -------------------------------------------------------------------------
+	// MCP servers
+	// -------------------------------------------------------------------------
+
+	describe('mcpServers', () => {
+		it('does not invoke buildMcpClient when mcpServers is absent', async () => {
+			const buildMcpClient = jest.fn();
+			await buildFromJson(
+				makeConfig(),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('does not invoke buildMcpClient when mcpServers is an empty array', async () => {
+			const buildMcpClient = jest.fn();
+			await buildFromJson(
+				makeConfig({ mcpServers: [] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+			expect(buildMcpClient).not.toHaveBeenCalled();
+		});
+
+		it('silently skips MCP wiring when no buildMcpClient is provided', async () => {
+			// No buildMcpClient -> the loop is a no-op; build still succeeds.
+			await expect(
+				buildFromJson(
+					makeConfig({
+						mcpServers: [
+							{
+								name: 'github',
+								url: 'https://api.example.test/mcp',
+								transport: 'streamableHttp',
+								authentication: 'none',
+							},
+						],
+					}),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).resolves.toBeDefined();
+		});
+
+		it('calls buildMcpClient once per configured server and passes each entry through', async () => {
+			const buildMcpClient = jest
+				.fn()
+				.mockImplementation(async () => ({ close: jest.fn() }) as never);
+			await buildFromJson(
+				makeConfig({
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+						{
+							name: 'fs',
+							url: 'https://fs.example.test/mcp',
+							transport: 'sse',
+							authentication: 'none',
+						},
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					buildMcpClient,
+				},
+			);
+
+			expect(buildMcpClient).toHaveBeenCalledTimes(2);
+			expect(buildMcpClient.mock.calls[0][0]).toMatchObject({ name: 'github' });
+			expect(buildMcpClient.mock.calls[1][0]).toMatchObject({ name: 'fs' });
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -1201,25 +1293,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
@@ -1291,28 +1378,120 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
+		});
+	});
+
+	describe('mcpServers', () => {
+		const base = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+
+		it('parses a minimal MCP server entry with defaults', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [{ name: 'github', url: 'https://api.example.test/mcp' }],
+			});
+			expect(parsed.mcpServers?.[0]).toMatchObject({
+				name: 'github',
+				url: 'https://api.example.test/mcp',
+				transport: 'streamableHttp',
+				authentication: 'none',
+			});
+		});
+
+		it('rejects duplicate MCP server names', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [
+						{ name: 'dup', url: 'https://a.example.test/mcp' },
+						{ name: 'dup', url: 'https://b.example.test/mcp' },
+					],
+				}),
+			).toThrow();
+		});
+
+		it('rejects names with invalid characters', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [{ name: 'has spaces', url: 'https://a.example.test/mcp' }],
+				}),
+			).toThrow();
+		});
+
+		it('rejects more than 20 MCP server entries', () => {
+			const servers = Array.from({ length: 21 }, (_, i) => ({
+				name: `s${i}`,
+				url: 'https://a.example.test/mcp',
+			}));
+			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
+		});
+
+		it('parses an allow-mode toolFilter', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://a.example.test/mcp',
+						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+					},
+				],
+			});
+			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
+				mode: 'allow',
+				tools: ['search_repositories'],
+			});
+		});
+
+		it('parses approval mode "global"', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://a.example.test/mcp',
+						approval: { mode: 'global' },
+					},
+				],
+			});
+			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
+		});
+
+		it('rejects approval mode "selected" with an empty tools array', () => {
+			expect(() =>
+				AgentJsonConfigSchema.parse({
+					...base,
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://a.example.test/mcp',
+							approval: { mode: 'selected', tools: [] },
+						},
+					],
+				}),
+			).toThrow();
 		});
 	});
 });

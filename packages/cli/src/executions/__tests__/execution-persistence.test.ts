@@ -12,7 +12,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
@@ -327,6 +327,22 @@ describe('ExecutionPersistence', () => {
 				storedAt,
 			} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
 		};
+
+		describe('condition guards', () => {
+			it('throws when requireStatus and requireNotCanceled are combined (both constrain status)', async () => {
+				const executionPersistence = createPersistenceService('db');
+
+				await expect(
+					executionPersistence.updateExistingExecution(
+						executionId,
+						{ status: 'running' },
+						{ requireStatus: 'waiting', requireNotCanceled: true },
+					),
+				).rejects.toThrow(UnexpectedError);
+
+				expect(executionRepository.update).not.toHaveBeenCalled();
+			});
+		});
 
 		describe('metadata-only updates', () => {
 			it('should update the entity directly without touching either data store', async () => {

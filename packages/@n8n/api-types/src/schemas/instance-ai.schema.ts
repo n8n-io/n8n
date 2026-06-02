@@ -70,7 +70,6 @@ export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
 	'delegate',
-	'browser-setup',
 	'planner',
 	'eval-setup',
 ]);
@@ -728,6 +727,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
@@ -764,8 +764,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate,
-	 * browser-setup, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -996,9 +995,7 @@ export function applyBranchReadOnlyOverrides(
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	lastMessages: number;
 	subAgentMaxSteps: number;
-	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
@@ -1013,9 +1010,7 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	lastMessages: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
-	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -1081,9 +1076,16 @@ export interface InstanceAiEvalInterceptedRequest {
 }
 
 export interface InstanceAiEvalNodeResult {
-	output: unknown;
-	/** Full count of output items (`output` is truncated for artifact size) */
-	outputCount?: number;
+	/** Outputs by connection type → per-branch items. Empty when pinned, errored, or didn't run. */
+	outputs: Record<string, unknown[][]>;
+	/** Total items across all branches (full untruncated count). */
+	outputCount: number;
+	/** True when any branch in `outputs` was truncated for size. */
+	truncated?: boolean;
+	/** Number of times this node ran (>1 inside loops). `outputs` captures the LAST iteration. */
+	iterationCount: number;
+	/** 0-based index of the first iteration that errored, if any. */
+	firstErrorIteration?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */

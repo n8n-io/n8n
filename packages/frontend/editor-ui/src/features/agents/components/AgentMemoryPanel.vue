@@ -8,7 +8,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
-	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -106,7 +105,6 @@ function buildEnabledMemoryConfig() {
 		...existingMemory,
 		enabled: true,
 		storage: 'n8n' as const,
-		lastMessages: existingMemory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 	};
 }
 

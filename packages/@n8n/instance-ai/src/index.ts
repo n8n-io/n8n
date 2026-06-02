@@ -100,6 +100,8 @@ export type {
 	AgentMessage,
 	BuiltMemory,
 	CheckpointStore,
+	ContentToolCall,
+	MessageContent,
 	SerializableAgentState,
 	Thread,
 } from '@n8n/agents';
@@ -165,8 +167,8 @@ export const buildRuntimeSkillWorkspaceBundle: typeof MaterializeRuntimeSkillsMo
 	lazyFunction(() => loadMaterializeRuntimeSkills().buildRuntimeSkillWorkspaceBundle);
 export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
 	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
-export const createPrebakedRuntimeSkillsFromWorkspace: typeof MaterializeRuntimeSkillsMod.createPrebakedRuntimeSkillsFromWorkspace =
-	lazyFunction(() => loadMaterializeRuntimeSkills().createPrebakedRuntimeSkillsFromWorkspace);
+export const loadPrebakedRuntimeSkillsBundle: typeof MaterializeRuntimeSkillsMod.loadPrebakedRuntimeSkillsBundle =
+	lazyFunction(() => loadMaterializeRuntimeSkills().loadPrebakedRuntimeSkillsBundle);
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
 export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
@@ -190,6 +192,7 @@ export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunc
 );
 export { createAllTools, createOrchestrationTools } from './tools';
 export {
+	createSubAgentResourceId,
 	createSubAgentResourceIdPrefix,
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
@@ -411,6 +414,10 @@ export type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
+	ResolvedParametersDebugBundle,
+	ResolvedExpressionFailure,
+	EmptyExpressionResolution,
 	ExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
