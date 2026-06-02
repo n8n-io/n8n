@@ -51,7 +51,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
@@ -96,7 +96,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
@@ -132,7 +132,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		this.tracer.endWorkflow({
 			executionId: ctx.executionId,
@@ -146,7 +146,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteBefore')
 	onNodeStart(ctx: NodeExecuteBeforeContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
@@ -160,7 +160,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeEnd(ctx: NodeExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
