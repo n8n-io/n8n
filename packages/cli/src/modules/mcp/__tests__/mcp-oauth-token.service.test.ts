@@ -70,6 +70,7 @@ describe('McpOAuthTokenService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 	});
 
 	describe('generateTokenPair', () => {
@@ -481,8 +482,20 @@ describe('McpOAuthTokenService', () => {
 
 		it('should return only canonical URL and legacy audience when expectedAudience is undefined', () => {
 			const audiences = (service as any).getAllowedAudiences(undefined);
-			// Should still return the canonical resource URL (from getResourceUrl) and legacy
+			// Should still return the canonical resource URL (from getCanonicalResourceUrl) and legacy
 			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+		});
+	});
+
+	describe('getCanonicalResourceUrl', () => {
+		it('should preserve subpath in canonical resource URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
+			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
+		});
+
+		it('should strip trailing slash from base URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
+			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
 		});
 	});
 });

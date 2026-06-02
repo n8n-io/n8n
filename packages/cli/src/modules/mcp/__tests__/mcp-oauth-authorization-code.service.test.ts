@@ -230,5 +230,16 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				'invalid_grant',
 			);
 		});
+
+		it('should not leak PKCE challenge for a consumed code', async () => {
+			authorizationCodeRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.getCodeChallenge('code-123', 'client-123')).rejects.toThrow(
+				'invalid_grant',
+			);
+			expect(authorizationCodeRepository.findOne).toHaveBeenCalledWith({
+				where: { code: 'code-123', clientId: 'client-123', used: false },
+			});
+		});
 	});
 });

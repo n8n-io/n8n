@@ -5,7 +5,6 @@ import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -28,7 +27,6 @@ const jwtService = new JwtService(instanceSettings, mock());
 let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
 let oauthTokenService: jest.Mocked<McpOAuthTokenService>;
 let telemetry: jest.Mocked<Telemetry>;
-let urlService: jest.Mocked<UrlService>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
@@ -38,20 +36,20 @@ describe('McpServerMiddlewareService', () => {
 		) as jest.Mocked<McpServerApiKeyService>;
 		oauthTokenService = mockInstance(McpOAuthTokenService) as jest.Mocked<McpOAuthTokenService>;
 		telemetry = mockInstance(Telemetry);
-		urlService = mockInstance(UrlService);
-		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
 			oauthTokenService,
 			jwtService,
-			urlService,
 			telemetry,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		oauthTokenService.getCanonicalResourceUrl.mockReturnValue(
+			'https://n8n.example.com/mcp-server/http',
+		);
 	});
 
 	describe('getUserForToken', () => {

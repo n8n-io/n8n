@@ -15,7 +15,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
-import { UrlService } from '@/services/url.service';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
@@ -41,7 +40,6 @@ export class McpOAuthService implements OAuthServerProvider {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly urlService: UrlService,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
@@ -316,8 +314,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	private getCanonicalMcpResourceUrl(): string {
-		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
-		return `${baseUrl}/mcp-server/http`;
+		return this.tokenService.getCanonicalResourceUrl();
 	}
 
 	/**

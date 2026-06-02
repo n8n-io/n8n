@@ -14,10 +14,12 @@ const COLUMN_NAME = 'resource';
 export class AddResourceToOAuthAuthorizationCodes1784000000024 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(TABLE_NAME, [
-			column(COLUMN_NAME).text.comment(
-				'RFC 8707 resource indicator URI (e.g. https://n8n.example.com/mcp-server/http). ' +
-					'NULL = legacy flow predating resource indicator support; defaults to the instance canonical MCP resource URL.',
-			),
+			column(COLUMN_NAME)
+				.varchar()
+				.comment(
+					'RFC 8707 resource indicator URI (e.g. https://n8n.example.com/mcp-server/http). ' +
+						'NULL = legacy flow predating resource indicator support; defaults to the instance canonical MCP resource URL.',
+				),
 		]);
 	}
 

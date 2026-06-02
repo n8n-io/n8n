@@ -45,8 +45,16 @@ export class McpOAuthTokenService {
 		private readonly urlService: UrlService,
 	) {}
 
-	private getResourceUrl(): string {
-		return `${this.urlService.getInstanceBaseUrl()}${this.MCP_RESOURCE_PATH}`;
+	/**
+	 * Canonical MCP resource URL used as the JWT `aud` claim and advertised as the
+	 * RFC 8707 resource indicator. This is the single source of truth — callers in
+	 * the OAuth service and resource-server middleware must delegate here so the
+	 * minted `aud`, the persisted authorization-code `resource`, and the audience
+	 * the middleware validates against can never drift.
+	 */
+	getCanonicalResourceUrl(): string {
+		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
+		return `${baseUrl}${this.MCP_RESOURCE_PATH}`;
 	}
 
 	getAccessTokenExpirySeconds(): number {
@@ -58,7 +66,7 @@ export class McpOAuthTokenService {
 		clientId: string,
 		resource?: string,
 	): { accessToken: string; refreshToken: string } {
-		const audience = resource ?? this.getResourceUrl();
+		const audience = resource ?? this.getCanonicalResourceUrl();
 
 		const accessToken = this.jwtService.sign({
 			sub: userId,
@@ -268,10 +276,10 @@ export class McpOAuthTokenService {
 	}
 
 	private getAllowedAudiences(expectedAudience?: string): string[] {
-		if (expectedAudience && expectedAudience !== this.getResourceUrl()) {
-			return [expectedAudience, this.getResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+		if (expectedAudience && expectedAudience !== this.getCanonicalResourceUrl()) {
+			return [expectedAudience, this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
 		}
-		return [this.getResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+		return [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
 	}
 
 	/**

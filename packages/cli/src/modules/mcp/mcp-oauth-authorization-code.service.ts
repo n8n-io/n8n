@@ -156,11 +156,18 @@ export class McpOAuthAuthorizationCodeService {
 	}
 
 	/**
-	 * Get PKCE code challenge for authorization code
-	 * Used by MCP SDK for PKCE verification
+	 * Get PKCE code challenge for authorization code.
+	 * Used by the MCP SDK before token exchange to verify PKCE.
+	 *
+	 * SECURITY: We route this through `findAuthorizationCode` (which filters `used: false`)
+	 * rather than `findAndValidateAuthorizationCode` so that a consumed code does not leak
+	 * its PKCE challenge to a replay attempt.
 	 */
 	async getCodeChallenge(authorizationCode: string, clientId: string): Promise<string> {
-		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
+		const authRecord = await this.findAuthorizationCode(authorizationCode, clientId);
+		if (!authRecord) {
+			throw new OAuthError('invalid_grant', 'Invalid authorization code');
+		}
 		return authRecord.codeChallenge;
 	}
 }

@@ -5,8 +5,6 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
-import { UrlService } from '@/services/url.service';
-
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -23,7 +21,6 @@ let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let urlService: jest.Mocked<UrlService>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -33,13 +30,9 @@ describe('McpOAuthService', () => {
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
-		urlService = mockInstance(UrlService);
-		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
-
 		service = new McpOAuthService(
 			logger,
 			mockInstance(GlobalConfig),
-			urlService,
 			oauthSessionService,
 			oauthClientRepository,
 			tokenService,
@@ -50,6 +43,7 @@ describe('McpOAuthService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		tokenService.getCanonicalResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
 	});
 
 	describe('clientsStore', () => {
@@ -850,17 +844,13 @@ describe('McpOAuthService', () => {
 	});
 
 	describe('getCanonicalMcpResourceUrl', () => {
-		it('should preserve subpath in canonical resource URL', () => {
-			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
-			// Access the private method via bracket notation
+		it('should delegate to the token service so all callers share one canonical URL', () => {
+			tokenService.getCanonicalResourceUrl.mockReturnValue(
+				'https://example.com/n8n/mcp-server/http',
+			);
 			const canonical = (service as any).getCanonicalMcpResourceUrl();
 			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
-		});
-
-		it('should strip trailing slash from base URL', () => {
-			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
-			const canonical = (service as any).getCanonicalMcpResourceUrl();
-			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
+			expect(tokenService.getCanonicalResourceUrl).toHaveBeenCalled();
 		});
 	});
 });
