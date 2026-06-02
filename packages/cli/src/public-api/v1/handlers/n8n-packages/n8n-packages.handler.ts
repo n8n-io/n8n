@@ -77,6 +77,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				user: req.user,
 				projectId: payload.data.projectId,
 				folderId: payload.data.folderId,
+				workflowConflictPolicy: payload.data.workflowConflictPolicy,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);

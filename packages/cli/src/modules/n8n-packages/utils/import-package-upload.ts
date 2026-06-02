@@ -17,7 +17,7 @@ const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 /** Max length for optional routing ids in multipart form fields. */
 const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 128;
 
-/** `package` file + optional `projectId` / `folderId` fields + small margin. */
+/** `package` file + routing / policy fields + small margin. */
 const IMPORT_PACKAGE_MAX_PARTS = 5;
 
 export function createN8nPackageMulterOptions(globalConfig: GlobalConfig): multer.Options {

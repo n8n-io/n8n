@@ -1,21 +1,37 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	createActiveWorkflow,
+	createTeamProject,
+	createWorkflow,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import type { Project } from '@n8n/db';
+import {
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Readable } from 'node:stream';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../spec/constants';
 import type { PackageManifest } from '../spec/manifest.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import type { WorkflowConflictPolicy } from '../n8n-packages.types';
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
 	const chunks: Buffer[] = [];
@@ -25,7 +41,11 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 	return Buffer.concat(chunks);
 }
 
-const validWorkflow = (id: string, name: string): SerializedWorkflow => ({
+const validWorkflow = (
+	id: string,
+	name: string,
+	overrides: Partial<SerializedWorkflow> = {},
+): SerializedWorkflow => ({
 	id,
 	name,
 	nodes: [
@@ -43,6 +63,7 @@ const validWorkflow = (id: string, name: string): SerializedWorkflow => ({
 	parentFolderId: null,
 	active: false,
 	isArchived: false,
+	...overrides,
 });
 
 /**
@@ -74,6 +95,18 @@ const brokenWorkflow = (id: string, name: string): SerializedWorkflow => ({
 	isArchived: false,
 });
 
+/**
+ * Seeds an owned workflow in a project with a given `sourceWorkflowId` (the
+ * `createWorkflow` helper's `Partial<IWorkflowDb>` param doesn't expose that
+ * column, so it's set directly after creation).
+ */
+async function seedExistingWorkflow(project: Project, name: string, sourceWorkflowId: string) {
+	const workflow = await createWorkflow({ name }, project);
+	await Container.get(WorkflowRepository).update(workflow.id, { sourceWorkflowId });
+	workflow.sourceWorkflowId = sourceWorkflowId;
+	return workflow;
+}
+
 async function buildPackage(workflows: SerializedWorkflow[]): Promise<Buffer> {
 	const writer = new TarPackageWriter();
 
@@ -100,9 +133,16 @@ async function buildPackage(workflows: SerializedWorkflow[]): Promise<Buffer> {
 
 const licenseMocker = new LicenseMocker();
 
+// Reactivating an active workflow on new-version import calls into the active
+// workflow manager; mock it so trigger registration succeeds without real infra.
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the reactivation path's webhook-conflict check can
+	// resolve the trigger nodes used by the seeded/imported workflows.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 });
 
@@ -111,7 +151,13 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'Folder', 'Project']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'SharedWorkflow',
+		'Folder',
+		'Project',
+	]);
 });
 
 describe('ImportPipeline batch validation', () => {
@@ -137,6 +183,7 @@ describe('ImportPipeline batch validation', () => {
 			Container.get(N8nPackagesService).importPackage({
 				user: owner,
 				packageBuffer: tarBuffer,
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow();
 
@@ -161,6 +208,7 @@ describe('ImportPipeline batch validation', () => {
 		const result = await Container.get(N8nPackagesService).importPackage({
 			user: owner,
 			packageBuffer: tarBuffer,
+			workflowConflictPolicy: 'fail',
 		});
 
 		expect(result.workflows).toHaveLength(2);
@@ -190,9 +238,10 @@ describe('ImportPipeline routing matrix', () => {
 			owner.id,
 		);
 
-		await Container.get(N8nPackagesService).importPackage({
+		const result = await Container.get(N8nPackagesService).importPackage({
 			user: owner,
 			packageBuffer: await singleWorkflowPackage(),
+			workflowConflictPolicy: 'fail',
 		});
 
 		const shared = await Container.get(SharedWorkflowRepository).findOneOrFail({
@@ -205,6 +254,9 @@ describe('ImportPipeline routing matrix', () => {
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
+
+		// The response carries the source→target workflow id binding.
+		expect(result.bindings.workflows).toEqual({ 'wf-routed': workflow.id });
 	});
 
 	it('lands in the requested folder of the personal project when only folderId is given', async () => {
@@ -218,6 +270,7 @@ describe('ImportPipeline routing matrix', () => {
 			user: owner,
 			folderId: folder.id,
 			packageBuffer: await singleWorkflowPackage(),
+			workflowConflictPolicy: 'fail',
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -235,6 +288,7 @@ describe('ImportPipeline routing matrix', () => {
 			user: owner,
 			projectId: teamProject.id,
 			packageBuffer: await singleWorkflowPackage(),
+			workflowConflictPolicy: 'fail',
 		});
 
 		const shared = await Container.get(SharedWorkflowRepository).findOneOrFail({
@@ -259,6 +313,7 @@ describe('ImportPipeline routing matrix', () => {
 			projectId: teamProject.id,
 			folderId: folder.id,
 			packageBuffer: await singleWorkflowPackage(),
+			workflowConflictPolicy: 'fail',
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -266,6 +321,223 @@ describe('ImportPipeline routing matrix', () => {
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
+	});
+});
+
+describe('ImportPipeline workflow conflict policy', () => {
+	it.each<WorkflowConflictPolicy>(['new-version', 'skip'])(
+		'%s handles matched and fresh workflows in one package',
+		async (workflowConflictPolicy) => {
+			const owner = await createOwner();
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(owner.id);
+			const existing = await seedExistingWorkflow(
+				personalProject,
+				'Existing workflow',
+				'wf-existing',
+			);
+
+			const result = await Container.get(N8nPackagesService).importPackage({
+				user: owner,
+				packageBuffer: await buildPackage([
+					validWorkflow('wf-existing', 'Imported replacement', {
+						nodes: [
+							...validWorkflow('wf-existing', 'Imported replacement').nodes,
+							{
+								id: 'set-node',
+								name: 'Set Data',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+					}),
+					validWorkflow('wf-fresh', 'Fresh workflow'),
+				]),
+				workflowConflictPolicy,
+			});
+
+			const matchedSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-existing',
+			);
+			const freshSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-fresh',
+			);
+
+			expect(matchedSummary).toMatchObject({
+				localId: existing.id,
+				status: workflowConflictPolicy === 'new-version' ? 'updated' : 'skipped',
+			});
+			expect(freshSummary).toMatchObject({ status: 'created', name: 'Fresh workflow' });
+
+			const workflows = await Container.get(WorkflowRepository).find();
+			expect(workflows).toHaveLength(2);
+
+			const storedExisting = await Container.get(WorkflowRepository).findOneByOrFail({
+				id: existing.id,
+			});
+			expect(storedExisting.name).toBe(
+				workflowConflictPolicy === 'new-version' ? 'Imported replacement' : 'Existing workflow',
+			);
+		},
+	);
+
+	it('new-version reactivates an active workflow and advances its active version', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const historyRepo = Container.get(WorkflowHistoryRepository);
+		const historyBefore = await historyRepo.count({ where: { workflowId: active.id } });
+
+		const result = await Container.get(N8nPackagesService).importPackage({
+			user: owner,
+			// Different nodes than the seeded workflow → saves a new version → republishes.
+			// Uses a real trigger node so the reactivation validation passes.
+			packageBuffer: await buildPackage([
+				validWorkflow('wf-active', 'Active updated', {
+					nodes: [
+						{
+							id: 'schedule-trigger',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			]),
+			workflowConflictPolicy: 'new-version',
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary).toMatchObject({ localId: active.id, status: 'updated' });
+		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(summary?.activeVersionId).not.toBe(originalActiveVersionId);
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toBe(summary?.activeVersionId);
+		expect(stored.activeVersionId).not.toBe(originalActiveVersionId);
+
+		// A new history version was written for the imported content.
+		const historyAfter = await historyRepo.count({ where: { workflowId: active.id } });
+		expect(historyAfter).toBe(historyBefore + 1);
+
+		// Reactivation went through the active workflow manager.
+		expect(activeWorkflowManager.add).toHaveBeenCalled();
+	});
+
+	it('fails before writing any workflows when conflicts exist under fail policy', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await seedExistingWorkflow(
+			personalProject,
+			'Existing workflow',
+			'wf-existing',
+		);
+		const workflowRepo = Container.get(WorkflowRepository);
+		const workflowsBefore = await workflowRepo.count();
+
+		await expect(
+			Container.get(N8nPackagesService).importPackage({
+				user: owner,
+				packageBuffer: await buildPackage([
+					validWorkflow('wf-existing', 'Conflicting workflow'),
+					validWorkflow('wf-fresh', 'Fresh workflow'),
+				]),
+				workflowConflictPolicy: 'fail',
+			}),
+		).rejects.toMatchObject({
+			message: 'WORKFLOW_CONFLICT',
+			meta: {
+				conflicts: [
+					{
+						sourceWorkflowId: 'wf-existing',
+						existingWorkflowId: existing.id,
+						name: 'Existing workflow',
+					},
+				],
+			},
+		});
+
+		expect(await workflowRepo.count()).toBe(workflowsBefore);
+	});
+
+	it('rejects ambiguous source workflow matches before applying the policy', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'First match', 'wf-ambiguous');
+		await seedExistingWorkflow(personalProject, 'Second match', 'wf-ambiguous');
+
+		await expect(
+			Container.get(N8nPackagesService).importPackage({
+				user: owner,
+				packageBuffer: await buildPackage([validWorkflow('wf-ambiguous', 'Incoming')]),
+				workflowConflictPolicy: 'skip',
+			}),
+		).rejects.toMatchObject({
+			message: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
+			meta: {
+				ambiguous: [
+					{
+						sourceWorkflowId: 'wf-ambiguous',
+						matches: expect.arrayContaining([
+							expect.objectContaining({ name: 'First match' }),
+							expect.objectContaining({ name: 'Second match' }),
+						]),
+					},
+				],
+			},
+		});
+	});
+
+	it('matches a never-imported workflow by its own id when re-importing into the origin instance', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		// Authored here, so `sourceWorkflowId` is null. A package exported from this
+		// instance carries this workflow's own id as its package source id, so the
+		// match must fall back to the id (decision #12) instead of creating a duplicate.
+		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
+		expect(original.sourceWorkflowId ?? null).toBeNull();
+
+		const result = await Container.get(N8nPackagesService).importPackage({
+			user: owner,
+			packageBuffer: await buildPackage([validWorkflow(original.id, 'Updated via re-import')]),
+			workflowConflictPolicy: 'new-version',
+		});
+
+		expect(result.workflows).toEqual([
+			expect.objectContaining({
+				sourceWorkflowId: original.id,
+				localId: original.id,
+				status: 'updated',
+			}),
+		]);
+		expect(result.bindings.workflows).toEqual({ [original.id]: original.id });
+
+		// Updated in place — no duplicate created.
+		const workflows = await Container.get(WorkflowRepository).find();
+		expect(workflows).toHaveLength(1);
+		expect(workflows[0].name).toBe('Updated via re-import');
 	});
 });
 
@@ -292,6 +564,7 @@ describe('ImportPipeline rejection cases', () => {
 			Container.get(N8nPackagesService).importPackage({
 				user: owner,
 				packageBuffer: tarBuffer,
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow(BadRequestError);
 	});
@@ -304,6 +577,7 @@ describe('ImportPipeline rejection cases', () => {
 				user: owner,
 				projectId: 'does-not-exist',
 				packageBuffer: await singleWorkflowPackage(),
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow(/Project not found/i);
 	});
@@ -318,6 +592,7 @@ describe('ImportPipeline rejection cases', () => {
 				user: outsider,
 				projectId: teamProject.id,
 				packageBuffer: await singleWorkflowPackage(),
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow();
 	});
@@ -335,6 +610,7 @@ describe('ImportPipeline rejection cases', () => {
 				projectId: teamProject.id,
 				folderId: strayFolder.id,
 				packageBuffer: await singleWorkflowPackage(),
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow(/folder/i);
 	});
@@ -359,6 +635,7 @@ describe('ImportPipeline rejection cases', () => {
 			Container.get(N8nPackagesService).importPackage({
 				user: owner,
 				packageBuffer: await streamToBuffer(writer.finalize()),
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow(BadRequestError);
 	});
@@ -382,6 +659,7 @@ describe('ImportPipeline rejection cases', () => {
 			Container.get(N8nPackagesService).importPackage({
 				user: owner,
 				packageBuffer: await streamToBuffer(writer.finalize()),
+				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toThrow(/missing/i);
 	});
@@ -400,6 +678,7 @@ describe('ImportPipeline event emission', () => {
 					validWorkflow('wf-event-1', 'Event One'),
 					validWorkflow('wf-event-2', 'Event Two'),
 				]),
+				workflowConflictPolicy: 'fail',
 			});
 
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
@@ -431,6 +710,7 @@ describe('ImportPipeline event emission', () => {
 						validWorkflow('wf-good', 'Good'),
 						brokenWorkflow('wf-broken', 'Broken'),
 					]),
+					workflowConflictPolicy: 'fail',
 				}),
 			).rejects.toThrow();
 

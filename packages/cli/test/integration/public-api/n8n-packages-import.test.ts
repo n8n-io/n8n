@@ -119,6 +119,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -130,14 +131,18 @@ describe('POST /n8n-packages/import', () => {
 			},
 			workflows: [
 				{
-					sourceId: 'wf-http-source',
+					sourceWorkflowId: 'wf-http-source',
 					localId: expect.any(String),
 					name: 'HTTP Imported',
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					status: 'created',
 				},
 			],
+			bindings: {
+				workflows: { 'wf-http-source': expect.any(String) },
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');

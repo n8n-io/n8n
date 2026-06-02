@@ -10,12 +10,14 @@ post:
 
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
-    `projectId` and `folderId` (omit or leave empty for defaults). Maximum upload size
+    `projectId` and `folderId` (omit or leave empty for defaults). The required
+    `workflowConflictPolicy` field controls what happens when a package workflow
+    matches an existing workflow by source id in the target project. Maximum upload size
     is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
     The package must declare its manifest at `manifest.json` and include every file
     referenced by the manifest. The caller is authorised through the `workflow:import`
-    scope. Each imported workflow is created with a fresh local id and arrives inactive.
+    scope. Newly created workflows receive a fresh local id and arrive inactive.
   requestBody:
     required: true
     content:
@@ -24,6 +26,7 @@ post:
           type: object
           required:
             - package
+            - workflowConflictPolicy
           properties:
             package:
               type: string
@@ -39,6 +42,16 @@ post:
               description: >
                 Optional folder within the target project. Omit or send empty for
                 project root.
+            workflowConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+              description: >
+                `new-version` updates matching workflows and creates a new version,
+                `fail` rejects the import when any matching workflow exists, and
+                `skip` leaves matching workflows untouched while importing the rest.
   responses:
     '200':
       description: Import succeeded.
@@ -49,6 +62,7 @@ post:
             required:
               - package
               - workflows
+              - bindings
             properties:
               package:
                 type: object
@@ -69,14 +83,15 @@ post:
                 items:
                   type: object
                   required:
-                    - sourceId
+                    - sourceWorkflowId
                     - localId
                     - name
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - status
                   properties:
-                    sourceId:
+                    sourceWorkflowId:
                       type: string
                       description: Workflow id as it appeared in the package.
                     localId:
@@ -93,8 +108,73 @@ post:
                       type: string
                       nullable: true
                       description: >
-                        Published version on the target instance. Always null
-                        immediately after import.
+                        Published version on the target instance, if any.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                        - skipped
+                      description: Import outcome for this package workflow.
+              bindings:
+                type: object
+                description: >
+                  Source id → target id mappings produced during import, one map per
+                  entity type. Each value maps an id as it appeared in the package to
+                  the id on the target instance. Only workflows are imported for now.
+                required:
+                  - workflows
+                properties:
+                  workflows:
+                    type: object
+                    additionalProperties:
+                      type: string
+    '409':
+      description: Workflow source id conflict.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: number
+              message:
+                type: string
+              meta:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      - WORKFLOW_CONFLICT
+                      - AMBIGUOUS_SOURCE_WORKFLOW_ID
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sourceWorkflowId:
+                          type: string
+                        existingWorkflowId:
+                          type: string
+                        name:
+                          type: string
+                  ambiguous:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sourceWorkflowId:
+                          type: string
+                        matches:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
