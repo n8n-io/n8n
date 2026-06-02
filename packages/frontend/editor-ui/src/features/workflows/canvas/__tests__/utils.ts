@@ -1,6 +1,8 @@
 import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/app/constants';
 import { computed, ref } from 'vue';
 import type {
+	CanvasGroupNode,
+	CanvasGroupNodeData,
 	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
@@ -11,6 +13,8 @@ import type {
 	ExecutionOutputMapData,
 } from '@/features/workflows/canvas/canvas.types';
 import {
+	CANVAS_NODE_GROUP_ID_PREFIX,
+	CANVAS_NODE_GROUP_TYPE,
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
@@ -64,6 +68,33 @@ export function createCanvasNodeElement({
 		label,
 		position,
 		data: createCanvasNodeData({ id, type, ...data }),
+	};
+}
+
+export function createCanvasGroupElement({
+	id = 'g1',
+	name = 'Test Group',
+	nodeIds = [],
+	position = { x: 0, y: 0 },
+	isCollapsed = true,
+	nodesRect = { x: 0, y: 0, width: 200, height: 100 },
+}: Partial<{
+	id: string;
+	name: string;
+	nodeIds: string[];
+	position: { x: number; y: number };
+	isCollapsed: boolean;
+	nodesRect: CanvasGroupNodeData['nodesRect'];
+}> = {}): CanvasGroupNode {
+	return {
+		id: `${CANVAS_NODE_GROUP_ID_PREFIX}${id}`,
+		type: CANVAS_NODE_GROUP_TYPE,
+		position,
+		data: {
+			group: { id, name, nodeIds },
+			nodesRect,
+			isCollapsed,
+		},
 	};
 }
 

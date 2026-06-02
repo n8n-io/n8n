@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -12,17 +13,31 @@ import {
 } from '../canvas.types';
 import {
 	createCanvasConnection,
+	createCanvasGroupElement,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { CANVAS_NODES_GROUPING_EXPERIMENT, SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
+
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () => computed(() => workflowDocumentStore),
+	};
+});
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -74,6 +89,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 
 	renderComponent = createComponentRenderer(Canvas, {
 		pinia,
@@ -426,6 +442,53 @@ describe('Canvas', () => {
 			});
 
 			expect(queryByTestId('canvas-controls')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('delete / backspace on group title bar', () => {
+		beforeEach(() => {
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+			);
+		});
+
+		it('deletes the group container when backspace is pressed with a group title bar selected', async () => {
+			const group = workflowDocumentStore.createGroup([], 'My Group');
+			const groupNode = createCanvasGroupElement({ id: group.id, name: group.name });
+			const deleteGroupSpy = vi.spyOn(workflowDocumentStore, 'deleteGroup');
+
+			const { container } = renderComponent({
+				props: { nodes: [groupNode] },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await fireEvent.keyDown(document, { key: 'Backspace' });
+			await fireEvent.keyUp(document, { key: 'Backspace' });
+
+			expect(deleteGroupSpy).toHaveBeenCalledWith(group.id);
+		});
+
+		it('does not emit delete:nodes when only a group title bar is selected', async () => {
+			const group = workflowDocumentStore.createGroup([], 'My Group');
+			const groupNode = createCanvasGroupElement({ id: group.id, name: group.name });
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [groupNode] },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await fireEvent.keyDown(document, { key: 'Backspace' });
+			await fireEvent.keyUp(document, { key: 'Backspace' });
+
+			expect(emitted()['delete:nodes']).toBeUndefined();
 		});
 	});
 });

@@ -439,7 +439,7 @@ const keyMap = computed(() => {
 	const fullKeymap: KeyMap = {
 		...readOnlyKeymap,
 		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+		'delete|backspace': onDeleteSelection,
 		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
@@ -583,6 +583,18 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 
 function onCanvasGroupUngroup(groupId: string) {
 	workflowDocumentStore.value.deleteGroup(groupId);
+}
+
+function onDeleteSelection() {
+	// Regular workflow nodes go through the existing delete flow
+	if (hasSelection.value) emit('delete:nodes', selectedNodeIds.value);
+
+	// If collapsed group was selected, we need to delete all its members
+	for (const node of selectedNodesAndGroups.value) {
+		if (!isCanvasGroupNode(node)) continue;
+		const data = node.data as CanvasGroupNodeData;
+		workflowDocumentStore.value.deleteGroup(data.group.id);
+	}
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
