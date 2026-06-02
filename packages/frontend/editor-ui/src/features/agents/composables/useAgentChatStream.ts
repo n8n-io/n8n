@@ -24,6 +24,7 @@ import {
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -271,13 +272,33 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-execution-start': {
+				// Timing is server-measured: store the backend `startTime` verbatim
+				// (no client clock) so the live duration matches the persisted one.
 				const found = findToolCallById(event.toolCallId);
-				if (
-					found &&
-					found.tc.state !== TOOL_CALL_STATE.DONE &&
-					found.tc.state !== TOOL_CALL_STATE.ERROR
-				) {
-					found.tc.state = TOOL_CALL_STATE.RUNNING;
+				if (found) {
+					found.tc.startTime = event.startTime;
+					if (found.tc.state !== TOOL_CALL_STATE.DONE && found.tc.state !== TOOL_CALL_STATE.ERROR) {
+						found.tc.state = TOOL_CALL_STATE.RUNNING;
+					}
+				}
+				break;
+			}
+			case 'tool-execution-end': {
+				// Per-tool completion bridged from the runtime event bus. Flips a
+				// concurrent tool call to its terminal state the moment it settles,
+				// rather than waiting for the batched `tool-result` events. The later
+				// `tool-result` still fills in the output/summary. `endTime` is the
+				// server-measured settle time (no client clock).
+				const found = findToolCallById(event.toolCallId);
+				if (found) {
+					if (
+						found.tc.state !== TOOL_CALL_STATE.DONE &&
+						found.tc.state !== TOOL_CALL_STATE.ERROR &&
+						found.tc.state !== TOOL_CALL_STATE.SUSPENDED
+					) {
+						found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					}
+					found.tc.endTime = event.endTime;
 				}
 				break;
 			}
@@ -285,7 +306,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					found.tc.state = failed ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved

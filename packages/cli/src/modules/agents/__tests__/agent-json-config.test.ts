@@ -1,4 +1,9 @@
-import { AgentJsonConfigSchema, isNodeToolsEnabled, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	isNodeToolsEnabled,
+	isSubAgentsEnabled,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
@@ -87,6 +92,33 @@ describe('isNodeToolsEnabled', () => {
 
 	it('returns true only when nodeTools.enabled is explicitly true', () => {
 		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
+	});
+});
+
+describe('AgentJsonConfigSchema — subAgents', () => {
+	it('accepts saved agent references', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { agents: [{ agentId: 'agent-1' }] },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects the removed subAgents.enabled flag', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: true } }).success,
+		).toBe(false);
+	});
+});
+
+describe('isSubAgentsEnabled', () => {
+	it('returns false when subAgents is undefined', () => {
+		expect(isSubAgentsEnabled(undefined)).toBe(false);
+	});
+
+	it('returns true only when at least one subagent ref exists', () => {
+		expect(isSubAgentsEnabled({ agents: [] })).toBe(false);
+		expect(isSubAgentsEnabled({ agents: [{ agentId: 'agent-1' }] })).toBe(true);
 	});
 });
 
