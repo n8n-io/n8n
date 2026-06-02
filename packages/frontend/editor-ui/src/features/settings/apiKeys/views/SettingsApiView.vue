@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
@@ -22,6 +24,8 @@ import {
 	N8nActionBox,
 	N8nButton,
 	N8nHeading,
+	N8nIcon,
+	N8nInput,
 	N8nLink,
 	N8nPagination,
 	N8nTabs,
@@ -47,10 +51,31 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { fetchApiKeys, setPage, setOwnership, deleteApiKey, getApiKeyAvailableScopes } =
-	apiKeysStore;
-const { apiKeys, apiKeysCount, ownership, mineCount, allCount, page, pageSize } =
+const {
+	fetchApiKeys,
+	setPage,
+	setOwnership,
+	setLabelFilter,
+	deleteApiKey,
+	getApiKeyAvailableScopes,
+} = apiKeysStore;
+const { apiKeys, apiKeysCount, ownership, labelFilter, mineCount, allCount, page, pageSize } =
 	storeToRefs(apiKeysStore);
+
+const searchQuery = ref(labelFilter.value);
+
+const onSearch = useDebounceFn(async (value: string) => {
+	try {
+		await setLabelFilter(value.trim());
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	}
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+function onSearchInput(value: string) {
+	searchQuery.value = value;
+	void onSearch(value);
+}
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
 
@@ -173,12 +198,9 @@ function onOpenScopes(apiKey: ApiKey) {
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
-			<N8nButton v-if="isPublicApiEnabled && allCount > 0" size="large" @click="onCreateApiKey">
-				{{ i18n.baseText('settings.api.create.button') }}
-			</N8nButton>
 		</div>
 
-		<p v-if="isPublicApiEnabled && apiKeys.length" :class="$style.topHint">
+		<p v-if="isPublicApiEnabled && allCount > 0" :class="$style.topHint">
 			<N8nText>
 				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 					<template #apiAction>
@@ -200,6 +222,25 @@ function onOpenScopes(apiKey: ApiKey) {
 				</I18nT>
 			</N8nText>
 		</p>
+
+		<div v-if="isPublicApiEnabled && allCount > 0" :class="$style.toolbar">
+			<N8nInput
+				:model-value="searchQuery"
+				:placeholder="i18n.baseText('settings.api.search.placeholder')"
+				:class="$style.search"
+				size="medium"
+				clearable
+				data-test-id="api-keys-search"
+				@update:model-value="onSearchInput"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<N8nButton size="medium" @click="onCreateApiKey">
+				{{ i18n.baseText('settings.api.create.button') }}
+			</N8nButton>
+		</div>
 
 		<N8nTabs
 			v-if="isPublicApiEnabled && canManageAllKeys && allCount > 0"
@@ -318,6 +359,19 @@ function onOpenScopes(apiKey: ApiKey) {
 		line-height: var(--line-height--lg);
 		font-weight: var(--font-weight--regular);
 	}
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
+}
+
+.search {
+	max-width: 320px;
+	flex: 1 1 auto;
 }
 
 .container {

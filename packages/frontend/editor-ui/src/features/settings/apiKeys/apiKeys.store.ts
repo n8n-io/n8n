@@ -16,13 +16,17 @@ const DEFAULT_PAGE_SIZE = 10;
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
-	/** Total number of API keys on the server across every page, not the size of the current page. */
-	const apiKeysCount = ref(0);
 	/** Server-side ownership filter: 'mine' = caller's own keys, 'all' = every key on the instance. */
 	const ownership = ref<ApiKeyOwnership>('mine');
+	/** Case-insensitive substring filter applied server-side to the label. */
+	const labelFilter = ref('');
 	/** Cross-page totals per ownership filter, populated from the GET response. */
 	const mineCount = ref(0);
 	const allCount = ref(0);
+	/** Total number of API keys for the current ownership filter, across every page. */
+	const apiKeysCount = computed(() =>
+		ownership.value === 'mine' ? mineCount.value : allCount.value,
+	);
 	const page = ref(1);
 	const pageSize = ref(DEFAULT_PAGE_SIZE);
 	const availableScopes = ref<ApiKeyScope[]>([]);
@@ -45,13 +49,14 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	};
 
 	const fetchApiKeys = async () => {
+		const trimmed = labelFilter.value.trim();
 		const response = await publicApiApi.getApiKeys(rootStore.restApiContext, {
 			take: pageSize.value,
 			skip: (page.value - 1) * pageSize.value,
 			ownership: ownership.value,
+			...(trimmed ? { label: trimmed } : {}),
 		});
 		apiKeys.value = response.items;
-		apiKeysCount.value = response.count;
 		mineCount.value = response.counts.mine;
 		allCount.value = response.counts.all;
 		return response;
@@ -75,6 +80,13 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		await fetchApiKeys();
 	};
 
+	const setLabelFilter = async (newFilter: string) => {
+		if (labelFilter.value === newFilter) return;
+		labelFilter.value = newFilter;
+		page.value = 1;
+		await fetchApiKeys();
+	};
+
 	const createApiKey = async (payload: CreateApiKeyRequestDto) => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, payload);
 		// New key lands at the top (createdAt DESC) — return to page 1 and refetch so
@@ -86,7 +98,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const deleteApiKey = async (id: string) => {
 		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
-		// Refetching keeps `apiKeysCount` honest and handles the page-becomes-empty edge case.
+		// Refetching keeps the counts honest and handles the page-becomes-empty edge case.
 		const remaining = apiKeysCount.value - 1;
 		const lastPage = Math.max(1, Math.ceil(remaining / pageSize.value));
 		if (page.value > lastPage) page.value = lastPage;
@@ -104,6 +116,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		setPage,
 		setPageSize,
 		setOwnership,
+		setLabelFilter,
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
@@ -112,6 +125,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys,
 		apiKeysCount,
 		ownership,
+		labelFilter,
 		mineCount,
 		allCount,
 		page,

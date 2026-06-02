@@ -31,11 +31,11 @@ export type ApiKeyOwnership = 'mine' | 'all';
 
 export type ApiKeyList = {
 	items: ApiKey[];
-	count: number;
 	/**
-	 * Total per-scope counts. Always present, so callers can render Mine/All
-	 * tab badges without making a second request. For non-admins both numbers
-	 * are equal to `count`.
+	 * Total counts per ownership filter. `counts[ownership]` is the total for
+	 * the requested page (use it for pagination); both numbers are present so
+	 * callers can render Mine/All tab badges without a second request. For
+	 * non-admins `mine` and `all` are equal.
 	 */
 	counts: { mine: number; all: number };
 };

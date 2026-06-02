@@ -110,6 +110,8 @@ describe('SettingsApiView', () => {
 				expiresAt: dateInTheFuture.toSeconds(),
 			}),
 		];
+		apiKeysStore.allCount = 2;
+		apiKeysStore.mineCount = 2;
 
 		renderComponent(SettingsApiView);
 
@@ -132,6 +134,8 @@ describe('SettingsApiView', () => {
 		settingsStore.isSwaggerUIEnabled = false;
 		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
 
 		renderComponent(SettingsApiView);
 

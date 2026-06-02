@@ -279,7 +279,7 @@ describe('Owner shell', () => {
 			email: ownerShell.email,
 		};
 
-		expect(retrieveAllApiKeysResponse.body.data.count).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
 		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
@@ -322,7 +322,7 @@ describe('Owner shell', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(ownerShell).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.count).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(0);
 		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
@@ -485,7 +485,7 @@ describe('Member', () => {
 			email: member.email,
 		};
 
-		expect(retrieveAllApiKeysResponse.body.data.count).toBe(2);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
 		expect(retrieveAllApiKeysResponse.body.data.items[0]).toEqual({
 			id: apiKeyWithExpiration.body.data.id,
 			label: 'My API Key 2',
@@ -528,7 +528,7 @@ describe('Member', () => {
 		const retrieveAllApiKeysResponse = await testServer.authAgentFor(member).get('/api-keys');
 
 		expect(deleteApiKeyResponse.body.data.success).toBe(true);
-		expect(retrieveAllApiKeysResponse.body.data.count).toBe(0);
+		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(0);
 		expect(retrieveAllApiKeysResponse.body.data.items).toHaveLength(0);
 	});
 
@@ -562,7 +562,7 @@ describe('Pagination', () => {
 
 		const response = await testServer.authAgentFor(owner).get('/api-keys?take=2').expect(200);
 
-		expect(response.body.data.count).toBe(3);
+		expect(response.body.data.counts.all).toBe(3);
 		expect(response.body.data.items).toHaveLength(2);
 	});
 

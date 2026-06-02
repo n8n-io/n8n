@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager } from '@n8n/typeorm';
+import { Raw, type EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -52,39 +52,53 @@ export class PublicApiKeyService {
 	 * by `createdAt` descending. Returns every key on the instance for callers
 	 * with `apiKey:manage` (owners and admins); otherwise scopes to the
 	 * caller's own keys. Admins can narrow to their own keys with
-	 * `ownership: 'mine'`. `count` is the total across all pages for the
-	 * returned ownership filter; `counts` carries both totals so callers can
-	 * render Mine/All tab badges without a second request.
+	 * `ownership: 'mine'`. `counts` carries the cross-page totals for both
+	 * ownership filters — `counts[ownership]` is the total for the requested
+	 * page, and the other lets callers render Mine/All tab badges without a
+	 * second request.
 	 */
 	async getRedactedApiKeys(
 		caller: User,
-		options: { take?: number; skip?: number; ownership?: 'mine' | 'all' } = {},
+		options: {
+			take?: number;
+			skip?: number;
+			ownership?: 'mine' | 'all';
+			label?: string;
+		} = {},
 	) {
 		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
 		const includeOthers = canSeeAll && options.ownership !== 'mine';
 		const ownFilter = { userId: caller.id };
+		const labelFilter = options.label
+			? {
+					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label)`, {
+						label: `%${options.label}%`,
+					}),
+				}
+			: {};
+		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
 
 		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({
-			where: { audience: API_KEY_AUDIENCE, ...(includeOthers ? {} : ownFilter) },
+			where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) },
 			relations: { user: true },
 			order: { createdAt: 'DESC' },
 			take: options.take,
 			skip: options.skip,
 		});
 
+		// For non-admins the `mine` and `all` totals are identical, so we
+		// reuse `count` and skip the extra COUNT query.
 		const counts = canSeeAll
 			? {
-					mine: await this.apiKeyRepository.countBy({
-						audience: API_KEY_AUDIENCE,
-						...ownFilter,
-					}),
-					all: await this.apiKeyRepository.countBy({ audience: API_KEY_AUDIENCE }),
+					mine: includeOthers
+						? await this.apiKeyRepository.countBy({ ...baseWhere, ...ownFilter })
+						: count,
+					all: includeOthers ? count : await this.apiKeyRepository.countBy(baseWhere),
 				}
 			: { mine: count, all: count };
 
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
-			count,
 			counts,
 		};
 	}

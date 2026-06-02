@@ -77,6 +77,7 @@ export class ApiKeysController {
 			take: query.take,
 			skip: query.skip,
 			ownership: query.ownership,
+			label: query.label,
 		});
 	}
 
