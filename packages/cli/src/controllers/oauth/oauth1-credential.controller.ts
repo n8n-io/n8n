@@ -19,10 +19,10 @@ export class OAuth1CredentialController {
 
 	/** Get Authorization url */
 	@Get('/auth')
-	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
+	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
