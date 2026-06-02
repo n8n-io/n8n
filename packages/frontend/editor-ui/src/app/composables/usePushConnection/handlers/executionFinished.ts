@@ -21,7 +21,6 @@ import {
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	SampleTemplates,
 	isTutorialTemplateId,
@@ -383,7 +382,9 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 
 		toast.showMessage({ title, message, type: 'error', duration: 0 });
 
-		useBuilderStore().incrementManualExecutionStats('error');
+		useWorkflowExecutionStateStore(workflowDocumentStore.documentId).incrementManualExecutionStats(
+			'error',
+		);
 	}
 }
 
@@ -474,7 +475,9 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	// Execution finished is triggered multiple times
 	// use "successToastAlreadyShown" flag to avoid double counting executions
 	if (executionStatus === 'success' && !successToastAlreadyShown) {
-		useBuilderStore().incrementManualExecutionStats('success');
+		const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentStore.documentId);
+		executionStateStore.incrementManualExecutionStats('success');
+		executionStateStore.markHasHadSuccessfulExecution();
 	}
 }
 

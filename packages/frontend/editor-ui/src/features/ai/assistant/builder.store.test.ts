@@ -41,6 +41,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
@@ -1965,10 +1966,13 @@ describe('AI Builder store', () => {
 	describe('manual execution stats telemetry', () => {
 		it('should include success count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.incrementManualExecutionStats('success');
+			executionStateStore.incrementManualExecutionStats('success');
 			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
@@ -1982,10 +1986,13 @@ describe('AI Builder store', () => {
 
 		it('should include error count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.incrementManualExecutionStats('error');
+			executionStateStore.incrementManualExecutionStats('error');
 			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
@@ -1999,12 +2006,15 @@ describe('AI Builder store', () => {
 
 		it('should include multiple incremented counts in telemetry', async () => {
 			const builderStore = useBuilderStore();
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.incrementManualExecutionStats('success');
-			builderStore.incrementManualExecutionStats('success');
-			builderStore.incrementManualExecutionStats('error');
+			executionStateStore.incrementManualExecutionStats('success');
+			executionStateStore.incrementManualExecutionStats('success');
+			executionStateStore.incrementManualExecutionStats('error');
 			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
@@ -2018,6 +2028,9 @@ describe('AI Builder store', () => {
 
 		it('should reset stats after sending message', async () => {
 			const builderStore = useBuilderStore();
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 
 			// First message with some stats
 			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
@@ -2028,8 +2041,8 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.incrementManualExecutionStats('success');
-			builderStore.incrementManualExecutionStats('error');
+			executionStateStore.incrementManualExecutionStats('success');
+			executionStateStore.incrementManualExecutionStats('error');
 			await builderStore.sendChatMessage({ text: 'first message' });
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));

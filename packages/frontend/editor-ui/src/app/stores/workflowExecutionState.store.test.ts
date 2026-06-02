@@ -1196,6 +1196,121 @@ describe('workflowExecutionState.store', () => {
 		});
 	});
 
+	describe('manualExecStatsInBetweenMessages', () => {
+		it('starts at zero', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-stats'),
+			);
+			expect(workflowExecutionStateStore.manualExecStatsInBetweenMessages).toEqual({
+				success: 0,
+				error: 0,
+			});
+		});
+
+		it('increments success and error tallies independently', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-stats'),
+			);
+			workflowExecutionStateStore.incrementManualExecutionStats('success');
+			workflowExecutionStateStore.incrementManualExecutionStats('success');
+			workflowExecutionStateStore.incrementManualExecutionStats('error');
+
+			expect(workflowExecutionStateStore.manualExecStatsInBetweenMessages).toEqual({
+				success: 2,
+				error: 1,
+			});
+		});
+
+		it('resetManualExecutionStats clears the tallies', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-stats'),
+			);
+			workflowExecutionStateStore.incrementManualExecutionStats('success');
+			workflowExecutionStateStore.resetManualExecutionStats();
+
+			expect(workflowExecutionStateStore.manualExecStatsInBetweenMessages).toEqual({
+				success: 0,
+				error: 0,
+			});
+		});
+
+		it('resetExecutionState clears the tallies', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-stats'),
+			);
+			workflowExecutionStateStore.incrementManualExecutionStats('error');
+			workflowExecutionStateStore.resetExecutionState();
+
+			expect(workflowExecutionStateStore.manualExecStatsInBetweenMessages).toEqual({
+				success: 0,
+				error: 0,
+			});
+		});
+
+		it('fires a change event with the manualExecStats field on increment', () => {
+			const id = createWorkflowDocumentId('wf-stats');
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(id);
+			const spy = vi.fn();
+			workflowExecutionStateStore.onWorkflowExecutionStateChange(spy);
+
+			workflowExecutionStateStore.incrementManualExecutionStats('success');
+
+			expect(spy.mock.calls[0][0]).toMatchObject({
+				action: 'update',
+				payload: { documentId: id, field: 'manualExecStats' },
+			});
+		});
+	});
+
+	describe('hasHadSuccessfulExecution', () => {
+		it('defaults to false', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-success'),
+			);
+			expect(workflowExecutionStateStore.hasHadSuccessfulExecution).toBe(false);
+		});
+
+		it('markHasHadSuccessfulExecution sets the flag', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-success'),
+			);
+			workflowExecutionStateStore.markHasHadSuccessfulExecution();
+			expect(workflowExecutionStateStore.hasHadSuccessfulExecution).toBe(true);
+		});
+
+		it('is not cleared by resetManualExecutionStats', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-success'),
+			);
+			workflowExecutionStateStore.markHasHadSuccessfulExecution();
+			workflowExecutionStateStore.resetManualExecutionStats();
+			expect(workflowExecutionStateStore.hasHadSuccessfulExecution).toBe(true);
+		});
+
+		it('is cleared by resetExecutionState', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-success'),
+			);
+			workflowExecutionStateStore.markHasHadSuccessfulExecution();
+			workflowExecutionStateStore.resetExecutionState();
+			expect(workflowExecutionStateStore.hasHadSuccessfulExecution).toBe(false);
+		});
+
+		it('fires a change event with the hasHadSuccessfulExecution field', () => {
+			const id = createWorkflowDocumentId('wf-success');
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(id);
+			const spy = vi.fn();
+			workflowExecutionStateStore.onWorkflowExecutionStateChange(spy);
+
+			workflowExecutionStateStore.markHasHadSuccessfulExecution();
+
+			expect(spy.mock.calls[0][0]).toMatchObject({
+				action: 'update',
+				payload: { documentId: id, field: 'hasHadSuccessfulExecution' },
+			});
+		});
+	});
+
 	describe('event hook', () => {
 		it('fires onWorkflowExecutionStateChange with workflowId and field discriminator', () => {
 			const id = createWorkflowDocumentId('wf-1');

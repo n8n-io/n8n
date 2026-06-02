@@ -36,6 +36,8 @@ export type WorkflowExecutionStateField =
 	| 'selectedTriggerNodeName'
 	| 'currentWorkflowExecutions'
 	| 'lastSuccessfulExecutionId'
+	| 'manualExecStats'
+	| 'hasHadSuccessfulExecution'
 	| 'state';
 
 export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionStateChangePayload>;
@@ -89,6 +91,21 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		const selectedTriggerNodeName = ref<string | undefined>();
 		const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 		const lastSuccessfulExecutionId = ref<string | null>(null);
+		/**
+		 * Tally of manual executions (and their outcomes) that happened since the
+		 * last reset. The AI builder reads this to report how many manual runs
+		 * occurred between builder messages, then resets it on each new message.
+		 */
+		const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
+			success: 0,
+			error: 0,
+		});
+		/**
+		 * Whether any successful execution (full workflow or per-node) has occurred
+		 * for this workflow. Unlike `manualExecStatsInBetweenMessages` it is not reset
+		 * per builder message — it persists until the execution state is fully reset.
+		 */
+		const hasHadSuccessfulExecution = ref(false);
 		/**
 		 * Every execution id ever bound to this workflow's state. Used at
 		 * `resetExecutionState` time to dispose all per-execution data stores
@@ -452,6 +469,25 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.ADD, 'chatMessages');
 		}
 
+		function incrementManualExecutionStats(type: 'success' | 'error') {
+			manualExecStatsInBetweenMessages.value[type]++;
+			fireChange(CHANGE_ACTION.UPDATE, 'manualExecStats');
+		}
+
+		function resetManualExecutionStats() {
+			manualExecStatsInBetweenMessages.value = { success: 0, error: 0 };
+			fireChange(CHANGE_ACTION.DELETE, 'manualExecStats');
+		}
+
+		/**
+		 * Marks that a successful execution has occurred for this workflow.
+		 * Called when a manual run finishes successfully (see executionFinished handler).
+		 */
+		function markHasHadSuccessfulExecution() {
+			hasHadSuccessfulExecution.value = true;
+			fireChange(CHANGE_ACTION.UPDATE, 'hasHadSuccessfulExecution');
+		}
+
 		function setSelectedTriggerNodeName(value: string | undefined) {
 			selectedTriggerNodeName.value = value;
 			fireChange(
@@ -587,6 +623,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName.value = undefined;
 			currentWorkflowExecutions.value = [];
 			lastSuccessfulExecutionId.value = null;
+			manualExecStatsInBetweenMessages.value = { success: 0, error: 0 };
+			hasHadSuccessfulExecution.value = false;
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
@@ -605,6 +643,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName: readonly(selectedTriggerNodeName),
 			currentWorkflowExecutions: readonly(currentWorkflowExecutions),
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
+			manualExecStatsInBetweenMessages: readonly(manualExecStatsInBetweenMessages),
+			hasHadSuccessfulExecution: readonly(hasHadSuccessfulExecution),
 			activeExecution,
 			activeExecutionRunData,
 			activeExecutionExecutedNode,
@@ -640,6 +680,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			addToCurrentExecutions,
 			resetChatMessages,
 			appendChatMessage,
+			incrementManualExecutionStats,
+			resetManualExecutionStats,
+			markHasHadSuccessfulExecution,
 			setSelectedTriggerNodeName,
 			renameExecutionStateNode,
 			setActiveExecution,

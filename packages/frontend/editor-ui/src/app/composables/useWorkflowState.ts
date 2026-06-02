@@ -13,7 +13,6 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isEmpty } from '@/app/utils/typesUtils';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
@@ -149,21 +148,20 @@ export function useWorkflowState() {
 		const wid = ws.workflowId;
 		if (!wid) {
 			workflowStateStore.executingNode.executingNode.length = 0;
-			useBuilderStore().resetManualExecutionStats();
+			useWorkflowExecutionStateStore(createWorkflowDocumentId(wid)).resetManualExecutionStats();
 			return;
 		}
 		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(wid),
 		);
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
-		// session-level fields.
+		// session-level fields (including manual-execution stats).
 		workflowExecutionStateStore.resetExecutionState();
 		// Then dispose the per-workflow state store so pinia state doesn't accumulate one entry
 		// per workflow ever opened in this session.
 		disposeWorkflowExecutionStateStore(workflowExecutionStateStore);
 
 		workflowStateStore.executingNode.executingNode.length = 0;
-		useBuilderStore().resetManualExecutionStats();
 	}
 
 	return {

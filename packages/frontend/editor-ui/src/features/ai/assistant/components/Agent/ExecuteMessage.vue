@@ -130,7 +130,7 @@ const showUnpinSection = computed(
 	() =>
 		(builderStore.isCodeBuilder || builderStore.pinDataApplied) &&
 		builderStore.hasTodosHiddenByPinnedData &&
-		builderStore.hasHadSuccessfulExecution,
+		workflowExecutionState.value.hasHadSuccessfulExecution,
 );
 
 const showFollowUps = computed(() => builderStore.hasDeferredPinData);

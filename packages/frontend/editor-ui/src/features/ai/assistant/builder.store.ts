@@ -17,6 +17,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -174,10 +175,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const builderMode = ref<'build' | 'plan'>('build');
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
-		success: 0,
-		error: 0,
-	});
 
 	// Version restore state — persisted to DB via workflow_builder_session
 	const activeVersionCardId = ref<string | undefined>(undefined);
@@ -211,9 +208,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				.filter(Boolean) as string[],
 		);
 	});
-
-	// Track whether any successful execution (full workflow or per-node) has occurred in this session
-	const hasHadSuccessfulExecution = ref(false);
 
 	// AI-generated test data — persists throughout the session for apply/re-apply
 	const generatedPinData = ref<IPinData | null>(null);
@@ -255,6 +249,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const route = useRoute();
@@ -434,7 +431,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
-		hasHadSuccessfulExecution.value = false;
 		generatedPinData.value = null;
 		pinDataApplied.value = false;
 		builderMode.value = 'build';
@@ -457,20 +453,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (mode === 'plan' && !isPlanModeAvailable.value) return;
 		builderMode.value = mode;
 		trackWorkflowBuilderJourney('user_switched_builder_mode', { mode });
-	}
-
-	function incrementManualExecutionStats(type: 'success' | 'error') {
-		manualExecStatsInBetweenMessages.value[type]++;
-		if (type === 'success') {
-			hasHadSuccessfulExecution.value = true;
-		}
-	}
-
-	function resetManualExecutionStats() {
-		manualExecStatsInBetweenMessages.value = {
-			success: 0,
-			error: 0,
-		};
 	}
 
 	// Message handling functions
@@ -774,8 +756,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			start_workflow_json: currentWorkflowJson,
 			workflow_id: workflowsStore.workflowId,
 			type,
-			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
-			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
+			manual_exec_success_count_since_prev_msg:
+				workflowExecutionStateStore.value.manualExecStatsInBetweenMessages.success,
+			manual_exec_error_count_since_prev_msg:
+				workflowExecutionStateStore.value.manualExecStatsInBetweenMessages.error,
 			user_message_id: userMessageId,
 			code_builder: isCodeBuilder.value,
 			mode,
@@ -986,7 +970,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			mode: builderMode.value,
 		});
 
-		resetManualExecutionStats();
+		workflowExecutionStateStore.value.resetManualExecutionStats();
 
 		prepareForStreaming(
 			text,
@@ -1694,7 +1678,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		versionCardMessages,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
-		hasHadSuccessfulExecution,
 		hasDeferredPinData,
 		hasGeneratedPinData,
 		pinDataApplied,
@@ -1722,8 +1705,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
 		setBuilderMadeEdits,
-		incrementManualExecutionStats,
-		resetManualExecutionStats,
 		applyCodeDiff,
 		undoCodeDiff,
 		// Version management

@@ -99,6 +99,7 @@ describe('ExecuteMessage', () => {
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
+	let workflowExecutionState: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let renderExecuteMessage: () => ReturnType<ReturnType<typeof createComponentRenderer>>;
 
 	beforeEach(() => {
@@ -137,7 +138,7 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
 			get: () => workflowExecutionDataRef,
 		});
-		const workflowExecutionState = useWorkflowExecutionStateStore(
+		workflowExecutionState = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId('test-workflow'),
 		);
 		Object.defineProperty(workflowExecutionState, 'executionWaitingForWebhook', {
@@ -529,7 +530,7 @@ describe('ExecuteMessage', () => {
 			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
 			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
 			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
-			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
+			workflowExecutionState.markHasHadSuccessfulExecution();
 			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
 
 			const { queryByTestId, queryByText } = renderExecuteMessage();
