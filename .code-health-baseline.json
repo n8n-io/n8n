@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-05-27T11:00:10.737Z",
-	"totalViolations": 153,
+	"generated": "2026-06-02T13:33:31.378Z",
+	"totalViolations": 157,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -649,432 +649,464 @@
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1690000000030-RemoveResetPasswordColumns.ts (1690000000030) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "8d8e989bb61f"
+				"message": "1690000000030-RemoveResetPasswordColumns.ts (1690000000030) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "d1bbfe0623b8"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1690000000040-AddMfaColumns.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1690000000040-AddMfaColumns.ts (1690000000040) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "8982d585d48d"
+				"message": "1690000000040-AddMfaColumns.ts (1690000000040) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "4a176b0b4497"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1693491613982-ExecutionSoftDelete.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1693491613982-ExecutionSoftDelete.ts (1693491613982) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "42474ba4fb51"
+				"message": "1693491613982-ExecutionSoftDelete.ts (1693491613982) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "f7fea4397b64"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1693554410387-DisallowOrphanExecutions.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1693554410387-DisallowOrphanExecutions.ts (1693554410387) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "ff84d8869303"
+				"message": "1693554410387-DisallowOrphanExecutions.ts (1693554410387) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "d496342f9eeb"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1695128658538-AddWorkflowMetadata.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1695128658538-AddWorkflowMetadata.ts (1695128658538) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "03082db2afb1"
+				"message": "1695128658538-AddWorkflowMetadata.ts (1695128658538) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "bc8e509c74ad"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1695829275184-ModifyWorkflowHistoryNodesAndConnections.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1695829275184-ModifyWorkflowHistoryNodesAndConnections.ts (1695829275184) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "64404e28e33b"
+				"message": "1695829275184-ModifyWorkflowHistoryNodesAndConnections.ts (1695829275184) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "fe28e5394b1d"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1705429061930-DropRoleMapping.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1705429061930-DropRoleMapping.ts (1705429061930) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "35d82d50e50b"
+				"message": "1705429061930-DropRoleMapping.ts (1705429061930) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "bd3dedeccac9"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1712044305787-RemoveNodesAccess.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1712044305787-RemoveNodesAccess.ts (1712044305787) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "c6aad89786a5"
+				"message": "1712044305787-RemoveNodesAccess.ts (1712044305787) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "2c1b2b936999"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1714133768519-CreateProject.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1714133768519-CreateProject.ts (1714133768519) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "6672f19c508b"
+				"message": "1714133768519-CreateProject.ts (1714133768519) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "119f4e2e455d"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1714133768521-MakeExecutionStatusNonNullable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1714133768521-MakeExecutionStatusNonNullable.ts (1714133768521) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "59f61e49b0ac"
+				"message": "1714133768521-MakeExecutionStatusNonNullable.ts (1714133768521) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "951e3d781a2c"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1724951148974-AddApiKeysTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "c673941319d7"
+				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "0060b5fc1815"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1727427440136-SeparateExecutionCreationFromStart.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1727427440136-SeparateExecutionCreationFromStart.ts (1727427440136) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "3a80f4d5a2dc"
+				"message": "1727427440136-SeparateExecutionCreationFromStart.ts (1727427440136) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "2f27019356db"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1729607673464-UpdateProcessedDataValueColumnToText.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1729607673464-UpdateProcessedDataValueColumnToText.ts (1729607673464) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "6ea66db3c9c2"
+				"message": "1729607673464-UpdateProcessedDataValueColumnToText.ts (1729607673464) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "1fbdb81b6823"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1729607673469-AddProjectIcons.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1729607673469-AddProjectIcons.ts (1729607673469) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "e320e6e8bcf7"
+				"message": "1729607673469-AddProjectIcons.ts (1729607673469) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "5fa2f97d4461"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1731404028106-AddDescriptionToTestDefinition.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1731404028106-AddDescriptionToTestDefinition.ts (1731404028106) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "f67de0b37be0"
+				"message": "1731404028106-AddDescriptionToTestDefinition.ts (1731404028106) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "a373a118de06"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1742918400000-AddScopesColumnToApiKeys.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1742918400000-AddScopesColumnToApiKeys.ts (1742918400000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "f63a85abb6d8"
+				"message": "1742918400000-AddScopesColumnToApiKeys.ts (1742918400000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "ab53d69913a7"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1750252139168-LinkRoleToUserTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1750252139168-LinkRoleToUserTable.ts (1750252139168) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "8cdd8b335db0"
+				"message": "1750252139168-LinkRoleToUserTable.ts (1750252139168) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "b037a43fcbe1"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1750252139170-RemoveOldRoleColumn.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1750252139170-RemoveOldRoleColumn.ts (1750252139170) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "c8c49852c193"
+				"message": "1750252139170-RemoveOldRoleColumn.ts (1750252139170) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "47078c777139"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1752669793000-AddInputsOutputsToTestCaseExecution.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1752669793000-AddInputsOutputsToTestCaseExecution.ts (1752669793000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "0e61ad4a5a08"
+				"message": "1752669793000-AddInputsOutputsToTestCaseExecution.ts (1752669793000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "1159e8b4d502"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1756906557570-AddTimestampsToRoleAndRoleIndexes.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1756906557570-AddTimestampsToRoleAndRoleIndexes.ts (1756906557570) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "bda55a403704"
+				"message": "1756906557570-AddTimestampsToRoleAndRoleIndexes.ts (1756906557570) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "220ac7af1709"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1758731786132-AddAudienceColumnToApiKey.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1758731786132-AddAudienceColumnToApiKey.ts (1758731786132) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "002dc6cb73be"
+				"message": "1758731786132-AddAudienceColumnToApiKey.ts (1758731786132) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "a45bd7a07c62"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1760020000000-CreateChatHubAgentTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1760020000000-CreateChatHubAgentTable.ts (1760020000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "4fd98e47d16d"
+				"message": "1760020000000-CreateChatHubAgentTable.ts (1760020000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "9970d98d835f"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1760965142113-DropUnusedChatHubColumns.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1760965142113-DropUnusedChatHubColumns.ts (1760965142113) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "6f25511bc46d"
+				"message": "1760965142113-DropUnusedChatHubColumns.ts (1760965142113) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "8138394663d0"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1761773155024-AddAttachmentsToChatHubMessages.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1761773155024-AddAttachmentsToChatHubMessages.ts (1761773155024) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "27181ce0fb89"
+				"message": "1761773155024-AddAttachmentsToChatHubMessages.ts (1761773155024) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "e9b34eef4941"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1761830340990-AddToolsColumnToChatHubTables.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1761830340990-AddToolsColumnToChatHubTables.ts (1761830340990) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "a5c9e057e148"
+				"message": "1761830340990-AddToolsColumnToChatHubTables.ts (1761830340990) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "137fcd760c37"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1762177736257-AddWorkflowDescriptionColumn.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1762177736257-AddWorkflowDescriptionColumn.ts (1762177736257) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "fa254dfc6812"
+				"message": "1762177736257-AddWorkflowDescriptionColumn.ts (1762177736257) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "9721c3df3dc5"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1762763704614-BackfillMissingWorkflowHistoryRecords.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1762763704614-BackfillMissingWorkflowHistoryRecords.ts (1762763704614) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "fb27a9201ce6"
+				"message": "1762763704614-BackfillMissingWorkflowHistoryRecords.ts (1762763704614) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "c82057a4dd50"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1762847206508-AddWorkflowHistoryAutoSaveFields.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1762847206508-AddWorkflowHistoryAutoSaveFields.ts (1762847206508) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "563d9b9318e2"
+				"message": "1762847206508-AddWorkflowHistoryAutoSaveFields.ts (1762847206508) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "73d77e677ef1"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1763047800000-AddActiveVersionIdColumn.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1763047800000-AddActiveVersionIdColumn.ts (1763047800000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "ede4c7ba692e"
+				"message": "1763047800000-AddActiveVersionIdColumn.ts (1763047800000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "282075563e07"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1764276827837-AddCreatorIdToProjectTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "83dc9dadf834"
+				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "5917c7d89383"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1765459448000-AddResolvableFieldsToCredentials.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1765459448000-AddResolvableFieldsToCredentials.ts (1765459448000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "6365bc4b7352"
+				"message": "1765459448000-AddResolvableFieldsToCredentials.ts (1765459448000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "76ad7c9b8745"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1765788427674-AddIconToAgentTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1765788427674-AddIconToAgentTable.ts (1765788427674) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "350dbf557010"
+				"message": "1765788427674-AddIconToAgentTable.ts (1765788427674) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "f9f2900b2da7"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1766068346315-AddChatMessageIndices.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1766068346315-AddChatMessageIndices.ts (1766068346315) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "5d5b79c2229d"
+				"message": "1766068346315-AddChatMessageIndices.ts (1766068346315) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "1bfa202691f5"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1769000000000-AddPublishedVersionIdToWorkflowDependency.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1769000000000-AddPublishedVersionIdToWorkflowDependency.ts (1769000000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "42851e0097df"
+				"message": "1769000000000-AddPublishedVersionIdToWorkflowDependency.ts (1769000000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "903fa78dbaab"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1770000000000-CreateChatHubToolsTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1770000000000-CreateChatHubToolsTable.ts (1770000000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "5a544799d8e5"
+				"message": "1770000000000-CreateChatHubToolsTable.ts (1770000000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "e914c3afcf8f"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1771500000002-AddFilesColumnToChatHubAgents.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1771500000002-AddFilesColumnToChatHubAgents.ts (1771500000002) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "e141920fba5e"
+				"message": "1771500000002-AddFilesColumnToChatHubAgents.ts (1771500000002) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "38e00f46d971"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1772000000000-AddSuggestedPromptsToAgentTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1772000000000-AddSuggestedPromptsToAgentTable.ts (1772000000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "54dab7133fed"
+				"message": "1772000000000-AddSuggestedPromptsToAgentTable.ts (1772000000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "6f392741a75c"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1772619247761-AddRoleColumnToProjectSecretsProviderAccess.ts (1772619247761) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "6a2b1c75b527"
+				"message": "1772619247761-AddRoleColumnToProjectSecretsProviderAccess.ts (1772619247761) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "3f895a9cb5df"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1772700000000-AddTypeToChatHubSessions.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1772700000000-AddTypeToChatHubSessions.ts (1772700000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "d6a5bb39945e"
+				"message": "1772700000000-AddTypeToChatHubSessions.ts (1772700000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "b9644ccebef1"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1774280963551-AddRestoreFieldsToWorkflowBuilderSession.ts (1774280963551) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "0e8664ae2fde"
+				"message": "1774280963551-AddRestoreFieldsToWorkflowBuilderSession.ts (1774280963551) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "9f306922a532"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull.ts (1775740765000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "1b522d619033"
+				"message": "1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull.ts (1775740765000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "e0b03abee4ea"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1777045000000-AddTracingContextToExecution.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1777045000000-AddTracingContextToExecution.ts (1777045000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "3c3826554c85"
+				"message": "1777045000000-AddTracingContextToExecution.ts (1777045000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "8edd90638d2f"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots.ts (1777100000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "2f22d77d4591"
+				"message": "1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots.ts (1777100000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "813379f1fff5"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1778000000000-AddExecutionDeduplicationKey.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1778000000000-AddExecutionDeduplicationKey.ts (1778000000000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "553427318e46"
+				"message": "1778000000000-AddExecutionDeduplicationKey.ts (1778000000000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "e44251bef05c"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1778100002000-AddEvaluationConfigColumnsToTestRun.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1778100002000-AddEvaluationConfigColumnsToTestRun.ts (1778100002000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "309f17b98f17"
+				"message": "1778100002000-AddEvaluationConfigColumnsToTestRun.ts (1778100002000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "bc22bfa0a0b3"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1778496086558-CreateEvaluationCollection.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1778496086558-CreateEvaluationCollection.ts (1778496086558) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "0480f97f0330"
+				"message": "1778496086558-CreateEvaluationCollection.ts (1778496086558) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "8dde5baee88c"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000002-DropAgentExecutionWorkingMemory.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000002-DropAgentExecutionWorkingMemory.ts (1784000000002) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "e7658446da4f"
+				"message": "1784000000002-DropAgentExecutionWorkingMemory.ts (1784000000002) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "fcfdf49af9f3"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000006-AddNodeGroupsColumnToWorkflowAndHistory.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000006-AddNodeGroupsColumnToWorkflowAndHistory.ts (1784000000006) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "9463309804e8"
+				"message": "1784000000006-AddNodeGroupsColumnToWorkflowAndHistory.ts (1784000000006) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "e740b76f470d"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000007-CreateInstanceAiCheckpointTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000007-CreateInstanceAiCheckpointTable.ts (1784000000007) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "3d2492be21d0"
+				"message": "1784000000007-CreateInstanceAiCheckpointTable.ts (1784000000007) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "906f441d6ac7"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000011-CreateAgentHistoryTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000011-CreateAgentHistoryTable.ts (1784000000011) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "30dc5d3ffa46"
+				"message": "1784000000011-CreateAgentHistoryTable.ts (1784000000011) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "b26b1136b9b1"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1784000000014-PersistInstanceAiPendingConfirmations.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1784000000014-PersistInstanceAiPendingConfirmations.ts (1784000000014) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "ab471bd6dcf2"
+				"message": "1784000000014-PersistInstanceAiPendingConfirmations.ts (1784000000014) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "976e9f4a4bc3"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000015-AddSourceWorkflowIdToWorkflow.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000015-AddSourceWorkflowIdToWorkflow.ts (1784000000015) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "39ddcbb14867"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000017-AddLastUsedAtToApiKey.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000017-AddLastUsedAtToApiKey.ts (1784000000017) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "74059c742d99"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000019-AddCustomTelemetryTagsToProject.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000019-AddCustomTelemetryTagsToProject.ts (1784000000019) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "1fcaafcf4917"
+			}
+		],
+		"packages/@n8n/db/src/migrations/common/1784000000021-CreateAgentTaskDefinitionTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1784000000021-CreateAgentTaskDefinitionTable.ts (1784000000021) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "071865ebe074"
 			}
 		],
 		"packages/@n8n/db/src/migrations/postgresdb/1758794506893-AddProjectIdToVariableTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1758794506893-AddProjectIdToVariableTable.ts (1758794506893) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "cafdcf288437"
+				"message": "1758794506893-AddProjectIdToVariableTable.ts (1758794506893) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "494ccca943ff"
 			}
 		],
 		"packages/@n8n/db/src/migrations/sqlite/1764276827837-AddCreatorIdToProjectTable.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "93708653e8b9"
+				"message": "1764276827837-AddCreatorIdToProjectTable.ts (1764276827837) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "c2b952b5f284"
 			}
 		],
 		"packages/@n8n/db/src/migrations/sqlite/1764689448000-AddResolvableFieldsToCredentials.ts": [
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1764689448000-AddResolvableFieldsToCredentials.ts (1764689448000) is at or below the highest existing migration timestamp (1784000000014). New migrations must be strictly ordered — pick a timestamp greater than 1784000000014.",
-				"hash": "8fb43319037e"
+				"message": "1764689448000-AddResolvableFieldsToCredentials.ts (1764689448000) is at or below the highest existing migration timestamp (1784000000022). New migrations must be strictly ordered — pick a timestamp greater than 1784000000022.",
+				"hash": "9a9bc5494555"
 			}
 		]
 	}
