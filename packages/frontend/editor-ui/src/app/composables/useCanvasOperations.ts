@@ -44,6 +44,7 @@ import {
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
 } from '@/app/models/history';
+import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -3145,7 +3146,8 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		const workflowData = await workflowState.getNewWorkflowData(
+		const workflowData = await workflowsApi.getNewWorkflowData(
+			rootStore.restApiContext,
 			name,
 			projectsStore.currentProjectId,
 		);

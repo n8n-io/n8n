@@ -180,6 +180,11 @@ function isPrivateConnected(credentialType: string): boolean {
 	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
 }
 
+function canConnectPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.update === true;
+}
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -910,6 +915,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											i18n.baseText('credentials.private.callout.notConnected')
 										}}</N8nText>
 										<N8nLink
+											v-if="canConnectPrivateCredential(type.name)"
 											data-test-id="node-credential-private-connect"
 											@click="editCredential(type.name)"
 										>

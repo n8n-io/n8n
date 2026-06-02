@@ -34,6 +34,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
+	tasksReloadKey?: number;
 }>();
 
 const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
@@ -53,6 +54,8 @@ const emit = defineEmits<{
 	'delete-file': [file: AgentFileDto];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -105,6 +108,8 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -115,12 +120,15 @@ const i18n = useI18n();
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentInfoPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>

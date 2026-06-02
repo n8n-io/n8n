@@ -25,6 +25,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		taskId?: string | null,
+		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		for (let attempt = 0; ; attempt++) {
 			try {
@@ -33,6 +35,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 					agentId,
 					agentName,
 					projectId,
+					taskId,
+					taskVersionId,
 				);
 			} catch (error) {
 				if (attempt >= SESSION_NUMBER_RETRY_ATTEMPTS - 1 || !isRetriableWriteError(error)) {
@@ -47,6 +51,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		taskId?: string | null,
+		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
@@ -68,6 +74,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				agentId,
 				agentName,
 				projectId,
+				taskId: taskId ?? null,
+				taskVersionId: taskVersionId ?? null,
 				sessionNumber,
 			});
 			const saved = await repository.save(thread);

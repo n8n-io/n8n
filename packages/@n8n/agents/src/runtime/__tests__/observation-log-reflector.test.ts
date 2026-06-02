@@ -18,10 +18,12 @@ import {
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
 
-const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
@@ -80,9 +82,9 @@ describe('observation-log reflector defaults', () => {
 			usage: { totalTokens: 19 },
 		});
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		const result = await createObservationLogReflectFn('openai/gpt-4o-mini')({
@@ -268,7 +270,7 @@ describe('runObservationLogReflector', () => {
 				tokenCount: 2,
 			},
 		]);
-		const reflect = jest.fn().mockResolvedValue('{"drop":[],"merge":[]}');
+		const reflect = vi.fn().mockResolvedValue('{"drop":[],"merge":[]}');
 
 		const result = await runObservationLogReflector({
 			memory: store,
