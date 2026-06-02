@@ -65,6 +65,8 @@ defineExpose({
 			:disabled="messagingState !== 'idle'"
 			:submit-disabled="messagingState !== 'idle' || !message.trim()"
 			:autosize="{ minRows: 1, maxRows: 6 }"
+			send-button-test-id="chat-hub-send-message-button"
+			stop-button-test-id="chat-hub-send-message-button"
 			autofocus
 			@update:model-value="emit('update:message', $event)"
 			@submit="emit('submit')"
