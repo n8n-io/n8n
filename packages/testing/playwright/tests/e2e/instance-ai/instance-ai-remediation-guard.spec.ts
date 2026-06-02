@@ -42,6 +42,7 @@ type RemediationTraceSummary = {
 	workflowSetupAfterSetupSignal: boolean;
 	completedCheckpointBeforeWorkflowSetup: boolean;
 	fallbackNarrationSeen: boolean;
+	loadedWorkflowBuilderSkill: boolean;
 };
 
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
@@ -187,6 +188,9 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build-workflow')
 					.length
 			: 0;
+	const loadedWorkflowBuilderSkill = getToolCalls(events, 'load_skill').some(
+		(event) => event.input?.skillId === 'workflow-builder',
+	);
 
 	return {
 		built: firstSuccessfulBuildIndex >= 0,
@@ -221,6 +225,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			firstCompleteCheckpointIndex >= 0 &&
 			(terminalWorkflowSetupIndex < 0 || firstCompleteCheckpointIndex < terminalWorkflowSetupIndex),
 		fallbackNarrationSeen: JSON.stringify(events).includes(TERMINAL_FALLBACK_TEXT),
+		loadedWorkflowBuilderSkill,
 	};
 }
 
@@ -286,6 +291,7 @@ test.describe(
 					workflowSetupAfterSetupSignal: true,
 					completedCheckpointBeforeWorkflowSetup: false,
 					fallbackNarrationSeen: false,
+					loadedWorkflowBuilderSkill: true,
 				});
 				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
 				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({

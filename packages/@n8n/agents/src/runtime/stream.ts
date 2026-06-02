@@ -108,6 +108,18 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 				output: c.output,
 			};
 
+		case 'tool-error':
+			// Provider-executed tools (e.g. native web search) surface failures
+			// as `tool-error` rather than `tool-result`. Map to our tool-result
+			// shape so stream consumers receive the error payload.
+			return {
+				type: 'tool-result',
+				toolCallId: c.toolCallId ?? '',
+				toolName: c.toolName ?? '',
+				output: c.error,
+				isError: true,
+			};
+
 		case 'error':
 			return { type: 'error', error: c.error };
 
