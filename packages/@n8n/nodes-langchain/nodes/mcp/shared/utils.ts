@@ -187,6 +187,10 @@ export async function connectMcpClient({
 	}
 
 	if (signal?.aborted) {
+		if (onAbort && signal) {
+			signal.removeEventListener('abort', onAbort);
+			onAbort = undefined;
+		}
 		return createResultError({
 			type: 'cancelled',
 			error: new Error('Execution was cancelled'),
@@ -204,6 +208,10 @@ export async function connectMcpClient({
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
 			if ((signal && err.name === 'AbortError') || signal?.aborted) {
+				if (onAbort && signal) {
+					signal.removeEventListener('abort', onAbort);
+					onAbort = undefined;
+				}
 				return createResultError({ type: 'cancelled', error: err });
 			}
 
@@ -241,6 +249,10 @@ export async function connectMcpClient({
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
 		if ((signal && err.name === 'AbortError') || signal?.aborted) {
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
 			return createResultError({ type: 'cancelled', error: err });
 		}
 
