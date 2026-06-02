@@ -186,6 +186,28 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should inherit parent tracingContext for error workflows, linking the span to the failed execution', async () => {
+			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+
+			const ctx: WorkflowExecuteBeforeContext = {
+				...baseCtx,
+				executionId: 'exec-error-workflow',
+				executionData: {
+					parentExecution: { executionId: 'exec-failed', workflowId: 'wf-failed' },
+				} as IRunExecutionData,
+			};
+
+			await handler.onWorkflowStart(ctx);
+
+			// Should look up the failed parent execution's trace context, not the error workflow one
+			expect(traceContextService.get).toHaveBeenCalledTimes(1);
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-failed');
+			expect(traceContextService.get).not.toHaveBeenCalledWith('exec-error-workflow');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: parentTracingContext }),
+			);
+		});
+
 		it('should create root span when no own or parent context exists', async () => {
 			traceContextService.get.mockResolvedValue(undefined);
 

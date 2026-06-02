@@ -41,7 +41,7 @@ import {
 import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
 
-const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}-[a-f0-9]{12}$/;
+const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}$/;
 const SKILLS_HASH_A = 'aaaaaaaaaaaa';
 const SKILLS_HASH_B = 'bbbbbbbbbbbb';
 
@@ -111,13 +111,6 @@ function makeFakeDaytona(): FakeDaytona {
 	};
 }
 
-async function knowledgeBaseHash(): Promise<string> {
-	const { buildKnowledgeBaseWorkspaceBundle } = await import(
-		'../../knowledge-base/materialize-knowledge-base'
-	);
-	return buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' }).contentHash;
-}
-
 describe('SnapshotManager.ensureImage', () => {
 	it('bakes runtime skill files and manifest into the Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
@@ -132,13 +125,6 @@ describe('SnapshotManager.ensureImage', () => {
 		);
 		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/registry.json');
 		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/.manifest.json');
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/knowledge-base/best-practices/scheduling.md',
-		);
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/knowledge-base/best-practices/index.json',
-		);
-		expect(image.dockerfile).toContain('/home/daytona/workspace/knowledge-base/.manifest.json');
 	});
 
 	it('changes the snapshot suffix when the runtime skills hash changes', async () => {
@@ -166,8 +152,8 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(snapshotA).toMatch(SNAPSHOT_NAME_PATTERN);
 		expect(snapshotB).toMatch(SNAPSHOT_NAME_PATTERN);
-		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}-${await knowledgeBaseHash()}`);
-		expect(snapshotB).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_B}-${await knowledgeBaseHash()}`);
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
+		expect(snapshotB).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_B}`);
 		expect(snapshotA).not.toBe(snapshotB);
 	});
 
@@ -194,7 +180,7 @@ describe('SnapshotManager.ensureImage', () => {
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
 		const snapshotB = await managerB.createSnapshot(daytonaB as never);
 
-		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}-${await knowledgeBaseHash()}`);
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
 		expect(snapshotB).toBe(snapshotA);
 		expect(daytonaA.snapshot.create.mock.calls[0][0].image.dockerfile).toContain(
 			'FROM daytonaio/sandbox:0.5.0',
