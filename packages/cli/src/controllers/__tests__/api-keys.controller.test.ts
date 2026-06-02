@@ -92,9 +92,7 @@ describe('ApiKeysController', () => {
 	});
 
 	describe('getAPIKeys', () => {
-		it('should return the users api keys redacted', async () => {
-			// Arrange
-
+		it('forwards pagination params to the service and returns its envelope', async () => {
 			const apiKeyData = {
 				id: '123',
 				userId: '123',
@@ -104,19 +102,17 @@ describe('ApiKeysController', () => {
 				updatedAt: new Date(),
 			} as ApiKey;
 
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue([
-				{ ...apiKeyData, expiresAt: null },
-			]);
+			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue({
+				items: [{ ...apiKeyData, expiresAt: null }],
+				count: 1,
+			});
 
-			// Act
+			const result = await controller.getApiKeys(req, mock(), { take: 10, skip: 5 } as never);
 
-			const apiKeys = await controller.getApiKeys(req);
-
-			// Assert
-
-			expect(apiKeys).toEqual([{ ...apiKeyData, expiresAt: null }]);
+			expect(result).toEqual({ items: [{ ...apiKeyData, expiresAt: null }], count: 1 });
 			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ id: req.user.id }),
+				{ take: 10, skip: 5 },
 			);
 		});
 	});

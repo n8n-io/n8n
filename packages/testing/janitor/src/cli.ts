@@ -625,6 +625,7 @@ function runTestScopedCmd(options: CliOptions): void {
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
 		passthroughArgs: options.passthroughArgs,
+		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
@@ -640,6 +641,7 @@ function runScope(options: CliOptions): void {
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
+		jestVariant: options.jestVariant,
 	});
 	console.log(formatScope(result));
 }

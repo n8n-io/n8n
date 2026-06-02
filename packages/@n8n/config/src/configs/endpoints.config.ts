@@ -134,6 +134,14 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_BUILDER_ENABLED')
 	mcpBuilderEnabled: boolean = true;
 
+	/**
+	 * Force-enable MCP Apps support (the iframe UI attached to MCP tools).
+	 * Acts as an operator-level override of the PostHog experiment.
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_MCP_APPS_ENABLED')
+	mcpAppsEnabled: boolean = false;
+
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;

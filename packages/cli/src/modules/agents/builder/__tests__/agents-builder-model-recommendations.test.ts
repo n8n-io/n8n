@@ -185,6 +185,7 @@ describe('builder model recommendations', () => {
 			'agent-builder-integrations',
 			'agent-builder-mcp',
 			'agent-builder-target-skills',
+			'agent-builder-target-tasks',
 		]);
 		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
 		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');

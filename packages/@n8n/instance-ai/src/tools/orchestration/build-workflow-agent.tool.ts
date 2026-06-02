@@ -32,9 +32,9 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import type { Logger } from '../../logger';
 import {
-	createPrebakedRuntimeSkillsFromWorkspace,
 	materializeRuntimeSkillsIntoWorkspace,
 	type MaterializedRuntimeSkills,
+	loadPrebakedRuntimeSkillsBundle,
 } from '../../skills/materialize-runtime-skills';
 import { hasRuntimeSkills } from '../../skills/runtime-skills';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
@@ -186,7 +186,7 @@ export async function materializeBuilderRuntimeSkills(
 	let materialized: MaterializedRuntimeSkills | undefined;
 	try {
 		const workspaceRoot = await getWorkspaceRoot(workspace);
-		materialized = await createPrebakedRuntimeSkillsFromWorkspace({
+		materialized = await loadPrebakedRuntimeSkillsBundle({
 			source,
 			workspace,
 			root: workspaceRoot,
