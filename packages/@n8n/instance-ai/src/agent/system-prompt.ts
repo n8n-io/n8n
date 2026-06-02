@@ -1,10 +1,11 @@
 import { DateTime } from 'luxon';
 
+import { N8N_SANDBOX_WORKSPACE_ROOT } from '@/workspace/sandbox-setup';
+
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { SANDBOX_WORKSPACE_SECTION, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
-import { SANDBOX_KNOWLEDGE_BASE_PATH } from '@n8n/api-types/dist/schemas/instance-ai-knowledge-base';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
@@ -90,7 +91,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const buildKnowledgeBaseNudge = sandboxWorkspaceAvailable
 		? `
 
-**Consult the best-practices knowledge base before building or editing.** Direct single-workflow edits skip the planner, so they also skip its knowledge-base discovery step — do it yourself. Before writing SDK code, \`grep\`/\`rg\` \`${SANDBOX_KNOWLEDGE_BASE_PATH}/best-practices/index.json\` and \`workspace_read_file\` the linked \`.md\` guides for any technique the change involves (scheduling, forms, data persistence, web apps, error handling, batching, pagination, AI agents, etc.). These guides reflect current n8n patterns and supersede your training priors. Skip this only for trivial mechanical edits where you have already reviewed the relevant guidance in this thread.`
+**Consult the best-practices knowledge base before building or editing.** Direct single-workflow edits skip the planner, so they also skip its knowledge-base discovery step — do it yourself. Before writing SDK code, \`grep\`/\`rg\` \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/index.json\` and \`workspace_read_file\` the linked \`.md\` guides for any technique the change involves (scheduling, forms, data persistence, web apps, error handling, batching, pagination, AI agents, etc.). These guides reflect current n8n patterns and supersede your training priors. Skip this only for trivial mechanical edits where you have already reviewed the relevant guidance in this thread.`
 		: '';
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
