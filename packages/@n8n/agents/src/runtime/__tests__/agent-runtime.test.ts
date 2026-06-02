@@ -1157,6 +1157,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				expect.objectContaining({
 					tool: 'suspend_tool',
 					output: '[Tool call cancelled. User said: "Do not run this tool"]',
+					canceled: true,
 				}),
 			]),
 		);
@@ -1204,6 +1205,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 					toolCallId,
 					toolName: 'suspend_tool',
 					output: '[Tool call cancelled. User said: "Stop this action"]',
+					canceled: true,
 				}),
 			]),
 		);
@@ -3801,6 +3803,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 				toolCallId: 'tc-1',
 				toolName: 'interactive_tool',
 				output: '[Tool call cancelled. User said: "go another direction"]',
+				canceled: true,
 			}),
 		);
 		expect(resumedChunks.some((c) => c.type === 'tool-call-cancelled')).toBe(false);

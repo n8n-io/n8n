@@ -32,6 +32,12 @@ function getToolDisplayName(toolName: string): string {
 					size="large"
 					:class="$style.toolStepError"
 				/>
+				<N8nIcon
+					v-else-if="tc.state === 'cancelled'"
+					icon="circle-x"
+					size="large"
+					:class="$style.toolStepCancelled"
+				/>
 				<N8nTooltip
 					v-else-if="tc.state === 'suspended'"
 					placement="top"
@@ -101,6 +107,10 @@ function getToolDisplayName(toolName: string): string {
 
 .toolStepError {
 	color: var(--text-color--danger);
+}
+
+.toolStepCancelled {
+	color: var(--text-color--subtler);
 }
 
 .toolStepLoading {

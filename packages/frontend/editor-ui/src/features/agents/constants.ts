@@ -48,6 +48,7 @@ export const TOOL_CALL_STATE = {
 	RUNNING: 'running',
 	SUSPENDED: 'suspended',
 	DONE: 'done',
+	CANCELLED: 'cancelled',
 	ERROR: 'error',
 } as const;
 export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];

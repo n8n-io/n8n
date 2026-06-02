@@ -111,6 +111,7 @@ describe('tool interrupt integration', () => {
 					tool: 'delete_file',
 					output:
 						'[Tool call cancelled. User said: "Do not delete the file. Tell me the deletion was cancelled."]',
+					canceled: true,
 				}),
 			]),
 		);

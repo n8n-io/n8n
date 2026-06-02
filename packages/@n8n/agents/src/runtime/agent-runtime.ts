@@ -276,6 +276,7 @@ type ToolCallOutcome =
 			toolEntry: ToolResultEntry;
 			modelOutput: string;
 			userMessage: string;
+			canceled: true;
 	  }
 	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
@@ -1326,6 +1327,7 @@ export class AgentRuntime {
 						toolCallId: r.toolCallId,
 						toolName: r.toolName,
 						output: r.modelOutput,
+						...(r.toolEntry.canceled ? { canceled: true } : {}),
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -1466,6 +1468,7 @@ export class AgentRuntime {
 						toolCallId: r.toolCallId,
 						toolName: r.toolName,
 						output: r.modelOutput,
+						...(r.toolEntry.canceled ? { canceled: true } : {}),
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -2124,7 +2127,9 @@ export class AgentRuntime {
 
 			for (const id of Object.keys(pendingResume.pendingToolCalls)) {
 				if (id !== resumedId) {
-					list.setToolCallResult(id, '[Skipped: a sibling tool call was cancelled]');
+					list.setToolCallResult(id, '[Skipped: a sibling tool call was cancelled]', {
+						canceled: true,
+					});
 				}
 			}
 
@@ -2274,7 +2279,7 @@ export class AgentRuntime {
 				result: modelOutput,
 				isError: false,
 			});
-			list.setToolCallResult(toolCallId, modelOutput);
+			list.setToolCallResult(toolCallId, modelOutput, { canceled: true });
 			return {
 				outcome: 'cancelled',
 				toolEntry: {
@@ -2282,9 +2287,11 @@ export class AgentRuntime {
 					input: toolInput,
 					output: modelOutput,
 					transformed: false,
+					canceled: true,
 				},
 				modelOutput,
 				userMessage: resumeData.message,
+				canceled: true,
 			};
 		}
 

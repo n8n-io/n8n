@@ -126,11 +126,22 @@ describe('concurrent tool execution integration', () => {
 					tool: 'delete_file',
 					output:
 						'[Tool call cancelled. User said: "Cancel the delete operation. Do not delete any of the files."]',
+					canceled: true,
 				}),
 			]),
 		);
-		expect(JSON.stringify(agent.getState().messageList.messages)).toContain(
-			'[Skipped: a sibling tool call was cancelled]',
+		expect(agent.getState().messageList.messages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					content: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'tool-call',
+							output: '[Skipped: a sibling tool call was cancelled]',
+							canceled: true,
+						}),
+					]),
+				}),
+			]),
 		);
 	});
 

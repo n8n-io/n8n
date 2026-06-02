@@ -138,6 +138,7 @@ export interface AgentPersistedMessageContentPart {
 	input?: unknown;
 	state?: string;
 	output?: unknown;
+	canceled?: boolean;
 	error?: string;
 }
 

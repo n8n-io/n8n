@@ -264,7 +264,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 					if (
 						existing.state !== TOOL_CALL_STATE.RUNNING &&
-						existing.state !== TOOL_CALL_STATE.DONE
+						existing.state !== TOOL_CALL_STATE.DONE &&
+						existing.state !== TOOL_CALL_STATE.CANCELLED
 					) {
 						existing.state = TOOL_CALL_STATE.PENDING;
 					}
@@ -276,6 +277,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (
 					found &&
 					found.tc.state !== TOOL_CALL_STATE.DONE &&
+					found.tc.state !== TOOL_CALL_STATE.CANCELLED &&
 					found.tc.state !== TOOL_CALL_STATE.ERROR
 				) {
 					found.tc.state = TOOL_CALL_STATE.RUNNING;
@@ -285,8 +287,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-result': {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
+					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					found.tc.state = event.isError
+						? TOOL_CALL_STATE.ERROR
+						: toolResultEvent.canceled === true
+							? TOOL_CALL_STATE.CANCELLED
+							: TOOL_CALL_STATE.DONE;
+					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
@@ -337,7 +345,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// "Cancelled" state rather than its normal resolved state.
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
-					found.tc.state = TOOL_CALL_STATE.DONE;
+					found.tc.state = TOOL_CALL_STATE.CANCELLED;
+					found.tc.canceled = true;
 					if (found.msg.interactive) {
 						found.msg.interactive = {
 							...found.msg.interactive,
@@ -536,6 +545,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc: found.tc,
 					prevState: found.tc.state,
 					prevOutput: found.tc.output,
+					prevCanceled: found.tc.canceled,
 					prevSummary: found.tc.displaySummary,
 					msg: found.msg,
 					prevStatus: found.msg.status,
@@ -545,6 +555,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		if (found) {
 			found.tc.state = TOOL_CALL_STATE.DONE;
+			found.tc.canceled = false;
 			found.tc.output = payload.resumeData;
 			found.tc.displaySummary = summariseToolCall(
 				found.tc.tool,
@@ -564,6 +575,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
 			snapshot.msg.interactive = snapshot.prevInteractive;
@@ -595,6 +607,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc,
 					prevState: tc.state,
 					prevOutput: tc.output,
+					prevCanceled: tc.canceled,
 					prevSummary: tc.displaySummary,
 					prevStatus: openMsg.status,
 					prevInteractive: openMsg.interactive,
@@ -603,7 +616,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		// Optimistic: mark the interactive card as cancelled
 		if (tc) {
-			tc.state = TOOL_CALL_STATE.DONE;
+			tc.state = TOOL_CALL_STATE.CANCELLED;
+			tc.canceled = true;
 		}
 		openMsg.interactive = {
 			...openMsg.interactive,
@@ -641,6 +655,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			// Roll back optimistic state
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			openMsg.status = snapshot.prevStatus;
 			openMsg.interactive = snapshot.prevInteractive;

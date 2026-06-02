@@ -76,6 +76,7 @@ export type AgentSseEvent =
 			toolName: string;
 			output: unknown;
 			isError?: boolean;
+			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'tool-call-cancelled'; toolCallId: string; toolName: string; userMessage: string }

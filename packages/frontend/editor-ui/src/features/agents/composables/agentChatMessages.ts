@@ -34,6 +34,7 @@ export interface ToolCall {
 	toolCallId: string;
 	input?: unknown;
 	output?: unknown;
+	canceled?: boolean;
 	state: ToolCallState;
 	/**
 	 * One-line answer label rendered next to the tool name in
@@ -287,9 +288,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
+				const canceled = (part as typeof part & { canceled?: boolean }).canceled === true;
 				if (part.state === 'resolved') {
-					state = TOOL_CALL_STATE.DONE;
 					output = part.output;
+					state = canceled ? TOOL_CALL_STATE.CANCELLED : TOOL_CALL_STATE.DONE;
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -303,6 +305,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					toolCallId: part.toolCallId ?? '',
 					input: part.input,
 					...(output !== undefined && { output }),
+					...(canceled && { canceled }),
 					state,
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
