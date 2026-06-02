@@ -10,6 +10,11 @@ export const baseConfig = mergeConfig(
 		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
 		// rely on it — omit this and mocks bleed between tests.
 		restoreMocks: true,
+		// Backstop for tests whose first `await import(...)` cold-resolves a deep langchain /
+		// workflow-builder module graph; under CI CPU contention that load can exceed the
+		// default 5s per-test timeout. Pairs with `beforeAll` warm-ups in those test files.
+		testTimeout: 30_000,
+		hookTimeout: 30_000,
 	}),
 	{
 		resolve: {

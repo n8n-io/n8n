@@ -7,6 +7,12 @@ export default mergeConfig(
 		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
 		// rely on it — omit this and mocks bleed between tests.
 		restoreMocks: true,
+		// Backstop for legitimate multi-MB tokenizer assets (cl100k_base ~1 MB, o200k_base
+		// ~2.2 MB) whose cold readFile + jsonParse + Tiktoken construct can exceed the default
+		// 5s per-test timeout under CI CPU contention. Pairs with warm-up hooks in tests that
+		// touch these encodings.
+		testTimeout: 30_000,
+		hookTimeout: 30_000,
 	}),
 	{
 		resolve: {

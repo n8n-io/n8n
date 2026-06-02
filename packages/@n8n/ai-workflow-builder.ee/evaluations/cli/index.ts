@@ -8,7 +8,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { CodeWorkflowBuilder } from '@/code-builder';
 import type { HistoryContext } from '@/code-builder';
 import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
 import type { CoordinationLogEntry } from '@/types/coordination';
@@ -334,6 +333,11 @@ function createCodeWorkflowBuilderGenerator(
 		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
 	): Promise<GenerationResult> => {
+		// Lazy-load: keeps the eval CLI's top-level import graph cheap so test runners and
+		// other consumers that just import `./cli` don't pay the cost of pulling in the full
+		// code-builder + langchain transitive graph until a generation actually runs.
+		const { CodeWorkflowBuilder } = await import('@/code-builder');
+
 		const runId = generateRunId();
 
 		// Accumulate token usage across all LLM calls

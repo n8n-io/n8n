@@ -174,6 +174,14 @@ describe('CLI', () => {
 	let mockExit: MockInstance;
 	const originalEnv = process.env;
 
+	// Warm the CLI module's transitive import graph (langchain + workflow-builder) once before
+	// the timed test bodies. Each `await import('../cli')` inside an `it()` was paying the cold
+	// resolve+transform cost on the first call; under CI CPU contention that exceeded the 5s
+	// per-test timeout.
+	beforeAll(async () => {
+		await import('../cli');
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockExit = vi.spyOn(process, 'exit').mockImplementation((code) => {
