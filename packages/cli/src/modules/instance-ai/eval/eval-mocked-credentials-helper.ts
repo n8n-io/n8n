@@ -31,6 +31,10 @@ export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
 
+function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
+	return nodeCredentials.id ? nodeCredentials.id : undefined;
+}
+
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
@@ -137,7 +141,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
-				credentialId: nodeCredentials.id ?? undefined,
+				credentialId: getCredentialId(nodeCredentials),
 			});
 			credentials = { [MOCK_MARKER]: true };
 		}
@@ -179,7 +183,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		this.rewrittenCredentials.push({
 			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
-			credentialId: nodeCredentials.id ?? undefined,
+			credentialId: getCredentialId(nodeCredentials),
 			field,
 		});
 
