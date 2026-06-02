@@ -38,6 +38,8 @@ import type {
 interface FormatOptions {
 	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
+	/** GitHub Actions run URL; when set, the comment leads with a re-run link. */
+	runUrl?: string;
 	/** Maps each test-case reference to its file slug. When provided, the
 	 *  per-scenario failure breakdown looks up failed runs by
 	 *  `${fileSlug}/${scenarioName}` — deterministic across collisions like
@@ -59,6 +61,8 @@ export function formatComparisonMarkdown(
 	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	lines.push(formatHeading());
+	lines.push('');
+	lines.push(renderRerunCallout(options.runUrl));
 	lines.push('');
 	lines.push(formatTopAlert(outcome));
 	lines.push('');
@@ -139,16 +143,17 @@ export function formatComparisonMarkdown(
 	const failureDetails = renderFailureDetails(evaluation, options.slugByTestCase);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
-	lines.push(formatRerunFooter());
-
 	return lines.join('\n');
 }
 
-// Evals fire on PR open / ready-for-review, not on push.
-function formatRerunFooter(): string {
+// Evals fire on PR open/ready, not on push — lead with a one-click re-run prompt.
+function renderRerunCallout(runUrl?: string): string {
+	const cta = runUrl
+		? `[▶ Re-run this eval](${runUrl}) (then **Re-run jobs**)`
+		: 'Re-run it from the **Checks** tab (**Re-run jobs**)';
 	return [
-		'> [!NOTE]',
-		'> Runs once when the PR opens or is marked ready for review — **new commits do not re-trigger it.** To re-check after pushing, open the **Checks** tab and use **Re-run jobs** on this check; it runs against the latest commit on your branch.',
+		'> [!IMPORTANT]',
+		`> **This eval does not re-run on new commits** — ${cta} when you're ready to merge.`,
 	].join('\n');
 }
 
