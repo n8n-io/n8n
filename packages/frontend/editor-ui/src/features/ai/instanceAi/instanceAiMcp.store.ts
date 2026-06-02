@@ -106,8 +106,12 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	async function fetchToolsForConnection(
 		id: string,
 	): Promise<InstanceAiMcpConnectionToolResponse[] | null> {
-		const cached = toolsByConnectionId.value.get(id);
-		if (cached) return cached;
+		// `if (cached)` would be truthy for `[]`, masking a real "no tools yet"
+		// result as a forever cache hit. Use `.has()` so a cached empty array
+		// is honoured but a never-fetched entry actually fetches.
+		if (toolsByConnectionId.value.has(id)) {
+			return toolsByConnectionId.value.get(id) ?? null;
+		}
 		try {
 			const tools = await fetchMcpConnectionTools(rootStore.restApiContext, id);
 			toolsByConnectionId.value.set(id, tools);
