@@ -1,3 +1,4 @@
+import type { RedactionEnforcementSettings } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, Project, User } from '@n8n/db';
@@ -160,6 +161,8 @@ export class WorkflowCreationService {
 		// Run external hook after all validation has passed, right before persisting
 		await this.externalHooks.run('workflow.create', [newWorkflow]);
 
+		const floor = await this.readActiveRedactionFloor();
+
 		const { manager: dbManager } = this.projectRepository;
 
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
@@ -183,6 +186,7 @@ export class WorkflowCreationService {
 				user,
 				effectiveProjectId,
 				transactionManager,
+				floor,
 			);
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
@@ -252,11 +256,18 @@ export class WorkflowCreationService {
 		return savedWorkflow;
 	}
 
+	private async readActiveRedactionFloor(): Promise<RedactionEnforcementSettings | undefined> {
+		if (!this.licenseState.isDataRedactionLicensed()) return undefined;
+		if (!isRedactionEnforcementEnabled()) return undefined;
+		return await this.instanceRedactionEnforcementService.get();
+	}
+
 	private async resolveRedactionPolicyOnCreate(
 		newWorkflow: WorkflowEntity,
 		user: User,
 		effectiveProjectId: string,
 		transactionManager: EntityManager,
+		floor: RedactionEnforcementSettings | undefined,
 	): Promise<void> {
 		// No license — the field is meaningless, drop any incoming value.
 		if (!this.licenseState.isDataRedactionLicensed()) {
@@ -266,10 +277,9 @@ export class WorkflowCreationService {
 
 		const incomingPolicy = newWorkflow.settings?.redactionPolicy;
 		const hasIncoming = incomingPolicy !== undefined && incomingPolicy !== 'none';
-		const enforcementEnabled = isRedactionEnforcementEnabled();
 
 		// Nothing to validate, nothing to clamp — skip the scope check entirely.
-		if (!hasIncoming && !enforcementEnabled) return;
+		if (!hasIncoming && floor === undefined) return;
 
 		const canUpdateRedaction = await userHasScopes(
 			user,
@@ -284,13 +294,8 @@ export class WorkflowCreationService {
 			dropRedactionPolicy(newWorkflow);
 		}
 
-		// Clamping (and seeding) is gated on the user's own enableRedaction scope —
-		// the floor shouldn't assign a policy a user couldn't have set themselves
-		// (no enableRedaction → no disableRedaction either). Execution-time
-		// enforcement applies regardless of what's persisted.
-		if (!enforcementEnabled || !canUpdateRedaction) return;
+		if (floor === undefined || !canUpdateRedaction) return;
 
-		const floor = await this.instanceRedactionEnforcementService.get();
 		const current = newWorkflow.settings?.redactionPolicy;
 		const clamped = clampPolicyToFloor(current, floor);
 		if (clamped !== current) {

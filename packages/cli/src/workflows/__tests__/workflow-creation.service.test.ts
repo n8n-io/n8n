@@ -50,6 +50,9 @@ describe('WorkflowCreationService', () => {
 			isValid: true,
 		});
 
+		// Default: enforcement off. Tests that exercise enforcement opt-in explicitly.
+		isRedactionEnforcementEnabledMock.mockReturnValue(false);
+
 		workflowCreationService = new WorkflowCreationService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
@@ -363,6 +366,7 @@ describe('WorkflowCreationService', () => {
 			const { transactionManager } = setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { executionOrder: 'v1' };
 
 			await expect(
 				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
@@ -372,6 +376,7 @@ describe('WorkflowCreationService', () => {
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBe('non-manual');
+			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
 
 		it('seeds all when floor is production+manual and no policy is provided', async () => {
@@ -384,6 +389,7 @@ describe('WorkflowCreationService', () => {
 			const { transactionManager } = setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { executionOrder: 'v1' };
 
 			await expect(
 				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
@@ -393,6 +399,7 @@ describe('WorkflowCreationService', () => {
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
+			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
 
 		it('does not seed when floor is not enforced', async () => {
@@ -405,6 +412,7 @@ describe('WorkflowCreationService', () => {
 			const { transactionManager } = setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { executionOrder: 'v1' };
 
 			await expect(
 				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
@@ -414,6 +422,7 @@ describe('WorkflowCreationService', () => {
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
 
 		it('does not seed when user lacks workflow:enableRedaction', async () => {
@@ -426,6 +435,7 @@ describe('WorkflowCreationService', () => {
 			const { transactionManager } = setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { executionOrder: 'v1' };
 
 			await expect(
 				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
@@ -435,6 +445,7 @@ describe('WorkflowCreationService', () => {
 
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
 
 		it('does not consult the floor when the enforcement feature flag is off', async () => {
@@ -443,6 +454,7 @@ describe('WorkflowCreationService', () => {
 			const { transactionManager } = setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
+			newWorkflow.settings = { executionOrder: 'v1' };
 
 			await expect(
 				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
@@ -453,6 +465,7 @@ describe('WorkflowCreationService', () => {
 			expect(instanceRedactionEnforcementServiceMock.get).not.toHaveBeenCalled();
 			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
+			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
 
 		it('clamps a none policy up to non-manual when the floor requires production redaction', async () => {
