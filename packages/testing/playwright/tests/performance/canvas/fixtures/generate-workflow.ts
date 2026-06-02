@@ -167,6 +167,10 @@ export function buildCanvasBenchmarkWorkflow(options: BuildOptions): GeneratedWo
 	// cast bridges the SDK's self-contained type duplicates to the n8n-workflow
 	// types the public API expects.
 	const workflowResult = builder.toJSON() as unknown as Partial<IWorkflowBase>;
+	// workflow() requires an id up front, but the create API must assign its own:
+	// several specs create the same tier's workflow against one database, so a
+	// fixed id collides ("Workflow with id ... exists already").
+	delete workflowResult.id;
 	workflowResult.active = false;
 	if (pinData) {
 		workflowResult.pinData = pinData;
