@@ -980,8 +980,12 @@ export type RelayEventMap = {
 
 	'instance-policies-updated': {
 		user: UserLike;
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
-		value: boolean;
+		settingName:
+			| '2fa_enforcement'
+			| 'workflow_publishing'
+			| 'workflow_sharing'
+			| 'data_redaction_enforcement_floor';
+		value: boolean | RedactionFloor;
 	};
 
 	'redaction-enforcement-updated': {

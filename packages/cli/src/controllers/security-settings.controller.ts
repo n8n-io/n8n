@@ -10,6 +10,7 @@ import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
@@ -106,6 +107,10 @@ export class SecuritySettingsController {
 					before,
 					after,
 				});
+				// Report the redaction enforcement floor alongside the other instance
+				// policies. `'off' | 'production' | 'all'` captures both adoption
+				// (off vs not) and scope (production vs production+manual).
+				this.emitInstancePolicyUpdated(req, 'data_redaction_enforcement_floor', after);
 			}
 		}
 
@@ -114,8 +119,8 @@ export class SecuritySettingsController {
 
 	private emitInstancePolicyUpdated(
 		req: AuthenticatedRequest,
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing',
-		value: boolean,
+		settingName: RelayEventMap['instance-policies-updated']['settingName'],
+		value: RelayEventMap['instance-policies-updated']['value'],
 	) {
 		this.eventService.emit('instance-policies-updated', {
 			user: {
