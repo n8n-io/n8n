@@ -15,6 +15,7 @@ import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import {
+	RUNTIME_SKILL_MANIFEST_FILE,
 	SANDBOX_RUNTIME_SKILLS_DIR,
 	buildRuntimeSkillWorkspaceBundle,
 	materializeRuntimeSkillsIntoWorkspace,
@@ -291,9 +292,10 @@ describe('materializeBuilderRuntimeSkills', () => {
 			root: bakedRoot,
 		});
 		if (!bundle) throw new Error('Expected runtime skill bundle');
-		for (const [path, content] of bundle.files) {
-			builderTarget.writes.set(path, content);
-		}
+		builderTarget.writes.set(
+			`${bakedRoot}/${SANDBOX_RUNTIME_SKILLS_DIR}/${RUNTIME_SKILL_MANIFEST_FILE}`,
+			bundle.files.get(bundle.manifestPath) ?? '',
+		);
 
 		const result = await materializeBuilderRuntimeSkills(
 			createMockContext({ runtimeSkillCatalog: rawSource }),

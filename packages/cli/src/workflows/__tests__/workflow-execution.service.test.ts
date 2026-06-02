@@ -887,6 +887,7 @@ describe('WorkflowExecutionService', () => {
 										parentExecution: {
 											executionId: 'execution-id',
 											workflowId: 'workflow-id',
+											shouldResume: false,
 										},
 									},
 								},
@@ -898,6 +899,11 @@ describe('WorkflowExecutionService', () => {
 							runData: {},
 						},
 						startData: {},
+						parentExecution: {
+							executionId: 'execution-id',
+							workflowId: 'workflow-id',
+							shouldResume: false,
+						},
 					}),
 					resumeToken: expect.any(String),
 				},
