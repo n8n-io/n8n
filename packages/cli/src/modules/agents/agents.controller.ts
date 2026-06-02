@@ -715,45 +715,6 @@ export class AgentsController {
 		return { ok: true };
 	}
 
-	@Post('/:agentId/chat/resume', { usesTemplates: true })
-	@ProjectScope('agent:execute')
-	async chatResume(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		res: FlushableResponse,
-		@Param('agentId') agentId: string,
-		@Body payload: AgentBuildResumeDto,
-	) {
-		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
-
-		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		const { send } = initSseStream(res);
-
-		try {
-			const suspended = await pumpChunks(
-				this.agentsService.resumeForTestChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-				}),
-				send,
-			);
-
-			if (!suspended) {
-				send({ type: 'done' });
-			}
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-			send({ type: 'error', message: errorMessage });
-		}
-
-		res.end();
-	}
-
 	@Post('/:agentId/build', { usesTemplates: true })
 	@ProjectScope('agent:update')
 	async build(

@@ -340,9 +340,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-call-cancelled': {
-				// The user cancelled a suspended tool by sending a steering message.
-				// Mark the interactive card as resolved-cancelled so it shows a
-				// "Cancelled" state rather than its normal resolved state.
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.state = TOOL_CALL_STATE.CANCELLED;
@@ -433,10 +430,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Run a request against a build/chat/resume endpoint
-	// -------------------------------------------------------------------------
-
 	function finalizeStream(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
@@ -520,7 +513,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended interaction. Posts to the /{endpoint}/resume endpoint
+	 * Resume a suspended build interaction. Posts to the build/resume endpoint
 	 * and re-enters the same SSE handler. The `runId` is required — it comes
 	 * from the original `tool-call-suspended` chunk (live) or from the
 	 * `openSuspensions` sidecar applied during history reload.
@@ -569,8 +562,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const endpoint = params.endpoint.value;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/resume`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
 		const { ok } = await postAndConsume(url, payload);
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
@@ -582,25 +574,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	/**
-	 * Cancel a suspended interactive tool and steer the agent with a new message.
-	 * Finds the open interactive question, posts to the resume endpoint with a
-	 * cancellation payload, and pushes an optimistic user bubble.
-	 *
-	 * Unlike a normal resume, the interactive card shows a "cancelled" state and
-	 * the agent continues generating with the steering message as context.
-	 */
 	async function cancelAndSteer(text: string): Promise<void> {
 		const trimmed = text.trim();
 		if (!trimmed) return;
 
-		// Find the open interactive message to get runId + toolCallId
 		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
 		if (!openMsg?.interactive?.runId) return;
 
 		const { runId, toolCallId } = openMsg.interactive;
 
-		// Snapshot for rollback on failure
 		const tc = openMsg.toolCalls?.find((t) => t.toolCallId === toolCallId);
 		const snapshot = tc
 			? {
@@ -614,7 +596,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 			: null;
 
-		// Optimistic: mark the interactive card as cancelled
 		if (tc) {
 			tc.state = TOOL_CALL_STATE.CANCELLED;
 			tc.canceled = true;
@@ -628,7 +609,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			openMsg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
 
-		// Optimistic user bubble with the steering message
 		fatalError.value = null;
 		messages.value.push({
 			id: crypto.randomUUID(),
@@ -643,8 +623,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 
 		const { baseUrl } = rootStore.restApiContext;
-		const endpoint = params.endpoint.value;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/resume`;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
 		const { ok } = await postAndConsume(url, {
 			runId,
 			toolCallId,
@@ -652,14 +631,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 
 		if (!ok && snapshot) {
-			// Roll back optimistic state
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			openMsg.status = snapshot.prevStatus;
 			openMsg.interactive = snapshot.prevInteractive;
-			// Remove the optimistic user bubble
 			messages.value = messages.value.filter((m) => !(m.role === 'user' && m.content === trimmed));
 		}
 	}

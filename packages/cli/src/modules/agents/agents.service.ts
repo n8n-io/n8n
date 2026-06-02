@@ -1089,32 +1089,6 @@ export class AgentsService {
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
-		yield* this.doResumeForChat({
-			agentId,
-			projectId,
-			runId,
-			toolCallId,
-			resumeData,
-			integrationType,
-			usePublishedVersion: true,
-		});
-	}
-
-	/**
-	 * Resume a suspended test-chat run (draft agent).
-	 * Mirrors `resumeForChat` but rebuilds using the draft agent config so that
-	 * changes made in the builder are reflected in the resumed run.
-	 */
-	async *resumeForTestChat(
-		config: Omit<ResumeForChatConfig, 'integrationType'>,
-	): AsyncGenerator<StreamChunk> {
-		yield* this.doResumeForChat({ ...config, usePublishedVersion: false });
-	}
-
-	private async *doResumeForChat(
-		config: ResumeForChatConfig & { usePublishedVersion: boolean },
-	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -1135,7 +1109,7 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: config.usePublishedVersion,
+			usePublishedVersion: true,
 			integrationType,
 		});
 
