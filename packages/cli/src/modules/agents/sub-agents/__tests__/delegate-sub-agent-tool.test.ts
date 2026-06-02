@@ -78,6 +78,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		await expect(
 			tool.handler?.(
 				{
+					subAgentId: 'agent-2',
 					taskName: 'Research API',
 					goal: 'Find the API behavior.',
 					context: 'Focus on auth endpoints.',
@@ -126,7 +127,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 
 		await tool.handler?.(
-			{ taskName: 'Research API', goal: 'Find behavior.' },
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 			{
 				runId: 'parent-run-1',
 				persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
@@ -182,7 +183,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 		await expect(
 			tool.handler?.(
-				{ taskName: 'Research API', goal: 'Find behavior.' },
+				{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 				{ runId: 'parent-run-1' },
 			),
 		).resolves.toMatchObject({
@@ -191,6 +192,30 @@ describe('createN8nDelegateSubAgentTool', () => {
 			answer: '',
 			error: 'child failed',
 		});
+	});
+
+	it('does not implicitly select a saved agent when subAgentId is omitted', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+
+		await expect(
+			tool.handler?.(
+				{ taskName: 'Research API', goal: 'Find behavior.' },
+				{ runId: 'parent-run-1' },
+			),
+		).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error:
+				'Inline sub-agent execution is available only after the delegate tool is registered on an Agent.',
+		});
+		expect(runner.runForeground).not.toHaveBeenCalled();
 	});
 });
 

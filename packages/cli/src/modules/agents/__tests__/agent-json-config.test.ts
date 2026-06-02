@@ -104,21 +104,25 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 		expect(parsed.success).toBe(true);
 	});
 
-	it('rejects the removed subAgents.enabled flag', () => {
+	it('accepts the subAgents.enabled switch', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: true } }).success,
-		).toBe(false);
+		).toBe(true);
+		expect(
+			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: false } }).success,
+		).toBe(true);
 	});
 });
 
 describe('isSubAgentsEnabled', () => {
-	it('returns false when subAgents is undefined', () => {
-		expect(isSubAgentsEnabled(undefined)).toBe(false);
+	it('defaults to enabled when subAgents is undefined or enabled is omitted', () => {
+		expect(isSubAgentsEnabled(undefined)).toBe(true);
+		expect(isSubAgentsEnabled({ agents: [] })).toBe(true);
+		expect(isSubAgentsEnabled({ agents: [{ agentId: 'agent-1' }] })).toBe(true);
 	});
 
-	it('returns true only when at least one subagent ref exists', () => {
-		expect(isSubAgentsEnabled({ agents: [] })).toBe(false);
-		expect(isSubAgentsEnabled({ agents: [{ agentId: 'agent-1' }] })).toBe(true);
+	it('returns false only when subAgents.enabled is false', () => {
+		expect(isSubAgentsEnabled({ enabled: false, agents: [] })).toBe(false);
 	});
 });
 

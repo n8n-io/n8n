@@ -583,7 +583,10 @@ describe('AgentsService', () => {
 			await service.updateConfig(agentId, projectId, configWithSubAgents);
 
 			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(savedEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'agent-2' }] });
+			expect(savedEntity.schema?.subAgents).toEqual({
+				enabled: true,
+				agents: [{ agentId: 'agent-2' }],
+			});
 		});
 
 		it('rejects unpublished subagent references', async () => {

@@ -143,11 +143,14 @@ describe('builder model recommendations', () => {
 	it('teaches the builder how to configure subagent delegation', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain('`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }`');
-		expect(prompt).toContain('the runtime injects');
+		expect(prompt).toContain(
+			'`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }`',
+		);
+		expect(prompt).toContain(
+			'`subAgents.enabled` controls whether `delegate_subagent` is available',
+		);
 		expect(prompt).toContain('`delegate_subagent`');
-		expect(prompt).toContain('If no saved agents');
-		expect(prompt).toContain('no subagent tool is available');
+		expect(prompt).toContain('inline delegation does not require saved-agent refs');
 		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
 		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
 		expect(prompt).toContain('If no published agents are available');

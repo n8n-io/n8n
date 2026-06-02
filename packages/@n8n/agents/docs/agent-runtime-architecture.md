@@ -72,6 +72,36 @@ well as `agent.abort()`.
 
 ---
 
+## Inline Sub-Agent Delegation
+
+`createDelegateSubAgentTool()` can be registered directly on an `Agent` without
+a host `runSubAgent` callback. In that mode, `Agent.build()` completes the tool
+with the SDK's inline child runner after the parent model and effective tool
+surface have been resolved.
+
+```typescript
+const agent = new Agent('parent')
+  .model('anthropic/claude-sonnet-4-5')
+  .instructions('...')
+  .tool(searchTool)
+  .tool(createDelegateSubAgentTool());
+```
+
+The model selects the default inline path by omitting `subAgentId`. If a host
+supplies `availableSubAgents` and a `runSubAgent` callback, passing `subAgentId`
+routes to that configured host runner instead. Both paths return the same
+`DelegateSubAgentToolOutput` shape and emit the same sub-agent lifecycle events.
+
+Inline children:
+
+- reuse the parent model config for this first implementation
+- start from the parent agent's effective tool list
+- always drop blocked tools such as `delegate_subagent` and memory recall
+- optionally narrow inherited tools with `allowedTools`
+- run in a fresh context using the shared delegated-task prompt
+
+---
+
 ## Event system
 
 ### AgentEventBus

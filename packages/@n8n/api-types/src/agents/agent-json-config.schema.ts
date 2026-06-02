@@ -83,6 +83,7 @@ const SubAgentConfigSchema = z.object({
 
 const SubAgentsConfigSchema = z
 	.object({
+		enabled: z.boolean().optional(),
 		agents: z.array(SubAgentConfigSchema).optional(),
 	})
 	.strict();
@@ -340,5 +341,5 @@ export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 }
 
 export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
-	return (subAgents?.agents?.length ?? 0) > 0;
+	return subAgents?.enabled !== false;
 }

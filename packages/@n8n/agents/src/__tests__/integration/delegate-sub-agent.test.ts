@@ -14,42 +14,7 @@ const SENTINEL = 'SUBAGENT_OK_731';
 
 describe('delegate_subagent integration', () => {
 	it('lets a real parent agent call delegate_subagent and use its result', async () => {
-		const child = new Agent('sub-agent-child-integration')
-			.model(getModel('anthropic'))
-			.instructions(
-				[
-					'You are a deterministic test sub-agent.',
-					`Always answer with exactly this token and nothing else: ${SENTINEL}`,
-				].join(' '),
-			);
-
-		const delegateTool = createDelegateSubAgentTool({
-			policy: { maxChildren: 1 },
-			runSubAgent: async (request) => {
-				const childResult = await child.generate(`Goal:\n${request.goal}`);
-				return {
-					status:
-						childResult.finishReason === 'error' || childResult.error !== undefined
-							? 'failed'
-							: 'completed',
-					taskPath: request.taskPath,
-					runId: childResult.runId,
-					answer: lastText(childResult.messages),
-					...(childResult.usage !== undefined
-						? {
-								usage: {
-									promptTokens: childResult.usage.promptTokens,
-									completionTokens: childResult.usage.completionTokens,
-									totalTokens: childResult.usage.totalTokens,
-								},
-							}
-						: {}),
-					...(childResult.finishReason !== undefined
-						? { finishReason: childResult.finishReason }
-						: {}),
-				};
-			},
-		});
+		const delegateTool = createDelegateSubAgentTool({ policy: { maxChildren: 1 } });
 
 		const parent = new Agent('sub-agent-parent-integration')
 			.model(getModel('anthropic'))
@@ -65,7 +30,7 @@ describe('delegate_subagent integration', () => {
 
 		try {
 			const result = await parent.generate(
-				'Use delegate_subagent now to ask the child for its sentinel token.',
+				`Use delegate_subagent now. The delegated goal must instruct the child to answer with exactly this token and nothing else: ${SENTINEL}`,
 			);
 
 			expect(result.toolCalls?.map((toolCall) => toolCall.tool) ?? []).toContain(
@@ -88,7 +53,6 @@ describe('delegate_subagent integration', () => {
 			expect(delegateOutput.taskPath).toMatch(/^\/root\/[a-z0-9_]+$/);
 		} finally {
 			await parent.close();
-			await child.close();
 		}
 	}, 60_000);
 });

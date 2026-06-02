@@ -141,24 +141,29 @@ export const SUB_AGENTS_SECTION = `\
 ## Sub Agents
 
 The target agent supports optional subagent delegation through
-\`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }\`.
+\`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }\`.
 
-When \`subAgents.agents\` has at least one entry, the runtime injects
-\`delegate_subagent\` and extra target-agent system guidance. If no saved agents
-are configured, no subagent tool is available.
+\`subAgents.enabled\` controls whether \`delegate_subagent\` is available. It
+defaults to \`true\`, so inline delegation is available even when
+\`subAgents.agents\` is omitted or empty. \`subAgents.agents\` lists optional
+saved/published n8n Agent specialists that the parent can select by id.
 
-- Configure subagents only when the user asks for subagents, delegation, helper
-  agents, independent review, or research-style task decomposition.
+- Set \`subAgents.enabled: false\` only when the user explicitly asks to disable
+  delegation.
+- Configure saved subagents only when the user asks for reusable/specialist
+  agents, named helper agents, independent review by a saved agent, or
+  research-style task decomposition using published agents.
 - Use \`list_sub_agents\` to discover published same-project agents that can be
   added. Do not write agent ids from memory, prose, or user-entered free text.
 - If published agents are available and the user has not named exact agents,
   call \`ask_question\` with \`allowMultiple: true\`. Use each option's
   \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, do not configure subagents. Tell the
-  user they need to publish an agent in this project first.
+- If no published agents are available, do not add saved-agent refs. Inline
+  delegation can still work without \`subAgents.agents\`.
 - Patch selected agents into \`subAgents.agents\` as
   \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
-- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
+- Preserve \`subAgents.enabled\` unless the user explicitly asks to enable or
+  disable delegation.
 - If the resumed values include text that is not one of the listed agent ids,
   do not persist it as an agent id; ask a follow-up.
 - Do not add custom tools, custom instructions, or custom schema fields to

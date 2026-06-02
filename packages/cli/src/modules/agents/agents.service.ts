@@ -2442,7 +2442,6 @@ export class AgentsService {
 		projectId: string,
 	): Promise<SubAgentDelegationConfig | undefined> {
 		const configuredAgents = config.subAgents?.agents ?? [];
-		if (configuredAgents.length === 0) return undefined;
 
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
@@ -2458,7 +2457,7 @@ export class AgentsService {
 			});
 		}
 
-		return availableSubAgents.length > 0 ? { sourcesById, availableSubAgents } : undefined;
+		return { sourcesById, availableSubAgents };
 	}
 }
 
@@ -2471,5 +2470,5 @@ function normalizeSubAgentsConfig(
 	subAgents: AgentJsonConfig['subAgents'],
 ): AgentJsonConfig['subAgents'] {
 	if (!subAgents) return undefined;
-	return { agents: subAgents.agents ?? [] };
+	return { enabled: subAgents.enabled ?? true, agents: subAgents.agents ?? [] };
 }

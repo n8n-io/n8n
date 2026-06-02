@@ -7,7 +7,17 @@ import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './me
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	createDelegateSubAgentTool,
+	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentRequest,
+	type DelegateSubAgentToolOutput,
+} from '../runtime/delegate-sub-agent-tool';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
 import {
 	appendSkillCatalogToInstructions,
@@ -45,6 +55,15 @@ import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
+
+const INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	'clarify',
+	'memory',
+	'execute_code',
+	'code_execution',
+]);
 
 interface DeferredToolOptions {
 	search?: {
@@ -763,7 +782,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		const allTools = [...finalStaticTools, ...mcpTools];
+		let allTools = [...finalStaticTools, ...mcpTools];
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
@@ -793,6 +812,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				instructions = `${instructions}\n\n${wsInstructions}`;
 			}
 		}
+		const telemetry = this.telemetryConfig ?? (await this.telemetryBuilder?.build());
+		const toolSearch =
+			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+				? { topK: this.deferredToolSearchTopK }
+				: undefined;
+
+		allTools = this.completeInlineDelegateTools(allTools, {
+			deferredTools: finalDeferredTools,
+			modelConfig,
+			providerTools: this.providerTools,
+			...(telemetry !== undefined ? { telemetry } : {}),
+			...(this.concurrencyValue !== undefined
+				? { toolCallConcurrency: this.concurrencyValue }
+				: {}),
+			...(toolSearch !== undefined ? { toolSearch } : {}),
+		});
 
 		this.runtime = new AgentRuntime({
 			name: this.name,
@@ -800,10 +835,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
-			toolSearch:
-				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
-					? { topK: this.deferredToolSearchTopK }
-					: undefined,
+			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
@@ -817,10 +849,101 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
-			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
+			telemetry,
 		});
 
 		return this.runtime;
+	}
+
+	private completeInlineDelegateTools(
+		tools: BuiltTool[],
+		options: {
+			deferredTools: BuiltTool[];
+			modelConfig: ModelConfig;
+			providerTools: BuiltProviderTool[];
+			telemetry?: BuiltTelemetry;
+			toolCallConcurrency?: number;
+			toolSearch?: { topK?: number };
+		},
+	): BuiltTool[] {
+		return tools.map((tool) => {
+			const delegateOptions = getInlineDelegateSubAgentToolOptions(tool);
+			if (!delegateOptions) return tool;
+
+			const runInlineSubAgent = this.createInlineSubAgentRunner({
+				...options,
+				tools,
+			});
+			const hostRunner = delegateOptions.runSubAgent;
+			const completedTool = createDelegateSubAgentTool({
+				...delegateOptions,
+				runSubAgent: async (request) => {
+					if (request.subAgentId) {
+						if (hostRunner) return await hostRunner(request);
+						return {
+							status: 'failed',
+							taskPath: request.taskPath,
+							answer: '',
+							error: `No configured subagent matched "${request.subAgentId}"`,
+						};
+					}
+					return await runInlineSubAgent(request);
+				},
+			});
+
+			if (tool.withDefaultApproval) {
+				return wrapToolForApproval(completedTool, { requireApproval: true });
+			}
+			return completedTool;
+		});
+	}
+
+	private createInlineSubAgentRunner(options: {
+		deferredTools: BuiltTool[];
+		modelConfig: ModelConfig;
+		providerTools: BuiltProviderTool[];
+		telemetry?: BuiltTelemetry;
+		toolCallConcurrency?: number;
+		toolSearch?: { topK?: number };
+		tools: BuiltTool[];
+	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
+		return async (request) => {
+			const tools = filterInlineSubAgentTools(options.tools, request.allowedTools);
+			const deferredTools = filterInlineSubAgentTools(options.deferredTools, request.allowedTools);
+			const providerTools = filterInlineSubAgentProviderTools(
+				options.providerTools,
+				request.allowedTools,
+			);
+			const childRuntime = new AgentRuntime({
+				name: `${this.name}:${request.taskName}`,
+				model: options.modelConfig,
+				instructions:
+					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
+				tools: tools.length > 0 ? tools : undefined,
+				deferredTools: deferredTools.length > 0 ? deferredTools : undefined,
+				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
+				providerTools: providerTools.length > 0 ? providerTools : undefined,
+				instructionProviderOptions: this.instructionProviderOpts,
+				checkpointStorage: this.checkpointStore,
+				thinking: this.thinkingConfig,
+				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(options.toolCallConcurrency !== undefined
+					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+			});
+
+			try {
+				const result = await childRuntime.generate(renderDelegateSubAgentPrompt(request), {
+					...(request.parentAbortSignal !== undefined
+						? { abortSignal: request.parentAbortSignal }
+						: {}),
+					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				});
+				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+			} finally {
+				await childRuntime.dispose();
+			}
+		};
 	}
 
 	private assertToolNameAvailable(toolName: string): void {
@@ -835,6 +958,28 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
 		this.hasRuntimeSkillTool = false;
 	}
+}
+
+function filterInlineSubAgentTools(
+	tools: BuiltTool[],
+	allowedTools: string[] | undefined,
+): BuiltTool[] {
+	const allowed = allowedTools ? new Set(allowedTools) : undefined;
+	return tools.filter((tool) => {
+		if (INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES.has(tool.name)) return false;
+		return allowed ? allowed.has(tool.name) : true;
+	});
+}
+
+function filterInlineSubAgentProviderTools(
+	tools: BuiltProviderTool[],
+	allowedTools: string[] | undefined,
+): BuiltProviderTool[] {
+	const allowed = allowedTools ? new Set(allowedTools) : undefined;
+	return tools.filter((tool) => {
+		if (INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES.has(tool.name)) return false;
+		return allowed ? allowed.has(tool.name) : true;
+	});
 }
 
 function findDuplicateToolNames(tools: BuiltTool[]): string[] {

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import {
@@ -34,9 +36,20 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.outputSchema).toBeDefined();
 	});
 
+	it('can be created without a host runner for SDK inline execution', async () => {
+		const tool = createDelegateSubAgentTool();
+
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error:
+				'delegate_subagent was registered without a runSubAgent callback, but no Agent inline runner was attached. Register it on an Agent or provide runSubAgent.',
+		});
+	});
+
 	it('passes model input and parent runtime context to the runner callback', async () => {
-		const runSubAgent = jest
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+		const runSubAgent = vi
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({
 				status: 'completed',
 				taskPath: '/root/research_api',
@@ -66,8 +79,8 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('forwards the parent persistence thread id and resource id', async () => {
-		const runSubAgent = jest
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+		const runSubAgent = vi
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -85,8 +98,8 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('omits parent persistence fields when the parent run has no persistence scope', async () => {
-		const runSubAgent = jest
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+		const runSubAgent = vi
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -98,8 +111,8 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
-		const runSubAgent = jest
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+		const runSubAgent = vi
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 		const controller = new AbortController();
@@ -156,8 +169,8 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('tracks child count per parent run id', async () => {
-		const runSubAgent = jest
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+		const runSubAgent = vi
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({
 				status: 'completed',
 				taskPath: '/root/research_api',
@@ -208,7 +221,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('returns a failed output for invalid task names', async () => {
-		const runSubAgent = jest.fn();
+		const runSubAgent = vi.fn();
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
 		await expect(
@@ -226,21 +239,24 @@ describe('renderDelegateSubAgentPrompt', () => {
 	it('includes the goal and omits unset sections', () => {
 		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
 
-		expect(prompt).toContain('Goal:\nFind it.');
-		expect(prompt).not.toContain('Context:');
-		expect(prompt).not.toContain('Expected output:');
+		expect(prompt).toContain('YOUR TASK:\nFind it.');
+		expect(prompt).not.toContain('CONTEXT:');
+		expect(prompt).not.toContain('EXPECTED OUTPUT:');
+		expect(prompt).not.toContain('WORKSPACE PATH:');
 	});
 
-	it('includes context and expected output when provided', () => {
+	it('includes context, expected output, and workspace path when provided', () => {
 		const prompt = renderDelegateSubAgentPrompt({
 			goal: 'Find it.',
 			context: 'auth endpoints',
 			expectedOutput: 'a summary',
+			workspacePath: '/repo',
 		});
 
-		expect(prompt).toContain('Goal:\nFind it.');
-		expect(prompt).toContain('Context:\nauth endpoints');
-		expect(prompt).toContain('Expected output:\na summary');
+		expect(prompt).toContain('YOUR TASK:\nFind it.');
+		expect(prompt).toContain('CONTEXT:\nauth endpoints');
+		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
+		expect(prompt).toContain('WORKSPACE PATH:\n/repo');
 	});
 });
 

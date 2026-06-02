@@ -12,9 +12,10 @@ import { Tool } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { FinishReason, GenerateResult, TokenUsage } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
-import type { ToolContext } from '../types/sdk/tool';
+import type { BuiltTool, ToolContext } from '../types/sdk/tool';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAgent';
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
 // The `.describe(...)` text is what the model reads, so keep it task-oriented.
@@ -36,6 +37,12 @@ const delegateSubAgentInputSchema = z.object({
 			'All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out.',
 		),
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
+	allowedTools: z
+		.array(z.string().min(1))
+		.optional()
+		.describe(
+			'Optional list of parent tool names the inline child may use. This can only narrow the inherited tool set, never add tools.',
+		),
 });
 
 // Documents the tool result shape for typing/introspection. Note: the handler's
@@ -149,8 +156,10 @@ export interface CreateDelegateSubAgentToolOptions {
 	/** Depth / fan-out limits enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
 	/** Run the child for this delegation and return its result. */
-	runSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
+	runSubAgent?: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
 }
+
+export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
 
 /**
  * Build the generic `delegate_subagent` tool — lets a parent agent hand a
@@ -169,11 +178,11 @@ export interface CreateDelegateSubAgentToolOptions {
  *     policy: { maxDepth: 2, maxChildren: 5 },
  *   }));
  */
-export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions) {
+export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions = {}) {
 	// Per-parent fan-out counter keyed by run/thread/task — drives maxChildren.
 	const childCounts = new Map<string, number>();
 
-	return new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
+	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
 			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context (it sees only what you pass in) and returns a concise result. ' +
 				'Reach for it when a subtask needs substantial search/research/review/reasoning whose intermediate output would clutter your context, or clearly benefits from a fresh perspective. ' +
@@ -181,10 +190,12 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		)
 		.systemInstruction(
 			[
-				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. The child cannot see this conversation, your tools, or your memory, so everything it needs must be in the call.',
+				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. By default, omit subAgentId to run an inline child that inherits your available tools after safety filtering. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
+				'Use subAgentId only when a configured subagent is listed and its name/description fits the subtask better than a generic inline child.',
 				'Delegate only when all of these hold: the work is a concrete, self-contained subtask; it can be fully specified without unstated context from this conversation; and it is heavy enough (substantial search/research/review/reasoning) that doing it inline would clutter your context, or a fresh perspective clearly helps.',
 				'Do not delegate when: the task is trivial or is one or two tool calls you can make directly; it is the core reasoning you are responsible for (never delegate the understanding); it depends on context you cannot restate; or you would just forward the user request without decomposing it. Wanting more depth, thoroughness, or research is not by itself a reason to delegate.',
 				'Write the handoff for a smart colleague who just walked in and has seen none of this conversation: put the concrete outcome in goal; put every detail the child needs in context (constraints, paths, data, prior decisions, acceptance criteria, what you have already tried or ruled out); state exactly what you need back, and how concise, in expectedOutput; and give it a short descriptive taskName.',
+				'If you pass allowedTools, use it only to narrow the inline child to relevant tools. It cannot grant tools you do not already have.',
 				...formatAvailableSubAgents(options.availableSubAgents),
 				'When the child returns: inspect the answer before relying on it, do not blindly trust self-reported success, synthesize it into your own response instead of copying it verbatim, and if it is incomplete or failed either retry with a sharper handoff or do the task yourself.',
 			].join('\n'),
@@ -193,6 +204,29 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		.output(delegateSubAgentOutputSchema)
 		.handler(async (input, ctx) => await handleDelegateSubAgent(input, ctx, options, childCounts))
 		.build();
+
+	return {
+		...tool,
+		metadata: {
+			...tool.metadata,
+			[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
+				...(options.availableSubAgents !== undefined
+					? { availableSubAgents: options.availableSubAgents }
+					: {}),
+				...(options.parentTaskPath !== undefined ? { parentTaskPath: options.parentTaskPath } : {}),
+				...(options.policy !== undefined ? { policy: options.policy } : {}),
+				...(options.runSubAgent !== undefined ? { runSubAgent: options.runSubAgent } : {}),
+			} satisfies DelegateSubAgentToolMetadata,
+		},
+	};
+}
+
+export function getInlineDelegateSubAgentToolOptions(
+	tool: BuiltTool,
+): DelegateSubAgentToolMetadata | undefined {
+	const value = tool.metadata?.[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY];
+	if (typeof value !== 'object' || value === null) return undefined;
+	return value as DelegateSubAgentToolMetadata;
 }
 
 function formatAvailableSubAgents(
@@ -201,7 +235,7 @@ function formatAvailableSubAgents(
 	if (!availableSubAgents?.length) return [];
 
 	return [
-		'Configured subagents are available. Pick the most relevant one and pass its id as subAgentId:',
+		'Configured subagents are available as specialist options. Omit subAgentId for the default inline child; pass subAgentId only when one of these is a better fit:',
 		...availableSubAgents.map((subAgent) => {
 			const description = subAgent.description ? ` - ${subAgent.description}` : '';
 			return `- ${subAgent.id}: ${subAgent.name}${description}`;
@@ -255,6 +289,11 @@ async function handleDelegateSubAgent(
 
 		startedAt = Date.now();
 		emitSubAgentStarted(ctx, request, startedAt);
+		if (!options.runSubAgent) {
+			throw new Error(
+				'delegate_subagent was registered without a runSubAgent callback, but no Agent inline runner was attached. Register it on an Agent or provide runSubAgent.',
+			);
+		}
 		const output = await options.runSubAgent(request);
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;
@@ -358,22 +397,45 @@ export function renderDelegateSubAgentPrompt(request: {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	workspacePath?: string;
 }): string {
 	const sections = [
-		'You are running as a delegated sub-agent on a single, self-contained task. You have no access to the parent conversation beyond what is written below, and you cannot ask follow-up questions during this run. Complete the task independently and reply with a concise, self-contained answer.',
-		`Goal:\n${request.goal}`,
+		'You are a focused subagent working on a specific delegated task.',
+		`YOUR TASK:\n${request.goal}`,
 	];
 
 	if (request.context) {
-		sections.push(`Context:\n${request.context}`);
+		sections.push(`CONTEXT:\n${request.context}`);
 	}
 
 	if (request.expectedOutput) {
-		sections.push(`Expected output:\n${request.expectedOutput}`);
+		sections.push(`EXPECTED OUTPUT:\n${request.expectedOutput}`);
+	}
+
+	if (request.workspacePath) {
+		sections.push(
+			[
+				'WORKSPACE PATH:',
+				request.workspacePath,
+				'Use this exact path for local repository/workdir operations unless the task explicitly says otherwise.',
+			].join('\n'),
+		);
 	}
 
 	sections.push(
-		'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
+		[
+			'Complete this task using the tools available to you. When finished, provide a clear, concise summary of:',
+			'- What you did',
+			'- What you found or accomplished',
+			'- Any files you created or modified',
+			'- Any issues encountered',
+			'',
+			'Important workspace rule: Never assume a repository lives at /workspace/... or any other container-style path unless the task/context explicitly gives that path. If no exact local path is provided, discover it first before issuing git/workdir-specific commands.',
+			'',
+			'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
+			'',
+			'Be thorough but concise -- your response is returned to the parent agent as a summary.',
+		].join('\n'),
 	);
 
 	return sections.join('\n\n');
