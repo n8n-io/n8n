@@ -1027,7 +1027,7 @@ describe('ExecutionPersistence', () => {
 				{ workflowId: wf, executionId: 'a' },
 				{ workflowId: wf, executionId: 'b' },
 			]);
-			expect(fsStore.readMany).toHaveBeenCalledWith([]);
+			expect(fsStore.readMany).not.toHaveBeenCalled();
 			expect(result).toHaveLength(2);
 		});
 
@@ -1169,13 +1169,19 @@ describe('ExecutionPersistence', () => {
 		it('should report a successful execution whose data is an empty stringified array', async () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.find.mockResolvedValue([makeEntity('a', 'db')]);
-			dbStore.readMany.mockResolvedValue(new Map([['a', { ...makeBundle('a'), data: '[]' }]]));
+			// Distinct snapshot id proves the report uses the bundle's workflow id, not the entity's.
+			const bundle = {
+				...makeBundle('a'),
+				data: '[]',
+				workflowData: { ...makeBundle('a').workflowData, id: 'wf-from-snapshot' },
+			};
+			dbStore.readMany.mockResolvedValue(new Map([['a', bundle]]));
 
 			await executionPersistence.findMultipleExecutions({}, { includeData: true });
 
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				'Found successful execution where data is empty stringified array',
-				{ extra: { executionId: 'a', workflowId: wf } },
+				{ extra: { executionId: 'a', workflowId: 'wf-from-snapshot' } },
 			);
 		});
 

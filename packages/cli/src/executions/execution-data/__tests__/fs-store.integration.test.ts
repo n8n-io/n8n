@@ -193,6 +193,17 @@ describe('readMany', () => {
 		expect(errorReporter.error).toHaveBeenCalledWith(expect.any(CorruptedExecutionDataError));
 	});
 
+	it('should rethrow a systemic read error instead of swallowing it', async () => {
+		const target = createExecutionRef(workflowId, 'exec-1');
+		await fsStore.write(target, payload);
+
+		const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+		jest.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
+
+		await expect(fsStore.readMany([target])).rejects.toBe(eacces);
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
 	it('should return an empty map for an empty array', async () => {
 		const bundles = await fsStore.readMany([]);
 

@@ -1,6 +1,7 @@
 import { ExecutionData, ExecutionDataRepository, In } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
 
 import { EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import type {
@@ -45,8 +46,7 @@ export class DbStore implements ExecutionDataStore {
 
 		// Batch the IN-clause so an unbounded set of ids cannot exceed the DB's
 		// limit on bound parameters (SQLite caps near 1000).
-		for (let i = 0; i < ids.length; i += MAX_READ_BATCH_SIZE) {
-			const batch = ids.slice(i, i + MAX_READ_BATCH_SIZE);
+		for (const batch of chunk(ids, MAX_READ_BATCH_SIZE)) {
 			const rows = await this.repository.find({
 				where: { executionId: In(batch) },
 				select: ['executionId', 'data', 'workflowData', 'workflowVersionId'],

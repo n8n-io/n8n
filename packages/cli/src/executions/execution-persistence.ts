@@ -12,7 +12,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionEntity, ExecutionRepository, Not, separate } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -267,33 +267,32 @@ export class ExecutionPersistence {
 		const entities = await this.executionRepository.find(queryParams);
 		if (entities.length === 0) return [];
 
-		// TODO: will need to be adjusted once we implement s3 or other storage locations
-		const [dbEntities, fsEntities] = separate(entities, (e) => e.storedAt === 'db');
+		// Group by storage location and batch-fetch each group from its store.
+		const entitiesByLocation = new Map<ExecutionDataStorageLocation, ExecutionEntity[]>();
+		for (const entity of entities) {
+			const group = entitiesByLocation.get(entity.storedAt) ?? [];
+			group.push(entity);
+			entitiesByLocation.set(entity.storedAt, group);
+		}
 
-		const [dbBundles, fsBundles] = await Promise.all([
-			this.dbStore.readMany(
-				dbEntities.map((e) => ({ workflowId: e.workflowId, executionId: e.id })),
-			),
-			this.fsStore.readMany(
-				fsEntities.map((e) => ({ workflowId: e.workflowId, executionId: e.id })),
-			),
-		]);
+		const bundlesById = new Map<string, ExecutionDataBundle>();
+		await Promise.all(
+			[...entitiesByLocation].map(async ([location, group]) => {
+				const refs = group.map((e) => ({ workflowId: e.workflowId, executionId: e.id }));
+				const bundles = await this.getStoreFor(location).readMany(refs);
+				for (const [id, bundle] of bundles) bundlesById.set(id, bundle);
+			}),
+		);
 
 		// Report invalid entities when they are found to be missing from the stores.
-		const invalidEntities = [
-			...dbEntities.filter((e) => !dbBundles.has(e.id)),
-			...fsEntities.filter((e) => !fsBundles.has(e.id)),
-		];
+		const invalidEntities = entities.filter((e) => !bundlesById.has(e.id));
 		if (invalidEntities.length > 0) {
 			this.executionRepository.reportInvalidExecutions(invalidEntities);
 		}
 
-		const getBundle = (entity: ExecutionEntity) =>
-			(entity.storedAt === 'db' ? dbBundles : fsBundles).get(entity.id);
-
 		const assembled = await Promise.all(
 			entities.map(async (entity) => {
-				const bundle = getBundle(entity);
+				const bundle = bundlesById.get(entity.id);
 				if (!bundle) return null;
 				return await this.assembleExecution(entity, bundle, options);
 			}),
@@ -483,7 +482,7 @@ export class ExecutionPersistence {
 
 		if (entity.status === 'success' && bundle.data === '[]') {
 			this.errorReporter.error('Found successful execution where data is empty stringified array', {
-				extra: { executionId: entity.id, workflowId: entity.workflowId },
+				extra: { executionId: entity.id, workflowId: bundle.workflowData.id },
 			});
 		}
 
