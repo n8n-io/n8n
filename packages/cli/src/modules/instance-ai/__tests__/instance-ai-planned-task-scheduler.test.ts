@@ -209,7 +209,7 @@ describe('InstanceAiPlannedTaskScheduler', () => {
 
 	describe('doSchedulePlannedTasks', () => {
 		it('cancels the run when the owner is no longer authorized', async () => {
-			const { scheduler, host, internals } = buildScheduler({
+			const { host, internals } = buildScheduler({
 				host: { revalidateActiveUser: jest.fn(async () => null) },
 			});
 
