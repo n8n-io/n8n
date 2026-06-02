@@ -1,22 +1,33 @@
+import { parseFlatted } from '@n8n/backend-common';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
 	CreateExecutionPayload,
 	ExecutionDataStorageLocation,
 	ExecutionDeletionCriteria,
+	FindManyOptions,
 	FindOptionsWhere,
+	IExecutionBase,
+	IExecutionFlattedDb,
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
-import { BinaryDataService, StorageConfig } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
+import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { DbStore } from './execution-data/db-store';
 import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import type { ExecutionDataStore, ExecutionRef, WorkflowSnapshot } from './execution-data/types';
+import type {
+	ExecutionDataBundle,
+	ExecutionDataStore,
+	ExecutionRef,
+	WorkflowSnapshot,
+} from './execution-data/types';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
@@ -47,6 +58,7 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -109,6 +121,187 @@ export class ExecutionPersistence {
 		const store = this.getStoreFor(entity.storedAt);
 
 		return await this.applyDataUpdate(ref, store, execution, conditions);
+	}
+
+	/**
+	 * Find a single execution by id, dispatching data reads to the store matching its `storedAt`.
+	 * - In `db` mode, we load entity, metadata, optional annotation, and data via `DbStore`.
+	 * - In `fs` mode, we load entity, metadata, optional annotation from the DB, and data via `FsStore`.
+	 *
+	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
+	 * share one database, so an absent data row means a known-corrupt record we report and skip
+	 * (soft). In `fs` mode the entity lives in the DB while its data lives on disk, so a missing
+	 * file points at an out-of-band loss (deletion, unmounted volume) that a single-execution read
+	 * should surface loudly rather than silently swallow (hard).
+	 */
+	async findSingleExecution(
+		id: string,
+		options?: {
+			includeData: true;
+			includeAnnotation?: boolean;
+			unflattenData: true;
+			where?: FindOptionsWhere<ExecutionEntity>;
+		},
+	): Promise<IExecutionResponse | undefined>;
+	async findSingleExecution(
+		id: string,
+		options?: {
+			includeData: true;
+			includeAnnotation?: boolean;
+			unflattenData?: false | undefined;
+			where?: FindOptionsWhere<ExecutionEntity>;
+		},
+	): Promise<IExecutionFlattedDb | undefined>;
+	async findSingleExecution(
+		id: string,
+		options?: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			unflattenData?: boolean;
+			where?: FindOptionsWhere<ExecutionEntity>;
+		},
+	): Promise<IExecutionBase | undefined>;
+	async findSingleExecution(
+		id: string,
+		options?: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			unflattenData?: boolean;
+			where?: FindOptionsWhere<ExecutionEntity>;
+		},
+	): Promise<IExecutionFlattedDb | IExecutionResponse | IExecutionBase | undefined> {
+		if (!options?.includeData) {
+			return await this.executionRepository.findSingleExecution(id, options);
+		}
+
+		const entity = await this.executionRepository.findOne({
+			where: { id, ...options.where },
+			relations: {
+				metadata: true,
+				...(options.includeAnnotation ? { annotation: { tags: true } } : {}),
+			},
+		});
+
+		if (!entity) return undefined;
+
+		const store = this.getStoreFor(entity.storedAt);
+		const bundle = await store.read({ workflowId: entity.workflowId, executionId: entity.id });
+
+		if (!bundle) {
+			if (entity.storedAt === 'db') {
+				this.executionRepository.reportInvalidExecutions([entity]);
+				return undefined;
+			}
+			throw new MissingExecutionDataError({
+				workflowId: entity.workflowId,
+				executionId: entity.id,
+			});
+		}
+
+		return (await this.assembleExecution(entity, bundle, options)) as
+			| IExecutionFlattedDb
+			| IExecutionResponse
+			| IExecutionBase;
+	}
+
+	/**
+	 * Find multiple executions matching `queryParams`. With `includeData: true`, partitions
+	 * entities by `storedAt` and batch-fetches bundles from each store to avoid n+1 reads.
+	 * - In `db` mode, we issue one `In(ids)` query against `execution_data` per batch.
+	 * - In `fs` mode, we fan out reads across the filesystem.
+	 */
+	async findMultipleExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options?: {
+			unflattenData: true;
+			includeData?: true;
+		},
+	): Promise<IExecutionResponse[]>;
+	async findMultipleExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options?: {
+			unflattenData?: false | undefined;
+			includeData?: true;
+		},
+	): Promise<IExecutionFlattedDb[]>;
+	async findMultipleExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options?: {
+			unflattenData?: boolean;
+			includeData?: boolean;
+		},
+	): Promise<IExecutionBase[]>;
+	async findMultipleExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options?: {
+			unflattenData?: boolean;
+			includeData?: boolean;
+		},
+	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
+		if (!options?.includeData) {
+			return await this.executionRepository.findMultipleExecutions(queryParams, options);
+		}
+
+		queryParams.relations ??= [];
+		if (Array.isArray(queryParams.relations)) {
+			if (!queryParams.relations.includes('metadata')) queryParams.relations.push('metadata');
+		} else {
+			queryParams.relations.metadata = true;
+		}
+
+		// A narrowing `select` must still include the fields we route and read by: `storedAt` (else
+		// every execution defaults to the fs store) and `id`/`workflowId` (else no bundle resolves).
+		// An undefined `select` loads all columns, so no action needed.
+		if (queryParams.select) {
+			if (Array.isArray(queryParams.select)) {
+				for (const field of ['id', 'workflowId', 'storedAt'] as const) {
+					if (!queryParams.select.includes(field)) queryParams.select.push(field);
+				}
+			} else {
+				queryParams.select.id = true;
+				queryParams.select.workflowId = true;
+				queryParams.select.storedAt = true;
+			}
+		}
+
+		const entities = await this.executionRepository.find(queryParams);
+		if (entities.length === 0) return [];
+
+		// Group by storage location and batch-fetch each group from its store.
+		const entitiesByLocation = new Map<ExecutionDataStorageLocation, ExecutionEntity[]>();
+		for (const entity of entities) {
+			const group = entitiesByLocation.get(entity.storedAt) ?? [];
+			group.push(entity);
+			entitiesByLocation.set(entity.storedAt, group);
+		}
+
+		const bundlesById = new Map<string, ExecutionDataBundle>();
+		await Promise.all(
+			[...entitiesByLocation].map(async ([location, group]) => {
+				const refs = group.map((e) => ({ workflowId: e.workflowId, executionId: e.id }));
+				const bundles = await this.getStoreFor(location).readMany(refs);
+				for (const [id, bundle] of bundles) bundlesById.set(id, bundle);
+			}),
+		);
+
+		// Report invalid entities when they are found to be missing from the stores.
+		const invalidEntities = entities.filter((e) => !bundlesById.has(e.id));
+		if (invalidEntities.length > 0) {
+			this.executionRepository.reportInvalidExecutions(invalidEntities);
+		}
+
+		const assembled = await Promise.all(
+			entities.map(async (entity) => {
+				const bundle = bundlesById.get(entity.id);
+				if (!bundle) return null;
+				return await this.assembleExecution(entity, bundle, options);
+			}),
+		);
+
+		return assembled.filter((e): e is NonNullable<typeof e> => e !== null) as
+			| IExecutionFlattedDb[]
+			| IExecutionResponse[]
+			| IExecutionBase[];
 	}
 
 	/**
@@ -246,16 +439,16 @@ export class ExecutionPersistence {
 		executionId: string,
 		conditions?: UpdateExecutionConditions,
 	): FindOptionsWhere<ExecutionEntity> {
+		if (conditions?.requireStatus && conditions?.requireNotCanceled) {
+			throw new UnexpectedError('`requireStatus` and `requireNotCanceled` cannot be combined');
+		}
+
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
 		if (conditions?.requireNotFinished) where.finished = false;
-		// TODO(CAT-3215): `requireStatus` and `requireNotCanceled` both write to `where.status`,
-		// so if both are supplied the `Not('canceled')` clause silently overwrites the specific
-		// status check. In practice callers never combine them, so once we drop strict parity with
-		// ExecutionRepository we should assert their mutual exclusivity (or combine them somehow).
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
 	}
@@ -276,6 +469,54 @@ export class ExecutionPersistence {
 	): WorkflowSnapshot {
 		const { id, name, nodes, connections, settings } = workflowData;
 		return { id, name, nodes, connections, settings };
+	}
+
+	private async assembleExecution(
+		entity: ExecutionEntity,
+		bundle: ExecutionDataBundle,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean },
+	) {
+		const { metadata, annotation, ...rest } = entity;
+		const data = await this.parseExecutionData(bundle.data, options);
+		const serializedAnnotation = this.serializeAnnotation(annotation);
+
+		if (entity.status === 'success' && bundle.data === '[]') {
+			this.errorReporter.error('Found successful execution where data is empty stringified array', {
+				extra: { executionId: entity.id, workflowId: bundle.workflowData.id },
+			});
+		}
+
+		return {
+			...rest,
+			data,
+			workflowData: bundle.workflowData,
+			workflowVersionId: bundle.workflowVersionId ?? null,
+			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			...(options.includeAnnotation && serializedAnnotation
+				? { annotation: serializedAnnotation }
+				: {}),
+		};
+	}
+
+	private async parseExecutionData(
+		data: string,
+		options: { unflattenData?: boolean },
+	): Promise<IRunExecutionData | string | undefined> {
+		if (!options.unflattenData) return data;
+
+		const deserialized: unknown = await parseFlatted(data);
+		if (!deserialized) return undefined;
+		return migrateRunExecutionData(deserialized as IRunExecutionDataAll);
+	}
+
+	private serializeAnnotation(annotation: ExecutionEntity['annotation']) {
+		if (!annotation) return null;
+		const { id, vote, tags } = annotation;
+		return {
+			id,
+			vote,
+			tags: tags?.map(({ id, name }) => ({ id, name })) ?? [],
+		};
 	}
 
 	/**

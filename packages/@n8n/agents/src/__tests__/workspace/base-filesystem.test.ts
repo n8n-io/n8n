@@ -18,8 +18,8 @@ class TestFilesystem extends BaseFilesystem {
 	readonly provider = 'test';
 	status: ProviderStatus = 'pending';
 
-	initFn = jest.fn().mockResolvedValue(undefined);
-	destroyFn = jest.fn().mockResolvedValue(undefined);
+	initFn = vi.fn().mockResolvedValue(undefined);
+	destroyFn = vi.fn().mockResolvedValue(undefined);
 
 	constructor(id: string, options?: BaseFilesystemOptions) {
 		super(options);
@@ -176,7 +176,7 @@ describe('BaseFilesystem', () => {
 
 	describe('lifecycle hooks', () => {
 		it('calls onInit hook after successful init', async () => {
-			const onInit = jest.fn();
+			const onInit = vi.fn();
 			const fs = new TestFilesystem('1', { onInit });
 
 			await fs._init();
@@ -185,7 +185,7 @@ describe('BaseFilesystem', () => {
 		});
 
 		it('does not fail when onInit hook throws', async () => {
-			const onInit = jest.fn().mockRejectedValue(new Error('hook err'));
+			const onInit = vi.fn().mockRejectedValue(new Error('hook err'));
 			const fs = new TestFilesystem('1', { onInit });
 
 			await fs._init();
@@ -194,7 +194,7 @@ describe('BaseFilesystem', () => {
 		});
 
 		it('calls onDestroy hook during destroy', async () => {
-			const onDestroy = jest.fn();
+			const onDestroy = vi.fn();
 			const fs = new TestFilesystem('1', { onDestroy });
 			await fs._init();
 
