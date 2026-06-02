@@ -26,10 +26,8 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
-	N8nLink,
 	N8nPagination,
 	N8nTabs,
-	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
@@ -194,33 +192,42 @@ function onOpenScopes(apiKey: ApiKey) {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
+		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
 		</div>
 
-		<p v-if="isPublicApiEnabled && allCount > 0" :class="$style.topHint">
-			<N8nText>
-				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
-					<template #apiAction>
-						<a
-							data-test-id="api-docs-link"
-							href="https://docs.n8n.io/api"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.api')"
-						/>
-					</template>
-					<template #webhookAction>
-						<a
-							data-test-id="webhook-docs-link"
-							href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.webhook')"
-						/>
-					</template>
-				</I18nT>
-			</N8nText>
+		<p v-if="isPublicApiEnabled && allCount > 0" :class="$style.description">
+			<I18nT keypath="settings.api.view.info" tag="span" scope="global">
+				<template #apiPlayground>
+					<a
+						:class="$style.docLink"
+						data-test-id="api-playground-link"
+						:href="apiDocsURL"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.apiPlayground')"
+					/>
+				</template>
+				<template #webhook>
+					<a
+						:class="$style.docLink"
+						data-test-id="webhook-docs-link"
+						href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.webhook')"
+					/>
+				</template>
+				<template #documentation>
+					<a
+						:class="$style.docLink"
+						data-test-id="api-docs-link"
+						href="https://docs.n8n.io/api"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.documentation')"
+					/>
+				</template>
+			</I18nT>
 		</p>
 
 		<div v-if="isPublicApiEnabled && allCount > 0" :class="$style.toolbar">
@@ -260,38 +267,11 @@ function onOpenScopes(apiKey: ApiKey) {
 			@open-scopes="onOpenScopes"
 		/>
 
-		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.footer">
-			<div :class="$style.bottomHint">
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText(
-							`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-						)
-					}}
-				</N8nText>
-				{{ ' ' }}
-				<N8nLink
-					v-if="isSwaggerUIEnabled"
-					data-test-id="api-playground-link"
-					:to="apiDocsURL"
-					:new-window="true"
-					size="small"
-				>
-					{{ i18n.baseText('settings.api.view.apiPlayground') }}
-				</N8nLink>
-				<N8nLink
-					v-else
-					data-test-id="api-endpoint-docs-link"
-					:to="apiDocsURL"
-					:new-window="true"
-					size="small"
-				>
-					{{ i18n.baseText(`settings.api.view.external-docs`) }}
-				</N8nLink>
-			</div>
-
+		<div
+			v-if="isPublicApiEnabled && apiKeys.length && apiKeysCount > pageSize"
+			:class="$style.footer"
+		>
 			<N8nPagination
-				v-if="apiKeysCount > pageSize"
 				:current-page="page"
 				:page-size="pageSize"
 				:total="apiKeysCount"
@@ -340,24 +320,24 @@ function onOpenScopes(apiKey: ApiKey) {
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	white-space: nowrap;
-	margin-bottom: var(--spacing--xl);
-	gap: var(--spacing--sm);
+.heading {
+	margin-bottom: var(--spacing--2xs);
 }
 
-.topHint {
-	margin-top: 0;
-	margin-bottom: var(--spacing--sm);
+.description {
+	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+	margin: 0 0 var(--spacing--lg);
+}
 
-	span {
-		font-size: var(--font-size--sm);
-		line-height: var(--line-height--lg);
-		font-weight: var(--font-weight--regular);
+.docLink {
+	color: var(--color--text);
+	text-decoration: underline;
+
+	&::after {
+		content: '↗';
+		margin-left: 2px;
 	}
 }
 
@@ -382,16 +362,8 @@ function onOpenScopes(apiKey: ApiKey) {
 .footer {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
+	justify-content: flex-end;
 	margin-top: var(--spacing--sm);
-}
-
-.bottomHint {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--5xs);
 }
 
 .tabs {
