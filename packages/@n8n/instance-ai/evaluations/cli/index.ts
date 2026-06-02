@@ -282,7 +282,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -588,6 +588,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		datasetName,
 		args.filter,
 		args.exclude,
+		args.tier,
 		logger,
 	);
 	const evaluateData =
@@ -703,12 +704,14 @@ function filteredExamplesIterable(
 	datasetName: string,
 	filter: string | undefined,
 	exclude: string | undefined,
+	tier: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude).map((tc) => tc.fileSlug);
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude, tier).map((tc) => tc.fileSlug);
 	const labelParts: string[] = [];
 	if (filter) labelParts.push(`filter "${filter}"`);
 	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	if (tier) labelParts.push(`tier "${tier}"`);
 	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
@@ -901,7 +904,7 @@ function reshapeLangSmithRuns(
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
 		return { totalRuns: 0, testCases: [] };
