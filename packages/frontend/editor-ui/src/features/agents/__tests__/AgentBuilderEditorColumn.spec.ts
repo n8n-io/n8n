@@ -16,10 +16,10 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal<typeof import('vue-router')>()),
-	useRoute: () => ({ params: {} }),
-}));
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	return { ...actual, useRoute: () => ({ params: {} }) };
+});
 
 vi.mock('@n8n/design-system', () => ({
 	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
