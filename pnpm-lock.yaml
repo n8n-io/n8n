@@ -30,6 +30,9 @@ catalogs:
     '@ai-sdk/mistral':
       specifier: ^3.0.30
       version: 3.0.37
+    '@ai-sdk/openai-compatible':
+      specifier: ^2.0.37
+      version: 2.0.37
     '@chat-adapter/linear':
       specifier: ^4.28.1
       version: 4.28.1
@@ -728,6 +731,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.41
         version: 3.0.53(zod@3.25.67)
+      '@ai-sdk/openai-compatible':
+        specifier: 'catalog:'
+        version: 2.0.37(zod@3.25.67)
       '@ai-sdk/provider-utils':
         specifier: ^4.0.21
         version: 4.0.23(zod@3.25.67)
