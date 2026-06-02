@@ -181,7 +181,11 @@ function main() {
 	lines.push('| --- | --- | --- | --- |');
 	for (const check of checks) {
 		const observed =
-			check.status === 'skipped' ? 'skipped (tier not run)' : check.observed === null ? 'missing' : check.observed.toFixed(2);
+			check.status === 'skipped'
+				? 'skipped (tier not run)'
+				: check.observed === null
+					? 'missing'
+					: check.observed.toFixed(2);
 		const status =
 			check.status === 'pass'
 				? 'ok'
