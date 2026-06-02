@@ -56,6 +56,8 @@ const MAX_CONCURRENT_SCENARIOS = 99;
 
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
+	/** Base URL of the n8n instance behind `client`, forwarded for the HTML report. */
+	baseUrl: string;
 	testCase: WorkflowTestCase;
 	timeoutMs: number;
 	seededCredentialTypes: string[];
@@ -90,6 +92,7 @@ export async function runWorkflowTestCase(
 		testCase,
 		workflowBuildSuccess: false,
 		executionScenarioResults: [],
+		n8nBaseUrl: config.baseUrl,
 	};
 
 	const build = config.prebuiltWorkflowId
