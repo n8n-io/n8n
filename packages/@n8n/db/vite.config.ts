@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { mergeConfig, type Plugin } from 'vite';
+import { configDefaults } from 'vitest/config';
 
 /**
  * Vite plugin that transpiles this package's TypeORM entity files (`src/entities/**`)
@@ -110,5 +111,12 @@ export default mergeConfig(
 	}),
 	{
 		plugins: [tscDecoratorTransform()],
+		test: {
+			// Vitest 4's default exclude is only node_modules/.git — it does NOT cover dist.
+			// Without this, compiled test files left in dist (tsc never deletes orphaned
+			// output) get collected and fail (CJS `require('vitest')`). The build also
+			// excludes test files now, but this guards against pre-existing stale artifacts.
+			exclude: [...configDefaults.exclude, '**/dist/**'],
+		},
 	},
 );
