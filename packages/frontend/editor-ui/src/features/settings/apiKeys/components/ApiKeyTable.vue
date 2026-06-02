@@ -101,8 +101,8 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 		>
 			<template #[`item.label`]="{ item }">
 				<div :class="$style.name">
-					<N8nText bold size="small">{{ item.label }}</N8nText>
-					<N8nText size="xsmall" color="text-light" :class="$style.redacted">
+					<N8nText bold>{{ item.label }}</N8nText>
+					<N8nText size="small" color="text-light" :class="$style.redacted">
 						{{ item.apiKey }}
 					</N8nText>
 				</div>
@@ -114,10 +114,10 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 				<ApiKeyScopesCell :api-key="item" @open="emit('open-scopes', $event)" />
 			</template>
 			<template #[`item.expiresAt`]="{ item }">
-				<N8nText size="small">{{ formatExpiration(item.expiresAt) }}</N8nText>
+				<N8nText>{{ formatExpiration(item.expiresAt) }}</N8nText>
 			</template>
 			<template #[`item.lastUsedAt`]="{ item }">
-				<N8nText size="small" :color="item.lastUsedAt ? undefined : 'text-light'">
+				<N8nText :color="item.lastUsedAt ? undefined : 'text-light'">
 					{{ formatLastUsed(item.lastUsedAt) }}
 				</N8nText>
 			</template>
