@@ -160,7 +160,8 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				.sort();
 
 			expect(inPr).toEqual(['weather-alert']);
-			expect(inFull.length).toBe(7); // all .json files end up in full
+			const allSlugs = loadWorkflowTestCasesWithFiles().map((c) => c.fileSlug).sort();
+			expect(inFull).toEqual(allSlugs);
 		});
 
 		it('composes with --filter: tier filter applies after substring filter', () => {
@@ -179,6 +180,19 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				.map((c) => c.fileSlug)
 				.sort();
 			expect(result).toEqual(['weather-alert']);
+		});
+
+		it('throws when --tier matches no test cases (catches typos instead of silent green)', () => {
+			expect(() => loadWorkflowTestCasesWithFiles(undefined, undefined, 'prr')).toThrow(
+				/No test cases match --tier "prr"/,
+			);
+		});
+
+		it('rejects a test case that declares an empty datasets array', () => {
+			mockedReadFile.mockImplementation(() =>
+				JSON.stringify({ ...jsonParse(STUB_TEST_CASE), datasets: [] }),
+			);
+			expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/datasets/i);
 		});
 	});
 });

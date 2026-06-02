@@ -121,7 +121,8 @@ export async function syncDataset(
 		if (existingExample) {
 			if (
 				hasInputsChanged(existingExample.inputs, inputs) ||
-				hasMetadataChanged(existingExample.metadata, metadata)
+				hasMetadataChanged(existingExample.metadata, metadata) ||
+				hasSplitChanged(existingExample.split, split)
 			) {
 				toUpdate.push({
 					id: existingExample.id,
@@ -271,4 +272,13 @@ function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata)
 		e.triggerType !== (incoming.triggerType ?? '') ||
 		JSON.stringify(e.tags) !== JSON.stringify(incoming.tags ?? [])
 	);
+}
+
+// Split (file slug + datasets/tiers) is order-insensitive — compare as sets so a
+// reorder isn't a change, but adding/removing a tier is and triggers a re-sync.
+function hasSplitChanged(existing: string | string[] | undefined, incoming: string[]): boolean {
+	const current = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+	if (current.length !== incoming.length) return true;
+	const incomingSet = new Set(incoming);
+	return !current.every((s) => incomingSet.has(s));
 }

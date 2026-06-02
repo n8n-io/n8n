@@ -26,7 +26,7 @@ export const WorkflowTestCaseSchema = z.object({
 	 * splits, so subsets can be evaluated and compared independently. Defaults
 	 * to `['full']` — cases without this field run in the full suite only.
 	 */
-	datasets: z.array(z.string()).default(['full']),
+	datasets: z.array(z.string()).min(1).default(['full']),
 });
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;
