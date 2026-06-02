@@ -45,12 +45,13 @@ import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
-import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
+import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
+import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
 import { NodeCatalogService } from '@/node-catalog';
 
@@ -365,19 +366,18 @@ export class McpService {
 		);
 		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
 
-		const suggestedNodesTool = createGetSuggestedWorkflowNodesTool(
-			user,
-			this.nodeCatalogService,
-			this.telemetry,
-		);
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		server.registerTool(
-			suggestedNodesTool.name,
-			suggestedNodesTool.config,
-			suggestedNodesTool.handler,
+			bestPracticesTool.name,
+			bestPracticesTool.config,
+			bestPracticesTool.handler,
 		);
 
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
+
+		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
+		server.registerTool(validateNodeTool.name, validateNodeTool.config, validateNodeTool.handler);
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,

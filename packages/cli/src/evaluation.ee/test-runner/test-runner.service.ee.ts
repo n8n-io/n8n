@@ -4,8 +4,10 @@ import type { EvaluationConfig, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
+	TestCaseExecutionErrorCode,
 	TestCaseExecutionRepository,
 	TestRun,
+	TestRunErrorCode,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -117,7 +119,7 @@ export class TestRunnerService {
 	private validateEvaluationTriggerNode(workflow: IWorkflowBase) {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		if (!triggerNode) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_FOUND);
 		}
 
 		const { parameters, credentials, name, typeVersion } = triggerNode;
@@ -135,11 +137,13 @@ export class TestRunnerService {
 					checkNodeParameterNotEmpty(parameters?.sheetName);
 
 		if (!isConfigured) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_CONFIGURED, {
+				node_name: name,
+			});
 		}
 
 		if (triggerNode?.disabled) {
-			throw new TestRunError('EVALUATION_TRIGGER_DISABLED');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_DISABLED);
 		}
 	}
 
@@ -160,7 +164,7 @@ export class TestRunnerService {
 	private validateSetMetricsNodes(workflow: IWorkflowBase) {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		if (metricsNodes.length === 0) {
-			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.SET_METRICS_NODE_NOT_FOUND);
 		}
 
 		const unconfiguredMetricsNode = metricsNodes.find((node) => {
@@ -199,7 +203,7 @@ export class TestRunnerService {
 		});
 
 		if (unconfiguredMetricsNode) {
-			throw new TestRunError('SET_METRICS_NODE_NOT_CONFIGURED', {
+			throw new TestRunError(TestRunErrorCode.SET_METRICS_NODE_NOT_CONFIGURED, {
 				node_name: unconfiguredMetricsNode.name,
 			});
 		}
@@ -226,7 +230,7 @@ export class TestRunnerService {
 		);
 
 		if (unconfiguredSetOutputsNode) {
-			throw new TestRunError('SET_OUTPUTS_NODE_NOT_CONFIGURED', {
+			throw new TestRunError(TestRunErrorCode.SET_OUTPUTS_NODE_NOT_CONFIGURED, {
 				node_name: unconfiguredSetOutputsNode.name,
 			});
 		}
@@ -348,7 +352,7 @@ export class TestRunnerService {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 
 		if (!triggerNode) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_FOUND);
 		}
 
 		// Call custom operation to fetch the whole dataset
@@ -458,7 +462,7 @@ export class TestRunnerService {
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name]?.[0];
 
 		if (!triggerOutputData || triggerOutputData.error) {
-			throw new TestRunError('CANT_FETCH_TEST_CASES', {
+			throw new TestRunError(TestRunErrorCode.CANT_FETCH_TEST_CASES, {
 				message:
 					triggerOutputData?.error?.message ?? 'Evaluation trigger node did not produce any output',
 			});
@@ -467,7 +471,7 @@ export class TestRunnerService {
 		const triggerOutput = triggerOutputData.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
-			throw new TestRunError('TEST_CASES_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.TEST_CASES_NOT_FOUND);
 		}
 
 		return triggerOutput;
@@ -602,14 +606,14 @@ export class TestRunnerService {
 		// recoverable error code on the row instead of HTTP 500.
 		let evaluationConfigSnapshot = options?.evaluationConfigSnapshot ?? null;
 		let configToCompile: EvaluationConfig | undefined;
-		let configLookupErrorCode: 'EVALUATION_CONFIG_NOT_FOUND' | undefined;
+		let configLookupErrorCode: typeof TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND | undefined;
 		if (options?.compileFromConfig && options?.evaluationConfigId) {
 			const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
 				options.evaluationConfigId,
 				workflowId,
 			);
 			if (!config) {
-				configLookupErrorCode = 'EVALUATION_CONFIG_NOT_FOUND';
+				configLookupErrorCode = TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND;
 			} else {
 				configToCompile = config;
 				evaluationConfigSnapshot = config as unknown as IDataObject;
@@ -641,7 +645,7 @@ export class TestRunnerService {
 				workflow = this.workflowCompiler.compile(stripped, configToCompile) as typeof workflow;
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR', {
+				await this.testRunRepository.markAsError(testRun.id, TestRunErrorCode.COMPILATION_FAILED, {
 					evaluationConfigId: options?.evaluationConfigId,
 					reason: message,
 				});
@@ -953,7 +957,7 @@ export class TestRunnerService {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
 											status: 'error',
-											errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+											errorCode: TestCaseExecutionErrorCode.FAILED_TO_EXECUTE_WORKFLOW,
 											metrics: {},
 											completedAt: new Date(),
 										});
@@ -980,7 +984,7 @@ export class TestRunnerService {
 											runAt,
 											completedAt,
 											status: 'error',
-											errorCode: 'NO_METRICS_COLLECTED',
+											errorCode: TestCaseExecutionErrorCode.NO_METRICS_COLLECTED,
 										});
 										telemetryMeta.errored_test_case_count++;
 										// Predefined metrics still merge — the case ran, just had no user metrics.
@@ -1037,7 +1041,7 @@ export class TestRunnerService {
 											runAt,
 											completedAt,
 											status: 'error',
-											errorCode: 'UNKNOWN_ERROR',
+											errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
 										});
 										this.errorReporter.error(e);
 									}
@@ -1146,7 +1150,7 @@ export class TestRunnerService {
 					telemetryMeta.error_message += `: ${String(e.extra.message)}`;
 				}
 			} else {
-				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				await this.testRunRepository.markAsError(testRun.id, TestRunErrorCode.UNKNOWN_ERROR);
 				telemetryMeta.error_message = e instanceof Error ? e.message : 'UNKNOWN_ERROR';
 				throw e;
 			}

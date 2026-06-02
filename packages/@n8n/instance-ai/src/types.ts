@@ -909,9 +909,17 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
