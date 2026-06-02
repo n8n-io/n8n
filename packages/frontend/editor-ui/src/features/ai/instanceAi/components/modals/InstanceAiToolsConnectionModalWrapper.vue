@@ -60,6 +60,34 @@ interface PendingCredentialContext {
 
 const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
 
+// Serialize credential swaps so rapid picker clicks can't interleave their
+// DELETE+POST sequences and leave the wrong credential connected.
+const isSwappingCredential = ref(false);
+
+/**
+ * v1 swap: switching the credential of an already-connected server is a
+ * client-orchestrated `DELETE` then `POST`, not an atomic backend operation.
+ * There's a brief window where the user has no connection, and a race against
+ * a concurrent disconnect can fail. Acceptable for v1; revisit with a BE
+ * upsert / dedicated swap endpoint when we generalize multi-credential UX.
+ */
+async function swapOrConnect(serverSlug: string, credentialId: string): Promise<boolean> {
+	if (isSwappingCredential.value) return false;
+	isSwappingCredential.value = true;
+	try {
+		const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		if (existing) {
+			if (existing.credentialId === credentialId) return false; // silent re-pick
+			const disconnected = await mcpStore.disconnect(existing.id);
+			if (!disconnected) return false;
+		}
+		const created = await mcpStore.connect({ serverSlug, credentialId });
+		return Boolean(created);
+	} finally {
+		isSwappingCredential.value = false;
+	}
+}
+
 // ModalRoot only renders this wrapper while the modal is open, so isOpen is
 // already true on mount — kick off the lazy catalog fetch here rather than via
 // a transition watcher (which wouldn't fire on initial true).
@@ -241,13 +269,8 @@ watch(
 			return;
 		}
 
-		const created = await mcpStore.connect({
-			serverSlug: ctx.serverSlug,
-			credentialId: newCreds[0].id,
-		});
-		if (!created) return;
-
-		uiStore.closeModal(props.modalName);
+		const ok = await swapOrConnect(ctx.serverSlug, newCreds[0].id);
+		if (ok) uiStore.closeModal(props.modalName);
 	},
 );
 
@@ -265,11 +288,10 @@ async function handleSelectCredential(
 	credentialId: string,
 ) {
 	if (item.kind !== 'mcp-server') return;
-	if (item.isConnected) return;
 	const server = findServerForItem(item);
 	if (!server) return;
-	const created = await mcpStore.connect({ serverSlug: server.slug, credentialId });
-	if (created) uiStore.closeModal(props.modalName);
+	const ok = await swapOrConnect(server.slug, credentialId);
+	if (ok) uiStore.closeModal(props.modalName);
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {

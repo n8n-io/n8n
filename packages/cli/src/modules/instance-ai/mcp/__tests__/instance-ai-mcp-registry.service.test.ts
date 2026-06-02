@@ -377,6 +377,30 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('throws ConflictError when a connection for the (user, server) pair already exists', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				eventService,
+			} = createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'existing',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-other',
+			} as InstanceAiMcpRegistryConnection);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('translates unique-index violations into ConflictError', async () => {
 			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
 				createService();
