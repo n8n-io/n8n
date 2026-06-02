@@ -52,14 +52,16 @@ The markdown file must contain:
 
 Comments should be easy to copy/paste. Do not quote comments using `>` - just write them directly.
 
+When a comment suggests something different, be precise about it. Either propose the actual code change (a short snippet or `suggestion` block the author can apply directly) or, if a full snippet isn't practical, state the concrete direction (which function/value/approach to use) rather than a vague hint. Avoid comments like "this could be cleaner" with no actionable next step.
+
 ### General summary comment
 
 Before the line-by-line comments, include a `## General` section for top-level, PR-wide feedback
 that doesn't belong on a single line - e.g. design or architecture concerns, an implicit/type-unsafe
 contract between files, repeated patterns, scope, or missing test coverage of the actual change.
 
-- Keep it to 1-3 short paragraphs, in the same tone as the inline comments.
-- Only include points that span the PR or capture a design choice; don't restate individual line comments here.
+- Keep it short. Don't repeat or summarize the individual line comments here.
+- The exception is a big design issue with the overall solution: when the whole approach is wrong or has a structural problem, explain the overall idea here rather than scattering it across individual comments.
 - If there's genuinely nothing PR-wide to raise, write a single line saying the change looks reasonable and scoped, and move on - do not pad it.
 
 ## Line number rules
