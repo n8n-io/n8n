@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'instance_ai_mcp_registry_connections';
 
-export class CreateInstanceAiMcpRegistryConnectionTable1784000000022
+export class CreateInstanceAiMcpRegistryConnectionTable1784000000023
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {

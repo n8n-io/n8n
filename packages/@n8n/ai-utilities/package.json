@@ -68,16 +68,19 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist"
   ],
   "devDependencies": {
     "@types/json-schema": "^7.0.15",
-    "jest-mock-extended": "^3.0.4",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
     "tsx": "catalog:",
     "axios": "catalog:",
