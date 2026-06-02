@@ -44,8 +44,6 @@ import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
-const DEFAULT_LAST_MESSAGES = 10;
-
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 interface DeferredToolOptions {
@@ -258,7 +256,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
-		} else if ('memory' in m && 'lastMessages' in m) {
+		} else if ('memory' in m) {
 			// MemoryConfig — validate the same invariants as the builder path
 			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
@@ -268,11 +266,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			typeof m.saveMessages === 'function'
 		) {
 			// Bare BuiltMemory — wrap in minimal config
-			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+			this.memoryConfig = { memory: m };
 		} else {
 			throw new Error(
-				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+				'Invalid memory configuration. Use: new Memory() for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -809,7 +807,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
-			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,

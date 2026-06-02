@@ -69,9 +69,9 @@ function formatDuration(ms: number): string {
 }
 
 function originLabel(thread: AgentExecutionThread): string {
-	return i18n.baseText(
-		thread.parentThreadId ? 'agentSessions.origin.subAgent' : 'agentSessions.origin.agent',
-	);
+	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
+	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
+	return i18n.baseText('agentSessions.origin.agent');
 }
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {

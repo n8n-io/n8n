@@ -1,27 +1,29 @@
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
-	AgentCredentialIntegrationSchema,
+	AgentIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
-	type AgentScheduleConfig,
 	type AgentSkill,
 	type AgentSseEvent,
+	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
 	CreateAgentSkillDto,
-	isAgentCredentialIntegration,
+	PaginationDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentScheduleDto,
 	UpdateAgentSkillDto,
 	AgentDisconnectIntegrationDto,
 	PublishAgentDto,
+	CreateAgentTaskDto,
+	UpdateAgentTaskDto,
+	type AgentTaskDto,
+	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -33,6 +35,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -55,11 +58,11 @@ import {
 	pumpChunks,
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
+import { AgentTaskService } from './agent-task.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -96,6 +99,10 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
+			if (name === BUILDER_TOOLS.CREATE_TASK) {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
 			if (name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
 				send({ type: 'tool-updated' });
 				streamingToolName = undefined;
@@ -111,16 +118,16 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
+		private readonly agentTaskService: AgentTaskService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
-		const integrationParseResult = await AgentCredentialIntegrationSchema.safeParseAsync(dto);
+		const integrationParseResult = await AgentIntegrationSchema.safeParseAsync(dto);
 		if (!integrationParseResult.success) {
 			throw new BadRequestError(integrationParseResult.error.message);
 		}
@@ -135,19 +142,21 @@ export class AgentsController {
 		agent: Agent,
 		projectId: string,
 		user: User,
-	): Promise<Agent & { isRunnable: boolean }> {
+	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
 			user,
 		);
-		const { missing } = await this.agentsService.validateAgentIsRunnable(
-			agent.id,
-			projectId,
-			credentialProvider,
-		);
+		const [{ missing }, hasPublishHistory] = await Promise.all([
+			this.agentsService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+			this.agentsService.hasPublishHistory(agent.id),
+		]);
 
-		return Object.assign(agent, { isRunnable: missing.length === 0 });
+		return Object.assign(agent, {
+			isRunnable: missing.length === 0,
+			hasPublishHistory,
+		});
 	}
 
 	@Post('/')
@@ -398,12 +407,13 @@ export class AgentsController {
 	@Get('/:agentId/files')
 	@ProjectScope('agent:read')
 	async listFiles(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		return await this.agentKnowledgeService.listFiles(agentId, req.params.projectId);
+		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
 	@Post('/:agentId/files', {
@@ -416,6 +426,7 @@ export class AgentsController {
 			fileUploadError?: Error;
 		},
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
 		const files = req.files ?? [];
@@ -433,7 +444,7 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, req.params.projectId, files);
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -446,13 +457,14 @@ export class AgentsController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, req.params.projectId, fileId);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		return { success: true };
 	}
 
@@ -509,6 +521,38 @@ export class AgentsController {
 	) {
 		const agent = await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Post('/:agentId/revert-to-version')
+	@ProjectScope('agent:update')
+	async revertToVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: RevertAgentToVersionDto,
+	) {
+		const agent = await this.agentsService.revertToVersion(
+			agentId,
+			req.params.projectId,
+			payload.versionId,
+		);
+		return await this.withRunnableState(agent, req.params.projectId, req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ProjectScope('agent:read')
+	async listVersions(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentsService.listPublishHistory(
+			agentId,
+			req.params.projectId,
+			query.take,
+			query.skip,
+		);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -921,61 +965,72 @@ export class AgentsController {
 		return { status: 'disconnected' };
 	}
 
-	@Get('/:agentId/integrations/schedule')
+	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	@Get('/:agentId/tasks')
 	@ProjectScope('agent:read')
-	async getScheduleIntegration(
+	async listTasks(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return this.agentScheduleService.getConfig(agent);
+	): Promise<AgentTaskDto[]> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.list(agentId);
 	}
 
-	@Put('/:agentId/integrations/schedule')
+	@Post('/:agentId/tasks')
 	@ProjectScope('agent:update')
-	async updateScheduleIntegration(
+	async createTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentScheduleDto,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.saveConfig(
-			agent,
-			payload.cronExpression,
-			payload.wakeUpPrompt,
-		);
+		@Body payload: CreateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.create(agentId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/activate')
+	@Patch('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async activateScheduleIntegration(
+	async updateTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		return await this.agentScheduleService.activate(agent);
+		@Param('taskId') taskId: string,
+		@Body payload: UpdateAgentTaskDto,
+	): Promise<AgentTaskDto> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		return await this.agentTaskService.update(agentId, taskId, payload);
 	}
 
-	@Post('/:agentId/integrations/schedule/deactivate')
+	@Delete('/:agentId/tasks/:taskId')
 	@ProjectScope('agent:update')
-	async deactivateScheduleIntegration(
+	async deleteTask(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<AgentScheduleConfig> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		@Param('taskId') taskId: string,
+	): Promise<{ success: true }> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await this.agentTaskService.delete(agentId, taskId);
+		return { success: true };
+	}
 
-		return await this.agentScheduleService.deactivate(agent);
+	@Post('/:agentId/tasks/:taskId/run')
+	@ProjectScope('agent:execute')
+	async runTaskNow(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('taskId') taskId: string,
+	): Promise<{ success: true }> {
+		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await this.agentTaskService.runNow(agentId, taskId, req.user.id);
+		return { success: true };
 	}
 
 	@Get('/:agentId/integrations/status')
@@ -988,20 +1043,14 @@ export class AgentsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? [])
-			.filter(isAgentCredentialIntegration)
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...('settings' in i ? { settings: i.settings } : {}),
-			}));
-		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
-		const connectedIntegrations = [...chatIntegrations, ...scheduleIntegrations];
-
+		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
+			type: i.type,
+			credentialId: i.credentialId,
+			...('settings' in i ? { settings: i.settings } : {}),
+		}));
 		return {
-			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
-			integrations: connectedIntegrations,
+			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: chatIntegrations,
 		};
 	}
 

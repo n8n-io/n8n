@@ -434,6 +434,41 @@ describe('useCanvasOperations', () => {
 				);
 			});
 		});
+
+		it('re-evaluates all credential issues when the added node is a trigger', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { addNode } = useCanvasOperations();
+			addNode({ type: 'trigger', typeVersion: 1 }, mockNodeTypeDescription({ name: 'trigger' }));
+
+			await waitFor(() => expect(updateNodesCredentialsIssuesSpy).toHaveBeenCalled());
+		});
+
+		it('does not re-evaluate all credential issues when the added node is not a trigger', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { addNode } = useCanvasOperations();
+			addNode({ type: 'set', typeVersion: 1 }, mockNodeTypeDescription({ name: 'set' }));
+
+			await nextTick();
+			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('resolveNodePosition', () => {
@@ -1450,6 +1485,48 @@ describe('useCanvasOperations', () => {
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
+		});
+
+		it('re-evaluates all credential issues when the deleted node is a trigger', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'trigger-1', type: 'trigger', name: 'Trigger' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id);
+
+			expect(updateNodesCredentialsIssuesSpy).toHaveBeenCalled();
+		});
+
+		it('does not re-evaluate all credential issues when the deleted node is not a trigger', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'set-1', type: 'set', name: 'Set' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id);
+
+			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
 		});
 
 		it('should delete node without tracking history', () => {

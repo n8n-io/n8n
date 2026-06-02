@@ -5,8 +5,10 @@ import type {
 	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
-	AgentScheduleConfig,
+	AgentTaskConfig,
+	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
@@ -160,53 +162,70 @@ export const getIntegrationStatus = async (
 	);
 };
 
-export const getScheduleIntegration = async (
+export const getAgentTasks = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+): Promise<AgentTaskDto[]> => {
+	return await makeRestApiRequest<AgentTaskDto[]>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
 	);
 };
 
-export const updateScheduleIntegration = async (
+export const createAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	data: { cronExpression: string; wakeUpPrompt?: string },
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
-		context,
-		'PUT',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
-		data,
-	);
-};
-
-export const activateScheduleIntegration = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	payload: AgentTaskConfig & { enabled?: boolean },
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/activate`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
+		payload,
 	);
 };
 
-export const deactivateScheduleIntegration = async (
+export const updateAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	taskId: string,
+	payload: Partial<AgentTaskConfig>,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+		payload,
+	);
+};
+
+export const deleteAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+	);
+};
+
+export const runAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/deactivate`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
 	);
 };
 
@@ -295,11 +314,13 @@ export const publishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	versionId?: string,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
+		versionId ? { versionId } : undefined,
 	);
 };
 
@@ -324,6 +345,34 @@ export const revertAgentToPublished = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/revert-to-published`,
+	);
+};
+
+export const revertAgentToVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/revert-to-version`,
+		{ versionId },
+	);
+};
+
+export const listAgentVersions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentVersionListItemDto[]> => {
+	return await makeRestApiRequest<AgentVersionListItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions`,
+		params,
 	);
 };
 

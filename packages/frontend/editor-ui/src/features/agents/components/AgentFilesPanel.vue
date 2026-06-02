@@ -115,7 +115,7 @@ function onFilesSelected(event: Event) {
 				<N8nTooltip :content="i18n.baseText('agents.builder.files.upload')" placement="top">
 					<N8nIconButton
 						icon="plus"
-						variant="ghost"
+						variant="subtle"
 						size="small"
 						icon-size="medium"
 						:disabled="isUploadDisabled"

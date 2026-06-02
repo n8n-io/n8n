@@ -60,7 +60,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
 	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
@@ -108,6 +107,15 @@ const AgentJsonSkillConfigSchema = z.object({
 		.string()
 		.min(1)
 		.regex(/^[A-Za-z0-9_-]+$/),
+});
+
+const AgentJsonTaskConfigSchema = z.object({
+	type: z.literal('task'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[A-Za-z0-9_-]+$/),
+	enabled: z.boolean(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([
@@ -245,6 +253,7 @@ export const AgentJsonConfigSchema = z.object({
 	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationSchema).optional(),
 	mcpServers: z
@@ -293,6 +302,7 @@ export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: '
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;

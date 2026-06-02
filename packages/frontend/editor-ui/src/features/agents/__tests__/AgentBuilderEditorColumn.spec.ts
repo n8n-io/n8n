@@ -47,6 +47,9 @@ vi.mock('@n8n/design-system/components/N8nOption', () => ({
 	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
 }));
 
+// First mount of this SFC eats the Vite transform cost; give it headroom.
+vi.setConfig({ testTimeout: 30_000 });
+
 async function mountColumn() {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
@@ -59,7 +62,7 @@ async function mountColumn() {
 				name: 'Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Help the user.',
-				memory: { enabled: true, storage: 'n8n', lastMessages: 10 },
+				memory: { enabled: true, storage: 'n8n' },
 			},
 			agent: null,
 			projectId: 'project-1',

@@ -45,6 +45,7 @@ const props = defineProps<{
 	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
+	tasksReloadKey?: number;
 }>();
 
 const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
@@ -64,6 +65,8 @@ const emit = defineEmits<{
 	'delete-file': [file: AgentFileDto];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -186,6 +189,8 @@ function onRemoveSubAgent(agentId: string) {
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -196,6 +201,8 @@ function onRemoveSubAgent(agentId: string) {
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
@@ -318,6 +325,19 @@ function onRemoveSubAgent(agentId: string) {
 							embedded
 							data-testid="agent-memory-panel"
 							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
+						<AgentFilesPanel
+							:files="agentFiles"
+							:disabled="childrenDisabled"
+							:loading="agentFilesLoading"
+							:uploading="agentFilesUploading"
+							:deleting-file-id="deletingAgentFileId"
+							data-testid="agent-files-card"
+							@upload-files="emit('upload-files', $event)"
+							@delete-file="emit('delete-file', $event)"
 						/>
 					</N8nCard>
 

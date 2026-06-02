@@ -10,6 +10,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_TASK_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
@@ -75,6 +76,19 @@ export const AgentsModule: FrontendModuleDescription = {
 					projectId: '',
 					agentId: '',
 					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_TASK_MODAL_KEY,
+			component: async () => await import('./components/AgentTaskModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					isPublished: false,
+					onSaved: () => {},
 				},
 			},
 		},

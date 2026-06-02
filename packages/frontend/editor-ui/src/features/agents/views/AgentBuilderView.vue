@@ -3,11 +3,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-} from '@n8n/api-types';
+import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -58,7 +54,6 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
@@ -66,6 +61,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
@@ -103,6 +99,7 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 // UI state
 const isBuildChatStreaming = ref(false);
 const initialPrompt = ref<string | undefined>();
+const isVersionHistoryOpen = ref(false);
 
 function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
@@ -150,7 +147,10 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+/** Bumped on builder config-updated so the Tasks panel reloads (e.g. after create_task). */
+const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
+const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const isChatFullWidth = ref(false);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -423,16 +423,33 @@ function startChat(msg: string) {
 
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
+	void versionHistoryPanel.value?.refresh();
 }
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
+	void versionHistoryPanel.value?.refresh();
+}
+
+function onToggleVersionHistory() {
+	const next = !isVersionHistoryOpen.value;
+	if (next && isChatFullWidth.value) {
+		// Make room for the panel — chat-full-width hides the editor column
+		// and would leave the resizer at 100%, squashing the new panel.
+		isChatFullWidth.value = false;
+	}
+	isVersionHistoryOpen.value = next;
+}
+
+function onCloseVersionHistory() {
+	isVersionHistoryOpen.value = false;
 }
 
 async function onReverted(updated: AgentResource) {
 	agent.value = updated;
 	agentName.value = updated.name;
 	await fetchConfig(projectId.value, agentId.value);
+	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
 }
@@ -566,7 +583,6 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 			...config.memory,
 			enabled: true,
 			storage: 'n8n',
-			lastMessages: config.memory?.lastMessages ?? DEFAULT_AGENT_MEMORY_LAST_MESSAGES,
 		},
 	};
 }
@@ -602,9 +618,10 @@ async function onConfigUpdated() {
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
+	tasksReloadKey.value += 1;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
 }
@@ -722,7 +739,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+		const triggerTypes = integrations.map((i) => i.type);
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
@@ -956,6 +973,13 @@ function onRemoveSkill(id: string) {
 	onConfigFieldUpdate({ skills: nextSkills });
 }
 
+function onToggleTask(payload: { id: string; enabled: boolean }) {
+	const nextTasks = (localConfig.value?.tasks ?? []).map((taskRef) =>
+		taskRef.id === payload.id ? { ...taskRef, enabled: payload.enabled } : taskRef,
+	);
+	onConfigFieldUpdate({ tasks: nextTasks });
+}
+
 function onOpenAddSkillModal() {
 	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
@@ -1066,6 +1090,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:current-session-title="currentSessionTitle"
 			:session-options="sessionOptions"
 			:before-revert-to-published="settleAutosave"
+			:is-version-history-open="isVersionHistoryOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@new-chat="onNewChat"
@@ -1075,6 +1100,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@toggle-version-history="onToggleVersionHistory"
 		/>
 		<div
 			ref="builderContainer"
@@ -1159,6 +1185,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:can-edit-agent="canEditAgent"
+				:tasks-reload-key="tasksReloadKey"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"
@@ -1174,6 +1201,18 @@ function onSwitchAgent(nextAgentId: string) {
 				@remove-skill="onRemoveSkill"
 				@update:connected-triggers="onConnectedTriggersUpdate"
 				@trigger-added="onTriggerAdded"
+				@toggle-task="onToggleTask"
+				@tasks-changed="onConfigUpdated"
+			/>
+
+			<AgentVersionHistoryPanel
+				v-if="!isPreviewMode && isVersionHistoryOpen"
+				ref="versionHistoryPanel"
+				:project-id="projectId"
+				:agent-id="agentId"
+				@close="onCloseVersionHistory"
+				@reverted="onReverted"
+				@published="onPublished"
 			/>
 		</div>
 	</div>
