@@ -202,19 +202,24 @@ function handleSave() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--6xs);
-	padding: var(--spacing--5xs) 0;
-	line-height: 1.3;
+	margin: var(--spacing--5xs) 0;
+	padding-right: var(--spacing--md);
+	white-space: normal;
+	max-width: 360px;
 }
 
 .optionLabel {
 	color: var(--color--text);
 	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--md);
+	overflow-wrap: break-word;
 }
 
 .optionDescription {
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
-	white-space: normal;
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--xl);
 }
 
 .footer {
