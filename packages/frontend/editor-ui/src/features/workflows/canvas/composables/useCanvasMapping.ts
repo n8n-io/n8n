@@ -29,6 +29,8 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
+import { buildCollapsedGroupView } from '../groups/collapsedGroupView';
+import type { CollapsedGroupNodeDescriptor } from '../groups/collapsedGroupView';
 import type {
 	ExecutionStatus,
 	ExecutionSummary,
@@ -566,10 +568,80 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
+	// View-layer transform for collapsed groups: which members to hide, the
+	// synthetic group nodes to render, and how to reroute / drop edges. The
+	// workflow document is never mutated — collapse is display only.
+	const collapsedGroupView = computed(() => {
+		const collapsedGroups = workflowDocumentStore.value.allGroups
+			.filter((group) => group.collapsed)
+			.map((group) => ({ id: group.id, name: group.name, nodeIds: group.nodeIds }));
+
+		if (collapsedGroups.length === 0) {
+			return {
+				hiddenNodeIds: new Set<string>(),
+				nodes: [] as CollapsedGroupNodeDescriptor[],
+				connectionRewrites: new Map(),
+				droppedConnectionIds: new Set<string>(),
+			};
+		}
+
+		const nodePositionsById = new Map(
+			nodes.value.map((node) => [node.id, { x: node.position[0], y: node.position[1] }]),
+		);
+		const canvasConnections = mapLegacyConnectionsToCanvasConnections(
+			connections.value ?? [],
+			nodes.value ?? [],
+		);
+		return buildCollapsedGroupView({ collapsedGroups, canvasConnections, nodePositionsById });
+	});
+
+	function buildCollapsedGroupCanvasNode(descriptor: CollapsedGroupNodeDescriptor): CanvasNode {
+		const data: CanvasNodeData = {
+			id: descriptor.nodeId,
+			name: descriptor.title,
+			subtitle: '',
+			type: CanvasNodeRenderType.CollapsedGroup,
+			typeVersion: 1,
+			disabled: false,
+			connections: {
+				[CanvasConnectionMode.Input]: {},
+				[CanvasConnectionMode.Output]: {},
+			},
+			issues: { validation: [], visible: false },
+			execution: { running: false },
+			runData: { iterations: 0, visible: false },
+			render: {
+				type: CanvasNodeRenderType.CollapsedGroup,
+				options: {
+					groupId: descriptor.groupId,
+					title: descriptor.title,
+					incoming: descriptor.incoming,
+					outgoing: descriptor.outgoing,
+				},
+			},
+		};
+
+		return {
+			id: descriptor.nodeId,
+			label: descriptor.title,
+			type: 'canvas-node',
+			position: descriptor.position,
+			data,
+			// Draggable so the whole group can be moved while collapsed; the
+			// layer translates the members on drag-stop. Not selectable/deletable
+			// since it is a synthetic, non-persisted node.
+			draggable: true,
+			selectable: false,
+			deletable: false,
+		};
+	}
+
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
+
+		const { hiddenNodeIds, nodes: collapsedGroupNodes } = collapsedGroupView.value;
 
 		return [
 			...nodes.value.map<CanvasNode>((node) => {
@@ -613,27 +685,46 @@ export function useCanvasMapping({
 					data,
 					...additionalNodePropertiesById.value[node.id],
 					draggable: node.draggable,
+					// Members of a collapsed group are hidden (kept on the canvas so
+					// their positions stay available). Always emit an explicit boolean
+					// — omitting it lets Vue Flow retain a stale `hidden: true`.
+					hidden: hiddenNodeIds.has(node.id),
 				};
 			}),
+			...collapsedGroupNodes.map(buildCollapsedGroupCanvasNode),
 		];
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
-		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
-			(connection) => {
-				const type = getConnectionType(connection);
-				const label = getConnectionLabel(connection);
-				const data = getConnectionData(connection);
+		const { connectionRewrites, droppedConnectionIds } = collapsedGroupView.value;
+		const result: CanvasConnection[] = [];
 
-				return {
-					...connection,
-					data,
-					type,
-					label,
-					markerEnd: MarkerType.ArrowClosed,
-				};
-			},
-		);
+		for (const connection of mapLegacyConnectionsToCanvasConnections(
+			connections.value ?? [],
+			nodes.value ?? [],
+		)) {
+			// Internal edge of a collapsed group — hide it.
+			if (droppedConnectionIds.has(connection.id)) continue;
+
+			// External edge of a collapsed group — reattach its collapsed endpoint
+			// to the synthetic group node's left/right handle.
+			const rewrite = connectionRewrites.get(connection.id);
+			const base = rewrite ? { ...connection, ...rewrite } : connection;
+
+			const type = getConnectionType(base);
+			const label = getConnectionLabel(base);
+			const data = getConnectionData(base);
+
+			result.push({
+				...base,
+				data,
+				type,
+				label,
+				markerEnd: MarkerType.ArrowClosed,
+			});
+		}
+
+		return result;
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

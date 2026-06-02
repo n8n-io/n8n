@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useVueFlow, type GraphNode } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
@@ -7,6 +7,17 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
+import { getGroupFrameRects } from '../../../groups/groupFrame';
+import {
+	groupIdFromCollapsedNodeId,
+	isCollapsedGroupNodeId,
+} from '../../../groups/collapsedGroupView';
+import {
+	computeCollapseLayout,
+	computeExpandLayout,
+	type GroupExpandDeltas,
+	type LayoutNode,
+} from '../../../groups/layout';
 import CanvasNodeGroupOverlay from './CanvasNodeGroupOverlay.vue';
 
 const props = withDefaults(
@@ -26,7 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { findNode, updateNode, viewport } = useVueFlow();
+const { findNode, updateNode, viewport, getNodes, onNodeDragStart, onNodeDragStop } = useVueFlow();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 
 function getMembers(group: IWorkflowGroup): GraphNode[] {
@@ -45,6 +56,153 @@ function onTitleFocused(id: string) {
 const visibleGroups = computed(() =>
 	workflowDocumentStore.value.allGroups.map((group) => ({ group, members: getMembers(group) })),
 );
+
+// Reversible push records, keyed by group id. Produced by an expand and
+// consumed by the matching collapse so pushed nodes are pulled back. Session
+// state only — never persisted. If lost (e.g. reload), a subsequent collapse
+// simply won't pull nodes back, which is a safe degradation.
+const expandDeltasByGroup = new Map<string, GroupExpandDeltas>();
+
+// Snapshot of every visible canvas node for the layout algorithm. Hidden nodes
+// (members of other collapsed groups) and synthetic collapsed-group nodes are
+// excluded — they aren't free-standing obstacles to push.
+function getLayoutNodes(): LayoutNode[] {
+	const out: LayoutNode[] = [];
+	for (const node of getNodes.value) {
+		if (node.hidden || isCollapsedGroupNodeId(node.id)) continue;
+		out.push({
+			id: node.id,
+			position: { x: node.position.x, y: node.position.y },
+			size: { width: node.dimensions.width, height: node.dimensions.height },
+		});
+	}
+	return out;
+}
+
+function applyMoves(moves: Array<{ id: string; position: { x: number; y: number } }>) {
+	if (moves.length === 0) return;
+	for (const move of moves) {
+		updateNode(move.id, { position: move.position });
+	}
+	// Reuse the existing persistence path (update:nodes:position).
+	emit('move-members', moves);
+}
+
+// Run the push (expand) / pull-back (collapse) layout for a group whose
+// collapsed state just changed. Member hiding + edge rerouting is handled
+// reactively by the canvas mapping; this only repositions surrounding nodes.
+function runLayoutForToggle(groupId: string, collapsing: boolean) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	const members = getMembers(group);
+	if (members.length === 0) return;
+	const rects = getGroupFrameRects(members);
+	if (!rects) return;
+
+	const expandedRect = {
+		x: rects.x,
+		y: rects.y,
+		width: rects.expanded.width,
+		height: rects.expanded.height,
+	};
+	const collapsedRect = {
+		x: rects.x,
+		y: rects.y,
+		width: rects.collapsed.width,
+		height: rects.collapsed.height,
+	};
+
+	if (collapsing) {
+		const { moves } = computeCollapseLayout({
+			nodes: getLayoutNodes(),
+			memberIds: group.nodeIds,
+			collapsedRect,
+			expandedRect,
+			expandDeltas: expandDeltasByGroup.get(groupId),
+		});
+		applyMoves(moves);
+		expandDeltasByGroup.delete(groupId);
+	} else {
+		const { moves, expandDeltas } = computeExpandLayout({
+			nodes: getLayoutNodes(),
+			memberIds: group.nodeIds,
+			collapsedRect,
+			expandedRect,
+		});
+		applyMoves(moves);
+		expandDeltasByGroup.set(groupId, expandDeltas);
+	}
+}
+
+// The overlay's chevron only collapses (it only renders while expanded); the
+// synthetic collapsed node's chevron expands by flipping the flag directly.
+// Either way the layout below reacts to the state change.
+function onToggleCollapsed(groupId: string) {
+	if (props.readOnly) return;
+	const store = workflowDocumentStore.value;
+	const group = store.getGroupById(groupId);
+	if (!group) return;
+	store.setGroupCollapsed(groupId, !(group.collapsed ?? false));
+}
+
+// React to collapsed-state transitions (from any trigger) and run the layout.
+// On first observation we only record state — existing nodes are never
+// repositioned on load.
+const lastCollapsedState = new Map<string, boolean>();
+watch(
+	() =>
+		workflowDocumentStore.value.allGroups.map((group) => ({
+			id: group.id,
+			collapsed: group.collapsed ?? false,
+		})),
+	(groups) => {
+		const seen = new Set<string>();
+		for (const { id, collapsed } of groups) {
+			seen.add(id);
+			const previous = lastCollapsedState.get(id);
+			lastCollapsedState.set(id, collapsed);
+			if (previous === undefined || previous === collapsed) continue;
+			runLayoutForToggle(id, collapsed);
+		}
+		for (const id of [...lastCollapsedState.keys()]) {
+			if (!seen.has(id)) lastCollapsedState.delete(id);
+		}
+	},
+	{ deep: true, immediate: true },
+);
+
+// Dragging the collapsed group box moves the whole group. Vue Flow drags the
+// synthetic node; on drop we translate its (hidden) members by the same delta
+// and persist, after which the box re-derives to the dragged position.
+const collapsedDragStartById = new Map<string, { x: number; y: number }>();
+
+onNodeDragStart(({ node }) => {
+	if (!isCollapsedGroupNodeId(node.id)) return;
+	collapsedDragStartById.set(node.id, { x: node.position.x, y: node.position.y });
+});
+
+onNodeDragStop(({ node }) => {
+	const groupId = groupIdFromCollapsedNodeId(node.id);
+	if (!groupId) return;
+	const start = collapsedDragStartById.get(node.id);
+	collapsedDragStartById.delete(node.id);
+	if (!start || props.readOnly) return;
+
+	const dx = node.position.x - start.x;
+	const dy = node.position.y - start.y;
+	if (dx === 0 && dy === 0) return;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+
+	const moves: Array<{ id: string; position: { x: number; y: number } }> = [];
+	for (const id of group.nodeIds) {
+		const member = findNode(id);
+		if (!member) continue;
+		moves.push({ id, position: { x: member.position.x + dx, y: member.position.y + dy } });
+	}
+	applyMoves(moves);
+});
 
 type DragState = {
 	initialMouseX: number;
@@ -134,6 +292,7 @@ function onHeaderDragStart(groupId: string, event: MouseEvent) {
 			@update:name="workflowDocumentStore.updateName"
 			@title:focused="onTitleFocused"
 			@ungroup="workflowDocumentStore.deleteGroup"
+			@toggle-collapsed="onToggleCollapsed"
 			@header:dragstart="onHeaderDragStart"
 		/>
 	</Teleport>

@@ -246,6 +246,7 @@ describe('useCanvasMapping', () => {
 					type: 'canvas-node',
 					position: expect.anything(),
 					draggable: undefined,
+					hidden: false,
 					data: {
 						id: manualTriggerNode.id,
 						name: manualTriggerNode.name,

@@ -158,4 +158,24 @@ describe('CanvasNodeGroupOverlay', () => {
 		const wrapper = render({ readOnly: true });
 		expect(wrapper.queryByTestId('canvas-node-group-ungroup')).toBeNull();
 	});
+
+	describe('collapse / expand', () => {
+		const collapsedGroup: IWorkflowGroup = { ...baseGroup, collapsed: true };
+
+		it('emits toggle-collapsed with the group id when the chevron is clicked', async () => {
+			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle-collapsed'));
+			expect(wrapper.emitted()['toggle-collapsed']).toEqual([['g1']]);
+		});
+
+		it('renders nothing while collapsed (the synthetic node represents it)', () => {
+			const wrapper = render({ group: collapsedGroup });
+			expect(wrapper.queryByTestId('canvas-node-group')).toBeNull();
+		});
+
+		it('does not render the collapse toggle in read-only mode', () => {
+			const wrapper = render({ readOnly: true });
+			expect(wrapper.queryByTestId('canvas-node-group-toggle-collapsed')).toBeNull();
+		});
+	});
 });

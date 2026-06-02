@@ -3060,6 +3060,9 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	/** When true the group is rendered as a compact box and its member nodes
+	 * are hidden on the canvas. Defaults to expanded (undefined / false). */
+	collapsed?: boolean;
 }
 
 export interface IWorkflowBase {

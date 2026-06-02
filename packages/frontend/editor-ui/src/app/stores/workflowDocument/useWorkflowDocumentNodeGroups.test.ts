@@ -89,6 +89,33 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('setGroupCollapsed', () => {
+		it('sets the collapsed flag on an existing group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.setGroupCollapsed(group.id, true);
+			expect(nodeGroups.getGroupById(group.id)?.collapsed).toBe(true);
+		});
+
+		it('expands a collapsed group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.setGroupCollapsed(group.id, true);
+			nodeGroups.setGroupCollapsed(group.id, false);
+			expect(nodeGroups.getGroupById(group.id)?.collapsed).toBe(false);
+		});
+
+		it('does not mark state dirty when the value is unchanged', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			const dirtySpy = vi.fn();
+			nodeGroups.onStateDirty(dirtySpy);
+			nodeGroups.setGroupCollapsed(group.id, false);
+			expect(dirtySpy).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for an unknown group id', () => {
+			expect(() => nodeGroups.setGroupCollapsed('missing', true)).not.toThrow();
+		});
+	});
+
 	describe('addNodesToGroup', () => {
 		it('appends new node ids to an existing group', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'X');

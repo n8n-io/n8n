@@ -51,6 +51,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	CollapsedGroup = 'n8n-nodes-internal.collapsedGroup',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -86,6 +87,23 @@ export type CanvasNodeAddNodesRender = {
 export type CanvasNodeChoicePromptRender = {
 	type: CanvasNodeRenderType.ChoicePrompt;
 	options: Record<string, never>;
+};
+
+export type CanvasCollapsedGroupHandle = {
+	handleId: string;
+	type: NodeConnectionType;
+};
+
+export type CanvasNodeCollapsedGroupRender = {
+	type: CanvasNodeRenderType.CollapsedGroup;
+	options: {
+		groupId: string;
+		title: string;
+		// External connections, rerouted onto this box: inputs render on the
+		// left edge, outputs on the right. One handle per external connection.
+		incoming: CanvasCollapsedGroupHandle[];
+		outgoing: CanvasCollapsedGroupHandle[];
+	};
 };
 
 export type CanvasNodeStickyNoteRender = {
@@ -128,7 +146,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeCollapsedGroupRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

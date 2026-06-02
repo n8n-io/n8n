@@ -3,16 +3,11 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
-import { getRectOfNodes } from '@vue-flow/core';
 import type { GraphNode } from '@vue-flow/core';
 
 import type { IWorkflowGroup } from 'n8n-workflow';
-import {
-	GROUP_PADDING_X as PADDING_X,
-	GROUP_PADDING_Y_TOP as PADDING_Y_TOP,
-	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
-	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
-} from '../../../stores/canvasNodeGroups.constants';
+import { GROUP_HEADER_HEIGHT as HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+import { getGroupFrameRects } from '../../../groups/groupFrame';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
@@ -33,28 +28,29 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	'toggle-collapsed': [id: string];
 	'header:dragstart': [id: string, event: MouseEvent];
 }>();
 
 const i18n = useI18n();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 
+const isCollapsed = computed(() => props.group.collapsed ?? false);
+
+// The overlay only renders the EXPANDED frame. A collapsed group is drawn as a
+// synthetic canvas node (CanvasNodeCollapsedGroup) instead, so the overlay
+// returns null while collapsed.
 const layout = computed(() => {
-	if (props.memberNodes.length === 0) {
-		return null;
-	}
-	const rect = getRectOfNodes(props.memberNodes);
-	const wrapperX = rect.x - PADDING_X;
-	const wrapperY = rect.y - PADDING_Y_TOP - HEADER_HEIGHT;
-	const wrapperWidth = rect.width + 2 * PADDING_X;
-	const wrapperHeight = HEADER_HEIGHT + rect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM;
+	if (isCollapsed.value) return null;
+	const rects = getGroupFrameRects(props.memberNodes);
+	if (!rects) return null;
 	return {
-		x: wrapperX,
-		y: wrapperY,
-		width: wrapperWidth,
-		height: wrapperHeight,
-		frameTop: HEADER_HEIGHT,
-		frameHeight: rect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM,
+		x: rects.x,
+		y: rects.y,
+		width: rects.expanded.width,
+		height: rects.expanded.height,
+		frameTop: rects.expanded.frameTop,
+		frameHeight: rects.expanded.frameHeight,
 	};
 });
 
@@ -64,6 +60,10 @@ function onTitleUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', props.group.id);
+}
+
+function onToggleCollapsedClick() {
+	emit('toggle-collapsed', props.group.id);
 }
 
 function onHeaderMouseDown(event: MouseEvent) {
@@ -110,6 +110,17 @@ watch(
 			data-test-id="canvas-node-group-header"
 			@mousedown="onHeaderMouseDown"
 		>
+			<N8nIconButton
+				v-if="!readOnly"
+				:class="$style.collapseToggle"
+				variant="ghost"
+				size="small"
+				icon="chevron-down"
+				:aria-label="i18n.baseText('canvas.nodeGroup.collapse')"
+				data-test-id="canvas-node-group-toggle-collapsed"
+				@click.stop="onToggleCollapsedClick"
+				@mousedown.stop
+			/>
 			<div v-if="!readOnly" :class="$style.toolbar" data-test-id="canvas-node-group-toolbar">
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
@@ -181,6 +192,11 @@ watch(
 	&:hover .toolbarItems {
 		opacity: 1;
 	}
+}
+
+.collapseToggle {
+	flex-shrink: 0;
+	margin-right: var(--spacing--3xs);
 }
 
 .headerDraggable {

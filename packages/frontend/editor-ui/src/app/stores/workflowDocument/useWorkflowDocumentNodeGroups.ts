@@ -126,6 +126,12 @@ export function useWorkflowDocumentNodeGroups() {
 		applyDeleteGroup(id);
 	}
 
+	function setGroupCollapsed(id: string, collapsed: boolean) {
+		const group = groups.value.get(id);
+		if (!group || (group.collapsed ?? false) === collapsed) return;
+		applyUpsertGroup({ ...group, collapsed }, CHANGE_ACTION.UPDATE);
+	}
+
 	function addNodesToGroup(id: string, nodeIds: string[]) {
 		const group = groups.value.get(id);
 		if (!group) return;
@@ -187,6 +193,7 @@ export function useWorkflowDocumentNodeGroups() {
 		getNextDefaultName,
 		updateName,
 		deleteGroup,
+		setGroupCollapsed,
 		addNodesToGroup,
 		replaceNodeInGroup,
 		getGroupById,
