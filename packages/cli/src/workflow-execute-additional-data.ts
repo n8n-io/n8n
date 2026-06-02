@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
@@ -46,8 +44,8 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -55,12 +53,13 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
@@ -267,6 +266,7 @@ export async function executeAgent(
 	executionId: string,
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executionMode: WorkflowExecuteMode,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -300,6 +300,8 @@ export async function executeAgent(
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
 
+	const useDraftVersion = isManualOrChatExecution(executionMode);
+
 	return await agentsService.executeForWorkflow(
 		agentId,
 		message,
@@ -308,18 +310,23 @@ export async function executeAgent(
 		userId,
 		projectId,
 		telemetryUserId,
+		useDraftVersion,
 	);
 }
 
-async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+async function listAgents(
+	userId: string,
+): Promise<Array<{ id: string; name: string; published: boolean }>> {
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
-	// Only published agents are runnable from a workflow — see the publish
-	// guard in `executeForWorkflow`. Filtering here keeps unpublished agents
-	// out of the MessageAnAgent dropdown so users don't pick one that would
-	// fail at execution time.
-	const agents = await agentsService.findPublishedByUser(userId);
-	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
+	// Only published agents are runnable from a published workflow.
+	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.
+	const agents = await agentsService.findByUser(userId);
+	return agents.map((agent) => ({
+		id: agent.id,
+		name: agent.name,
+		published: agent.activeVersionId !== null,
+	}));
 }
 
 /**

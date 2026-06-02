@@ -175,6 +175,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			executionId,
 			threadId,
 			this.additionalData,
+			this.getMode(),
 		);
 	}
 

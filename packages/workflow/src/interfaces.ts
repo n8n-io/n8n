@@ -1024,7 +1024,7 @@ export interface FunctionsBase {
 	getChatTrigger: () => INode | null;
 	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
-	listAgents?(): Promise<Array<{ id: string; name: string }>>;
+	listAgents?(): Promise<Array<{ id: string; name: string; published: boolean }>>;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -3247,8 +3247,9 @@ export interface IWorkflowExecuteAdditionalData {
 		executionId: string,
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executionMode: WorkflowExecuteMode,
 	) => Promise<ExecuteAgentData>;
-	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
+	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string; published: boolean }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;

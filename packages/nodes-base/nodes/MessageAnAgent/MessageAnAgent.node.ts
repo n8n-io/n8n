@@ -32,13 +32,6 @@ export class MessageAnAgent implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				displayName:
-					'Create an n8n agent <a href="/new-agent" target="_blank">here</a>. Only published agents are listed below.',
-				name: 'publishedAgentNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Agent',
 				name: 'agentId',
 				type: 'resourceLocator',
@@ -118,6 +111,7 @@ export class MessageAnAgent implements INodeType {
 					let results = agents.map((agent) => ({
 						name: agent.name,
 						value: agent.id,
+						active: agent.published,
 					}));
 
 					if (filter) {
