@@ -5,10 +5,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { h } from 'vue';
 import type { IWorkflowGroup } from 'n8n-workflow';
 
-// VueFlow's Handle component requires a <VueFlow> ancestor; mock it as an
-// inert div so we can render the title bar in isolation. Other VueFlow
-// exports we use are type-only (Position, NodeProps), so this mock is
-// safe.
+// Handle requires a <VueFlow> ancestor. Mock it as an inert div so the
+// title bar can render in isolation. Other VueFlow imports are type-only.
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
@@ -75,7 +73,6 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 		it('title edit carries nodrag', () => {
 			const wrapper = render();
-			// N8nInlineTextEdit wraps an inline-edit element; nodrag class on root
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			expect(titleArea.querySelector('.nodrag')).toBeTruthy();
 		});

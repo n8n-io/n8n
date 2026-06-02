@@ -1,6 +1,4 @@
-// Shared visual contract for canvas-node-like elements (nodes, group
-// title bars). Defines the default border width / color via custom
-// properties so siblings can override them through the cascade.
+// Shared visual contract for canvas-node-like elements (nodes, group title bars).
 
 @mixin canvas-node-border-defaults {
 	--canvas-node--border-width: 1.5px;

@@ -17,17 +17,15 @@ export interface MemberRect {
 }
 
 /**
- * Per-node dimensions used to size the group member bounding rect.
- * Callers supply this so the rect tracks the actual rendered footprint
- * for node types whose width or height varies (configurable inputs,
- * configuration nodes, sticky notes). Returning `undefined` falls back
- * to `DEFAULT_NODE_SIZE`.
+ * Size lookup for nodes that aren't the default size
+ * (configurable inputs, config nodes, sticky notes).
  */
 export type GetNodeDimensions = (id: string) => { width: number; height: number } | undefined;
 
 /**
- * Compute the bounding rect of a set of member nodes from canonical store
- * positions.
+ * Bounding rect of a group's members — used to size and position
+ * the group's title bar and frame. Reads from workflow store positions (canonical)
+ * rather than VueFlow runtime, which can lag or be uninitialized.
  */
 export function computeMemberRectFromStore(
 	memberIds: string[],
@@ -46,8 +44,8 @@ export function computeMemberRectFromStore(
 	let minY = Infinity;
 	let maxX = -Infinity;
 	let maxY = -Infinity;
-	// Dimension precedence: caller-supplied, then per-node parameters
-	// (sticky notes carry their own), then the design-system default.
+
+	// Precedence: caller-supplied → node parameters (sticky notes) → DEFAULT_NODE_SIZE.
 	for (const node of members) {
 		const x = node.position[0];
 		const y = node.position[1];
@@ -79,9 +77,8 @@ export interface MapGroupsToVueFlowNodesInputs {
 }
 
 /**
- * Map every workflow group into a single `canvas-node-group` VueFlow node
- * (the title bar + frame). Members are NOT included here; they are emitted
- * separately by `mappedNodes`.
+ * Map each workflow group to a `canvas-node-group` VueFlow node (title bar + frame).
+ * Members are mapped separately by `mappedNodes`.
  */
 export function mapGroupsToVueFlowNodes({
 	allGroups,
@@ -92,18 +89,18 @@ export function mapGroupsToVueFlowNodes({
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
-		// Skip groups whose members are all unresolved — the rect would
-		// otherwise fall back to (0, 0) and place the title bar at the
-		// canvas origin. The group itself stays in the document and will
-		// re-emit once a member resolves.
+		// Skip until at least one member resolves — otherwise the rect collapses to
+		// (0, 0) and lands the title bar at canvas origin. Re-emits when members arrive.
 		const hasMember = group.nodeIds.some((id) => getNodeById(id) !== undefined);
 		if (!hasMember) continue;
+
 		const memberRect = computeMemberRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
 		const data: CanvasGroupViewState = {
 			group,
 			memberRect,
 			autofocusTitle: autofocusGroupId === group.id,
 		};
+
 		out.push({
 			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
 			type: CANVAS_NODE_GROUP_TYPE,

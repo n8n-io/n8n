@@ -149,6 +149,12 @@ export type CanvasGroupNode = Node<CanvasGroupViewState>;
 
 export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
 
+export function isCanvasNodeGroup(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasNodeGroup(node: { type?: string }): boolean;
+export function isCanvasNodeGroup(node: { type?: string }): boolean {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
+
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;

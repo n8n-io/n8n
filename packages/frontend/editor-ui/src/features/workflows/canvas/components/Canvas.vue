@@ -17,7 +17,6 @@ import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
-	CanvasGroupNode,
 	CanvasGroupViewState,
 	CanvasNode,
 	CanvasNodeData,
@@ -27,8 +26,8 @@ import type {
 } from '../canvas.types';
 import {
 	CANVAS_NODE_GROUP_ID_PREFIX,
-	CANVAS_NODE_GROUP_TYPE,
 	CanvasNodeRenderType,
+	isCanvasNodeGroup,
 } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
@@ -204,10 +203,6 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 );
 
 const vueFlow = useVueFlow(props.id);
-// Selection has two shapes: the raw canvas selection (every selectable
-// node, including group title bars) and the workflow selection (only
-// nodes backed by an INodeUi). Most consumers want the workflow shape;
-// drag handlers read the raw shape from the event directly.
 const {
 	getSelectedNodes: selectedNodesAndGroups,
 	addSelectedNodes,
@@ -247,13 +242,12 @@ const {
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const selectedNodes = computed(() =>
-	selectedNodesAndGroups.value.filter((node) => node.type !== CANVAS_NODE_GROUP_TYPE),
+	selectedNodesAndGroups.value.filter((node) => !isCanvasNodeGroup(node)),
 );
 
 const isPaneReady = ref(false);
-// Shared from WorkflowCanvas via provide so useCanvasMapping (in WorkflowCanvas) and
-// Canvas.vue (action callbacks) see the same ref. Fallback ref is used when
-// Canvas.vue is mounted in isolation (e.g. older tests).
+// Shared with useCanvasMapping in WorkflowCanvas via provide
+// so action callbacks here mutate the same ref
 const injectedAutofocusRef = inject<Ref<string | null> | null>('canvasNodeGroupAutofocus', null);
 const nodeGroupIdToAutofocusTitle = injectedAutofocusRef ?? ref<string | null>(null);
 
@@ -491,10 +485,10 @@ const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
-		if (node.type === CANVAS_NODE_GROUP_TYPE) return false;
-		const data = node.data as CanvasNodeData | undefined;
+		if (isCanvasNodeGroup(node)) return false;
 		return (
-			data?.render.type === CanvasNodeRenderType.Default && data.render.options.trigger === true
+			node.data?.render.type === CanvasNodeRenderType.Default &&
+			node.data.render.options.trigger === true
 		);
 	}),
 );
@@ -561,10 +555,9 @@ function onNodeDrag(event: NodeDragEvent) {
 function onNodeDragStop(event: NodeDragEvent) {
 	const { handled, memberIdsMoved } = groupDrag.onNodeDragStop(event);
 	if (handled) return;
-	// Only INodeUi-backed nodes are persisted, and members already moved
-	// by a group's delta are emitted by the group drag.
+	// Skip group title bars (no INodeUi) and members the group drag already emitted.
 	const moves = event.nodes
-		.filter(({ id, type }) => type !== CANVAS_NODE_GROUP_TYPE && !memberIdsMoved.has(id))
+		.filter((node) => !isCanvasNodeGroup(node) && !memberIdsMoved.has(node.id))
 		.map(({ id, position }) => ({ id, position }));
 	if (moves.length > 0) onUpdateNodesPosition(moves);
 }
@@ -586,9 +579,8 @@ function onCanvasGroupUngroup(groupId: string) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	// Group title bars don't back an INodeUi — they participate in
-	// selection only, not in node-level click semantics.
-	if (node.type === CANVAS_NODE_GROUP_TYPE) return;
+	// Group title bars participate in selection only — skip node-click logic.
+	if (isCanvasNodeGroup(node)) return;
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -606,7 +598,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 function onSelectionDragStop(event: NodeDragEvent) {
 	const { memberIdsMoved } = groupDrag.onSelectionDragStop(event);
 	const moves = event.nodes
-		.filter(({ id, type }) => type !== CANVAS_NODE_GROUP_TYPE && !memberIdsMoved.has(id))
+		.filter((node) => !isCanvasNodeGroup(node) && !memberIdsMoved.has(node.id))
 		.map(({ id, position }) => ({ id, position }));
 	if (moves.length > 0) onUpdateNodesPosition(moves);
 }
@@ -629,8 +621,6 @@ function onSetNodeDeactivated(id: string) {
 }
 
 function clearSelectedNodes() {
-	// Clear the raw canvas selection — the filtered workflow view would
-	// leave title bars selected.
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
 
@@ -903,27 +893,23 @@ function onViewportChange() {
 
 // #AI-716: Due to a bug in vue-flow reactivity, the node data is not updated when the node is added
 // resulting in outdated data. We use this computed property as a workaround to get the latest node data.
-// Split per node type so each slot template gets a precisely-typed lookup
-// (no `as unknown as` casts at the call site).
-const nodeDataById = computed(() => {
-	const byId: Record<string, CanvasNodeData> = {};
-	for (const node of props.nodes) {
-		if (node.type !== CANVAS_NODE_GROUP_TYPE && node.data) {
-			byId[node.id] = node.data as CanvasNodeData;
+const nodeDataById = computed(() =>
+	props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
+		if (!isCanvasNodeGroup(node) && node.data) {
+			acc[node.id] = node.data;
 		}
-	}
-	return byId;
-});
+		return acc;
+	}, {}),
+);
 
-const groupNodeDataById = computed(() => {
-	const byId: Record<string, CanvasGroupViewState> = {};
-	for (const node of props.nodes) {
-		if (node.type === CANVAS_NODE_GROUP_TYPE && node.data) {
-			byId[node.id] = node.data as CanvasGroupViewState;
+const groupNodeDataById = computed(() =>
+	props.nodes.reduce<Record<string, CanvasGroupViewState>>((acc, node) => {
+		if (isCanvasNodeGroup(node) && node.data) {
+			acc[node.id] = node.data;
 		}
-	}
-	return byId;
-});
+		return acc;
+	}, {}),
+);
 
 /**
  * Context menu
@@ -1055,10 +1041,6 @@ function onDrop(event: DragEvent) {
 const minimapVisibilityDelay = 1000;
 const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
 const isMinimapVisible = ref(false);
-
-function isCanvasNodeGroup(node: CanvasNodeOrGroup): node is CanvasGroupNode {
-	return node.type === CANVAS_NODE_GROUP_TYPE;
-}
 
 function minimapNodeClassnameFn(node: CanvasNodeOrGroup) {
 	if (isCanvasNodeGroup(node)) return 'minimap-node-group';

@@ -3,8 +3,8 @@ import dagre from '@dagrejs/dagre';
 import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
-	CANVAS_NODE_GROUP_TYPE,
 	CanvasNodeRenderType,
+	isCanvasNodeGroup,
 	type BoundingBox,
 	type CanvasConnection,
 	type CanvasConnectionPort,
@@ -69,7 +69,7 @@ export function useCanvasLayout(
 		// Group title-bar nodes are positioned from their members' bounding rect, not by dagre.
 		const source = target === 'selection' ? getSelectedNodes.value : allNodes.value;
 		return {
-			nodes: source.filter((node) => node.type !== CANVAS_NODE_GROUP_TYPE),
+			nodes: source.filter((node) => !isCanvasNodeGroup(node)),
 			edges: allEdges.value,
 		};
 	}

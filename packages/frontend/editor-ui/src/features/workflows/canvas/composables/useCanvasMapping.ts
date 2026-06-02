@@ -581,9 +581,8 @@ export function useCanvasMapping({
 		return typeof readOnly === 'boolean' ? readOnly : readOnly.value;
 	});
 
-	// Per-node dimensions used to size the group member rect. Each render
-	// type maps to its design-system default; node-types whose footprint
-	// is stored on the node (e.g. sticky notes) are read downstream.
+	// Size by node id, derived from render type. Sticky notes are omitted —
+	// their own width/height parameters are read by `computeMemberRectFromStore`.
 	const memberDimensionsByNodeId = computed(() => {
 		const byId: Record<string, { width: number; height: number }> = {};
 		for (const node of nodes.value) {
@@ -662,9 +661,7 @@ export function useCanvasMapping({
 			};
 		});
 
-		// Group title-bar VueFlow nodes are appended after member nodes so that
-		// the slot resolver in Canvas.vue can route by `type` without needing
-		// to interleave.
+		// Order doesn't matter — Canvas.vue routes to slots by node `type`, not array index.
 		return [...memberNodes, ...(groupVueFlowNodes.value as CanvasNode[])];
 	});
 

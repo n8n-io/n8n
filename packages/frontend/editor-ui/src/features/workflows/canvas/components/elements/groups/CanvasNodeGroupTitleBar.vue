@@ -17,9 +17,8 @@ import {
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
-// Only declare what the component actually uses. VueFlow slot props are
-// spread via v-bind="nodeProps" at the call site; extra fields fall into
-// $attrs (which we don't read).
+// Only declare the props this component uses.
+// Extra VueFlow slot props passed via v-bind are ignored.
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
