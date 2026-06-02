@@ -45,7 +45,7 @@ export class EmbeddingsNvidiaNim implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '={{$credentials.baseUrl.replace(/\/$/, "")}}',
+			baseURL: '={{ ($credentials?.baseUrl ?? "https://integrate.api.nvidia.com/v1").replace(/\/+$/, "") }}',
 		},
 		properties: [
 			{
@@ -138,8 +138,10 @@ export class EmbeddingsNvidiaNim implements INodeType {
 			maxRetries: options.maxRetries as number,
 			configuration: {
 				baseURL: baseUrl.replace(/\/$/, ''),
+				fetchOptions: {
+					dispatcher: getProxyAgent(this),
+				},
 			},
-			httpAgent: getProxyAgent(this),
 		});
 
 		return model;

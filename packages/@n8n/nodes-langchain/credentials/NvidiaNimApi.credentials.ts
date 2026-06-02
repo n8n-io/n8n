@@ -10,7 +10,7 @@ export class NvidiaNimApi implements ICredentialType {
 
 	displayName = 'NVIDIA NIM API';
 
-	documentationUrl = 'https://docs.nvidia.com/nim/index.html';
+	documentationUrl = 'nvidianim';
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
@@ -27,6 +27,7 @@ export class NvidiaNimApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: 'https://integrate.api.nvidia.com/v1',
+			required: true,
 			description: 'The base URL for the NVIDIA NIM instance. Use the default for NVIDIA-hosted NIMs.',
 			placeholder: 'e.g. http://localhost:8000/v1',
 		},
