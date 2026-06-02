@@ -65,7 +65,11 @@ const readOnlyRef = computed(() => props.readOnly ?? false);
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const {
+	nodes: mappedWorkflowNodes,
+	groupNodes: mappedGroupNodes,
+	connections: mappedConnections,
+} = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
@@ -74,6 +78,8 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	readOnly: readOnlyRef,
 	isExperimentalNdvActive,
 });
+
+const mappedNodes = computed(() => [...mappedWorkflowNodes.value, ...mappedGroupNodes.value]);
 
 provide('canvasNodeGroupAutofocus', nodeGroupIdToAutofocusTitle);
 
