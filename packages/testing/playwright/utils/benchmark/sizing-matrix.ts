@@ -95,11 +95,7 @@ export interface SizingMatrix {
 	cells: SizingCell[];
 }
 
-/**
- * Maps each benchmark spec path to the cell coordinates it contributes to.
- * Bridges the current free-form `scenario.dimensions` to the locked schema.
- * Move to JSON once stable.
- */
+/** Maps each benchmark spec path to its cell coordinates. */
 export interface SpecMapping {
 	[specPath: string]: {
 		scale: Scale;
@@ -176,12 +172,7 @@ function groupByCell(
 	return byScale;
 }
 
-/**
- * Mapping keys identify specs by path fragment (e.g. `webhook/webhook-single-instance.spec.ts`).
- * `scenario.spec` is the human-readable test title and is unreliable for matching,
- * so we also test against the run-report's local filesystem path and the spec
- * title's normalised form. First match wins.
- */
+// First-match-wins: tries path, spec title, and normalised title against each key.
 function findMapping(path: string, report: RunReport, mapping: SpecMapping) {
 	const candidates = [path, report.scenario.spec, normaliseSpecTitle(report.scenario.spec)];
 	for (const [key, value] of Object.entries(mapping)) {
@@ -240,9 +231,7 @@ function buildShapeResult(group: CellGroupEntry[]): ShapeResult {
 	const bottleneck = detectBottleneck(headroom, latP99);
 	const verdict = scoreVerdict(headroom, latP99, group.length);
 
-	// Per-run greens: project each run's exec rate to its own headroom limits,
-	// then take the median across runs. Cap at the cell's measured max ceiling
-	// so we never recommend above what we've observed.
+	// Median of per-run green projections, capped at observed ceiling.
 	const ceilingMax = execs.length ? Math.max(...execs) : 0;
 	const perRunGreens = perRun.map((r) => r.greenProjection).filter((v) => v > 0);
 	const greenMedian = perRunGreens.length ? median(perRunGreens) : 0;
@@ -274,11 +263,7 @@ interface PerRunProjection {
 	greenProjection: number;
 }
 
-/**
- * Per-run projection of "what rate could this run sustain at green headroom?"
- * Uses *this run's* CPU usage and lag, not cell-level averages — so the
- * projection is consistent with the run that produced the throughput number.
- */
+// Projects "rate sustainable at green headroom" using this run's own CPU/lag.
 function projectRun(entry: CellGroupEntry): PerRunProjection {
 	const t = entry.report.throughput;
 	const execPerSec = t.execPerSec ?? 0;
@@ -397,12 +382,8 @@ function derivePerRunIo(report: RunReport): {
 }
 
 function detectBottleneck(headroom: ShapeResult['headroomAtCeiling'], _p99: number): Bottleneck {
-	// Pick the saturated *resource*, not the customer-observable latency. p99 was
-	// previously included as a `network` candidate, but for async webhook tests
-	// p99 is dominated by Bull queue wait — not a network or topology resource.
-	// On a noop workflow with backlog, p99 was reliably ~1–2 s and out-ranking PG
-	// CPU at 230 %, which made every async cell read "network" and downgrade red.
-	// Restoring CPU/PG/worker as the classifier inputs surfaces the real bottleneck.
+	// Classify on resource saturation, not p99 — for async modes p99 is
+	// dominated by Bull queue wait and misranked PG-CPU as "network".
 	const candidates: Array<[Bottleneck, number]> = [
 		['main-cpu', headroom.mainCpuPct / AMBER_THRESHOLDS.mainCpuPct],
 		['pg-cpu', headroom.pgCpuPct / AMBER_THRESHOLDS.pgCpuPct],
@@ -419,12 +400,9 @@ function scoreVerdict(
 	_p99: number,
 	sampleCount: number,
 ): Verdict {
-	// Verdict reflects topology health (CPU/PG/event-loop), not customer-observable
-	// latency. p99 is overloaded across response modes — for async webhooks it
-	// includes Bull queue wait, so a healthy async topology will routinely report
-	// p99 ≈ 1–2 s without any resource being saturated. p99 still surfaces in the
-	// cell display so customers see latency expectations, just not as a verdict gate.
-	if (sampleCount < 3) return 'amber'; // low-confidence regardless of headroom
+	// Verdict gates on topology health (CPU/PG/event-loop), not p99 — same
+	// rationale as detectBottleneck. p99 still surfaces in the cell display.
+	if (sampleCount < 3) return 'amber';
 	const anyRed =
 		headroom.mainCpuPct > AMBER_THRESHOLDS.mainCpuPct ||
 		headroom.pgCpuPct > AMBER_THRESHOLDS.pgCpuPct ||
@@ -497,11 +475,7 @@ function extractSha(report: RunReport): string | undefined {
 	return typeof value === 'string' ? value : undefined;
 }
 
-/**
- * Renders a `SizingMatrix` to the customer-facing markdown guide. Reads only
- * the matrix object — no run-report or service-side state — so the same
- * function is reusable by ad-hoc tooling and a future publish pipeline.
- */
+/** Renders a `SizingMatrix` to the customer-facing markdown guide. */
 export function renderMarkdown(matrix: SizingMatrix): string {
 	const lines: string[] = [];
 	lines.push('# n8n Self-Hosted Sizing Guide');

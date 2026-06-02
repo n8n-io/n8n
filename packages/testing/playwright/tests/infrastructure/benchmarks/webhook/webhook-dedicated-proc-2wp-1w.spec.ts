@@ -3,12 +3,8 @@ import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-// Isolates webhook-ingestion scaling. Pair with `webhook-dedicated-proc-baseline`
-// (1 main + 1 webhook + 1 worker). Doubling the webhook procs while holding
-// workers fixed surfaces whether ingestion or execution is the binding ceiling
-// at this hardware. If exec/s climbs proportionally → ingestion was the limit.
-// If exec/s flattens → worker is now the limit and the next scaling step is
-// worker count, not webhook procs.
+// Workers fixed, webhook procs doubled — isolates the ingestion-axis ceiling
+// vs the baseline.
 
 const MAINS = 1;
 const WEBHOOKS = 2;

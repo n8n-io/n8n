@@ -64,18 +64,9 @@ export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed
 
 /**
  * Returns the completion metric for the current Playwright project.
- *
- * `n8n_workflow_success_total` increments once per workflow completion on the
- * receiver process (the process whose trigger fired). It's per-instance, so
- * summing across instances with `sum(last_over_time(...[5m]))` gives the
- * correct system-wide total in every topology where the receiver is scraped.
- *
- * Dedicated `n8n webhook` procs are the receivers in webhook-proc topologies;
- * they must expose `/metrics` for this counter to be visible (handled by
- * `WebhookServer.configure()`).
- *
- * The wide lookback tolerates transient scrape misses that would otherwise drop
- * a series and make the summed counter appear to regress.
+ * `n8n_workflow_success_total` is per-receiver-instance; summed via
+ * `sum(last_over_time(...[5m]))` for the system-wide total. The wide lookback
+ * tolerates transient scrape misses.
  */
 export function resolveMetricQuery(_testInfo: TestInfo): string {
 	return WORKFLOW_SUCCESS_QUERY;

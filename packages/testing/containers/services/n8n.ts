@@ -59,10 +59,7 @@ const BASE_ENV: Record<string, string> = {
 export interface N8NInstancesOptions {
 	mains: number;
 	workers: number;
-	/**
-	 * Number of dedicated `n8n webhook` processes. Forces queue mode when > 0.
-	 * Default: 0.
-	 */
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	projectName: string;
 	network: StartedNetwork;
@@ -95,8 +92,6 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		userEnvironment = {},
 	} = options;
 
-	// Webhook procs require queue mode — `n8n webhook` errors out otherwise
-	// (see packages/cli/src/commands/webhook.ts:61). Mirror the workers > 0 rule.
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 
 	const env: Record<string, string> = {
@@ -303,8 +298,6 @@ export async function createN8NInstances(
 				name,
 				role: 'webhook',
 				instanceNumber: num,
-				// Network alias lets Caddy reach webhook procs by stable hostname
-				// (Caddyfile templates `n8n-webhook-1`, `n8n-webhook-2`, ...).
 				networkAlias: name,
 			};
 		}),
@@ -318,7 +311,6 @@ export async function createN8NInstances(
 		),
 	];
 
-	// Service-only mode: no n8n containers needed
 	if (instances.length === 0) {
 		log('No n8n instances requested (service-only mode)');
 		return { containers, environment, diagnostics };
@@ -335,7 +327,7 @@ export async function createN8NInstances(
 		throw new N8NStartupError(message, diagnostics, error);
 	};
 
-	// Start main 1 first (handles DB migrations/setup)
+	// Main 1 handles DB migrations and must finish before parallel starts.
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
 	let main1Result: ContainerStartResult;
@@ -348,18 +340,13 @@ export async function createN8NInstances(
 	containers.push(main1Result.container);
 	log('main 1 ready');
 
-	// Start remaining instances in parallel
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
 		try {
 			const parallelResults = await Promise.all(
 				remaining.map(async (instance) => {
 					log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
-					const result = await createContainer(
-						instance,
-						sharedByRole[instance.role],
-						diagnostics,
-					);
+					const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
 					log(`${instance.role} ${instance.instanceNumber} ready`);
 					return { instance, result };
 				}),

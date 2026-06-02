@@ -53,11 +53,6 @@ export interface StartContext {
 	projectName: string;
 	mains: number;
 	workers: number;
-	/**
-	 * Number of dedicated `n8n webhook` processes. When > 0, Caddy routes
-	 * production webhook + form paths to them (everything else stays on main).
-	 * Forces queue mode.
-	 */
 	webhooks: number;
 	isQueueMode: boolean;
 	usePostgres: boolean;
@@ -75,11 +70,7 @@ export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_con
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
-	/**
-	 * Number of dedicated `n8n webhook` processes. When > 0, Caddy starts and
-	 * routes production webhook + form paths to them. Forces queue mode.
-	 * Default: 0 (webhook ingestion stays on main).
-	 */
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
 	env?: Record<string, string>;

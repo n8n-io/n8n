@@ -1,28 +1,15 @@
 /**
  * Aggregates N `run-report.json` files into a `sizing-matrix.json`.
  *
- *   # Local directory of downloaded reports
  *   npx tsx packages/testing/playwright/scripts/sizing-matrix-aggregate.ts \
- *     --input <dir> [--mapping <file>] [--out <file>] \
- *     [--n8n-version <ver>] [--commit-sha <sha>] \
- *     [--hardware-runner <name>] [--hardware-vcpu <n>] [--hardware-ram-gb <n>]
+ *     --input <dir> [--out <file>] [--mapping <file>]
  *
- *   # Or pull straight from a Currents run (requires CURRENTS_API_KEY env)
- *   CURRENTS_API_KEY=… npx tsx packages/testing/playwright/scripts/sizing-matrix-aggregate.ts \
- *     --currents-run <runId> [--out <file>]
+ *   CURRENTS_API_KEY=… ... --currents-run <runId>
  *
- *   # Hardware can also be set via env: SIZING_MATRIX_RUNNER, SIZING_MATRIX_VCPU,
- *   # SIZING_MATRIX_RAM_GB. Local-dev runs that don't override produce metadata
- *   # claiming the Blacksmith CI runner — wrong number is silently misleading,
- *   # so override when running outside CI.
- *
- * Default mapping is inlined below — moves to JSON once stable.
- *
- * Hardware default: blacksmith-8vcpu-ubuntu-2204 (8 vCPU / 16 GB), the runner
- * that hosts `benchmarking:infrastructure` jobs. Cell topologies are
- * containers-on-that-host with the CPU/memory caps each spec sets. Local
- * Mac runs MUST override via `--hardware-runner my-mac --hardware-vcpu 12
- * --hardware-ram-gb 32` or the matrix will mis-attribute the source.
+ * Hardware defaults to the Blacksmith CI runner (8 vCPU / 16 GB). Override
+ * via `--hardware-runner/--hardware-vcpu/--hardware-ram-gb` or
+ * `SIZING_MATRIX_RUNNER/VCPU/RAM_GB` env when running off-CI, or the matrix
+ * will mis-attribute the source.
  */
 
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
@@ -47,8 +34,6 @@ const DEFAULT_HARDWARE: HardwareInfo = {
 	ramGb: 16,
 };
 
-// S0 single-instance topology: 1 main, no workers, no dedicated webhook procs.
-// Mirrors the spec setup for webhook-single-instance.spec.ts on the 8vcpu runner.
 const S0_SINGLE_MAIN: Topology = {
 	mains: 1,
 	webhookProcs: 0,
@@ -68,9 +53,6 @@ const S1_QUEUE_BASELINE: Topology = {
 	workerRamGb: 4,
 };
 
-// Production-canonical queue-mode topology: dedicated `n8n webhook` proc
-// fronted by Caddy path-routing (`/webhook/*` → proc, everything else → main).
-// Webhook procs share the main's per-pod resource profile (4 GB / 2 vCPU).
 const S1_DEDICATED_PROC_BASELINE: Topology = {
 	...S1_QUEUE_BASELINE,
 	webhookProcs: 1,
@@ -86,15 +68,9 @@ const S2_DEDICATED_PROC_2WP_2W: Topology = {
 	workers: 2,
 };
 
-/**
- * Bridge from current free-form `scenario.spec` to DEVP-185 cell coordinates.
- * Inline for now — extract to JSON once we have ≥10 specs mapped.
- *
- * Trigger axis (webhook vs kafka) collapses into the same cell — shape is
- * about workload archetype, not ingress protocol.
- */
+// Webhook and kafka triggers collapse into the same cell — shape is workload
+// archetype, not ingress protocol.
 const DEFAULT_MAPPING: SpecMapping = {
-	// --- webhook-driven ---
 	'webhook/webhook-single-instance.spec.ts': {
 		scale: 'S0',
 		shape: 'L',
@@ -120,13 +96,8 @@ const DEFAULT_MAPPING: SpecMapping = {
 		shape: 'D',
 		topology: S1_DEDICATED_PROC_BASELINE,
 	},
-	// `webhook-sync-latency-floor` deliberately unmapped — it measures p99 latency
-	// at 1–8 concurrency in sync mode, not throughput saturation. Its tail-exec/s
-	// scales with `concurrency / mean_latency` not topology capacity, so mixing
-	// it into S1-L's ceiling distribution distorts both the percentile spread
-	// (3.7× run-to-run) and the green-sustained projection. Surface its numbers
-	// in a separate "sync latency floor" section of the customer guide instead.
-	// --- kafka-driven (same workflow shape, different trigger) ---
+	// `webhook-sync-latency-floor` is deliberately unmapped — measures latency at
+	// fixed concurrency, not throughput, and distorts the S1-L distribution.
 	'kafka/single-instance-ceiling.spec.ts': {
 		scale: 'S0',
 		shape: 'L',
@@ -143,19 +114,16 @@ const DEFAULT_MAPPING: SpecMapping = {
 		topology: S1_QUEUE_BASELINE,
 	},
 	'kafka/node-count-scaling.spec.ts': {
-		// Ramps node count — closest to X-shape (deep-execution) variant
 		scale: 'S1',
 		shape: 'X',
 		topology: S1_QUEUE_BASELINE,
 	},
 	'kafka/output-size-impact.spec.ts': {
-		// Ramps output payload size — D-shape variant
 		scale: 'S1',
 		shape: 'D',
 		topology: S1_QUEUE_BASELINE,
 	},
 	'kafka/steady-rate-breaking-point.spec.ts': {
-		// 30 nodes per workflow + 10KB payload + direct mode (no workers) — X-shape under saturation
 		scale: 'S0',
 		shape: 'X',
 		topology: S0_SINGLE_MAIN,
@@ -202,12 +170,6 @@ function parseArgs(argv: string[]): CliArgs {
 	};
 }
 
-/**
- * Hardware metadata stamped into the matrix output. Defaults to the Blacksmith
- * CI runner but can be overridden via CLI for local development or alternative
- * runners. Setting the wrong runner here silently produces a misleading matrix —
- * the absolute exec/sec numbers are tied to the host that ran the bench.
- */
 function resolveHardware(args: Record<string, string>): HardwareInfo {
 	const runner =
 		args['hardware-runner'] ?? process.env.SIZING_MATRIX_RUNNER ?? DEFAULT_HARDWARE.runner;

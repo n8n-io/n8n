@@ -3,19 +3,8 @@ import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-// Joint scale-up of webhook procs and workers. Pair with the 1wp+1w baseline
-// and the 2wp+1w (workers-fixed) variant to factor the scaling contribution:
-//
-//   1wp+1w → baseline                          → exec/s = E1
-//   2wp+1w → ingestion doubled, exec fixed     → exec/s = E2
-//   2wp+2w → both doubled                      → exec/s = E3
-//
-//   (E3 − E2) ≈ marginal gain from adding the second worker.
-//   (E2 − E1) ≈ marginal gain from adding the second webhook proc.
-//   (E3 − E1) ≈ total scaling factor at this hardware.
-//
-// At green headroom, the matrix's "next scale tier" recommendation is the
-// configuration where neither knob is yet saturated.
+// Both knobs doubled. With baseline and 2wp-1w, factor marginal worker gain
+// (E3 − E2) and marginal proc gain (E2 − E1).
 
 const MAINS = 1;
 const WEBHOOKS = 2;

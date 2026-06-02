@@ -94,8 +94,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const log = createElapsedLogger('stack');
 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
-	// Caddy starts whenever traffic needs to be split across n8n containers —
-	// multi-main coordination or dedicated webhook procs both require it.
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -256,24 +254,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
-
-		// Direct webhook-proc URLs (bypassing load balancer). Webhook procs don't
-		// publish their ports by default; this loop is a no-op unless a future
-		// caller wires them through. Kept as a stub for symmetry with mainUrls.
-		const webhookUrls: string[] = [];
-		for (let i = 1; i <= webhooks; i++) {
-			const webhookContainer = containers.find((c) => c.getName().endsWith(`-n8n-webhook-${i}`));
-			if (webhookContainer) {
-				try {
-					const webhookPort = webhookContainer.getMappedPort(5678);
-					webhookUrls.push(`http://localhost:${webhookPort}`);
-				} catch {
-					// Port not published — webhook procs only need to be reachable on the
-					// internal docker network for Caddy to route to them.
-				}
-			}
-		}
-		if (webhookUrls.length) log(`Direct webhook URLs: ${webhookUrls.join(', ')}`);
 
 		// Run verification hooks (e.g. keycloak connectivity check)
 		const n8nContainers = containers.filter((c) => {

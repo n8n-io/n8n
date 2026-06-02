@@ -3,13 +3,8 @@ import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-// Dedicated `n8n webhook` proc baseline at 1 main + 1 webhook proc + 1 worker.
-// This is the production-canonical topology for queue-mode n8n: Caddy routes
-// `/webhook/*` and `/form/*` to the dedicated webhook proc; everything else
-// (UI, REST, `/webhook-test/*`, `/webhook-waiting/*`, `/form-test/*`) flows
-// to main. Pair with `webhook-dedicated-proc-2wp-1w` and
-// `webhook-dedicated-proc-2wp-2w` to read the proc-axis and worker-axis
-// scaling factors independently.
+// Production-canonical queue-mode baseline: 1m + 1wp + 1w. Pair with the
+// 2wp-1w and 2wp-2w specs to factor proc-axis and worker-axis scaling.
 
 const MAINS = 1;
 const WEBHOOKS = 1;
