@@ -64,8 +64,8 @@ const delegateSubAgentOutputSchema = z.object({
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
 
 /**
- * Limits the delegate tool enforces structurally for a delegation: nesting
- * depth, fan-out, and the on/off switch (see {@link SubAgentTaskPathPolicy}).
+ * Limits the delegate tool enforces structurally for a delegation: fan-out and
+ * the on/off switch (see {@link SubAgentTaskPathPolicy}).
  *
  * Per-run runtime constraints (e.g. a wall-clock timeout) are intentionally not
  * here — they're a host concern, enforced inside the `runSubAgent` callback (as
@@ -95,8 +95,6 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	 * cancelling the parent run also cancels the delegated work.
 	 */
 	parentAbortSignal?: AbortSignal;
-	/** Parent's own task path (this child's path is derived from it). */
-	parentTaskPath?: SubAgentTaskPath;
 	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
 	/** Effective policy for this delegation. */
@@ -141,12 +139,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * model selects one by passing its id as `subAgentId`.
 	 */
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
-	/**
-	 * This (parent) agent's own task path; child paths are derived from it. Omit
-	 * for a top-level agent — children then hang off `/root`.
-	 */
-	parentTaskPath?: SubAgentTaskPath;
-	/** Depth / fan-out limits enforced before each delegation. */
+	/** Fan-out limits and spawn switch enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
 	/** Run the child for this delegation and return its result. */
 	runSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
@@ -158,7 +151,7 @@ export interface CreateDelegateSubAgentToolOptions {
  *
  * The tool owns the cross-cutting concerns: the model-facing input/output
  * schema, the description + system instruction that teach the LLM when/how to
- * delegate, task-path bookkeeping, policy enforcement (depth / fan-out /
+ * delegate, task-path bookkeeping, policy enforcement (fan-out /
  * canSpawnSubAgents), and the `subagent-started` / `-completed`
  * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
@@ -166,7 +159,7 @@ export interface CreateDelegateSubAgentToolOptions {
  *   agent.tool(createDelegateSubAgentTool({
  *     runSubAgent: (request) => runner.run(request),
  *     availableSubAgents,
- *     policy: { maxDepth: 2, maxChildren: 5 },
+ *     policy: { maxChildren: 5 },
  *   }));
  */
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions) {
@@ -183,7 +176,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 			[
 				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. The child cannot see this conversation, your tools, or your memory, so everything it needs must be in the call.',
 				'Delegate only when all of these hold: the work is a concrete, self-contained subtask; it can be fully specified without unstated context from this conversation; and it is heavy enough (substantial search/research/review/reasoning) that doing it inline would clutter your context, or a fresh perspective clearly helps.',
-				'Do not delegate when: the task is trivial or is one or two tool calls you can make directly; it is the core reasoning you are responsible for (never delegate the understanding); it depends on context you cannot restate; or you would just forward the user request without decomposing it. Wanting more depth, thoroughness, or research is not by itself a reason to delegate.',
+				'Do not delegate when: the task is trivial or is one or two tool calls you can make directly; it is the core reasoning you are responsible for (never delegate the understanding); it depends on context you cannot restate; or you would just forward the user request without decomposing it. Wanting more thoroughness or research is not by itself a reason to delegate.',
 				'Write the handoff for a smart colleague who just walked in and has seen none of this conversation: put the concrete outcome in goal; put every detail the child needs in context (constraints, paths, data, prior decisions, acceptance criteria, what you have already tried or ruled out); state exactly what you need back, and how concise, in expectedOutput; and give it a short descriptive taskName.',
 				...formatAvailableSubAgents(options.availableSubAgents),
 				'When the child returns: inspect the answer before relying on it, do not blindly trust self-reported success, synthesize it into your own response instead of copying it verbatim, and if it is incomplete or failed either retry with a sharper handoff or do the task yourself.',
@@ -210,7 +203,7 @@ function formatAvailableSubAgents(
 }
 
 /**
- * Tool handler: enforce policy (depth + fan-out), assign the child's task path,
+ * Tool handler: enforce policy (fan-out), assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
  * parent tool context, then run the child via the host `runSubAgent` callback
  * while emitting started/progress/completed lifecycle events. Any error is
@@ -227,13 +220,12 @@ async function handleDelegateSubAgent(
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
-		const parentTaskPath = options.parentTaskPath;
-		assertSubAgentPolicyAllowsChild(parentTaskPath, options.policy);
-		const childCountKey = getChildCountKey(ctx, parentTaskPath);
+		assertSubAgentPolicyAllowsChild(options.policy);
+		const childCountKey = getChildCountKey(ctx);
 		const childCount = childCounts.get(childCountKey) ?? 0;
 		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
 
-		taskPath = createChildSubAgentTaskPath(parentTaskPath, input.taskName, childCount);
+		taskPath = createChildSubAgentTaskPath(input.taskName, childCount);
 		childCounts.set(childCountKey, childCount + 1);
 
 		request = {
@@ -249,7 +241,6 @@ async function handleDelegateSubAgent(
 				: {}),
 			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
-			...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
 		};
 
@@ -327,8 +318,8 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 	};
 }
 
-function getChildCountKey(ctx: ToolContext, parentTaskPath: SubAgentTaskPath | undefined): string {
-	return ctx.runId ?? ctx.persistence?.threadId ?? parentTaskPath ?? 'adhoc';
+function getChildCountKey(ctx: ToolContext): string {
+	return ctx.runId ?? ctx.persistence?.threadId ?? 'adhoc';
 }
 
 function stringifyUnknown(value: unknown): string {

@@ -44,7 +44,6 @@ describe('createDelegateSubAgentTool', () => {
 				answer: 'done',
 			});
 		const tool = createDelegateSubAgentTool({
-			parentTaskPath: '/root',
 			policy: { maxChildren: 2 },
 			runSubAgent,
 		});
@@ -59,7 +58,6 @@ describe('createDelegateSubAgentTool', () => {
 			taskPath: '/root/research_api_0',
 			parentRunId: 'parent-run-1',
 			parentToolCallId: 'tool-call-1',
-			parentTaskPath: '/root',
 			childCount: 0,
 			policy: { maxChildren: 2 },
 		});

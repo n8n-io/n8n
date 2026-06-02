@@ -65,8 +65,8 @@ export class SubAgentForegroundRunner {
 		}
 
 		// The SDK delegate tool already assigned this delegation's task path and
-		// enforced the depth/fan-out policy before invoking the runner. Just
-		// validate the forwarded shape — don't recompute it or re-run the gates.
+		// enforced fan-out policy before invoking the runner. Just validate the
+		// forwarded shape — don't recompute it or re-run the gates.
 		const taskPath = request.taskPath;
 		assertSubAgentTaskPath(taskPath);
 
@@ -86,7 +86,8 @@ export class SubAgentForegroundRunner {
 		// Inherit the parent's episodic-memory scope. When the parent has none,
 		// isolate this run to its own thread rather than widening to the project.
 		const resourceId = request.parentResourceId ?? threadId;
-		const agent = await buildFromJson(runtimeSource.source.config, runtimeSource.toolDescriptors, {
+		const { subAgents: _subAgents, ...childConfig } = runtimeSource.source.config;
+		const agent = await buildFromJson(childConfig, runtimeSource.toolDescriptors, {
 			toolExecutor,
 			credentialProvider: context.credentialProvider,
 			resolveTool: context.resolveTool,

@@ -1,12 +1,11 @@
 /**
  * Task paths for sub-agent delegation.
  *
- * A "task path" is a filesystem-like address that gives every agent run a
- * stable, human-readable position in the delegation tree, e.g.:
+ * A "task path" is a filesystem-like address that gives each delegated run a
+ * stable, human-readable identity, e.g.:
  *
- *   /root                                      ← the top-level (orchestrating) agent
- *   /root/research_api_0                       ← the agent's first delegation
- *   /root/research_api_0/compare_pricing_0     ← a grandchild that child delegated to
+ *   /root                    ← the top-level (orchestrating) agent
+ *   /root/research_api_0     ← a first-level delegated child
  *
  * Each child segment carries the parent's 0-based child index (`_0`, `_1`, …) so
  * that delegations with the same task name stay distinct.
@@ -15,13 +14,13 @@
  *  - Identity: each delegated unit of work gets a unique, traceable name we can
  *    log and surface in the timeline — without the parent having to invent ids.
  *    (Memory/session ids are independent — a run gets its own thread id.)
- *  - Depth: the path encodes how deeply nested a delegation is (root = 0), which
- *    is what lets us bound recursion when a consumer wires nested delegation.
  *  - Policy enforcement: together with {@link SubAgentTaskPathPolicy}, the path
- *    lets us cap nesting depth and per-parent fan-out so a misbehaving agent
- *    can't trigger runaway delegation — an infinite "agent delegates to agent
- *    delegates to agent…" chain, or one agent spawning hundreds of parallel
- *    children — which would blow up cost, latency, and resources.
+ *    supports per-parent fan-out limits so a misbehaving agent cannot spawn
+ *    hundreds of parallel children, which would blow up cost, latency, and
+ *    resources.
+ *
+ * Nesting is not supported: only `/root` and single-segment child paths under
+ * `/root` are valid. Sub-agents cannot spawn other sub-agents.
  *
  * Everything in this file is pure (no I/O, no n8n-specific concepts), which is
  * why it lives in the runtime SDK: it is shared verbatim by both the generic
@@ -29,9 +28,9 @@
  */
 
 /**
- * A delegation task path: always begins at `/root`, followed by zero or more
- * `/segment` parts. Modeled as a template-literal type so a plain string can be
- * narrowed to a validated path via {@link assertSubAgentTaskPath}.
+ * A delegation task path: `/root` or `/root/<segment>` only. Modeled as a
+ * template-literal type so a plain string can be narrowed to a validated path
+ * via {@link assertSubAgentTaskPath}.
  */
 export type SubAgentTaskPath = `/root${'' | `/${string}`}`;
 
@@ -40,21 +39,19 @@ export type SubAgentTaskPath = `/root${'' | `/${string}`}`;
  * is optional; an undefined field means "no limit for that dimension".
  */
 export interface SubAgentTaskPathPolicy {
-	/** Maximum nesting depth allowed (root = 0). Bounds how deep delegation can recurse. */
-	maxDepth?: number;
 	/** Maximum number of children a single parent may spawn. Bounds fan-out width. */
 	maxChildren?: number;
 	/** Hard on/off switch: when false the parent may not delegate at all. */
 	canSpawnSubAgents?: boolean;
 }
 
-/** Top of the tree — the path of the initiating (orchestrating) agent, depth 0. */
+/** Top-level orchestrating agent path. */
 export const ROOT_SUB_AGENT_TASK_PATH = '/root' satisfies SubAgentTaskPath;
 
 /** Upper bound on a single path segment, so paths stay bounded and readable. */
 const MAX_TASK_NAME_LENGTH = 64;
-/** A valid path is `/root` plus zero or more lowercase alphanumeric/underscore segments. */
-const SUB_AGENT_TASK_PATH_PATTERN = /^\/root(?:\/[a-z0-9_]+)*$/;
+/** Valid paths: `/root` or `/root/<one segment>` — no nested delegation. */
+const SUB_AGENT_TASK_PATH_PATTERN = /^\/root(?:\/[a-z0-9_]+)?$/;
 
 /**
  * Turn a free-text, model-supplied task name (e.g. "Research API pricing!")
@@ -85,7 +82,7 @@ export function sanitizeSubAgentTaskName(taskName: string): string {
 	return sanitized;
 }
 
-/** Type guard: does this string match the `/root[/segment]*` shape? */
+/** Type guard: does this string match the flat `/root[/segment]?` shape? */
 export function isSubAgentTaskPath(value: string): value is SubAgentTaskPath {
 	return SUB_AGENT_TASK_PATH_PATTERN.test(value);
 }
@@ -93,7 +90,7 @@ export function isSubAgentTaskPath(value: string): value is SubAgentTaskPath {
 /**
  * Assert (and type-narrow) that a string is a valid task path. Used to validate
  * paths that were constructed here or received from elsewhere before we rely on
- * their shape (e.g. before computing depth).
+ * their shape.
  */
 export function assertSubAgentTaskPath(value: string): asserts value is SubAgentTaskPath {
 	if (!isSubAgentTaskPath(value)) {
@@ -102,63 +99,30 @@ export function assertSubAgentTaskPath(value: string): asserts value is SubAgent
 }
 
 /**
- * Nesting depth of a path: `/root` → 0, `/root/a` → 1, `/root/a/b` → 2, …
- *
- * `'/root/a'.split('/')` yields `['', 'root', 'a']`, so the number of segments
- * below root is `length - 2`. This is the value compared against `maxDepth`.
- */
-export function getSubAgentTaskPathDepth(path: SubAgentTaskPath): number {
-	assertSubAgentTaskPath(path);
-	return path.split('/').length - 2;
-}
-
-/**
- * Build a child path by appending `<sanitized task name>_<childCount>` to the
- * parent path (defaulting to `/root` when there is no parent — i.e. the first
- * level of delegation). This is how the tree grows: every delegate call extends
- * its parent's path by exactly one segment.
+ * Build a first-level child path: `/root/<sanitized task name>_<childCount>`.
  *
  * `childCount` is the parent's 0-based index for this child (the number of
  * children it had already spawned). Appending it disambiguates same-named
- * siblings within a single parent run, keeping each delegation's path — and the
- * memory scope derived from it — unique even when the model reuses a task name.
+ * siblings within a single parent run.
  */
 export function createChildSubAgentTaskPath(
-	parentPath: SubAgentTaskPath | undefined,
 	taskName: string,
 	childCount: number,
 ): SubAgentTaskPath {
-	const parent = parentPath ?? ROOT_SUB_AGENT_TASK_PATH;
-	assertSubAgentTaskPath(parent);
-
-	const childPath = `${parent}/${sanitizeSubAgentTaskName(taskName)}_${childCount}`;
+	const childPath = `${ROOT_SUB_AGENT_TASK_PATH}/${sanitizeSubAgentTaskName(taskName)}_${childCount}`;
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;
 }
 
 /**
- * Depth-dimension gate, checked BEFORE a child is spawned.
+ * Spawn gate, checked BEFORE a child is spawned.
  *
- * Rejects when delegation is switched off outright (`canSpawnSubAgents === false`)
- * or when adding one more level below `parentPath` would exceed `maxDepth`. This
- * is what stops runaway recursion (an agent delegating to an agent delegating to
- * an agent…). When `maxDepth` is undefined, depth is unbounded.
+ * Rejects when delegation is switched off outright (`canSpawnSubAgents === false`).
  */
-export function assertSubAgentPolicyAllowsChild(
-	parentPath: SubAgentTaskPath | undefined,
-	policy: SubAgentTaskPathPolicy | undefined,
-): void {
+export function assertSubAgentPolicyAllowsChild(policy: SubAgentTaskPathPolicy | undefined): void {
 	if (policy?.canSpawnSubAgents === false) {
 		throw new Error('Sub-agent policy does not allow spawning child sub-agents');
-	}
-
-	if (policy?.maxDepth === undefined) return;
-
-	// The depth the child would occupy = parent depth + 1.
-	const nextDepth = getSubAgentTaskPathDepth(parentPath ?? ROOT_SUB_AGENT_TASK_PATH) + 1;
-	if (nextDepth > policy.maxDepth) {
-		throw new Error(`Sub-agent task path depth ${nextDepth} exceeds maxDepth ${policy.maxDepth}`);
 	}
 }
 

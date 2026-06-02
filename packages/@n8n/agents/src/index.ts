@@ -202,7 +202,6 @@ export {
 	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
-	getSubAgentTaskPathDepth,
 	isSubAgentTaskPath,
 	sanitizeSubAgentTaskName,
 } from './runtime/sub-agent-task-path';

@@ -11,6 +11,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
+import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
@@ -70,13 +71,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const uiStore = useUIStore();
 const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
 	computed(() => props.projectId),
 );
 
 onMounted(() => {
-	void ensureProjectAgentsLoaded();
+	void ensureProjectAgentsLoaded().catch(() => {});
 });
 
 const selectedSubAgentRefs = computed(() => props.localConfig?.subAgents?.agents ?? []);
@@ -106,7 +108,12 @@ const selectedSubAgents = computed(() =>
 async function onOpenAddSubAgentsModal() {
 	if (childrenDisabled.value) return;
 
-	await ensureProjectAgentsLoaded();
+	try {
+		await ensureProjectAgentsLoaded();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
+		return;
+	}
 
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,

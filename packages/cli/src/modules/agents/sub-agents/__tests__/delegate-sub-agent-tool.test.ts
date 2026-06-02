@@ -72,7 +72,6 @@ describe('createN8nDelegateSubAgentTool', () => {
 			createToolExecutor,
 			createMemoryFactory,
 			policy: { maxChildren: 2, timeoutMs: 1000 },
-			parentTaskPath: '/root',
 		});
 
 		await expect(

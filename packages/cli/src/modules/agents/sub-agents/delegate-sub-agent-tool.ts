@@ -2,7 +2,6 @@ import {
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	type DelegateSubAgentToolOutput,
-	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
 
@@ -16,17 +15,14 @@ export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForeground
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
-	parentTaskPath?: SubAgentTaskPath;
 	policy?: SubAgentRunPolicy;
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
-	const { runner, sourcesById, availableSubAgents, parentTaskPath, policy, ...runContext } =
-		options;
+	const { runner, sourcesById, availableSubAgents, policy, ...runContext } = options;
 
 	return createDelegateSubAgentTool({
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
-		...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 		...(policy !== undefined ? { policy } : {}),
 		runSubAgent: async (request) => {
 			const selectedSource = selectSubAgentSource({
