@@ -3588,6 +3588,7 @@ export class InstanceAiService {
 				orchestrationContext,
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
+			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory history only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
@@ -3621,6 +3622,7 @@ export class InstanceAiService {
 					runId,
 					taskId: plannedBuild.buildTaskId,
 					workItemId: plannedBuild.workItemId,
+					allowPostPlanWorkflowCreate: true,
 					plannedTaskService,
 					workflowTaskService: workflowTasks,
 					onBuildOutcome: (outcome) => {
@@ -3633,6 +3635,7 @@ export class InstanceAiService {
 					runId,
 					taskId: `build-${runId}`,
 					workItemId: `wi_${nanoid(8)}`,
+					allowPostPlanWorkflowCreate: isPostPlanFollowUp,
 					workflowTaskService: workflowTasks,
 				};
 			}

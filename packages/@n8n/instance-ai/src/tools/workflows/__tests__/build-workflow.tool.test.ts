@@ -41,6 +41,146 @@ jest.mock('../submit-workflow.tool', () => ({
 }));
 
 describe('createBuildWorkflowTool', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('rejects new workflow builds outside a planned or post-plan follow-up', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(),
+				clearAiTemporary: jest.fn(),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: jest.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, { code: 'workflow code' });
+
+		expect(result).toMatchObject({
+			success: false,
+			errors: [
+				'New workflow builds must be planned first: call `plan` so the user can approve the build plan before saving.',
+			],
+		});
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('allows new workflow builds during post-plan follow-up repairs', async () => {
+		const reportBuildOutcome = jest.fn(
+			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
+		);
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				allowPostPlanWorkflowCreate: true,
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: jest.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, { code: 'workflow code' });
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			workItemId: 'wi-1',
+		});
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Generated workflow' }),
+			{ markAsAiTemporary: true },
+		);
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				submitted: true,
+			}),
+		);
+	});
+
+	it('updates existing workflows during post-plan follow-ups without redundant approval', async () => {
+		const reportBuildOutcome = jest.fn(
+			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
+		);
+		const suspend = jest.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				updateFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				allowPostPlanWorkflowCreate: true,
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+			},
+			permissions: { updateWorkflow: 'ask' },
+			logger: { warn: jest.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(
+			tool,
+			{ workflowId: 'wf-1', code: 'workflow code' },
+			{ suspend },
+		);
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+			workItemId: 'wi-1',
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-1',
+			expect.objectContaining({ name: 'Generated workflow' }),
+			undefined,
+		);
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				submitted: true,
+			}),
+		);
+	});
+
 	it('reports a workflow-loop outcome when saving succeeds', async () => {
 		const reportBuildOutcome = jest.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),

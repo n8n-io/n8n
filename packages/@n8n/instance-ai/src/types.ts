@@ -780,6 +780,11 @@ export interface InstanceAiContext {
 		runId: string;
 		taskId: string;
 		workItemId: string;
+		/**
+		 * True for replan/checkpoint follow-ups where an approved plan already
+		 * exists and the builder may retry directly without creating a new plan.
+		 */
+		allowPostPlanWorkflowCreate?: boolean;
 		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;

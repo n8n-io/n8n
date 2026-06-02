@@ -232,8 +232,9 @@ function withDeterministicRouting(
 	};
 }
 
-function isPlannedBuildContext(context: InstanceAiContext): boolean {
-	return Boolean(context.workflowBuildContext?.plannedTaskService);
+function isApprovedBuildContext(context: InstanceAiContext): boolean {
+	const buildContext = context.workflowBuildContext;
+	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
 }
 
 async function resolveWorkflowName(
@@ -345,7 +346,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				return { success: false, errors: ['Action blocked by admin'] };
 			}
 
-			if (!input.workflowId && !isPlannedBuildContext(context)) {
+			if (!input.workflowId && !isApprovedBuildContext(context)) {
 				return {
 					success: false,
 					errors: [
@@ -356,7 +357,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (
 				input.workflowId &&
-				!isPlannedBuildContext(context) &&
+				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
 				if (ctx.resumeData && !ctx.resumeData.approved) {
