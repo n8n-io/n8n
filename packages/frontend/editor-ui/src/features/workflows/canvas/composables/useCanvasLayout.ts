@@ -7,13 +7,12 @@ import {
 	isCanvasNodeGroup,
 	type BoundingBox,
 	type CanvasConnection,
-	type CanvasConnectionPort,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import type { ComputedRef, Ref } from 'vue';
-import type { CanvasRenderData } from '../canvas.utils';
+import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -109,31 +108,11 @@ export function useCanvasLayout(
 		}
 
 		// Calculate dimensions based on node data
-		if (node.data && node.data.render) {
-			const isConfiguration =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configuration === true;
-			const isConfigurable =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configurable === true;
-
-			// Get input/output counts from render data (single source of truth)
-			const inputs: CanvasConnectionPort[] =
-				renderData.value.nodeInputsByNodeId.get(node.id)?.value ?? [];
-			const outputs: CanvasConnectionPort[] =
-				renderData.value.nodeOutputsByNodeId.get(node.id)?.value ?? [];
-			const mainInputCount = inputs.filter((input) => input.type === 'main').length || 1;
-			const mainOutputCount = outputs.filter((output) => output.type === 'main').length || 1;
-			const nonMainInputCount =
-				inputs.filter((input) => input.type !== 'main').length +
-				outputs.filter((output) => output.type !== 'main').length;
-
-			return calculateNodeSize(
-				isConfiguration,
-				isConfigurable,
-				mainInputCount,
-				mainOutputCount,
-				nonMainInputCount,
+		if (node.data?.render?.type === CanvasNodeRenderType.Default) {
+			return computeNodeDisplaySize(
+				node.id,
+				node.data.render.options,
+				renderData.value,
 				isEmbeddedNdvActive.value,
 			);
 		}

@@ -12,6 +12,7 @@ import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -61,6 +62,9 @@ const connections = computed(() => workflowDocumentStore.value.connectionsBySour
 const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 
+const experimentalNdvStore = useExperimentalNdvStore();
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
 const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
 	nodes,
 	connections,
@@ -68,6 +72,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	renderData,
 	nodeGroupIdToAutofocusTitle,
 	readOnly: readOnlyRef,
+	isExperimentalNdvActive,
 });
 
 provide('canvasNodeGroupAutofocus', nodeGroupIdToAutofocusTitle);

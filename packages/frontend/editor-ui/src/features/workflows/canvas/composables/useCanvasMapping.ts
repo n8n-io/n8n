@@ -27,6 +27,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import { mapGroupsToVueFlowNodes } from './useCanvasMapping.groups';
 import {
 	checkOverlap,
+	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
@@ -49,11 +50,6 @@ import {
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
-import {
-	CONFIGURABLE_NODE_SIZE,
-	CONFIGURATION_NODE_SIZE,
-	DEFAULT_NODE_SIZE,
-} from '@/app/utils/nodeViewUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
@@ -70,14 +66,16 @@ export function useCanvasMapping({
 	workflowObject,
 	renderData,
 	nodeGroupIdToAutofocusTitle,
-	readOnly,
+	readOnly = ref(false),
+	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
 	nodeGroupIdToAutofocusTitle?: Ref<string | null>;
-	readOnly?: Ref<boolean> | boolean;
+	readOnly?: Ref<boolean>;
+	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -576,28 +574,25 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
-	const isReadOnly = computed(() => {
-		if (readOnly === undefined) return false;
-		return typeof readOnly === 'boolean' ? readOnly : readOnly.value;
-	});
-
-	// Size by node id, derived from render type. Sticky notes are omitted —
-	// their own width/height parameters are read by `computeMemberRectFromStore`.
+	// Display size by node id, used by `computeMemberRectFromStore` so the group
+	// bounding rect wraps each member's actual rendered size. Sticky notes are
+	// omitted — their own width/height parameters are read there directly.
 	const memberDimensionsByNodeId = computed(() => {
-		const byId: Record<string, { width: number; height: number }> = {};
+		const dimensionsById: Record<string, { width: number; height: number }> = {};
+
 		for (const node of nodes.value) {
 			const render = renderTypeByNodeId.value[node.id];
-			if (render?.type === CanvasNodeRenderType.Default) {
-				if (render.options.configuration) {
-					byId[node.id] = { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
-				} else if (render.options.configurable) {
-					byId[node.id] = { width: CONFIGURABLE_NODE_SIZE[0], height: CONFIGURABLE_NODE_SIZE[1] };
-				} else {
-					byId[node.id] = { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
-				}
-			}
+
+			if (render?.type !== CanvasNodeRenderType.Default) continue;
+
+			dimensionsById[node.id] = computeNodeDisplaySize(
+				node.id,
+				render.options,
+				renderData.value,
+				isExperimentalNdvActive.value,
+			);
 		}
-		return byId;
+		return dimensionsById;
 	});
 
 	const groupVueFlowNodes = computed(() => {
@@ -608,7 +603,7 @@ export function useCanvasMapping({
 			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 			getNodeDimensions: (id) => memberDimensionsByNodeId.value[id],
 			autofocusGroupId: nodeGroupIdToAutofocusTitle?.value ?? null,
-			readOnly: isReadOnly.value,
+			readOnly: readOnly.value,
 		});
 	});
 
