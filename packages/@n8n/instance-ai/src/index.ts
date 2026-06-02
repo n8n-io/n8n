@@ -381,6 +381,7 @@ export type {
 	DataTableFilterInput,
 	LocalMcpServer,
 	McpServerConfig,
+	McpToolDescriptor,
 	ModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,

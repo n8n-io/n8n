@@ -1,7 +1,9 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { McpServerConfig } from '@n8n/instance-ai';
+import type { McpServerConfig, McpToolDescriptor } from '@n8n/instance-ai';
+import { McpClientManager } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -14,6 +16,7 @@ import { EventService } from '@/events/event.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
@@ -85,6 +88,17 @@ function buildServerName(serverSlug: string, sequence: number): string {
 export class InstanceAiMcpRegistryService {
 	private readonly logger: Logger;
 
+	private _mcpClientManager?: McpClientManager;
+
+	private get mcpClientManager(): McpClientManager {
+		if (!this._mcpClientManager) {
+			this._mcpClientManager = new McpClientManager(
+				this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined,
+			);
+		}
+		return this._mcpClientManager;
+	}
+
 	constructor(
 		logger: Logger,
 		private readonly connectionRepository: InstanceAiMcpRegistryConnectionRepository,
@@ -93,6 +107,8 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -184,65 +200,98 @@ export class InstanceAiMcpRegistryService {
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
-			const server = serverBySlug.get(connection.serverSlug);
-			if (!server) {
-				this.logger.warn('Skipping MCP registry connection with missing server slug', {
-					connectionId: connection.id,
-					serverSlug: connection.serverSlug,
-					userId: user.id,
-				});
-				continue;
-			}
+			const nextCount = (slugCounts.get(connection.serverSlug) ?? 0) + 1;
+			slugCounts.set(connection.serverSlug, nextCount);
 
-			const resolvedServer = this.resolveRegistryServer(
-				connection.id,
-				connection.serverSlug,
-				connection.credentialId,
-				server.authType,
-				server.remotes,
+			const config = await this.buildServerConfigForConnection(
+				user,
+				connection,
+				serverBySlug.get(connection.serverSlug),
+				nextCount,
 			);
-			if (!resolvedServer) {
-				continue;
-			}
-
-			const nextCount = (slugCounts.get(resolvedServer.serverSlug) ?? 0) + 1;
-			slugCounts.set(resolvedServer.serverSlug, nextCount);
-			const serverConfig: McpServerConfig = {
-				name: buildServerName(resolvedServer.serverSlug, nextCount),
-				url: resolvedServer.endpointUrl,
-				transport: resolvedServer.transport,
-				cacheKey: `registry-connection:${connection.id}`,
-			};
-
-			if (resolvedServer.authType === 'oauth2') {
-				const oauth2FetchContext = await this.buildOAuth2FetchContext(
-					resolvedServer,
-					user,
-					connection.id,
-				);
-				if (!oauth2FetchContext) {
-					continue;
-				}
-
-				serverConfig.fetch = createAuthFetch({
-					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
-					onUnauthorized: async () => {
-						if (!oauth2FetchContext.projectId) {
-							return null;
-						}
-
-						return await this.oauthService.refreshOAuth2CredentialById(
-							oauth2FetchContext.credentialId,
-							oauth2FetchContext.projectId,
-						);
-					},
-				});
-			}
-
-			resolved.push(serverConfig);
+			if (config) resolved.push(config);
 		}
 
 		return resolved;
+	}
+
+	/**
+	 * Live `tools/list` against the MCP server backing a single connection.
+	 * Resolves the same `McpServerConfig` we'd hand to the agent at runtime
+	 * (so auth + transport + OAuth refresh match), then asks the manager for
+	 * an ephemeral client to list tools.
+	 */
+	async listToolsForConnection(user: User, connectionId: string): Promise<McpToolDescriptor[]> {
+		const connection = await this.connectionRepository.findOneBy({
+			id: connectionId,
+			userId: user.id,
+		});
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		const server = await this.mcpRegistryService.get(connection.serverSlug);
+		const config = await this.buildServerConfigForConnection(user, connection, server, 1);
+		if (!config) return [];
+
+		return await this.mcpClientManager.listToolsForConfig(config);
+	}
+
+	private async buildServerConfigForConnection(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+		server: { authType: string; remotes: McpRegistryRemote[] } | undefined,
+		sequence: number,
+	): Promise<McpServerConfig | null> {
+		if (!server) {
+			this.logger.warn('Skipping MCP registry connection with missing server slug', {
+				connectionId: connection.id,
+				serverSlug: connection.serverSlug,
+				userId: user.id,
+			});
+			return null;
+		}
+
+		const resolvedServer = this.resolveRegistryServer(
+			connection.id,
+			connection.serverSlug,
+			connection.credentialId,
+			server.authType,
+			server.remotes,
+		);
+		if (!resolvedServer) return null;
+
+		const serverConfig: McpServerConfig = {
+			name: buildServerName(resolvedServer.serverSlug, sequence),
+			url: resolvedServer.endpointUrl,
+			transport: resolvedServer.transport,
+			cacheKey: `registry-connection:${connection.id}`,
+		};
+
+		if (resolvedServer.authType === 'oauth2') {
+			const oauth2FetchContext = await this.buildOAuth2FetchContext(
+				resolvedServer,
+				user,
+				connection.id,
+			);
+			if (!oauth2FetchContext) return null;
+
+			serverConfig.fetch = createAuthFetch({
+				initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
+				onUnauthorized: async () => {
+					if (!oauth2FetchContext.projectId) {
+						return null;
+					}
+
+					return await this.oauthService.refreshOAuth2CredentialById(
+						oauth2FetchContext.credentialId,
+						oauth2FetchContext.projectId,
+					);
+				},
+			});
+		}
+
+		return serverConfig;
 	}
 
 	private resolveRegistryServer(

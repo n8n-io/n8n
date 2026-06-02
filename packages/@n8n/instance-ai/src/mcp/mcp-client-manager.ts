@@ -16,7 +16,7 @@ import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
 import { createToolRegistry, createToolRegistryFromTools } from '../tool-registry';
-import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
+import type { InstanceAiToolRegistry, McpServerConfig, McpToolDescriptor } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
 
@@ -134,6 +134,27 @@ export class McpClientManager {
 		this.regularToolsByKey.clear();
 		this.inFlightRegularByKey.clear();
 		await Promise.all(clients.map(async (client) => await client.close()));
+	}
+
+	/**
+	 * One-off `tools/list` against a single MCP server config. Creates an
+	 * ephemeral client, fetches the tools, closes the connection. Bypasses the
+	 * long-lived client cache used by `getRegularTools` — intended for UI
+	 * surfaces (settings pickers, etc.) that need an up-to-date tool list
+	 * without holding open a connection.
+	 */
+	async listToolsForConfig(config: McpServerConfig): Promise<McpToolDescriptor[]> {
+		await this.validateConfigs([config]);
+		const client = new McpClient(buildNativeMcpConfigs([config]), false);
+		try {
+			const tools = await client.listTools();
+			return tools.map((tool) => ({
+				name: tool.name,
+				description: tool.description,
+			}));
+		} finally {
+			await client.close();
+		}
 	}
 
 	private async getOrLoad<T>(

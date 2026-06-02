@@ -1054,6 +1054,15 @@ export interface InstanceAiModelCredential {
 // MCP registry connections — per-user
 // ---------------------------------------------------------------------------
 
+/**
+ * Live tool descriptor returned by `GET /instance-ai/mcp/connections/:id/tools`
+ * — what the connected MCP server reports right now for the user's credential.
+ */
+export interface InstanceAiMcpConnectionToolResponse {
+	name: string;
+	description?: string;
+}
+
 export interface InstanceAiMcpConnectionResponse {
 	id: string;
 	serverSlug: string;

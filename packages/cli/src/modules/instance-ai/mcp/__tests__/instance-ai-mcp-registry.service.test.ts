@@ -1,5 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
+import { McpClientManager } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -11,6 +13,7 @@ import type { EventService } from '@/events/event.service';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
@@ -72,6 +75,8 @@ describe('InstanceAiMcpRegistryService', () => {
 		const credentialsService = mock<CredentialsService>();
 		const oauthService = mock<OauthService>();
 		const eventService = mock<EventService>();
+		const ssrfProtectionConfig = mock<SsrfProtectionConfig>({ enabled: false });
+		const ssrfProtectionService = mock<SsrfProtectionService>();
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -81,6 +86,8 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
+			ssrfProtectionConfig,
+			ssrfProtectionService,
 		);
 
 		return {
@@ -92,6 +99,8 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 			eventService,
+			ssrfProtectionConfig,
+			ssrfProtectionService,
 		};
 	}
 
@@ -450,6 +459,79 @@ describe('InstanceAiMcpRegistryService', () => {
 			await expect(service.deleteConnection(user, 'conn-1')).rejects.toBeInstanceOf(NotFoundError);
 			expect(connectionRepository.delete).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listToolsForConnection', () => {
+		const row = {
+			id: 'conn-1',
+			userId: user.id,
+			serverSlug: 'linear',
+			credentialId: credential.id,
+		} as InstanceAiMcpRegistryConnection;
+
+		it('returns live tools from the MCP server for a valid connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+			} = createService();
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
+
+			// `McpClientManager` is exported as a lazy wrapper, so spying on its
+			// prototype doesn't reach the real class. Pre-populate the service's
+			// private lazy slot with a mock so the getter returns it as-is.
+			const mockManager = mock<McpClientManager>();
+			mockManager.listToolsForConfig.mockResolvedValue([
+				{ name: 'list-issues', description: 'List Linear issues' },
+				{ name: 'create-issue', description: 'Create a Linear issue' },
+			]);
+			(service as unknown as { _mcpClientManager: McpClientManager })._mcpClientManager =
+				mockManager;
+
+			const result = await service.listToolsForConnection(user, 'conn-1');
+
+			expect(result).toEqual([
+				{ name: 'list-issues', description: 'List Linear issues' },
+				{ name: 'create-issue', description: 'Create a Linear issue' },
+			]);
+			expect(mockManager.listToolsForConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('throws NotFoundError when the connection does not belong to the user', async () => {
+			const { service, connectionRepository } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.listToolsForConnection(user, 'conn-1')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+		});
+
+		it('returns an empty list when the credential is no longer accessible', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			const result = await service.listToolsForConnection(user, 'conn-1');
+
+			expect(result).toEqual([]);
+		});
+
+		it('returns an empty list when the registry server is missing', async () => {
+			const { service, connectionRepository, mcpRegistryService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(row);
+			mcpRegistryService.get.mockResolvedValue(undefined);
+
+			const result = await service.listToolsForConnection(user, 'conn-1');
+
+			expect(result).toEqual([]);
 		});
 	});
 });
