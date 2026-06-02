@@ -1244,6 +1244,8 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1302,6 +1304,8 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
