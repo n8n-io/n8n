@@ -47,6 +47,19 @@ export interface UseAgentChatStreamParams {
 	onHistoryLoaded?: (count: number) => void;
 }
 
+type ResumePayload =
+	| {
+			runId: string;
+			toolCallId: string;
+			resumeData: unknown;
+	  }
+	| {
+			runId: string;
+			toolCallId: string;
+			cancelled: true;
+			text: string;
+	  };
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -512,26 +525,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		await postAndConsume(url, body);
 	}
 
-	/**
-	 * Resume a suspended build interaction. Posts to the build/resume endpoint
-	 * and re-enters the same SSE handler. The `runId` is required — it comes
-	 * from the original `tool-call-suspended` chunk (live) or from the
-	 * `openSuspensions` sidecar applied during history reload.
-	 */
-	async function resume(payload: {
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-	}): Promise<void> {
-		// Optimistic update — the backend emits a matching `tool-result` on the
-		// resume stream, but that arrives only after round-trip. Flipping state
-		// here stops the spinner/clock indicator and disables the card so the
-		// user sees immediate feedback on submit.
-		//
-		// Snapshot the pre-flight state so we can roll back if the resume POST
-		// or the SSE stream fails. Otherwise a transport/expired-checkpoint
-		// error would leave the card permanently disabled and the user with
-		// no way to retry.
+	async function resume(payload: ResumePayload): Promise<void> {
+		const isCancellation = 'cancelled' in payload;
+		const text = isCancellation ? payload.text.trim() : '';
+		if (isCancellation && !text) return;
+
 		const found = findToolCallById(payload.toolCallId);
 		const snapshot = found
 			? {
@@ -545,25 +543,61 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					prevInteractive: found.msg.interactive,
 				}
 			: null;
+		let optimisticUserMessageId: string | undefined;
 
 		if (found) {
-			found.tc.state = TOOL_CALL_STATE.DONE;
-			found.tc.canceled = false;
-			found.tc.output = payload.resumeData;
-			found.tc.displaySummary = summariseToolCall(
-				found.tc.tool,
-				payload.resumeData,
-				found.tc.input,
-			);
-			const updated = rebuildInteractiveFromHistory(found.tc);
-			if (updated) found.msg.interactive = updated;
+			if (isCancellation) {
+				found.tc.state = TOOL_CALL_STATE.CANCELLED;
+				found.tc.canceled = true;
+				if (found.msg.interactive) {
+					found.msg.interactive = {
+						...found.msg.interactive,
+						resolvedAt: Date.now(),
+						cancelled: true,
+					};
+				}
+			} else {
+				found.tc.state = TOOL_CALL_STATE.DONE;
+				found.tc.canceled = false;
+				found.tc.output = payload.resumeData;
+				found.tc.displaySummary = summariseToolCall(
+					found.tc.tool,
+					payload.resumeData,
+					found.tc.input,
+				);
+				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated) found.msg.interactive = updated;
+			}
 			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
 				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
 
+		const resumeData: unknown = isCancellation
+			? ({
+					_type: 'agent.cancellation',
+					message: text,
+				} satisfies CancellationResumeData)
+			: payload.resumeData;
+
+		if (isCancellation) {
+			optimisticUserMessageId = crypto.randomUUID();
+			fatalError.value = null;
+			messages.value.push({
+				id: optimisticUserMessageId,
+				role: 'user',
+				content: text,
+				status: 'success',
+			});
+		}
+
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
-		const { ok } = await postAndConsume(url, payload);
+		const { ok } = await postAndConsume(url, {
+			runId: payload.runId,
+			toolCallId: payload.toolCallId,
+			resumeData,
+		});
+
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
@@ -572,73 +606,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			snapshot.msg.status = snapshot.prevStatus;
 			snapshot.msg.interactive = snapshot.prevInteractive;
 		}
+		if (!ok && optimisticUserMessageId) {
+			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+		}
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const trimmed = text.trim();
-		if (!trimmed) return;
-
 		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
 		if (!openMsg?.interactive?.runId) return;
 
-		const { runId, toolCallId } = openMsg.interactive;
-
-		const tc = openMsg.toolCalls?.find((t) => t.toolCallId === toolCallId);
-		const snapshot = tc
-			? {
-					tc,
-					prevState: tc.state,
-					prevOutput: tc.output,
-					prevCanceled: tc.canceled,
-					prevSummary: tc.displaySummary,
-					prevStatus: openMsg.status,
-					prevInteractive: openMsg.interactive,
-				}
-			: null;
-
-		if (tc) {
-			tc.state = TOOL_CALL_STATE.CANCELLED;
-			tc.canceled = true;
-		}
-		openMsg.interactive = {
-			...openMsg.interactive,
-			resolvedAt: Date.now(),
+		await resume({
+			runId: openMsg.interactive.runId,
+			toolCallId: openMsg.interactive.toolCallId,
 			cancelled: true,
-		};
-		if (openMsg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
-			openMsg.status = CHAT_MESSAGE_STATUS.SUCCESS;
-		}
-
-		fatalError.value = null;
-		messages.value.push({
-			id: crypto.randomUUID(),
-			role: 'user',
-			content: trimmed,
-			status: 'success',
+			text,
 		});
-
-		const cancellationPayload: CancellationResumeData = {
-			_type: 'agent.cancellation',
-			message: trimmed,
-		};
-
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
-		const { ok } = await postAndConsume(url, {
-			runId,
-			toolCallId,
-			resumeData: cancellationPayload,
-		});
-
-		if (!ok && snapshot) {
-			snapshot.tc.state = snapshot.prevState;
-			snapshot.tc.output = snapshot.prevOutput;
-			snapshot.tc.canceled = snapshot.prevCanceled;
-			snapshot.tc.displaySummary = snapshot.prevSummary;
-			openMsg.status = snapshot.prevStatus;
-			openMsg.interactive = snapshot.prevInteractive;
-			messages.value = messages.value.filter((m) => !(m.role === 'user' && m.content === trimmed));
-		}
 	}
 
 	async function sendMessage(text: string): Promise<void> {
