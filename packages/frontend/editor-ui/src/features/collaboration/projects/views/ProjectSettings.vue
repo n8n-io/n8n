@@ -17,6 +17,7 @@ import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
@@ -25,11 +26,12 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import {
+	N8nAlert,
 	N8nButton,
 	N8nFormInput,
 	N8nIcon,
@@ -51,6 +53,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
+const settingsStore = useSettingsStore();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
@@ -69,16 +72,26 @@ const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
-const isValid = ref(false);
+const isNameValid = ref(false);
+const isDescriptionValid = ref(true);
+const isTelemetryTagsValid = ref(true);
+const isValid = computed(
+	() => isNameValid.value && isDescriptionValid.value && isTelemetryTagsValid.value,
+);
 const resourceCounts = ref<ResourceCounts>({
 	credentials: -1,
 	dataTables: -1,
 	workflows: -1,
 });
-const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
+const formData = ref<
+	Pick<Project, 'name' | 'description' | 'relations'> & {
+		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+	}
+>({
 	name: '',
 	description: '',
 	relations: [],
+	customTelemetryTags: [],
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -213,6 +226,8 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
+const telemetryTagsRef = ref<InstanceType<typeof ProjectSettingsCustomTelemetryTags> | null>(null);
+
 async function onRemoveMember(userId: string) {
 	const current = projectsStore.currentProject;
 	if (!current) return;
@@ -262,6 +277,10 @@ const resetFormData = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	formData.value.customTelemetryTags = projectsStore.currentProject?.customTelemetryTags
+		? deepCopy(projectsStore.currentProject.customTelemetryTags)
+		: [];
+	telemetryTagsRef.value?.resetTouched();
 };
 
 const onCancel = () => {
@@ -339,6 +358,9 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
+			...(settingsStore.isOtelEnabled
+				? { customTelemetryTags: formData.value.customTelemetryTags }
+				: {}),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -607,7 +629,7 @@ onMounted(async () => {
 							:class="$style.projectNameInput"
 							@enter="onSubmit"
 							@input="onTextInput"
-							@validate="isValid = $event"
+							@validate="isNameValid = $event"
 						/>
 					</div>
 				</fieldset>
@@ -627,7 +649,7 @@ onMounted(async () => {
 						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
 						@input="onTextInput"
-						@validate="isValid = $event"
+						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
 			</template>
@@ -653,8 +675,8 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							@update:model-value="onAddMember"
 							:disabled="isProjectRoleProvisioningEnabled || isExpressionMappingEnabled"
+							@update:model-value="onAddMember"
 						>
 							<template #prefix>
 								<N8nIcon icon="search" />
@@ -706,6 +728,17 @@ onMounted(async () => {
 							@action="onMembersListAction"
 						/>
 					</div>
+				</fieldset>
+				<fieldset v-if="settingsStore.isOtelEnabled">
+					<h3>
+						<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
+					</h3>
+					<ProjectSettingsCustomTelemetryTags
+						ref="telemetryTagsRef"
+						v-model="formData.customTelemetryTags"
+						@update:model-value="onTextInput"
+						@validate="isTelemetryTagsValid = $event"
+					/>
 				</fieldset>
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>

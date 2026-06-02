@@ -15,6 +15,10 @@ catalog:
   '@ai-sdk/groq': ^3.0.35
   '@ai-sdk/mistral': ^3.0.30
   '@azure/identity': 4.13.0
+  '@chat-adapter/linear': ^4.28.1
+  '@chat-adapter/slack': ^4.28.1
+  '@chat-adapter/state-memory': ^4.28.1
+  '@chat-adapter/telegram': ^4.28.1
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -38,6 +42,8 @@ catalog:
   '@lezer/html': 1.3.13
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
+  '@modelcontextprotocol/ext-apps': 1.3.2
+  '@modelcontextprotocol/sdk': 1.26.0
   '@n8n/typeorm': 0.3.20-17
   '@n8n_io/ai-assistant-sdk': 1.21.0
   '@openrouter/ai-sdk-provider': ^2.8.0
@@ -49,6 +55,19 @@ catalog:
   '@testcontainers/mysql': ^11.13.0
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
+  '@tiptap/core': 3.22.5
+  '@tiptap/extension-link': 3.22.5
+  '@tiptap/extension-placeholder': 3.22.5
+  '@tiptap/extension-strike': 3.22.5
+  '@tiptap/extension-table': 3.22.5
+  '@tiptap/extension-table-cell': 3.22.5
+  '@tiptap/extension-table-header': 3.22.5
+  '@tiptap/extension-table-row': 3.22.5
+  '@tiptap/extension-task-item': 3.22.5
+  '@tiptap/extension-task-list': 3.22.5
+  '@tiptap/markdown': 3.22.5
+  '@tiptap/starter-kit': 3.22.5
+  '@tiptap/vue-3': 3.22.5
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': 9.0.10
@@ -57,12 +76,15 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
   axios: 1.16.1
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   callsites: 3.1.0
+  chat: ^4.28.1
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
@@ -85,6 +107,7 @@ catalog:
   kafkajs: 2.2.4
   langchain: 1.2.30
   langsmith: 0.6.0
+  ldapts: 8.1.7
   lodash: 4.18.1
   luxon: 3.7.2
   mime-types: 3.0.2
@@ -94,6 +117,7 @@ catalog:
   openai: 6.19.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
+  pdf-parse: 2.4.5
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.60.0
@@ -101,6 +125,7 @@ catalog:
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0
+  semver: 7.7.3
   simple-git: 3.36.0
   stream-json: 1.9.1
   testcontainers: ^11.13.0
@@ -111,6 +136,7 @@ catalog:
   uuid: 10.0.0
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
+  vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5

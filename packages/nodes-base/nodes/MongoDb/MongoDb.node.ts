@@ -254,28 +254,25 @@ export class MongoDb implements INodeType {
 						const updateOptions = (this.getNodeParameter('upsert', i) as boolean)
 							? { upsert: true }
 							: undefined;
-						const [item] = prepareItems({
-							items: [items[i]],
-							fields,
-							updateKey,
-							useDotNotation,
-							dateFields,
-						});
-
-						if (!item) {
-							if (this.continueOnFail()) {
-								returnData.push({
-									json: { error: 'Item is missing the updateKey field' },
-									pairedItem: { item: i },
-								});
-								continue;
-							}
-							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
-								itemIndex: i,
-							});
-						}
 
 						try {
+							const [item] = prepareItems({
+								items: [items[i]],
+								fields,
+								updateKey,
+								useDotNotation,
+								dateFields,
+								node: this.getNode(),
+							});
+
+							if (!item) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Item is missing the updateKey field',
+									{ itemIndex: i },
+								);
+							}
+
 							const filter = { [updateKey]: item[updateKey] };
 							if (updateKey === '_id') {
 								filter[updateKey] = new ObjectId(item[updateKey] as string);
@@ -321,6 +318,7 @@ export class MongoDb implements INodeType {
 						updateKey,
 						useDotNotation,
 						dateFields,
+						node: this.getNode(),
 					});
 
 					for (const item of updateItems) {
@@ -367,29 +365,26 @@ export class MongoDb implements INodeType {
 						const updateOptions = (this.getNodeParameter('upsert', i) as boolean)
 							? { upsert: true }
 							: undefined;
-						const [item] = prepareItems({
-							items: [items[i]],
-							fields,
-							updateKey,
-							useDotNotation,
-							dateFields,
-							isUpdate: true,
-						});
-
-						if (!item) {
-							if (this.continueOnFail()) {
-								returnData.push({
-									json: { error: 'Item is missing the updateKey field' },
-									pairedItem: { item: i },
-								});
-								continue;
-							}
-							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
-								itemIndex: i,
-							});
-						}
 
 						try {
+							const [item] = prepareItems({
+								items: [items[i]],
+								fields,
+								updateKey,
+								useDotNotation,
+								dateFields,
+								isUpdate: true,
+								node: this.getNode(),
+							});
+
+							if (!item) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Item is missing the updateKey field',
+									{ itemIndex: i },
+								);
+							}
+
 							const filter = { [updateKey]: item[updateKey] };
 							if (updateKey === '_id') {
 								filter[updateKey] = new ObjectId(item[updateKey] as string);
@@ -436,6 +431,7 @@ export class MongoDb implements INodeType {
 						useDotNotation,
 						dateFields,
 						isUpdate: nodeVersion >= 1.2,
+						node: this.getNode(),
 					});
 
 					for (const item of updateItems) {
@@ -488,6 +484,7 @@ export class MongoDb implements INodeType {
 								updateKey: '',
 								useDotNotation,
 								dateFields,
+								node: this.getNode(),
 							});
 
 							if (!insertItem) continue;
@@ -561,6 +558,7 @@ export class MongoDb implements INodeType {
 							updateKey: '',
 							useDotNotation,
 							dateFields,
+							node: this.getNode(),
 						});
 
 						const { insertedIds } = await mdb
@@ -606,29 +604,26 @@ export class MongoDb implements INodeType {
 						const updateOptions = (this.getNodeParameter('upsert', i) as boolean)
 							? { upsert: true }
 							: undefined;
-						const [item] = prepareItems({
-							items: [items[i]],
-							fields,
-							updateKey,
-							useDotNotation,
-							dateFields,
-							isUpdate: true,
-						});
-
-						if (!item) {
-							if (this.continueOnFail()) {
-								returnData.push({
-									json: { error: 'Item is missing the updateKey field' },
-									pairedItem: { item: i },
-								});
-								continue;
-							}
-							throw new NodeOperationError(this.getNode(), 'Item is missing the updateKey field', {
-								itemIndex: i,
-							});
-						}
 
 						try {
+							const [item] = prepareItems({
+								items: [items[i]],
+								fields,
+								updateKey,
+								useDotNotation,
+								dateFields,
+								isUpdate: true,
+								node: this.getNode(),
+							});
+
+							if (!item) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Item is missing the updateKey field',
+									{ itemIndex: i },
+								);
+							}
+
 							const filter = { [updateKey]: item[updateKey] };
 							if (updateKey === '_id') {
 								filter[updateKey] = new ObjectId(item[updateKey] as string);
@@ -675,6 +670,7 @@ export class MongoDb implements INodeType {
 						useDotNotation,
 						dateFields,
 						isUpdate: nodeVersion >= 1.2,
+						node: this.getNode(),
 					});
 
 					for (const item of updateItems) {

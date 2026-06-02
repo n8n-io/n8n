@@ -28,11 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -73,6 +74,7 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	private get workflowService() {
@@ -102,6 +104,18 @@ export class ProjectService {
 	private get secretsProvidersConnectionsService() {
 		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
+		);
+	}
+
+	private get agentRepository() {
+		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+			Container.get(AgentRepository),
+		);
+	}
+
+	private get agentKnowledgeService() {
+		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+			Container.get(AgentKnowledgeService),
 		);
 	}
 
@@ -206,10 +220,22 @@ export class ProjectService {
 			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
 		}
 
-		// 8. delete project
+		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
+		if (this.moduleRegistry.isActive('agents')) {
+			const [agentRepository, agentKnowledgeService] = await Promise.all([
+				this.agentRepository,
+				this.agentKnowledgeService,
+			]);
+			const agents = await agentRepository.findByProjectId(project.id);
+			for (const agent of agents) {
+				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+			}
+		}
+
+		// 9. delete project
 		await this.projectRepository.remove(project);
 
-		// 9. delete project relations
+		// 10. delete project relations
 		// Cascading deletes take care of this.
 	}
 
@@ -245,8 +271,7 @@ export class ProjectService {
 		return projects.map((project) => {
 			const relation = relationsByProject.get(project.id);
 			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
-			return {
-				...project,
+			return Object.assign(project, {
 				role: relation?.role?.slug ?? user.role.slug,
 				scopes: [
 					...new Set(
@@ -256,7 +281,7 @@ export class ProjectService {
 						}),
 					),
 				].sort(),
-			};
+			});
 		});
 	}
 
@@ -330,15 +355,22 @@ export class ProjectService {
 
 	async updateProject(
 		projectId: string,
-		{ name, icon, description }: UpdateProjectDto,
+		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
 	): Promise<void> {
+		const trimmedTags = customTelemetryTags
+			?.map(({ key, value }) => ({ key: key.trim(), value }))
+			.filter(({ key }) => key !== '');
+
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description },
+			{ name, icon, description, customTelemetryTags: trimmedTags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
 		}
+
+		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
+		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {

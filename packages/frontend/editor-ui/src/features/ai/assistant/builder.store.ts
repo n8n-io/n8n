@@ -256,7 +256,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const route = useRoute();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -285,7 +285,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages,
 		getTargetNodeName: (msg) =>
 			msg.nodeName ??
-			ndvStore.activeNodeName ??
+			ndvStore.value.activeNodeName ??
 			focusedNodesStore.confirmedNodes[0]?.nodeName ??
 			'',
 		getSessionId: (msg) => {
@@ -933,7 +933,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Close NDV on new message
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 
 		const {
 			text,

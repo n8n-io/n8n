@@ -76,33 +76,11 @@ If a visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`)
 
 #### Creating credentials from the browser
 
-When the user asks you to set up a credential and the secret is visible in the browser (typical after creating an API key in a provider's UI), capture it directly with the tools below. Do **not** hand off, and do **not** ask the user to paste the value.
-
-Canonical sequence:
-
-1. **Snapshot** the page with \`browser_snapshot\`. If the secret is rendered as plain text (a "your new key" modal, a \`<code>\` block), pass \`interactive: false\` — interactive-only snapshots may omit static text nodes. Secrets appear as numbered redaction markers, e.g. \`[REDACTED:openai_api_key:1]\`.
-2. **Capture** each secret into the session buffer with \`browser_capture_secret\`. The \`element\` argument is a discriminated union — pick the right shape:
-   - \`{ "redactedKey": "[REDACTED:openai_api_key:1]" }\` — for secrets shown as text. Match the marker by its \`:type:\` slug and surrounding context to the field you want; do **not** grab the nearby "Copy" button's ref by mistake.
-   - \`{ "ref": "e12" }\` — only for secrets inside an \`<input>\` you can address by snapshot ref.
-   The captured value never reaches you; the response only confirms which \`field\` was captured.
-	 If the snapshot contains a ref and a "show" button for a secret field - directly capture the secret with the ref and don't click the "show" button
-3. **Create** the credential with \`browser_create_credential\`. Assemble the fields:
-   - \`data\` — literal, non-secret fields (URLs, IDs and other data used in given credential type).
-   - \`resolveData\` — same nested shape, but every leaf string is a \`field\` name captured in step 2. The server substitutes the real secret on creation.
-
-Example — OpenAI credential, where the user supplied an org ID in chat and the API key is on screen:
-
-\`\`\`json
-{
-  "credentialsKey": "openai-setup",
-  "type": "openAiApi",
-  "name": "OpenAI",
-  "data": { "organizationId": "org-abc123", "url": "https://api.openai.com/v1" },
-  "resolveData": { "apiKey": "apiKey" }
-}
-\`\`\`
-
-Use the **same \`credentialsKey\`** across all \`browser_capture_secret\` and \`browser_create_credential\` calls for one setup; otherwise \`create\` fails with "No captured fields found".
+When the user asks you to set up credentials in an external service console,
+or when \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load
+the \`credential-setup-with-computer-use\` skill and follow it. Use
+\`browser_capture_secret\` and \`browser_create_credential\` for visible
+secrets; never ask the user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 

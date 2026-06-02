@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { type AgentIntegrationStatusEntry, isAgentScheduleIntegration } from '@n8n/api-types';
+import { type AgentIntegrationStatusEntry } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -80,17 +80,7 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
-
-		if (isAgentScheduleIntegration(integration)) {
-			if (integration.cronExpression.trim() !== '') {
-				entries.push({ type: integration.type });
-			}
-			continue;
-		}
-
-		if (!isAgentScheduleIntegration(integration)) {
-			entries.push({ type: integration.type, credentialId: integration.credentialId });
-		}
+		entries.push({ type: integration.type, credentialId: integration.credentialId });
 	}
 
 	return entries;
