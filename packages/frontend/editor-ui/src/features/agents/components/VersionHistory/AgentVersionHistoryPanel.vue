@@ -14,9 +14,7 @@ import type { AgentVersionAction } from './AgentVersionListItem.vue';
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
-	// Whether the draft has diverged from the published version. Drives whether
-	// Revert on the published row is actionable — reverting to the published
-	// version is a no-op while the draft is still in sync.
+	// Whether the draft has diverged from the published version.
 	hasUnpublishedChanges?: boolean;
 	// Used only for the unpublish confirmation modal copy.
 	agentName?: string;
@@ -44,9 +42,7 @@ const { unpublish } = useAgentPublish();
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(toRef(props, 'projectId'));
 
-// Hide actions the user can't perform server-side. Matches the gating in
-// AgentPublishButton so viewers with `agent:read` only don't see options that
-// would 403 on click.
+// Hide actions the user can't perform server-side.
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
 	if (canUpdate.value) {
@@ -102,9 +98,6 @@ watch(
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
 	if (action === 'revert') {
-		// The published row reverts to its own version via the same flow as every
-		// other row, so it shows the same confirmation copy and behaves
-		// consistently within the list.
 		const result = await revertToVersion(props.projectId, props.agentId, versionId);
 		if (result) emit('reverted', result);
 	} else if (action === 'publish') {

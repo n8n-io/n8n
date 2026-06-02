@@ -47,9 +47,6 @@ const isEmpty = computed(
 );
 
 function getActions(item: AgentVersionListItemDto) {
-	// The currently-published row gets its own action set (Revert + Unpublish)
-	// rather than the per-version Revert/Publish — Publish would be a no-op, and
-	// the published version still needs to be revertable once the draft diverges.
 	return item.isActive ? props.activeActions : props.actions;
 }
 </script>
