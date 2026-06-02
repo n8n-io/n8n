@@ -52,6 +52,7 @@ describe('GlobalConfig', () => {
 				samesite: 'lax',
 				secure: true,
 			},
+			oauthBrowserBinding: false,
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -238,6 +239,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
@@ -262,6 +264,10 @@ describe('GlobalConfig', () => {
 		},
 		chatTrigger: {
 			disablePublicChat: false,
+		},
+		compressionNode: {
+			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
+			maxZipEntries: 5000,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
@@ -554,6 +560,8 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			subAgentMaxChildren: 5,
+			subAgentTimeoutMs: 300000,
 			modules: [],
 		},
 	} satisfies GlobalConfigShape;

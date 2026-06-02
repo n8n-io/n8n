@@ -53,17 +53,6 @@ export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSetti
 export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
 
-export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
-
-export const AgentScheduleIntegrationSchema = z
-	.object({
-		type: z.literal(AGENT_SCHEDULE_TRIGGER_TYPE),
-		active: z.boolean(),
-		cronExpression: z.string().min(1, 'cronExpression is required'),
-		wakeUpPrompt: z.string().min(1, 'wakeUpPrompt is required'),
-	})
-	.strict();
-
 const credentialIntegrations = [
 	createCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
 		// keep optional for older agents
@@ -73,37 +62,6 @@ const credentialIntegrations = [
 	createSimpleIntegrationSchema('linear'),
 ] as const;
 
-export const AgentCredentialIntegrationSchema = z.discriminatedUnion(
-	'type',
-	credentialIntegrations,
-);
-
-export const AgentIntegrationSchema = z.discriminatedUnion('type', [
-	...credentialIntegrations,
-	AgentScheduleIntegrationSchema,
-]);
+export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationSchema>;
-export type AgentScheduleIntegrationConfig = z.infer<typeof AgentScheduleIntegrationSchema>;
-export type AgentCredentialIntegrationConfig = Exclude<
-	AgentIntegrationConfig,
-	{ type: typeof AGENT_SCHEDULE_TRIGGER_TYPE }
->;
-
-export type AgentScheduleIntegration = AgentScheduleIntegrationConfig;
-export type AgentCredentialIntegrationDto = AgentCredentialIntegrationConfig;
-export type AgentIntegration = AgentIntegrationConfig;
-
-export function isAgentScheduleIntegration(
-	integration: AgentIntegrationConfig | null | undefined,
-): integration is AgentScheduleIntegrationConfig {
-	return integration?.type === AGENT_SCHEDULE_TRIGGER_TYPE;
-}
-
-export function isAgentCredentialIntegration(
-	integration: AgentIntegrationConfig | null | undefined,
-): integration is AgentCredentialIntegrationConfig {
-	return (
-		integration !== null && integration !== undefined && !isAgentScheduleIntegration(integration)
-	);
-}

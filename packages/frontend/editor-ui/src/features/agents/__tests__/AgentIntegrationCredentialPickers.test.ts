@@ -177,10 +177,6 @@ const N8nCollapsiblePanelStub = {
 
 const globalStubs = {
 	AgentCredentialSelect: AgentCredentialSelectStub,
-	AgentScheduleTriggerCard: {
-		name: 'AgentScheduleTriggerCard',
-		template: '<div data-testid="schedule-trigger-card" />',
-	},
 	Modal: {
 		template:
 			'<section><slot name="header" /><slot name="content" /><slot name="footer" /></section>',
@@ -988,32 +984,5 @@ describe('agent integration credential picker usage', () => {
 		});
 		expect(wrapper.text()).toContain('agents.builder.addTrigger.linear.oauthCallbackUrl.label');
 		expect(wrapper.text()).toContain('agents.builder.addTrigger.linear.webhookUrl.label');
-	});
-
-	it('notifies the builder when the schedule trigger is saved', async () => {
-		const onAgentChanged = vi.fn();
-		const wrapper = mount(AgentAddTriggerModal, {
-			props: {
-				modalName: 'agentAddTriggerModal',
-				data: {
-					projectId: 'project-1',
-					agentId: 'agent-1',
-					agentName: 'Agent',
-					isPublished: true,
-					initialTriggerType: 'schedule',
-					connectedTriggers: [],
-					onConnectedTriggersChange: vi.fn(),
-					onTriggerAdded: vi.fn(),
-					onAgentChanged,
-				},
-			},
-			global: { stubs: globalStubs },
-		});
-		await flushPromises();
-
-		wrapper.findComponent({ name: 'AgentScheduleTriggerCard' }).vm.$emit('saved');
-		await flushPromises();
-
-		expect(onAgentChanged).toHaveBeenCalledOnce();
 	});
 });

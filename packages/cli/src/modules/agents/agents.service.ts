@@ -8,15 +8,12 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AGENT_WORKFLOW_TRIGGER_TYPE,
-	AgentCredentialIntegrationSchema,
+	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
 	isNodeToolsEnabled,
+	isSubAgentsEnabled,
 	AgentModelSchema,
-	type AgentCredentialIntegrationConfig,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -27,6 +24,8 @@ import {
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
+	type SubAgentSource,
+	type SubAgentRunPolicy,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
@@ -42,6 +41,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import {
 	deepCopy,
 	OperationalError,
@@ -77,6 +77,7 @@ import { AgentsToolsService } from './agents-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { Agent } from './entities/agent.entity';
+import { AgentTask } from './entities/agent-task.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
@@ -100,12 +101,16 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -115,9 +120,15 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
-	credentialIntegrations: AgentCredentialIntegrationConfig[];
+	subAgentDelegation?: SubAgentDelegationConfig;
+	credentialIntegrations: AgentIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
+}
+
+interface SubAgentDelegationConfig {
+	sourcesById: Record<string, SubAgentSource>;
+	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
 }
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
@@ -166,12 +177,28 @@ export interface ResumeForChatConfig {
 	integrationType?: string;
 }
 
-export interface ExecuteForSchedulePublishedConfig {
+export interface ExecuteForTaskPublishedConfig {
 	agentId: string;
 	projectId: string;
 	message: string;
 	/** Memory scope — resourceId isolates per-run memory. */
 	memory: AgentMemoryScope;
+	/** The scheduled task this run belongs to; stamped on the session for traceability. */
+	taskId: string;
+	/** Published agent_history version that supplied the scheduled task snapshot. */
+	taskVersionId: string;
+}
+
+export interface ExecuteForTaskNowConfig {
+	agentId: string;
+	projectId: string;
+	/** n8n user ID — used for RBAC / credential resolution and recorded on the session. */
+	userId: string;
+	message: string;
+	/** Memory scope — resourceId isolates per-run memory. */
+	memory: AgentMemoryScope;
+	/** The task this manual run belongs to; stamped on the session for traceability. */
+	taskId: string;
 }
 
 interface StreamChatResponseConfig {
@@ -183,6 +210,8 @@ interface StreamChatResponseConfig {
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
+	taskId?: string;
+	taskVersionId?: string;
 }
 
 interface GetRuntimeParams {
@@ -307,6 +336,8 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentSkillsService: AgentSkillsService,
+		private readonly agentTaskRepository: AgentTaskRepository,
+		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly globalConfig: GlobalConfig,
@@ -376,6 +407,10 @@ export class AgentsService {
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
 		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
+	}
+
+	private shouldAttachSubAgents(config: AgentJsonConfig): boolean {
+		return isSubAgentsEnabled(config.subAgents);
 	}
 
 	/**
@@ -576,6 +611,7 @@ export class AgentsService {
 					},
 					trx,
 				);
+				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.id, agent.schema);
 				agent.activeVersionId = agent.versionId;
 			}
 
@@ -590,7 +626,7 @@ export class AgentsService {
 		// was a draft. ChatIntegrationService.syncToConfig gates connect on
 		// publish, so the entries sat dormant on agent.integrations; passing
 		// previous=[] makes every persisted integration an addition.
-		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
+		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
 			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
@@ -603,6 +639,17 @@ export class AgentsService {
 					}),
 				);
 		}
+
+		// Register any enabled tasks now that the agent is published and can run.
+		// Routed through requestReconcile so the leader owns the cron even when a
+		// follower handled this publish request (multi-main).
+		// eslint-disable-next-line import-x/no-cycle
+		const { AgentTaskService } = await import('./agent-task.service');
+		await Container.get(AgentTaskService)
+			.requestReconcile(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
+			);
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
@@ -623,16 +670,6 @@ export class AgentsService {
 			// and re-publishing the same id would collide with that row.
 			agent.versionId = uuid();
 
-			const hasActiveSchedule = (agent.integrations ?? []).some(
-				(integration) => isAgentScheduleIntegration(integration) && integration.active,
-			);
-
-			if (hasActiveSchedule) {
-				agent.integrations = (agent.integrations ?? []).map((integration) =>
-					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
-				);
-			}
-
 			await trx.save(agent);
 		});
 
@@ -645,8 +682,13 @@ export class AgentsService {
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
-		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-		Container.get(AgentScheduleService).deregister(agentId);
+		// eslint-disable-next-line import-x/no-cycle
+		const { AgentTaskService } = await import('./agent-task.service');
+		await Container.get(AgentTaskService)
+			.requestReconcile(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to stop agent tasks on unpublish', { agentId, error }),
+			);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -675,9 +717,14 @@ export class AgentsService {
 			}
 
 			await trx.save(agent);
+			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 
 		this.clearRuntimes(agentId);
+
+		// No task reconcile needed: scheduling follows `activeVersion`, which revert
+		// leaves untouched. The restore above only brings the draft task definition
+		// rows back in line with the published snapshot so the UI matches.
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
@@ -784,10 +831,11 @@ export class AgentsService {
 		this.clearRuntimes(agentId);
 
 		try {
-			const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-			Container.get(AgentScheduleService).deregister(agentId);
+			// eslint-disable-next-line import-x/no-cycle
+			const { AgentTaskService } = await import('./agent-task.service');
+			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
-			this.logger.warn('Failed to stop schedule on agent delete', {
+			this.logger.warn('Failed to stop tasks on agent delete', {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
@@ -949,6 +997,7 @@ export class AgentsService {
 			projectId,
 			credentialProvider,
 			nodeToolsEnabled,
+			subAgentDelegation,
 			credentialIntegrations,
 			integrationType,
 		} = params;
@@ -1029,6 +1078,16 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
+		if (subAgentDelegation !== undefined) {
+			this.attachSubAgentDelegationTool({
+				agent,
+				agentId,
+				projectId,
+				credentialProvider,
+				delegation: subAgentDelegation,
+			});
+		}
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
@@ -1047,6 +1106,38 @@ export class AgentsService {
 		projectId: string,
 	): void {
 		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
+	}
+
+	private attachSubAgentDelegationTool(params: {
+		agent: RuntimeAgent;
+		agentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		delegation: SubAgentDelegationConfig;
+	}): void {
+		const { agent, agentId, projectId, credentialProvider, delegation } = params;
+		agent.tool(
+			createN8nDelegateSubAgentTool({
+				runner: Container.get(SubAgentForegroundRunner),
+				...delegation,
+				projectId,
+				parentAgentId: agentId,
+				credentialProvider,
+				policy: this.buildSubAgentPolicy(),
+				createToolExecutor: (toolCodeByName) =>
+					this.secureRuntime.createToolExecutor(toolCodeByName),
+				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
+			}),
+		);
+		this.logger.debug('Injected delegate_subagent tool', { agentId });
+	}
+
+	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */
+	private buildSubAgentPolicy(): SubAgentRunPolicy {
+		return {
+			maxChildren: this.agentsConfig.subAgentMaxChildren,
+			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+		};
 	}
 
 	/**
@@ -1370,23 +1461,18 @@ export class AgentsService {
 	}
 
 	/**
-	 * Execute a published agent for the local schedule trigger.
-	 *
-	 * The n8n user identity for RBAC is resolved from
-	 * `activeVersion.publishedById`.  Each scheduled run uses its own
-	 * memory scope so no conversation history is shared across runs.
-	 * `projectId` is resolved from the agent entity.
+	 * Execute a published agent for a scheduled task, stamping `source='task'`
+	 * and the originating `taskId` on the recorded session for traceability.
 	 */
-	async *executeForSchedulePublished(
-		config: ExecuteForSchedulePublishedConfig,
+	async *executeForTaskPublished(
+		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory } = config;
+		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 
-		// One shared compiled runtime per agent for all schedule runs.
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			integrationType: AGENT_SCHEDULE_TRIGGER_TYPE,
+			integrationType: 'task',
 			usePublishedVersion: true,
 		});
 
@@ -1397,7 +1483,33 @@ export class AgentsService {
 			message,
 			memory,
 			projectId: runtime.projectId,
-			source: AGENT_SCHEDULE_TRIGGER_TYPE,
+			source: 'task',
+			taskId,
+			taskVersionId,
+		});
+	}
+
+	/**
+	 * Execute a task on demand against the current (draft) config as the
+	 * requesting user. Unlike `executeForTaskPublished` this does not require a
+	 * published version, so it works while the agent is still being built. The
+	 * run is stamped with `source='task'` + `taskId` for session traceability.
+	 */
+	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, userId, message, memory, taskId } = config;
+
+		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
+
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			userId,
+			message,
+			memory,
+			projectId: runtime.projectId,
+			source: 'task',
+			taskId,
 		});
 	}
 
@@ -1409,8 +1521,18 @@ export class AgentsService {
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
 	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const { agentInstance, toolRegistry, agentId, userId, message, memory, projectId, source } =
-			config;
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			userId,
+			message,
+			memory,
+			projectId,
+			source,
+			taskId,
+			taskVersionId,
+		} = config;
 		const { threadId, resourceId } = memory;
 
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -1457,6 +1579,8 @@ export class AgentsService {
 				record: messageRecord,
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
 				source,
+				taskId,
+				taskVersionId,
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution', {
@@ -1715,7 +1839,24 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		await this.validateSubAgentRefs(result.config, entity);
 		this.validateConfigRefs(result.config, entity);
+
+		// Task refs resolve against task definition bodies (a separate table), so
+		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// after the save below. `tasksProvided` also gates the schema overlay.
+		const tasksProvided = result.config.tasks !== undefined;
+		const existingTaskIds = tasksProvided
+			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
+			: [];
+		if (tasksProvided) {
+			const existingTaskIdSet = new Set(existingTaskIds);
+			for (const ref of result.config.tasks ?? []) {
+				if (!existingTaskIdSet.has(ref.id)) {
+					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
+				}
+			}
+		}
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1738,6 +1879,7 @@ export class AgentsService {
 		const descriptionProvided = result.config.description !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
+		const subAgentsProvided = result.config.subAgents !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
 		const configBlockProvided = result.config.config !== undefined;
 		const mcpServersProvided = result.config.mcpServers !== undefined;
@@ -1758,12 +1900,15 @@ export class AgentsService {
 			...(descriptionProvided ? { description: decomposedSchema.description } : {}),
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
+			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
 			...(skillsProvided ? { skills: decomposedSchema.skills } : {}),
+			...(tasksProvided ? { tasks: decomposedSchema.tasks } : {}),
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
+		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -1802,6 +1947,16 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
+		// Prune task bodies whose ref the client removed. Done after the save so a
+		// failure leaves an orphan row (harmless) rather than a dangling ref.
+		if (tasksProvided) {
+			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
+			if (orphanTaskIds.length > 0) {
+				await this.agentTaskRepository.delete(orphanTaskIds);
+			}
+		}
+
 		// Skip integration reconciliation entirely when the client didn't send
 		// an `integrations` field — `previousIntegrations` and `nextIntegrations`
 		// are identical references, so even with the guard above, taking the
@@ -1824,10 +1979,10 @@ export class AgentsService {
 	 */
 	async saveCredentialIntegration(
 		agent: Agent,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		options: SaveCredentialIntegrationOptions = {},
 	): Promise<Agent> {
-		const parseResult = AgentCredentialIntegrationSchema.safeParse(integration);
+		const parseResult = AgentIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
 			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
 		}
@@ -1835,15 +1990,11 @@ export class AgentsService {
 		const { type, credentialId } = validated;
 
 		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
-		);
+		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
 
 		agent.integrations = alreadyExists
 			? existing.map((existingIntegration) =>
-					isAgentCredentialIntegration(existingIntegration) &&
-					existingIntegration.type === type &&
-					existingIntegration.credentialId === credentialId
+					existingIntegration.type === type && existingIntegration.credentialId === credentialId
 						? validated
 						: existingIntegration,
 				)
@@ -1872,7 +2023,7 @@ export class AgentsService {
 	): Promise<Agent> {
 		if (!agent.integrations?.length) return agent;
 		const integration = agent.integrations.find(
-			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+			(i) => i.type === type && i.credentialId === credentialId,
 		);
 		if (!integration) return agent;
 		// filter by ref
@@ -1883,25 +2034,10 @@ export class AgentsService {
 		const result = await this.agentRepository.save(agent);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			agent.id,
-			integration as AgentCredentialIntegrationConfig,
+			integration,
 			'disconnect',
 		);
 		return result;
-	}
-
-	/**
-	 * Validate and persist the full integrations array on an agent.
-	 * Used internally by updateConfig and exposed for direct schedule/credential writes.
-	 */
-	private validateIntegrationRefs(integrations: AgentIntegrationConfig[], agent: Agent): void {
-		const activeUnpublishedSchedule = integrations.some(
-			(integration) => isAgentScheduleIntegration(integration) && integration.active,
-		);
-		if (activeUnpublishedSchedule && !agent.activeVersionId) {
-			throw new UserError(
-				'Invalid agent config: schedule integration cannot be active until the agent is published',
-			);
-		}
 	}
 
 	/**
@@ -2068,8 +2204,46 @@ export class AgentsService {
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
 			);
 		}
+	}
 
-		this.validateIntegrationRefs(config.integrations ?? [], entity);
+	/**
+	 * Resolve configured sub-agent refs to their saved agents, de-duplicated
+	 * (order preserved) and fetched once each. `agent` is null when the id no
+	 * longer resolves in the project. Shared by save-time validation and
+	 * runtime delegation config.
+	 */
+	private async fetchUniqueSubAgents(
+		refs: Array<{ agentId: string }>,
+		projectId: string,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		const seen = new Set<string>();
+		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
+		for (const { agentId } of refs) {
+			if (seen.has(agentId)) continue;
+			seen.add(agentId);
+			resolved.push({
+				agentId,
+				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
+			});
+		}
+		return resolved;
+	}
+
+	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
+		const refs = config.subAgents?.agents ?? [];
+		if (refs.length === 0) return;
+
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+			if (agentId === entity.id) {
+				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
+			}
+			if (!agent) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
+			}
+			if (!agent.activeVersionId) {
+				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
+			}
+		}
 	}
 
 	private getMissingCustomToolIds(
@@ -2108,6 +2282,87 @@ export class AgentsService {
 			if (tool) snapshot[ref.id] = tool;
 		}
 		return snapshot;
+	}
+
+	/**
+	 * Freeze the referenced task bodies (enabled/name/objective/cron) into
+	 * published snapshot rows so scheduled runs read publish-time content, not
+	 * live draft edits. Bodies are read through the publish transaction for
+	 * consistency; throws if a referenced task has no body.
+	 */
+	private async snapshotConfiguredTasks(
+		trx: EntityManager,
+		versionId: string,
+		agentId: string,
+		config: AgentJsonConfig | null,
+	): Promise<void> {
+		if (!config) return;
+		const refs = config.tasks ?? [];
+		if (refs.length === 0) return;
+
+		const bodies = await trx.getRepository(AgentTask).findBy({ agentId });
+		const byId = new Map(bodies.map((body) => [body.id, body]));
+		const missing = refs.filter((ref) => !byId.has(ref.id)).map((ref) => ref.id);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing task bodies: ${missing.join(', ')}`);
+		}
+
+		await this.agentTaskSnapshotRepository.saveForVersion(
+			refs.map((ref) => {
+				const body = byId.get(ref.id);
+				if (!body) {
+					throw new UserError(`Cannot publish agent with missing task body: ${ref.id}`);
+				}
+				return {
+					versionId,
+					taskId: ref.id,
+					enabled: ref.enabled,
+					name: body.name,
+					objective: body.objective,
+					cronExpression: body.cronExpression,
+				};
+			}),
+			trx,
+		);
+	}
+
+	/**
+	 * Bring the draft task definition rows back in line with a published snapshot
+	 * on revert: drop rows added since publish, restore name/objective/cron on
+	 * rows that still exist, and re-insert any that were deleted in the draft.
+	 * Runs inside the revert transaction.
+	 */
+	private async restoreTasksFromSnapshot(
+		trx: EntityManager,
+		agentId: string,
+		versionId: string,
+	): Promise<void> {
+		const repo = trx.getRepository(AgentTask);
+		const existing = await repo.findBy({ agentId });
+		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
+		const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
+
+		const orphanIds = existing.filter((row) => !snapshotIds.has(row.id)).map((row) => row.id);
+		if (orphanIds.length > 0) await repo.delete(orphanIds);
+
+		const existingIds = new Set(existing.map((row) => row.id));
+		for (const snapshot of snapshots) {
+			if (existingIds.has(snapshot.taskId)) {
+				await repo.update(snapshot.taskId, {
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
+				});
+			} else {
+				await repo.insert({
+					id: snapshot.taskId,
+					agentId,
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
+				});
+			}
+		}
 	}
 
 	/**
@@ -2163,22 +2418,58 @@ export class AgentsService {
 			buildMcpClient,
 		});
 
+		const subAgentDelegation = this.shouldAttachSubAgents(config)
+			? await this.createSubAgentDelegationConfig(config, agentEntity.projectId)
+			: undefined;
+
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
 			agentId: agentEntity.id,
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			credentialIntegrations: (agentEntity.integrations ?? []).filter(isAgentCredentialIntegration),
+			...(subAgentDelegation !== undefined ? { subAgentDelegation } : {}),
+			credentialIntegrations: agentEntity.integrations ?? [],
 			integrationType,
 		});
 
 		const toolRegistry = buildToolRegistry(resolvedTools);
 		return { agent: reconstructed, toolRegistry };
 	}
+
+	private async createSubAgentDelegationConfig(
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<SubAgentDelegationConfig | undefined> {
+		const configuredAgents = config.subAgents?.agents ?? [];
+		if (configuredAgents.length === 0) return undefined;
+
+		const sourcesById: Record<string, SubAgentSource> = {};
+		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
+
+		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
+			if (!agent?.activeVersionId) continue;
+
+			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
+			availableSubAgents.push({
+				id: agentId,
+				name: agent.name,
+				...(agent.description ? { description: agent.description } : {}),
+			});
+		}
+
+		return availableSubAgents.length > 0 ? { sourcesById, availableSubAgents } : undefined;
+	}
 }
 
 function getProviderPrefix(modelId: string): string {
 	const slashIdx = modelId.indexOf('/');
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+}
+
+function normalizeSubAgentsConfig(
+	subAgents: AgentJsonConfig['subAgents'],
+): AgentJsonConfig['subAgents'] {
+	if (!subAgents) return undefined;
+	return { agents: subAgents.agents ?? [] };
 }

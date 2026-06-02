@@ -146,6 +146,8 @@ type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
 interface Lane {
 	client: N8nClient;
+	/** Base URL the client was constructed with, forwarded for the HTML report. */
+	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	seedResult: { seededTypes: string[]; credentialIds: string[] };
@@ -212,7 +214,7 @@ async function main(): Promise<void> {
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
-			return { client, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
 		}),
 	);
 
@@ -623,6 +625,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			testCasesWithFiles,
 			args.iterations,
 			transcriptByThreadId,
+			lanes[0]?.baseUrl,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -825,6 +828,7 @@ function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
+	n8nBaseUrl: string | undefined,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -885,6 +889,7 @@ function reshapeLangSmithRuns(
 				threadId,
 				transcript,
 				workflowChecks,
+				n8nBaseUrl,
 			});
 		}
 		allRunResults.push(runResults);
@@ -935,6 +940,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 						async ({ tc }) =>
 							await runWorkflowTestCase({
 								client: lane.client,
+								baseUrl: lane.baseUrl,
 								testCase: tc.testCase,
 								timeoutMs: args.timeoutMs,
 								seededCredentialTypes: lane.seedResult.seededTypes,

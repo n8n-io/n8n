@@ -78,5 +78,13 @@ export function loadWorkflowTestCasesWithFiles(
 		fileSlug: basename(f, '.json'),
 	}));
 	if (!tier) return cases;
-	return cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+
+	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+	if (matched.length === 0) {
+		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
+		throw new Error(
+			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+		);
+	}
+	return matched;
 }
