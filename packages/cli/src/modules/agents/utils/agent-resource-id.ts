@@ -7,7 +7,7 @@ import { generateNanoId } from '@n8n/utils';
  */
 export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_-]+$/;
 
-type AgentResourceIdPrefix = 'skill' | 'task' ;
+type AgentResourceIdPrefix = 'skill' | 'task';
 
 export function generateAgentResourceId(
 	prefix: AgentResourceIdPrefix,
