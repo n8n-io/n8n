@@ -125,7 +125,15 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 	}
 
+	function isMultiSelectDrag(event: NodeDragEvent): boolean {
+		return (event.nodes?.length ?? 0) > 1;
+	}
+
+	// Vue-flow emits both selectionDrag* and nodeDrag* for multi-select drags
+	// (selection first, then node). The per-node handler would clobber the
+	// selection handler's snapshots — skip and let selection-drag own it.
 	function onNodeDragStart(event: NodeDragEvent) {
+		if (isMultiSelectDrag(event)) return;
 		const node = event.node;
 		if (!isCanvasNodeGroup(node)) return;
 		reset();
@@ -133,6 +141,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function onNodeDrag(event: NodeDragEvent) {
+		if (isMultiSelectDrag(event)) return;
 		const node = event.node;
 		if (isCanvasNodeGroup(node)) {
 			applyDelta(node);
@@ -142,6 +151,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
+		if (isMultiSelectDrag(event)) return [];
 		if (!isCanvasNodeGroup(event.node) || !snapshots.has(event.node.id)) {
 			reset();
 			return nonGroupMoves(event.nodes ?? [], new Set());

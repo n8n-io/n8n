@@ -57,8 +57,13 @@ describe('useCanvasNodeGroupDrag', () => {
 		const store = new Map<string, INodeUi>([
 			['a', makeStoredNode('a', 100, 200)],
 			['b', makeStoredNode('b', 300, 200)],
+			['c', makeStoredNode('c', 500, 500)],
+			['d', makeStoredNode('d', 700, 500)],
 		]);
-		const groups = [{ id: 'g1', nodeIds: ['a', 'b'] }];
+		const groups = [
+			{ id: 'g1', nodeIds: ['a', 'b'] },
+			{ id: 'g2', nodeIds: ['c', 'd'] },
+		];
 		const drag = useCanvasNodeGroupDrag({
 			getNodeById: (id) => store.get(id),
 			getGroupById: (id) => groups.find((g) => g.id === id),
@@ -195,6 +200,46 @@ describe('useCanvasNodeGroupDrag', () => {
 			const aMoves = moves.filter((m) => m.id === 'a');
 			expect(aMoves).toHaveLength(1);
 			expect(aMoves[0].position).toEqual({ x: 110, y: 210 });
+		});
+
+		it('moves both groups when dragging a multi-selection of two title bars', () => {
+			// Repro: vue-flow fires BOTH selectionDragStart and nodeDragStart for
+			// a multi-select drag (selection first, then node). The per-node
+			// handler must not clobber the selection handler's snapshots, or
+			// the non-clicked group's members never get the drag delta and the
+			// title bar snaps back on drag stop ("bounce up").
+			const { drag } = setup();
+			const groupA = makeGroupGraphNode('group:g1', 0, 0);
+			const groupB = makeGroupGraphNode('group:g2', 0, 0);
+			const selEvent = makeSelectionEvent(groupA, groupB);
+
+			// Vue-flow emits selectionDragStart, then nodeDragStart for the
+			// clicked node — replay both.
+			drag.onSelectionDragStart(selEvent);
+			drag.onNodeDragStart({ ...selEvent, node: groupA });
+
+			// Move the selection by (10, 20).
+			groupA.position = { x: 10, y: 20 };
+			groupB.position = { x: 10, y: 20 };
+			drag.onSelectionDrag(selEvent);
+			drag.onNodeDrag({ ...selEvent, node: groupA });
+
+			// Both groups' members must have been moved by the delta.
+			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 110, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 310, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('c', { position: { x: 510, y: 520 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('d', { position: { x: 710, y: 520 } });
+
+			// processSelectionDragStop must persist all four members.
+			const moves = drag.processSelectionDragStop(selEvent);
+			expect(moves).toEqual(
+				expect.arrayContaining([
+					{ id: 'a', position: { x: 110, y: 220 } },
+					{ id: 'b', position: { x: 310, y: 220 } },
+					{ id: 'c', position: { x: 510, y: 520 } },
+					{ id: 'd', position: { x: 710, y: 520 } },
+				]),
+			);
 		});
 
 		it('syncs the owning group title bar from live member positions when a member is dragged', () => {
