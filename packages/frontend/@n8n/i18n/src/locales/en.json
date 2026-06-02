@@ -3242,6 +3242,7 @@
 	"settings.api.create.button": "Create an API Key",
 	"settings.api.create.button.loading": "Creating API Key...",
 	"settings.api.search.placeholder": "Search",
+	"settings.api.search.noResults": "No API keys match your search.",
 	"settings.api.create.error": "API Key creation failed.",
 	"settings.api.edit.error": "API Key update failed.",
 	"settings.api.delete.title": "Delete this API Key?",

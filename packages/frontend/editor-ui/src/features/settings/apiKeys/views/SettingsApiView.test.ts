@@ -106,6 +106,7 @@ describe('SettingsApiView', () => {
 		];
 		apiKeysStore.allCount = 2;
 		apiKeysStore.mineCount = 2;
+		apiKeysStore.hasAnyKeys = true;
 
 		renderComponent(SettingsApiView);
 
@@ -130,6 +131,7 @@ describe('SettingsApiView', () => {
 		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
 		apiKeysStore.allCount = 1;
 		apiKeysStore.mineCount = 1;
+		apiKeysStore.hasAnyKeys = true;
 
 		renderComponent(SettingsApiView);
 
@@ -141,6 +143,9 @@ describe('SettingsApiView', () => {
 		settingsStore.isPublicApiEnabled = true;
 		cloudStore.userIsTrialing = false;
 		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
+		apiKeysStore.allCount = 1;
+		apiKeysStore.mineCount = 1;
+		apiKeysStore.hasAnyKeys = true;
 
 		renderComponent(SettingsApiView);
 
@@ -148,6 +153,22 @@ describe('SettingsApiView', () => {
 		await fireEvent.click(revokeButton);
 
 		expect(screen.getByText(/Revoke "test-key-1" API key/)).toBeInTheDocument();
+	});
+
+	it('keeps the search input visible when a filter zeroes the results', () => {
+		settingsStore.isPublicApiEnabled = true;
+		apiKeysStore.apiKeys = [];
+		apiKeysStore.allCount = 0;
+		apiKeysStore.mineCount = 0;
+		apiKeysStore.hasAnyKeys = true;
+		apiKeysStore.labelFilter = 'production';
+
+		renderComponent(SettingsApiView);
+
+		// Search input stays visible — the user must be able to clear the filter.
+		expect(screen.getByTestId('api-keys-search')).toBeInTheDocument();
+		// And we show the no-results message instead of the empty-state CTA.
+		expect(screen.getByTestId('api-keys-no-results')).toBeInTheDocument();
 	});
 
 	describe('admin tabs', () => {
@@ -164,6 +185,7 @@ describe('SettingsApiView', () => {
 			apiKeysStore.apiKeys = [makeKey()];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 1;
+			apiKeysStore.hasAnyKeys = true;
 
 			renderComponent(SettingsApiView);
 
@@ -175,6 +197,7 @@ describe('SettingsApiView', () => {
 			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 2;
+			apiKeysStore.hasAnyKeys = true;
 
 			renderComponent(SettingsApiView);
 
@@ -191,6 +214,7 @@ describe('SettingsApiView', () => {
 			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 2;
+			apiKeysStore.hasAnyKeys = true;
 
 			renderComponent(SettingsApiView);
 

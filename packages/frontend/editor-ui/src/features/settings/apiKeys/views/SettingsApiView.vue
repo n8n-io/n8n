@@ -19,8 +19,6 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-
 import {
 	N8nActionBox,
 	N8nButton,
@@ -28,6 +26,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nTabs,
+	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
 
@@ -53,24 +52,25 @@ const {
 	fetchApiKeys,
 	setOwnership,
 	setLabelFilter,
-	setTableOptions,
+	applyTableOptions,
 	deleteApiKey,
 	getApiKeyAvailableScopes,
 } = apiKeysStore;
-const { apiKeys, apiKeysCount, ownership, labelFilter, mineCount, allCount } =
-	storeToRefs(apiKeysStore);
-
-const tableOptions = ref<TableOptions>({
-	page: 0,
-	itemsPerPage: 10,
-	sortBy: [],
-});
+const {
+	apiKeys,
+	apiKeysCount,
+	ownership,
+	labelFilter,
+	mineCount,
+	allCount,
+	hasAnyKeys,
+	tableOptions,
+} = storeToRefs(apiKeysStore);
 
 const searchQuery = ref(labelFilter.value);
 
 const onSearch = useDebounceFn(async (value: string) => {
 	try {
-		tableOptions.value.page = 0;
 		await setLabelFilter(value.trim());
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
@@ -110,7 +110,6 @@ const tabOptions = computed(() => [
 async function onTabChange(newOwnership: 'mine' | 'all') {
 	try {
 		loading.value = true;
-		tableOptions.value.page = 0;
 		await setOwnership(newOwnership);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
@@ -119,10 +118,10 @@ async function onTabChange(newOwnership: 'mine' | 'all') {
 	}
 }
 
-async function onTableUpdate(opts: TableOptions) {
+async function onTableUpdate() {
 	try {
 		loading.value = true;
-		await setTableOptions(opts);
+		await applyTableOptions();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -206,7 +205,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			</N8nHeading>
 		</div>
 
-		<p v-if="isPublicApiEnabled && allCount > 0" :class="$style.description">
+		<p v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.description">
 			<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 				<template #apiPlayground>
 					<a
@@ -238,7 +237,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			</I18nT>
 		</p>
 
-		<div v-if="isPublicApiEnabled && allCount > 0" :class="$style.toolbar">
+		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
 			<N8nInput
 				:model-value="searchQuery"
 				:placeholder="i18n.baseText('settings.api.search.placeholder')"
@@ -258,7 +257,7 @@ function onOpenScopes(apiKey: ApiKey) {
 		</div>
 
 		<N8nTabs
-			v-if="isPublicApiEnabled && canManageAllKeys && allCount > 0"
+			v-if="isPublicApiEnabled && canManageAllKeys && hasAnyKeys"
 			:model-value="ownership"
 			:options="tabOptions"
 			data-test-id="api-keys-tabs"
@@ -267,10 +266,11 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && allCount > 0"
+			v-if="isPublicApiEnabled && apiKeys.length"
 			v-model:table-options="tableOptions"
 			:api-keys="apiKeys"
 			:items-length="apiKeysCount"
+			:loading="loading"
 			:current-user-id="usersStore.currentUser?.id"
 			:class="$style.table"
 			@edit="onEdit"
@@ -278,6 +278,15 @@ function onOpenScopes(apiKey: ApiKey) {
 			@open-scopes="onOpenScopes"
 			@update:options="onTableUpdate"
 		/>
+
+		<N8nText
+			v-else-if="isPublicApiEnabled && hasAnyKeys && labelFilter.trim()"
+			color="text-light"
+			:class="$style.noResults"
+			data-test-id="api-keys-no-results"
+		>
+			{{ i18n.baseText('settings.api.search.noResults') }}
+		</N8nText>
 
 		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -289,7 +298,7 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<N8nActionBox
-			v-if="isPublicApiEnabled && allCount === 0"
+			v-if="isPublicApiEnabled && !hasAnyKeys"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"
@@ -359,6 +368,12 @@ function onOpenScopes(apiKey: ApiKey) {
 
 .table {
 	margin-bottom: var(--spacing--lg);
+}
+
+.noResults {
+	display: block;
+	padding: var(--spacing--lg) 0;
+	text-align: center;
 }
 
 .tabs {

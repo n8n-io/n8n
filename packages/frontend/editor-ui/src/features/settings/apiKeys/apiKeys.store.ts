@@ -11,6 +11,7 @@ import type {
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -23,14 +24,28 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	/** Cross-page totals per ownership filter, populated from the GET response. */
 	const mineCount = ref(0);
 	const allCount = ref(0);
+	/**
+	 * Session-sticky flag: `true` after we've seen at least one key on the
+	 * instance. Used to keep the search input and the "create" CTA visible
+	 * even when the active label filter zeros out `allCount` for the page.
+	 */
+	const hasAnyKeys = ref(false);
+	/**
+	 * Page, page-size, and sort state in `N8nDataTableServer`'s native shape.
+	 * The view binds this via `storeToRefs` + `v-model:table-options`, so the
+	 * store is the single source of truth — DTS writes flow back here, and
+	 * action methods that need to reset the page mutate `tableOptions.value.page`
+	 * directly.
+	 */
+	const tableOptions = ref<TableOptions>({
+		page: 0,
+		itemsPerPage: DEFAULT_PAGE_SIZE,
+		sortBy: [],
+	});
 	/** Total number of API keys for the current ownership filter, across every page. */
 	const apiKeysCount = computed(() =>
 		ownership.value === 'mine' ? mineCount.value : allCount.value,
 	);
-	const page = ref(1);
-	const pageSize = ref(DEFAULT_PAGE_SIZE);
-	/** Server-side sort: `field:asc|desc` entries applied in order. Empty array = default (createdAt DESC). */
-	const sortBy = ref<string[]>([]);
 	const availableScopes = ref<ApiKeyScope[]>([]);
 
 	const rootStore = useRootStore();
@@ -51,60 +66,47 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	};
 
 	const fetchApiKeys = async () => {
+		const opts = tableOptions.value;
+		const [sort] = opts.sortBy;
+		const sortBy = sort ? `${sort.id}:${sort.desc ? 'desc' : 'asc'}` : undefined;
 		const trimmed = labelFilter.value.trim();
 		const response = await publicApiApi.getApiKeys(rootStore.restApiContext, {
-			take: pageSize.value,
-			skip: (page.value - 1) * pageSize.value,
+			take: opts.itemsPerPage,
+			skip: Math.max(0, opts.page) * opts.itemsPerPage,
 			ownership: ownership.value,
 			...(trimmed ? { label: trimmed } : {}),
-			...(sortBy.value.length ? { sortBy: sortBy.value } : {}),
+			...(sortBy ? { sortBy } : {}),
 		});
 		apiKeys.value = response.items;
 		mineCount.value = response.counts.mine;
 		allCount.value = response.counts.all;
+		// Latch on the first non-empty response — but only when we're looking at
+		// the unfiltered list, otherwise an instance that genuinely has no keys
+		// could flip the flag based on a stale label.
+		if (!trimmed && response.counts.all > 0) hasAnyKeys.value = true;
 		return response;
-	};
-
-	const setPage = async (newPage: number) => {
-		page.value = newPage;
-		await fetchApiKeys();
-	};
-
-	const setPageSize = async (newPageSize: number) => {
-		pageSize.value = newPageSize;
-		page.value = 1;
-		await fetchApiKeys();
 	};
 
 	const setOwnership = async (newOwnership: ApiKeyOwnership) => {
 		if (ownership.value === newOwnership) return;
 		ownership.value = newOwnership;
-		page.value = 1;
+		tableOptions.value.page = 0;
 		await fetchApiKeys();
 	};
 
 	const setLabelFilter = async (newFilter: string) => {
 		if (labelFilter.value === newFilter) return;
 		labelFilter.value = newFilter;
-		page.value = 1;
+		tableOptions.value.page = 0;
 		await fetchApiKeys();
 	};
 
 	/**
-	 * Atomically apply a new page / page-size / sort triple. Used by the
-	 * N8nDataTableServer-backed view to react to a single `update:options`
-	 * event without firing three back-to-back fetches. Accepts the DTS
-	 * shape (0-indexed page, `{ id, desc }` sort) and converts to the
-	 * store's wire format (1-indexed page, `'field:asc|desc'` strings).
+	 * Refetch in response to a DTS `update:options` event. The v-model on
+	 * `tableOptions` has already written the new page / itemsPerPage / sortBy
+	 * into the store, so this is just a sync helper.
 	 */
-	const setTableOptions = async (opts: {
-		page: number;
-		itemsPerPage: number;
-		sortBy: Array<{ id: string; desc: boolean }>;
-	}) => {
-		page.value = opts.page + 1;
-		pageSize.value = opts.itemsPerPage;
-		sortBy.value = opts.sortBy.map(({ id, desc }) => `${id}:${desc ? 'desc' : 'asc'}`);
+	const applyTableOptions = async () => {
 		await fetchApiKeys();
 	};
 
@@ -112,7 +114,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, payload);
 		// New key lands at the top (createdAt DESC) — return to page 1 and refetch so
 		// every consumer sees the same server state regardless of which page they were on.
-		page.value = 1;
+		tableOptions.value.page = 0;
 		await fetchApiKeys();
 		return newApiKey;
 	};
@@ -121,8 +123,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
 		// Refetching keeps the counts honest and handles the page-becomes-empty edge case.
 		const remaining = apiKeysCount.value - 1;
-		const lastPage = Math.max(1, Math.ceil(remaining / pageSize.value));
-		if (page.value > lastPage) page.value = lastPage;
+		const lastPage = Math.max(0, Math.ceil(remaining / tableOptions.value.itemsPerPage) - 1);
+		if (tableOptions.value.page > lastPage) tableOptions.value.page = lastPage;
 		await fetchApiKeys();
 	};
 
@@ -134,11 +136,9 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	return {
 		fetchApiKeys,
-		setPage,
-		setPageSize,
 		setOwnership,
 		setLabelFilter,
-		setTableOptions,
+		applyTableOptions,
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
@@ -150,9 +150,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		labelFilter,
 		mineCount,
 		allCount,
-		page,
-		pageSize,
-		sortBy,
+		hasAnyKeys,
+		tableOptions,
 		availableScopes,
 	};
 });

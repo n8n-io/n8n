@@ -12,6 +12,7 @@ import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 const props = defineProps<{
 	apiKeys: ApiKey[];
 	itemsLength: number;
+	loading?: boolean;
 	/** When set, Edit is only offered for keys owned by this user. */
 	currentUserId?: string;
 }>();
@@ -92,6 +93,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 			:headers="headers"
 			:items="rows"
 			:items-length="itemsLength"
+			:loading="loading"
 			:page-sizes="[10, 25, 50]"
 			:row-props="{ class: $style.row }"
 			@update:options="emit('update:options', $event)"
