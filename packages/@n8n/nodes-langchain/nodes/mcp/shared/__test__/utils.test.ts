@@ -373,6 +373,46 @@ describe('utils', () => {
 				}
 			});
 
+			it('should remove the abort listener when connect fails with an auth error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('auth');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should remove the abort listener when connect fails with a connection error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
 			it('should return cancelled when connect throws AbortError with a signal', async () => {
 				const abortError = new Error('The operation was aborted');
 				abortError.name = 'AbortError';

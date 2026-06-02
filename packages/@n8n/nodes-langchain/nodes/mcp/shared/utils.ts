@@ -207,6 +207,12 @@ export async function connectMcpClient({
 				return createResultError({ type: 'cancelled', error: err });
 			}
 
+			// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
+			if (onAbort && signal) {
+				signal.removeEventListener('abort', onAbort);
+				onAbort = undefined;
+			}
+
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
 				return createResultError({ type: 'auth', error: error as Error });
 			} else {
@@ -236,6 +242,12 @@ export async function connectMcpClient({
 		const err = error instanceof Error ? error : new Error(String(error));
 		if ((signal && err.name === 'AbortError') || signal?.aborted) {
 			return createResultError({ type: 'cancelled', error: err });
+		}
+
+		// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
+		if (onAbort && signal) {
+			signal.removeEventListener('abort', onAbort);
+			onAbort = undefined;
 		}
 
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
