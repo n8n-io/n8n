@@ -5,6 +5,8 @@ import {
 	type ChangedFile,
 	type ImpactMap,
 	type LcovInput,
+	decodeImpactMap,
+	encodeImpactMap,
 	mergeCoverage,
 	parseLcov,
 	resolveImpact,
@@ -339,6 +341,27 @@ describe('serializeLcov (via mergeCoverage.lcov)', () => {
 		expect(lcov).toContain('FNH:2'); // 2 hit (a,b; c has 0)
 		expect(lcov).toContain('LF:3');
 		expect(lcov).toContain('LH:2');
+	});
+});
+
+describe('encode/decode impact map (interned on-disk form)', () => {
+	it('LOSSLESS: decode∘encode round-trips any impact map', () => {
+		fc.assert(
+			fc.property(arbExecs, (execs) => {
+				const { impactMap } = mergeCoverage(buildInputs(execs));
+				expect(decodeImpactMap(encodeImpactMap(impactMap))).toEqual(impactMap);
+			}),
+		);
+	});
+
+	it('interns each spec path exactly once', () => {
+		const { impactMap } = mergeCoverage([
+			{ spec: 'A', text: 'TN:A\nSF:f.ts\nFN:10,a\nFN:20,b\nFNDA:1,a\nFNDA:1,b\nend_of_record\n' },
+		]);
+		const enc = encodeImpactMap(impactMap);
+		expect(enc.specs).toEqual(['A']); // one entry despite two functions
+		expect(enc.files['f.ts']['10']).toEqual([0]);
+		expect(enc.files['f.ts']['20']).toEqual([0]);
 	});
 });
 

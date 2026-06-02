@@ -37,7 +37,14 @@ import {
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
-import { type ImpactMap, mergeCoverage, resolveImpact } from './core/coverage-map.js';
+import {
+	type ImpactMap,
+	type InternedImpactMap,
+	decodeImpactMap,
+	encodeImpactMap,
+	mergeCoverage,
+	resolveImpact,
+} from './core/coverage-map.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -668,7 +675,8 @@ function runMergeCoverage(options: CliOptions): void {
 	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
 	const result = mergeCoverage(inputs);
 	fs.writeFileSync(options.outLcov, result.lcov);
-	fs.writeFileSync(options.outMap, JSON.stringify(result.impactMap));
+	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
+	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
 	console.error(
 		`merge-coverage: ${files.length} lcov(s) → ${result.stats.files} files, ` +
 			`${result.stats.mapEntries} map entries, ${result.stats.specs} specs`,
@@ -698,7 +706,9 @@ function runSelectE2e(options: CliOptions): void {
 	let failOpen: string | undefined;
 	if (options.mapFile && fs.existsSync(options.mapFile)) {
 		try {
-			map = JSON.parse(fs.readFileSync(options.mapFile, 'utf8')) as ImpactMap;
+			const parsed = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
+			// Interned form ({specs, files}) is decoded; a plain ImpactMap is used as-is.
+			map = parsed?.specs && parsed?.files ? decodeImpactMap(parsed as InternedImpactMap) : parsed;
 		} catch (error) {
 			failOpen = `unreadable map: ${String(error)}`;
 		}

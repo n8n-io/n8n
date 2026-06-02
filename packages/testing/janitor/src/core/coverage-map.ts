@@ -25,6 +25,18 @@ export interface FileCoverage {
 /** file → function-start-line (as string) → specs that executed that function */
 export type ImpactMap = Record<string, Record<string, string[]>>;
 
+/**
+ * On-disk form of {@link ImpactMap}: spec paths are interned into `specs` and
+ * referenced by index. Lossless — {@link decodeImpactMap} reconstructs the
+ * ImpactMap exactly. Spec paths repeat across thousands of (file, line) entries,
+ * so interning shrinks the artifact ~10x with no loss of the function-level
+ * detail that line-precise selection and cross-layer overlap analysis need.
+ */
+export interface InternedImpactMap {
+	specs: string[];
+	files: Record<string, Record<string, number[]>>;
+}
+
 /** One per-spec lcov and the spec it belongs to (used when records carry no `TN:`). */
 export interface LcovInput {
 	text: string;
@@ -166,6 +178,35 @@ function buildImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 		const file = key.slice(0, hash);
 		const line = key.slice(hash + 1);
 		(map[file] ??= {})[line] = [...specs].sort();
+	}
+	return map;
+}
+
+/** Intern spec paths into an index — the lossless on-disk form (see {@link InternedImpactMap}). */
+export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
+	const index = new Map<string, number>();
+	const specs: string[] = [];
+	const idOf = (s: string): number => {
+		let i = index.get(s);
+		if (i === undefined) index.set(s, (i = specs.push(s) - 1));
+		return i;
+	};
+	const files: InternedImpactMap['files'] = {};
+	for (const file of Object.keys(map)) {
+		files[file] = {};
+		for (const line of Object.keys(map[file])) files[file][line] = map[file][line].map(idOf);
+	}
+	return { specs, files };
+}
+
+/** Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. */
+export function decodeImpactMap(interned: InternedImpactMap): ImpactMap {
+	const { specs, files } = interned;
+	const map: ImpactMap = {};
+	for (const file of Object.keys(files)) {
+		map[file] = {};
+		for (const line of Object.keys(files[file]))
+			map[file][line] = files[file][line].map((i) => specs[i]);
 	}
 	return map;
 }
