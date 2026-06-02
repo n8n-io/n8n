@@ -1,5 +1,7 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE } from '@n8n/api-types';
-import type { IConnections, INode, INodeParameters, IPinData, IWorkflowBase } from 'n8n-workflow';
+import { node, sticky, trigger, workflow } from '@n8n/workflow-sdk';
+import type { IDataObject } from '@n8n/workflow-sdk';
+import type { IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import { buildPinDataForWorkflow, type PinScenario } from './pinned-payloads';
 
@@ -37,11 +39,6 @@ export interface GeneratedWorkflow {
 	pinnedDataBytes: number;
 }
 
-const COLS_PER_ROW = 10;
-const COL_SPACING = 260;
-const ROW_SPACING = 220;
-const ORIGIN_X = 240;
-const ORIGIN_Y = 240;
 const TRIGGER_NAME = 'Start';
 
 // Only HTTP Request nodes carry pinned data — they'd otherwise make real
@@ -73,37 +70,18 @@ const NODE_TYPE_CYCLE: Array<{ type: string; typeVersion: number; pinnable: bool
 	{ type: 'n8n-nodes-base.set', typeVersion: 3.4, pinnable: false },
 ];
 
-function uuidFromIndex(index: number): string {
-	// Deterministic UUID-v4-shaped string keyed off the node index so the same
-	// tier always produces the same workflow JSON byte-for-byte.
-	const hex = (index + 1).toString(16).padStart(8, '0');
-	return `${hex}-0000-4000-8000-${hex}${hex.slice(0, 4)}`;
-}
-
-function gridPosition(index: number): [number, number] {
-	const col = index % COLS_PER_ROW;
-	const row = Math.floor(index / COLS_PER_ROW);
-	return [ORIGIN_X + col * COL_SPACING, ORIGIN_Y + row * ROW_SPACING];
-}
-
 function nodeNameFor(index: number, type: string): string {
 	// Suffix the type so the canvas labels remain readable in screenshots / NDV titles.
 	const shortType = type.split('.').pop() ?? type;
 	return `${shortType[0].toUpperCase()}${shortType.slice(1)} ${index}`;
 }
 
-function parametersFor(type: string): INodeParameters {
+function parametersFor(type: string): IDataObject {
 	switch (type) {
 		case 'n8n-nodes-base.set':
 			return { assignments: { assignments: [] }, options: {} };
 		case 'n8n-nodes-base.httpRequest':
 			return { url: 'https://example.invalid/benchmark', options: {} };
-		case 'n8n-nodes-base.if':
-			return {
-				conditions: { options: { caseSensitive: true }, conditions: [], combinator: 'and' },
-			};
-		case 'n8n-nodes-base.switch':
-			return { rules: { values: [] }, options: {} };
 		case 'n8n-nodes-base.code':
 			return { jsCode: 'return $input.all();' };
 		case 'n8n-nodes-base.merge':
@@ -115,99 +93,17 @@ function parametersFor(type: string): INodeParameters {
 	}
 }
 
-function stickyNoteAt(index: number, totalNodes: number): INode {
-	// Drop stickies in the gutter between row groups so they don't overlap nodes.
-	const stickyRow = Math.floor((index * Math.ceil(totalNodes / COLS_PER_ROW)) / 10);
-	const stickyCol = (index * 3) % COLS_PER_ROW;
-	return {
-		id: `sticky-${uuidFromIndex(totalNodes + index)}`,
-		name: `Sticky ${index}`,
-		type: 'n8n-nodes-base.stickyNote',
-		typeVersion: 1,
-		position: [
-			ORIGIN_X + stickyCol * COL_SPACING - 40,
-			ORIGIN_Y + stickyRow * ROW_SPACING * 2 - 180,
-		],
-		parameters: {
-			content: `## Benchmark section ${index}\n\nGenerated sticky covering ~${
-				stickyCol + 1
-			} nodes wide. Used to exercise sticky markdown rendering at scale.`,
-			height: 160,
-			width: 320,
-		},
-	};
+function stickyContent(index: number): string {
+	return `## Benchmark section ${index}\n\nGenerated sticky note used to exercise sticky markdown rendering at scale.`;
 }
 
-function buildNodes(tier: Tier): INode[] {
-	const { nodes: nodeCount, stickyNotes } = TIER_CONFIG[tier];
-	const nodes: INode[] = [];
-
-	nodes.push({
-		id: uuidFromIndex(0),
-		name: TRIGGER_NAME,
-		type: 'n8n-nodes-base.manualTrigger',
-		typeVersion: 1,
-		position: gridPosition(0),
-		parameters: {},
-	});
-
-	for (let index = 1; index < nodeCount; index++) {
-		const cycle = NODE_TYPE_CYCLE[(index - 1) % NODE_TYPE_CYCLE.length];
-		nodes.push({
-			id: uuidFromIndex(index),
-			name: nodeNameFor(index, cycle.type),
-			type: cycle.type,
-			typeVersion: cycle.typeVersion,
-			position: gridPosition(index),
-			parameters: parametersFor(cycle.type),
-		});
-	}
-
-	for (let stickyIndex = 0; stickyIndex < stickyNotes; stickyIndex++) {
-		nodes.push(stickyNoteAt(stickyIndex, nodeCount));
-	}
-
-	return nodes;
-}
-
-function buildConnections(nodes: INode[]): IConnections {
-	const connections: IConnections = {};
-	// Filter out stickies — they never participate in connections.
-	const flowNodes = nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote');
-
-	for (let index = 0; index < flowNodes.length - 1; index++) {
-		const source = flowNodes[index];
-		const target = flowNodes[index + 1];
-		connections[source.name] = {
-			main: [[{ node: target.name, type: 'main', index: 0 }]],
-		};
-	}
-
-	return connections;
-}
-
-function findMidDepthNode(nodes: INode[]): INode {
-	const flowNodes = nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote');
-	return flowNodes[Math.floor(flowNodes.length / 2)];
-}
-
-function pickSampleNodes(nodes: INode[], count: number): INode[] {
-	const flowNodes = nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote');
-	const step = Math.max(1, Math.floor(flowNodes.length / count));
-	const picks: INode[] = [];
-	for (let index = 0; index < count && index * step < flowNodes.length; index++) {
-		picks.push(flowNodes[index * step]);
+function pickSampleNames(names: string[], count: number): string[] {
+	const step = Math.max(1, Math.floor(names.length / count));
+	const picks: string[] = [];
+	for (let index = 0; index < count && index * step < names.length; index++) {
+		picks.push(names[index * step]);
 	}
 	return picks;
-}
-
-function pinnableNodes(nodes: INode[]): INode[] {
-	return nodes.filter((node) => {
-		const definition = NODE_TYPE_CYCLE.find((entry) => entry.type === node.type);
-		// Allow the trigger to be pinned too — it has no entry in the cycle but is safe.
-		if (node.name === TRIGGER_NAME) return true;
-		return definition?.pinnable ?? false;
-	});
 }
 
 function jsonSize(value: unknown): number {
@@ -216,14 +112,49 @@ function jsonSize(value: unknown): number {
 
 export function buildCanvasBenchmarkWorkflow(options: BuildOptions): GeneratedWorkflow {
 	const { tier, pinScenario = 'none' } = options;
-	const nodes = buildNodes(tier);
-	const connections = buildConnections(nodes);
+	const { nodes: nodeCount, stickyNotes } = TIER_CONFIG[tier];
+
+	// Build the trigger and the linear chain of flow nodes. Node positions are
+	// left to the SDK's auto-layout — the benchmark only cares about node/sticky
+	// counts and execution cost, not exact coordinates.
+	const start = trigger({
+		type: 'n8n-nodes-base.manualTrigger',
+		version: 1,
+		config: { name: TRIGGER_NAME },
+	});
+
+	const flowNames: string[] = [TRIGGER_NAME];
+	// The trigger has no entry in the cycle but is safe to pin.
+	const pinnableNames: string[] = [TRIGGER_NAME];
+
+	let builder = workflow(`canvas-benchmark-${tier}`, options.name ?? `Canvas Benchmark ${tier}`)
+		.settings({ executionOrder: 'v1' })
+		.add(start);
+
+	for (let index = 1; index < nodeCount; index++) {
+		const cycle = NODE_TYPE_CYCLE[(index - 1) % NODE_TYPE_CYCLE.length];
+		const name = nodeNameFor(index, cycle.type);
+		flowNames.push(name);
+		if (cycle.pinnable) pinnableNames.push(name);
+		// `.to()` connects from the builder's current node and advances the cursor,
+		// producing trigger -> n1 -> n2 -> ... in a single linear chain.
+		builder = builder.to(
+			node({
+				type: cycle.type,
+				version: cycle.typeVersion,
+				config: { name, parameters: parametersFor(cycle.type) },
+			}),
+		);
+	}
+
+	for (let stickyIndex = 0; stickyIndex < stickyNotes; stickyIndex++) {
+		builder = builder.add(sticky(stickyContent(stickyIndex), { width: 320, height: 160 }));
+	}
 
 	let pinData: IPinData | undefined;
 	let pinnedDataBytes = 0;
 	if (pinScenario !== 'none') {
-		const eligible = pinnableNodes(nodes).map((node) => node.name);
-		pinData = buildPinDataForWorkflow(eligible, pinScenario, HEAVY_BUDGET_BY_TIER[tier]);
+		pinData = buildPinDataForWorkflow(pinnableNames, pinScenario, HEAVY_BUDGET_BY_TIER[tier]);
 		pinnedDataBytes = jsonSize(pinData);
 		if (pinnedDataBytes > MAX_PINNED_DATA_SIZE) {
 			throw new Error(
@@ -232,16 +163,16 @@ export function buildCanvasBenchmarkWorkflow(options: BuildOptions): GeneratedWo
 		}
 	}
 
-	const workflow: Partial<IWorkflowBase> = {
-		name: options.name ?? `Canvas Benchmark ${tier}`,
-		nodes,
-		connections,
-		settings: { executionOrder: 'v1' },
-		active: false,
-		...(pinData && { pinData }),
-	};
+	// The SDK's WorkflowJSON is structurally compatible with IWorkflowBase; the
+	// cast bridges the SDK's self-contained type duplicates to the n8n-workflow
+	// types the public API expects.
+	const workflowResult = builder.toJSON() as unknown as Partial<IWorkflowBase>;
+	workflowResult.active = false;
+	if (pinData) {
+		workflowResult.pinData = pinData;
+	}
 
-	const workflowBytes = jsonSize(workflow);
+	const workflowBytes = jsonSize(workflowResult);
 	if (workflowBytes > MAX_WORKFLOW_SIZE) {
 		throw new Error(
 			`Generated workflow ${workflowBytes} bytes exceeds MAX_WORKFLOW_SIZE ${MAX_WORKFLOW_SIZE}`,
@@ -249,10 +180,10 @@ export function buildCanvasBenchmarkWorkflow(options: BuildOptions): GeneratedWo
 	}
 
 	return {
-		workflow,
+		workflow: workflowResult,
 		triggerName: TRIGGER_NAME,
-		midDepthNodeName: findMidDepthNode(nodes).name,
-		sampleNodeNames: pickSampleNodes(nodes, 5).map((node) => node.name),
+		midDepthNodeName: flowNames[Math.floor(flowNames.length / 2)],
+		sampleNodeNames: pickSampleNames(flowNames, 5),
 		pinnedDataBytes,
 	};
 }
