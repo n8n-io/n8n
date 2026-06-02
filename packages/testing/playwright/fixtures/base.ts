@@ -114,6 +114,9 @@ export const test = base.extend<
 					E2E_TESTS: 'true',
 					N8N_RESTRICT_FILE_ACCESS_TO: '',
 				},
+				// Coverage pipeline opt-in: when the coverage runner sets N8N_COVERAGE_DIR,
+				// bridge it to the stack's typed config so containers collect V8 coverage.
+				...(process.env.N8N_COVERAGE_DIR ? { coverageHostDir: process.env.N8N_COVERAGE_DIR } : {}),
 			};
 
 			await use(config);

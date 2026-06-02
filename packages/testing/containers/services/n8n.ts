@@ -15,12 +15,8 @@ import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
 
-// When set, each n8n container writes Node V8 coverage (NODE_V8_COVERAGE) to a
-// per-container bind-mounted host dir under N8N_COVERAGE_DIR. The raw V8 (with
-// in-container dist paths) is rewritten to repo dist paths + merged by
-// scripts/collect-backend-coverage.ts. Reuse is disabled in this mode so the
-// process exits and flushes V8 when the stack stops.
-const COVERAGE_HOST_DIR = process.env.N8N_COVERAGE_DIR;
+// In-container path that NODE_V8_COVERAGE writes to when coverage collection is
+// enabled (via StackConfig.coverageHostDir); bind-mounted to a host subdir.
 const CONTAINER_COVERAGE_DIR = '/cov';
 // Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 const N8N_READINESS_PORT = 5678;
@@ -79,6 +75,7 @@ export interface N8NInstancesOptions {
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 export interface N8NInstancesResult {
@@ -145,6 +142,7 @@ interface SharedConfig {
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 interface ContainerStartResult {
@@ -159,7 +157,8 @@ async function createContainer(
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
 	const { name, isWorker, instanceNumber, networkAlias, hostPort } = instance;
-	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
+	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
+		shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
@@ -167,7 +166,7 @@ async function createContainer(
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);
 
-	const containerEnvironment = COVERAGE_HOST_DIR
+	const containerEnvironment = coverageHostDir
 		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
 		: environment;
 
@@ -183,10 +182,10 @@ async function createContainer(
 		.withLogConsumer(consumer)
 		.withNetwork(network);
 
-	if (COVERAGE_HOST_DIR) {
+	if (coverageHostDir) {
 		// Per-container host dir → /cov; n8n flushes V8 here on graceful stop.
 		// Reuse must stay off so the process actually exits and flushes.
-		const hostCoverageDir = join(COVERAGE_HOST_DIR, name);
+		const hostCoverageDir = join(coverageHostDir, name);
 		mkdirSync(hostCoverageDir, { recursive: true });
 		// The n8n container runs as `node` (uid 1000); on Linux CI the bind mount
 		// is direct (no Docker Desktop uid mapping), so make the dir writable by
@@ -254,6 +253,7 @@ export async function createN8NInstances(
 		resourceQuota,
 		workerResourceQuota,
 		filesToMount,
+		coverageHostDir,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -267,6 +267,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota,
 		filesToMount,
+		coverageHostDir,
 	};
 
 	const workerShared: SharedConfig = {
@@ -275,6 +276,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
+		coverageHostDir,
 	};
 
 	const instances: InstanceConfig[] = [

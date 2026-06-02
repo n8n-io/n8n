@@ -87,6 +87,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		services: enabledServices = [],
 		external = false,
 		networkName,
+		coverageHostDir,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -223,6 +224,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			resourceQuota,
 			workerResourceQuota,
 			filesToMount,
+			coverageHostDir,
 		});
 		containers.push(...n8nResult.containers);
 		telemetry.recordN8nStartup(
@@ -312,7 +314,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		return {
 			baseUrl,
 			projectName: uniqueProjectName,
-			stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
+			stop: async () => await stopN8NStack(containers, network, uniqueProjectName, coverageHostDir),
 			containers,
 			serviceResults,
 			services: servicesProxy,
@@ -355,13 +357,14 @@ async function stopN8NStack(
 	containers: StartedTestContainer[],
 	network: StartedNetwork,
 	uniqueProjectName: string,
+	coverageHostDir?: string,
 ): Promise<void> {
 	const errors: Error[] = [];
 	// testcontainers stops with timeout:0 (immediate SIGKILL). When collecting
 	// Node V8 coverage we need a graceful SIGTERM + grace so n8n flushes
 	// NODE_V8_COVERAGE to the bind-mounted dir before exit (~1s in practice).
 	// testcontainers `timeout` is in milliseconds (→ docker stop -t seconds).
-	const stopOptions = process.env.N8N_COVERAGE_DIR ? { timeout: 30_000 } : undefined;
+	const stopOptions = coverageHostDir ? { timeout: 30_000 } : undefined;
 	try {
 		const stopPromises = containers.reverse().map(async (container) => {
 			try {

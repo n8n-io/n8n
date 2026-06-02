@@ -85,6 +85,13 @@ export interface StackConfig {
 	 * Benchmarks should set `'round_robin'` to actually distribute load.
 	 */
 	lbPolicy?: LoadBalancerPolicy;
+	/**
+	 * When set, each n8n container collects Node V8 coverage: `NODE_V8_COVERAGE`
+	 * is written to a per-container subdir of this host path (bind-mounted), reuse
+	 * is disabled, and the stack stops gracefully so the process flushes on exit.
+	 * Opt-in capability for the coverage pipeline; off by default.
+	 */
+	coverageHostDir?: string;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
