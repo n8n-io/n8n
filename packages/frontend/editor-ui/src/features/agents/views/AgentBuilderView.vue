@@ -705,14 +705,14 @@ async function initialize() {
 		// against the new agent's id anyway.
 		builderTelemetry.resetForAgentSwitch();
 
-	agent.value = null;
-	activeChatSessionId.value = null;
-	localConfig.value = null;
-	connectedTriggers.value = [];
-	agentFiles.value = [];
-	agentFilesLoading.value = false;
-	agentFilesUploading.value = false;
-	deletingAgentFileId.value = null;
+		agent.value = null;
+		activeChatSessionId.value = null;
+		localConfig.value = null;
+		connectedTriggers.value = [];
+		agentFiles.value = [];
+		agentFilesLoading.value = false;
+		agentFilesUploading.value = false;
+		deletingAgentFileId.value = null;
 
 		// Refresh builder readiness so the empty-state CTA reflects the latest
 		// admin configuration. Never blocks the rest of the load.
@@ -720,30 +720,34 @@ async function initialize() {
 			showError(error, locale.baseText('settings.agentBuilder.loadError'));
 		});
 
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value), fetchAgentFiles()]);
-	builderTelemetry.captureToolsBaseline();
-	builderTelemetry.captureSkillsBaseline();
-	// Keep agent credential pickers aligned with the workflow editor: load only
-	// credentials the current user can use in this project context.
-	credentialsStore.setCredentials([]);
-	await Promise.all([
-		credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
-		credentialsStore.fetchCredentialTypes(false),
-	]).catch(() => undefined);
-	// Stop any in-flight auto-refresh from the previous agent before kicking
-	// off a new fetch — keeps the store tied to the current project/agent.
-	sessionsStore.stopAutoRefresh();
-	void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-		sessionsStore.startAutoRefresh();
-	});
-	void (async () => {
-		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
-		// will correct it once the user expands the Triggers section.
-		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = integrations.map((i) => i.type);
-		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
-		if (connected) connectedTriggers.value = connected;
-	})();
+		await Promise.all([
+			fetchAgent(),
+			fetchConfig(projectId.value, agentId.value),
+			fetchAgentFiles(),
+		]);
+		builderTelemetry.captureToolsBaseline();
+		builderTelemetry.captureSkillsBaseline();
+		// Keep agent credential pickers aligned with the workflow editor: load only
+		// credentials the current user can use in this project context.
+		credentialsStore.setCredentials([]);
+		await Promise.all([
+			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+			credentialsStore.fetchCredentialTypes(false),
+		]).catch(() => undefined);
+		// Stop any in-flight auto-refresh from the previous agent before kicking
+		// off a new fetch — keeps the store tied to the current project/agent.
+		sessionsStore.stopAutoRefresh();
+		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+			sessionsStore.startAutoRefresh();
+		});
+		void (async () => {
+			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
+			// will correct it once the user expands the Triggers section.
+			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+			const triggerTypes = integrations.map((i) => i.type);
+			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+			if (connected) connectedTriggers.value = connected;
+		})();
 
 		if (isPreviewMode.value) bindPreviewSession();
 
@@ -1176,52 +1180,52 @@ function onSwitchAgent(nextAgentId: string) {
 					/>
 				</N8nResizeWrapper>
 
-			<AgentBuilderEditorColumn
-				v-if="!isPreviewMode && !isChatFullWidth"
-				v-model:active-main-tab="activeMainTab"
-				:class="$style.editorColumn"
-				:local-config="localConfig"
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:agent-files="agentFiles"
-				:agent-files-loading="agentFilesLoading"
-				:agent-files-uploading="agentFilesUploading"
-				:knowledge-base-enabled="isKnowledgeBaseEnabled"
-				:deleting-agent-file-id="deletingAgentFileId"
-				:applied-skills="appliedSkills"
-				:connected-triggers="connectedTriggers"
-				:is-build-chat-streaming="isBuildChatStreaming"
-				:can-edit-agent="canEditAgent"
-				:tasks-reload-key="tasksReloadKey"
-				:main-tab-options="mainTabOptions"
-				:executions-description="executionsDescription"
-				@update:config="onConfigFieldUpdate"
-				@open-tool="onOpenToolFromList"
-				@open-skill="onOpenSkillFromList"
-				@open-trigger="onOpenAddTriggerModal"
-				@add-tool="onOpenAddToolModal"
-				@add-skill="onOpenAddSkillModal"
-				@add-trigger="onOpenAddTriggerModal"
-				@upload-files="onUploadAgentFiles"
-				@delete-file="onDeleteAgentFile"
-				@remove-tool="onRemoveTool"
-				@remove-skill="onRemoveSkill"
-				@update:connected-triggers="onConnectedTriggersUpdate"
-				@trigger-added="onTriggerAdded"
-				@toggle-task="onToggleTask"
-				@tasks-changed="onConfigUpdated"
-			/>
+				<AgentBuilderEditorColumn
+					v-if="!isPreviewMode && !isChatFullWidth"
+					v-model:active-main-tab="activeMainTab"
+					:class="$style.editorColumn"
+					:local-config="localConfig"
+					:agent="agent"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent-files="agentFiles"
+					:agent-files-loading="agentFilesLoading"
+					:agent-files-uploading="agentFilesUploading"
+					:knowledge-base-enabled="isKnowledgeBaseEnabled"
+					:deleting-agent-file-id="deletingAgentFileId"
+					:applied-skills="appliedSkills"
+					:connected-triggers="connectedTriggers"
+					:is-build-chat-streaming="isBuildChatStreaming"
+					:can-edit-agent="canEditAgent"
+					:tasks-reload-key="tasksReloadKey"
+					:main-tab-options="mainTabOptions"
+					:executions-description="executionsDescription"
+					@update:config="onConfigFieldUpdate"
+					@open-tool="onOpenToolFromList"
+					@open-skill="onOpenSkillFromList"
+					@open-trigger="onOpenAddTriggerModal"
+					@add-tool="onOpenAddToolModal"
+					@add-skill="onOpenAddSkillModal"
+					@add-trigger="onOpenAddTriggerModal"
+					@upload-files="onUploadAgentFiles"
+					@delete-file="onDeleteAgentFile"
+					@remove-tool="onRemoveTool"
+					@remove-skill="onRemoveSkill"
+					@update:connected-triggers="onConnectedTriggersUpdate"
+					@trigger-added="onTriggerAdded"
+					@toggle-task="onToggleTask"
+					@tasks-changed="onConfigUpdated"
+				/>
 
-			<AgentVersionHistoryPanel
-				v-if="!isPreviewMode && isVersionHistoryOpen"
-				ref="versionHistoryPanel"
-				:project-id="projectId"
-				:agent-id="agentId"
-				@close="onCloseVersionHistory"
-				@reverted="onReverted"
-				@published="onPublished"
-			/>
+				<AgentVersionHistoryPanel
+					v-if="!isPreviewMode && isVersionHistoryOpen"
+					ref="versionHistoryPanel"
+					:project-id="projectId"
+					:agent-id="agentId"
+					@close="onCloseVersionHistory"
+					@reverted="onReverted"
+					@published="onPublished"
+				/>
 			</template>
 		</div>
 	</div>
