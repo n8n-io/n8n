@@ -25,6 +25,7 @@ import {
 	createWorkflowDocumentId,
 	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
@@ -33,10 +34,7 @@ interface PostMessageHandlerDeps {
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-}: PostMessageHandlerDeps) {
+export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -105,7 +103,9 @@ export function usePostMessageHandler({
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			workflowState.setActiveExecutionId(null);
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setActiveExecutionId(null);
 		}
 
 		if (json.tidyUp === true) {
@@ -201,7 +201,9 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setActiveExecution(data);
 		currentWorkflowDocumentStore.value?.setPinData({});
 
 		canvasStore.stopLoading();

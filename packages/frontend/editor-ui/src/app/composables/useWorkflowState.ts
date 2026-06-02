@@ -14,10 +14,7 @@ import {
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import type {
-	IExecutionResponse,
-	IExecutionsStopData,
-} from '@/features/execution/executions/executions.types';
+import type { IExecutionsStopData } from '@/features/execution/executions/executions.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import type { INewWorkflowData } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -34,38 +31,6 @@ export function useWorkflowState() {
 	////
 	// Workflow editing state
 	////
-
-	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(ws.workflowId),
-		);
-		if (workflowResultData === null) {
-			workflowExecutionStateStore.setPendingExecution(null);
-			workflowExecutionStateStore.clearDisplayedExecution();
-		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
-			workflowExecutionStateStore.setPendingExecution(workflowResultData);
-			workflowExecutionStateStore.setActiveExecutionId(null);
-			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
-				workflowResultData,
-			);
-		} else {
-			workflowExecutionStateStore.trackExecutionId(workflowResultData.id);
-			useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
-				workflowResultData,
-			);
-			if (typeof workflowExecutionStateStore.activeExecutionId !== 'string') {
-				workflowExecutionStateStore.setPendingExecution(null);
-				workflowExecutionStateStore.setActiveExecutionId(undefined);
-				workflowExecutionStateStore.setDisplayedExecutionId(workflowResultData.id);
-			}
-		}
-	}
-
-	function setActiveExecutionId(id: string | null | undefined) {
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId)).setActiveExecutionId(
-			id,
-		);
-	}
 
 	async function getNewWorkflowData(
 		name?: string,
@@ -169,8 +134,6 @@ export function useWorkflowState() {
 	return {
 		// Workflow editing state
 		resetState,
-		setWorkflowExecutionData,
-		setActiveExecutionId,
 		getNewWorkflowData,
 
 		// Execution

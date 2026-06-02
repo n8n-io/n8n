@@ -62,9 +62,9 @@ export function usePushConnection({
 	async function processEvent(event: PushMessage) {
 		switch (event.type) {
 			case 'testWebhookDeleted':
-				return await testWebhookDeleted(event, options);
+				return await testWebhookDeleted(event);
 			case 'testWebhookReceived':
-				return await testWebhookReceived(event, options);
+				return await testWebhookReceived(event);
 			case 'reloadNodeType':
 				return await reloadNodeType(event);
 			case 'removeNodeType':

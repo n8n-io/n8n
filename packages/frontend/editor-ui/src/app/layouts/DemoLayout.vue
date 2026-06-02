@@ -5,6 +5,9 @@ import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
 import { WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import { useReportWorkflowFailuresToParent } from '@/app/composables/useReportWorkflowFailuresToParent';
@@ -54,7 +57,9 @@ const pushConnectionStore = usePushConnectionStore();
 // button is not disabled — the normal execution flow will set it to null when
 // the user actually starts an execution.
 if (!canExecute.value) {
-	workflowState.setActiveExecutionId(null);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(useWorkflowsStore().workflowId),
+	).setActiveExecutionId(null);
 }
 
 onMounted(async () => {

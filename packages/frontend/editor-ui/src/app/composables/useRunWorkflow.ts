@@ -118,13 +118,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		// Set the execution as started, but still waiting for the execution to be retrieved
-		workflowState.setActiveExecutionId(null);
+		workflowExecutionState.value.setActiveExecutionId(null);
 
 		let response: IExecutionPushResponse;
 		try {
 			response = await workflowsStore.runWorkflow(runData);
 		} catch (error) {
-			workflowState.setActiveExecutionId(undefined);
+			workflowExecutionState.value.setActiveExecutionId(undefined);
 			throw error;
 		}
 
@@ -132,7 +132,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowExecutionState.value.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = workflowExecutionState.value.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
-			workflowState.setActiveExecutionId(response.executionId);
+			workflowExecutionState.value.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true) {
@@ -413,7 +413,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					...workflowData,
 				} as IWorkflowDb,
 			};
-			workflowState.setWorkflowExecutionData(executionData);
+			workflowExecutionState.value.setActiveExecution(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'EXECUTING');
@@ -461,7 +461,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			return runWorkflowApiResponse;
 		} catch (error) {
 			console.error(error);
-			workflowState.setWorkflowExecutionData(null);
+			workflowExecutionState.value.setActiveExecution(null);
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
@@ -551,10 +551,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
-				// Clear the active id so setWorkflowExecutionData's else branch sets
+				// Clear the active id so setActiveExecution's else branch sets
 				// displayedExecutionId to the freshly-fetched finished id.
-				workflowState.setActiveExecutionId(undefined);
-				workflowState.setWorkflowExecutionData(executedData);
+				workflowExecutionState.value.setActiveExecutionId(undefined);
+				workflowExecutionState.value.setActiveExecution(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),

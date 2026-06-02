@@ -142,7 +142,7 @@ export async function executionFinished(
 	 * Returning early presists existing run data up to this point.
 	 */
 	if (!execution) {
-		options.workflowState.setActiveExecutionId(undefined);
+		workflowExecutionStateStore.setActiveExecutionId(undefined);
 		uiStore.setProcessingExecutionResults(false);
 		return;
 	}
@@ -394,15 +394,15 @@ export function handleExecutionFinishedWithErrorOrCanceled(
  * immediately, even though we still need to fetch and deserialize the
  * full execution data, to minimize perceived latency.
  */
-function handleExecutionFinishedSuccessfully(
-	workflowName: string,
-	message: string,
-	workflowState: WorkflowState,
-) {
+function handleExecutionFinishedSuccessfully(workflowName: string, message: string) {
 	const toast = useToast();
+	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
-	workflowState.setActiveExecutionId(undefined);
+	workflowExecutionStateStore.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
 		type: 'success',
@@ -460,14 +460,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			handleExecutionFinishedSuccessfully(
 				workflowName,
 				i18n.baseText('pushConnection.nodeExecutedSuccessfully'),
-				workflowState,
 			);
 		}
 	} else if (!successToastAlreadyShown) {
 		handleExecutionFinishedSuccessfully(
 			workflowName,
 			i18n.baseText('pushConnection.workflowExecutedSuccessfully'),
-			workflowState,
 		);
 	}
 

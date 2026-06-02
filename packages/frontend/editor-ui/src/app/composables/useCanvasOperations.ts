@@ -3083,7 +3083,7 @@ export function useCanvasOperations() {
 			data.workflowData,
 		);
 
-		workflowState.setWorkflowExecutionData(data);
+		useWorkflowExecutionStateStore(openedDocumentStore.documentId).setActiveExecution(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			// Clear on the store initializeWorkspace just populated — injection
