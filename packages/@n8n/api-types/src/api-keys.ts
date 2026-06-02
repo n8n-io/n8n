@@ -18,4 +18,9 @@ export type ApiKey = {
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
 
+export type ApiKeyList = {
+	items: ApiKey[];
+	count: number;
+};
+
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
