@@ -6,6 +6,7 @@ import type { IUser } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
 import { useAgentPermissions } from '../../composables/useAgentPermissions';
+import { useAgentPublish } from '../../composables/useAgentPublish';
 import type { AgentResource } from '../../types';
 import AgentVersionList from './AgentVersionList.vue';
 import type { AgentVersionAction } from './AgentVersionListItem.vue';
@@ -13,12 +14,19 @@ import type { AgentVersionAction } from './AgentVersionListItem.vue';
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
+	// Whether the draft has diverged from the published version. Drives whether
+	// Revert on the published row is actionable — reverting to the published
+	// version is a no-op while the draft is still in sync.
+	hasUnpublishedChanges?: boolean;
+	// Used only for the unpublish confirmation modal copy.
+	agentName?: string;
 }>();
 
 const emit = defineEmits<{
 	close: [];
 	reverted: [agent: AgentResource];
 	published: [agent: AgentResource];
+	unpublished: [agent: AgentResource];
 }>();
 
 const i18n = useI18n();
@@ -32,8 +40,9 @@ const {
 	revertToVersion,
 	publishVersion,
 } = useAgentVersionHistory();
+const { unpublish } = useAgentPublish();
 
-const { canUpdate, canPublish } = useAgentPermissions(toRef(props, 'projectId'));
+const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(toRef(props, 'projectId'));
 
 // Hide actions the user can't perform server-side. Matches the gating in
 // AgentPublishButton so viewers with `agent:read` only don't see options that
@@ -57,6 +66,29 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 	return result;
 });
 
+// Actions for the currently-published row. Publish is dropped (the version is
+// already active); Revert is disabled while the draft is still in sync, since
+// it would be a no-op; Unpublish clears the active version. Same RBAC gating as
+// the header dropdown.
+const activeActions = computed<Array<UserAction<IUser>>>(() => {
+	const result: Array<UserAction<IUser>> = [];
+	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
+			value: 'revert',
+			disabled: !props.hasUnpublishedChanges,
+		});
+	}
+	if (canUnpublish.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.item.actions.unpublish'),
+			value: 'unpublish',
+			disabled: false,
+		});
+	}
+	return result;
+});
+
 onMounted(() => {
 	void refresh(props.projectId, props.agentId);
 });
@@ -70,11 +102,22 @@ watch(
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
 	if (action === 'revert') {
+		// The published row reverts to its own version via the same flow as every
+		// other row, so it shows the same confirmation copy and behaves
+		// consistently within the list.
 		const result = await revertToVersion(props.projectId, props.agentId, versionId);
 		if (result) emit('reverted', result);
-	} else {
+	} else if (action === 'publish') {
 		const result = await publishVersion(props.projectId, props.agentId, versionId);
 		if (result) emit('published', result);
+	} else {
+		// Unpublish reuses the shared publish flow (confirmation modal + toast +
+		// telemetry); refresh the list ourselves since that flow doesn't own it.
+		const result = await unpublish(props.projectId, props.agentId, props.agentName);
+		if (result) {
+			await refresh(props.projectId, props.agentId);
+			emit('unpublished', result);
+		}
 	}
 }
 
@@ -116,6 +159,7 @@ defineExpose({
 		<AgentVersionList
 			:items="items"
 			:actions="actions"
+			:active-actions="activeActions"
 			:has-more="hasMore"
 			:is-initial-load="isInitialLoad"
 			:is-loading="isLoading"

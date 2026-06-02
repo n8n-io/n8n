@@ -6143,6 +6143,7 @@
 	"agents.versionHistory.item.publishedBadge": "Currently published",
 	"agents.versionHistory.item.actions.revert": "Revert to this version",
 	"agents.versionHistory.item.actions.publish": "Publish this version",
+	"agents.versionHistory.item.actions.unpublish": "Unpublish",
 	"agents.versionHistory.revert.modal.title": "Revert to this version?",
 	"agents.versionHistory.revert.modal.description": "This will replace your current draft with the contents of this version. Unsaved changes will be lost.",
 	"agents.versionHistory.revert.modal.button.revert": "Revert draft",

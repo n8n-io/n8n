@@ -11,6 +11,7 @@ import AgentVersionListItem, { type AgentVersionAction } from './AgentVersionLis
 const props = defineProps<{
 	items: AgentVersionListItemDto[];
 	actions: Array<UserAction<IUser>>;
+	activeActions: Array<UserAction<IUser>>;
 	hasMore: boolean;
 	isInitialLoad: boolean;
 	isLoading: boolean;
@@ -46,9 +47,10 @@ const isEmpty = computed(
 );
 
 function getActions(item: AgentVersionListItemDto) {
-	// Hide both Revert and Publish on the currently-active row — neither does
-	// anything meaningful (revert would be a no-op, publish is already active).
-	return item.isActive ? [] : props.actions;
+	// The currently-published row gets its own action set (Revert + Unpublish)
+	// rather than the per-version Revert/Publish — Publish would be a no-op, and
+	// the published version still needs to be revertable once the draft diverges.
+	return item.isActive ? props.activeActions : props.actions;
 }
 </script>
 
