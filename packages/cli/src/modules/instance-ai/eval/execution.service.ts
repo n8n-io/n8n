@@ -360,7 +360,13 @@ export class EvalExecutionService {
 				);
 			}
 
-			return await this.buildResult(dbExecutionId, runResult, nodeResults, hints, credentialsHelper);
+			return await this.buildResult(
+				dbExecutionId,
+				runResult,
+				nodeResults,
+				hints,
+				credentialsHelper,
+			);
 		} catch (error: unknown) {
 			return this.buildPartialFailureResult(
 				dbExecutionId ?? randomUUID(),
