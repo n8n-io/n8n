@@ -99,12 +99,13 @@ function buildServiceWith(
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
+	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let connectSpy: jest.SpyInstance;
 	let disconnectSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		Container.reset();
-		({ service } = buildServiceWith());
+		({ service, projectRelationRepository } = buildServiceWith());
 		connectSpy = jest.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 	});
@@ -123,6 +124,17 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		await service.syncToConfig(agent, [slackIntegration], []);
 
 		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not reconnect an already-live integration when republishing', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
+		const internal = service as unknown as { connections: Map<string, unknown> };
+		internal.connections.set('agent-1:slack:cred-1', {});
+
+		await service.syncToConfig(agent, [], [slackIntegration]);
+
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 });

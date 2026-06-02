@@ -374,6 +374,9 @@ export class ChatIntegrationService {
 			: [];
 
 		for (const integration of additions) {
+			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
+			if (this.connections.has(key)) continue;
+
 			let connected = false;
 			for (const userId of userIds) {
 				try {
