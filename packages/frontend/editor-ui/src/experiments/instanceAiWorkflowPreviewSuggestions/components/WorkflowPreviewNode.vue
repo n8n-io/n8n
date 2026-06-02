@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, Transition } from 'vue';
+import { computed } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import type { PreviewWorkflowNode, PreviewWorkflowNodeIcon } from '../workflows/types';

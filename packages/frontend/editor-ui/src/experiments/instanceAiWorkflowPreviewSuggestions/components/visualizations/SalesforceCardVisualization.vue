@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { SALESFORCE_ICON_SVG } from '../../workflows/score-my-leads';
-import { computed, ref, watch, onUnmounted, Transition } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 
 const APPEAR_DELAY_MS = 200;
 const COMPLETE_DELAY_MS = 600;
