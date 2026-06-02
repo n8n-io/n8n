@@ -10,6 +10,14 @@ export class OtelModule implements ModuleInterface {
 	async init() {
 		const { OtelConfig } = await import('./otel.config');
 		const config = Container.get(OtelConfig);
+
+		// Apply DB settings (with env var priority) before services read the config.
+		const { OtelSettingsService } = await import('./otel-settings.service');
+		await Container.get(OtelSettingsService).applyToConfig();
+
+		// Register the settings REST controller on all instance types.
+		await import('./otel-settings.controller');
+
 		if (!config.enabled) return;
 
 		const { OtelService } = await import('./otel.service');

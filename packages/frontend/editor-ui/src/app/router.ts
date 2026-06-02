@@ -984,6 +984,23 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'opentelemetry',
+				name: VIEWS.OPENTELEMETRY_SETTINGS,
+				component: async () =>
+					await import('@/features/opentelemetry/views/SettingsOpenTelemetryView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'opentelemetry:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
 				path: 'workers',
 				name: VIEWS.WORKER_VIEW,
 				component: WorkerView,

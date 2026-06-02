@@ -57,4 +57,5 @@ export const STORES = {
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',
 	AI_GATEWAY: 'aiGateway',
+	OPENTELEMETRY: 'opentelemetry',
 } as const;
