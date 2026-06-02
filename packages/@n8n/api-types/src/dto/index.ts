@@ -120,7 +120,11 @@ export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
-export { ListApiKeysQueryDto } from './api-keys/list-api-keys-query.dto';
+export {
+	ListApiKeysQueryDto,
+	LIST_API_KEYS_SORT_OPTIONS,
+	type ListApiKeysSortOption,
+} from './api-keys/list-api-keys-query.dto';
 
 export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';

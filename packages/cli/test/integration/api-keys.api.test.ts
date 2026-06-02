@@ -620,6 +620,26 @@ describe('Sorting', () => {
 		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
 		expect(labels).toEqual(['three-scopes', 'two-scopes', 'one-scope']);
 	});
+
+	test('GET /api-keys rejects an unknown sortBy with 400', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await testServer.authAgentFor(owner).get('/api-keys?sortBy=bogus:asc').expect(400);
+	});
+});
+
+describe('Label search', () => {
+	test('GET /api-keys treats % in the search string as a literal character', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['100% complete', 'partial', 'fully done']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const response = await agent.get('/api-keys?label=100%25').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['100% complete']);
+	});
 });
 
 describe('Cross-user behavior (admin scope)', () => {

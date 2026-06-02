@@ -4,6 +4,7 @@ import type {
 	UnixTimestamp,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
+import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -22,6 +23,12 @@ export const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
+
+/**
+ * Escape `%`, `_`, and `\` so user input passed to `LIKE` matches literally.
+ * Combine with `ESCAPE '\\'` on the SQL side.
+ */
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
 
 @Service()
 export class PublicApiKeyService {
@@ -69,7 +76,7 @@ export class PublicApiKeyService {
 			skip?: number;
 			ownership?: 'mine' | 'all';
 			label?: string;
-			sortBy?: string[];
+			sortBy?: string;
 		} = {},
 	) {
 		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
@@ -77,8 +84,8 @@ export class PublicApiKeyService {
 		const ownFilter = { userId: caller.id };
 		const labelFilter = options.label
 			? {
-					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label)`, {
-						label: `%${options.label}%`,
+					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label) ESCAPE '\\'`, {
+						label: `%${escapeLikePattern(options.label)}%`,
 					}),
 				}
 			: {};
@@ -112,35 +119,39 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Apply `field:asc|desc` entries from the query. The default order
-	 * (`createdAt DESC`) lands as a stable tie-breaker so newest keys
-	 * surface first whenever the caller's sort runs out of distinguishing
-	 * values. Sorting by `scopes` is a count sort — the column is stored
-	 * as a JSON array, so we count commas + 1 (one comma per element
-	 * boundary) and special-case the empty array `[]` in portable SQL.
+	 * Apply a single `field:asc|desc` entry from the query. `createdAt DESC`
+	 * is the default order and lands as a tie-breaker for every other field
+	 * so newest keys surface first when the caller's sort runs out of
+	 * distinguishing values. Sorting by `scopes` is a count sort — the
+	 * column is stored as a JSON array (TEXT on sqlite, `json` on postgres),
+	 * so we cast through text on postgres before counting commas + 1 and
+	 * special-casing the empty array `[]`. Validates `sortBy` against
+	 * `LIST_API_KEYS_SORT_OPTIONS` as defense-in-depth — the DTO is the
+	 * primary gate, but bypasses (tests, internal callers) shouldn't get a
+	 * free SQL-injection vector.
 	 */
-	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string[]) {
-		const scopesCountExpr =
-			"CASE WHEN apiKey.scopes = '[]' THEN 0 ELSE LENGTH(apiKey.scopes) - LENGTH(REPLACE(apiKey.scopes, ',', '')) + 1 END";
-		let scopesCountSelected = false;
-		const seen = new Set<string>();
-
-		for (const entry of sortBy ?? []) {
-			const [field, order] = entry.split(':');
-			const direction = order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-			if (field === 'scopes') {
-				if (!scopesCountSelected) {
-					qb.addSelect(scopesCountExpr, 'scopes_count');
-					scopesCountSelected = true;
-				}
-				qb.addOrderBy('scopes_count', direction);
-			} else {
-				qb.addOrderBy(`apiKey.${field}`, direction);
-			}
-			seen.add(field);
+	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string) {
+		const allowList = LIST_API_KEYS_SORT_OPTIONS as readonly string[];
+		const valid = sortBy !== undefined && allowList.includes(sortBy);
+		if (!valid) {
+			qb.addOrderBy('apiKey.createdAt', 'DESC');
+			return;
 		}
 
-		if (!seen.has('createdAt')) qb.addOrderBy('apiKey.createdAt', 'DESC');
+		const [field, order] = sortBy.split(':');
+		const direction = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+		if (field === 'scopes') {
+			const scopesText =
+				qb.connection.options.type === 'postgres' ? 'apiKey.scopes::text' : 'apiKey.scopes';
+			const scopesCountExpr = `CASE WHEN ${scopesText} = '[]' THEN 0 ELSE LENGTH(${scopesText}) - LENGTH(REPLACE(${scopesText}, ',', '')) + 1 END`;
+			qb.addSelect(scopesCountExpr, 'scopes_count');
+			qb.addOrderBy('scopes_count', direction);
+		} else {
+			qb.addOrderBy(`apiKey.${field}`, direction);
+		}
+
+		if (field !== 'createdAt') qb.addOrderBy('apiKey.createdAt', 'DESC');
 	}
 
 	/**
