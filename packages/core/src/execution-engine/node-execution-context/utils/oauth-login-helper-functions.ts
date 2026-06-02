@@ -23,7 +23,7 @@ import {
 	type FormOauthStateJwtPayload,
 } from '@/utils/form-oauth-jwt';
 
-const OAUTH_LOGIN_CREDENTIAL_TYPE = 'oAuth2Api';
+const OAUTH_LOGIN_CREDENTIAL_TYPE = 'oAuth2LoginApi';
 
 /**
  * Claims dropped from the merged ID-token + userinfo result. These are JWT or

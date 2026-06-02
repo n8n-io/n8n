@@ -94,7 +94,7 @@ const descriptionV2: INodeTypeDescription = {
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-			name: 'oAuth2Api',
+			name: 'oAuth2LoginApi',
 			required: true,
 			displayOptions: {
 				show: {

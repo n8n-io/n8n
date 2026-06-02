@@ -42,7 +42,7 @@ describe('getOauthLoginHelperFunctions', () => {
 	const node = mock<INode>({
 		id: 'node-abc',
 		name: 'Form Trigger',
-		credentials: { oAuth2Api: { id: 'cred-xyz', name: 'My OAuth Creds' } },
+		credentials: { oAuth2LoginApi: { id: 'cred-xyz', name: 'My OAuth Creds' } },
 	});
 
 	const additionalData = mockDeep<IWorkflowExecuteAdditionalData>({
@@ -106,12 +106,12 @@ describe('getOauthLoginHelperFunctions', () => {
 		expect(verified?.nonce).toMatch(/^[0-9a-f]{32}$/);
 	});
 
-	it('throws when no oAuth2Api credential is configured on the node', async () => {
+	it('throws when no oAuth2LoginApi credential is configured on the node', async () => {
 		const nodeWithoutCred = mock<INode>({ id: 'node-abc', name: 'Form', credentials: undefined });
 		const helpers = getOauthLoginHelperFunctions(workflow, nodeWithoutCred, additionalData);
 
 		await expect(helpers.getWebhookOauthRedirectUrl()).rejects.toThrow(
-			/no "oAuth2Api" credential configured/,
+			/no "oAuth2LoginApi" credential configured/,
 		);
 	});
 
@@ -149,7 +149,7 @@ describe('getOauthLoginHelperFunctions', () => {
 		const formNode = mock<INode>({
 			id: 'node-abc',
 			name: 'Form Trigger',
-			credentials: { oAuth2Api: { id: 'cred-xyz', name: 'My OAuth Creds' } },
+			credentials: { oAuth2LoginApi: { id: 'cred-xyz', name: 'My OAuth Creds' } },
 		});
 
 		const buildIdToken = (payload: Record<string, unknown>): string =>

@@ -222,6 +222,8 @@ export class FrontendService {
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+				oauth2Login: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/form-callback`,
+				oauth2LoginTest: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/test-form-callback`,
 			},
 			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
@@ -429,6 +431,8 @@ export class FrontendService {
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+			oauth2Login: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/form-callback`,
+			oauth2LoginTest: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/test-form-callback`,
 		};
 		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
 

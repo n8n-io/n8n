@@ -65,7 +65,7 @@ export const defaultSettings: FrontendSettings = {
 	license: { environment: 'development', consumerId: 'unknown' },
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
-	oauthCallbackUrls: { oauth1: '', oauth2: '' },
+	oauthCallbackUrls: { oauth1: '', oauth2: '', oauth2Login: '', oauth2LoginTest: '' },
 	jwksUri: '',
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',

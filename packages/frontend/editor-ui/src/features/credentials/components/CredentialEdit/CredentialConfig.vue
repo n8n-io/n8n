@@ -172,13 +172,37 @@ const isGoogleOAuthType = computed(
 		credentialTypeName.value === 'googleOAuth2Api' || props.parentTypes.includes('googleOAuth2Api'),
 );
 
+const isOAuth2LoginType = computed(
+	() =>
+		credentialTypeName.value === 'oAuth2LoginApi' || props.parentTypes.includes('oAuth2LoginApi'),
+);
+
+const callbackUrls = computed(
+	() =>
+		rootStore.OAuthCallbackUrls as {
+			oauth1: string;
+			oauth2: string;
+			oauth2Login: string;
+			oauth2LoginTest: string;
+		},
+);
+
 const oAuthCallbackUrl = computed(() => {
+	// For OAuth2 Login credentials (form trigger sign-in flow), surface the
+	// production form-callback URL. The matching test URL is shown next to it.
+	if (isOAuth2LoginType.value) {
+		return callbackUrls.value.oauth2Login;
+	}
 	const oauthType =
 		credentialTypeName.value === 'oAuth2Api' || props.parentTypes.includes('oAuth2Api')
 			? 'oauth2'
 			: 'oauth1';
-	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
+	return callbackUrls.value[oauthType];
 });
+
+const oAuthCallbackUrlTest = computed(() =>
+	isOAuth2LoginType.value ? callbackUrls.value.oauth2LoginTest : '',
+);
 
 const showOAuthSuccessBanner = computed(() => {
 	return (
@@ -440,7 +464,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 					<CopyInput
 						v-if="isOAuthType && !isManagedOAuth"
-						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+						:label="
+							isOAuth2LoginType
+								? i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl') +
+									' (production)'
+								: i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')
+						"
 						:value="oAuthCallbackUrl"
 						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
 						:hint="
@@ -448,6 +477,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								interpolate: { appName },
 							})
 						"
+						:toast-title="
+							i18n.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
+						"
+						:redact-value="true"
+					/>
+					<CopyInput
+						v-if="isOAuth2LoginType && !isManagedOAuth"
+						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl') + ' (test)'"
+						:value="oAuthCallbackUrlTest"
+						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
 						:toast-title="
 							i18n.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 						"

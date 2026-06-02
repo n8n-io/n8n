@@ -92,6 +92,8 @@ export interface FrontendSettings {
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
+		oauth2Login: string;
+		oauth2LoginTest: string;
 	};
 	jwksUri: string;
 	timezone: string;

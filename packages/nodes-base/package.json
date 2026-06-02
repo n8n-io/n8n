@@ -277,6 +277,7 @@
       "dist/credentials/NpmApi.credentials.js",
       "dist/credentials/OAuth1Api.credentials.js",
       "dist/credentials/OAuth2Api.credentials.js",
+      "dist/credentials/OAuth2LoginApi.credentials.js",
       "dist/credentials/OdooApi.credentials.js",
       "dist/credentials/OktaApi.credentials.js",
       "dist/credentials/OneSimpleApi.credentials.js",
