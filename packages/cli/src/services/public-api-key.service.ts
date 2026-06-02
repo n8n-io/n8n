@@ -115,13 +115,13 @@ export class PublicApiKeyService {
 	 * Apply `field:asc|desc` entries from the query. The default order
 	 * (`createdAt DESC`) lands as a stable tie-breaker so newest keys
 	 * surface first whenever the caller's sort runs out of distinguishing
-	 * values. Sorting by `scopes` is a count sort — `simple-array` columns
-	 * are stored as CSV, so we count commas + 1 (and special-case the empty
-	 * string) in portable SQL.
+	 * values. Sorting by `scopes` is a count sort — the column is stored
+	 * as a JSON array, so we count commas + 1 (one comma per element
+	 * boundary) and special-case the empty array `[]` in portable SQL.
 	 */
 	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string[]) {
 		const scopesCountExpr =
-			"CASE WHEN apiKey.scopes = '' THEN 0 ELSE LENGTH(apiKey.scopes) - LENGTH(REPLACE(apiKey.scopes, ',', '')) + 1 END";
+			"CASE WHEN apiKey.scopes = '[]' THEN 0 ELSE LENGTH(apiKey.scopes) - LENGTH(REPLACE(apiKey.scopes, ',', '')) + 1 END";
 		let scopesCountSelected = false;
 		const seen = new Set<string>();
 
