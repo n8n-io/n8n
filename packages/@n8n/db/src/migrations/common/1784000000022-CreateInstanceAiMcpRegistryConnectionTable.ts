@@ -11,6 +11,9 @@ export class CreateInstanceAiMcpRegistryConnectionTable1784000000022
 				column('id').uuid.primary,
 				column('credentialId').varchar(36).notNull,
 				column('serverSlug').varchar(255).notNull,
+				column('toolFilter').json.comment(
+					'Optional MCP tool filter per registry connection: { mode: "allow" | "exclude", tools: string[] }',
+				),
 				column('userId').uuid.notNull,
 			)
 			.withIndexOn(['userId', 'serverSlug', 'credentialId'], true)
