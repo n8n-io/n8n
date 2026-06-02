@@ -27,7 +27,7 @@ describe('Protected endpoints reject unauthenticated requests', () => {
         .set(headers);
 
       expect([401, 403]).toContain(response.status);
-      expect(response.body).not.toHaveProperty('# HELP');
+      expect(response.text).not.toContain('# HELP');
     },
   );
 });
