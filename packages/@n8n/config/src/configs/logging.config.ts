@@ -28,6 +28,7 @@ export const LOG_SCOPES = [
 	'chat-hub',
 	'breaking-changes',
 	'circuit-breaker',
+	'expression-engine',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -1742,7 +1742,7 @@ describe('Workflow', () => {
 		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				const nodes: INode[] = [
 					{
 						name: 'Node1',
@@ -1818,64 +1818,70 @@ describe('Workflow', () => {
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
+				await workflow.expression.acquireIsolate();
+				try {
+					const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
-				const runExecutionData = createRunExecutionData({
-					resultData: {
-						runData: {
-							Node1: [
-								{
-									source: [
-										{
-											previousNode: 'test',
-										},
-									],
-									startTime: 1,
-									executionTime: 1,
-									executionIndex: 0,
-									data: {
-										main: [
-											[
-												{
-													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
-													binary: testData.input.Node1.outputBinary,
-												},
-											],
+					const runExecutionData = createRunExecutionData({
+						resultData: {
+							runData: {
+								Node1: [
+									{
+										source: [
+											{
+												previousNode: 'test',
+											},
 										],
+										startTime: 1,
+										executionTime: 1,
+										executionIndex: 0,
+										data: {
+											main: [
+												[
+													{
+														json:
+															testData.input.Node1.outputJson || testData.input.Node1.parameters,
+														binary: testData.input.Node1.outputBinary,
+													},
+												],
+											],
+										},
 									},
-								},
-							],
-							Node2: [],
-							'Node 4 with spaces': [],
+								],
+								Node2: [],
+								'Node 4 with spaces': [],
+							},
 						},
-					},
-				});
+					});
 
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] =
-					runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
+					const itemIndex = 0;
+					const runIndex = 0;
+					const connectionInputData: INodeExecutionData[] =
+						runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
 
-				for (const parameterName of Object.keys(testData.output)) {
-					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
-						parameterName
-					];
-					const result = workflow.expression.getParameterValue(
-						parameterValue,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						activeNodeName,
-						connectionInputData,
-						'manual',
-						{},
-					);
-					expect(result).toEqual(testData.output[parameterName]);
+					for (const parameterName of Object.keys(testData.output)) {
+						const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+							parameterName
+						];
+						const result = workflow.expression.getParameterValue(
+							parameterValue,
+							runExecutionData,
+							runIndex,
+							itemIndex,
+							activeNodeName,
+							connectionInputData,
+							'manual',
+							{},
+						);
+						expect(result).toEqual(testData.output[parameterName]);
+					}
+				} finally {
+					await workflow.expression.releaseIsolate();
 				}
 			});
 		}
 
-		test('should also resolve all child parameters when the parent get requested', () => {
+		test('should also resolve all child parameters when the parent get requested', async () => {
 			const nodes: INode[] = [
 				{
 					name: 'Node1',
@@ -1902,64 +1908,69 @@ describe('Workflow', () => {
 			const connections: IConnections = {};
 
 			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-			const activeNodeName = 'Node1';
+			await workflow.expression.acquireIsolate();
+			try {
+				const activeNodeName = 'Node1';
 
-			const runExecutionData = createRunExecutionData({
-				resultData: {
-					runData: {
-						Node1: [
-							{
-								startTime: 1,
-								executionTime: 1,
-								executionIndex: 0,
-								data: {
-									main: [
-										[
-											{
-												json: {},
-											},
+				const runExecutionData = createRunExecutionData({
+					resultData: {
+						runData: {
+							Node1: [
+								{
+									startTime: 1,
+									executionTime: 1,
+									executionIndex: 0,
+									data: {
+										main: [
+											[
+												{
+													json: {},
+												},
+											],
 										],
-									],
+									},
+									source: [],
 								},
-								source: [],
-							},
-						],
+							],
+						},
 					},
-				},
-			});
+				});
 
-			const itemIndex = 0;
-			const runIndex = 0;
-			const connectionInputData: INodeExecutionData[] =
-				runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
-			const parameterName = 'values';
+				const itemIndex = 0;
+				const runIndex = 0;
+				const connectionInputData: INodeExecutionData[] =
+					runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
+				const parameterName = 'values';
 
-			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
-				parameterName
-			];
-			const result = workflow.expression.getParameterValue(
-				parameterValue,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				'manual',
-				{},
-			);
+				const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+					parameterName
+				];
+				const result = workflow.expression.getParameterValue(
+					parameterValue,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					'manual',
+					{},
+				);
 
-			expect(result).toEqual({
-				string: [
-					{
-						name: 'name1',
-						value: 'value1',
-					},
-					{
-						name: 'name2',
-						value: 'value1A',
-					},
-				],
-			});
+				expect(result).toEqual({
+					string: [
+						{
+							name: 'name1',
+							value: 'value1',
+						},
+						{
+							name: 'name2',
+							value: 'value1A',
+						},
+					],
+				});
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		});
 	});
 
