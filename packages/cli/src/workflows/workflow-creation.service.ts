@@ -1,12 +1,12 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, Project } from '@n8n/db';
+import type { EntityManager, Project, User } from '@n8n/db';
 import {
-	WorkflowEntity,
+	ProjectRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
-	ProjectRepository,
 	TagRepository,
+	WorkflowEntity,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -16,11 +16,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { FolderService } from '@/services/folder.service';
@@ -28,10 +31,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { dropRedactionPolicy, policyFromFloor, policyMeetsFloor } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowValidationService } from './workflow-validation.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 
 @Service()
 export class WorkflowCreationService {
@@ -53,6 +57,7 @@ export class WorkflowCreationService {
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowValidationService: WorkflowValidationService,
+		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
 
 	async createWorkflow(
@@ -174,31 +179,12 @@ export class WorkflowCreationService {
 				throw new BadRequestError(message);
 			}
 
-			// Strip redactionPolicy if instance lacks data-redaction license
-			if (
-				newWorkflow.settings?.redactionPolicy !== undefined &&
-				!this.licenseState.isDataRedactionLicensed()
-			) {
-				delete newWorkflow.settings.redactionPolicy;
-			}
-
-			// Strip redactionPolicy if user lacks the enableRedaction scope.
-			if (
-				newWorkflow.settings?.redactionPolicy !== undefined &&
-				newWorkflow.settings.redactionPolicy !== 'none'
-			) {
-				const canUpdateRedaction = await userHasScopes(
-					user,
-					['workflow:enableRedaction'],
-					false,
-					{ projectId: effectiveProjectId },
-					transactionManager,
-				);
-
-				if (!canUpdateRedaction) {
-					delete newWorkflow.settings.redactionPolicy;
-				}
-			}
+			await this.resolveRedactionPolicyOnCreate(
+				newWorkflow,
+				user,
+				effectiveProjectId,
+				transactionManager,
+			);
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
@@ -265,5 +251,63 @@ export class WorkflowCreationService {
 		});
 
 		return savedWorkflow;
+	}
+
+	private async resolveRedactionPolicyOnCreate(
+		newWorkflow: WorkflowEntity,
+		user: User,
+		effectiveProjectId: string,
+		transactionManager: EntityManager,
+	): Promise<void> {
+		// No license — the field is meaningless, drop any incoming value.
+		if (!this.licenseState.isDataRedactionLicensed()) {
+			dropRedactionPolicy(newWorkflow);
+			return;
+		}
+
+		const incomingPolicy = newWorkflow.settings?.redactionPolicy;
+		const hasIncoming = incomingPolicy !== undefined && incomingPolicy !== 'none';
+		const enforcementEnabled = isRedactionEnforcementEnabled();
+
+		// Nothing to validate, nothing to seed — skip the scope check entirely.
+		if (!hasIncoming && !enforcementEnabled) return;
+
+		const canUpdateRedaction = await userHasScopes(
+			user,
+			['workflow:enableRedaction'],
+			false,
+			{ projectId: effectiveProjectId },
+			transactionManager,
+		);
+
+		// User can't update the policy, drop any incoming value.
+		if (!canUpdateRedaction && hasIncoming) {
+			dropRedactionPolicy(newWorkflow);
+		}
+
+		if (!enforcementEnabled) return;
+
+		const floor = await this.instanceRedactionEnforcementService.get();
+
+		const survivingPolicy = newWorkflow.settings?.redactionPolicy;
+		if (survivingPolicy !== undefined && !policyMeetsFloor(survivingPolicy, floor)) {
+			throw new UnprocessableRequestError(
+				'Workflow redaction policy cannot be weaker than the instance floor.',
+			);
+		}
+
+		// Seed only for users who could have set the policy themselves — the floor
+		// shouldn't lock a workflow to a policy the user can't lift later (no
+		// enableRedaction → no disableRedaction either). Execution-time
+		// enforcement applies regardless of what's persisted.
+		if (canUpdateRedaction && newWorkflow.settings?.redactionPolicy === undefined) {
+			const seeded = policyFromFloor(floor);
+			if (seeded !== undefined) {
+				newWorkflow.settings = {
+					...(newWorkflow.settings ?? {}),
+					redactionPolicy: seeded,
+				};
+			}
+		}
 	}
 }
