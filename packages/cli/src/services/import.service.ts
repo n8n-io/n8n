@@ -281,6 +281,19 @@ export class ImportService {
 			}
 		}
 
+		if (result.length < toActivate.length) {
+			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
+			// sort — it's part of a cycle (its dependency also waits on it). Append these
+			// so they still get activated rather than being silently dropped.
+			const cycleWorkflows = toActivate.filter(
+				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
+			);
+			this.logger.warn(
+				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+			);
+			result.push(...cycleWorkflows);
+		}
+
 		return result;
 	}
 

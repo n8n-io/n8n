@@ -1408,6 +1408,64 @@ describe('ImportService', () => {
 
 			expect(result).toBe(toActivate);
 		});
+
+		it('should append mutually-cyclic workflows (A↔B) and log a warning', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'A')]),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(2);
+			expect(result.map((w) => w.workflowId)).toContain('A');
+			expect(result.map((w) => w.workflowId)).toContain('B');
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
+
+		it('should append all workflows in a three-way cycle (A→B→C→A) and log a warning', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'C')]),
+				makeWorkflow('C', [makeExecuteWorkflowNode('n3', 'A')]),
+			];
+			const toActivate = makeToActivate(['A', 'B', 'C']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(3);
+			expect(result.map((w) => w.workflowId)).toContain('A');
+			expect(result.map((w) => w.workflowId)).toContain('B');
+			expect(result.map((w) => w.workflowId)).toContain('C');
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
+
+		it('should sort non-cyclic workflows first and append cyclic workflows at the end', () => {
+			// D→E: normal dependency, no cycle
+			// A↔B: mutual cycle
+			const workflows = [
+				makeWorkflow('D', [makeExecuteWorkflowNode('n1', 'E')]),
+				makeWorkflow('E'),
+				makeWorkflow('A', [makeExecuteWorkflowNode('n2', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n3', 'A')]),
+			];
+			const toActivate = makeToActivate(['D', 'E', 'A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(4);
+			const ids = result.map((w) => w.workflowId);
+			// E must come before D (normal dependency order)
+			expect(ids.indexOf('E')).toBeLessThan(ids.indexOf('D'));
+			// A and B are cyclic — they appear after the sorted pair
+			expect(ids.indexOf('A')).toBeGreaterThan(ids.indexOf('D'));
+			expect(ids.indexOf('B')).toBeGreaterThan(ids.indexOf('D'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
 	});
 
 	describe('advanceIdentitySequences', () => {
