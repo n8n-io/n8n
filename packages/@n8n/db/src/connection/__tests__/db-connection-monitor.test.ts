@@ -186,15 +186,22 @@ describe('DbConnectionMonitor', () => {
 			expect(recoverSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('should report unhandled errors from recoverDataSource via errorReporter', async () => {
+		it('should report and recover from an unexpected throw inside recoverDataSource', async () => {
+			// If something throws between `this.recovering = true` and the inner try/catch
+			// inside recoverDataSource (e.g. a broken logger), the outer try/catch/finally
+			// must (a) surface the error via errorReporter and (b) clear the `recovering`
+			// flag so subsequent pings can keep probing.
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
-			const unhandled = new Error('synchronous failure outside try/catch');
-			jest
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				.spyOn(monitor as any, 'recoverDataSource')
-				.mockRejectedValue(unhandled);
+			// Throw from the "Attempting to recover" warn — this fires after recovering=true
+			// but before the inner try/catch that protects destroy/initialize.
+			const loggerError = new Error('logger broke');
+			logger.warn.mockImplementation((msg: unknown) => {
+				if (typeof msg === 'string' && msg.includes('Attempting to recover')) {
+					throw loggerError;
+				}
+			});
 
 			// @ts-expect-error private property
 			await monitor.ping();
@@ -202,11 +209,16 @@ describe('DbConnectionMonitor', () => {
 			await monitor.ping();
 			// @ts-expect-error private property
 			await monitor.ping();
+			// Let the fire-and-forget recoverDataSource() promise settle.
+			await flushMicrotasks();
 
-			// Let the .catch() handler attached to recoverDataSource() flush.
-			await new Promise((resolve) => setImmediate(resolve));
+			// @ts-expect-error private property
+			await monitor.ping();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(unhandled);
+			// Outer catch surfaces the unexpected throw to Sentry.
+			expect(errorReporter.error).toHaveBeenCalledWith(loggerError);
+			// Finally clears `recovering` so the 4th ping runs instead of early-returning.
+			expect(dataSource.query).toHaveBeenCalledTimes(4);
 		});
 
 		it('should skip query while recovery is in progress', async () => {

@@ -114,11 +114,8 @@ export class DbConnectionMonitor {
 				this.logger.warn(
 					`Triggering database connection recovery after ${this.consecutiveFailures} consecutive ping failures`,
 				);
-				// Fire-and-forget recovery, but attach a catch so that an unexpected throw from *outside* recoverDataSource's own
-				// try/catch (e.g. a driver getter that throws) doesn't become an unhandled promise rejection.
-				this.recoverDataSource().catch((cause) => {
-					this.errorReporter.error(ensureError(cause));
-				});
+				// Fire-and-forget; recoverDataSource owns its own try/catch/finally and never rejects.
+				void this.recoverDataSource();
 			}
 		} finally {
 			abortController.abort();
@@ -132,56 +129,61 @@ export class DbConnectionMonitor {
 		}
 		this.recovering = true;
 
-		const recoveryStart = Date.now();
-		let attempt = 0;
-		let recovered = false;
+		try {
+			const recoveryStart = Date.now();
+			let attempt = 0;
+			let recovered = false;
 
-		while (!recovered && !this.stopped) {
-			attempt += 1;
-			this.logger.warn(`Attempting to recover database connection (attempt ${attempt})`);
+			while (!recovered && !this.stopped) {
+				attempt += 1;
+				this.logger.warn(`Attempting to recover database connection (attempt ${attempt})`);
 
-			try {
-				if (this.dataSource.isInitialized) {
-					await this.dataSource.destroy();
-				}
-
-				if (this.stopped) {
-					break;
-				}
-				await this.dataSource.initialize();
-				this.attachPoolErrorHandler();
-				this.setConnected(true);
-				this.consecutiveFailures = 0;
-				recovered = true;
-			} catch (error) {
-				const wrapped = ensureError(error);
-				this.errorReporter.error(wrapped);
-				const backoff = Math.min(
-					MIN_RECOVERY_BACKOFF_MS * 2 ** (attempt - 1),
-					MAX_RECOVERY_BACKOFF_MS,
-				);
-				this.logger.warn(
-					`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,
-				);
 				try {
-					await setTimeoutP(backoff, undefined, {
-						signal: this.stopAbortController.signal,
-					});
-				} catch {
-					// AbortError from stop() — the while loop's `!this.stopped` guard exits next iteration.
+					if (this.dataSource.isInitialized) {
+						await this.dataSource.destroy();
+					}
+
+					if (this.stopped) {
+						break;
+					}
+					await this.dataSource.initialize();
+					this.attachPoolErrorHandler();
+					this.setConnected(true);
+					this.consecutiveFailures = 0;
+					recovered = true;
+				} catch (error) {
+					const wrapped = ensureError(error);
+					this.errorReporter.error(wrapped);
+					const backoff = Math.min(
+						MIN_RECOVERY_BACKOFF_MS * 2 ** (attempt - 1),
+						MAX_RECOVERY_BACKOFF_MS,
+					);
+					this.logger.warn(
+						`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,
+					);
+					try {
+						await setTimeoutP(backoff, undefined, {
+							signal: this.stopAbortController.signal,
+						});
+					} catch {
+						// AbortError from stop() — the while loop's `!this.stopped` guard exits next iteration.
+					}
 				}
 			}
-		}
 
-		this.recovering = false;
-		if (recovered) {
-			this.logger.info(
-				`Database connection recovered after ${attempt} attempt(s) in ${Date.now() - recoveryStart}ms`,
-			);
-		} else {
-			this.logger.warn(
-				`Database connection recovery aborted after ${attempt} attempt(s) (monitor stopped)`,
-			);
+			if (recovered) {
+				this.logger.info(
+					`Database connection recovered after ${attempt} attempt(s) in ${Date.now() - recoveryStart}ms`,
+				);
+			} else {
+				this.logger.warn(
+					`Database connection recovery aborted after ${attempt} attempt(s) (monitor stopped)`,
+				);
+			}
+		} catch (error) {
+			this.errorReporter.error(ensureError(error));
+		} finally {
+			this.recovering = false;
 		}
 	}
 
