@@ -50,6 +50,8 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.36.0
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -77,15 +79,15 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
+  ai: ^6.0.170
   axios: 1.16.1
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chat: ^4.28.1
+  cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
@@ -123,6 +125,7 @@ catalog:
   picocolors: 1.0.1
   playwright-core: 1.60.0
   posthog-node: 5.33.4
+  qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0
@@ -130,6 +133,7 @@ catalog:
   simple-git: 3.36.0
   stream-json: 1.9.1
   testcontainers: ^11.13.0
+  tmp: 0.2.6
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
