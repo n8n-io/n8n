@@ -130,6 +130,7 @@ Keep comments friendly, short, and collaborative. Avoid judgmental wording like 
 
 Do not make code changes unless the user explicitly asks for them. This skill produces a review, not a patch.
 
-The very last sentence of your reply must be the link/path to the review file
-(e.g. `tmp/review-<repo>-<number>.md`), so the user can open it immediately.
-Nothing should come after it.
+The very last sentence of your reply must be a clickable Markdown link to the
+review file, so the user can open it from the agent chat immediately. Use this
+format: `[tmp/review-<repo>-<number>.md](tmp/review-<repo>-<number>.md)`.
+Nothing should come after the link.
