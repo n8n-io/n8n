@@ -1208,9 +1208,14 @@ function onSwitchAgent(nextAgentId: string) {
 				ref="versionHistoryPanel"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:has-unpublished-changes="
+					Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
+				"
+				:agent-name="agent?.name ?? agentName"
 				@close="onCloseVersionHistory"
 				@reverted="onReverted"
 				@published="onPublished"
+				@unpublished="onUnpublished"
 			/>
 		</div>
 	</div>
