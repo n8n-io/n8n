@@ -211,6 +211,7 @@ function onRemoveSubAgent(agentId: string) {
 						<AgentInfoPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>

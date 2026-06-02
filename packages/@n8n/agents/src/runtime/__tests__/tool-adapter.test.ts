@@ -198,7 +198,7 @@ describe('toAiSdkTools — description forwarding', () => {
 
 describe('executeTool — context propagation', () => {
 	it('passes the run abort signal to the tool handler', async () => {
-		const handler = jest.fn().mockResolvedValue('ok');
+		const handler = vi.fn().mockResolvedValue('ok');
 		const tool: BuiltTool = { name: 'cancellable', description: 'd', handler };
 		const { signal } = new AbortController();
 
@@ -208,7 +208,7 @@ describe('executeTool — context propagation', () => {
 	});
 
 	it('passes the run abort signal to interruptible tool handlers', async () => {
-		const handler = jest.fn().mockResolvedValue('ok');
+		const handler = vi.fn().mockResolvedValue('ok');
 		const tool: BuiltTool = {
 			name: 'interruptible',
 			description: 'd',

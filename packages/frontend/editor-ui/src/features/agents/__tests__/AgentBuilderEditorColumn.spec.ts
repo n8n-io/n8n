@@ -23,6 +23,11 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	return { ...actual, useRoute: () => ({ params: {} }) };
+});
+
 vi.mock('@n8n/design-system', () => ({
 	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
@@ -45,6 +50,34 @@ vi.mock('@n8n/design-system/components/N8nSelect', () => ({
 
 vi.mock('@n8n/design-system/components/N8nOption', () => ({
 	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
+}));
+
+vi.mock('../components/AgentAdvancedPanel.vue', () => ({
+	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+}));
+
+vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
+	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
+}));
+
+vi.mock('../components/AgentIdentityHeader.vue', () => ({
+	default: { name: 'AgentIdentityHeader', template: '<div />' },
+}));
+
+vi.mock('../components/AgentInfoPanel.vue', () => ({
+	default: { name: 'AgentInfoPanel', template: '<div />' },
+}));
+
+vi.mock('../components/AgentJsonEditor.vue', () => ({
+	default: { name: 'AgentJsonEditor', template: '<div />' },
+}));
+
+vi.mock('../components/AgentPanelHeader.vue', () => ({
+	default: { name: 'AgentPanelHeader', template: '<div />' },
+}));
+
+vi.mock('../views/AgentSessionsListView.vue', () => ({
+	default: { name: 'AgentSessionsListView', template: '<div />' },
 }));
 
 // First mount of this SFC eats the Vite transform cost; give it headroom.

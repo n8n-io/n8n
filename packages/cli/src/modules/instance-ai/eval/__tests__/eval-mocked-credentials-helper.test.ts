@@ -115,6 +115,45 @@ describe('EvalMockedCredentialsHelper', () => {
 			expect(helper.mockedCredentials[0].nodeName).toBe('unknown');
 		});
 
+		it('tolerates an undefined credential id without ever touching the inner helper', async () => {
+			// Falsy ids must be mocked before the inner helper can throw.
+			const innerGetDecrypted = jest.fn();
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue([
+					{
+						name: 'apiKey',
+						displayName: 'API Key',
+						type: 'string' as const,
+						default: '',
+					},
+				]),
+				getDecrypted: innerGetDecrypted,
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+			const undefinedIdCreds: INodeCredentialsDetails = {
+				id: undefined as unknown as string,
+				name: 'OpenWeatherMap API',
+			};
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				undefinedIdCreds,
+				'openWeatherMapApi',
+				'manual',
+				{ node: { name: 'Get London Weather' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(innerGetDecrypted).not.toHaveBeenCalled();
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'Get London Weather',
+					credentialType: 'openWeatherMapApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
 		describe('server URL rewrite', () => {
 			const serverUrl = 'http://127.0.0.1:55555';
 			const openAiCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
