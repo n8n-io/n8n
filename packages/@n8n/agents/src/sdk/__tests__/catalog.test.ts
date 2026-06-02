@@ -5,11 +5,11 @@ describe('fetchProviderCatalog', () => {
 
 	afterEach(() => {
 		global.fetch = originalFetch;
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('returns provider ids that match the agents runtime', async () => {
-		const fetchMock = jest.fn().mockResolvedValue({
+		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
 			json: async () =>
 				await Promise.resolve({
