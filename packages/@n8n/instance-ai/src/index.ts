@@ -100,6 +100,8 @@ export type {
 	AgentMessage,
 	BuiltMemory,
 	CheckpointStore,
+	ContentToolCall,
+	MessageContent,
 	SerializableAgentState,
 	Thread,
 } from '@n8n/agents';
@@ -190,6 +192,7 @@ export const createSubAgent: typeof SubAgentFactoryMod.createSubAgent = lazyFunc
 );
 export { createAllTools, createOrchestrationTools } from './tools';
 export {
+	createSubAgentResourceId,
 	createSubAgentResourceIdPrefix,
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
@@ -411,6 +414,10 @@ export type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
+	ResolvedParametersDebugBundle,
+	ResolvedExpressionFailure,
+	EmptyExpressionResolution,
 	ExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,

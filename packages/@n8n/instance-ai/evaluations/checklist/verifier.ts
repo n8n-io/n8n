@@ -1,7 +1,8 @@
+import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { createEvalAgent } from '../../src/utils/eval-agents';
-import type { WorkflowResponse } from '../clients/n8n-client';
+import { EPHEMERAL_CACHE, createEvalAgent } from '../../src/utils/eval-agents';
+import type { VerificationArtifact } from '../harness/runner';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 
@@ -30,21 +31,29 @@ const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
-	verificationArtifact: string,
-	_workflowJsons: WorkflowResponse[],
+	artifact: VerificationArtifact,
 ): Promise<ChecklistResult[]> {
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
 	if (llmItems.length === 0) return [];
 
-	const userMessage = `## Checklist
-
-${JSON.stringify(llmItems, null, 2)}
-
-## Verification Artifact
-
-${verificationArtifact}
-
-Verify each checklist item against the artifact above.`;
+	// Multi-block user message: the workflow context is stable across scenarios of
+	// the same build, so we mark it as a cache breakpoint for Anthropic prompt caching.
+	const messages: Message[] = [
+		{
+			role: 'user',
+			content: [
+				{
+					type: 'text',
+					text: artifact.workflowContext,
+					providerOptions: EPHEMERAL_CACHE,
+				},
+				{
+					type: 'text',
+					text: `## Checklist\n\n${JSON.stringify(llmItems, null, 2)}\n\n${artifact.scenarioContext}\n\nVerify each checklist item against the workflow + scenario artifact above.`,
+				},
+			],
+		},
+	];
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 
@@ -62,7 +71,7 @@ Verify each checklist item against the artifact above.`;
 		);
 		let result;
 		try {
-			result = await agent.generate(userMessage, { abortSignal: abortController.signal });
+			result = await agent.generate(messages, { abortSignal: abortController.signal });
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			console.warn(`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);

@@ -1,5 +1,11 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import {
+	SKILL_BODY_FORMAT_RULE,
+	SKILL_BODY_TEMPLATE,
+	SKILL_DESCRIPTION_RULE,
+} from '../skill-body-template';
+
 export function targetSkillsSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-target-skills',
@@ -11,23 +17,48 @@ export function targetSkillsSkill(): RuntimeSkill {
 
 Use this to create reusable load-on-demand instructions for the target agent.
 
-## Boundaries
+## Use when
 
-- The instruction is one-off and belongs directly in the target agent instructions.
-- You need guidance for your own builder behavior.
-- The user is asking to edit config, tools, integrations, memory, or model settings without a reusable target-agent skill.
+- The user wants reusable target-agent guidance (for example playbooks,
+  policies, or domain instructions) that should load only for relevant future
+  requests.
+- The same behavior is likely to be reused across multiple future tasks and
+  should be captured as a target-agent skill.
+- You want conditional, load-on-demand behavior instead of always-on target
+  agent instructions.
+
+## Don't use when:
+
+- The user asks for one-off target-agent instructions or config/tool/integration/model/memory edits.
+
+## Description (routing contract)
+
+${SKILL_DESCRIPTION_RULE}
+
+## Skill body format (required)
+
+${SKILL_BODY_FORMAT_RULE}
+
+${SKILL_BODY_TEMPLATE}
+
+## Ask first (required)
+
+Do NOT call \`create_skill\` until you have enough concrete domain detail to write
+a genuinely useful skill: a specific routing description and a body whose
+applicable sections are filled with real content (the actual steps, rules,
+examples, and edge cases). If any of that is missing, ask the user clarifying
+questions (use \`ask_question\` — discrete options for choices, or empty options
+for open-ended) until you can write it. Never create a placeholder or vague skill.
 
 ## Workflow
 
+- Gather the domain detail you need, asking clarifying questions until the
+  description and every applicable body section can be written with concrete
+  content.
+- Write the \`description\` as the routing contract and the \`body\` using the
+  template above. Put all "when to use" / "when not to use" guidance in the
+  description, never in the body (the body is invisible until the skill loads).
 - Call \`create_skill\` with \`name\`, \`description\`, and \`body\`.
-- Treat the description as the routing contract: it is what the runtime sees
-  before deciding whether to load the skill.
-- Put all "when to use" and "when not to use" guidance in the description.
-- The body is loaded only after the skill triggers, so it should be a compact
-  operating manual: purpose, workflow, rules, gotchas, and verification where
-  useful.
-- Do not rely on a body "Use when" section for activation; include routing
-  guidance in \`description\`.
 - \`create_skill\` stores the body only; it does not attach the skill.
 - After it returns an id, call \`read_config\`.
 - Use \`patch_config\` or \`write_config\` to add \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
@@ -53,6 +84,8 @@ Use this to create reusable load-on-demand instructions for the target agent.
 
 - The returned skill id is attached in config as \`{ "type": "skill", "id": "<returned id>" }\`.
 - The skill description clearly states when it should load.
-- The body tells the target agent what to do differently when the skill is loaded.`,
+- The body follows the template, with each applicable section filled with
+  concrete content (no placeholders), and tells the target agent what to do when
+  the skill is loaded.`,
 	};
 }
