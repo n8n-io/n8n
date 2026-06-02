@@ -226,6 +226,40 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `team-project-updated` event without members', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+			});
+		});
+
+		it('should track project custom telemetry tag count on `team-project-updated` event', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+				otelProjectCustomTagsCount: 2,
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+				otel_project_custom_tags_count: 2,
+			});
+		});
+
 		it('should track on `team-project-deleted` event', () => {
 			const event: RelayEventMap['team-project-deleted'] = {
 				userId: 'user123',

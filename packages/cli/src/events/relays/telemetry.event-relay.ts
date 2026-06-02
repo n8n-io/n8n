@@ -205,12 +205,14 @@ export class TelemetryEventRelay extends EventRelay {
 		role,
 		members,
 		projectId,
+		otelProjectCustomTagsCount,
 	}: RelayEventMap['team-project-updated']) {
 		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
-			members: members.map(({ userId: user_id, role }) => ({ user_id, role })),
 			project_id: projectId,
+			members: members?.map(({ userId: user_id, role }) => ({ user_id, role })),
+			otel_project_custom_tags_count: otelProjectCustomTagsCount,
 		});
 	}
 
