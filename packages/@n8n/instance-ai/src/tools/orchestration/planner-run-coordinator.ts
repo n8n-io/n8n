@@ -32,7 +32,6 @@ import { resumeAgentStream } from '../../utils/stream-helpers';
 import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
-import { createTemplatesTool } from '../templates.tool';
 
 /** Read-only discovery tools the planner gets from domainTools. */
 const PLANNER_DOMAIN_TOOL_NAMES = [
@@ -165,7 +164,6 @@ function buildPlannerTools(context: OrchestrationContext, accumulator: Blueprint
 		if (tool) plannerTools.set(name, tool);
 	}
 
-	plannerTools.set('templates', createTemplatesTool());
 	plannerTools.set('add-plan-item', createAddPlanItemTool(accumulator, context));
 	plannerTools.set('remove-plan-item', createRemovePlanItemTool(accumulator, context));
 	plannerTools.set('submit-plan', createSubmitPlanTool(accumulator, context));

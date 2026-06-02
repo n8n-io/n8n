@@ -12,18 +12,17 @@ interface PlannerAgentPromptOptions {
 }
 
 const PLANNER_DISCOVER_WITH_SANDBOX = `2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
-   - Grep/read the sandbox \`knowledge-base/best-practices/\` index and guides (\`workspace_execute_command\` with \`grep\`/\`rg\`, then \`workspace_read_file\`) — often faster than \`templates(action="best-practices")\` for techniques listed in \`index.json\`
-   - \`templates(action="best-practices")\` when you need a technique not in the sandbox index or want the templates tool's structured output
+   - Read \`knowledge-base/best-practices/index.json\`, then grep/read the linked \`.md\` guides for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app")
    - \`nodes(action="suggested")\` for the relevant categories
    - \`data-tables(action="list")\` to check for existing tables
    - \`credentials(action="list")\` if the request involves external services
    - Skip searches for nodes you already know exist (webhooks, schedule triggers, data tables, code, set, filter, etc.)`;
 
-const PLANNER_DISCOVER_WITHOUT_SANDBOX = `2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
-   - \`templates(action="best-practices")\` for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app"). Call with "list" first to see available techniques, then fetch relevant ones — best practices inform your design decisions.
+const PLANNER_DISCOVER_WITHOUT_SANDBOX = `2. **Discover** — check what exists. Expect 2–4 tool calls for a typical request:
    - \`nodes(action="suggested")\` for the relevant categories
    - \`data-tables(action="list")\` to check for existing tables
    - \`credentials(action="list")\` if the request involves external services
+   - Use the Node Selection Reference below for best-practice patterns (sandbox knowledge base is unavailable)
    - Skip searches for nodes you already know exist (webhooks, schedule triggers, data tables, code, set, filter, etc.)`;
 
 export function getPlannerAgentPrompt(options: PlannerAgentPromptOptions = {}): string {
@@ -43,7 +42,7 @@ ${sandboxSection}
 ## Method
 
 1. **Prefer assumptions over questions.** The user is waiting for a plan, and they can reject it if your assumptions are wrong — so default to making reasonable choices rather than asking.
-   - **Never ask about things you can discover** — call \`credentials(action="list")\`, \`data-tables(action="list")\`, \`templates(action="best-practices")\` instead.
+   - **Never ask about things you can discover** — call \`credentials(action="list")\`, \`data-tables(action="list")\`, and read \`knowledge-base/best-practices/\` via workspace tools when the sandbox is available.
    - **Never ask about implementation details** — trigger types, node choices, schedule times, column names. Pick sensible defaults.
    - **Never ask for the user's timezone when \`<user-timezone>\` is present** — use \`<current-datetime>\` / \`<user-timezone>\`. Only ask if timezone is missing and a date or schedule cannot be interpreted safely.
    - **Never default resource identifiers** the user didn't mention (Slack channels, calendars, spreadsheets, folders, etc.) — leave them for the builder to resolve at build time.

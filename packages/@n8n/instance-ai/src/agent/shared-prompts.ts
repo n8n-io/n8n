@@ -29,7 +29,7 @@ A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`wo
 - \`workflows/*.json\` — existing workflows on this instance (when synced)
 - Curated template examples under the workspace root (when present)
 
-Prefer grepping and reading these files when you need node selection guidance, best-practice patterns, or examples — especially before calling \`templates(action="best-practices")\` for techniques you can look up directly.`;
+Use \`workspace_execute_command\` with \`grep\`/\`rg\` and \`workspace_read_file\` to discover best-practice techniques from \`knowledge-base/best-practices/index.json\` and the linked \`.md\` guides.`;
 
 export const PLACEHOLDERS_RULE = `## Placeholders
 Use \`placeholder('descriptive hint')\` for values that cannot be safely picked without the user:
