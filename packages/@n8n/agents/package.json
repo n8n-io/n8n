@@ -42,9 +42,9 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "test:integration": "vitest run --config vitest.integration.config.mjs"
   },
   "dependencies": {
@@ -90,6 +90,10 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/json-schema": "^7.0.15"
+    "@n8n/vitest-config": "workspace:*",
+    "@types/json-schema": "^7.0.15",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   }
 }
