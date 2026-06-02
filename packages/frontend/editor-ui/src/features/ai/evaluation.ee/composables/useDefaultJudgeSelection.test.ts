@@ -1,60 +1,59 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
 
 import { useDefaultJudgeSelection } from './useDefaultJudgeSelection';
 
-// `injectWorkflowDocumentStore` returns a `{ value }` wrapper with `allNodes`
-// off `value`. Mirroring that shape lets us drive each test case by mutating
-// the ref instead of re-mocking per test.
-const mockAllNodes = ref<
-	Array<{
-		name: string;
-		type: string;
-		parameters?: Record<string, unknown>;
-		credentials?: Record<string, { id: string | null; name: string }>;
-	}>
->([]);
+type MockNode = {
+	name: string;
+	type: string;
+	parameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string | null; name: string }>;
+};
+
+// Plain holders rather than module-scope `ref()`s — module-scope reactive refs
+// inside `vi.mock` factories can survive vitest worker teardown and surface
+// as post-teardown unhandled rejections on Node 24.
+const state = vi.hoisted(() => ({
+	allNodes: [] as MockNode[],
+	allCredentials: [] as Array<{ id: string }>,
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({
 		value: {
 			get allNodes() {
-				return mockAllNodes.value;
+				return state.allNodes;
 			},
 		},
 	}),
 }));
 
-// `allCredentials` is the only field the composable consults. Returning a
-// minimal ref-backed list keeps the test honest about the contract without
-// pulling in the full Pinia store setup.
-const mockAllCredentials = ref<Array<{ id: string }>>([]);
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		get allCredentials() {
-			return mockAllCredentials.value;
+			return state.allCredentials;
 		},
 	}),
 }));
 
 describe('useDefaultJudgeSelection', () => {
 	beforeEach(() => {
-		mockAllNodes.value = [];
-		mockAllCredentials.value = [];
+		state.allNodes = [];
+		state.allCredentials = [];
 	});
 
 	it('returns null when the workflow has no language-model sub-node', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
-		mockAllCredentials.value = [{ id: 'cred-1' }];
+		state.allCredentials = [{ id: 'cred-1' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toBeNull();
 	});
 
 	it('extracts provider/model/credentialId from a resourceLocator-shaped model param', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{
 				name: 'OpenAI Chat Model',
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -62,7 +61,7 @@ describe('useDefaultJudgeSelection', () => {
 				credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI account' } },
 			},
 		];
-		mockAllCredentials.value = [{ id: 'cred-1' }];
+		state.allCredentials = [{ id: 'cred-1' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toEqual({
@@ -73,7 +72,7 @@ describe('useDefaultJudgeSelection', () => {
 	});
 
 	it('extracts model from the legacy string form (older lmChat* node versions)', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{
 				name: 'Anthropic Chat Model',
 				type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -81,7 +80,7 @@ describe('useDefaultJudgeSelection', () => {
 				credentials: { anthropicApi: { id: 'cred-2', name: 'Anthropic account' } },
 			},
 		];
-		mockAllCredentials.value = [{ id: 'cred-2' }];
+		state.allCredentials = [{ id: 'cred-2' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toEqual({
@@ -95,7 +94,7 @@ describe('useDefaultJudgeSelection', () => {
 	// lmChat sub-node wins. Important so the default stays predictable across
 	// re-renders and across workflows that wire up multiple models.
 	it('picks the first matching sub-node in canvas order', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
 			{
 				name: 'OpenAI Chat Model',
@@ -110,7 +109,7 @@ describe('useDefaultJudgeSelection', () => {
 				credentials: { anthropicApi: { id: 'cred-anthropic', name: 'Anthropic account' } },
 			},
 		];
-		mockAllCredentials.value = [{ id: 'cred-openai' }, { id: 'cred-anthropic' }];
+		state.allCredentials = [{ id: 'cred-openai' }, { id: 'cred-anthropic' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toEqual({
@@ -124,7 +123,7 @@ describe('useDefaultJudgeSelection', () => {
 	// against the user's accessible credentials, so adopting an unreachable id
 	// would render as a broken/missing selection in the UI.
 	it('returns null when the sub-node references a credential the user cannot see', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{
 				name: 'OpenAI Chat Model',
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -134,14 +133,14 @@ describe('useDefaultJudgeSelection', () => {
 		];
 		// User has no credentials in their account at all — the workflow's
 		// credential id belongs to someone else.
-		mockAllCredentials.value = [];
+		state.allCredentials = [];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toBeNull();
 	});
 
 	it('skips sub-nodes missing a model value and falls through to the next match', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{
 				// First sub-node has no model picked yet — defaulted but never
 				// touched. We should keep looking instead of returning a
@@ -158,7 +157,7 @@ describe('useDefaultJudgeSelection', () => {
 				credentials: { anthropicApi: { id: 'cred-anthropic', name: 'Anthropic account' } },
 			},
 		];
-		mockAllCredentials.value = [{ id: 'cred-openai' }, { id: 'cred-anthropic' }];
+		state.allCredentials = [{ id: 'cred-openai' }, { id: 'cred-anthropic' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toEqual({
@@ -169,7 +168,7 @@ describe('useDefaultJudgeSelection', () => {
 	});
 
 	it('skips sub-nodes with no credential slot bound', () => {
-		mockAllNodes.value = [
+		state.allNodes = [
 			{
 				name: 'OpenAI Chat Model',
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -178,7 +177,7 @@ describe('useDefaultJudgeSelection', () => {
 				// canvas, never configured.
 			},
 		];
-		mockAllCredentials.value = [{ id: 'cred-openai' }];
+		state.allCredentials = [{ id: 'cred-openai' }];
 
 		const selection = useDefaultJudgeSelection();
 		expect(selection.value).toBeNull();

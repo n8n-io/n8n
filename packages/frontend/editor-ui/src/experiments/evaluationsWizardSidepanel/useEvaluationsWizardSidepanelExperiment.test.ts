@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useEvaluationsWizardSidepanelExperiment } from './useEvaluationsWizardSidepanelExperiment';
 
-const getVariant = vi.fn();
+const { getVariant } = vi.hoisted(() => ({ getVariant: vi.fn() }));
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({

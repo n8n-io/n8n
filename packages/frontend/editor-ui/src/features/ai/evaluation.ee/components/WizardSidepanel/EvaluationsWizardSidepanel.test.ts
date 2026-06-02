@@ -10,14 +10,29 @@ import { useEvaluationStore } from '../../evaluation.store';
 import { CANNED_METRICS } from '../../evaluation.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-const mockAllNodes = ref<
-	Array<{
-		name: string;
-		type: string;
-		parameters?: Record<string, unknown>;
-		credentials?: Record<string, { id: string | null; name: string }>;
-	}>
->([]);
+// Plain mutable holders instead of module-scope `ref()`s — reactive refs
+// surviving teardown have caused post-teardown rejections on Node 24.
+type MockNode = {
+	name: string;
+	type: string;
+	parameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string | null; name: string }>;
+};
+const { mocks } = vi.hoisted(() => ({
+	mocks: {
+		allNodes: [] as MockNode[],
+		sliceInputs: {
+			fieldNames: [] as string[],
+			values: {} as Record<string, string>,
+			hasExecution: true,
+		},
+		// Per-node-type outputs override for sub-node filtering tests. Undefined
+		// matches the default test pinia behaviour — `isSubNodeType` then treats
+		// the node as non-sub and the slice picker shows it.
+		nodeTypeOutputs: {} as Record<string, string[]>,
+	},
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({
 		value: {
@@ -25,7 +40,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 				return 'workflow-id';
 			},
 			get allNodes() {
-				return mockAllNodes.value;
+				return mocks.allNodes;
 			},
 		},
 	}),
@@ -33,13 +48,8 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => ({}),
 }));
 
-const mockSliceInputs = ref({
-	fieldNames: [] as string[],
-	values: {} as Record<string, string>,
-	hasExecution: true,
-});
 vi.mock('../../composables/useSliceInputs', () => ({
-	useSliceInputs: () => mockSliceInputs,
+	useSliceInputs: () => ref(mocks.sliceInputs),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -53,11 +63,6 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-// Per-node-type outputs override for sub-node filtering tests. Returning
-// `undefined` matches the default test pinia behaviour (no registered types)
-// — `isSubNodeType` then treats the node as non-sub and the slice picker
-// shows it. Tests that need filtering set this to a map.
-const mockNodeTypeOutputs = ref<Record<string, string[]>>({});
 vi.mock('@/app/stores/nodeTypes.store', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
 	return {
@@ -65,7 +70,7 @@ vi.mock('@/app/stores/nodeTypes.store', async (importOriginal) => {
 		useNodeTypesStore: () => ({
 			isTriggerNode: (type: string) => type.includes('Trigger'),
 			getNodeType: (type: string) => {
-				const outputs = mockNodeTypeOutputs.value[type];
+				const outputs = mocks.nodeTypeOutputs[type];
 				return outputs ? { outputs } : undefined;
 			},
 		}),
@@ -77,8 +82,8 @@ const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 describe('EvaluationsWizardSidepanel', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
-		mockAllNodes.value = [];
-		mockNodeTypeOutputs.value = {};
+		mocks.allNodes = [];
+		mocks.nodeTypeOutputs = {};
 	});
 
 	// The wizard now lives as a tab inside FocusSidebar — visibility is
@@ -124,7 +129,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	it('shows the AI-node picker by default on step 2', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
@@ -137,7 +142,7 @@ describe('EvaluationsWizardSidepanel', () => {
 
 	it('defaults aiNodeName to the first AI root node when step 2 opens', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'Pre-processing', type: 'n8n-nodes-base.set' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
@@ -151,7 +156,7 @@ describe('EvaluationsWizardSidepanel', () => {
 
 	it('swaps to the slice picker after Extend to a slice and back via Reset', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
@@ -172,7 +177,7 @@ describe('EvaluationsWizardSidepanel', () => {
 
 	it('filters AI sub-nodes (e.g. language models) out of the slice dropdowns', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'Edit Fields', type: 'n8n-nodes-base.set' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
@@ -183,7 +188,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		];
 		// Only the chat model is a sub-node (no `main` output). Everything else
 		// has a `main` output and remains pickable.
-		mockNodeTypeOutputs.value = {
+		mocks.nodeTypeOutputs = {
 			'n8n-nodes-base.manualTrigger': ['main'],
 			'n8n-nodes-base.set': ['main'],
 			'@n8n/n8n-nodes-langchain.agent': ['main'],
@@ -319,7 +324,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	// actually runs.
 	it('seeds LLM-judge slots from the first lmChat sub-node when the wizard opens', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 			{
@@ -367,7 +372,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	// defaulting watcher must not clobber it on re-open or hydration.
 	it('does NOT overwrite an LLM-judge slot the user (or hydration) already populated', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{
 				name: 'OpenAI Chat Model',
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',

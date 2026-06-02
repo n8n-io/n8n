@@ -1,10 +1,41 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEvaluationsWizardSidepanelStore } from './wizardSidepanel.store';
 
+// Avoid activating the real focus-panel store: its `watch()` / `watchOnce()`
+// subscriptions outlive the test and have surfaced as post-teardown
+// unhandled rejections on Node 24. The wizard store only consumes a small
+// surface — mirror it with a plain reactive stub.
+const focusPanelState = vi.hoisted(() => ({
+	focusPanelActive: false,
+	selectedTab: 'focus' as string,
+}));
+
+vi.mock('@/app/stores/focusPanel.store', () => ({
+	useFocusPanelStore: () => ({
+		get focusPanelActive() {
+			return focusPanelState.focusPanelActive;
+		},
+		get selectedTab() {
+			return focusPanelState.selectedTab;
+		},
+		setSelectedTab(tab: string) {
+			focusPanelState.selectedTab = tab;
+		},
+		openFocusPanel() {
+			focusPanelState.focusPanelActive = true;
+		},
+		closeFocusPanel() {
+			focusPanelState.focusPanelActive = false;
+		},
+	}),
+}));
+
 describe('wizardSidepanel.store', () => {
 	beforeEach(() => {
+		focusPanelState.focusPanelActive = false;
+		focusPanelState.selectedTab = 'focus';
 		setActivePinia(createPinia());
 	});
 
