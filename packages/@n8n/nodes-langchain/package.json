@@ -225,6 +225,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "3.938.0",
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "catalog:",
     "@azure/search-documents": "12.1.0",
@@ -273,6 +274,7 @@
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
+    "@smithy/node-http-handler": "4.5.0",
     "@supabase/supabase-js": "catalog:",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
