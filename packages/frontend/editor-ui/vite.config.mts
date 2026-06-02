@@ -234,11 +234,8 @@ export default mergeConfig(
 		},
 		build: {
 			minify: !!release,
-			// Sentry release builds emit external maps. Coverage builds emit
-			// INLINE maps so browser-native V8 coverage (page.coverage) carries
-			// the map in the script source and monocart can resolve bundle
-			// offsets back to editor-ui/src without fetching .map files. NOT
-			// istanbul instrumentation.
+			// Coverage builds emit INLINE maps so browser V8 coverage carries the
+			// map in the script source and monocart resolves offsets back to src.
 			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
 			target,
 		},

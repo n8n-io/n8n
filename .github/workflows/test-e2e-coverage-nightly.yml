@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - devp-205-frontend-v8-coverage
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

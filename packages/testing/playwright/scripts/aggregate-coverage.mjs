@@ -8,12 +8,6 @@
  * the janitor CLI path lives here, in one place, instead of per-YAML-string.
  *
  *   node aggregate-coverage.mjs --shards=<dir> --out=<dir>
- *
- * --shards  dir holding the downloaded shard artifacts (default /tmp/shards)
- * --out     dir to write lcov.info + impact-map.json (default ./coverage)
- *
- * Each shard artifact contains coverage/lcov.info (shard-level, frontend+backend
- * → the report) and coverage/by-spec/<slug>.lcov (per-spec, TN-tagged → the map).
  */
 
 import { execFileSync } from 'node:child_process';

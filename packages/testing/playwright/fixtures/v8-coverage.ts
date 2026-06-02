@@ -56,11 +56,9 @@ export const v8CoverageFixtures = {
 		await use(context);
 
 		const sharedReport = new CoverageReport(coverageOptions);
-		// Capture this test's RAW page.coverage for the per-spec map. We clone the
-		// entries before handing the originals to MCR — `add()` runs them through
-		// initV8ListAndSourcemap which can mutate in place, so the same object must
-		// not be fed to two reports (that silently lost per-spec data before). The
-		// emitter does the MCR work later from this raw, off the test's hot path.
+		// Capture this test's RAW page.coverage for the per-spec map, cloning each
+		// entry — MCR's add() mutates input in place, so the same object can't be
+		// fed to two reports. The emitter does the MCR work later from this raw.
 		const perSpecRaw: unknown[] = [];
 		for (const page of tracked) {
 			if (page.isClosed()) continue;

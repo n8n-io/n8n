@@ -46,7 +46,7 @@ function buildPackageMap(): Map<string, string> {
 				const name = JSON.parse(readFileSync(pkgJson, 'utf8')).name as string;
 				if (name) map.set(name, join(root, entry).slice(REPO_ROOT.length + 1));
 			} catch {
-				/* skip */
+				// unreadable/ malformed package.json — skip
 			}
 		}
 	}
@@ -76,7 +76,7 @@ function resolveBackendUrl(url: string, pkgMap: Map<string, string>) {
 	const bytesFile = IMAGE_DIST_ROOT
 		? url.replace(/^file:\/\//, '').replace(IMAGE_ROOT_PREFIX, IMAGE_DIST_ROOT)
 		: repoDistFile;
-	return { repoDistDir, repoDistFile, bytesFile };
+	return { repoDistFile, bytesFile };
 }
 
 const stats = { entries: 0, noMatch: 0, noPkg: 0, noJs: 0, noMap: 0, ok: 0 };
