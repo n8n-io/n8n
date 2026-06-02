@@ -20,6 +20,7 @@ import type {
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
+	CanvasNodeOrGroup,
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
 } from '../canvas.types';
@@ -607,57 +608,57 @@ export function useCanvasMapping({
 		});
 	});
 
-	const mappedNodes = computed<CanvasNode[]>(() => {
+	const mappedNodes = computed<CanvasNodeOrGroup[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 
-		const memberNodes = nodes.value.map<CanvasNode>((node) => {
-			const outputConnections = connectionsBySourceNode[node.name] ?? {};
-			const inputConnections = connectionsByDestinationNode[node.name] ?? {};
+		return [
+			...nodes.value.map<CanvasNode>((node) => {
+				const outputConnections = connectionsBySourceNode[node.name] ?? {};
+				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 
-			const data: CanvasNodeData = {
-				id: node.id,
-				name: node.name,
-				subtitle: nodeSubtitleById.value[node.id] ?? '',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				disabled: node.disabled,
-				connections: {
-					[CanvasConnectionMode.Input]: inputConnections,
-					[CanvasConnectionMode.Output]: outputConnections,
-				},
-				issues: {
-					validation: nodeValidationErrorsById.value[node.id],
-					visible: nodeHasIssuesById.value[node.id],
-				},
-				execution: {
-					status: nodeExecutionStatusById.value[node.id],
-					waiting: nodeExecutionWaitingById.value[node.id],
-					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
-					running: nodeExecutionRunningById.value[node.id],
-				},
-				runData: {
-					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
-					iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
-					visible: !!nodeExecutionRunDataById.value[node.id],
-				},
-				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
-			};
+				const data: CanvasNodeData = {
+					id: node.id,
+					name: node.name,
+					subtitle: nodeSubtitleById.value[node.id] ?? '',
+					type: node.type,
+					typeVersion: node.typeVersion,
+					disabled: node.disabled,
+					connections: {
+						[CanvasConnectionMode.Input]: inputConnections,
+						[CanvasConnectionMode.Output]: outputConnections,
+					},
+					issues: {
+						validation: nodeValidationErrorsById.value[node.id],
+						visible: nodeHasIssuesById.value[node.id],
+					},
+					execution: {
+						status: nodeExecutionStatusById.value[node.id],
+						waiting: nodeExecutionWaitingById.value[node.id],
+						waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
+						running: nodeExecutionRunningById.value[node.id],
+					},
+					runData: {
+						outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
+						iterations: filterOutCanceled(nodeExecutionRunDataById.value[node.id])?.length ?? 0,
+						visible: !!nodeExecutionRunDataById.value[node.id],
+					},
+					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
+				};
 
-			return {
-				id: node.id,
-				label: node.name,
-				type: 'canvas-node',
-				position: { x: node.position[0], y: node.position[1] },
-				data,
-				...additionalNodePropertiesById.value[node.id],
-				draggable: node.draggable,
-			};
-		});
-
-		// Order doesn't matter — Canvas.vue routes to slots by node `type`, not array index.
-		return [...memberNodes, ...(groupVueFlowNodes.value as CanvasNode[])];
+				return {
+					id: node.id,
+					label: node.name,
+					type: 'canvas-node',
+					position: { x: node.position[0], y: node.position[1] },
+					data,
+					...additionalNodePropertiesById.value[node.id],
+					draggable: node.draggable,
+				};
+			}),
+			...groupVueFlowNodes.value,
+		];
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
