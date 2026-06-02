@@ -1280,8 +1280,71 @@ describe('TelemetryEventRelay', () => {
 				project_type: 'personal',
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should track OTEL custom telemetry tag counts on `workflow-created` event', async () => {
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
+					},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Node 1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [
+									{ key: 'node-env', value: 'production' },
+									{ key: 'node-team', value: 'engineering' },
+								],
+							},
+						},
+						{
+							id: 'node-2',
+							name: 'Node 2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [{ key: 'node-region', value: 'eu' }],
+							},
+						},
+					],
+				}),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User created workflow',
+				expect.objectContaining({
+					otel_workflow_custom_tags_count: 1,
+					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
+				}),
+			);
 		});
 
 		it('should truncate node_graph_string when it exceeds size limit', async () => {
@@ -1340,6 +1403,7 @@ describe('TelemetryEventRelay', () => {
 				project_type: 'personal',
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1573,6 +1637,7 @@ describe('TelemetryEventRelay', () => {
 				redaction_policy: undefined,
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1643,6 +1708,7 @@ describe('TelemetryEventRelay', () => {
 				expect.objectContaining({
 					otel_workflow_custom_tags_count: 2,
 					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
 				}),
 			);
 		});
@@ -1694,6 +1760,7 @@ describe('TelemetryEventRelay', () => {
 				redaction_policy: undefined,
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});

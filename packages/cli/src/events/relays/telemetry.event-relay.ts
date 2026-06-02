@@ -52,6 +52,10 @@ function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
 	return nodes.filter((node) => (node.customTelemetryTags?.tag?.length ?? 0) > 0).length;
 }
 
+function countNodeCustomTelemetryTags(nodes: INode[]): number {
+	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
 function limitNodeGraphStringSize(nodeGraphString: string): string {
 	if (Buffer.byteLength(nodeGraphString, 'utf8') > MAX_NODE_GRAPH_STRING_SIZE) return '{}';
 
@@ -830,6 +834,7 @@ export class TelemetryEventRelay extends EventRelay {
 			meta: JSON.stringify(workflow.meta),
 			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
 			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
+			otel_node_custom_tags_count: countNodeCustomTelemetryTags(workflow.nodes),
 			uiContext,
 			source,
 		});
@@ -999,6 +1004,7 @@ export class TelemetryEventRelay extends EventRelay {
 			redaction_policy: redactionPolicy,
 			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
 			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
+			otel_node_custom_tags_count: countNodeCustomTelemetryTags(workflow.nodes),
 			source,
 		});
 	}
