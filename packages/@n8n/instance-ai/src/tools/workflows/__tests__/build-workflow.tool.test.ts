@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -41,8 +43,22 @@ jest.mock('../submit-workflow.tool', () => ({
 }));
 
 describe('createBuildWorkflowTool', () => {
+	const originalBuildViaPlanGuard = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+	const restoreBuildViaPlanGuard = () => {
+		if (originalBuildViaPlanGuard === undefined) {
+			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+		} else {
+			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = originalBuildViaPlanGuard;
+		}
+	};
+
 	beforeEach(() => {
 		jest.clearAllMocks();
+		restoreBuildViaPlanGuard();
+	});
+
+	afterEach(() => {
+		restoreBuildViaPlanGuard();
 	});
 
 	it('rejects new workflow builds outside a planned or post-plan follow-up', async () => {
@@ -71,6 +87,71 @@ describe('createBuildWorkflowTool', () => {
 			],
 		});
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('aborts after repeated new workflow build plan-guard rejections', async () => {
+		const warn = jest.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(),
+				clearAiTemporary: jest.fn(),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+
+		await expect(executeTool(tool, { code: 'workflow code' })).resolves.toMatchObject({
+			success: false,
+		});
+		await expect(executeTool(tool, { code: 'workflow code' })).resolves.toMatchObject({
+			success: false,
+		});
+		await expect(executeTool(tool, { code: 'workflow code' })).rejects.toBeInstanceOf(UserError);
+
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(warn).toHaveBeenCalledWith(
+			'build-workflow plan-guard rejection limit reached — aborting run',
+			expect.objectContaining({ rejectionCount: 3 }),
+		);
+	});
+
+	it('honors the build-via-plan guard escape hatch', async () => {
+		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: jest.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, { code: 'workflow code' });
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-1',
+		});
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Generated workflow' }),
+			{ markAsAiTemporary: true },
+		);
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
 	});
 
 	it('allows new workflow builds during post-plan follow-up repairs', async () => {
@@ -179,6 +260,68 @@ describe('createBuildWorkflowTool', () => {
 				submitted: true,
 			}),
 		);
+	});
+
+	it('does not finalize the planned task when saving a supporting workflow', async () => {
+		const reportBuildOutcome = jest.fn(
+			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-support' }),
+		);
+		const markSucceeded = jest.fn(async () => await Promise.resolve(null));
+		const onBuildOutcome = jest.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-support' })),
+				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-main',
+				plannedTaskService: {
+					markSucceeded,
+				},
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+				onBuildOutcome,
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: jest.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, {
+			code: 'workflow code',
+			isSupportingWorkflow: true,
+		});
+		const supportingWorkItemId = result.workItemId;
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-support',
+			isSupportingWorkflow: true,
+		});
+		expect(typeof supportingWorkItemId).toBe('string');
+		expect(supportingWorkItemId).not.toBe('wi-main');
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-support');
+		expect(onBuildOutcome).not.toHaveBeenCalled();
+		expect(markSucceeded).not.toHaveBeenCalled();
+		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0] as
+			| WorkflowBuildOutcome
+			| undefined;
+		expect(reportedOutcome).toMatchObject({
+			workItemId: supportingWorkItemId,
+			workflowId: 'wf-support',
+			submitted: true,
+		});
+		expect(reportedOutcome?.taskId).toEqual(expect.stringMatching(/^task-1:supporting-/));
 	});
 
 	it('reports a workflow-loop outcome when saving succeeds', async () => {
