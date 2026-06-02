@@ -15,7 +15,18 @@ interface SandboxCommandResult {
 	stderr: string;
 }
 
-interface SandboxCommandTarget {
+export interface SandboxWorkspace {
+	filesystem?: {
+		provider?: string;
+		basePath?: string;
+		init?: () => Promise<void>;
+		writeFile: (
+			path: string,
+			content: string | Buffer,
+			options?: { recursive?: boolean },
+		) => Promise<void>;
+		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+	};
 	sandbox?: {
 		provider?: string;
 		executeCommand?: (
@@ -32,20 +43,6 @@ interface SandboxCommandTarget {
 	};
 }
 
-export interface SandboxWorkspace extends SandboxCommandTarget {
-	filesystem?: {
-		provider?: string;
-		basePath?: string;
-		init?: () => Promise<void>;
-		writeFile: (
-			path: string,
-			content: string | Buffer,
-			options?: { recursive?: boolean },
-		) => Promise<void>;
-		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-	};
-}
-
 import { getTemplateTelemetrySession } from './template-telemetry';
 
 const BASE64_WRITE_CHUNK_SIZE = 32_000;
@@ -59,7 +56,7 @@ const BASE64_WRITE_CHUNK_SIZE = 32_000;
  * template-usage events. Failures in the observer never break the command.
  */
 export async function runInSandbox(
-	workspace: SandboxCommandTarget,
+	workspace: SandboxWorkspace,
 	command: string,
 	cwd?: string,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -97,7 +94,7 @@ export async function runInSandbox(
  * Creates parent directories automatically.
  */
 export async function writeFileViaSandbox(
-	workspace: SandboxCommandTarget,
+	workspace: SandboxWorkspace,
 	filePath: string,
 	content: string | Buffer,
 ): Promise<void> {
@@ -143,7 +140,7 @@ export async function writeFileViaSandbox(
  * Returns null if the file doesn't exist.
  */
 export async function readFileViaSandbox(
-	workspace: SandboxCommandTarget,
+	workspace: SandboxWorkspace,
 	filePath: string,
 ): Promise<string | null> {
 	const result = await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`);

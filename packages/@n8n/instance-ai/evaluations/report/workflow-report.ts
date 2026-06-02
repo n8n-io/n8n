@@ -178,10 +178,23 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 				html += '</div>';
 			}
 
-			// Node output
-			if (nr.output !== null && nr.output !== undefined) {
+			const outputEntries = Object.entries(nr.outputs);
+			const hasOutput = outputEntries.some(([, branches]) => branches.length > 0);
+			if (hasOutput) {
 				html += '<details class="node-output-toggle"><summary>Node output</summary>';
-				html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(nr.output, null, 2))}</code></pre>`;
+				for (const [connType, branches] of outputEntries) {
+					for (let i = 0; i < branches.length; i++) {
+						const label =
+							branches.length > 1 || connType !== 'main'
+								? `${connType} branch ${String(i)} (${String(branches[i].length)} items)`
+								: `${connType} (${String(branches[i].length)} items)`;
+						html += `<div class="node-output-branch"><strong>${escapeHtml(label)}</strong>`;
+						html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(branches[i], null, 2))}</code></pre></div>`;
+					}
+				}
+				if (nr.truncated) {
+					html += `<div class="muted">truncated; full count: ${String(nr.outputCount)}</div>`;
+				}
 				html += '</details>';
 			} else {
 				html += '<div class="muted">no output</div>';
