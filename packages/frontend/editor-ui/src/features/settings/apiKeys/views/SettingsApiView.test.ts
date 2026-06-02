@@ -82,7 +82,7 @@ describe('SettingsApiView', () => {
 
 		renderComponent(SettingsApiView);
 
-		expect(screen.getByText('Create an API Key')).toBeInTheDocument();
+		expect(screen.getByText('Create API key')).toBeInTheDocument();
 		expect(screen.getByText('Control n8n programmatically using the')).toBeInTheDocument();
 	});
 
