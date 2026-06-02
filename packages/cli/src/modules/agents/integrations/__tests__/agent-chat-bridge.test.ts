@@ -441,6 +441,56 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('clears assistant status before responding directly to top-level Slack DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = jest.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(
+				1,
+				'D123',
+				'1779466577.518139',
+				'Thinking...',
+				['Thinking...'],
+			);
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'D123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			jest.useFakeTimers();
 			const { bot, handlers } = makeBot();
