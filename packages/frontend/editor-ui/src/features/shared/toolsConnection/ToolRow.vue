@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
+	connect: [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -37,9 +38,14 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
-function handleAction(event: MouseEvent) {
+function handleOpenDetail(event: MouseEvent) {
 	event.stopPropagation();
 	emit('open-detail', props.item);
+}
+
+function handleConnect(event: MouseEvent) {
+	event.stopPropagation();
+	emit('connect', props.item);
 }
 </script>
 
@@ -99,7 +105,7 @@ function handleAction(event: MouseEvent) {
 					size="small"
 					:aria-label="i18n.baseText('tools.connection.action.configure')"
 					data-test-id="tools-connection-row-configure"
-					@click="handleAction"
+					@click="handleOpenDetail"
 				/>
 			</template>
 			<template v-else>
@@ -108,7 +114,7 @@ function handleAction(event: MouseEvent) {
 					variant="outline"
 					size="small"
 					data-test-id="tools-connection-row-connect"
-					@click="handleAction"
+					@click="handleConnect"
 				/>
 			</template>
 		</div>

@@ -39,24 +39,26 @@ const baseWorkflow: WorkflowConnectionItem = {
 };
 
 describe('ToolRow', () => {
-	it('shows a Connect button for an available mcp-server and emits open-detail on click', async () => {
+	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		const connect = getByTestId('tools-connection-row-connect');
 		expect(connect.textContent).toContain('Connect');
 
 		await fireEvent.click(connect);
-		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
+		expect(emitted().connect?.[0]).toEqual([baseMcp]);
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
-	it('shows a Connect button for an available node and emits open-detail on click', async () => {
+	it('shows a Connect button for an available node and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 
 		const connect = getByTestId('tools-connection-row-connect');
 		expect(connect.textContent).toContain('Connect');
 
 		await fireEvent.click(connect);
-		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+		expect(emitted().connect?.[0]).toEqual([baseNode]);
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
 	it('shows a Connect button for an available workflow', () => {
@@ -86,11 +88,20 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
 	});
 
-	it('fires open-detail exactly once when clicking the Connect action', async () => {
+	it('fires connect exactly once when clicking the Connect action and does not bubble open-detail', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		await fireEvent.click(getByTestId('tools-connection-row-connect'));
-		expect(emitted()['open-detail']).toHaveLength(1);
+		expect(emitted().connect).toHaveLength(1);
+		expect(emitted()['open-detail']).toBeUndefined();
+	});
+
+	it('emits open-detail (not connect) when the row body is clicked', async () => {
+		const { getByTestId, emitted } = render(baseMcp);
+
+		await fireEvent.click(getByTestId('tools-connection-row'));
+		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
+		expect(emitted().connect).toBeUndefined();
 	});
 
 	it('emits open-detail when a node row is clicked', async () => {

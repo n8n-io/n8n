@@ -114,6 +114,7 @@ function renderWithTrigger(
 					v-model:detailItem="detailItem"
 					:detail-mode="detailMode"
 					@open-detail="onOpenDetail"
+					@connect="(item) => console.log('[story] connect', item)"
 					@disconnect="(item) => console.log('[story] disconnect', item)"
 					@save="(item, settings) => console.log('[story] save', item, settings)"
 					@select-credential="(item, authType, credentialId) => console.log('[story] select-credential', item, authType, credentialId)"

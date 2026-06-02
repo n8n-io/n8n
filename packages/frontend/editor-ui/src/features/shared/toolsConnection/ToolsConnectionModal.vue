@@ -40,6 +40,7 @@ const emit = defineEmits<{
 	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'open-detail': [item: ToolConnectionItem];
+	connect: [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -302,7 +303,12 @@ function handleOpenChange(value: boolean) {
 									{{ row.title }}
 								</N8nText>
 							</div>
-							<ToolRow v-else :item="row.item" @open-detail="openDetail($event)" />
+							<ToolRow
+								v-else
+								:item="row.item"
+								@open-detail="openDetail($event)"
+								@connect="emit('connect', $event)"
+							/>
 						</template>
 					</N8nRecycleScroller>
 				</div>
