@@ -34,13 +34,42 @@ function escapeHtml(str: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+function workflowUrl(baseUrl: string, workflowId: string): string {
+	return `${trimTrailingSlash(baseUrl)}/workflow/${workflowId}`;
+}
+
+function executionUrl(baseUrl: string, workflowId: string, executionId: string): string {
+	return `${trimTrailingSlash(baseUrl)}/workflow/${workflowId}/executions/${executionId}`;
+}
+
 // ---------------------------------------------------------------------------
 // Scenario rendering
 // ---------------------------------------------------------------------------
 
-function renderScenario(sr: ExecutionScenarioResult, index: number): string {
+function renderExecutionLink(
+	sr: ExecutionScenarioResult,
+	baseUrl: string | undefined,
+	workflowId: string | undefined,
+): string {
+	if (!baseUrl || !workflowId || !sr.evalResult?.executionId) return '';
+	const href = executionUrl(baseUrl, workflowId, sr.evalResult.executionId);
+	// stopPropagation prevents the click from also toggling the parent header.
+	return `<a class="execution-link" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">view in n8n →</a>`;
+}
+
+function renderScenario(
+	sr: ExecutionScenarioResult,
+	index: number,
+	baseUrl: string | undefined,
+	workflowId: string | undefined,
+): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
+	const execLink = renderExecutionLink(sr, baseUrl, workflowId);
 
 	// Passing scenarios: compact one-liner with collapsible detail
 	if (sr.success) {
@@ -50,6 +79,7 @@ function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 				<span class="scenario-icon ${statusClass}">${icon}</span>
 				<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
 				<span class="scenario-summary-inline">${escapeHtml(summary)}${sr.reasoning && sr.reasoning.length > 150 ? '...' : ''}</span>
+				${execLink}
 			</div>
 			<div class="scenario-detail" id="scenario-${String(index)}">
 				${renderScenarioDetail(sr)}
@@ -63,6 +93,7 @@ function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 			<span class="scenario-icon ${statusClass}">${icon}</span>
 			<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
 			<span class="scenario-desc">${escapeHtml(sr.scenario.description)}</span>
+			${execLink}
 		</div>
 		<div class="scenario-detail" id="scenario-${String(index)}">
 			${renderScenarioDetail(sr)}
@@ -517,7 +548,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 	let scenariosHtml = '';
 	if (result.executionScenarioResults.length > 0) {
 		scenariosHtml = result.executionScenarioResults
-			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i))
+			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i, result.n8nBaseUrl, result.workflowId))
 			.join('');
 	} else if (!result.workflowBuildSuccess) {
 		const errorDetail = result.buildError
@@ -525,6 +556,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			: '';
 		scenariosHtml = `<div class="muted">Workflow failed to build — no scenarios executed</div>${errorDetail}`;
 	}
+
+	const workflowLink =
+		result.workflowId && result.n8nBaseUrl
+			? `<a class="workflow-link" href="${workflowUrl(result.n8nBaseUrl, result.workflowId)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open in n8n →</a>`
+			: '';
 
 	return `<div class="test-case ${statusClass}">
 		<div class="test-case-header" onclick="this.parentElement.classList.toggle('expanded')">
@@ -535,6 +571,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<div class="test-case-meta">
 				<span class="badge badge-tag">${escapeHtml(result.testCase.complexity)}</span>
 				${result.workflowId ? `<span class="workflow-id">${escapeHtml(result.workflowId)}</span>` : ''}
+				${workflowLink}
 			</div>
 			<div class="scenario-indicators">${scenarioIndicators}</div>
 		</div>
@@ -651,6 +688,9 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-summary-inline { color: var(--text-muted); font-size: 12px; flex: 1; }
 	.scenario-detail { display: none; padding: 10px 12px; border-top: 1px solid var(--border-light); background: var(--bg-primary); }
 	.scenario.expanded .scenario-detail { display: block; }
+
+	.execution-link, .workflow-link { color: var(--color-info); font-size: 11px; text-decoration: none; margin-left: auto; padding: 2px 6px; border-radius: 4px; }
+	.execution-link:hover, .workflow-link:hover { background: var(--bg-tertiary); text-decoration: underline; }
 
 	/* Workflow check rubric (per built workflow) */
 	.check-dimension { margin: 8px 0 12px; }

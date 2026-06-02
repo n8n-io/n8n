@@ -214,6 +214,9 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
