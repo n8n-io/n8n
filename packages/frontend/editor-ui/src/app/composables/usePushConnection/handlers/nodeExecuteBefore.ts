@@ -12,12 +12,15 @@ export async function nodeExecuteBefore(
 ) {
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
+	// Ignore node events that don't belong to the execution this document is
+	// tracking — otherwise a concurrent execution's node would pollute this
+	// document's spinner queue and execution data.
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
+	if (activeExecutionId !== data.executionId) {
+		return;
+	}
+
 	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName);
 
-	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (typeof activeExecutionId === 'string') {
-		useExecutionDataStore(createExecutionDataId(activeExecutionId)).addNodeExecutionStartedData(
-			data,
-		);
-	}
+	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }

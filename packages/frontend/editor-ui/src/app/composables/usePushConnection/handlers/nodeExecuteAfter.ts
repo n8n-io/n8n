@@ -20,6 +20,14 @@ export async function nodeExecuteAfter(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const assistantStore = useAssistantStore();
 
+	// Ignore node events that don't belong to the execution this document is
+	// tracking — a concurrent execution's node must not write into this
+	// document's data or fire its side effects (form popups, tracking, assistant).
+	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
+	if (activeExecutionId !== pushData.executionId) {
+		return;
+	}
+
 	/**
 	 * We trim the actual data returned from the node execution to avoid performance issues
 	 * when dealing with large datasets. Instead of storing the actual data, we initially store
@@ -53,18 +61,15 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (typeof activeExecutionId === 'string') {
-		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
-			pushDataWithPlaceholderOutputData,
-		);
+	useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionStatus(
+		pushDataWithPlaceholderOutputData,
+	);
 
-		if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
-			void trackNodeExecution(
-				pushDataWithPlaceholderOutputData,
-				workflowExecutionStateStore.workflowId,
-			);
-		}
+	if (pushDataWithPlaceholderOutputData.data.executionStatus !== 'waiting') {
+		void trackNodeExecution(
+			pushDataWithPlaceholderOutputData,
+			workflowExecutionStateStore.workflowId,
+		);
 	}
 
 	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);

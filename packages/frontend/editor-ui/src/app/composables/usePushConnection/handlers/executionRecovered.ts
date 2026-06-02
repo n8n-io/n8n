@@ -19,8 +19,10 @@ export async function executionRecovered(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const uiStore = useUIStore();
 
-	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
+	// Only recover the execution this document is tracking. A mismatch (including
+	// the no-active-execution case, where activeExecutionId is undefined) means
+	// the event belongs to another execution and must be ignored.
+	if (workflowExecutionStateStore.activeExecutionId !== data.executionId) {
 		return;
 	}
 

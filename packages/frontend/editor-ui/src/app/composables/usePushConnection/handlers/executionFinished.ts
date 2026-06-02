@@ -71,8 +71,18 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	workflowExecutionStateStore.executingNode.lastAddedExecutingNode = null;
 	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
 
-	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
+	// Only act on the finish of the execution this document is actually tracking.
+	// Normal match is on the execution id; when the active execution is still
+	// pending (null) because this finish raced ahead of `executionStarted`, fall
+	// back to the document's workflow id so we don't drop our own run's finish.
+	// This rejects finishes from other workflows (which would otherwise clear this
+	// document's running state and show a spurious toast) and from concurrent runs
+	// of the same workflow that this document isn't displaying.
+	const { activeExecutionId } = workflowExecutionStateStore;
+	const belongsToThisDocument =
+		activeExecutionId === data.executionId ||
+		(activeExecutionId === null && data.workflowId === workflowExecutionStateStore.workflowId);
+	if (!belongsToThisDocument) {
 		return;
 	}
 
@@ -181,10 +191,12 @@ export function continueEvaluationLoop(execution: SimplifiedExecution, opts: Pus
 
 	if (rowsLeft && rowsLeft > 0) {
 		// useRunWorkflow needs a workflowState; inject() doesn't resolve in this async,
-		// non-setup context, so construct one explicitly.
+		// non-setup context, so construct one explicitly bound to the document whose
+		// execution just finished — otherwise the rerun targets the globally-current
+		// workflow instead of this one.
 		const { runWorkflow } = useRunWorkflow({
 			router: opts.router,
-			workflowState: useWorkflowState(),
+			workflowState: useWorkflowState({ documentId: opts.documentId }),
 		});
 		void runWorkflow({
 			triggerNode: evaluationTrigger.name,

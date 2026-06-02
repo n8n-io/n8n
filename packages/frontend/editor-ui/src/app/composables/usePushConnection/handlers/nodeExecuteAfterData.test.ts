@@ -80,4 +80,32 @@ describe('nodeExecuteAfterData', () => {
 			main: [[{ json: { foo: 'bar' } }]],
 		});
 	});
+
+	it('should skip when the execution id does not match the active execution', async () => {
+		const event: NodeExecuteAfterData = {
+			type: 'nodeExecuteAfterData',
+			data: {
+				executionId: 'other-exec',
+				nodeName: 'Test Node',
+				itemCountByConnectionType: { main: [1] },
+				data: {
+					executionTime: 0,
+					startTime: 0,
+					executionIndex: 0,
+					source: [],
+					data: {
+						main: [[{ json: { foo: 'bar' } }]],
+					},
+				},
+			},
+		};
+
+		await nodeExecuteAfterData(event, options);
+
+		// The active execution (exec-1) keeps its placeholder data untouched.
+		const runData = executionDataStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node'][0].data).toEqual({
+			main: [[{ json: { placeholder: true } }]],
+		});
+	});
 });

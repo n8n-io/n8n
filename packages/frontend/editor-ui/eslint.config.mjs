@@ -119,13 +119,13 @@ export default defineConfig(
 				{
 					selector: "MemberExpression[property.name='workflowId'][object.name='workflowsStore']",
 					message:
-						'Use the workflow document store instead of workflowsStore.workflowId: workflowDocumentStore.workflowId (components/composables via injectWorkflowDocumentStore(); stores via useWorkflowId()) or getCurrentWorkflowId() in push handlers',
+						'Use the workflow document store instead of workflowsStore.workflowId: workflowDocumentStore.workflowId (components/composables via injectWorkflowDocumentStore(); stores via useWorkflowId()) or the documentId from the handler options in push handlers',
 				},
 				{
 					selector:
 						"CallExpression[callee.property.name='setWorkflowId'][callee.object.name='workflowsStore']",
 					message:
-						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId() / getCurrentWorkflowId())',
+						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId())',
 				},
 			],
 			// TODO: Remove these

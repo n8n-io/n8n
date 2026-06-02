@@ -6,7 +6,10 @@ import {
 	WorkflowStateKey,
 } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import WorkflowCanvasHostBody from './WorkflowCanvasHostBody.vue';
 
 const props = withDefaults(
@@ -34,8 +37,14 @@ const emit = defineEmits<{
 const localWorkflowId = computed(() => props.workflowId);
 provide(WorkflowIdKey, localWorkflowId);
 
-// Scoped workflow state — independent of any sibling editor.
-const workflowState = useWorkflowState();
+// Scoped workflow state — independent of any sibling editor. The document id is
+// passed explicitly because this component provides WorkflowIdKey in the same
+// setup, so useWorkflowState's inject() would resolve from above this host
+// instead of the id we just provided. Mirrors createWorkflowDocumentId(workflowId)
+// (default version) used by the body's document store.
+const workflowState = useWorkflowState({
+	documentId: computed(() => createWorkflowDocumentId(props.workflowId)),
+});
 provide(WorkflowStateKey, workflowState);
 
 // Document store ref is populated by useWorkflowInitialization in the body.

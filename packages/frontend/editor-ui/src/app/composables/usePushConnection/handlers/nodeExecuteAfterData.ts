@@ -16,12 +16,16 @@ export async function nodeExecuteAfterData(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const schemaPreviewStore = useSchemaPreviewStore();
 
+	// Ignore node events that don't belong to the execution this document is
+	// tracking — a concurrent execution's data must not land on this document.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (typeof activeExecutionId === 'string') {
-		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
-			pushData,
-		);
+	if (activeExecutionId !== pushData.executionId) {
+		return;
 	}
+
+	useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionRunData(
+		pushData,
+	);
 
 	const node = workflowDocumentStore.getNodeByName(pushData.nodeName);
 

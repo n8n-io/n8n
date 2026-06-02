@@ -91,6 +91,36 @@ describe('nodeExecuteAfter', () => {
 		});
 	});
 
+	it('should skip when the execution id does not match the active execution', async () => {
+		const assistantStore = useAssistantStore();
+		// onNodeExecution is a shared module-level mock; reset its call history so
+		// this assertion only reflects the call (if any) from this test.
+		vi.mocked(assistantStore.onNodeExecution).mockClear();
+
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'other-exec',
+				nodeName: 'Test Node',
+				itemCountByConnectionType: { main: [1] },
+				data: {
+					executionTime: 100,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+				},
+			},
+		};
+
+		await nodeExecuteAfter(event, options);
+
+		// Nothing belonging to the active execution should be touched.
+		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).not.toHaveBeenCalled();
+		expect(assistantStore.onNodeExecution).not.toHaveBeenCalled();
+		const runData = executionDataStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node']).toBeUndefined();
+	});
+
 	it('should handle multiple connection types', async () => {
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',

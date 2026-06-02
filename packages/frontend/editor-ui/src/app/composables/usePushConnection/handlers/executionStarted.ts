@@ -18,6 +18,16 @@ export async function executionStarted(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const isIframe = window !== window.parent;
 
+	// A single push connection serves the active document, so a concurrent
+	// execution of a *different* workflow (e.g. a scheduled run firing while this
+	// document has a pending run) would otherwise hijack this document's pending
+	// (null) execution slot. Reject events for another workflow. The iframe/demo
+	// path is exempt: it only ever receives events relayed for the workflow it
+	// previews, and its document id may not carry a comparable workflow id.
+	if (!isIframe && data.workflowId !== workflowExecutionStateStore.workflowId) {
+		return;
+	}
+
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,
 	// but we still want to accept new executions (re-execution scenario).

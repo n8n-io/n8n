@@ -16,10 +16,10 @@ describe('executionStarted', () => {
 	let options: PushHandlerOptions;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
-	function makeEvent(executionId = 'exec-1'): ExecutionStarted {
+	function makeEvent(executionId = 'exec-1', workflowId = 'wf-123'): ExecutionStarted {
 		return {
 			type: 'executionStarted',
-			data: { executionId } as ExecutionStarted['data'],
+			data: { executionId, workflowId } as ExecutionStarted['data'],
 		};
 	}
 
@@ -59,6 +59,26 @@ describe('executionStarted', () => {
 			status: 'running',
 			workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
 		});
+	});
+
+	it('should skip when the event workflow id does not match the document', async () => {
+		// A pending run is staged for this document...
+		workflowExecutionStateStore.setActiveExecutionId(null);
+
+		// ...but the event belongs to a different workflow (e.g. a concurrent
+		// scheduled run). It must not hijack this document's pending slot.
+		await executionStarted(makeEvent('exec-9', 'other-wf'), options);
+
+		expect(workflowExecutionStateStore.activeExecutionId).toBeNull();
+		expect(useExecutionDataStore(createExecutionDataId('exec-9')).execution).toBeNull();
+	});
+
+	it('should accept when the event workflow id matches the document', async () => {
+		workflowExecutionStateStore.setActiveExecutionId(null);
+
+		await executionStarted(makeEvent('exec-1', 'wf-123'), options);
+
+		expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
 	});
 
 	it('should not reinitialize when same execution ID arrives', async () => {

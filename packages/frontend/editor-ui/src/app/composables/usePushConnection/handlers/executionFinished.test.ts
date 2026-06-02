@@ -27,6 +27,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import type { PushHandlerOptions } from './types';
 
 const documentId = createWorkflowDocumentId('1');
@@ -110,6 +111,9 @@ describe('continueEvaluationLoop()', () => {
 			nodeData: evalTriggerNodeData,
 			rerunTriggerNode: true,
 		});
+		// The rerun must target the document whose execution just finished, not the
+		// globally-current workflow.
+		expect(useWorkflowState).toHaveBeenCalledWith({ documentId });
 	});
 
 	it('should not call runWorkflow() if workflow execution status is not success', () => {
@@ -567,6 +571,50 @@ describe('executionFinished', () => {
 		// Even when activeExecutionId is undefined (iframe early return),
 		// the executing node queue must be cleared.
 		expect(clearNodeExecutionQueue).toHaveBeenCalled();
+	});
+
+	it('ignores a finish for an execution this document is not tracking', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// This document is tracking a different execution (e.g. a concurrent
+		// scheduled run of the same workflow finished). Even though the workflow id
+		// matches, the finish must not clear this document's active execution.
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('our-exec');
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById');
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'foreign-exec', workflowId: '1', status: 'success' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
+	});
+
+	it('processes a pending finish (null active) when the workflow id matches', async () => {
+		setActivePinia(createTestingPinia());
+
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		const workflowsStore = useWorkflowsStore();
+		// The finish raced ahead of executionStarted: active is still pending (null).
+		// Fall back to the workflow id so our own run's finish isn't dropped.
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(null);
+		const fetchSpy = vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId: 'exec-x', workflowId: '1', status: 'error' },
+			},
+			opts,
+		);
+
+		expect(fetchSpy).toHaveBeenCalledWith('exec-x');
 	});
 });
 
