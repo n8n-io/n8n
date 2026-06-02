@@ -2285,6 +2285,9 @@ importers:
 
   packages/@n8n/nodes-langchain:
     dependencies:
+      '@aws-sdk/client-bedrock-runtime':
+        specifier: 3.938.0
+        version: 3.938.0
       '@aws-sdk/client-sso-oidc':
         specifier: 3.808.0
         version: 3.808.0
@@ -2426,6 +2429,9 @@ importers:
       '@qdrant/js-client-rest':
         specifier: ^1.16.2
         version: 1.16.2(typescript@6.0.2)
+      '@smithy/node-http-handler':
+        specifier: 4.5.0
+        version: 4.5.0
       '@supabase/supabase-js':
         specifier: 'catalog:'
         version: 2.50.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -5756,6 +5762,7 @@ packages:
   '@aws-sdk/middleware-websocket@3.936.0':
     resolution: {integrity: sha512-bPe3rqeugyj/MmjP0yBSZox2v1Wa8Dv39KN+RxVbQroLO8VUitBo6xyZ0oZebhZ5sASwSg58aDcMlX0uFLQnTA==}
     engines: {node: '>= 14.0.0'}
+    deprecated: Please update your @aws-sdk client to a more recent version, such as https://github.com/aws/aws-sdk-js-v3/releases/tag/v3.982.0, if using browser-based WebSocket bidirectional streaming.
 
   '@aws-sdk/nested-clients@3.808.0':
     resolution: {integrity: sha512-NparPojwoBul7XPCasy4psFMJbw7Ys4bz8lVB93ljEUD4VV7mM7zwK27Uhz20B8mBFGmFEoAprPsVymJcK9Vcw==}
@@ -10242,10 +10249,6 @@ packages:
     resolution: {integrity: sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA==}
     engines: {node: '>=14.0.0'}
 
-  '@smithy/is-array-buffer@4.2.0':
-    resolution: {integrity: sha512-DZZZBvC7sjcYh4MazJSGiWMI2L7E0oCiRHREDzIxi/M2LY79/21iXt6aPLHge82wi5LsuRF5A06Ds3+0mlh6CQ==}
-    engines: {node: '>=18.0.0'}
-
   '@smithy/is-array-buffer@4.2.2':
     resolution: {integrity: sha512-n6rQ4N8Jj4YTQO3YFrlgZuwKodf4zUFs7EJIWH86pSCWBaAtAGBFfCM7Wx6D2bBJ2xqFNxGBSrUWswT3M0VJow==}
     engines: {node: '>=18.0.0'}
@@ -10328,10 +10331,6 @@ packages:
 
   '@smithy/types@4.13.1':
     resolution: {integrity: sha512-787F3yzE2UiJIQ+wYW1CVg2odHjmaWLGksnKQHUrK/lYZSEcy1msuLVvxaR/sI2/aDe9U+TBuLsXnr3vod1g0g==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/types@4.9.0':
-    resolution: {integrity: sha512-MvUbdnXDTwykR8cB1WZvNNwqoWVaTRA0RLlLmf/cIFNMM2cKWz01X4Ly6SMC4Kks30r8tT3Cty0jmeWfiuyHTA==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/url-parser@4.2.12':
@@ -21053,8 +21052,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.2:
-    resolution: {integrity: sha512-l4Z2Y34m7nFMlx8vrslJaVtXxUpzgDMSESC7TakG/c5kwjYT/do+E0NcT2/vWDzaoIhsShg/2OKwX7Q4nbzC0g==}
+  vue-component-type-helpers@3.3.3:
+    resolution: {integrity: sha512-x4nsFpy5Pe8fqPzp/5vkTPeTTDBpAx4WVtV47Ejt0+2FQrq4pRRsJs7JmYRqMFzTu/LW+pCWEjQ3YVCkPV7f9g==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -22926,13 +22925,13 @@ snapshots:
   '@aws-sdk/middleware-location-constraint@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@aws-sdk/middleware-logger@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@aws-sdk/middleware-logger@3.914.0':
@@ -23007,7 +23006,7 @@ snapshots:
   '@aws-sdk/middleware-ssec@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@aws-sdk/middleware-user-agent@3.808.0':
@@ -23271,7 +23270,7 @@ snapshots:
 
   '@aws-sdk/types@3.804.0':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@aws-sdk/types@3.914.0':
@@ -23295,7 +23294,7 @@ snapshots:
   '@aws-sdk/util-endpoints@3.808.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       '@smithy/util-endpoints': 3.2.5
       tslib: 2.8.1
 
@@ -23329,7 +23328,7 @@ snapshots:
   '@aws-sdk/util-user-agent-browser@3.804.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       bowser: 2.11.0
       tslib: 2.8.1
 
@@ -23377,7 +23376,7 @@ snapshots:
 
   '@aws-sdk/xml-builder@3.804.0':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@aws-sdk/xml-builder@3.914.0':
@@ -28456,18 +28455,18 @@ snapshots:
   '@smithy/eventstream-serde-browser@4.2.5':
     dependencies:
       '@smithy/eventstream-serde-universal': 4.2.5
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/eventstream-serde-config-resolver@4.3.5':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/eventstream-serde-node@4.2.5':
     dependencies:
       '@smithy/eventstream-serde-universal': 4.2.5
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/eventstream-serde-universal@4.2.5':
@@ -28488,25 +28487,25 @@ snapshots:
     dependencies:
       '@smithy/chunked-blob-reader': 5.0.0
       '@smithy/chunked-blob-reader-native': 4.0.0
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/hash-node@4.2.5':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       '@smithy/util-buffer-from': 4.2.0
       '@smithy/util-utf8': 4.2.2
       tslib: 2.8.1
 
   '@smithy/hash-stream-node@4.0.2':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       '@smithy/util-utf8': 4.2.2
       tslib: 2.8.1
 
   '@smithy/invalid-dependency@4.2.5':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/is-array-buffer@1.1.0':
@@ -28517,17 +28516,13 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@smithy/is-array-buffer@4.2.0':
-    dependencies:
-      tslib: 2.8.1
-
   '@smithy/is-array-buffer@4.2.2':
     dependencies:
       tslib: 2.8.1
 
   '@smithy/md5-js@4.0.2':
     dependencies:
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       '@smithy/util-utf8': 4.2.2
       tslib: 2.8.1
 
@@ -28662,10 +28657,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@smithy/types@4.9.0':
-    dependencies:
-      tslib: 2.8.1
-
   '@smithy/url-parser@4.2.12':
     dependencies:
       '@smithy/querystring-parser': 4.2.12
@@ -28698,7 +28689,7 @@ snapshots:
 
   '@smithy/util-buffer-from@4.2.0':
     dependencies:
-      '@smithy/is-array-buffer': 4.2.0
+      '@smithy/is-array-buffer': 4.2.2
       tslib: 2.8.1
 
   '@smithy/util-buffer-from@4.2.2':
@@ -28753,7 +28744,7 @@ snapshots:
   '@smithy/util-retry@4.2.5':
     dependencies:
       '@smithy/service-error-classification': 4.2.5
-      '@smithy/types': 4.9.0
+      '@smithy/types': 4.13.1
       tslib: 2.8.1
 
   '@smithy/util-stream@4.5.20':
@@ -28944,7 +28935,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.3.2
+      vue-component-type-helpers: 3.3.3
 
   '@stryker-mutator/api@9.6.1':
     dependencies:
@@ -41954,7 +41945,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.2: {}
+  vue-component-type-helpers@3.3.3: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:
