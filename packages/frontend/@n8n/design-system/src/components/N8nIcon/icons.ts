@@ -162,6 +162,7 @@ import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
+import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideListChecks from '~icons/lucide/list-checks';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
@@ -653,6 +654,7 @@ export const updatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
+	'list-tree': IconLucideListTree,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,
