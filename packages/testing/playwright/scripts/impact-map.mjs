@@ -108,7 +108,8 @@ for (const [file, lines] of diff) {
 	}
 	const fns = touchedFns(map.fileFns.get(file), lines);
 	const fnSpecs = new Set();
-	for (const f of fns) for (const s of map.funcToSpecs.get(`${file}#${f.line}`) ?? []) fnSpecs.add(s);
+	for (const f of fns)
+		for (const s of map.funcToSpecs.get(`${file}#${f.line}`) ?? []) fnSpecs.add(s);
 	const specs = fns.length ? fnSpecs : fileSpecs; // function-precise when we can pin the function
 	for (const s of specs) selected.add(s);
 	console.log(
@@ -117,4 +118,6 @@ for (const [file, lines] of diff) {
 			`\n      → specs: ${[...specs].join(', ')}`,
 	);
 }
-console.log(`\n=> E2E specs to run: ${selected.size ? [...selected].join(', ') : '(none — skip E2E)'}\n`);
+console.log(
+	`\n=> E2E specs to run: ${selected.size ? [...selected].join(', ') : '(none — skip E2E)'}\n`,
+);

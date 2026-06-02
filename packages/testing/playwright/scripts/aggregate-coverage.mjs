@@ -47,7 +47,13 @@ function stage(label, files) {
 function merge(inputsDir, outLcov, outMap) {
 	execFileSync(
 		'node',
-		[JANITOR_CLI, 'merge-coverage', `--inputs-dir=${inputsDir}`, `--out-lcov=${outLcov}`, `--out-map=${outMap}`],
+		[
+			JANITOR_CLI,
+			'merge-coverage',
+			`--inputs-dir=${inputsDir}`,
+			`--out-lcov=${outLcov}`,
+			`--out-map=${outMap}`,
+		],
 		{ stdio: 'inherit' },
 	);
 }
@@ -64,7 +70,10 @@ if (shardLcovs.length) {
 }
 
 // 2. Impact map: per-spec frontend lcovs (TN-tagged) → spec-keyed map for selection.
-const specLcovs = findFiles(SHARDS, (name, p) => name.endsWith('.lcov') && p.includes(`${path.sep}by-spec${path.sep}`));
+const specLcovs = findFiles(
+	SHARDS,
+	(name, p) => name.endsWith('.lcov') && p.includes(`${path.sep}by-spec${path.sep}`),
+);
 console.log(`Impact map: ${specLcovs.length} per-spec lcov(s)`);
 if (specLcovs.length) {
 	merge(stage('spec', specLcovs), '/tmp/agg-spec-fe.lcov', path.join(OUT, 'impact-map.json'));
