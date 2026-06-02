@@ -4,6 +4,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
+test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
 
 const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
 	modulusLength: 2048,

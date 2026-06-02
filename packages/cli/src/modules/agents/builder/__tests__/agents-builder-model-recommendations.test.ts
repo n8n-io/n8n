@@ -150,6 +150,7 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('inline delegation does not require saved-agent refs');
 		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
 		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
+		expect(prompt).toContain('If no published agents are available');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {

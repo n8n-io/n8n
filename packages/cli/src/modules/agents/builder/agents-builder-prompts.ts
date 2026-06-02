@@ -165,7 +165,9 @@ subagent.
   added. Do not write agent ids from memory, prose, or user-entered free text.
 - If published agents are available and the user has not named exact agents,
   call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-  \`value\` as the returned \`agentId\`.
+  \`value\` as the returned \`agentId\`, and include descriptions when present.
+- If no published agents are available, do not configure saved subagents. Inline
+  delegation still works without saved-agent refs.
 - Patch selected saved agents into \`subAgents.agents\` as
   \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
 - If the resumed values include text that is not one of the listed agent ids,

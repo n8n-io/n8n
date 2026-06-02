@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { describeIf, getModel } from './helpers';
+import { describeIf } from './helpers';
 import {
 	Agent,
 	createDelegateSubAgentTool,
@@ -17,11 +17,12 @@ describe('delegate_subagent integration', () => {
 		const delegateTool = createDelegateSubAgentTool({ policy: { maxChildren: 1 } });
 
 		const parent = new Agent('sub-agent-parent-integration')
-			.model(getModel('anthropic'))
+			.model('anthropic/claude-sonnet-4-5')
 			.instructions(
 				[
 					'You are a parent test agent.',
-					'You must call delegate_subagent exactly once before answering.',
+					'This is a delegation wiring test: you must call delegate_subagent exactly once before answering.',
+					'Treat the child task as a bounded independent workstream that only the child should complete.',
 					'Set subAgentId to "inline" in that tool call.',
 					'The child result will contain a sentinel token.',
 					'After the tool returns, answer with exactly: PARENT_SAW_ followed by the child answer, with no extra text.',
@@ -31,7 +32,7 @@ describe('delegate_subagent integration', () => {
 
 		try {
 			const result = await parent.generate(
-				`Use delegate_subagent now. The delegated goal must instruct the child to answer with exactly this token and nothing else: ${SENTINEL}`,
+				`Complete this two-part verification task. Delegate the token-production workstream to a child agent, and make the delegated goal instruct the child to answer with exactly this token and nothing else: ${SENTINEL}. Then synthesize only from the child result.`,
 			);
 
 			expect(result.toolCalls?.map((toolCall) => toolCall.tool) ?? []).toContain(
