@@ -48,7 +48,15 @@ const isOpen = computed({
 	},
 });
 
-const detailItem = ref<ToolConnectionItem | null>(null);
+// Selected detail-view id (connection id for connected items, server slug for
+// unconnected ones). `detailItem` is computed from this so it always reflects
+// the latest `items` rebuild — e.g. when live MCP tools are fetched and the
+// item's `availableTools` changes, the rendered detail view picks that up.
+const detailItemId = ref<string | null>(null);
+const detailItem = computed<ToolConnectionItem | null>(() => {
+	if (!detailItemId.value) return null;
+	return items.value.find((i) => i.id === detailItemId.value) ?? null;
+});
 
 const detailMode = computed<'detail' | 'settings'>(() =>
 	detailItem.value?.isConnected ? 'settings' : 'detail',
@@ -117,8 +125,7 @@ onMounted(async () => {
 	// Deep-link from a sidebar row: wait for the in-flight fetches above and
 	// then snap to the connection's settings view.
 	await Promise.all([catalogPromise.value, connectionsPromise.value]);
-	const item = items.value.find((i) => i.id === connectionId);
-	if (item) detailItem.value = item;
+	detailItemId.value = connectionId;
 });
 
 // `closeModal` keeps `modalsById[KEY].data` around, so opening from the +
@@ -142,7 +149,7 @@ watch(detailItem, (item) => {
 
 watch(isOpen, (open) => {
 	if (!open) {
-		detailItem.value = null;
+		detailItemId.value = null;
 		pendingCredentialContext.value = null;
 	}
 });
@@ -270,8 +277,7 @@ async function openCredentialEditModal(server: McpRegistryServerResponse): Promi
 function showSettingsForServer(serverSlug: string): void {
 	const connection = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
 	if (!connection) return;
-	const next = items.value.find((i) => i.id === connection.id);
-	if (next) detailItem.value = next;
+	detailItemId.value = connection.id;
 }
 
 async function createCredentialAndConnect(server: McpRegistryServerResponse): Promise<void> {
@@ -377,7 +383,7 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 async function handleDisconnect(item: ToolConnectionItem) {
 	if (item.kind !== 'mcp-server' || !item.isConnected) return;
 	await mcpStore.disconnect(item.id);
-	detailItem.value = null;
+	detailItemId.value = null;
 }
 
 async function handleConnect(item: ToolConnectionItem) {
@@ -395,7 +401,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:sections="['connected', 'nodes']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
-		@update:detail-item="(item) => (detailItem = item)"
+		@update:detail-item="(item) => (detailItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
 		@connect="handleConnect"
 		@save="handleSave"
