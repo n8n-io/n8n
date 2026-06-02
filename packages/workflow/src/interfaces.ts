@@ -3307,6 +3307,14 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * The n8n user a dynamically-resolved private credential belongs to, set during
+	 * credential resolution when the resolver maps the execution's identity to an n8n
+	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
+	 * The execution engine copies it onto `runtimeData.executedByUserId` for the
+	 * redaction layer.
+	 */
+	dynamicCredentialsResolvedUserId?: string;
 	otel?: {
 		injectTraceHeaders: (
 			executionId: string,
