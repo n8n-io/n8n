@@ -13,11 +13,6 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
  * columns to varchar(128). `parentThreadId` holds such a parent thread id, so it
  * is created at varchar(128) directly. Known generated formats stay well below
  * 128 chars (for example, `test-<agentId>:<userId>` is about 78 chars with UUIDs).
- *
- * The widening uses raw `ALTER COLUMN ... TYPE` and cannot be safely reversed
- * (narrowing back to 36 would be lossy), so this migration is irreversible.
- * SQLite does not enforce a VARCHAR length, so the longer ids already fit there
- * and only Postgres needs altering.
  */
 const COLUMNS_TO_WIDEN: Array<{ table: string; column: string }> = [
 	{ table: 'agents_threads', column: 'id' },
