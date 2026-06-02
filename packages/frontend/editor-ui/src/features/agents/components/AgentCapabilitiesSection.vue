@@ -3,11 +3,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
-	type AgentJsonTaskConfig,
-	type AgentTaskDto,
-} from '@n8n/api-types';
+import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
@@ -74,9 +70,8 @@ function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
 }
 
-function channelIcon(channel: string, integrationIcon?: string): IconName {
+function channelIcon(integrationIcon?: string): IconName {
 	if (isIconName(integrationIcon)) return integrationIcon;
-	if (channel === AGENT_SCHEDULE_TRIGGER_TYPE) return 'clock';
 	return 'zap';
 }
 
@@ -85,12 +80,8 @@ const channelRows = computed<Array<{ type: string; label: string; icon: IconName
 		const integration = catalog.value?.find(({ type }) => type === channel);
 		return {
 			type: channel,
-			label:
-				integration?.label ??
-				(channel === AGENT_SCHEDULE_TRIGGER_TYPE
-					? i18n.baseText('agents.schedule.title')
-					: channel),
-			icon: channelIcon(channel, integration?.icon),
+			label: integration?.label ?? channel,
+			icon: channelIcon(integration?.icon),
 		};
 	}),
 );
@@ -549,7 +540,6 @@ function handleChannelDisconnected(channelType: string) {
 			:agent-id="agentId"
 			:project-id="projectId"
 			:connected-channels="connectedTriggers"
-			:is-published="isPublished"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"

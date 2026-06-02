@@ -12,11 +12,7 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
-import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
-	type AgentIntegrationSettings,
-	type ChatIntegrationDescriptor,
-} from '@n8n/api-types';
+import type { AgentIntegrationSettings } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -29,13 +25,10 @@ import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
-import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 
 export type ChannelView =
 	| 'list'
-	| 'schedule_setup'
-	| 'schedule_edit'
 	| 'slack_setup'
 	| 'slack_edit'
 	| 'linear_setup'
@@ -49,7 +42,6 @@ interface Props {
 	projectId: string;
 	view: ChannelView;
 	connectedChannels: string[];
-	isPublished: boolean;
 }
 
 const props = defineProps<Props>();
@@ -116,29 +108,14 @@ const selectedChannelType = computed(() => {
 const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 
-const scheduleIntegration = computed<ChatIntegrationDescriptor>(() => ({
-	type: AGENT_SCHEDULE_TRIGGER_TYPE,
-	label: i18n.baseText('agents.schedule.title'),
-	icon: 'clock',
-	credentialTypes: [],
-}));
-
-const visibleIntegrations = computed<ChatIntegrationDescriptor[]>(() => [
-	scheduleIntegration.value,
-	...(catalog.value ?? []),
-]);
-
 const currentIntegration = computed(() => {
 	if (!selectedChannelType.value) return null;
-	if (selectedChannelType.value === AGENT_SCHEDULE_TRIGGER_TYPE) return scheduleIntegration.value;
 	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
 });
 
 const showFooterActions = computed(
 	() =>
-		isEditMode.value &&
-		selectedChannelType.value !== null &&
-		!['slack', AGENT_SCHEDULE_TRIGGER_TYPE].includes(selectedChannelType.value),
+		isEditMode.value && selectedChannelType.value !== null && selectedChannelType.value !== 'slack',
 );
 
 const currentChannelCredentialId = computed(() => {
@@ -205,19 +182,6 @@ function integrationConnectedText(channelType: string): string {
 	return key ? i18n.baseText(key) : '';
 }
 
-function handleScheduleStatusChange(configured: boolean) {
-	if (configured) {
-		emit('channel-connected', AGENT_SCHEDULE_TRIGGER_TYPE);
-	} else {
-		emit('channel-disconnected', AGENT_SCHEDULE_TRIGGER_TYPE);
-	}
-}
-
-function handleScheduleSaved() {
-	emit('agent-changed');
-	closeModal();
-}
-
 function goToSetup(channelType: string) {
 	currentView.value = `${channelType}_setup` as ChannelView;
 }
@@ -231,11 +195,6 @@ function goBackToList() {
 }
 
 function handleListDisconnect(channelType: string) {
-	if (channelType === AGENT_SCHEDULE_TRIGGER_TYPE) {
-		goToEdit(channelType);
-		return;
-	}
-
 	void handleDisconnected(channelType);
 }
 
@@ -491,7 +450,7 @@ watch(
 				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
 					<ul :class="$style.channelList">
 						<AgentChannelListItem
-							v-for="integration in visibleIntegrations"
+							v-for="integration in catalog"
 							:key="integration.type"
 							:integration="integration"
 							:connected="isConnected(integration.type)"
@@ -503,19 +462,8 @@ watch(
 				</div>
 
 				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
-					<AgentScheduleTriggerCard
-						v-if="selectedChannelType === AGENT_SCHEDULE_TRIGGER_TYPE"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:is-published="isPublished"
-						:flat="true"
-						@status-change="handleScheduleStatusChange"
-						@trigger-added="$emit('channel-connected', AGENT_SCHEDULE_TRIGGER_TYPE)"
-						@canceled="closeModal"
-						@saved="handleScheduleSaved"
-					/>
 					<AgentChannelSlackSetup
-						v-else-if="selectedChannelType === 'slack'"
+						v-if="selectedChannelType === 'slack'"
 						mode="setup"
 						:connected="isConnected('slack')"
 						:setup-slack-app="setupSlackApp"
@@ -571,19 +519,8 @@ watch(
 				</div>
 
 				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
-					<AgentScheduleTriggerCard
-						v-if="selectedChannelType === AGENT_SCHEDULE_TRIGGER_TYPE"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:is-published="isPublished"
-						:flat="true"
-						@status-change="handleScheduleStatusChange"
-						@trigger-added="$emit('channel-connected', AGENT_SCHEDULE_TRIGGER_TYPE)"
-						@canceled="closeModal"
-						@saved="handleScheduleSaved"
-					/>
 					<AgentChannelSlackSetup
-						v-else-if="currentIntegration?.type === 'slack'"
+						v-if="currentIntegration?.type === 'slack'"
 						mode="edit"
 						:connected="isConnected('slack')"
 						:disabled="isLoading('slack')"

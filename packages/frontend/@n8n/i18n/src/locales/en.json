@@ -6570,7 +6570,7 @@
 	"agents.builder.triggers.empty": "No channels connected yet.",
 	"agents.builder.triggers.add": "Add channel",
 	"agents.builder.triggers.empty.title": "No triggers configured",
-	"agents.builder.triggers.empty.description": "Add a channel to let this agent respond to events from a chat platform or run on a schedule.",
+	"agents.builder.triggers.empty.description": "Add a channel to let this agent respond to events from a chat platform.",
 	"agents.builder.addTrigger.modal.title": "Add trigger",
 	"agents.builder.addTrigger.modal.description": "Add a trigger to let people message the agent from a chat platform.",
 	"agents.builder.addTrigger.picker.label": "Trigger",
