@@ -7,6 +7,12 @@
 // regressions are intentionally NOT gated here — those flow through the QA
 // metrics webhook + PR comment, which tolerates the 15-30% wall-clock noise
 // that browser benchmarks always have.
+//
+// Tier tolerance: only metrics that were actually emitted are gated. A tier
+// that didn't run at all (e.g. CI restricts canvas perf to the S tier, so M/L
+// emit nothing) has its sentinels reported as "skipped" rather than failing.
+// A metric missing while its tier DID run is still a hard failure, so genuine
+// metric-emission regressions can't slip through.
 
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -109,6 +115,26 @@ function extractMetrics(results) {
 	return metrics;
 }
 
+// Sentinel metric names encode their tier as a standalone S/M/L segment
+// (e.g. `canvas-cold-load-L-ms` → 'L', `canvas-dom-nodes-S` → 'S'). Returns
+// null when no tier segment is present.
+function tierOf(metricName) {
+	const match = metricName.match(/-([SML])(?:-|$)/);
+	return match ? match[1] : null;
+}
+
+// A tier "ran" if it emitted at least one canvas metric. Used to tell an
+// intentionally-skipped tier (CI restricts canvas perf to S, so M/L emit
+// nothing) apart from a tier that ran but failed to emit a specific metric.
+function tiersThatRan(metrics) {
+	const tiers = new Set();
+	for (const name of metrics.keys()) {
+		const tier = tierOf(name);
+		if (tier) tiers.add(tier);
+	}
+	return tiers;
+}
+
 function emitSummary(lines) {
 	const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 	if (!summaryPath) return;
@@ -124,16 +150,23 @@ function main() {
 	const raw = readFileSync(path, 'utf8');
 	const results = JSON.parse(raw);
 	const metrics = extractMetrics(results);
+	const ranTiers = tiersThatRan(metrics);
 
 	const breaches = [];
 	const checks = [];
 	for (const sentinel of SENTINELS) {
 		const observed = metrics.get(sentinel.metric);
 		if (observed === undefined) {
-			// A missing sentinel metric means either the test didn't run, didn't
-			// emit it, or the JSON reporter dropped it. Treating that as "skip"
-			// would let metric-emission regressions produce false-green nightlies
-			// — fail instead so the gap surfaces immediately.
+			const tier = tierOf(sentinel.metric);
+			// Tolerate a missing metric only when its whole tier was not run (e.g.
+			// CI restricts canvas perf to the S tier, so M/L metrics are never
+			// emitted). If the tier DID run but this metric is absent, that's a real
+			// metric-emission / reporter gap — fail so it surfaces immediately
+			// instead of producing a false-green nightly.
+			if (tier && !ranTiers.has(tier)) {
+				checks.push({ status: 'skipped', sentinel, observed: null });
+				continue;
+			}
 			checks.push({ status: 'missing', sentinel, observed: null });
 			breaches.push({ sentinel, observed: null, reason: 'metric not emitted' });
 			continue;
@@ -147,8 +180,16 @@ function main() {
 	lines.push('| Metric | Observed | Threshold | Status |');
 	lines.push('| --- | --- | --- | --- |');
 	for (const check of checks) {
-		const observed = check.observed === null ? 'missing' : check.observed.toFixed(2);
-		const status = check.status === 'pass' ? 'ok' : check.status === 'missing' ? 'MISSING' : 'FAIL';
+		const observed =
+			check.status === 'skipped' ? 'skipped (tier not run)' : check.observed === null ? 'missing' : check.observed.toFixed(2);
+		const status =
+			check.status === 'pass'
+				? 'ok'
+				: check.status === 'skipped'
+					? 'skipped'
+					: check.status === 'missing'
+						? 'MISSING'
+						: 'FAIL';
 		lines.push(
 			`| \`${check.sentinel.metric}\` | ${observed} | ${check.sentinel.max} | ${status} |`,
 		);
@@ -169,7 +210,12 @@ function main() {
 		console.error(`\n[sentinel] ${breaches.length} sentinel failure(s) detected.`);
 		process.exit(1);
 	}
-	console.log(`\n[sentinel] All ${checks.length} sentinels passed.`);
+	const skipped = checks.filter((check) => check.status === 'skipped').length;
+	const gated = checks.length - skipped;
+	console.log(
+		`\n[sentinel] All ${gated} gated sentinel(s) passed` +
+			(skipped > 0 ? ` (${skipped} skipped — tier not run in this run).` : '.'),
+	);
 }
 
 main();
