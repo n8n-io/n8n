@@ -263,9 +263,10 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('does not finalize the planned task when saving a supporting workflow', async () => {
-		const reportBuildOutcome = jest.fn(
-			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-support' }),
-		);
+		const reportBuildOutcome = jest.fn<
+			Promise<{ type: 'verify'; workflowId: string }>,
+			[WorkflowBuildOutcome]
+		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-support' }));
 		const markSucceeded = jest.fn(async () => await Promise.resolve(null));
 		const onBuildOutcome = jest.fn();
 		const context = {
@@ -313,9 +314,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-support');
 		expect(onBuildOutcome).not.toHaveBeenCalled();
 		expect(markSucceeded).not.toHaveBeenCalled();
-		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0] as
-			| WorkflowBuildOutcome
-			| undefined;
+		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
 		expect(reportedOutcome).toMatchObject({
 			workItemId: supportingWorkItemId,
 			workflowId: 'wf-support',
