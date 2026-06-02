@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -20,6 +21,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 jest.mock('@/webhooks/webhook-helpers');
@@ -34,6 +36,8 @@ describe('LiveWebhooks', () => {
 	const webhookService = mock<WebhookService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
+	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
+	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -45,6 +49,8 @@ describe('LiveWebhooks', () => {
 			webhookService,
 			workflowRepository,
 			workflowStaticDataService,
+			workflowsConfig,
+			workflowPublishedDataService,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
@@ -253,6 +259,60 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+	});
+
+	describe('executeWebhook (with publication service)', () => {
+		beforeEach(() => {
+			Object.assign(workflowsConfig, { useWorkflowPublicationService: true });
+		});
+
+		afterEach(() => {
+			Object.assign(workflowsConfig, { useWorkflowPublicationService: false });
+		});
+
+		it('should use published version nodes when executing webhook', async () => {
+			const activeNodes: INode[] = [
+				{
+					id: 'webhook-node-active',
+					name: NODE_NAME,
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [100, 200],
+					parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+				},
+			];
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				isArchived: false,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const publishedVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId: WORKFLOW_ID,
+				nodes: activeNodes,
+				connections: {},
+			});
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow: workflowEntity,
+				publishedVersion,
+			});
+
+			let capturedNodes: INode[] = [];
+			const request = setupExecuteWebhookMocks(workflowEntity, {
+				onExecuteWebhook: ({ workflow }) => {
+					capturedNodes = Object.values(workflow.nodes);
+				},
+			});
+
+			await liveWebhooks.executeWebhook(request, mock<Response>());
+
+			expect(capturedNodes[0].id).toBe('webhook-node-active');
 		});
 	});
 

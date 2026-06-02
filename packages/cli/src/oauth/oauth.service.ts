@@ -26,6 +26,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
+	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
@@ -53,7 +54,9 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -78,6 +81,8 @@ export class OauthService {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly authService: AuthService,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
+		private readonly browserBindingService: OAuthBrowserBindingService,
+		private readonly eventService: EventService,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -299,6 +304,25 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
+		// Browser binding check runs before any origin-specific branch, so that
+		// dynamic-credential and N8N_SKIP_AUTH_ON_OAUTH_CALLBACK flows — which
+		// otherwise have no user-identity check at callback time — are also
+		// protected. A bindingHash is only set when binding was enabled at /auth;
+		// states without it pre-date the feature and are accepted.
+		if (typeof decryptedState.bindingHash === 'string' && decryptedState.bindingHash.length > 0) {
+			const result = this.browserBindingService.verifyBinding(req, decryptedState.bindingHash);
+			if (!result.ok) {
+				this.eventService.emit('oauth-callback-binding-rejected', {
+					reason: result.reason,
+					credentialId: decryptedState.cid,
+					origin: decryptedState.origin,
+				});
+				throw new AuthError(
+					'This OAuth flow was started in a different browser. Please retry from your original window.',
+				);
+			}
+		}
+
 		// Dynamic credentials: skip user-ownership check since the credential may be shared,
 		// but validate userId when both the state and the caller carry an n8n user identity
 		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
@@ -418,6 +442,77 @@ export class OauthService {
 	}
 
 	/**
+	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
+	 * and return the new auth headers to inject into outbound requests.
+	 */
+	async refreshOAuth2CredentialById(
+		credentialId: string,
+		projectId: string,
+	): Promise<Record<string, string> | null> {
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: credentialId },
+			relations: { shared: true },
+		});
+		if (!credential) return null;
+
+		const isAccessible =
+			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+		if (!isAccessible) return null;
+
+		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		if (!oauthTokenData) return null;
+
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		const oAuthClient = new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			clientSecret: oauthCredentials.clientSecret,
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+
+		const token = oAuthClient.createToken(
+			{
+				...oauthTokenData,
+				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
+				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			},
+			oauthTokenData.token_type,
+		);
+
+		let refreshed;
+		try {
+			refreshed =
+				oauthCredentials.grantType === 'clientCredentials'
+					? await token.client.credentials.getToken()
+					: await token.refresh();
+		} catch (error) {
+			this.logger.warn('Failed to refresh OAuth2 token for credential', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
+		try {
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+		} catch (error) {
+			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { Authorization: `Bearer ${refreshed.accessToken}` };
+	}
+
+	/**
 	 * Checks whether the credential type (after merging inherited properties) exposes
 	 * a user-editable `scope` property. A property is considered editable when it is
 	 * defined and its `type` is not `'hidden'`.
@@ -432,10 +527,31 @@ export class OauthService {
 		}
 	}
 
+	/**
+	 * Mutates `csrfData` to include a `bindingHash` when browser binding is
+	 * enabled and a request/response pair is available. No-op otherwise — so
+	 * server-initiated flows (e.g. workflow-execution credential checks) that
+	 * don't carry a browser context naturally skip binding.
+	 */
+	private applyBrowserBindingIfEnabled(
+		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
+	): void {
+		if (!req || !res) return;
+		if (!this.browserBindingService.isEnabled()) return;
+		const nonce = this.browserBindingService.ensureBindingCookie(req, res);
+		csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
+	}
+
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth2CredentialData =
 			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 
@@ -651,7 +767,11 @@ export class OauthService {
 	async generateAOauth1AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
 

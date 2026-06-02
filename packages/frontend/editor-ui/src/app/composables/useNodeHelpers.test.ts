@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { shallowRef, computed } from 'vue';
 import { setActivePinia } from 'pinia';
 import type {
 	ExecutionStatus,
@@ -18,8 +18,20 @@ import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	IUsedCredential,
+	ICredentialsResponse,
+} from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+
+vi.mock('@/features/resolvers/composables/useDynamicCredentials', () => ({
+	useDynamicCredentials: vi.fn(),
+}));
+
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+
+const mockedUseDynamicCredentials = vi.mocked(useDynamicCredentials);
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -28,8 +40,8 @@ const mockDocumentStore = {
 	settings: {},
 	pinnedDataByNodeName: {},
 	usedCredentials: mockDocumentStoreUsedCredentials,
-	allNodes: [],
-	workflowTriggerNodes: [],
+	allNodes: [] as INodeUi[],
+	workflowTriggerNodes: [] as INodeUi[],
 	getNodeByName: vi.fn(),
 	setNodeIssue: vi.fn(),
 	updateNodeProperties: vi.fn(),
@@ -50,6 +62,12 @@ describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
 		mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
+	});
+
+	beforeEach(() => {
+		mockedUseDynamicCredentials.mockReturnValue({
+			isEnabled: computed(() => true),
+		} as ReturnType<typeof useDynamicCredentials>);
 	});
 
 	afterEach(() => {
@@ -782,6 +800,418 @@ describe('useNodeHelpers()', () => {
 			expect(issues).toBeNull();
 
 			getNodeParametersIssuesSpy.mockRestore();
+		});
+	});
+
+	describe('private credentials', () => {
+		const NOTION_API = 'notionApi';
+		const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
+		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
+
+		const notionNodeType: INodeTypeDescription = {
+			displayName: 'Notion',
+			name: 'n8n-nodes-base.notion',
+			group: ['transform'],
+			version: 1,
+			description: 'Notion node',
+			defaults: { name: 'Notion' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [{ name: NOTION_API, required: true }],
+			properties: [],
+		};
+
+		const httpRequestNodeType: INodeTypeDescription = {
+			displayName: 'HTTP Request',
+			name: 'n8n-nodes-base.httpRequest',
+			group: ['transform'],
+			version: 3,
+			description: 'HTTP Request node',
+			defaults: { name: 'HTTP Request' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [],
+			properties: [],
+		};
+
+		const makePrivateCred = (overrides: Partial<ICredentialsResponse> = {}): ICredentialsResponse =>
+			({
+				id: 'cred-123',
+				name: 'My Notion',
+				type: NOTION_API,
+				isResolvable: true,
+				connectedByMe: false,
+				...overrides,
+			}) as ICredentialsResponse;
+
+		const buildNotionNode = (): INodeUi =>
+			createTestNode({
+				type: 'n8n-nodes-base.notion',
+				credentials: { [NOTION_API]: { id: 'cred-123', name: 'My Notion' } },
+			});
+
+		const buildTriggerNode = (type: string, overrides: Partial<INodeUi> = {}): INodeUi =>
+			createTestNode({ type, ...overrides });
+
+		beforeEach(() => {
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(notionNodeType);
+		});
+
+		afterEach(() => {
+			mockDocumentStore.workflowTriggerNodes = [];
+		});
+
+		describe('not connected', () => {
+			it('emits privateNotConnected when declared-credential node has private cred not connected', () => {
+				const cred = makePrivateCred({ connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, buildNotionNode(), mock<Workflow>(), [
+					'parameters',
+				]);
+
+				expect(result?.credentials?.[NOTION_API]).toBeDefined();
+				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
+			});
+
+			it('emits no issue when declared-credential node has private cred connected', () => {
+				const cred = makePrivateCred({ connectedByMe: true });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, buildNotionNode(), mock<Workflow>(), [
+					'parameters',
+				]);
+
+				expect(result?.credentials).toBeUndefined();
+			});
+
+			it('emits privateNotConnected for predefined-OAuth credential (HTTP Request, not in node type credentials array)', () => {
+				mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(httpRequestNodeType);
+
+				const cred = makePrivateCred({ type: 'slackOAuth2Api', connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+
+				const node: INodeUi = createTestNode({
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: 'slackOAuth2Api',
+					},
+					credentials: { slackOAuth2Api: { id: 'cred-123', name: 'My Notion' } },
+				});
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(httpRequestNodeType, node, mock<Workflow>(), ['parameters']);
+
+				expect(result?.credentials?.slackOAuth2Api).toBeDefined();
+				expect(result?.credentials?.slackOAuth2Api[0]).toContain('My Notion');
+			});
+
+			it('emits no issue for static (non-resolvable) credential regardless of connectedByMe', () => {
+				const cred = makePrivateCred({ isResolvable: false, connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, buildNotionNode(), mock<Workflow>(), [
+					'parameters',
+				]);
+
+				expect(result?.credentials).toBeUndefined();
+			});
+
+			it('emits no issue for AI-gateway managed private credential', () => {
+				const cred = makePrivateCred({ connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+				const node: INodeUi = createTestNode({
+					type: 'n8n-nodes-base.notion',
+					credentials: {
+						[NOTION_API]: { id: 'cred-123', name: 'My Notion', __aiGatewayManaged: true },
+					},
+				});
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+				expect(result?.credentials).toBeUndefined();
+			});
+
+			it('preserves declared-loop notSet issue and does not overwrite with private check', () => {
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([]);
+
+				const node: INodeUi = createTestNode({
+					type: 'n8n-nodes-base.notion',
+					credentials: {},
+				});
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, node, mock<Workflow>(), ['parameters']);
+
+				expect(result?.credentials?.[NOTION_API]).toBeDefined();
+				expect(result?.credentials?.[NOTION_API][0]).toContain('Notion');
+			});
+
+			it('emits no issue when dynamic credentials feature is disabled', () => {
+				mockedUseDynamicCredentials.mockReturnValue({
+					isEnabled: computed(() => false),
+				} as ReturnType<typeof useDynamicCredentials>);
+
+				const cred = makePrivateCred({ connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+
+				const { getNodeIssues } = useNodeHelpers();
+				const result = getNodeIssues(notionNodeType, buildNotionNode(), mock<Workflow>(), [
+					'parameters',
+				]);
+				expect(result?.credentials?.[NOTION_API]).toBeUndefined();
+			});
+		});
+
+		describe('trigger compatibility', () => {
+			const mockConnectedPrivateCred = (isResolvable: boolean) => {
+				const cred = makePrivateCred({ isResolvable, connectedByMe: true });
+				const credentialsStore = mockedStore(useCredentialsStore);
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(cred);
+				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([cred]);
+				credentialsStore.getCredentialTypeByName = vi
+					.fn()
+					.mockReturnValue({ name: NOTION_API, displayName: 'Notion API' });
+			};
+
+			it('does not warn when a private credential is used under a manual trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under a manual chat trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_CHAT_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('warns when a private credential is used under a non-manual trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toEqual([
+					'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+				]);
+			});
+
+			it('does not warn when a static (non-resolvable) credential is used under a non-manual trigger', () => {
+				mockConnectedPrivateCred(false);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('ignores disabled non-manual triggers when computing compatibility', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(WEBHOOK_TRIGGER, { disabled: true }),
+					buildTriggerNode(MANUAL_TRIGGER),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when no triggers are present', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('warns when any trigger in a multi-trigger workflow is non-manual', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(MANUAL_TRIGGER),
+					buildTriggerNode(WEBHOOK_TRIGGER),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+					'Private credentials only work in manually triggered workflows',
+				);
+			});
+
+			it('does not warn when dynamic credentials feature is disabled', () => {
+				mockedUseDynamicCredentials.mockReturnValue({
+					isEnabled: computed(() => false),
+				} as ReturnType<typeof useDynamicCredentials>);
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			describe('HTTP Request node generic / predefined credential auth', () => {
+				const OAUTH2_API = 'oAuth2Api';
+
+				const httpRequestWithSslAuth: INodeTypeDescription = {
+					displayName: 'HTTP Request',
+					name: 'httpRequest',
+					group: ['transform'],
+					version: 4.4,
+					description: 'HTTP Request node',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+					properties: [],
+				};
+
+				const buildGenericAuthNode = (): INodeUi =>
+					createTestNode({
+						type: 'httpRequest',
+						typeVersion: 4.4,
+						parameters: {
+							authentication: 'genericCredentialType',
+							genericAuthType: OAUTH2_API,
+						},
+						credentials: { [OAUTH2_API]: { id: 'cred-1', name: 'My OAuth2' } },
+					});
+
+				const buildPredefinedAuthNode = (): INodeUi =>
+					createTestNode({
+						type: 'httpRequest',
+						typeVersion: 4.4,
+						parameters: {
+							authentication: 'predefinedCredentialType',
+							nodeCredentialType: OAUTH2_API,
+						},
+						credentials: { [OAUTH2_API]: { id: 'cred-1', name: 'My OAuth2' } },
+					});
+
+				const mockHttpCredential = (isResolvable: boolean) => {
+					const cred = {
+						id: 'cred-1',
+						name: 'My OAuth2',
+						type: OAUTH2_API,
+						isResolvable,
+						connectedByMe: true,
+					};
+					const credentialsStore = mockedStore(useCredentialsStore);
+					credentialsStore.getCredentialTypeByName = vi
+						.fn()
+						.mockReturnValue({ name: OAUTH2_API, displayName: 'OAuth2 API' });
+					credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([cred as never]);
+					credentialsStore.getCredentialById = vi.fn().mockReturnValue(cred as never);
+					mockedStore(useNodeTypesStore).getNodeType = vi
+						.fn()
+						.mockReturnValue(httpRequestWithSslAuth);
+				};
+
+				it('warns when a private credential is bound via genericCredentialType under a non-manual trigger', () => {
+					mockHttpCredential(true);
+					mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
+
+					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+					]);
+				});
+
+				it('does not warn when a static credential is bound via genericCredentialType under a non-manual trigger', () => {
+					mockHttpCredential(false);
+					mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
+
+					expect(result).toBeNull();
+				});
+
+				it('does not warn when a private credential is bound via genericCredentialType under a manual trigger', () => {
+					mockHttpCredential(true);
+					mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_TRIGGER)];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
+
+					expect(result).toBeNull();
+				});
+
+				it('warns when a private credential is bound via predefinedCredentialType under a non-manual trigger', () => {
+					mockHttpCredential(true);
+					mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
+
+					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+						'Private credentials only work in manually triggered workflows. Change the trigger to a Manual trigger, or switch this credential to Static.',
+					]);
+				});
+
+				it('does not warn when a static credential is bound via predefinedCredentialType under a non-manual trigger', () => {
+					mockHttpCredential(false);
+					mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
+
+					expect(result).toBeNull();
+				});
+			});
+		});
+
+		describe('precedence', () => {
+			it('emits only privateNotConnected when both rules would fire (not-connected wins)', () => {
+				const cred = makePrivateCred({ connectedByMe: false });
+				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
+				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(WEBHOOK_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toHaveLength(1);
+				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
+				expect(result?.credentials?.[NOTION_API][0]).not.toContain('manually triggered workflows');
+			});
 		});
 	});
 });

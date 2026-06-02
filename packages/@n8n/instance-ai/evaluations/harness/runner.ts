@@ -68,6 +68,11 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Omit (or pass empty) to intercept every
+	 *  interceptable AI root the workflow contains. Server-side gated by the
+	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
+	pinAiRoots?: string[];
 }
 
 /**
@@ -144,6 +149,7 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
+					config.pinAiRoots,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -478,8 +484,17 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
+	return await runScenario(
+		client,
+		scenario,
+		workflowId,
+		workflowJsons,
+		logger,
+		timeoutMs,
+		pinAiRoots,
+	);
 }
 
 /**
@@ -526,17 +541,26 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
+	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
+
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
+	const evalResult = await client.executeWithLlmMock(
+		workflowId,
+		scenario.dataSetup,
+		timeoutMs,
+		pinNodes,
+	);
 	const execMs = Date.now() - execStart;
 
+	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
 	logger.info(
-		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)${pinTag}`,
 	);
 
 	const verifyStart = Date.now();
-	const verificationArtifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
+	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -547,11 +571,7 @@ async function runScenario(
 		},
 	];
 
-	const verificationResults = await verifyChecklist(
-		scenarioChecklist,
-		verificationArtifact,
-		workflowJsons,
-	);
+	const verificationResults = await verifyChecklist(scenarioChecklist, artifact);
 
 	const verifyMs = Date.now() - verifyStart;
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
@@ -583,19 +603,123 @@ async function runScenario(
 // Verification artifact builder
 // ---------------------------------------------------------------------------
 
-/**
- * Build a rich verification artifact from the execution result.
- * Includes execution trace with mock responses, config issues,
- * and pre-analysis flags so the verifier can diagnose root causes.
- */
-function buildVerificationArtifact(
+export interface VerificationArtifact {
+	/** Workflow structure + connections + node configs. Stable across scenarios of the same build (cacheable). */
+	workflowContext: string;
+	/** Scenario + execution trace + errors. Fresh per scenario. */
+	scenarioContext: string;
+}
+
+/** Render the per-build workflow structure: nodes, connections, all configs. */
+function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
+	if (!wf) return '## Workflow structure\n\n(no workflow built)';
+	const lines: string[] = ['## Workflow structure', ''];
+	for (const node of wf.nodes) {
+		lines.push(`- **${node.name ?? '(unnamed)'}** (${node.type})`);
+	}
+	lines.push('');
+	lines.push('**All node configs:**');
+	lines.push(
+		'```json',
+		JSON.stringify(
+			wf.nodes.map((node) => ({
+				name: node.name ?? '(unnamed)',
+				type: node.type,
+				typeVersion: node.typeVersion,
+				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
+				parameters: node.parameters ?? {},
+			})),
+			null,
+			2,
+		),
+		'```',
+		'',
+	);
+	lines.push('**Connections:**');
+	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```');
+	return lines.join('\n');
+}
+
+function isObjectRecord(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/** For a given node + connection type, return downstream node names per output port. */
+function getDownstreamsByBranch(
+	nodeName: string,
+	connectionType: string,
+	connections: Record<string, unknown> | undefined,
+): string[][] {
+	if (!connections) return [];
+	const nodeConns = connections[nodeName];
+	if (!isObjectRecord(nodeConns)) return [];
+	const typeConns = nodeConns[connectionType];
+	if (!Array.isArray(typeConns)) return [];
+	return typeConns.map((branch) => {
+		if (!Array.isArray(branch)) return [];
+		const targets: string[] = [];
+		for (const c of branch) {
+			if (isObjectRecord(c) && typeof c.node === 'string') targets.push(c.node);
+		}
+		return targets;
+	});
+}
+
+/** Render per-node outputs grouped by connection type + branch, with downstream labels. */
+function renderNodeOutputs(
+	nodeName: string,
+	outputs: Record<string, unknown[][]>,
+	outputCount: number,
+	truncated: boolean | undefined,
+	connections: Record<string, unknown> | undefined,
+): string[] {
+	const lines: string[] = [];
+	const connTypes = Object.keys(outputs);
+	// "Output: none" only when no branches exist on any port — distinct from "branches exist but all empty".
+	// An `outputs.main = [[]]` (one connected branch, zero items) falls through and renders as `Output [main]: 0 items`.
+	if (connTypes.length === 0 || connTypes.every((k) => outputs[k].length === 0)) {
+		lines.push('**Output:** none');
+		return lines;
+	}
+	for (const connType of connTypes) {
+		const branches = outputs[connType];
+		if (branches.length === 0) continue;
+		const downstreams = getDownstreamsByBranch(nodeName, connType, connections);
+		const isMultiBranch = branches.length > 1 || connType !== 'main';
+		if (!isMultiBranch) {
+			lines.push(`**Output [${connType}]:** ${String(branches[0].length)} items`);
+			lines.push('```json', JSON.stringify(branches[0], null, 2), '```');
+			continue;
+		}
+		for (let i = 0; i < branches.length; i++) {
+			const branch = branches[i];
+			const targets = downstreams[i] ?? [];
+			const targetLabel =
+				targets.length > 0 ? `→ ${targets.join(', ')}` : '→ (no downstream connection)';
+			lines.push(
+				`**Output [${connType} branch ${String(i)}] ${targetLabel}:** ${String(branch.length)} items`,
+			);
+			if (branch.length > 0) {
+				lines.push('```json', JSON.stringify(branch, null, 2), '```');
+			}
+		}
+	}
+	if (truncated) {
+		lines.push(
+			`_(items truncated for size; full count across all branches: ${String(outputCount)})_`,
+		);
+	}
+	return lines;
+}
+
+/** Render the per-scenario context: scenario, pre-analysis, execution summary, errors, per-node trace. */
+function buildScenarioContextBlock(
 	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
-	workflowJsons: WorkflowResponse[],
+	wf: WorkflowResponse | undefined,
 ): string {
 	const sections: string[] = [];
 
-	// --- Scenario context ---
 	sections.push(
 		'## Scenario',
 		'',
@@ -604,10 +728,8 @@ function buildVerificationArtifact(
 		'',
 	);
 
-	// --- Pre-analysis: flag known issues programmatically ---
+	// Pre-analysis: programmatic flags
 	const preAnalysis: string[] = [];
-
-	// Flag Phase 1 failures — these cause empty trigger data and cascade failures
 	if (evalResult.hints.warnings.length > 0) {
 		for (const warning of evalResult.hints.warnings) {
 			preAnalysis.push(`⚠ FRAMEWORK ISSUE: ${warning}`);
@@ -618,7 +740,6 @@ function buildVerificationArtifact(
 			'⚠ FRAMEWORK ISSUE: Trigger content is empty — the start node received no input data. All downstream failures are likely caused by this, not by the workflow builder.',
 		);
 	}
-
 	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
 		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
 			preAnalysis.push(
@@ -639,29 +760,35 @@ function buildVerificationArtifact(
 			}
 		}
 	}
-
 	if (preAnalysis.length > 0) {
 		sections.push('## Pre-analysis (automated flags)', '', ...preAnalysis, '');
 	}
 
-	// --- Execution summary ---
+	// Execution summary
 	const mockedNodes: string[] = [];
 	const pinnedNodes: string[] = [];
 	const realNodes: string[] = [];
-
+	const ranNodes = new Set<string>();
 	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
 		if (nr.executionMode === 'mocked') mockedNodes.push(nodeName);
 		else if (nr.executionMode === 'pinned') pinnedNodes.push(nodeName);
 		else realNodes.push(nodeName);
+		// Pinned nodes (trigger / bypass) get their data from pin data and never appear in runData,
+		// so `iterationCount` stays 0 — count them as "ran" anyway to keep them out of `didNotRun`.
+		if (nr.iterationCount > 0 || nr.executionMode !== 'real') ranNodes.add(nodeName);
 	}
-
+	const didNotRun: string[] =
+		wf?.nodes
+			.map((n) => n.name)
+			.filter((name): name is string => typeof name === 'string' && !ranNodes.has(name)) ?? [];
 	sections.push(
 		'## Execution summary',
 		'',
 		`**Status:** ${evalResult.success ? 'success' : 'failed'}`,
-		`**Mocked nodes** (HTTP intercepted, responses generated by LLM): ${mockedNodes.join(', ') || 'none'}`,
-		`**Pinned nodes** (trigger data provided, not executed): ${pinnedNodes.join(', ') || 'none'}`,
-		`**Real nodes** (executed with actual logic on mock/pinned data): ${realNodes.join(', ') || 'none'}`,
+		`**Mocked nodes** (HTTP intercepted): ${mockedNodes.join(', ') || 'none'}`,
+		`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
+		`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
+		`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
 		'',
 	);
 
@@ -669,74 +796,23 @@ function buildVerificationArtifact(
 		sections.push('## Errors', '', ...evalResult.errors.map((e) => `- ${e}`), '');
 	}
 
-	// --- Build a node config lookup from workflow JSON ---
-	const nodeConfigs = new Map<string, Record<string, unknown>>();
-	const wf = workflowJsons[0];
-	if (wf) {
-		for (const node of wf.nodes) {
-			if (node.name && node.parameters) {
-				nodeConfigs.set(node.name, { type: node.type, parameters: node.parameters });
-			}
-		}
-	}
-
-	// --- Workflow structure: ALL nodes and connections ---
-	const executedNodeNames = new Set(Object.keys(evalResult.nodeResults));
-	if (wf) {
-		sections.push('## Workflow structure (all nodes)', '');
-		for (const node of wf.nodes) {
-			const ran = node.name ? executedNodeNames.has(node.name) : false;
-			const status = ran ? 'EXECUTED' : 'DID NOT RUN';
-			sections.push(`- **${node.name ?? '(unnamed)'}** (${node.type}) — ${status}`);
-		}
-		sections.push('');
-		sections.push(
-			'**All node configs** (from saved workflow JSON, including nodes that did not run):',
-		);
-		sections.push(
-			'```json',
-			JSON.stringify(
-				wf.nodes.map((node) => ({
-					name: node.name ?? '(unnamed)',
-					type: node.type,
-					typeVersion: node.typeVersion,
-					...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
-					parameters: node.parameters ?? {},
-				})),
-				null,
-				2,
-			),
-			'```',
-		);
-		sections.push('');
-		sections.push('**Connections:**');
-		sections.push('```json', JSON.stringify(wf.connections, null, 2), '```');
-		sections.push('');
-	}
-
-	// --- Execution trace: per-node detail (sorted by execution order) ---
+	// Per-node execution trace, sorted by start time
 	sections.push('## Execution trace', '');
-
 	const sortedNodeResults = Object.entries(evalResult.nodeResults).sort(
 		([, a], [, b]) => (a.startTime ?? 0) - (b.startTime ?? 0),
 	);
-
 	for (const [nodeName, nr] of sortedNodeResults) {
-		sections.push(`### ${nodeName} [${nr.executionMode}]`);
+		const iterTag = nr.iterationCount > 1 ? ` · ran ${String(nr.iterationCount)}×` : '';
+		const errTag =
+			nr.firstErrorIteration !== undefined
+				? ` · first error at iter ${String(nr.firstErrorIteration)}`
+				: '';
+		sections.push(`### ${nodeName} [${nr.executionMode}${iterTag}${errTag}]`);
 
-		// Node configuration (from workflow JSON)
-		const nodeConfig = nodeConfigs.get(nodeName);
-		if (nodeConfig) {
-			sections.push('**Node config:**');
-			sections.push('```json', JSON.stringify(nodeConfig, null, 2), '```');
-		}
-
-		// Config issues
 		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
 			sections.push(`**Config issues:** ${Object.values(nr.configIssues).flat().join('; ')}`);
 		}
 
-		// Intercepted requests + mock responses (for mocked nodes)
 		for (const req of nr.interceptedRequests) {
 			sections.push(`**Request:** ${req.method} ${req.url}`);
 			if (req.requestBody) {
@@ -748,18 +824,27 @@ function buildVerificationArtifact(
 			}
 		}
 
-		// Node output
-		if (nr.output !== null && nr.output !== undefined) {
-			sections.push('**Output:**');
-			sections.push('```json', JSON.stringify(nr.output, null, 2), '```');
-		} else {
-			sections.push('**Output:** none');
-		}
+		sections.push(
+			...renderNodeOutputs(nodeName, nr.outputs, nr.outputCount, nr.truncated, wf?.connections),
+		);
 
 		sections.push('');
 	}
 
 	return sections.join('\n');
+}
+
+/** Build a verification artifact split into a cacheable workflow block + a fresh scenario block. */
+export function buildVerificationArtifact(
+	scenario: ExecutionScenario,
+	evalResult: InstanceAiEvalExecutionResult,
+	workflowJsons: WorkflowResponse[],
+): VerificationArtifact {
+	const wf = workflowJsons[0];
+	return {
+		workflowContext: buildWorkflowContextBlock(wf),
+		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf),
+	};
 }
 
 // ---------------------------------------------------------------------------

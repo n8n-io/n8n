@@ -53,12 +53,11 @@ export const askCredentialInputSchema = z.object({
 		.string()
 		.optional()
 		.describe('The n8n node type requiring this credential, e.g. "n8n-nodes-base.slack"'),
-	credentialType: z
+	credentialType: z.string().describe('The credential type name to request, e.g. "slackApi"'),
+	credentialSlot: z
 		.string()
-		.describe(
-			'The credential type name to request for this slot, e.g. "slackApi". When the slot accepts multiple credential types, pick the single best match (typically the OAuth or first listed type).',
-		),
-	slot: z.string().optional().describe('Credential slot name on the node, e.g. "slackApi"'),
+		.optional()
+		.describe('Credential key on node.credentials, e.g. "slackApi"'),
 });
 
 export const askCredentialResumeSchema = z.union([
@@ -83,9 +82,8 @@ export const askQuestionInputSchema = z.object({
 	question: z.string().describe('The question to display to the user'),
 	options: z
 		.array(askQuestionOptionSchema)
-		.min(1)
 		.describe(
-			'Choices to present. With a single option the tool auto-resolves to that option without rendering a card.',
+			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single option the tool auto-resolves to that option without rendering a card.',
 		),
 	allowMultiple: z
 		.boolean()

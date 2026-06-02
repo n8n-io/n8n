@@ -12,7 +12,6 @@ const mockAgentInstances: Array<{
 
 const mockMemoryBuilder = {
 	storage: jest.fn(),
-	lastMessages: jest.fn(),
 	observationalMemory: jest.fn(),
 	build: jest.fn(),
 };
@@ -107,11 +106,9 @@ const { createOrchestratorDomainTools } =
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
-	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 ) {
 	return {
 		getRegularTools: jest.fn().mockResolvedValue(regularTools),
-		getBrowserTools: jest.fn().mockResolvedValue(browserTools),
 		disconnect: jest.fn().mockResolvedValue(undefined),
 	};
 }
@@ -145,11 +142,9 @@ describe('createInstanceAgent', () => {
 		Agent.mockClear();
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
-		mockMemoryBuilder.lastMessages.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},
-			lastMessages: 20,
 		});
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
@@ -157,9 +152,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
-		const memoryConfig = {
-			lastMessages: 20,
-		} as never;
+		const memoryConfig = {} as never;
 
 		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
@@ -173,7 +166,6 @@ describe('createInstanceAgent', () => {
 				},
 				orchestrationContext: {
 					runId,
-					browserMcpConfig: undefined,
 				},
 				memoryConfig,
 				mcpManager,
@@ -212,10 +204,9 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'checkpoint-run',
-				browserMcpConfig: undefined,
 				isCheckpointFollowUp: true,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -233,7 +224,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
@@ -246,7 +237,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'ws-test',
-				browserMcpConfig: undefined,
 				workspace: fakeWorkspace,
 			},
 			memoryConfig,
@@ -271,13 +261,12 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
-				browserMcpConfig: undefined,
 				tracing: {
 					getTelemetry: jest.fn().mockReturnValue(telemetry),
 					wrapTools: jest.fn((tools: unknown) => tools),
 				},
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -319,10 +308,9 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
-				browserMcpConfig: undefined,
 				runtimeSkills,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -331,11 +319,7 @@ describe('createInstanceAgent', () => {
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([
-				['workflows', { id: 'workflows' }],
-				['browser_connect', { id: 'browser_connect' }],
-				['browser_navigate', { id: 'browser_navigate' }],
-			]),
+			new Map([['workflows', { id: 'workflows' }]]),
 		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
@@ -359,7 +343,7 @@ describe('createInstanceAgent', () => {
 				licenseHints: undefined,
 				localMcpServer,
 			},
-			orchestrationContext: { runId: 'browser-test', browserMcpConfig: undefined },
+			orchestrationContext: { runId: 'browser-test' },
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
 			disableDeferredTools: true,
@@ -373,7 +357,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: jest.fn().mockReturnValue([]),
 		};
@@ -385,7 +369,6 @@ describe('createInstanceAgent', () => {
 		]);
 		const orchestrationContext: Record<string, unknown> = {
 			runId: 'local-priority',
-			browserMcpConfig: undefined,
 		};
 		createToolsFromLocalMcpServer.mockReturnValue(localTools);
 
@@ -416,7 +399,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -428,7 +411,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'evals-test',
-				browserMcpConfig: undefined,
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
@@ -456,11 +438,9 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'memory-test',
-				browserMcpConfig: undefined,
 			},
 			memory: memoryStore,
 			memoryConfig: {
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 30_000,
 					reflectorThresholdTokens: 40_000,
@@ -471,7 +451,6 @@ describe('createInstanceAgent', () => {
 
 		expect(Memory).toHaveBeenCalledTimes(1);
 		expect(mockMemoryBuilder.storage).toHaveBeenCalledWith(memoryStore);
-		expect(mockMemoryBuilder.lastMessages).toHaveBeenCalledWith(15);
 		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
 			observerThresholdTokens: 30_000,
 			reflectorThresholdTokens: 40_000,

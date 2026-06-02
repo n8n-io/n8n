@@ -27,7 +27,6 @@ describe('episodic memory integration', () => {
 		const { memory, cleanup } = createInMemoryAgentMemory();
 		const memoryConfig = new Memory()
 			.storage(memory)
-			.lastMessages(3)
 			.observationalMemory({
 				observerThresholdTokens: 1,
 				reflectorThresholdTokens: 10_000,

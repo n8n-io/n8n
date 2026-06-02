@@ -33,7 +33,11 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          # Build editor-ui's dependencies (e.g. @n8n/api-types) but not
+          # editor-ui itself — Vitest transforms editor-ui sources on the fly,
+          # while tsc-built deps must exist on disk for import resolution.
+          # Turbo cache makes this near-instant on subsequent runs.
+          build-command: 'pnpm --filter=n8n-editor-ui^... build'
 
       - name: Install .github/scripts dependencies
         run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace

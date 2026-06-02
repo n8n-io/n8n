@@ -11,13 +11,15 @@ import { toAiSdkTools } from '../tool-adapter';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type AiImport = typeof import('ai');
 
-const jsonSchemaMock = jest.fn((schema: JSONSchema7) => ({ __jsonSchema: schema }));
+const { jsonSchemaMock } = vi.hoisted(() => ({
+	jsonSchemaMock: vi.fn((schema: JSONSchema7) => ({ __jsonSchema: schema })),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<AiImport>('ai');
 	return {
 		...actual,
-		tool: jest.fn((config: unknown) => config),
+		tool: vi.fn((config: unknown) => config),
 		jsonSchema: (schema: JSONSchema7) => jsonSchemaMock(schema),
 	};
 });

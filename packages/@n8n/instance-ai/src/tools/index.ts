@@ -27,10 +27,6 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
-const loadBrowserCredentialSetupTool = lazyMod(
-	() =>
-		require('./orchestration/browser-credential-setup.tool') as typeof import('./orchestration/browser-credential-setup.tool'),
-);
 const loadBuildWorkflowAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-workflow-agent.tool') as typeof import('./orchestration/build-workflow-agent.tool'),
@@ -164,13 +160,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
 	];
 
-	if (context.browserMcpConfig || hasGatewayBrowserTools(context)) {
-		tools.push([
-			ORCHESTRATION_TOOL_IDS.BROWSER_CREDENTIAL_SETUP,
-			loadBrowserCredentialSetupTool().createBrowserCredentialSetupTool(context),
-		]);
-	}
-
 	if (context.workflowTaskService) {
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
@@ -190,8 +179,4 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 	}
 
 	return createToolRegistry(tools);
-}
-
-function hasGatewayBrowserTools(context: OrchestrationContext): boolean {
-	return (context.localMcpServer?.getToolsByCategory('browser').length ?? 0) > 0;
 }
