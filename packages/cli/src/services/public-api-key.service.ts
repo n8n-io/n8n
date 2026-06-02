@@ -1,4 +1,9 @@
-import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type {
+	ApiKeyAudience,
+	CreateApiKeyRequestDto,
+	UnixTimestamp,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -12,7 +17,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { JwtService } from './jwt.service';
 
-export const API_KEY_AUDIENCE = 'public-api';
+export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
