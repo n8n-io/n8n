@@ -3,33 +3,34 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { ApplicationError, OperationalError } from 'n8n-workflow';
+import type { Mock, MockedClass, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('@/utils/stream-processor', () => ({
-	createStreamProcessor: jest.fn(),
-	formatMessages: jest.fn(),
+vi.mock('@/utils/stream-processor', () => ({
+	createStreamProcessor: vi.fn(),
+	formatMessages: vi.fn(),
 }));
 
-const mockCodeWorkflowBuilderChat = jest.fn();
-jest.mock('@/code-builder', () => ({
-	CodeWorkflowBuilder: jest.fn().mockImplementation(() => ({
-		chat: mockCodeWorkflowBuilderChat,
-	})),
+const mockCodeWorkflowBuilderChat = vi.fn();
+vi.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: vi.fn(function () {
+		return { chat: mockCodeWorkflowBuilderChat };
+	}),
 }));
 
-const mockTriageAgentRun = jest.fn();
-jest.mock('@/code-builder/triage.agent', () => ({
-	TriageAgent: jest.fn().mockImplementation(() => ({
-		run: mockTriageAgentRun,
-	})),
+const mockTriageAgentRun = vi.fn();
+vi.mock('@/code-builder/triage.agent', () => ({
+	TriageAgent: vi.fn(function () {
+		return { run: mockTriageAgentRun };
+	}),
 }));
 
-const mockLoadCodeBuilderSession = jest.fn();
-const mockSaveCodeBuilderSession = jest.fn();
-const mockGenerateCodeBuilderThreadId = jest.fn();
-jest.mock('@/code-builder/utils/code-builder-session', () => ({
+const mockLoadCodeBuilderSession = vi.fn();
+const mockSaveCodeBuilderSession = vi.fn();
+const mockGenerateCodeBuilderThreadId = vi.fn();
+vi.mock('@/code-builder/utils/code-builder-session', () => ({
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	loadCodeBuilderSession: (...args: unknown[]) => mockLoadCodeBuilderSession(...args),
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -38,16 +39,15 @@ jest.mock('@/code-builder/utils/code-builder-session', () => ({
 	generateCodeBuilderThreadId: (...args: unknown[]) => mockGenerateCodeBuilderThreadId(...args),
 }));
 
-const mockRandomUUID = jest.fn();
-Object.defineProperty(global, 'crypto', {
-	value: {
-		randomUUID: mockRandomUUID,
-	},
-	writable: true,
-});
+// Spy on `crypto.randomUUID` only, leaving the rest of `crypto` (e.g.
+// `getRandomValues`, which `uuid` relies on) intact. Replacing the whole global
+// `crypto` object leaks across files in the same vitest worker and breaks later
+// suites. `restoreMocks: true` restores this spy automatically.
+vi.spyOn(globalThis.crypto, 'randomUUID');
 
 import type { AssistantHandler } from '@/assistant/assistant-handler';
 import { CodeWorkflowBuilder } from '@/code-builder';
+import { TriageAgent } from '@/code-builder/triage.agent';
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
 import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
@@ -67,28 +67,28 @@ describe('WorkflowBuilderAgent', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 	let config: WorkflowBuilderAgentConfig;
 
-	const mockCreateStreamProcessor = createStreamProcessor as jest.MockedFunction<
+	const mockCreateStreamProcessor = createStreamProcessor as MockedFunction<
 		typeof createStreamProcessor
 	>;
 
 	beforeEach(() => {
 		mockLlm = mock<BaseChatModel>({
-			_llmType: jest.fn().mockReturnValue('test-llm'),
-			bindTools: jest.fn().mockReturnThis(),
-			invoke: jest.fn(),
+			_llmType: vi.fn().mockReturnValue('test-llm'),
+			bindTools: vi.fn().mockReturnThis(),
+			invoke: vi.fn(),
 		});
 
 		mockLogger = mock<Logger>({
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		});
 
 		mockCheckpointer = mock<MemorySaver>();
-		mockCheckpointer.getTuple = jest.fn();
-		mockCheckpointer.put = jest.fn();
-		mockCheckpointer.list = jest.fn();
+		mockCheckpointer.getTuple = vi.fn();
+		mockCheckpointer.put = vi.fn();
+		mockCheckpointer.list = vi.fn();
 
 		parsedNodeTypes = [
 			{
@@ -181,7 +181,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateStreamProcessor.mockReturnValue(mockAsyncGenerator);
 
 			// Mock the LLM to return a simple response
-			(mockLlm.invoke as jest.Mock).mockResolvedValue({
+			(mockLlm.invoke as Mock).mockResolvedValue({
 				content: 'Mocked response',
 				tool_calls: [],
 			});
@@ -319,7 +319,7 @@ describe('WorkflowBuilderAgent', () => {
 			try {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-				fail('Expected an error to be thrown');
+				expect.fail('Expected an error to be thrown');
 			} catch (error) {
 				thrownError = error;
 			}
@@ -329,7 +329,7 @@ describe('WorkflowBuilderAgent', () => {
 	});
 
 	describe('plan mode routing', () => {
-		const MockedCodeWorkflowBuilder = CodeWorkflowBuilder as jest.MockedClass<
+		const MockedCodeWorkflowBuilder = CodeWorkflowBuilder as MockedClass<
 			typeof CodeWorkflowBuilder
 		>;
 
@@ -349,7 +349,7 @@ describe('WorkflowBuilderAgent', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			MockedCodeWorkflowBuilder.mockClear();
 			mockCodeWorkflowBuilderChat.mockReturnValue(
 				(async function* () {
@@ -489,7 +489,7 @@ describe('WorkflowBuilderAgent', () => {
 		let triageConfig: WorkflowBuilderAgentConfig;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			mockGenerateCodeBuilderThreadId.mockReturnValue('test-thread-id');
 			mockLoadCodeBuilderSession.mockResolvedValue({
@@ -825,9 +825,7 @@ describe('WorkflowBuilderAgent', () => {
 				// consume
 			}
 
-			const mockedCtor = jest.requireMock<{ TriageAgent: jest.Mock }>(
-				'@/code-builder/triage.agent',
-			).TriageAgent;
+			const mockedCtor = vi.mocked(TriageAgent);
 			expect(mockedCtor).toHaveBeenCalledWith(
 				expect.objectContaining({
 					buildWorkflow: expect.any(Function),

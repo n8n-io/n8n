@@ -194,6 +194,9 @@ import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000
 import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
 import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
 import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
+import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
+import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -393,4 +396,7 @@ export const postgresMigrations: Migration[] = [
 	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
 	AddLastUsedAtToApiKey1784000000017,
 	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
+	CreateWorkflowPublicationOutboxTable1784000000020,
+	CreateAgentTaskDefinitionTable1784000000021,
 ];

@@ -321,14 +321,6 @@ const hasDynamicCredentials = computed(() => {
 	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
-const isResolverMissing = computed(() => {
-	return (
-		isDynamicCredentialsEnabled.value &&
-		props.data.hasResolvableCredentials &&
-		!props.data.settings?.credentialResolverId
-	);
-});
-
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
@@ -644,16 +636,6 @@ const tags = computed(
 						</span>
 					</N8nBadge>
 				</N8nTooltip>
-				<N8nBadge
-					v-if="isResolverMissing"
-					theme="warning"
-					class="ml-3xs pl-3xs pr-3xs"
-					data-test-id="workflow-card-resolver-missing"
-				>
-					<span :class="$style.resolverMissingBadge">
-						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
-					</span>
-				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -850,14 +832,6 @@ const tags = computed(
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
 	height: 18px;
-}
-
-.resolverMissingBadge {
-	display: inline-flex;
-	align-items: center;
-	font-size: var(--font-size--3xs);
-	height: 18px;
-	color: var(--color--warning);
 }
 
 .tooltipContent {

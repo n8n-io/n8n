@@ -28,11 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -73,6 +74,7 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	private get workflowService() {
@@ -269,8 +271,7 @@ export class ProjectService {
 		return projects.map((project) => {
 			const relation = relationsByProject.get(project.id);
 			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
-			return {
-				...project,
+			return Object.assign(project, {
 				role: relation?.role?.slug ?? user.role.slug,
 				scopes: [
 					...new Set(
@@ -280,7 +281,7 @@ export class ProjectService {
 						}),
 					),
 				].sort(),
-			};
+			});
 		});
 	}
 
@@ -354,15 +355,22 @@ export class ProjectService {
 
 	async updateProject(
 		projectId: string,
-		{ name, icon, description }: UpdateProjectDto,
+		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
 	): Promise<void> {
+		const trimmedTags = customTelemetryTags
+			?.map(({ key, value }) => ({ key: key.trim(), value }))
+			.filter(({ key }) => key !== '');
+
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description },
+			{ name, icon, description, customTelemetryTags: trimmedTags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
 		}
+
+		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
+		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
