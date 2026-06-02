@@ -36,7 +36,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('passes model input and parent runtime context to the runner callback', async () => {
 		const runSubAgent = vi
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({
 				status: 'completed',
 				taskPath: '/root/research_api',
@@ -67,7 +67,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('forwards the parent persistence thread id and resource id', async () => {
 		const runSubAgent = vi
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -86,7 +86,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('omits parent persistence fields when the parent run has no persistence scope', async () => {
 		const runSubAgent = vi
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -99,7 +99,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
 		const runSubAgent = vi
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 		const controller = new AbortController();
@@ -157,7 +157,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('tracks child count per parent run id', async () => {
 		const runSubAgent = vi
-			.fn<Promise<DelegateSubAgentToolOutput>, [DelegateSubAgentRequest]>()
+			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
 			.mockResolvedValue({
 				status: 'completed',
 				taskPath: '/root/research_api',
