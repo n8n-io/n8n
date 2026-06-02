@@ -65,6 +65,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { buildPromptFromConversation } from '../utils/build-prompt';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -406,10 +407,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
 				if (build.success && !build.workflowChecks) {
-					// No transcript in prebuilt mode — checks run with empty prompt context.
+					// No transcript in prebuilt mode — feed the same request the MCP built from.
+					const entry = conversationByFileSlug.get(fileSlug);
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: '',
+						prompt: entry ? buildPromptFromConversation(entry.conversation) : '',
 						agentText: undefined,
 						logger,
 					});
