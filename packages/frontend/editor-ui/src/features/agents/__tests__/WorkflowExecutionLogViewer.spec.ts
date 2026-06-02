@@ -21,8 +21,8 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	useWorkflowState: () => ({
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		setWorkflowExecutionData: vi.fn(),
 	}),
 }));

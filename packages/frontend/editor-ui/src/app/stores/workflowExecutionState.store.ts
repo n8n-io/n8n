@@ -351,6 +351,34 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
 		}
 
+		/**
+		 * Applies a fetched/started execution result to this document's session state:
+		 * clears it when null, stages it as the pending scaffold while in progress, or
+		 * tracks it as a displayed execution once it has a backend id.
+		 */
+		function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+			if (workflowResultData === null) {
+				setPendingExecution(null);
+				clearDisplayedExecution();
+			} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
+				setPendingExecution(workflowResultData);
+				setActiveExecutionId(null);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					workflowResultData,
+				);
+			} else {
+				trackExecutionId(workflowResultData.id);
+				useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
+					workflowResultData,
+				);
+				if (typeof activeExecutionId.value !== 'string') {
+					setPendingExecution(null);
+					setActiveExecutionId(undefined);
+					setDisplayedExecutionId(workflowResultData.id);
+				}
+			}
+		}
+
 		function clearActiveNodeExecutionData(nodeName: string) {
 			if (typeof activeExecutionId.value !== 'string') return;
 			useExecutionDataStore(createExecutionDataId(activeExecutionId.value)).clearNodeExecutionData(
@@ -632,6 +660,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			// Write API
 			trackExecutionId,
 			setActiveExecutionId,
+			setWorkflowExecutionData,
 			setDisplayedExecutionId,
 			setPendingExecution,
 			setPendingExecutionRunData,

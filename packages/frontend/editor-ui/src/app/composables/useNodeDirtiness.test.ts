@@ -23,6 +23,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
@@ -162,8 +163,9 @@ describe(useNodeDirtiness, () => {
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			const workflowState = useWorkflowState();
-			workflowState.setWorkflowExecutionData({
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({
 				id: workflowsStore.workflowId,
 				finished: true,
 				mode: 'manual',
@@ -497,8 +499,9 @@ describe(useNodeDirtiness, () => {
 			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}
 
-		const workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

@@ -11,6 +11,8 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
@@ -92,6 +94,15 @@ describe('LogsPanel', () => {
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(workflow.id));
 	}
 
+	// Production stages execution data on the per-document execution-state store.
+	// The component resolves it from the injected document store, which is keyed by
+	// `workflowsStore.workflowId` — so resolve the same store here for test setup.
+	function setExecutionData(execution: IExecutionResponse | null) {
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(execution);
+	}
+
 	function render() {
 		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
@@ -129,7 +140,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData(null);
+		setExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);
 		logsStore.toggleOpen(false);
@@ -190,7 +201,7 @@ describe('LogsPanel', () => {
 	it('should render only output panel of selected node by default', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiManualWorkflow);
-		workflowState.setWorkflowExecutionData(aiManualExecutionResponse);
+		setExecutionData(aiManualExecutionResponse);
 
 		const rendered = render();
 
@@ -204,7 +215,7 @@ describe('LogsPanel', () => {
 	it('should render both input and output panel of selected node by default if it is sub node', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -247,7 +258,7 @@ describe('LogsPanel', () => {
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -264,7 +275,7 @@ describe('LogsPanel', () => {
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -329,7 +340,7 @@ describe('LogsPanel', () => {
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData({
+		setExecutionData({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,
 			status: 'running',
@@ -388,7 +399,7 @@ describe('LogsPanel', () => {
 		expect(await lastTreeItem.findByText('Success')).toBeInTheDocument();
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
-		workflowState.setWorkflowExecutionData({
+		setExecutionData({
 			...workflowsStore.workflowExecutionData!,
 			id: '1234',
 			status: 'success',
@@ -409,7 +420,7 @@ describe('LogsPanel', () => {
 		const workflow = deepCopy(aiChatWorkflow);
 		setWorkflow(workflow);
 		logsStore.toggleOpen(true);
-		workflowState.setWorkflowExecutionData({
+		setExecutionData({
 			...aiChatExecutionResponse,
 			id: '2345',
 			status: 'success',
@@ -434,7 +445,7 @@ describe('LogsPanel', () => {
 	it('should open NDV if the button is clicked', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
@@ -453,7 +464,7 @@ describe('LogsPanel', () => {
 	it('should toggle subtree when chevron icon button is pressed', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 		const overview = within(rendered.getByTestId('logs-overview'));
@@ -480,7 +491,7 @@ describe('LogsPanel', () => {
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
 		setWorkflow(aiChatWorkflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -510,7 +521,7 @@ describe('LogsPanel', () => {
 		const workflow = deepCopy(aiChatWorkflow);
 		workflow.id = 'test-workflow-id';
 		setWorkflow(workflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -535,7 +546,7 @@ describe('LogsPanel', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
 			setWorkflow(aiChatWorkflow);
-			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+			setExecutionData(aiChatExecutionResponse);
 		});
 
 		it('should allow to select previous and next row via keyboard shortcut', async () => {
@@ -594,7 +605,7 @@ describe('LogsPanel', () => {
 			const workflow = deepCopy(aiChatWorkflow);
 			workflow.id = 'test-workflow-id';
 			setWorkflow(workflow);
-			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+			setExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
 

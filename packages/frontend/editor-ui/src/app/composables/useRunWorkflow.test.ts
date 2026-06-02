@@ -282,6 +282,11 @@ describe('useRunWorkflow({ router })', () => {
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 	let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
+	// Production resolves the execution-state store keyed by the injected document
+	// store's `documentId` ('123@latest'). `createWorkflowDocumentId` is mocked to
+	// `${id}@latest`, so resolving by '123' returns the same store instance the
+	// composable writes to (Pinia dedupes by id).
+	let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
@@ -292,6 +297,7 @@ describe('useRunWorkflow({ router })', () => {
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
 		agentRequestStore = useAgentRequestStore();
+		executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('123'));
 
 		workflowState = vi.mocked(useWorkflowState());
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
@@ -314,7 +320,7 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	afterEach(() => {
-		workflowState.setActiveExecutionId(undefined);
+		executionStateStore.setActiveExecutionId(undefined);
 		vi.clearAllMocks();
 	});
 
@@ -332,7 +338,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should use the passed-in workflowState when injection is unavailable', async () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
 
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(executionStateStore, 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -346,7 +352,7 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should successfully run a workflow', async () => {
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(executionStateStore, 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -378,7 +384,7 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should handle workflow run failure', async () => {
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(executionStateStore, 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -407,7 +413,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			workflowState.setActiveExecutionId('123');
+			executionStateStore.setActiveExecutionId('123');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -542,7 +548,15 @@ describe('useRunWorkflow({ router })', () => {
 
 			it('stages execution and start data with the scoped document workflow id, not the global one', async () => {
 				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true, '456': true };
-				const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+				// The scoped run targets workflow '456', so the execution-state store the
+				// composable writes to is keyed by that document, not the global '123' one.
+				const scopedExecutionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('456'),
+				);
+				const setWorkflowExecutionData = vi.spyOn(
+					scopedExecutionStateStore,
+					'setWorkflowExecutionData',
+				);
 				const dataCaptor = captor();
 
 				const { runWorkflow } = useRunWorkflow({
@@ -858,7 +872,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 			// ACT
 			const result = await runWorkflow({
@@ -907,7 +921,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 			// ACT
 			const result = await runWorkflow({
@@ -954,7 +968,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [],
 			} as unknown as WorkflowData);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 			// Simulate failed execution start
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
@@ -1407,8 +1421,8 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				} as IExecutionResponse['data'],
 			};
-			const setActiveExecutionIdSpy = vi.spyOn(workflowState, 'setActiveExecutionId');
-			const setWorkflowExecutionDataSpy = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setActiveExecutionIdSpy = vi.spyOn(executionStateStore, 'setActiveExecutionId');
+			const setWorkflowExecutionDataSpy = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 			// Stop API throws because the execution already finished server-side.
 			const { useExecutionsStore } = await import(
@@ -1421,7 +1435,7 @@ describe('useRunWorkflow({ router })', () => {
 			// getExecution returns the canonical finished snapshot (with id).
 			vi.spyOn(workflowsStore, 'getExecution').mockResolvedValue(finishedExecution);
 
-			workflowState.setActiveExecutionId('exec-fin');
+			executionStateStore.setActiveExecutionId('exec-fin');
 
 			(mockDocumentStore as unknown as { getSnapshot: () => unknown }).getSnapshot = vi
 				.fn()
@@ -1473,7 +1487,7 @@ describe('useRunWorkflow({ router })', () => {
 				workflowsListStore.activeWorkflows.length,
 				'test-wf-id',
 			);
-			workflowState.setActiveExecutionId('test-exec-id');
+			executionStateStore.setActiveExecutionId('test-exec-id');
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('123')).setExecutionWaitingForWebhook(
 				false,
 			);

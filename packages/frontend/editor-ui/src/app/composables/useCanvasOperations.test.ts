@@ -4297,7 +4297,12 @@ describe('useCanvasOperations', () => {
 		it('should initialize workspace and set execution data when execution is found', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			// Production stages the execution on the store keyed by the document
+			// `initializeWorkspace` opens — i.e. the execution's `workflowData.id`.
+			const setWorkflowExecutionData = vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId)),
+				'setWorkflowExecutionData',
+			);
 
 			const { openExecution } = useCanvasOperations();
 

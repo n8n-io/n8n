@@ -131,6 +131,57 @@ describe('workflowExecutionState.store', () => {
 		});
 	});
 
+	describe('setWorkflowExecutionData', () => {
+		it('clears pending + displayed execution when given null', () => {
+			const store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			store.setActiveExecutionId('exec-1');
+			store.setPendingExecution(makeExecution({ id: 'pending' }));
+
+			store.setWorkflowExecutionData(null);
+
+			expect(store.pendingExecution).toBeNull();
+			expect(store.displayedExecutionId).toBeUndefined();
+		});
+
+		it('stages an in-progress execution as the pending scaffold', () => {
+			const store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			const execution = makeExecution({ id: IN_PROGRESS_EXECUTION_ID });
+
+			store.setWorkflowExecutionData(execution);
+
+			expect(store.activeExecutionId).toBeNull();
+			expect(store.pendingExecution?.id).toBe(IN_PROGRESS_EXECUTION_ID);
+			const executionDataStore = useExecutionDataStore(
+				createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+			);
+			expect(executionDataStore.execution?.id).toBe(IN_PROGRESS_EXECUTION_ID);
+		});
+
+		it('tracks a finished execution as displayed when none is active', () => {
+			const store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			const execution = makeExecution({ id: 'exec-9', status: 'success', finished: true });
+
+			store.setWorkflowExecutionData(execution);
+
+			expect(store.displayedExecutionId).toBe('exec-9');
+			expect(store.activeExecutionId).toBeUndefined();
+			expect(store.pendingExecution).toBeNull();
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-9'));
+			expect(executionDataStore.execution?.id).toBe('exec-9');
+		});
+
+		it('leaves an active execution id untouched when finished data arrives', () => {
+			const store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			store.setActiveExecutionId('exec-active');
+
+			store.setWorkflowExecutionData(makeExecution({ id: 'exec-9', finished: true }));
+
+			expect(store.activeExecutionId).toBe('exec-active');
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-9'));
+			expect(executionDataStore.execution?.id).toBe('exec-9');
+		});
+	});
+
 	describe('activeExecution routing', () => {
 		it('returns pendingExecution when activeExecutionId === null', () => {
 			const workflowExecutionStateStore = useWorkflowExecutionStateStore(

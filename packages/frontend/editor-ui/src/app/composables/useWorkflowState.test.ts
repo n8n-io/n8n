@@ -26,23 +26,6 @@ describe('useWorkflowState', () => {
 		);
 	});
 
-	describe('scoped documentId', () => {
-		it('writes execution state to the explicit document, not the global workflow', () => {
-			// The global current workflow points at 'test-wf' (set in the outer
-			// beforeEach), but this instance is bound to a different document.
-			const scopedDocumentId = createWorkflowDocumentId('other-wf');
-			const scopedState = useWorkflowState({ documentId: scopedDocumentId });
-
-			scopedState.setActiveExecutionId('scoped-exec');
-
-			expect(useWorkflowExecutionStateStore(scopedDocumentId).activeExecutionId).toBe(
-				'scoped-exec',
-			);
-			// The globally-current workflow's store must be left untouched.
-			expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
-		});
-	});
-
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
 			// Set up active execution in the facade stores

@@ -36,10 +36,9 @@ const {
 	initializeWorkflow,
 	handleDebugModeRoute,
 	cleanup,
-} = useWorkflowInitialization(workflowState);
+} = useWorkflowInitialization();
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
-	workflowState,
 	currentWorkflowDocumentStore,
 });
 
