@@ -2,7 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 
@@ -91,20 +91,18 @@ function onRowClick(apiKey: ApiKey) {
 					</td>
 					<td :class="$style.actions">
 						<div :class="$style.rowActions">
-							<N8nIconButton
+							<N8nButton
 								v-if="isOwn(apiKey)"
-								icon="pencil"
-								type="tertiary"
-								size="medium"
-								:title="i18n.baseText('settings.api.actions.edit')"
+								variant="outline"
+								size="mini"
+								:label="i18n.baseText('settings.api.actions.edit')"
 								data-test-id="api-key-edit-action"
 								@click.stop="emit('edit', apiKey)"
 							/>
-							<N8nIconButton
-								icon="trash-2"
-								type="tertiary"
-								size="medium"
-								:title="i18n.baseText('settings.api.actions.revoke')"
+							<N8nButton
+								variant="outline"
+								size="mini"
+								:label="i18n.baseText('settings.api.actions.revoke')"
 								data-test-id="api-key-revoke-action"
 								@click.stop="emit('revoke', apiKey)"
 							/>
@@ -178,13 +176,13 @@ function onRowClick(apiKey: ApiKey) {
 }
 
 .actions {
-	width: 120px;
+	width: 160px;
 	text-align: right;
 }
 
 .rowActions {
 	display: flex;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
 	opacity: 0;
 	transition: opacity var(--transition--fast);
