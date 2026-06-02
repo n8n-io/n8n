@@ -61,6 +61,7 @@ export class AddSubAgentLinkageToAgentExecutionThreads1784000000022
 				);
 			}
 		} else if (isSqlite) {
+			// SQLite does not enforce varchar limits, but keep the declared schema in sync for documentation.
 			await this.widenSqliteDeclaredColumnTypes({ runQuery, tablePrefix });
 		}
 	}
