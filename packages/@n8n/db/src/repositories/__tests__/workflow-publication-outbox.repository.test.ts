@@ -106,7 +106,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 				const result = await repository.enqueue('wf-1', 'v-1');
 
 				expect(entityManager.query).toHaveBeenCalledTimes(1);
-				const [sql, params] = entityManager.query.mock.calls[0]!;
+				const [sql, params] = entityManager.query.mock.calls[0];
 				expect(sql).toContain('"workflow_publication_outbox"');
 				expect(sql).toContain('ON CONFLICT ("workflowId") WHERE "status" = \'pending\'');
 				expect(sql).toContain('DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId"');
@@ -170,12 +170,14 @@ describe('WorkflowPublicationOutboxRepository', () => {
 					status: 'in_progress',
 					errorMessage: null,
 				});
-				entityManager.query.mockResolvedValueOnce([claimed]);
+				// TypeORM's Postgres driver returns `[rows, affectedCount]` from a
+				// raw UPDATE ... RETURNING.
+				entityManager.query.mockResolvedValueOnce([[claimed], 1]);
 
 				const result = await repository.claimNextPendingRecord();
 
 				expect(entityManager.query).toHaveBeenCalledTimes(1);
-				const sql = entityManager.query.mock.calls[0]![0] as string;
+				const sql = entityManager.query.mock.calls[0][0];
 				expect(sql).toContain('"workflow_publication_outbox"');
 				expect(sql).toContain("'in_progress'");
 				expect(sql).toContain("'pending'");
@@ -185,7 +187,7 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			});
 
 			it('returns null when the claim query finds no pending row', async () => {
-				entityManager.query.mockResolvedValueOnce([]);
+				entityManager.query.mockResolvedValueOnce([[], 0]);
 
 				const result = await repository.claimNextPendingRecord();
 

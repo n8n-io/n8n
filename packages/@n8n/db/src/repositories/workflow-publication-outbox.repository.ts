@@ -29,8 +29,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// n8n's sqlite-pooled driver starts transactions with `BEGIN IMMEDIATE`,
 		// which acquires SQLite's RESERVED lock up front. That serializes
 		// concurrent callers and removes the find-then-update race.
-		return await this.manager.transaction((tx) =>
-			this.enqueueInTransaction(tx, workflowId, publishedVersionId),
+		return await this.manager.transaction(
+			async (tx) => await this.enqueueInTransaction(tx, workflowId, publishedVersionId),
 		);
 	}
 
@@ -90,13 +90,15 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			return await this.claimWithPostgresLocking();
 		}
 
-		return await this.manager.transaction((tx) => this.claimInTransaction(tx));
+		return await this.manager.transaction(async (tx) => await this.claimInTransaction(tx));
 	}
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
 		const tableName = this.metadata.tableName;
 
-		const result: WorkflowPublicationOutbox[] = await this.query(
+		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw
+		// UPDATE ... RETURNING (unlike INSERT, which returns the rows directly).
+		const [rows]: [WorkflowPublicationOutbox[], number] = await this.query(
 			// Ordering by id gives us FIFO behaviour: ids are monotonically
 			// assigned at insert, so oldest pending row is processed first.
 			`UPDATE "${tableName}"
@@ -111,7 +113,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			 RETURNING *`,
 		);
 
-		return result[0] ?? null;
+		return rows[0] ?? null;
 	}
 
 	private async claimInTransaction(mgr: EntityManager): Promise<WorkflowPublicationOutbox | null> {
