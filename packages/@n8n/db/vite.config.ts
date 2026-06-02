@@ -5,8 +5,9 @@ import ts from 'typescript';
 import { mergeConfig, type Plugin } from 'vite';
 
 /**
- * Vite plugin that transpiles this package's `src/**` TypeScript through the real
- * TypeScript compiler (a full `ts.LanguageService`, not single-file `transpileModule`).
+ * Vite plugin that transpiles this package's TypeORM entity files (`src/entities/**`)
+ * through the real TypeScript compiler (a full `ts.LanguageService`, not single-file
+ * `transpileModule`). Every other source file is left to Vite's fast oxc transform.
  *
  * TypeORM entities rely on `emitDecoratorMetadata` to derive column types from the
  * reflected `design:type`. For a string-literal union column (e.g.
@@ -16,10 +17,14 @@ import { mergeConfig, type Plugin } from 'vite';
  * `DataSource.initialize()`. Single-file `transpileModule` also emits `Object` because
  * it can't resolve the imported alias. A full Program is required, which mirrors the
  * old jest config that set `isolatedModules: false` for exactly this reason.
+ *
+ * Scoping to `src/entities/**` keeps the cost contained: only the ~50 entity files pay
+ * the tsc price (and the Program is rooted there), while DI `@Service` constructor
+ * metadata — which oxc emits correctly — keeps the fast path for the rest of `src`.
  */
 function tscDecoratorTransform(): Plugin {
 	const projectDir = __dirname;
-	const srcDir = path.resolve(projectDir, 'src') + path.sep;
+	const entitiesDir = path.resolve(projectDir, 'src', 'entities') + path.sep;
 	let emit: ((fileName: string) => { code: string; map: unknown } | null) | undefined;
 
 	function createEmitter() {
@@ -27,6 +32,10 @@ function tscDecoratorTransform(): Plugin {
 		if (!configPath) throw new Error('Could not find tsconfig.json for @n8n/db');
 		const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
 		const parsed = ts.parseJsonConfigFileContent(config, ts.sys, projectDir);
+		// Root the Program at the entity files only; their imported types (e.g. the union
+		// aliases in `types-db.ts`, related entities) are still resolved on demand via the
+		// host's snapshot reads, so cross-file metadata stays correct.
+		const rootFiles = parsed.fileNames.filter((f) => path.normalize(f).startsWith(entitiesDir));
 
 		const options: ts.CompilerOptions = {
 			...parsed.options,
@@ -50,7 +59,7 @@ function tscDecoratorTransform(): Plugin {
 		};
 
 		const versions = new Map<string, number>();
-		for (const f of parsed.fileNames) versions.set(path.normalize(f), 0);
+		for (const f of rootFiles) versions.set(path.normalize(f), 0);
 
 		const host: ts.LanguageServiceHost = {
 			getScriptFileNames: () => Array.from(versions.keys()),
@@ -85,7 +94,7 @@ function tscDecoratorTransform(): Plugin {
 		enforce: 'pre',
 		transform(_code, id) {
 			const file = id.split('?')[0];
-			if (!file.startsWith(srcDir) || !/\.tsx?$/.test(file)) return null;
+			if (!file.startsWith(entitiesDir) || !/\.tsx?$/.test(file)) return null;
 			emit ??= createEmitter();
 			const result = emit(file);
 			return result ? { code: result.code, map: result.map as never } : null;
