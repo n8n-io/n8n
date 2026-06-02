@@ -117,9 +117,6 @@ vi.mock('@/app/stores/workflows.store', async () => {
 			'123': true,
 		},
 		getExecution: vi.fn(),
-		setWorkflowExecutionData: vi.fn((execution: unknown) => {
-			storeState.workflowExecutionData = execution;
-		}),
 		setExecutionWaitingForWebhook: vi.fn((value: boolean) => {
 			storeState.executionWaitingForWebhook = value;
 		}),
@@ -127,15 +124,10 @@ vi.mock('@/app/stores/workflows.store', async () => {
 			storeState.chatPartialExecutionDestinationNode = value;
 		}),
 		clearExecutionStartedData: vi.fn(),
-		private: {
-			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
-				getStateStore().setActiveExecutionId(id);
-			}),
-		},
 	};
 
 	// Route activeExecutionId and previousExecutionId through the real state store
-	// so that writes via workflowState.setActiveExecutionId are visible here.
+	// so that writes via the execution-state store are visible here.
 	Object.defineProperty(storeState, 'activeExecutionId', {
 		get: () => getStateStore().activeExecutionId,
 		enumerable: true,
@@ -275,6 +267,8 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 
 let workflowState: WorkflowState;
 
+const getStateStore = () => useWorkflowExecutionStateStore(createWorkflowDocumentId('123'));
+
 describe('useRunWorkflow({ router })', () => {
 	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -314,7 +308,7 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	afterEach(() => {
-		workflowState.setActiveExecutionId(undefined);
+		getStateStore().setActiveExecutionId(undefined);
 		vi.clearAllMocks();
 	});
 
@@ -332,7 +326,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should use the passed-in workflowState when injection is unavailable', async () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(undefined as unknown as WorkflowState);
 
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(getStateStore(), 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router, workflowState });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -346,7 +340,7 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should successfully run a workflow', async () => {
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(getStateStore(), 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -378,7 +372,7 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should handle workflow run failure', async () => {
-			const setActiveExecutionId = vi.spyOn(workflowState, 'setActiveExecutionId');
+			const setActiveExecutionId = vi.spyOn(getStateStore(), 'setActiveExecutionId');
 			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -407,7 +401,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			workflowState.setActiveExecutionId('123');
+			getStateStore().setActiveExecutionId('123');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -785,7 +779,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(getStateStore(), 'setActiveExecution');
 
 			// ACT
 			const result = await runWorkflow({
@@ -834,7 +828,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(getStateStore(), 'setActiveExecution');
 
 			// ACT
 			const result = await runWorkflow({
@@ -881,7 +875,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [],
 			} as unknown as WorkflowData);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setWorkflowExecutionData = vi.spyOn(getStateStore(), 'setActiveExecution');
 
 			// Simulate failed execution start
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
@@ -1334,8 +1328,8 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				} as IExecutionResponse['data'],
 			};
-			const setActiveExecutionIdSpy = vi.spyOn(workflowState, 'setActiveExecutionId');
-			const setWorkflowExecutionDataSpy = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setActiveExecutionIdSpy = vi.spyOn(getStateStore(), 'setActiveExecutionId');
+			const setWorkflowExecutionDataSpy = vi.spyOn(getStateStore(), 'setActiveExecution');
 
 			// Stop API throws because the execution already finished server-side.
 			const { useExecutionsStore } = await import(
@@ -1348,7 +1342,7 @@ describe('useRunWorkflow({ router })', () => {
 			// getExecution returns the canonical finished snapshot (with id).
 			vi.spyOn(workflowsStore, 'getExecution').mockResolvedValue(finishedExecution);
 
-			workflowState.setActiveExecutionId('exec-fin');
+			getStateStore().setActiveExecutionId('exec-fin');
 
 			(mockDocumentStore as unknown as { getSnapshot: () => unknown }).getSnapshot = vi
 				.fn()
@@ -1400,7 +1394,7 @@ describe('useRunWorkflow({ router })', () => {
 				workflowsListStore.activeWorkflows.length,
 				'test-wf-id',
 			);
-			workflowState.setActiveExecutionId('test-exec-id');
+			getStateStore().setActiveExecutionId('test-exec-id');
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('123')).setExecutionWaitingForWebhook(
 				false,
 			);

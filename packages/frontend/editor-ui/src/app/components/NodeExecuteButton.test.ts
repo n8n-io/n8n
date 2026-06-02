@@ -348,7 +348,9 @@ describe('NodeExecuteButton', () => {
 			'get',
 		).mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
-		useWorkflowState().setActiveExecutionId('test-execution-id');
+		useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')).setActiveExecutionId(
+			'test-execution-id',
+		);
 		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),

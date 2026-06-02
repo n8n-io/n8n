@@ -557,7 +557,6 @@ describe('executionFinished', () => {
 			executingNode: {
 				lastAddedExecutingNode: 'test-node',
 			},
-			setActiveExecutionId: vi.fn(),
 		});
 
 		await executionFinished(
@@ -576,7 +575,9 @@ describe('executionFinished', () => {
 		);
 
 		// Verify that setActiveExecutionId was called with undefined
-		expect(workflowState.setActiveExecutionId).toHaveBeenCalledWith(undefined);
+		expect(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('1')).setActiveExecutionId,
+		).toHaveBeenCalledWith(undefined);
 
 		// Verify that processing was set to false
 		expect(setProcessingExecutionResultsSpy).toHaveBeenCalledWith(false);
@@ -623,7 +624,6 @@ describe('executionFinished', () => {
 				lastAddedExecutingNode: 'LastNode',
 				clearNodeExecutionQueue,
 			},
-			setActiveExecutionId: vi.fn(),
 		});
 
 		await executionFinished(

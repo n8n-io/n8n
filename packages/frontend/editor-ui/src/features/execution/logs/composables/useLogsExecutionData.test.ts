@@ -20,6 +20,8 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
 vi.mock('@/app/composables/useToast');
@@ -54,7 +56,9 @@ describe(useLogsExecutionData, () => {
 
 	describe('isEnabled', () => {
 		beforeEach(() => {
-			workflowState.setWorkflowExecutionData(
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setActiveExecution(
 				createTestWorkflowExecutionResponse({
 					data: createRunExecutionData({ resultData: { runData: { n0: [createTestTaskData()] } } }),
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
@@ -81,7 +85,9 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			workflowState.setWorkflowExecutionData(
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setActiveExecution(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
 					workflowData: createTestWorkflow({

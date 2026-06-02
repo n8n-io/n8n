@@ -12,6 +12,7 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'wf-1',
 		workflowExecutionData: null,
 		getNodeTypes: () => ({
 			getByName: () => undefined,
@@ -21,9 +22,9 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	useWorkflowState: () => ({
-		setWorkflowExecutionData: vi.fn(),
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
+		setActiveExecution: vi.fn(),
 	}),
 }));
 

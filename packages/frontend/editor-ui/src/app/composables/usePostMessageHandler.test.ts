@@ -5,6 +5,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -95,9 +97,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 function createMockWorkflowState(): WorkflowState {
-	return {
-		setWorkflowExecutionData: vi.fn(),
-	} as unknown as WorkflowState;
+	return {} as unknown as WorkflowState;
 }
 
 function dispatchPostMessage(payload: Record<string, unknown>) {
@@ -604,7 +604,10 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(mockExecutionData);
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(executionStateStore.setActiveExecution).toHaveBeenCalledWith(mockExecutionData);
 			expect(mockSetPinData).toHaveBeenCalledWith({});
 
 			cleanup();
