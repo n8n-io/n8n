@@ -87,6 +87,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		finalGroupPositions.set(node.id, { x: node.position.x, y: node.position.y });
 	}
 
+	// Clears only the group-keyed maps below; non-group nodes are never tracked
+	// here, so this is a no-op for them.
 	function reset() {
 		snapshots = new Map();
 		finalGroupPositions.clear();
@@ -106,12 +108,16 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function syncGroupBoundsFromMembers(draggedMemberIds: string[]) {
 		if (draggedMemberIds.length === 0) return;
 		const dragged = new Set(draggedMemberIds);
+
 		for (const group of deps.getAllGroups()) {
+			// Skip groups that don't contain any of the dragged nodes.
 			if (!group.nodeIds.some((id) => dragged.has(id))) continue;
+
 			const members = group.nodeIds
 				.map((id) => findNode(id))
 				.filter((n): n is GraphNode => n !== undefined);
 			if (members.length === 0) continue;
+
 			const rect: Rect = getRectOfNodes(members);
 			const vfId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`;
 			updateNode(vfId, (n) => ({
@@ -143,10 +149,15 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function onNodeDrag(event: NodeDragEvent) {
 		if (isMultiSelectDrag(event)) return;
 		const node = event.node;
+
+		// Group title bar: push the drag delta to its members
 		if (isCanvasNodeGroup(node)) {
 			applyDelta(node);
 			return;
 		}
+
+		// Regular node: if it's a member of some group, keep that group's
+		// title bar tracking the live rect
 		syncGroupBoundsFromMembers([node.id]);
 	}
 
@@ -164,6 +175,9 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 	function onSelectionDragStart(event: NodeDragEvent) {
 		reset();
+
+		// Snapshot each group title bar in the selection so applyDelta can
+		// compute member moves from a fixed baseline on every drag tick.
 		for (const node of event.nodes ?? []) {
 			if (isCanvasNodeGroup(node)) snapshotGroup(node);
 		}
@@ -171,13 +185,18 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 	function onSelectionDrag(event: NodeDragEvent) {
 		const memberIdsToSync: string[] = [];
+
 		for (const node of event.nodes ?? []) {
 			if (isCanvasNodeGroup(node)) {
+				// Group title bar: push the drag delta to its members
 				applyDelta(node);
 			} else {
+				// Regular node: collect for the post-loop sync below
 				memberIdsToSync.push(node.id);
 			}
 		}
+
+		// Keep any group whose members were dragged tracking the live rect
 		if (memberIdsToSync.length > 0) syncGroupBoundsFromMembers(memberIdsToSync);
 	}
 
