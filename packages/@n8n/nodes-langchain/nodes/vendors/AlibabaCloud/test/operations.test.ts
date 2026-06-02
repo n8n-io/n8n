@@ -179,8 +179,6 @@ describe('AlicloudModelStudio Operations', () => {
 		});
 
 		it('should route a text-only model to text-generation based on catalogue modality', async () => {
-			// qwen3.7-max is not matched by the name-based heuristic, so only the
-			// catalogue's modality data routes it to text-generation (not multimodal).
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				url: 'https://dashscope-intl.aliyuncs.com',
 				apiKey: 'test-key',

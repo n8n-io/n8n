@@ -192,10 +192,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 const TEXT_ONLY_PATTERNS = ['coder', 'math'];
 
-// Picks the DashScope endpoint from the model's actual input modalities: a model
-// that accepts non-text input (image/audio/video) needs the multimodal-generation
-// endpoint, otherwise text-generation. Falls back to a name-based heuristic when
-// the model is not in the catalogue (e.g. a manually typed id or fetch failure).
 async function isMultimodalModel(this: IExecuteFunctions, model: string): Promise<boolean> {
 	try {
 		const catalog = await fetchModelCatalog.call(this);
@@ -205,7 +201,7 @@ async function isMultimodalModel(this: IExecuteFunctions, model: string): Promis
 			return [...input].some((modality) => modality !== 'text');
 		}
 	} catch {
-		// Catalogue unavailable — fall back to the name-based heuristic below.
+		// Catalogue unavailable — fall back to the legacy heuristic below.
 	}
 
 	const lower = model.toLowerCase();

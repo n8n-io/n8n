@@ -37,24 +37,24 @@ const m = (model: string, request: string[], response: string[], name?: string):
 const TEXT_ONLY = m('qwen3.7-max', ['Text'], ['Text']);
 const TEXT_CODER = m('qwen-coder-turbo', ['Text'], ['Text']);
 const TEXT_DEEPSEEK = m('deepseek-v3', ['Text'], ['Text']);
-// Multimodal flagship: accepts images but still returns text-only output.
+// Multimodal models: accepts images but returns text-only output.
 const VL_FLASH = m('qwen3.5-flash', ['Text', 'Image', 'Video'], ['Text']);
 const VL_PLUS = m('qwen3-vl-plus', ['Image', 'Text', 'Video'], ['Text']);
 const VL_REASONING = m('qvq-72b-preview', ['Image'], ['Text']);
-// Omni model: returns text *and* audio, so it fits no single-modality action.
+// Omni model: can return text and / or  audio, so it fits no single-modality action.
 const OMNI = m('qwen3.5-omni-plus', ['Text', 'Image', 'Video', 'Audio'], ['Text', 'Audio']);
 const IMAGE_GEN = m('qwen-image', ['Text'], ['Image']);
 const IMAGE_TURBO = m('z-image-turbo', ['Text'], ['Image']);
 const IMAGE_EDIT = m('qwen-image-edit', ['Text', 'Image'], ['Image']);
 // Pure text-to-video.
 const T2V_HAPPY = m('happyhorse-1.0-t2v', ['Text'], ['Video']);
-// Text-to-video that also accepts an optional audio track (real wan modalities).
+// Text-to-video that also accepts an optional audio track.
 const T2V_AUDIO = m('wan2.6-t2v', ['Audio', 'Text'], ['Audio', 'Video']);
 const T2V_WAN27 = m('wan2.7-t2v', ['Audio', 'Text'], ['Video']);
 // Image-to-video, with an optional audio track.
 const I2V = m('wan2.6-i2v', ['Audio', 'Image', 'Text'], ['Audio', 'Video']);
 const I2V_REF = m('happyhorse-1.0-r2v', ['Image', 'Text'], ['Video']);
-// Video editing: requires video input, so it is neither text- nor image-to-video.
+// Video editing: requires video input.
 const VIDEO_EDIT = m('happyhorse-1.0-video-edit', ['Image', 'Video'], ['Video']);
 
 const allModels = [
@@ -78,8 +78,7 @@ const allModels = [
 
 /**
  * Mocks the paginated `/api/v1/models` endpoint. `pageSize` controls how many
- * models each simulated page returns, independent of the size the production
- * code requests — letting us exercise multi-page fetching with small fixtures.
+ * models each simulated page returns.
  */
 const setupMockModels = (models: ModelFixture[], pageSize = 100) => {
 	mockApiRequest.mockImplementation(
@@ -132,7 +131,6 @@ describe('AlibabaCloud listSearch', () => {
 			expect(values).toContain('qwen3.7-max');
 			expect(values).toContain('qwen-coder-turbo');
 			expect(values).toContain('deepseek-v3');
-			// Multimodal models that still return text-only output are valid for chat.
 			expect(values).toContain('qwen3.5-flash');
 			expect(values).toContain('qwen3-vl-plus');
 			// Excluded: media generators and mixed-output (omni) models.
@@ -174,7 +172,7 @@ describe('AlibabaCloud listSearch', () => {
 			// Text-only models cannot analyse images.
 			expect(values).not.toContain('qwen3.7-max');
 			expect(values).not.toContain('deepseek-v3');
-			// Image generators output images, not text.
+			// Image generators output images.
 			expect(values).not.toContain('qwen-image');
 			// Omni output is not text-only.
 			expect(values).not.toContain('qwen3.5-omni-plus');
@@ -224,10 +222,10 @@ describe('AlibabaCloud listSearch', () => {
 			const values = result.results.map((r) => r.value);
 			expect(values).toContain('wan2.6-i2v');
 			expect(values).toContain('happyhorse-1.0-r2v');
-			// Text-to-video models do not accept an image (audio extra is not enough).
+			// Text-to-video models do not accept an image.
 			expect(values).not.toContain('wan2.6-t2v');
 			expect(values).not.toContain('wan2.7-t2v');
-			// Video editing requires video input, which this operation cannot supply.
+			// Video editing requires video input.
 			expect(values).not.toContain('happyhorse-1.0-video-edit');
 			expect(values).not.toContain('qwen3.5-flash');
 		});
@@ -268,7 +266,6 @@ describe('AlibabaCloud listSearch', () => {
 			await visionModelSearch.call(mockLoadOptionsFunctions);
 			await imageGenerationModelSearch.call(mockLoadOptionsFunctions, 'qwen');
 
-			// One fetch total, despite three separate dropdown searches.
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
 		});
 

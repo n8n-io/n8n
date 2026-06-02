@@ -23,9 +23,7 @@ function isOnly(modalities: Set<string>, modality: string): boolean {
 }
 
 /**
- * Text chat: the operation sends text and reads text back. Any model that
- * accepts text input and returns text-only output works — including the
- * multimodal flagships, which use their extra input modalities optionally.
+ * Text chat: the operation sends text and reads text back.
  */
 const isTextModel: ModalityPredicate = (input, output) => input.has(TEXT) && isOnly(output, TEXT);
 
@@ -45,18 +43,14 @@ const isImageGenerationModel: ModalityPredicate = (input, output) =>
 
 /**
  * Text-to-video: the operation sends only a text prompt, so the model must
- * accept text input and produce video output, and must not *require* image or
- * video input — those are image-to-video / video-editing models the operation
- * can't feed. Extra optional inputs (e.g. audio) are fine, so we check for the
- * absence of image/video rather than demanding text-only input.
+ * accept text input and produce video output, Extra optional inputs (e.g. audio) are fine.
  */
 const isTextToVideoModel: ModalityPredicate = (input, output) =>
 	output.has(VIDEO) && input.has(TEXT) && !input.has(IMAGE) && !input.has(VIDEO);
 
 /**
  * Image-to-video: the operation sends an image (and optional prompt). The model
- * must accept image input and produce video output, but must not require video
- * input — that would be a video-editing model the operation can't feed.
+ * must accept image input and produce video output.
  */
 const isImageToVideoModel: ModalityPredicate = (input, output) =>
 	input.has(IMAGE) && !input.has(VIDEO) && output.has(VIDEO);
