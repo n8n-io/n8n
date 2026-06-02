@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useToast } from '@/app/composables/useToast';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import shared from '../styles/agent-panel.module.scss';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
@@ -46,15 +46,15 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const { showError } = useToast();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
+const projectId = useAgentProjectId(() => props.projectId);
+
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
+	projectId,
 );
-
-const projectId = computed(() => props.projectId ?? projectsStore.personalProject?.id ?? '');
 
 watch(
 	projectId,

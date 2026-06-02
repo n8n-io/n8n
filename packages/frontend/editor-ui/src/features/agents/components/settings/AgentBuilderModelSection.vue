@@ -5,12 +5,12 @@ import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
+import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useModelCatalog } from '../../composables/useModelCatalog';
 import {
 	type AgentModelOption,
@@ -23,16 +23,16 @@ import {
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const toast = useToast();
 const store = useAgentBuilderSettingsStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 
+const projectId = useAgentProjectId();
+
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
+	projectId,
 );
-
-const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 
 watch(
 	projectId,

@@ -6,9 +6,9 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
+import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { sanitizeModelId } from '../../utils/model-string';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useModelCatalog } from '../../composables/useModelCatalog';
 import {
 	type AgentModelProvider,
@@ -37,13 +37,14 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const credentialsStore = useCredentialsStore();
-const projectsStore = useProjectsStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+
+const projectId = useAgentProjectId(() => props.projectId);
+
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
+	projectId,
 );
-
-const projectId = computed(() => props.projectId ?? projectsStore.personalProject?.id ?? '');
 
 watch(
 	projectId,

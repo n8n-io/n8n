@@ -3,13 +3,13 @@ import { computed, ref, watch } from 'vue';
 import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 } from '../constants';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
+import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import AgentModelSelector from './AgentModelSelector.vue';
 import {
@@ -34,10 +34,11 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const projectId = useAgentProjectId();
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
+	projectId,
 );
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
@@ -56,7 +57,6 @@ const configuredMemoryModel = computed(() => {
 	);
 });
 const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
-const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 
 watch(
 	projectId,

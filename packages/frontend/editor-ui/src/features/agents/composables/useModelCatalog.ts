@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getModelCatalog, type ProviderCatalog, type ModelInfo } from './useAgentApi';
 import {
@@ -9,10 +9,10 @@ import {
 	type AgentModelsByProvider,
 } from '../model-providers';
 
-const catalog = ref<ProviderCatalog>({});
-let fetched = false;
-let fetchPromise: Promise<void> | null = null;
-const isLoading = ref(false);
+// The catalog is project-scoped (the API call is keyed by project), so cache and
+// de-duplicate in-flight requests per project rather than globally.
+const catalogByProject = ref<Record<string, ProviderCatalog>>({});
+const fetchPromises = new Map<string, Promise<void>>();
 
 function createEmptyModelsResponse(): AgentModelsByProvider {
 	const response: AgentModelsByProvider = {};
@@ -38,24 +38,35 @@ function toAgentModel(provider: AgentModelProvider, model: ModelInfo): AgentMode
 
 export function useModelCatalog() {
 	const rootStore = useRootStore();
+	const activeProjectId = ref<string | null>(null);
+	const isLoading = ref(false);
+
+	const catalog = computed<ProviderCatalog>(() =>
+		activeProjectId.value ? (catalogByProject.value[activeProjectId.value] ?? {}) : {},
+	);
 
 	async function ensureLoaded(projectId: string) {
-		if (fetched) return;
+		activeProjectId.value = projectId;
+		if (catalogByProject.value[projectId]) return;
+
+		let fetchPromise = fetchPromises.get(projectId);
 		if (!fetchPromise) {
-			isLoading.value = true;
 			fetchPromise = getModelCatalog(rootStore.restApiContext, projectId)
 				.then((result) => {
-					catalog.value = result;
-					fetched = true;
+					catalogByProject.value = { ...catalogByProject.value, [projectId]: result };
 				})
 				.catch(() => {
-					fetchPromise = null;
-				})
-				.finally(() => {
-					isLoading.value = false;
+					fetchPromises.delete(projectId);
 				});
+			fetchPromises.set(projectId, fetchPromise);
 		}
-		await fetchPromise;
+
+		isLoading.value = true;
+		try {
+			await fetchPromise;
+		} finally {
+			isLoading.value = false;
+		}
 	}
 
 	function getModelsForProvider(provider: string): ModelInfo[] {

@@ -1,8 +1,7 @@
 import { LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS } from '@/app/constants';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -29,10 +28,9 @@ function parseStoredCredentials(value: string): AgentCredentialsByProvider {
 	}
 }
 
-export function useAgentModelCredentials(userId: string) {
+export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGetter<string>) {
 	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
-	const projectStore = useProjectsStore();
 
 	const selectedCredentials = useLocalStorage<AgentCredentialsByProvider>(
 		LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS(userId),
@@ -93,13 +91,13 @@ export function useAgentModelCredentials(userId: string) {
 	}
 
 	watch(
-		() => projectStore.personalProject,
-		async (personalProject) => {
-			if (!personalProject) return;
+		() => toValue(projectId),
+		async (id) => {
+			if (!id) return;
 
 			await Promise.all([
 				credentialsStore.fetchCredentialTypes(false),
-				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: personalProject.id }),
+				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: id }),
 			]);
 
 			isInitialized.value = true;
