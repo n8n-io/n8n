@@ -16,7 +16,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
@@ -31,7 +30,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { dropRedactionPolicy, policyFromFloor, policyMeetsFloor } from './utils';
+import { clampPolicyToFloor, dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -269,7 +268,7 @@ export class WorkflowCreationService {
 		const hasIncoming = incomingPolicy !== undefined && incomingPolicy !== 'none';
 		const enforcementEnabled = isRedactionEnforcementEnabled();
 
-		// Nothing to validate, nothing to seed — skip the scope check entirely.
+		// Nothing to validate, nothing to clamp — skip the scope check entirely.
 		if (!hasIncoming && !enforcementEnabled) return;
 
 		const canUpdateRedaction = await userHasScopes(
@@ -285,29 +284,20 @@ export class WorkflowCreationService {
 			dropRedactionPolicy(newWorkflow);
 		}
 
-		if (!enforcementEnabled) return;
+		// Clamping (and seeding) is gated on the user's own enableRedaction scope —
+		// the floor shouldn't assign a policy a user couldn't have set themselves
+		// (no enableRedaction → no disableRedaction either). Execution-time
+		// enforcement applies regardless of what's persisted.
+		if (!enforcementEnabled || !canUpdateRedaction) return;
 
 		const floor = await this.instanceRedactionEnforcementService.get();
-
-		const survivingPolicy = newWorkflow.settings?.redactionPolicy;
-		if (survivingPolicy !== undefined && !policyMeetsFloor(survivingPolicy, floor)) {
-			throw new UnprocessableRequestError(
-				'Workflow redaction policy cannot be weaker than the instance floor.',
-			);
-		}
-
-		// Seed only for users who could have set the policy themselves — the floor
-		// shouldn't lock a workflow to a policy the user can't lift later (no
-		// enableRedaction → no disableRedaction either). Execution-time
-		// enforcement applies regardless of what's persisted.
-		if (canUpdateRedaction && newWorkflow.settings?.redactionPolicy === undefined) {
-			const seeded = policyFromFloor(floor);
-			if (seeded !== undefined) {
-				newWorkflow.settings = {
-					...(newWorkflow.settings ?? {}),
-					redactionPolicy: seeded,
-				};
-			}
+		const current = newWorkflow.settings?.redactionPolicy;
+		const clamped = clampPolicyToFloor(current, floor);
+		if (clamped !== current) {
+			newWorkflow.settings = {
+				...(newWorkflow.settings ?? {}),
+				redactionPolicy: clamped,
+			};
 		}
 	}
 }

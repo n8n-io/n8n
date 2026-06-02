@@ -1,62 +1,58 @@
 import { WorkflowEntity } from '@n8n/db';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { dropRedactionPolicy, policyFromFloor, policyMeetsFloor } from '@/workflows/utils';
+import { clampPolicyToFloor, dropRedactionPolicy } from '@/workflows/utils';
 
-describe('policyFromFloor', () => {
-	it('returns undefined when the floor is not enforced', () => {
-		expect(policyFromFloor({ enforced: false, production: false, manual: false })).toBeUndefined();
-		expect(policyFromFloor({ enforced: false, production: true, manual: true })).toBeUndefined();
+describe('clampPolicyToFloor', () => {
+	describe('when the floor is not enforced', () => {
+		it.each<WorkflowSettings.RedactionPolicy | undefined>([
+			undefined,
+			'none',
+			'manual-only',
+			'non-manual',
+			'all',
+		])('returns %s unchanged', (policy) => {
+			expect(
+				clampPolicyToFloor(policy, { enforced: false, production: false, manual: false }),
+			).toBe(policy);
+		});
 	});
 
-	it('returns undefined when nothing is required, even with enforcement on', () => {
-		expect(policyFromFloor({ enforced: true, production: false, manual: false })).toBeUndefined();
-	});
-
-	it('returns non-manual for a production-only floor', () => {
-		expect(policyFromFloor({ enforced: true, production: true, manual: false })).toBe('non-manual');
-	});
-
-	it('returns all when manual redaction is required', () => {
-		expect(policyFromFloor({ enforced: true, production: true, manual: true })).toBe('all');
-	});
-});
-
-describe('policyMeetsFloor', () => {
-	const policies: WorkflowSettings.RedactionPolicy[] = ['none', 'manual-only', 'non-manual', 'all'];
-
-	it('accepts any policy when the floor is not enforced', () => {
-		for (const policy of policies) {
-			expect(policyMeetsFloor(policy, { enforced: false, production: false, manual: false })).toBe(
-				true,
-			);
-		}
-	});
-
-	describe('with a production-only floor', () => {
-		it.each<[WorkflowSettings.RedactionPolicy, boolean]>([
-			['none', false],
-			['manual-only', false],
-			['non-manual', true],
-			['all', true],
-		])('policy %s → %s', (policy, expected) => {
-			expect(policyMeetsFloor(policy, { enforced: true, production: true, manual: false })).toBe(
+	describe('when the floor requires production redaction only', () => {
+		it.each<[WorkflowSettings.RedactionPolicy | undefined, WorkflowSettings.RedactionPolicy]>([
+			[undefined, 'non-manual'],
+			['none', 'non-manual'],
+			['manual-only', 'all'],
+			['non-manual', 'non-manual'],
+			['all', 'all'],
+		])('clamps %s → %s', (policy, expected) => {
+			expect(clampPolicyToFloor(policy, { enforced: true, production: true, manual: false })).toBe(
 				expected,
 			);
 		});
 	});
 
-	describe('with a production+manual floor', () => {
-		it.each<[WorkflowSettings.RedactionPolicy, boolean]>([
-			['none', false],
-			['manual-only', false],
-			['non-manual', false],
-			['all', true],
-		])('policy %s → %s', (policy, expected) => {
-			expect(policyMeetsFloor(policy, { enforced: true, production: true, manual: true })).toBe(
+	describe('when the floor requires production and manual redaction', () => {
+		it.each<[WorkflowSettings.RedactionPolicy | undefined, WorkflowSettings.RedactionPolicy]>([
+			[undefined, 'all'],
+			['none', 'all'],
+			['manual-only', 'all'],
+			['non-manual', 'all'],
+			['all', 'all'],
+		])('clamps %s → %s', (policy, expected) => {
+			expect(clampPolicyToFloor(policy, { enforced: true, production: true, manual: true })).toBe(
 				expected,
 			);
 		});
+	});
+
+	it('returns input unchanged when the floor is enforced but requires nothing', () => {
+		expect(
+			clampPolicyToFloor(undefined, { enforced: true, production: false, manual: false }),
+		).toBeUndefined();
+		expect(
+			clampPolicyToFloor('manual-only', { enforced: true, production: false, manual: false }),
+		).toBe('manual-only');
 	});
 });
 
