@@ -28,6 +28,10 @@ export class AgentChatSubscriptionRepository extends Repository<AgentChatSubscri
 		await this.delete({ ...scope, threadId });
 	}
 
+	async deleteForConnection(scope: AgentChatSubscriptionScope): Promise<void> {
+		await this.delete(scope);
+	}
+
 	async isSubscribed(scope: AgentChatSubscriptionScope, threadId: string): Promise<boolean> {
 		return await this.existsBy({ ...scope, threadId });
 	}

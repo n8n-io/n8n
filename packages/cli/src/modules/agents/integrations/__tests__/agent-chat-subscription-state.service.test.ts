@@ -353,4 +353,16 @@ describe('AgentChatSubscriptionStateService', () => {
 			expect.objectContaining({ threadId: 'thread-1', action: 'subscribe', error: 'redis down' }),
 		);
 	});
+
+	it('deletes persisted subscriptions for an integration connection', async () => {
+		const { service, repository } = makeService();
+
+		await service.deleteSubscriptionsForIntegration('agent-1', slackIntegration);
+
+		expect(repository.deleteForConnection).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			integrationType: 'slack',
+			credentialId: 'cred-1',
+		});
+	});
 });

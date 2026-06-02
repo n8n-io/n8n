@@ -211,6 +211,13 @@ export class AgentChatSubscriptionStateService {
 		return state;
 	}
 
+	async deleteSubscriptionsForIntegration(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		await this.repository.deleteForConnection(toScope(agentId, integration));
+	}
+
 	@OnPubSubEvent('agent-chat-subscription-changed', { instanceType: 'main' })
 	async handleSubscriptionChanged(
 		payload: PubSubCommandMap['agent-chat-subscription-changed'],

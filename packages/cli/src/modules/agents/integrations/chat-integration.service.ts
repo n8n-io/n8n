@@ -362,6 +362,17 @@ export class ChatIntegrationService {
 						`[ChatIntegrationService] Disconnect during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
+
+				try {
+					await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
+						agent.id,
+						integration,
+					);
+				} catch (error) {
+					this.logger.warn(
+						`[ChatIntegrationService] Subscription cleanup during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 			}
 		}
 

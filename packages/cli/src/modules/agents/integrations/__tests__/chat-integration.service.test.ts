@@ -69,6 +69,7 @@ function buildServiceWith(
 		agentRepository?: ReturnType<typeof mock<AgentRepository>>;
 		publisher?: ReturnType<typeof mock<Publisher>>;
 		projectRelationRepository?: ReturnType<typeof mock<ProjectRelationRepository>>;
+		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
@@ -76,6 +77,8 @@ function buildServiceWith(
 	const publisher = opts.publisher ?? mock<Publisher>();
 	const projectRelationRepository =
 		opts.projectRelationRepository ?? mock<ProjectRelationRepository>();
+	const chatSubscriptionStateService =
+		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
 	const globalConfig = mock<GlobalConfig>({
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
@@ -93,21 +96,29 @@ function buildServiceWith(
 		instanceSettings,
 		publisher,
 		globalConfig,
-		mock<AgentChatSubscriptionStateService>(),
+		chatSubscriptionStateService,
 	);
 
-	return { service, registry, agentRepository, publisher, projectRelationRepository };
+	return {
+		service,
+		registry,
+		agentRepository,
+		publisher,
+		projectRelationRepository,
+		chatSubscriptionStateService,
+	};
 }
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
 	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
+	let chatSubscriptionStateService: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	let connectSpy: jest.SpyInstance;
 	let disconnectSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		Container.reset();
-		({ service, projectRelationRepository } = buildServiceWith());
+		({ service, projectRelationRepository, chatSubscriptionStateService } = buildServiceWith());
 		connectSpy = jest.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
 	});
@@ -127,6 +138,17 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
 		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
+	it('deletes persisted subscriptions when an integration is removed', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(agent, [slackIntegration], []);
+
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			slackIntegration,
+		);
 	});
 
 	it('does not reconnect an already-live integration when republishing', async () => {
