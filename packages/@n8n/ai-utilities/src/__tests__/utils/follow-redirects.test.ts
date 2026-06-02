@@ -1,3 +1,5 @@
+import type { MockedFunction } from 'vitest';
+
 import { fetchFollowingRedirects } from 'src/utils/follow-redirects';
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -8,7 +10,7 @@ const makeResponse = (status: number, headers: Record<string, string> = {}, body
 const makeRedirect = (status: number, location: string): Response =>
 	makeResponse(status, { location });
 
-const mockFetcher = (): jest.MockedFunction<Fetcher> => jest.fn();
+const mockFetcher = (): MockedFunction<Fetcher> => vi.fn();
 
 describe('fetchFollowingRedirects', () => {
 	it('returns the response unchanged when there are no redirects', async () => {
@@ -46,7 +48,7 @@ describe('fetchFollowingRedirects', () => {
 		const fetcher = mockFetcher()
 			.mockResolvedValueOnce(makeRedirect(302, '/relative'))
 			.mockResolvedValueOnce(makeResponse(200));
-		const onBeforeHop = jest.fn();
+		const onBeforeHop = vi.fn();
 
 		await fetchFollowingRedirects(fetcher, 'https://example.com/start', undefined, {
 			onBeforeHop,
@@ -61,7 +63,7 @@ describe('fetchFollowingRedirects', () => {
 		const fetcher = mockFetcher().mockResolvedValueOnce(
 			makeRedirect(302, 'https://attacker.example'),
 		);
-		const onBeforeHop = jest.fn((url: string) => {
+		const onBeforeHop = vi.fn((url: string) => {
 			if (url.includes('attacker')) throw new Error('blocked');
 		});
 

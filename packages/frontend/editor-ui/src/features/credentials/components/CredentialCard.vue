@@ -5,6 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,6 +33,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 	MOVE: 'move',
+	DISCONNECT: 'disconnect',
 };
 
 const emit = defineEmits<{
@@ -53,6 +55,7 @@ const props = withDefaults(
 
 const locale = useI18n();
 const message = useMessage();
+const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -72,7 +75,8 @@ const isPrivateUnconnected = computed(
 	() =>
 		isDynamicCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
-		props.data.connectedByMe === false,
+		props.data.connectedByMe === false &&
+		credentialPermissions.value.update === true,
 );
 
 const isPrivateConnected = computed(
@@ -101,6 +105,13 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	if (isDynamicCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
+		items.push({
+			label: locale.baseText('credentials.item.disconnect'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT,
 		});
 	}
 
@@ -155,6 +166,9 @@ async function onAction(action: string) {
 		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
 			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT:
+			await disconnectResource();
+			break;
 	}
 }
 
@@ -173,6 +187,35 @@ async function deleteResource() {
 
 	if (deleteConfirmed === MODAL_CONFIRM) {
 		await credentialsStore.deleteCredential({ id: props.data.id });
+	}
+}
+
+async function disconnectResource() {
+	const confirmed = await message.confirm(
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.message', {
+			interpolate: { savedCredentialName: props.data.name },
+		}),
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.headline'),
+		{
+			confirmButtonText: locale.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.disconnectCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: props.data.id });
+		toast.showMessage({
+			title: locale.baseText('credentialEdit.credentialEdit.showMessage.disconnected.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			locale.baseText('credentialEdit.credentialEdit.showError.disconnectCredential.title'),
+		);
 	}
 }
 
