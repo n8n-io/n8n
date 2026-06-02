@@ -194,34 +194,41 @@ describe('SettingsApiView', () => {
 			rbacStore.hasScope.mockReturnValue(false);
 			settingsStore.isPublicApiEnabled = true;
 			apiKeysStore.apiKeys = [makeKey()];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 1;
 
 			renderComponent(SettingsApiView);
 
 			expect(screen.queryByTestId('api-keys-tabs')).toBeNull();
 		});
 
-		it('renders Mine/All tabs for admins and filters by tab', async () => {
+		it('renders Mine/All tabs with per-scope counts for admins', () => {
 			settingsStore.isPublicApiEnabled = true;
-			apiKeysStore.apiKeys = [
-				makeKey({ id: '1', label: 'admin-own', owner: ownerFixture }),
-				makeKey({
-					id: '2',
-					label: 'members-key',
-					owner: { id: 'u2', firstName: 'M', lastName: '', email: 'm@n8n.io' },
-				}),
-			];
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
 
 			renderComponent(SettingsApiView);
 
-			expect(screen.getByTestId('api-keys-tabs')).toBeInTheDocument();
-			// Default is the "Mine" tab — only the admin's own key is visible.
-			expect(screen.getByText('admin-own')).toBeInTheDocument();
-			expect(screen.queryByText('members-key')).toBeNull();
+			const tabs = screen.getByTestId('api-keys-tabs');
+			expect(tabs).toBeInTheDocument();
+			// Counts render as pills next to the label, populated from the store
+			// (server-side totals — independent of the current page).
+			expect(within(tabs).getByText('1')).toBeInTheDocument();
+			expect(within(tabs).getByText('2')).toBeInTheDocument();
+		});
 
-			// Switch to All.
-			await fireEvent.click(screen.getByText('All (2)'));
-			expect(screen.getByText('admin-own')).toBeInTheDocument();
-			expect(screen.getByText('members-key')).toBeInTheDocument();
+		it('switches ownership server-side when the user clicks a tab', async () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+
+			renderComponent(SettingsApiView);
+
+			await fireEvent.click(screen.getByText('All'));
+
+			expect(apiKeysStore.setOwnership).toHaveBeenCalledWith('all');
 		});
 	});
 });

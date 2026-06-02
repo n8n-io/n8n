@@ -1,4 +1,5 @@
 import type {
+	ApiKeyOwnership,
 	CreateApiKeyRequestDto,
 	UpdateApiKeyRequestDto,
 	ApiKeyList,
@@ -11,7 +12,7 @@ import { makeRestApiRequest } from '../utils';
 
 export async function getApiKeys(
 	context: IRestApiContext,
-	options: { take?: number; skip?: number } = {},
+	options: { take?: number; skip?: number; ownership?: ApiKeyOwnership } = {},
 ): Promise<ApiKeyList> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys', options);
 }

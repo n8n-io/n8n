@@ -4,7 +4,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
 import { computed, ref } from 'vue';
-import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type {
+	ApiKey,
+	ApiKeyOwnership,
+	CreateApiKeyRequestDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -13,6 +18,11 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
 	/** Total number of API keys on the server across every page, not the size of the current page. */
 	const apiKeysCount = ref(0);
+	/** Server-side ownership filter: 'mine' = caller's own keys, 'all' = every key on the instance. */
+	const ownership = ref<ApiKeyOwnership>('mine');
+	/** Cross-page totals per ownership filter, populated from the GET response. */
+	const mineCount = ref(0);
+	const allCount = ref(0);
 	const page = ref(1);
 	const pageSize = ref(DEFAULT_PAGE_SIZE);
 	const availableScopes = ref<ApiKeyScope[]>([]);
@@ -38,9 +48,12 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		const response = await publicApiApi.getApiKeys(rootStore.restApiContext, {
 			take: pageSize.value,
 			skip: (page.value - 1) * pageSize.value,
+			ownership: ownership.value,
 		});
 		apiKeys.value = response.items;
 		apiKeysCount.value = response.count;
+		mineCount.value = response.counts.mine;
+		allCount.value = response.counts.all;
 		return response;
 	};
 
@@ -51,6 +64,13 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const setPageSize = async (newPageSize: number) => {
 		pageSize.value = newPageSize;
+		page.value = 1;
+		await fetchApiKeys();
+	};
+
+	const setOwnership = async (newOwnership: ApiKeyOwnership) => {
+		if (ownership.value === newOwnership) return;
+		ownership.value = newOwnership;
 		page.value = 1;
 		await fetchApiKeys();
 	};
@@ -83,6 +103,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		fetchApiKeys,
 		setPage,
 		setPageSize,
+		setOwnership,
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
@@ -90,6 +111,9 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeysById,
 		apiKeys,
 		apiKeysCount,
+		ownership,
+		mineCount,
+		allCount,
 		page,
 		pageSize,
 		availableScopes,

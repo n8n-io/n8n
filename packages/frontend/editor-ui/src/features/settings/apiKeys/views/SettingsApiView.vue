@@ -47,8 +47,10 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { fetchApiKeys, setPage, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
-const { apiKeys, apiKeysCount, page, pageSize } = storeToRefs(apiKeysStore);
+const { fetchApiKeys, setPage, setOwnership, deleteApiKey, getApiKeyAvailableScopes } =
+	apiKeysStore;
+const { apiKeys, apiKeysCount, ownership, mineCount, allCount, page, pageSize } =
+	storeToRefs(apiKeysStore);
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
 
@@ -62,29 +64,29 @@ const revoking = ref(false);
 
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 
-const currentTab = ref<'mine' | 'all'>('mine');
-
-const ownApiKeys = computed(() =>
-	apiKeys.value.filter(
-		(key) => !key.owner || key.owner.id === usersStore.currentUser?.id,
-	),
-);
-
-const visibleApiKeys = computed(() => {
-	if (!canManageAllKeys.value) return ownApiKeys.value;
-	return currentTab.value === 'all' ? apiKeys.value : ownApiKeys.value;
-});
-
 const tabOptions = computed(() => [
 	{
-		label: `${i18n.baseText('settings.api.tabs.mine')} (${ownApiKeys.value.length})`,
+		label: i18n.baseText('settings.api.tabs.mine'),
 		value: 'mine' as const,
+		tag: String(mineCount.value),
 	},
 	{
-		label: `${i18n.baseText('settings.api.tabs.all')} (${apiKeys.value.length})`,
+		label: i18n.baseText('settings.api.tabs.all'),
 		value: 'all' as const,
+		tag: String(allCount.value),
 	},
 ]);
+
+async function onTabChange(newOwnership: 'mine' | 'all') {
+	try {
+		loading.value = true;
+		await setOwnership(newOwnership);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
 
 const onCreateApiKey = () => {
 	telemetry.track('User clicked create API key button');
@@ -171,7 +173,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
-			<N8nButton v-if="isPublicApiEnabled && apiKeys.length" size="large" @click="onCreateApiKey">
+			<N8nButton v-if="isPublicApiEnabled && allCount > 0" size="large" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
 		</div>
@@ -200,16 +202,17 @@ function onOpenScopes(apiKey: ApiKey) {
 		</p>
 
 		<N8nTabs
-			v-if="isPublicApiEnabled && canManageAllKeys && apiKeys.length"
-			v-model="currentTab"
+			v-if="isPublicApiEnabled && canManageAllKeys && allCount > 0"
+			:model-value="ownership"
 			:options="tabOptions"
 			data-test-id="api-keys-tabs"
 			:class="$style.tabs"
+			@update:model-value="onTabChange"
 		/>
 
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && visibleApiKeys.length"
-			:api-keys="visibleApiKeys"
+			v-if="isPublicApiEnabled && apiKeys.length"
+			:api-keys="apiKeys"
 			:current-user-id="usersStore.currentUser?.id"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
@@ -267,7 +270,7 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<N8nActionBox
-			v-if="isPublicApiEnabled && !apiKeys.length"
+			v-if="isPublicApiEnabled && allCount === 0"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"

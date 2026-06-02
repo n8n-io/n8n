@@ -1,4 +1,8 @@
-import { CreateApiKeyRequestDto, PaginationDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import {
+	CreateApiKeyRequestDto,
+	ListApiKeysQueryDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -63,14 +67,16 @@ export class ApiKeysController {
 	/**
 	 * Get API keys. The service returns every key on the instance for callers
 	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
-	 * everyone else.
+	 * everyone else. Callers with `apiKey:manage` can narrow to just their own
+	 * keys with `ownership=mine`.
 	 */
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
 			take: query.take,
 			skip: query.skip,
+			ownership: query.ownership,
 		});
 	}
 

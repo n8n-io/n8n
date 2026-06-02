@@ -27,9 +27,17 @@ export type ApiKey = {
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
 
+export type ApiKeyOwnership = 'mine' | 'all';
+
 export type ApiKeyList = {
 	items: ApiKey[];
 	count: number;
+	/**
+	 * Total per-scope counts. Always present, so callers can render Mine/All
+	 * tab badges without making a second request. For non-admins both numbers
+	 * are equal to `count`.
+	 */
+	counts: { mine: number; all: number };
 };
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

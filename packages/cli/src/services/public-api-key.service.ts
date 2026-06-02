@@ -51,20 +51,41 @@ export class PublicApiKeyService {
 	 * Retrieves a page of redacted API keys with owner info attached, ordered
 	 * by `createdAt` descending. Returns every key on the instance for callers
 	 * with `apiKey:manage` (owners and admins); otherwise scopes to the
-	 * caller's own keys. `count` is the total across all pages.
+	 * caller's own keys. Admins can narrow to their own keys with
+	 * `ownership: 'mine'`. `count` is the total across all pages for the
+	 * returned ownership filter; `counts` carries both totals so callers can
+	 * render Mine/All tab badges without a second request.
 	 */
-	async getRedactedApiKeys(caller: User, options: { take?: number; skip?: number } = {}) {
+	async getRedactedApiKeys(
+		caller: User,
+		options: { take?: number; skip?: number; ownership?: 'mine' | 'all' } = {},
+	) {
 		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
+		const includeOthers = canSeeAll && options.ownership !== 'mine';
+		const ownFilter = { userId: caller.id };
+
 		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({
-			where: { audience: API_KEY_AUDIENCE, ...(canSeeAll ? {} : { userId: caller.id }) },
+			where: { audience: API_KEY_AUDIENCE, ...(includeOthers ? {} : ownFilter) },
 			relations: { user: true },
 			order: { createdAt: 'DESC' },
 			take: options.take,
 			skip: options.skip,
 		});
+
+		const counts = canSeeAll
+			? {
+					mine: await this.apiKeyRepository.countBy({
+						audience: API_KEY_AUDIENCE,
+						...ownFilter,
+					}),
+					all: await this.apiKeyRepository.countBy({ audience: API_KEY_AUDIENCE }),
+				}
+			: { mine: count, all: count };
+
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			count,
+			counts,
 		};
 	}
 
