@@ -44,6 +44,7 @@ import {
 	RenameNodeCommand,
 	ReplaceNodeParametersCommand,
 } from '@/app/models/history';
+import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -485,6 +486,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const wasTrigger = nodeTypesStore.isTriggerNode(node.type);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -505,6 +508,12 @@ export function useCanvasOperations() {
 			if (trackBulk) {
 				historyStore.stopRecordingUndo();
 			}
+		}
+
+		// Removing a trigger node can flip private-credential validity on every
+		// other node — re-evaluate credential issues across the workflow.
+		if (wasTrigger) {
+			nodeHelpers.updateNodesCredentialsIssues();
 		}
 
 		trackDeleteNode(id);
@@ -905,6 +914,12 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
+
+			// Adding a trigger node can flip private-credential validity on every
+			// other node — re-evaluate credential issues across the workflow.
+			if (nodeTypesStore.isTriggerNode(nodeData.type)) {
+				nodeHelpers.updateNodesCredentialsIssues();
+			}
 
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
 			const nextView =
@@ -3131,7 +3146,8 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		const workflowData = await workflowState.getNewWorkflowData(
+		const workflowData = await workflowsApi.getNewWorkflowData(
+			rootStore.restApiContext,
 			name,
 			projectsStore.currentProjectId,
 		);

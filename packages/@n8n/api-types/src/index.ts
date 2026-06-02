@@ -312,7 +312,6 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -400,9 +399,6 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalToolCall,
-	InstanceAiEvalToolResult,
-	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
 
 export {
@@ -419,6 +415,12 @@ export {
 	StartTestRunRequestDto,
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';
+
+export {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+} from './schemas/mcp.schema';
 
 export {
 	EVAL_COLLECTIONS_FLAG,

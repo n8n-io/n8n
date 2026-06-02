@@ -26,7 +26,7 @@ import {
 import { ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
-import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 
 export function useDataSchema() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();

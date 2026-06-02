@@ -1,15 +1,20 @@
 import { Agent, ProxyAgent } from 'undici';
+import type { MockedFunction } from 'vitest';
 
 import { getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
 
 // Mock the dependencies
-jest.mock('undici', () => ({
-	Agent: jest.fn().mockImplementation((options) => ({ type: 'Agent', options })),
-	ProxyAgent: jest.fn().mockImplementation((options) => ({ type: 'ProxyAgent', options })),
+vi.mock('undici', () => ({
+	Agent: vi.fn(function (options) {
+		return { type: 'Agent', options };
+	}),
+	ProxyAgent: vi.fn(function (options) {
+		return { type: 'ProxyAgent', options };
+	}),
 }));
 
 // Mock global fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('getProxyAgent', () => {
 	// Store original environment variables
@@ -17,7 +22,7 @@ describe('getProxyAgent', () => {
 
 	// Reset environment variables before each test
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		delete process.env.HTTP_PROXY;
 		delete process.env.http_proxy;
@@ -245,11 +250,11 @@ describe('getProxyAgent', () => {
 describe('proxyFetch', () => {
 	// Store original environment variables
 	const originalEnv = { ...process.env };
-	const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+	const mockFetch = global.fetch as MockedFunction<typeof fetch>;
 
 	// Reset environment variables and mocks before each test
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		delete process.env.HTTP_PROXY;
 		delete process.env.http_proxy;

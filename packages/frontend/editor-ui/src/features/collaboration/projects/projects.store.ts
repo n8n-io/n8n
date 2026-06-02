@@ -164,26 +164,28 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
-		const { name, icon, description } = projectData;
+		const { name, icon, description, customTelemetryTags } = projectData;
 		const payload: UpdateProjectDto = {};
 		if (name !== undefined) payload.name = name;
 		if (icon !== undefined) payload.icon = icon;
 		if (description !== undefined) payload.description = description;
+		if (customTelemetryTags !== undefined) payload.customTelemetryTags = customTelemetryTags;
 		await projectsApi.updateProject(rootStore.restApiContext, id, payload);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {
-			if (nm !== undefined) myProjects.value[projectIndex].name = nm;
-			if (ic !== undefined) myProjects.value[projectIndex].icon = ic;
-			if (desc !== undefined) myProjects.value[projectIndex].description = desc;
+			if (name !== undefined) myProjects.value[projectIndex].name = name;
+			if (icon !== undefined) myProjects.value[projectIndex].icon = icon;
+			if (description !== undefined) myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
-			if (nm !== undefined) currentProject.value.name = nm;
-			if (ic !== undefined) currentProject.value.icon = ic;
-			if (desc !== undefined) currentProject.value.description = desc;
+			if (name !== undefined) currentProject.value.name = name;
+			if (icon !== undefined) currentProject.value.icon = icon;
+			if (description !== undefined) currentProject.value.description = description;
+			if (customTelemetryTags !== undefined)
+				currentProject.value.customTelemetryTags = customTelemetryTags;
 		}
-		if (nm !== undefined) {
-			useFavoritesStore().renameFavorite(id, 'project', nm);
+		if (name !== undefined) {
+			useFavoritesStore().renameFavorite(id, 'project', name);
 		}
 	};
 

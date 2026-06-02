@@ -12,7 +12,6 @@ const mockAgentInstances: Array<{
 
 const mockMemoryBuilder = {
 	storage: jest.fn(),
-	lastMessages: jest.fn(),
 	observationalMemory: jest.fn(),
 	build: jest.fn(),
 };
@@ -60,6 +59,7 @@ jest.mock('../../tools', () => ({
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
+				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: jest.fn(
@@ -67,7 +67,6 @@ jest.mock('../../tools', () => ({
 			new Map([
 				['plan', mockBuiltTool(`plan-${context.runId}`)],
 				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['build-workflow-with-agent', mockBuiltTool(`build-${context.runId}`)],
 				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
 				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
 			]),
@@ -143,11 +142,9 @@ describe('createInstanceAgent', () => {
 		Agent.mockClear();
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
-		mockMemoryBuilder.lastMessages.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},
-			lastMessages: 20,
 		});
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
@@ -155,9 +152,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
-		const memoryConfig = {
-			lastMessages: 20,
-		} as never;
+		const memoryConfig = {} as never;
 
 		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
@@ -181,21 +176,18 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
+		const secondRunAttachedTools = getAttachedTools(1);
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-run-1']).toMatchObject({ name: 'build-run-1' });
+		expect(attachedTools['build-workflow-run-1']).toMatchObject({
+			name: 'build-workflow-run-1',
+		});
 		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(mockAgentInstances[0]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-1' })]),
-			{ search: { topK: 5 } },
-		);
-		expect(mockAgentInstances[1]?.deferredTool).toHaveBeenCalledWith(
-			expect.arrayContaining([expect.objectContaining({ name: 'nodes-run-2' })]),
-			{ search: { topK: 5 } },
-		);
+		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
+		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -211,7 +203,7 @@ describe('createInstanceAgent', () => {
 				runId: 'checkpoint-run',
 				isCheckpointFollowUp: true,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -221,15 +213,37 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
 			name: 'complete-checkpoint-checkpoint-run',
 		});
-		expect(attachedTools['executions-checkpoint-run']).toMatchObject({
-			name: 'executions-checkpoint-run',
-		});
 		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
-		expect(deferredTools['executions-checkpoint-run']).toBeUndefined();
+	});
+
+	it('keeps workflow-builder skill tool names always loaded', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'builder-skill-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'builder-skill-run',
+			},
+			memoryConfig: { lastMessages: 20 },
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+			const scopedName = `${toolName}-builder-skill-run`;
+			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
+			expect(deferredTools[scopedName]).toBeUndefined();
+		}
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
@@ -271,7 +285,7 @@ describe('createInstanceAgent', () => {
 					wrapTools: jest.fn((tools: unknown) => tools),
 				},
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -315,7 +329,7 @@ describe('createInstanceAgent', () => {
 				runId: 'skills-test',
 				runtimeSkills,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -362,7 +376,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: jest.fn().mockReturnValue([]),
 		};
@@ -404,7 +418,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -446,7 +460,6 @@ describe('createInstanceAgent', () => {
 			},
 			memory: memoryStore,
 			memoryConfig: {
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 30_000,
 					reflectorThresholdTokens: 40_000,
@@ -457,7 +470,6 @@ describe('createInstanceAgent', () => {
 
 		expect(Memory).toHaveBeenCalledTimes(1);
 		expect(mockMemoryBuilder.storage).toHaveBeenCalledWith(memoryStore);
-		expect(mockMemoryBuilder.lastMessages).toHaveBeenCalledWith(15);
 		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
 			observerThresholdTokens: 30_000,
 			reflectorThresholdTokens: 40_000,

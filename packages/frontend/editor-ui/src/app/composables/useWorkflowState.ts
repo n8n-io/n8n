@@ -1,10 +1,8 @@
-import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import { WorkflowStateKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
@@ -12,16 +10,12 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
 } from '@/features/execution/executions/executions.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import type { INewWorkflowData } from '@/Interface';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
@@ -29,7 +23,6 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const workflowStateStore = useWorkflowStateStore();
-	const rootStore = useRootStore();
 
 	////
 	// Workflow editing state
@@ -65,34 +58,6 @@ export function useWorkflowState() {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId)).setActiveExecutionId(
 			id,
 		);
-	}
-
-	async function getNewWorkflowData(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		let workflowData: { name: string; settings: IWorkflowSettings } = {
-			name: '',
-			settings: { ...DEFAULT_SETTINGS },
-		};
-		try {
-			const data: IDataObject = {
-				name,
-				projectId,
-				parentFolderId,
-			};
-
-			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.restApiContext,
-				isEmpty(data) ? undefined : data,
-			);
-		} catch (e) {
-			// in case of error, default to original name
-			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-		}
-
-		return workflowData;
 	}
 
 	////
@@ -171,7 +136,6 @@ export function useWorkflowState() {
 		resetState,
 		setWorkflowExecutionData,
 		setActiveExecutionId,
-		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,

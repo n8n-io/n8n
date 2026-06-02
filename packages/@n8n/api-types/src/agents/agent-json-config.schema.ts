@@ -1,6 +1,6 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationSchema } from './agent-integration.schema';
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
 const SemanticRecallSchema = z.object({
 	topK: z.number().int().min(1).max(100),
@@ -29,7 +29,7 @@ export const AgentModelSchema = z
 
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim().min(1),
+	credential: z.string().trim(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -49,7 +49,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim().min(1),
+		credential: z.string().trim(),
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -60,7 +60,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
 	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
@@ -77,6 +76,16 @@ const WebSearchConfigSchema = z.object({
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
 	credential: z.string().optional(),
 });
+
+const SubAgentConfigSchema = z.object({
+	agentId: z.string().trim().min(1),
+});
+
+const SubAgentsConfigSchema = z
+	.object({
+		agents: z.array(SubAgentConfigSchema).optional(),
+	})
+	.strict();
 
 const NodeToolCredentialSchema = z.object({
 	id: z.string(),
@@ -98,6 +107,15 @@ const AgentJsonSkillConfigSchema = z.object({
 		.string()
 		.min(1)
 		.regex(/^[A-Za-z0-9_-]+$/),
+});
+
+const AgentJsonTaskConfigSchema = z.object({
+	type: z.literal('task'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[A-Za-z0-9_-]+$/),
+	enabled: z.boolean(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([
@@ -232,10 +250,12 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
+	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationSchema).optional(),
+	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -276,11 +296,13 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
 export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
@@ -315,4 +337,8 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 	return config?.nodeTools?.enabled === true;
+}
+
+export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
+	return (subAgents?.agents?.length ?? 0) > 0;
 }

@@ -177,6 +177,45 @@ describe('CredentialsController', () => {
 			expect(eventName).toBe('credentials-created');
 			expect(eventPayload).toMatchObject({ jweEnabled: true });
 		});
+
+		it('should emit "private-credential-created" when credential is created as resolvable', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload();
+			req.body = newCredentialsPayload;
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes({
+				...payloadWithoutData,
+				isResolvable: true,
+			});
+			const project = mock<Project>({ id: 'p1', type: 'team' });
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(project);
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-created', {
+				user: req.user,
+				credentialType: createdCredentials.type,
+				credentialId: createdCredentials.id,
+				projectId: project.id,
+				projectType: project.type,
+			});
+		});
+
+		it('should not emit "private-credential-created" when credential is not resolvable', async () => {
+			const newCredentialsPayload = createNewCredentialsPayload();
+			req.body = newCredentialsPayload;
+			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
+
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
+			findCredentialOwningProjectSpy.mockResolvedValue(mock<Project>());
+
+			await credentialsController.createCredentials(req, res, newCredentialsPayload);
+
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-created');
+		});
 	});
 
 	describe('updateCredentials', () => {
@@ -585,6 +624,130 @@ describe('CredentialsController', () => {
 				decryptedExistingData: { apiKey: 'regular-key' },
 			});
 			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('should emit "private-credential-toggled-to-private" when toggling static to private', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { apiKey: 'k' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const staticCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: false,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...staticCredential, isResolvable: true });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-toggled-to-private', {
+				user: ownerReq.user,
+				credentialType: staticCredential.type,
+				credentialId: staticCredential.id,
+			});
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-toggled-to-static');
+		});
+
+		it('should emit "private-credential-toggled-to-static" when toggling private to static', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { apiKey: 'k' }, isResolvable: false },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: false });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-toggled-to-static', {
+				user: ownerReq.user,
+				credentialType: privateCredential.type,
+				credentialId: privateCredential.id,
+			});
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
+		});
+
+		it('should not emit toggle events when resolvable state is unchanged', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { apiKey: 'k' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
+			expect(emittedEventNames).not.toContain('private-credential-toggled-to-static');
+		});
+	});
+
+	describe('deleteCredentials', () => {
+		const credentialId = 'cred-del-1';
+
+		it('should emit "private-credential-deleted" when deleting a resolvable credential', async () => {
+			const privateCredential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'gmailOAuth2',
+				isResolvable: true,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+
+			const deleteReq = {
+				user: { id: 'u1' },
+				params: { credentialId },
+			} as unknown as CredentialRequest.Delete;
+
+			await credentialsController.deleteCredentials(deleteReq);
+
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-deleted', {
+				user: deleteReq.user,
+				credentialType: privateCredential.type,
+				credentialId: privateCredential.id,
+			});
+		});
+
+		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
+			const staticCredential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'gmailOAuth2',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
+			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+
+			const deleteReq = {
+				user: { id: 'u1' },
+				params: { credentialId },
+			} as unknown as CredentialRequest.Delete;
+
+			await credentialsController.deleteCredentials(deleteReq);
+
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
 	});
 });

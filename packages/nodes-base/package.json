@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -380,6 +380,7 @@
       "dist/credentials/TravisCiApi.credentials.js",
       "dist/credentials/TrellixEpoApi.credentials.js",
       "dist/credentials/TrelloApi.credentials.js",
+      "dist/credentials/TrelloOAuth1Api.credentials.js",
       "dist/credentials/TwakeCloudApi.credentials.js",
       "dist/credentials/TwakeServerApi.credentials.js",
       "dist/credentials/TwilioApi.credentials.js",
@@ -966,7 +967,7 @@
     "rrule": "2.8.1",
     "rss-parser": "3.13.0",
     "sanitize-html": "2.12.1",
-    "semver": "7.5.4",
+    "semver": "catalog:",
     "showdown": "2.1.0",
     "simple-git": "catalog:",
     "snowflake-sdk": "2.1.0",

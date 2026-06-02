@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -33,7 +33,7 @@
     "test:unit": "vitest run",
     "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --watch",
-    "mutate": "node scripts/mutate.mjs"
+    "mutate": "node ../../scripts/mutation-health/mutate.mjs --package-dir packages/workflow"
   },
   "files": [
     "dist/**/*"
