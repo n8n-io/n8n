@@ -26,6 +26,8 @@ import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import ProjectSelect from './components/ProjectSelect.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -35,6 +37,8 @@ const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.input.placeholder';
 
 const store = useInstanceAiStore();
+const projectsStore = useProjectsStore();
+const selectedProject = ref(projectsStore.personalProject.id);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
@@ -123,7 +127,13 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						@submit="handleSubmit"
-					/>
+					>
+						<template #footer>
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
 			</div>
 			<div v-else :class="$style.emptyLayout">
@@ -141,7 +151,13 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						:is-submitting="isStartingThread"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
-					/>
+					>
+						<template #footer>
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
 			</div>
 		</div>
@@ -149,6 +165,18 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 </template>
 
 <style lang="scss" module>
+.inputFooter {
+	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
+	padding-bottom: var(--spacing--2xs);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--sm);
+
+	margin-top: calc(-1 * var(--radius--xl));
+	background-color: var(--color--neutral-150);
+	border-bottom-left-radius: var(--radius--xl);
+	border-bottom-right-radius: var(--radius--xl);
+}
+
 .chatArea {
 	flex: 1;
 	display: flex;
