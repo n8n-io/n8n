@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { WorkflowPublicationOutbox } from '../entities/workflow-publication-outbox';
 
@@ -26,12 +26,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			return await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
 		}
 
-		// n8n's sqlite-pooled driver starts transactions with `BEGIN IMMEDIATE`,
-		// which acquires SQLite's RESERVED lock up front. That serializes
-		// concurrent callers and removes the find-then-update race.
-		return await this.manager.transaction(
-			async (tx) => await this.enqueueInTransaction(tx, workflowId, publishedVersionId),
-		);
+		return await this.enqueueWithSqliteTransaction(workflowId, publishedVersionId);
 	}
 
 	private async enqueueWithPostgresUpsert(
@@ -52,28 +47,32 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		return result[0];
 	}
 
-	private async enqueueInTransaction(
-		mgr: EntityManager,
+	// n8n's sqlite-pooled driver starts transactions with `BEGIN IMMEDIATE`,
+	// which acquires SQLite's RESERVED lock up front. That serializes concurrent
+	// callers and removes the find-then-update race.
+	private async enqueueWithSqliteTransaction(
 		workflowId: string,
 		publishedVersionId: string,
 	): Promise<WorkflowPublicationOutbox> {
-		const existing = await mgr.findOne(WorkflowPublicationOutbox, {
-			where: { workflowId, status: 'pending' },
+		return await this.manager.transaction(async (tx) => {
+			const existing = await tx.findOne(WorkflowPublicationOutbox, {
+				where: { workflowId, status: 'pending' },
+			});
+
+			if (existing) {
+				await tx.update(WorkflowPublicationOutbox, existing.id, { publishedVersionId });
+				existing.publishedVersionId = publishedVersionId;
+				return existing;
+			}
+
+			return await tx.save(
+				tx.create(WorkflowPublicationOutbox, {
+					workflowId,
+					publishedVersionId,
+					status: 'pending',
+				}),
+			);
 		});
-
-		if (existing) {
-			await mgr.update(WorkflowPublicationOutbox, existing.id, { publishedVersionId });
-			existing.publishedVersionId = publishedVersionId;
-			return existing;
-		}
-
-		return await mgr.save(
-			mgr.create(WorkflowPublicationOutbox, {
-				workflowId,
-				publishedVersionId,
-				status: 'pending',
-			}),
-		);
 	}
 
 	/**
@@ -90,7 +89,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			return await this.claimWithPostgresLocking();
 		}
 
-		return await this.manager.transaction(async (tx) => await this.claimInTransaction(tx));
+		return await this.claimWithSqliteTransaction();
 	}
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
@@ -116,19 +115,21 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		return rows[0] ?? null;
 	}
 
-	private async claimInTransaction(mgr: EntityManager): Promise<WorkflowPublicationOutbox | null> {
-		// Ordering by id gives us FIFO behaviour: ids are monotonically
-		// assigned at insert, so oldest pending row is processed first.
-		const record = await mgr.findOne(WorkflowPublicationOutbox, {
-			where: { status: 'pending' },
-			order: { id: 'ASC' },
+	private async claimWithSqliteTransaction(): Promise<WorkflowPublicationOutbox | null> {
+		return await this.manager.transaction(async (tx) => {
+			// Ordering by id gives us FIFO behaviour: ids are monotonically
+			// assigned at insert, so oldest pending row is processed first.
+			const record = await tx.findOne(WorkflowPublicationOutbox, {
+				where: { status: 'pending' },
+				order: { id: 'ASC' },
+			});
+
+			if (!record) return null;
+
+			await tx.update(WorkflowPublicationOutbox, record.id, { status: 'in_progress' });
+			record.status = 'in_progress';
+			return record;
 		});
-
-		if (!record) return null;
-
-		await mgr.update(WorkflowPublicationOutbox, record.id, { status: 'in_progress' });
-		record.status = 'in_progress';
-		return record;
 	}
 
 	/** Mark a claimed record as successfully processed. */
