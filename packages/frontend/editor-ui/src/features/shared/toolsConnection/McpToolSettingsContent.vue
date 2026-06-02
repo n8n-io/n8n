@@ -104,9 +104,11 @@ function handleSave() {
 					>
 						<div :class="$style.option">
 							<span :class="$style.optionLabel">{{ opt.label }}</span>
-							<span v-if="opt.description" :class="$style.optionDescription">{{
-								opt.description
-							}}</span>
+							<span
+								v-if="opt.description"
+								v-n8n-html="opt.description"
+								:class="$style.optionDescription"
+							/>
 						</div>
 					</N8nOption>
 				</N8nSelect>
@@ -133,9 +135,11 @@ function handleSave() {
 					>
 						<div :class="$style.option">
 							<span :class="$style.optionLabel">{{ opt.label }}</span>
-							<span v-if="opt.description" :class="$style.optionDescription">{{
-								opt.description
-							}}</span>
+							<span
+								v-if="opt.description"
+								v-n8n-html="opt.description"
+								:class="$style.optionDescription"
+							/>
 						</div>
 					</N8nOption>
 				</N8nSelect>
