@@ -54,6 +54,7 @@ describe('createBuildWorkflowTool', () => {
 			runId: 'run-1',
 			workflowService: {
 				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -85,6 +86,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(resolveCredentials).toHaveBeenCalled();
 		expect(stripStaleCredentialsFromWorkflow).toHaveBeenCalled();
 		expect(ensureWebhookIds).toHaveBeenCalled();
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
 		expect(result).toMatchObject({
 			success: true,
 			workflowId: 'wf-1',
@@ -108,5 +110,49 @@ describe('createBuildWorkflowTool', () => {
 		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
 		expect(succeededUpdate?.result).toBe('Created workflow "Generated workflow" (wf-1).');
 		expect(succeededUpdate?.outcome).toMatchObject({ workItemId: 'wi-1', workflowId: 'wf-1' });
+	});
+
+	it('keeps the build successful when main workflow promotion fails', async () => {
+		const warn = jest.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: jest.fn(async () => {
+					await Promise.resolve();
+					throw new Error('temporary marker cleanup failed');
+				}),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				workflowTaskService: {
+					reportBuildOutcome: jest.fn(
+						async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
+					),
+				},
+				plannedTaskService: {
+					markSucceeded: jest.fn(async () => await Promise.resolve(null)),
+				},
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, { code: 'workflow code' });
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
+		expect(warn).toHaveBeenCalledWith(
+			'Failed to clear AI-builder temporary marker on main workflow wf-1: temporary marker cleanup failed',
+		);
 	});
 });

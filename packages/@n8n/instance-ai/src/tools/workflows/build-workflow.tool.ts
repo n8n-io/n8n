@@ -288,6 +288,20 @@ async function reportWorkflowBuildOutcome(
 	}
 }
 
+// Clear the AI-builder temporary marker from the main workflow so run-finish
+// cleanup only reaps scratch artifacts, not the saved deliverable.
+async function promoteMainWorkflow(context: InstanceAiContext, workflowId: string): Promise<void> {
+	try {
+		await context.workflowService.clearAiTemporary(workflowId);
+	} catch (error) {
+		context.logger?.warn(
+			`Failed to clear AI-builder temporary marker on main workflow ${workflowId}: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+		);
+	}
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// Keeps the last code submitted (or patched) so patches work even before save,
 	// and always match the LLM's own code — not a roundtripped version.
@@ -528,6 +542,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						summary,
 					});
 
+					await promoteMainWorkflow(context, savedId);
 					await reportWorkflowBuildOutcome(context, outcome);
 
 					return {
