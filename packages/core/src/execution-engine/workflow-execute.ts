@@ -1433,6 +1433,8 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					await workflow.expression.acquireIsolate();
+
 					// Establish the execution context
 					await establishExecutionContext(
 						workflow,
@@ -2269,6 +2271,13 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					try {
+						await workflow.expression.releaseIsolate();
+					} catch (error) {
+						Container.get(ErrorReporter).error(error);
+					}
 				});
 
 			return await returnPromise.then(resolve);
