@@ -154,6 +154,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
 			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
 		});
+
+		it('preserves selection when this title bar is part of it (multi-select group drag)', () => {
+			// baseGroup.id === 'g1' → VueFlow id is 'group:g1'.
+			selectedNodesRef.value = [{ id: 'group:g1' }, { id: 'group:g2' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('selection visual', () => {

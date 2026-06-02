@@ -12,6 +12,7 @@ import {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_ID_PREFIX,
 	type CanvasGroupViewState,
 } from '../../../canvas.types';
 
@@ -95,13 +96,24 @@ watch(
 
 const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
 
-// Clear any pre-existing selection before VueFlow's drag handler
-// snapshots which nodes to drag
+// Clear unrelated pre-existing selection before VueFlow snapshots which
+// nodes to drag — otherwise those nodes ride along with the group drag.
+// Preserve the selection when this title bar is itself part of it
+// (intentional multi-select drag).
 function onWrapperPointerDown(event: PointerEvent) {
+	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
+
 	const selected = getSelectedNodes.value;
-	if (selected.length > 0) removeSelectedNodes(selected);
+	if (selected.length === 0) return;
+
+	// Multi-select drag that includes this title bar → preserve the selection.
+	const myVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.value.id}`;
+	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
+	if (isPartOfSelection) return;
+
+	removeSelectedNodes(selected);
 }
 </script>
 
