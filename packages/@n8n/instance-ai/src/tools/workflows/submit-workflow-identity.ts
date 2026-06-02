@@ -129,19 +129,20 @@ export function wrapSubmitExecuteWithIdentity(
 	const pending = new Map<string, Promise<string>>();
 
 	/**
-	 * Diagnostic data captured from the most recent failed submit, so that
-	 * short-circuited blocked responses can carry the *real* failure context
-	 * instead of just the remediation guidance text. Without this, the AI sees
-	 * a generic "stop editing" message on every follow-up attempt and loses the
-	 * actual error that triggered the block.
+	 * Diagnostic data captured from the most recent failed submit for each
+	 * resolved path, so that short-circuited blocked responses can carry the
+	 * *real* failure context instead of just the remediation guidance text.
+	 * Without this, the AI sees a generic "stop editing" message on every
+	 * follow-up attempt and loses the actual error that triggered the block.
 	 */
-	let lastFailedDiagnostic:
-		| {
-				errors?: string[];
-				errorDetails?: SubmitWorkflowErrorDetail[];
-				nodeIndex?: Array<{ index: number; name: string }>;
-		  }
-		| undefined;
+	const lastFailedDiagnosticByPath = new Map<
+		string,
+		{
+			errors?: string[];
+			errorDetails?: SubmitWorkflowErrorDetail[];
+			nodeIndex?: Array<{ index: number; name: string }>;
+		}
+	>();
 
 	function recordTerminalRemediation(
 		workflowId: string | undefined,
@@ -165,17 +166,18 @@ export function wrapSubmitExecuteWithIdentity(
 	): SubmitWorkflowOutput {
 		const guarded = options.budgetTracker?.applyToOutput(path, output) ?? output;
 		if (!guarded.success) {
-			lastFailedDiagnostic = {
+			lastFailedDiagnosticByPath.set(path, {
 				errors: guarded.errors,
 				errorDetails: guarded.errorDetails,
 				nodeIndex: guarded.nodeIndex,
-			};
+			});
 		}
 		recordTerminalRemediation(guarded.workflowId ?? fallbackWorkflowId, guarded.remediation);
 		return guarded;
 	}
 
 	async function blockedByTerminalRemediation(
+		resolvedPath: string,
 		workflowId: string | undefined,
 	): Promise<SubmitWorkflowOutput | undefined> {
 		const terminalRemediation =
@@ -191,6 +193,7 @@ export function wrapSubmitExecuteWithIdentity(
 			reason: terminalRemediation.reason,
 		});
 
+		const lastFailedDiagnostic = lastFailedDiagnosticByPath.get(resolvedPath);
 		const hasRealErrors =
 			lastFailedDiagnostic?.errors !== undefined && lastFailedDiagnostic.errors.length > 0;
 		return {
@@ -204,7 +207,7 @@ export function wrapSubmitExecuteWithIdentity(
 
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
-		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
+		const terminalResult = await blockedByTerminalRemediation(resolvedPath, input.workflowId);
 		if (terminalResult) return terminalResult;
 
 		const existing = pending.get(resolvedPath);
@@ -214,7 +217,10 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
-				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
+				const terminalAfterFailure = await blockedByTerminalRemediation(
+					resolvedPath,
+					input.workflowId,
+				);
 				if (terminalAfterFailure) return terminalAfterFailure;
 
 				const message = error instanceof Error ? error.message : String(error);
@@ -230,7 +236,7 @@ export function wrapSubmitExecuteWithIdentity(
 					}),
 				};
 			}
-			const terminalAfterWait = await blockedByTerminalRemediation(boundId);
+			const terminalAfterWait = await blockedByTerminalRemediation(resolvedPath, boundId);
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });

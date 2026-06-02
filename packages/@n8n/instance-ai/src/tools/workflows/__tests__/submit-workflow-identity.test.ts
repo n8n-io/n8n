@@ -346,6 +346,70 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		});
 	});
 
+	it('scopes captured diagnostics per filePath so a blocked response never leaks another file errors', async () => {
+		// A failure for the main file must not surface its errors/errorDetails/nodeIndex
+		// when a *different* file is short-circuited by terminal remediation. The block
+		// for the chunk path has no real failure of its own, so it falls back to guidance.
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+			guidance: 'Stop editing.',
+		});
+		const mainFailure: SubmitWorkflowOutput = {
+			success: false,
+			errors: ['Workflow save failed: nodes[9].position invalid_type'],
+			errorDetails: [
+				{
+					path: 'nodes[9].position',
+					code: 'invalid_type',
+					message: 'Expected tuple, received null',
+					offendingValue: null,
+					nodeJson: { name: 'Manual Trigger (temp)', type: 'n8n-nodes-base.manualTrigger' },
+				},
+			],
+			nodeIndex: [{ index: 9, name: 'Manual Trigger (temp)' }],
+			remediation,
+		};
+		const execute = jest
+			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+			.mockResolvedValueOnce(mainFailure);
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+			onTerminalRemediation: (recorded) => {
+				terminalRemediation = recorded;
+			},
+		});
+
+		// Main file fails and records its diagnostic + arms terminal remediation.
+		await wrapped({ filePath: MAIN_PATH });
+
+		// A submit for the chunk path is now short-circuited by the terminal
+		// remediation. It must NOT inherit the main file's errors.
+		const blockedChunk = await wrapped({ filePath: CHUNK_PATH });
+		expect(blockedChunk).toMatchObject({
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+		expect(blockedChunk.errorDetails).toBeUndefined();
+		expect(blockedChunk.nodeIndex).toBeUndefined();
+
+		// The main file's own blocked follow-up still carries its real diagnostics.
+		const blockedMain = await wrapped({ filePath: MAIN_PATH });
+		expect(blockedMain).toMatchObject({
+			success: false,
+			errors: mainFailure.errors,
+			errorDetails: mainFailure.errorDetails,
+			nodeIndex: mainFailure.nodeIndex,
+			remediation,
+		});
+
+		// Only the first real dispatch ran; both later calls were short-circuited.
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
 	it('falls back to remediation guidance when no prior failure was captured', async () => {
 		// If a terminal remediation appears before any submit attempt has run
 		// (e.g. carried over from a different code path), there's no real error
