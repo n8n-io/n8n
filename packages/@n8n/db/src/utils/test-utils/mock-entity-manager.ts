@@ -1,5 +1,5 @@
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Class } from 'n8n-core';
 
 import { mockInstance } from './mock-instance';
