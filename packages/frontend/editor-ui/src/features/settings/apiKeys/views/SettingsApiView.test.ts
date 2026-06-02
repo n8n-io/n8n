@@ -137,36 +137,6 @@ describe('SettingsApiView', () => {
 		assertHintsAreShown();
 	});
 
-	it('hides the pagination when there is one page or fewer of keys', () => {
-		settingsStore.isPublicApiEnabled = true;
-		cloudStore.userIsTrialing = false;
-		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
-		apiKeysStore.apiKeysCount = 1;
-		apiKeysStore.pageSize = 10;
-
-		renderComponent(SettingsApiView);
-
-		expect(screen.queryByTestId('api-keys-pagination')).not.toBeInTheDocument();
-	});
-
-	it('shows the pagination and switches pages when there are more keys than fit on one page', async () => {
-		settingsStore.isPublicApiEnabled = true;
-		cloudStore.userIsTrialing = false;
-		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
-		apiKeysStore.apiKeysCount = 25;
-		apiKeysStore.pageSize = 10;
-		apiKeysStore.page = 1;
-
-		renderComponent(SettingsApiView);
-
-		const pagination = screen.getByTestId('api-keys-pagination');
-		expect(pagination).toBeInTheDocument();
-
-		await fireEvent.click(within(pagination).getByText('2'));
-
-		expect(apiKeysStore.setPage).toHaveBeenCalledWith(2);
-	});
-
 	it('shows the revoke confirm dialog when the revoke action is clicked', async () => {
 		settingsStore.isPublicApiEnabled = true;
 		cloudStore.userIsTrialing = false;

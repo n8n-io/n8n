@@ -19,6 +19,7 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 import {
 	N8nActionBox,
@@ -26,7 +27,6 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
-	N8nPagination,
 	N8nTabs,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
@@ -51,19 +51,26 @@ const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
 const {
 	fetchApiKeys,
-	setPage,
 	setOwnership,
 	setLabelFilter,
+	setTableOptions,
 	deleteApiKey,
 	getApiKeyAvailableScopes,
 } = apiKeysStore;
-const { apiKeys, apiKeysCount, ownership, labelFilter, mineCount, allCount, page, pageSize } =
+const { apiKeys, apiKeysCount, ownership, labelFilter, mineCount, allCount } =
 	storeToRefs(apiKeysStore);
+
+const tableOptions = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [],
+});
 
 const searchQuery = ref(labelFilter.value);
 
 const onSearch = useDebounceFn(async (value: string) => {
 	try {
+		tableOptions.value.page = 0;
 		await setLabelFilter(value.trim());
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
@@ -103,7 +110,19 @@ const tabOptions = computed(() => [
 async function onTabChange(newOwnership: 'mine' | 'all') {
 	try {
 		loading.value = true;
+		tableOptions.value.page = 0;
 		await setOwnership(newOwnership);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+async function onTableUpdate(opts: TableOptions) {
+	try {
+		loading.value = true;
+		await setTableOptions(opts);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -140,17 +159,6 @@ async function getApiKeysAndScopes() {
 	try {
 		loading.value = true;
 		await Promise.all([fetchApiKeys(), getApiKeyAvailableScopes()]);
-	} catch (error) {
-		showError(error, i18n.baseText('settings.api.view.error'));
-	} finally {
-		loading.value = false;
-	}
-}
-
-async function onPageChange(newPage: number) {
-	try {
-		loading.value = true;
-		await setPage(newPage);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -259,27 +267,17 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && apiKeys.length"
+			v-if="isPublicApiEnabled && allCount > 0"
+			v-model:table-options="tableOptions"
 			:api-keys="apiKeys"
+			:items-length="apiKeysCount"
 			:current-user-id="usersStore.currentUser?.id"
+			:class="$style.table"
 			@edit="onEdit"
 			@revoke="onRevokeRequest"
 			@open-scopes="onOpenScopes"
+			@update:options="onTableUpdate"
 		/>
-
-		<div
-			v-if="isPublicApiEnabled && apiKeys.length && apiKeysCount > pageSize"
-			:class="$style.footer"
-		>
-			<N8nPagination
-				:current-page="page"
-				:page-size="pageSize"
-				:total="apiKeysCount"
-				layout="total, prev, pager, next"
-				data-test-id="api-keys-pagination"
-				@current-change="onPageChange"
-			/>
-		</div>
 
 		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -359,11 +357,7 @@ function onOpenScopes(apiKey: ApiKey) {
 	flex-direction: column;
 }
 
-.footer {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	margin-top: var(--spacing--sm);
+.table {
 	margin-bottom: var(--spacing--lg);
 }
 

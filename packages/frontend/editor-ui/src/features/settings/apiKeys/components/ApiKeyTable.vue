@@ -1,13 +1,17 @@
 <script lang="ts" setup>
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { N8nButton, N8nDataTableServer, N8nText } from '@n8n/design-system';
+
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 
 const props = defineProps<{
 	apiKeys: ApiKey[];
+	itemsLength: number;
 	/** When set, Edit is only offered for keys owned by this user. */
 	currentUserId?: string;
 }>();
@@ -16,7 +20,12 @@ const emit = defineEmits<{
 	edit: [apiKey: ApiKey];
 	revoke: [apiKey: ApiKey];
 	'open-scopes': [apiKey: ApiKey];
+	'update:options': [payload: TableOptions];
 }>();
+
+const tableOptions = defineModel<TableOptions>('tableOptions', {
+	default: () => ({}),
+});
 
 const i18n = useI18n();
 
@@ -35,135 +44,94 @@ function isOwn(apiKey: ApiKey): boolean {
 	return apiKey.owner?.id === props.currentUserId;
 }
 
-function onRowClick(apiKey: ApiKey) {
-	if (isOwn(apiKey)) emit('edit', apiKey);
-	else emit('revoke', apiKey);
+function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
+	if (isOwn(payload.item)) emit('edit', payload.item);
+	else emit('revoke', payload.item);
 }
+
+const rows = computed(() => props.apiKeys);
+
+const headers = ref<Array<TableHeader<ApiKey>>>([
+	{ title: i18n.baseText('settings.api.columns.name'), key: 'label' },
+	{ title: i18n.baseText('settings.api.columns.owner'), key: 'owner', disableSort: true },
+	{ title: i18n.baseText('settings.api.columns.scopes'), key: 'scopes' },
+	// `expiresAt` is decoded from the JWT, not a column — sorting would need a DB migration.
+	{
+		title: i18n.baseText('settings.api.columns.expiration'),
+		key: 'expiresAt',
+		disableSort: true,
+	},
+	{ title: i18n.baseText('settings.api.columns.lastUsed'), key: 'lastUsedAt' },
+	{
+		title: '',
+		key: 'actions',
+		align: 'end',
+		width: 160,
+		disableSort: true,
+		value: () => undefined,
+	},
+]);
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="api-key-table">
-		<table :class="$style.table">
-			<thead>
-				<tr>
-					<th>{{ i18n.baseText('settings.api.columns.name') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.owner') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.scopes') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.expiration') }}</th>
-					<th>{{ i18n.baseText('settings.api.columns.lastUsed') }}</th>
-					<th :class="$style.actions"></th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr
-					v-for="apiKey in apiKeys"
-					:key="apiKey.id"
-					:class="$style.row"
-					data-test-id="api-key-row"
-					:data-key-id="apiKey.id"
-					@click="onRowClick(apiKey)"
-				>
-					<td>
-						<div :class="$style.name">
-							<N8nText bold size="small">{{ apiKey.label }}</N8nText>
-							<N8nText size="xsmall" color="text-light" :class="$style.redacted">
-								{{ apiKey.apiKey }}
-							</N8nText>
-						</div>
-					</td>
-					<td>
-						<ApiKeyOwnerCell
-							v-if="apiKey.owner"
-							:owner="apiKey.owner"
-							:is-current-user="isOwn(apiKey)"
-						/>
-					</td>
-					<td>
-						<ApiKeyScopesCell :api-key="apiKey" @open="emit('open-scopes', $event)" />
-					</td>
-					<td>
-						<N8nText size="small">{{ formatExpiration(apiKey.expiresAt) }}</N8nText>
-					</td>
-					<td>
-						<N8nText size="small" :color="apiKey.lastUsedAt ? undefined : 'text-light'">
-							{{ formatLastUsed(apiKey.lastUsedAt) }}
-						</N8nText>
-					</td>
-					<td :class="$style.actions">
-						<div :class="$style.rowActions">
-							<N8nButton
-								v-if="isOwn(apiKey)"
-								variant="outline"
-								size="mini"
-								:label="i18n.baseText('settings.api.actions.edit')"
-								data-test-id="api-key-edit-action"
-								@click.stop="emit('edit', apiKey)"
-							/>
-							<N8nButton
-								variant="outline"
-								size="mini"
-								:label="i18n.baseText('settings.api.actions.revoke')"
-								data-test-id="api-key-revoke-action"
-								@click.stop="emit('revoke', apiKey)"
-							/>
-						</div>
-					</td>
-				</tr>
-			</tbody>
-		</table>
+	<div data-test-id="api-key-table">
+		<N8nDataTableServer
+			v-model:sort-by="tableOptions.sortBy"
+			v-model:page="tableOptions.page"
+			v-model:items-per-page="tableOptions.itemsPerPage"
+			:headers="headers"
+			:items="rows"
+			:items-length="itemsLength"
+			:page-sizes="[10, 25, 50]"
+			@update:options="emit('update:options', $event)"
+			@click:row="onRowClick"
+		>
+			<template #[`item.label`]="{ item }">
+				<div :class="$style.name">
+					<N8nText bold size="small">{{ item.label }}</N8nText>
+					<N8nText size="xsmall" color="text-light" :class="$style.redacted">
+						{{ item.apiKey }}
+					</N8nText>
+				</div>
+			</template>
+			<template #[`item.owner`]="{ item }">
+				<ApiKeyOwnerCell v-if="item.owner" :owner="item.owner" :is-current-user="isOwn(item)" />
+			</template>
+			<template #[`item.scopes`]="{ item }">
+				<ApiKeyScopesCell :api-key="item" @open="emit('open-scopes', $event)" />
+			</template>
+			<template #[`item.expiresAt`]="{ item }">
+				<N8nText size="small">{{ formatExpiration(item.expiresAt) }}</N8nText>
+			</template>
+			<template #[`item.lastUsedAt`]="{ item }">
+				<N8nText size="small" :color="item.lastUsedAt ? undefined : 'text-light'">
+					{{ formatLastUsed(item.lastUsedAt) }}
+				</N8nText>
+			</template>
+			<template #[`item.actions`]="{ item }">
+				<div :class="$style.rowActions">
+					<N8nButton
+						v-if="isOwn(item)"
+						variant="outline"
+						size="mini"
+						:label="i18n.baseText('settings.api.actions.edit')"
+						data-test-id="api-key-edit-action"
+						@click.stop="emit('edit', item)"
+					/>
+					<N8nButton
+						variant="outline"
+						size="mini"
+						:label="i18n.baseText('settings.api.actions.revoke')"
+						data-test-id="api-key-revoke-action"
+						@click.stop="emit('revoke', item)"
+					/>
+				</div>
+			</template>
+		</N8nDataTableServer>
 	</div>
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	border: 1px solid var(--color--foreground);
-	border-radius: var(--radius);
-	overflow: hidden;
-	background-color: var(--color--background--light-3);
-}
-
-.table {
-	width: 100%;
-	border-collapse: separate;
-	border-spacing: 0;
-	font-size: var(--font-size--sm);
-
-	thead {
-		background-color: var(--color--background--light-1);
-		border-bottom: 1px solid var(--color--foreground);
-
-		th {
-			text-align: left;
-			padding: var(--spacing--2xs) var(--spacing--sm);
-			font-weight: var(--font-weight--bold);
-			font-size: var(--font-size--2xs);
-			color: var(--color--text--shade-1);
-			border-bottom: 1px solid var(--color--foreground);
-		}
-	}
-
-	tbody tr {
-		background-color: var(--color--background--light-3);
-
-		&:not(:last-child) td {
-			border-bottom: 1px solid var(--color--foreground);
-		}
-
-		&:hover {
-			background-color: var(--color--background--light-2);
-		}
-	}
-
-	td {
-		padding: var(--spacing--2xs) var(--spacing--sm);
-		vertical-align: middle;
-	}
-}
-
-.row {
-	cursor: pointer;
-}
-
 .name {
 	display: flex;
 	flex-direction: column;
@@ -175,21 +143,9 @@ function onRowClick(apiKey: ApiKey) {
 	font-family: var(--font-family--monospace);
 }
 
-.actions {
-	width: 160px;
-	text-align: right;
-}
-
 .rowActions {
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: flex-end;
-	opacity: 0;
-	transition: opacity var(--transition--fast);
-}
-
-.row:hover .rowActions,
-.row:focus-within .rowActions {
-	opacity: 1;
 }
 </style>

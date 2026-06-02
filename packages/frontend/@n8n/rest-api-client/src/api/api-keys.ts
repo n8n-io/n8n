@@ -17,6 +17,7 @@ export async function getApiKeys(
 		skip?: number;
 		ownership?: ApiKeyOwnership;
 		label?: string;
+		sortBy?: string[];
 	} = {},
 ): Promise<ApiKeyList> {
 	return await makeRestApiRequest(context, 'GET', '/api-keys', options);

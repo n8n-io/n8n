@@ -10,7 +10,7 @@ import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Raw, type EntityManager } from '@n8n/typeorm';
+import { Raw, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -69,6 +69,7 @@ export class PublicApiKeyService {
 			skip?: number;
 			ownership?: 'mine' | 'all';
 			label?: string;
+			sortBy?: string[];
 		} = {},
 	) {
 		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
@@ -83,13 +84,15 @@ export class PublicApiKeyService {
 			: {};
 		const baseWhere = { audience: API_KEY_AUDIENCE, ...labelFilter };
 
-		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({
-			where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) },
-			relations: { user: true },
-			order: { createdAt: 'DESC' },
-			take: options.take,
-			skip: options.skip,
-		});
+		const qb = this.apiKeyRepository
+			.createQueryBuilder('apiKey')
+			.leftJoinAndSelect('apiKey.user', 'user')
+			.setFindOptions({ where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) } });
+		this.applyApiKeyListSort(qb, options.sortBy);
+		if (options.take !== undefined) qb.take(options.take);
+		if (options.skip !== undefined) qb.skip(options.skip);
+
+		const [apiKeys, count] = await qb.getManyAndCount();
 
 		// For non-admins the `mine` and `all` totals are identical, so we
 		// reuse `count` and skip the extra COUNT query.
@@ -106,6 +109,38 @@ export class PublicApiKeyService {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			counts,
 		};
+	}
+
+	/**
+	 * Apply `field:asc|desc` entries from the query. The default order
+	 * (`createdAt DESC`) lands as a stable tie-breaker so newest keys
+	 * surface first whenever the caller's sort runs out of distinguishing
+	 * values. Sorting by `scopes` is a count sort — `simple-array` columns
+	 * are stored as CSV, so we count commas + 1 (and special-case the empty
+	 * string) in portable SQL.
+	 */
+	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string[]) {
+		const scopesCountExpr =
+			"CASE WHEN apiKey.scopes = '' THEN 0 ELSE LENGTH(apiKey.scopes) - LENGTH(REPLACE(apiKey.scopes, ',', '')) + 1 END";
+		let scopesCountSelected = false;
+		const seen = new Set<string>();
+
+		for (const entry of sortBy ?? []) {
+			const [field, order] = entry.split(':');
+			const direction = order?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+			if (field === 'scopes') {
+				if (!scopesCountSelected) {
+					qb.addSelect(scopesCountExpr, 'scopes_count');
+					scopesCountSelected = true;
+				}
+				qb.addOrderBy('scopes_count', direction);
+			} else {
+				qb.addOrderBy(`apiKey.${field}`, direction);
+			}
+			seen.add(field);
+		}
+
+		if (!seen.has('createdAt')) qb.addOrderBy('apiKey.createdAt', 'DESC');
 	}
 
 	/**

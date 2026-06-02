@@ -584,6 +584,44 @@ describe('Pagination', () => {
 	});
 });
 
+describe('Sorting', () => {
+	test('GET /api-keys sorts by label asc when sortBy=label:asc', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['gamma', 'alpha', 'beta']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const response = await agent.get('/api-keys?sortBy=label:asc').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['alpha', 'beta', 'gamma']);
+	});
+
+	test('GET /api-keys sorts by scope count when sortBy=scopes:desc', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		await agent
+			.post('/api-keys')
+			.send({ label: 'one-scope', expiresAt: null, scopes: ['workflow:create'] });
+		await agent.post('/api-keys').send({
+			label: 'three-scopes',
+			expiresAt: null,
+			scopes: ['workflow:create', 'workflow:read', 'workflow:delete'],
+		});
+		await agent.post('/api-keys').send({
+			label: 'two-scopes',
+			expiresAt: null,
+			scopes: ['workflow:create', 'workflow:read'],
+		});
+
+		const response = await agent.get('/api-keys?sortBy=scopes:desc').expect(200);
+
+		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
+		expect(labels).toEqual(['three-scopes', 'two-scopes', 'one-scope']);
+	});
+});
+
 describe('Cross-user behavior (admin scope)', () => {
 	test("GET /api-keys returns every user's keys for an owner", async () => {
 		const ownerWithKey = await createOwnerWithApiKey();

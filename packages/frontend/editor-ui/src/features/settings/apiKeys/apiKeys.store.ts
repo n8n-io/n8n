@@ -29,6 +29,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	);
 	const page = ref(1);
 	const pageSize = ref(DEFAULT_PAGE_SIZE);
+	/** Server-side sort: `field:asc|desc` entries applied in order. Empty array = default (createdAt DESC). */
+	const sortBy = ref<string[]>([]);
 	const availableScopes = ref<ApiKeyScope[]>([]);
 
 	const rootStore = useRootStore();
@@ -55,6 +57,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 			skip: (page.value - 1) * pageSize.value,
 			ownership: ownership.value,
 			...(trimmed ? { label: trimmed } : {}),
+			...(sortBy.value.length ? { sortBy: sortBy.value } : {}),
 		});
 		apiKeys.value = response.items;
 		mineCount.value = response.counts.mine;
@@ -84,6 +87,24 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		if (labelFilter.value === newFilter) return;
 		labelFilter.value = newFilter;
 		page.value = 1;
+		await fetchApiKeys();
+	};
+
+	/**
+	 * Atomically apply a new page / page-size / sort triple. Used by the
+	 * N8nDataTableServer-backed view to react to a single `update:options`
+	 * event without firing three back-to-back fetches. Accepts the DTS
+	 * shape (0-indexed page, `{ id, desc }` sort) and converts to the
+	 * store's wire format (1-indexed page, `'field:asc|desc'` strings).
+	 */
+	const setTableOptions = async (opts: {
+		page: number;
+		itemsPerPage: number;
+		sortBy: Array<{ id: string; desc: boolean }>;
+	}) => {
+		page.value = opts.page + 1;
+		pageSize.value = opts.itemsPerPage;
+		sortBy.value = opts.sortBy.map(({ id, desc }) => `${id}:${desc ? 'desc' : 'asc'}`);
 		await fetchApiKeys();
 	};
 
@@ -117,6 +138,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		setPageSize,
 		setOwnership,
 		setLabelFilter,
+		setTableOptions,
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
@@ -130,6 +152,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		allCount,
 		page,
 		pageSize,
+		sortBy,
 		availableScopes,
 	};
 });
