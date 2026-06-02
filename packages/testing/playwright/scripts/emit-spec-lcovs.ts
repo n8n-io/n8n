@@ -16,7 +16,10 @@ import { CoverageReport } from 'monocart-coverage-reports';
 import { coverageOptions } from '../coverage-options';
 
 const BASE = coverageOptions.outputDir ?? './coverage';
-const BY_SPEC_RAW = join(BASE, '.by-spec');
+// Sibling of BASE (matches the fixture) — the shard report's generate() cleans
+// BASE, so the per-spec raw must live outside it. Output lcovs go under BASE,
+// written after that generate has already run.
+const BY_SPEC_RAW = `${BASE.replace(/\/+$/, '')}-by-spec`;
 const OUT_DIR = join(BASE, 'by-spec');
 
 async function main() {
