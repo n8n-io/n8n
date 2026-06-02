@@ -17,14 +17,13 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { createSlackAgentApp, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
-import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
@@ -90,7 +89,6 @@ const pendingNewCredentialType = ref<string | null>(null);
 
 const linearCopiedField = ref<'oauthCallback' | 'webhook' | null>(null);
 
-const SCHEDULE_ICON: IconName = 'clock';
 const LINEAR_APP_SETUP_URL = 'https://linear.app/settings/api/applications/new';
 const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
@@ -121,7 +119,6 @@ function toIconName(icon: string): IconName {
 
 const selectedIcon = computed<IconName | null>(() => {
 	if (!selectedTriggerType.value) return null;
-	if (selectedTriggerType.value === AGENT_SCHEDULE_TRIGGER_TYPE) return SCHEDULE_ICON;
 	const icon = currentIntegration.value?.icon;
 	return icon ? toIconName(icon) : null;
 });
@@ -189,37 +186,8 @@ function emitConnectedTriggers() {
 }
 
 async function fetchStatus() {
-	await fetchStatusShared([
-		...integrations.value.map((integration) => integration.type),
-		AGENT_SCHEDULE_TRIGGER_TYPE,
-	]);
-	if (props.data.connectedTriggers.includes(AGENT_SCHEDULE_TRIGGER_TYPE)) {
-		statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = 'connected';
-		connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
-	}
+	await fetchStatusShared(integrations.value.map((integration) => integration.type));
 	emitConnectedTriggers();
-}
-
-function onScheduleStatusChange(configured: boolean) {
-	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = configured ? 'connected' : 'disconnected';
-	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
-	emitConnectedTriggers();
-}
-
-function onScheduleTriggerAdded() {
-	props.data.onTriggerAdded({
-		triggerType: AGENT_SCHEDULE_TRIGGER_TYPE,
-		triggers: computeConnectedTriggers(),
-	});
-}
-
-async function onScheduleSaved() {
-	await props.data.onAgentChanged?.();
-	closeModal();
-}
-
-function closeModal() {
-	uiStore.closeModal(props.modalName);
 }
 
 async function fetchCredentials() {
@@ -492,17 +460,6 @@ onMounted(async () => {
 							<N8nIcon :icon="selectedIcon" :size="16" />
 						</template>
 						<N8nOption
-							:value="AGENT_SCHEDULE_TRIGGER_TYPE"
-							:label="i18n.baseText('agents.schedule.title')"
-						>
-							<span :class="$style.optionRow">
-								<N8nIcon :icon="SCHEDULE_ICON" :size="16" :class="$style.optionIcon" />
-								<span :class="$style.optionLabel">
-									{{ i18n.baseText('agents.schedule.title') }}
-								</span>
-							</span>
-						</N8nOption>
-						<N8nOption
 							v-for="integration in integrations"
 							:key="integration.type"
 							:value="integration.type"
@@ -525,18 +482,6 @@ onMounted(async () => {
 						{{ i18n.baseText('agents.builder.addTrigger.picker.empty') }}
 					</N8nText>
 				</div>
-
-				<AgentScheduleTriggerCard
-					v-else-if="selectedTriggerType === AGENT_SCHEDULE_TRIGGER_TYPE"
-					:project-id="data.projectId"
-					:agent-id="data.agentId"
-					:is-published="isPublishedLocal"
-					:flat="true"
-					@status-change="onScheduleStatusChange"
-					@trigger-added="onScheduleTriggerAdded"
-					@canceled="closeModal"
-					@saved="onScheduleSaved"
-				/>
 
 				<div v-else-if="currentIntegration" :class="$style.integrationConfig">
 					<div v-if="currentIntegration.type === 'linear'" :class="$style.linearSetup">

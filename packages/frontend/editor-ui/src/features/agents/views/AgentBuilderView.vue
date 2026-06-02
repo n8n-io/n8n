@@ -3,11 +3,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import {
-	AGENT_SCHEDULE_TRIGGER_TYPE,
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-} from '@n8n/api-types';
+import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -150,6 +146,8 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+/** Bumped on builder config-updated so the Tasks panel reloads (e.g. after create_task). */
+const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
 const isChatFullWidth = ref(false);
@@ -450,6 +448,7 @@ async function onReverted(updated: AgentResource) {
 	agent.value = updated;
 	agentName.value = updated.name;
 	await fetchConfig(projectId.value, agentId.value);
+	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
 }
@@ -618,9 +617,10 @@ async function onConfigUpdated() {
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const triggerTypes = integrations.map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
+	tasksReloadKey.value += 1;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
 }
@@ -737,7 +737,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+		const triggerTypes = integrations.map((i) => i.type);
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
@@ -971,6 +971,13 @@ function onRemoveSkill(id: string) {
 	onConfigFieldUpdate({ skills: nextSkills });
 }
 
+function onToggleTask(payload: { id: string; enabled: boolean }) {
+	const nextTasks = (localConfig.value?.tasks ?? []).map((taskRef) =>
+		taskRef.id === payload.id ? { ...taskRef, enabled: payload.enabled } : taskRef,
+	);
+	onConfigFieldUpdate({ tasks: nextTasks });
+}
+
 function onOpenAddSkillModal() {
 	builderTelemetry.trackOpenedAddSkillModal();
 	uiStore.openModalWithData({
@@ -1176,6 +1183,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:connected-triggers="connectedTriggers"
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:can-edit-agent="canEditAgent"
+				:tasks-reload-key="tasksReloadKey"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
 				@update:config="onConfigFieldUpdate"
@@ -1191,6 +1199,8 @@ function onSwitchAgent(nextAgentId: string) {
 				@remove-skill="onRemoveSkill"
 				@update:connected-triggers="onConnectedTriggersUpdate"
 				@trigger-added="onTriggerAdded"
+				@toggle-task="onToggleTask"
+				@tasks-changed="onConfigUpdated"
 			/>
 
 			<AgentVersionHistoryPanel
