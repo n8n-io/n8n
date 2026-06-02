@@ -11,7 +11,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
+import { CredentialMissingIdError } from '@/errors/credential-missing-id.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
@@ -85,6 +87,20 @@ describe('EvalMockedCredentialsHelper', () => {
 			await expect(
 				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
 			).rejects.toThrow('database is down');
+			expect(helper.mockedCredentials).toEqual([]);
+		});
+
+		it('rethrows generic no-id UnexpectedError errors', async () => {
+			const inner = makeInner({
+				getDecrypted: jest
+					.fn()
+					.mockRejectedValue(new UnexpectedError('Found credential with no ID.')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			await expect(
+				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
+			).rejects.toThrow('Found credential with no ID.');
 			expect(helper.mockedCredentials).toEqual([]);
 		});
 
@@ -414,8 +430,8 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted — schema synthesis when id is null', () => {
-		// `{ id: null }` short-circuits to schema synthesis without delegating to the inner helper.
+	describe('getDecrypted — schema synthesis when id is falsy', () => {
+		// Falsy credential ids short-circuit to schema synthesis without delegating to the inner helper.
 		const propsSchema = [
 			{
 				name: 'apiKey',
@@ -433,12 +449,23 @@ describe('EvalMockedCredentialsHelper', () => {
 		];
 
 		const nullNodeCreds: INodeCredentialsDetails = { id: null, name: 'openAiApi' };
+		const emptyIdNodeCreds: INodeCredentialsDetails = { id: '', name: 'openAiApi' };
+		const noIdNodeCreds = { name: 'openAiApi' } as unknown as INodeCredentialsDetails;
 
 		function makeSynthesizingInner(): ICredentialsHelper {
 			return makeInner({
 				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
 				// Not reached for a null id (short-circuits first); left rejecting so a regression fails loudly.
 				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+			});
+		}
+
+		function makeNoIdInner(): ICredentialsHelper {
+			return makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getDecrypted: jest
+					.fn()
+					.mockRejectedValue(new CredentialMissingIdError('openAiApi', 'openAiApi')),
 			});
 		}
 
@@ -562,6 +589,52 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			expect(result.url).toBe('https://api.openai.com/v1');
 			expect(helper.rewrittenCredentials).toEqual([]);
+		});
+
+		it('synthesizes a credential when the inner helper reports a missing id', async () => {
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				noIdNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(typeof result.apiKey).toBe('string');
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
+		it('synthesizes a credential when the credential id is empty', async () => {
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				emptyIdNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(typeof result.apiKey).toBe('string');
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
 		});
 	});
 
