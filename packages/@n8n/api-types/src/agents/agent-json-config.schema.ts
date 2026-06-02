@@ -1,6 +1,6 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationSchema } from './agent-integration.schema';
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
 const SemanticRecallSchema = z.object({
 	topK: z.number().int().min(1).max(100),
@@ -29,7 +29,7 @@ export const AgentModelSchema = z
 
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim().min(1),
+	credential: z.string().trim(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -49,7 +49,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim().min(1),
+		credential: z.string().trim(),
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -244,7 +244,7 @@ export const AgentJsonConfigSchema = z.object({
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationSchema).optional(),
+	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)

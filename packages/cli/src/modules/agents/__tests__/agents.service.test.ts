@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -83,6 +84,22 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 		cronExpression: '0 9 * * *',
 		...overrides,
 	} as AgentTaskSnapshot;
+}
+
+function mockProjectCredentials(credentialIds: string[]): void {
+	const credentialsService = mock<CredentialsService>();
+	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
+		credentialIds.map(
+			(id) =>
+				({
+					id,
+					name: id,
+					type: 'openAiApi',
+				}) as CredentialsEntity,
+		),
+	);
+	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+	Container.set(CredentialsService, credentialsService);
 }
 
 // Publish/unpublish/delete call into AgentTaskService via the DI container; the
@@ -268,6 +285,39 @@ describe('AgentsService', () => {
 
 			expect(result.config.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack' }]);
 		});
+
+		it('does not reject unknown credential IDs during schema validation', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				credential: 'unknown-credential-id',
+			});
+
+			expect(result.valid).toBe(true);
+			if (!result.valid) return;
+
+			expect(result.config.credential).toBe('unknown-credential-id');
+		});
+
+		it('allows MCP servers with cleared credentials during draft validation', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+						credential: '',
+					},
+				],
+			});
+
+			expect(result.valid).toBe(true);
+		});
 	});
 
 	describe('create', () => {
@@ -296,6 +346,7 @@ describe('AgentsService', () => {
 		beforeEach(() => {
 			jest.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
 			agentRepository.save.mockImplementation(async (a) => a as Agent);
+			mockProjectCredentials([]);
 		});
 
 		it('does not bump versionId when agent has never been published', async () => {
@@ -456,6 +507,7 @@ describe('AgentsService', () => {
 
 		it('persists sanitized integrations when legacy schedule entries are present', async () => {
 			jest.spyOn(service, 'validateConfig').mockRestore();
+			mockProjectCredentials(['cred-slack']);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
 			const configWithLegacySchedule = {
@@ -594,6 +646,128 @@ describe('AgentsService', () => {
 			expect(savedSchema.tools).toEqual([{ type: 'custom', id: 'tool-keep' }]);
 			// description column on the entity also stays untouched.
 			expect(savedEntity.description).toBe(agent.description);
+		});
+
+		describe('credential cleanup', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'validateConfig').mockRestore();
+				agentRepository.save.mockImplementation(async (a) => a as Agent);
+			});
+
+			it('clears a provided unknown top-level credential before persistence', async () => {
+				mockProjectCredentials(['known-cred']);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+				await service.updateConfig(agentId, projectId, {
+					name: 'Test Agent',
+					model: 'openai/gpt-5.5',
+					instructions: 'Help the user.',
+					credential: 'unknown-cred',
+				});
+
+				const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+				expect((savedEntity.schema as AgentJsonConfig).credential).toBe('');
+			});
+
+			it('preserves a provided credential when it is accessible to the project', async () => {
+				mockProjectCredentials(['known-cred']);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+				await service.updateConfig(agentId, projectId, {
+					name: 'Test Agent',
+					model: 'openai/gpt-5.5',
+					instructions: 'Help the user.',
+					credential: 'known-cred',
+				});
+
+				const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+				expect((savedEntity.schema as AgentJsonConfig).credential).toBe('known-cred');
+			});
+
+			it('preserves the stored credential when the inbound config omits credential', async () => {
+				mockProjectCredentials([]);
+				const agent = makeAgent({
+					schema: {
+						name: 'Test Agent',
+						model: 'openai/gpt-5.5',
+						instructions: 'Help the user.',
+						credential: 'stored-cred',
+					} as AgentJsonConfig,
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await service.updateConfig(agentId, projectId, {
+					name: 'Test Agent',
+					model: 'openai/gpt-5.5',
+					instructions: 'Updated instructions',
+				});
+
+				const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+				expect((savedEntity.schema as AgentJsonConfig).credential).toBe('stored-cred');
+			});
+
+			it('clears unknown nested credentials before persistence', async () => {
+				mockProjectCredentials(['known-cred']);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+				await service.updateConfig(agentId, projectId, {
+					name: 'Test Agent',
+					model: 'openai/gpt-5.5',
+					instructions: 'Help the user.',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: { model: 'openai/gpt-4o-mini', credential: 'unknown-cred' },
+							reflectorModel: { model: 'anthropic/claude-sonnet-4-5', credential: 'known-cred' },
+						},
+					},
+					integrations: [{ type: 'slack', credentialId: 'unknown-cred' }],
+				});
+
+				const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+				const savedConfig = savedEntity.schema as AgentJsonConfig;
+				expect(savedConfig.memory?.observationalMemory?.observerModel).toEqual({
+					model: 'openai/gpt-4o-mini',
+					credential: '',
+				});
+				expect(savedConfig.memory?.observationalMemory?.reflectorModel).toEqual({
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'known-cred',
+				});
+				expect(savedEntity.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+			});
+
+			it('clears unknown MCP server credentials and still saves the draft config', async () => {
+				mockProjectCredentials([]);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+				await service.updateConfig(agentId, projectId, {
+					name: 'Test Agent',
+					model: 'openai/gpt-5.5',
+					instructions: 'Help the user.',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://example.com/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: 'unknown-mcp-cred',
+						},
+					],
+				});
+
+				const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+				expect((savedEntity.schema as AgentJsonConfig).mcpServers).toEqual([
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+						credential: '',
+					},
+				]);
+			});
 		});
 	});
 
