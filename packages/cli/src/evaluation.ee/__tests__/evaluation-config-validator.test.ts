@@ -557,6 +557,62 @@ describe('EvaluationConfigValidator', () => {
 		});
 	});
 
+	describe('METRIC_INPUT_EMPTY', () => {
+		it('points details.field at config.expression for expression metrics, not config.inputs.expression', async () => {
+			const errors = await validator.validate({
+				workflow: makeWorkflow(),
+				config: makeConfig({
+					metrics: [
+						{
+							id: 'm-empty-expr',
+							name: 'Empty expr',
+							type: 'expression',
+							config: { expression: '   ', outputType: 'numeric' },
+						},
+					],
+				}),
+				user: makeUser(),
+			});
+			expect(errors).toContainEqual(
+				expect.objectContaining({
+					code: 'METRIC_INPUT_EMPTY',
+					details: expect.objectContaining({
+						metricId: 'm-empty-expr',
+						field: 'config.expression',
+					}),
+				}),
+			);
+		});
+
+		it('points details.field at config.inputs.<name> for non-expression metrics', async () => {
+			const errors = await validator.validate({
+				workflow: makeWorkflow(),
+				config: makeConfig({
+					metrics: [
+						{
+							id: 'm-empty-sim',
+							name: 'Empty sim',
+							type: 'string_similarity',
+							config: {
+								inputs: { actualAnswer: '', expectedAnswer: 'ok' },
+							},
+						},
+					],
+				}),
+				user: makeUser(),
+			});
+			expect(errors).toContainEqual(
+				expect.objectContaining({
+					code: 'METRIC_INPUT_EMPTY',
+					details: expect.objectContaining({
+						metricId: 'm-empty-sim',
+						field: 'config.inputs.actualAnswer',
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('BOOLEAN_COERCION_UNSUPPORTED', () => {
 		it('emits when an expression metric with boolean output mixes literal text and an expression', async () => {
 			const errors = await validator.validate({
