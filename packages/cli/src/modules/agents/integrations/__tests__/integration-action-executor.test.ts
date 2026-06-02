@@ -7,14 +7,14 @@ import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-const slack: AgentCredentialIntegrationConfig = {
+const slack: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-a',
 };
 
-const linear: AgentCredentialIntegrationConfig = {
+const linear: AgentIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-linear',
 };

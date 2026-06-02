@@ -77,6 +77,8 @@ export interface StackConfig {
 	services?: readonly ServiceName[];
 	/** When true, services target host machine instead of Docker-internal n8n */
 	external?: boolean;
+	/** When set, the Docker network uses this exact name instead of a random UUID. */
+	networkName?: string;
 	/**
 	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`.
 	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.

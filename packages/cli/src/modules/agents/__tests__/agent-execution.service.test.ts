@@ -2,11 +2,12 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import { AgentExecutionService } from '../agent-execution.service';
-import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
+import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -27,6 +28,22 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		updatedAt: new Date('2026-05-07T10:00:00Z'),
 		...overrides,
 	} as AgentExecutionThread;
+}
+
+function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecord {
+	return {
+		assistantResponse: 'Done',
+		model: null,
+		finishReason: 'stop',
+		usage: null,
+		totalCost: null,
+		toolCalls: [],
+		timeline: [],
+		startTime: 0,
+		duration: 1,
+		error: null,
+		...overrides,
+	};
 }
 
 describe('AgentExecutionService', () => {
@@ -51,6 +68,38 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository,
 			n8nMemory,
 		);
+	});
+
+	describe('recordMessage', () => {
+		it('stamps the task snapshot version on newly created task sessions', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: 'Task run' }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run task',
+				record: makeMessageRecord(),
+				source: 'task',
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			});
+
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				'thread-1',
+				'agent-1',
+				'Agent',
+				'project-1',
+				'task-1',
+				'version-1',
+			);
+		});
 	});
 
 	describe('getThreadDetail', () => {
