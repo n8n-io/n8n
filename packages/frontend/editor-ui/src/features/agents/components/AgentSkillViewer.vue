@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
+import { computed, reactive, ref, watch } from 'vue';
 import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
-import { N8nButton, N8nFormInput, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nIcon, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
-import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import type { AgentSkill } from '../types';
 
 const props = withDefaults(
@@ -27,7 +24,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const container = ref<HTMLDivElement>();
 const fileInput = ref<HTMLInputElement>();
 const name = ref(props.skill.name);
 const description = ref(props.skill.description);
@@ -36,11 +32,6 @@ const formValidation = reactive({
 	name: false,
 	description: false,
 });
-let view: EditorView | null = null;
-let applyingExternalUpdate = false;
-
-const editable = new Compartment();
-const readOnly = new Compartment();
 
 const nameValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 128 } },
@@ -75,27 +66,6 @@ const instructionsCharacterCount = computed(() =>
 );
 const acceptedInstructionExtensions = new Set(['txt', 'md']);
 
-function createEditor(doc: string) {
-	if (!container.value) return;
-	view = new EditorView({
-		state: EditorState.create({
-			doc,
-			extensions: [
-				lineNumbers(),
-				EditorView.lineWrapping,
-				readOnly.of(EditorState.readOnly.of(props.disabled)),
-				editable.of(EditorView.editable.of(!props.disabled)),
-				EditorView.updateListener.of((update) => {
-					if (!update.docChanged || applyingExternalUpdate) return;
-					emit('update:skill', { instructions: update.state.doc.toString() });
-				}),
-				codeEditorTheme({ isReadOnly: props.disabled, maxHeight: '100%' }),
-			],
-		}),
-		parent: container.value,
-	});
-}
-
 function onNameInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
 	name.value = next;
@@ -112,18 +82,12 @@ function onFieldValidate(field: 'name' | 'description', valid: boolean) {
 	formValidation[field] = valid;
 }
 
+function onInstructionsInput(value: string) {
+	emit('update:skill', { instructions: value });
+}
+
 function replaceInstructions(instructions: string) {
 	fileError.value = '';
-	if (view) {
-		view.dispatch({
-			changes: {
-				from: 0,
-				to: view.state.doc.length,
-				insert: instructions,
-			},
-		});
-		return;
-	}
 	emit('update:skill', { instructions });
 }
 
@@ -159,25 +123,6 @@ function onInstructionsFileChange(event: Event) {
 	if (input) input.value = '';
 }
 
-onMounted(() => createEditor(props.skill.instructions ?? ''));
-
-onBeforeUnmount(() => {
-	view?.destroy();
-	view = null;
-});
-
-watch(
-	() => props.skill.instructions,
-	(next) => {
-		if (!view) return;
-		const nextDoc = next ?? '';
-		if (view.state.doc.toString() === nextDoc) return;
-		applyingExternalUpdate = true;
-		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: nextDoc } });
-		applyingExternalUpdate = false;
-	},
-);
-
 watch(
 	() => props.skill.name,
 	(value) => {
@@ -189,19 +134,6 @@ watch(
 	() => props.skill.description,
 	(value) => {
 		if (value !== description.value) description.value = value;
-	},
-);
-
-watch(
-	() => props.disabled,
-	(disabled) => {
-		if (!view) return;
-		view.dispatch({
-			effects: [
-				readOnly.reconfigure(EditorState.readOnly.of(disabled)),
-				editable.reconfigure(EditorView.editable.of(!disabled)),
-			],
-		});
 	},
 );
 
@@ -274,7 +206,14 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					@change="onInstructionsFileChange"
 				/>
 			</div>
-			<div ref="container" :class="$style.editor"></div>
+			<N8nMarkdownEditor
+				:class="$style.editor"
+				:model-value="props.skill.instructions ?? ''"
+				:readonly="props.disabled"
+				max-height="100%"
+				data-testid="agent-skill-instructions-editor"
+				@update:model-value="onInstructionsInput"
+			/>
 			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
 			<N8nText v-if="instructionsError" size="small" color="danger">{{
 				instructionsError
@@ -332,15 +271,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 }
 
 .editor {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.editor :global(.cm-editor) {
 	flex: 1;
 	min-height: 0;
 }
