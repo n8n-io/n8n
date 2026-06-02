@@ -149,6 +149,10 @@ import {
 	type TerminalOutcome,
 } from '@n8n/instance-ai';
 
+import {
+	InstanceAiPlannedTaskScheduler,
+	type InstanceAiPlannedTaskSchedulerHost,
+} from '../instance-ai-planned-task-scheduler';
 import { InstanceAiService } from '../instance-ai.service';
 
 type ServiceInternals = {
@@ -165,6 +169,46 @@ type ServiceInternals = {
 	};
 	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
 };
+
+/**
+ * Build a planned-task scheduler instance for unit tests, with all
+ * collaborators replaced by jest mocks. The returned object is typed for
+ * test-only access to the scheduler's internals.
+ */
+function buildSchedulerInternals<T>(overrides: {
+	host?: Partial<InstanceAiPlannedTaskSchedulerHost>;
+	runState?: Record<string, unknown>;
+	backgroundTasks?: Record<string, unknown>;
+	eventBus?: Record<string, unknown>;
+	agentMemory?: unknown;
+	logger?: Record<string, unknown>;
+	maxConcurrentTasksPerThread?: number;
+}): { scheduler: InstanceAiPlannedTaskScheduler; internals: T } {
+	const host: InstanceAiPlannedTaskSchedulerHost = {
+		revalidateActiveUser: jest.fn(async () => null),
+		cancelRun: jest.fn(),
+		startInternalFollowUpRun: jest.fn(async () => 'follow-up-run'),
+		createPlannedTaskEnvironment: jest.fn(async () => ({
+			orchestrationContext: {} as never,
+		})),
+		...overrides.host,
+	};
+	const scheduler = new InstanceAiPlannedTaskScheduler({
+		logger: (overrides.logger ?? {
+			debug: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+			info: jest.fn(),
+		}) as never,
+		eventBus: (overrides.eventBus ?? { publish: jest.fn() }) as never,
+		agentMemory: (overrides.agentMemory ?? {}) as never,
+		runState: (overrides.runState ?? {}) as never,
+		backgroundTasks: (overrides.backgroundTasks ?? {}) as never,
+		maxConcurrentTasksPerThread: overrides.maxConcurrentTasksPerThread ?? 5,
+		host,
+	});
+	return { scheduler, internals: scheduler as unknown as T };
+}
 
 type RunningTask = { taskId: string };
 type MarkedWorkflow = { workflowId: string };
@@ -201,13 +245,6 @@ type BackgroundTaskFollowUpServiceInternals = {
 	finalizeBackgroundTaskTracing: jest.MockedFunction<
 		(task: ManagedBackgroundTask, status: 'completed' | 'failed' | 'cancelled') => Promise<void>
 	>;
-	handlePlannedTaskSettlement: jest.MockedFunction<
-		(
-			user: User,
-			task: ManagedBackgroundTask,
-			status: 'succeeded' | 'failed' | 'cancelled',
-		) => Promise<void>
-	>;
 	recordBackgroundTerminalOutcome: jest.MockedFunction<
 		(task: ManagedBackgroundTask) => Promise<void>
 	>;
@@ -228,12 +265,21 @@ type BackgroundTaskFollowUpServiceInternals = {
 			messageGroupId?: string,
 		) => Promise<string | undefined>
 	>;
-	queuePendingCheckpointReentry: jest.MockedFunction<
-		(threadId: string, checkpointTaskId: string) => void
-	>;
-	maybeReenterParentCheckpoint: jest.MockedFunction<
-		(user: User, threadId: string, task: ManagedBackgroundTask) => Promise<boolean>
-	>;
+	plannedTaskScheduler: {
+		handlePlannedTaskSettlement: jest.MockedFunction<
+			(
+				user: User,
+				task: ManagedBackgroundTask,
+				status: 'succeeded' | 'failed' | 'cancelled',
+			) => Promise<void>
+		>;
+		queuePendingCheckpointReentry: jest.MockedFunction<
+			(threadId: string, checkpointTaskId: string) => void
+		>;
+		maybeReenterParentCheckpoint: jest.MockedFunction<
+			(user: User, threadId: string, task: ManagedBackgroundTask) => Promise<boolean>
+		>;
+	};
 	logger: { warn: jest.Mock; debug: jest.Mock };
 };
 
@@ -285,13 +331,6 @@ function createBackgroundTaskFollowUpService({
 	service.finalizeBackgroundTaskTracing = jest.fn(
 		async (_task: ManagedBackgroundTask, _status: 'completed' | 'failed' | 'cancelled') => {},
 	);
-	service.handlePlannedTaskSettlement = jest.fn(
-		async (
-			_user: User,
-			_task: ManagedBackgroundTask,
-			_status: 'succeeded' | 'failed' | 'cancelled',
-		) => {},
-	);
 	service.recordBackgroundTerminalOutcome = jest.fn(async (_task: ManagedBackgroundTask) => {});
 	service.saveAgentTreeSnapshot = jest.fn(
 		async (
@@ -306,10 +345,19 @@ function createBackgroundTaskFollowUpService({
 		async (_user: User, _threadId: string, _message: string, _messageGroupId?: string) =>
 			'run-follow-up',
 	);
-	service.queuePendingCheckpointReentry = jest.fn();
-	service.maybeReenterParentCheckpoint = jest.fn(
-		async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
-	);
+	service.plannedTaskScheduler = {
+		handlePlannedTaskSettlement: jest.fn(
+			async (
+				_user: User,
+				_task: ManagedBackgroundTask,
+				_status: 'succeeded' | 'failed' | 'cancelled',
+			) => {},
+		),
+		queuePendingCheckpointReentry: jest.fn(),
+		maybeReenterParentCheckpoint: jest.fn(
+			async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
+		),
+	};
 	service.logger = { warn: jest.fn(), debug: jest.fn() };
 
 	return {
@@ -390,29 +438,30 @@ type TemporaryCleanupService = {
 };
 
 function createCheckpointService(): ServiceInternals {
-	// Bypass the constructor — we only exercise the three pending-reentry helpers
-	// and their direct dependencies. Everything else (scheduler, event bus, etc.)
-	// is out of scope for this unit.
-	const service = Object.create(InstanceAiService.prototype) as unknown as ServiceInternals;
-
-	service.pendingCheckpointReentries = new Map();
-	service.reenterCheckpointById = jest.fn(
-		async (_user: User, _threadId: string, _checkpointTaskId: string, _mgid?: string) => true,
-	);
-	service.backgroundTasks = {
+	// Exercise the scheduler's three pending-reentry helpers against jest-mocked
+	// collaborators. `reenterCheckpointById` is replaced with a spy so the drain
+	// logic can be asserted in isolation.
+	const backgroundTasks = {
 		getRunningTasksByParentCheckpoint: jest.fn(() => []),
 	};
-	service.runState = {
+	const runState = {
 		getActiveRunId: jest.fn(() => undefined),
 		hasSuspendedRun: jest.fn(() => false),
 	};
-	service.logger = {
+	const logger = {
 		debug: jest.fn(),
 		warn: jest.fn(),
 		error: jest.fn(),
 	};
-
-	return service;
+	const { internals } = buildSchedulerInternals<ServiceInternals>({
+		backgroundTasks,
+		runState,
+		logger,
+	});
+	internals.reenterCheckpointById = jest.fn(
+		async (_user: User, _threadId: string, _checkpointTaskId: string, _mgid?: string) => true,
+	);
+	return internals;
 }
 
 type CheckpointPruneServiceInternals = {
@@ -675,8 +724,11 @@ type TerminalGuardOrderServiceInternals = {
 	reapAiTemporaryFromRun: jest.Mock;
 	countCreditsIfFirst: jest.Mock;
 	maybeFinalizeRunTraceRoot: jest.Mock;
-	schedulePlannedTasks: jest.Mock;
-	drainPendingCheckpointReentries: jest.Mock;
+	plannedTaskScheduler: {
+		schedulePlannedTasks: jest.Mock;
+		drainPendingCheckpointReentries: jest.Mock;
+		finalizeCheckpointFollowUp: jest.Mock;
+	};
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -749,8 +801,11 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.reapAiTemporaryFromRun = jest.fn(async () => []);
 	service.countCreditsIfFirst = jest.fn(async () => {});
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
-	service.schedulePlannedTasks = jest.fn(async () => {});
-	service.drainPendingCheckpointReentries = jest.fn(async () => {});
+	service.plannedTaskScheduler = {
+		schedulePlannedTasks: jest.fn(async () => {}),
+		drainPendingCheckpointReentries: jest.fn(async () => {}),
+		finalizeCheckpointFollowUp: jest.fn(async () => {}),
+	};
 	return service;
 }
 
@@ -1047,7 +1102,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			spawnBackgroundTask: jest.Mock;
 			cancelBackgroundTask: jest.Mock;
 			backgroundTasks: { touchTask: jest.Mock };
-			schedulePlannedTasks: jest.Mock;
+			plannedTaskScheduler: { schedulePlannedTasks: jest.Mock };
 			sendCorrectionToTask: jest.Mock;
 			sandboxes: Map<string, unknown>;
 			sandboxCreations: Map<string, Promise<unknown>>;
@@ -1089,7 +1144,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.spawnBackgroundTask = jest.fn();
 		service.cancelBackgroundTask = jest.fn();
 		service.backgroundTasks = { touchTask: jest.fn() };
-		service.schedulePlannedTasks = jest.fn();
+		service.plannedTaskScheduler = { schedulePlannedTasks: jest.fn() };
 		service.sendCorrectionToTask = jest.fn();
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
@@ -1561,9 +1616,6 @@ function createPlannedTaskSchedulerService(): {
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
 } {
-	const service = Object.create(
-		InstanceAiService.prototype,
-	) as unknown as PlannedTaskSchedulerServiceInternals;
 	const graph = { planRunId: 'plan-run-1', messageGroupId: 'group-1', tasks: [] };
 	const plannedTaskService = {
 		getGraph: jest.fn(async () => graph),
@@ -1573,18 +1625,45 @@ function createPlannedTaskSchedulerService(): {
 		markRunning: jest.fn(async () => {}),
 	};
 
-	service.revalidateActiveUser = jest.fn();
-	service.cancelRun = jest.fn();
-	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
-	service.syncPlannedTasksToUi = jest.fn(async () => {});
-	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
-	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
-	service.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
-	service.runState = {
+	const revalidateActiveUser = jest.fn<Promise<User | null>, [string]>();
+	const cancelRun = jest.fn();
+	const startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
+	const runState = {
 		getThreadResearchMode: jest.fn(() => false),
 		hasLiveRun: jest.fn(() => false),
 	};
-	service.logger = { warn: jest.fn() };
+	const backgroundTasks = { getRunningTasks: jest.fn(() => []) };
+	const logger = { warn: jest.fn() };
+
+	const { internals } = buildSchedulerInternals<{
+		doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
+		createPlannedTaskState: jest.Mock;
+		syncPlannedTasksToUi: jest.Mock;
+		buildPlannedTaskFollowUpMessage: jest.Mock;
+	}>({
+		host: { revalidateActiveUser, cancelRun, startInternalFollowUpRun },
+		runState,
+		backgroundTasks,
+		logger,
+	});
+	// Stub the scheduler's persistence + UI seams so the tick/dispatch logic can
+	// be exercised without real storage.
+	internals.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
+	internals.syncPlannedTasksToUi = jest.fn(async () => {});
+	internals.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
+
+	const service: PlannedTaskSchedulerServiceInternals = {
+		doSchedulePlannedTasks: (user, threadId) => internals.doSchedulePlannedTasks(user, threadId),
+		revalidateActiveUser,
+		cancelRun,
+		createPlannedTaskState: internals.createPlannedTaskState,
+		syncPlannedTasksToUi: internals.syncPlannedTasksToUi,
+		backgroundTasks,
+		startInternalFollowUpRun,
+		buildPlannedTaskFollowUpMessage: internals.buildPlannedTaskFollowUpMessage,
+		runState,
+		logger,
+	};
 
 	return { service, plannedTaskService, graph };
 }
