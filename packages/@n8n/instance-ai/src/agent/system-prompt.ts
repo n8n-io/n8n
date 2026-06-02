@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
-import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { SANDBOX_WORKSPACE_SECTION, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -17,6 +17,8 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When true, a lazy thread-scoped sandbox workspace is attached for file/command tools. */
+	sandboxWorkspaceAvailable?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -81,6 +83,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
+		sandboxWorkspaceAvailable,
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
@@ -189,7 +192,7 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Use them directly for most questions. Use \`plan\` with \`research\` tasks only for broad detached synthesis (comparing services, broad surveys across 3+ doc pages).
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
-${getComputerUsePrompt({ browserAvailable, localGateway })}
+${sandboxWorkspaceAvailable ? `\n${SANDBOX_WORKSPACE_SECTION}\n` : ''}${getComputerUsePrompt({ browserAvailable, localGateway })}
 
 ${
 	licenseHints && licenseHints.length > 0

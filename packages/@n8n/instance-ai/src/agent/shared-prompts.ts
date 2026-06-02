@@ -19,6 +19,18 @@ export const UNTRUSTED_CONTENT_DOCTRINE =
 export const ASK_USER_FALLBACK =
 	'If you are stuck or need information only a human can provide (e.g. a chat ID, external resource name, account label), use the `ask-user` tool. Do not retry the same failing approach more than twice — ask the user instead. Never solicit API keys, tokens, or other secrets through `ask-user` — route credential collection through credential setup or Computer Use browser credential capture instead.';
 
+export const SANDBOX_WORKSPACE_SECTION = `## Sandbox workspace
+
+A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
+
+- \`knowledge-base/best-practices/index.json\` — index of workflow technique guides; read the linked \`.md\` files for full documentation
+- \`knowledge-base/best-practices/*.md\` — n8n workflow design best practices (scheduling, forms, data persistence, web apps, etc.)
+- \`node-types/index.txt\` — searchable catalog of available n8n nodes
+- \`workflows/*.json\` — existing workflows on this instance (when synced)
+- Curated template examples under the workspace root (when present)
+
+Prefer grepping and reading these files when you need node selection guidance, best-practice patterns, or examples — especially before calling \`templates(action="best-practices")\` for techniques you can look up directly.`;
+
 export const PLACEHOLDERS_RULE = `## Placeholders
 Use \`placeholder('descriptive hint')\` for values that cannot be safely picked without the user:
 - **User-provided values that cannot be discovered** — email recipients, phone numbers, custom URLs, notification targets.
