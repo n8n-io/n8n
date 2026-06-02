@@ -41,6 +41,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
 import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -93,6 +94,7 @@ export class InstanceAiController {
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
+		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
@@ -456,7 +458,7 @@ export class InstanceAiController {
 		await this.moduleRegistry.refreshModuleSettings('instance-ai');
 
 		if (payload.enabled === false || payload.localGatewayDisabled === true) {
-			const disconnectedUserIds = this.instanceAiService.disconnectAllGateways();
+			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
 			if (disconnectedUserIds.length > 0) {
 				this.push.sendToUsers(
 					{
@@ -649,8 +651,8 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
-		const token = this.instanceAiService.generatePairingToken(req.user.id);
-		const expiresAt = this.instanceAiService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const token = this.gatewayService.generatePairingToken(req.user.id);
+		const expiresAt = this.gatewayService.getGatewayApiKeyExpiresAt(req.user.id, token);
 		const ttlSeconds = expiresAt
 			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
 			: null;
@@ -664,7 +666,7 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
 
-		const gateway = this.instanceAiService.getLocalGateway(userId);
+		const gateway = this.gatewayService.getLocalGateway(userId);
 
 		// If the grace-period timer already fired (e.g. after a long reconnect gap),
 		// the gateway state is torn down. Reject so the daemon falls into its auth-error
@@ -674,7 +676,7 @@ export class InstanceAiController {
 		}
 
 		// Daemon reconnected within the grace window — cancel the pending disconnect.
-		this.instanceAiService.clearDisconnectTimer(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
@@ -705,7 +707,7 @@ export class InstanceAiController {
 			unsubscribeRequest();
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);
-			this.instanceAiService.startDisconnectTimer(userId, () => {
+			this.gatewayService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -730,7 +732,7 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(key);
 		await this.assertGatewayEnabled(userId);
 
-		this.instanceAiService.initGateway(userId, payload);
+		this.gatewayService.initGateway(userId, payload);
 
 		this.push.sendToUsers(
 			{
@@ -746,7 +748,7 @@ export class InstanceAiController {
 		);
 
 		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
+		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -757,9 +759,9 @@ export class InstanceAiController {
 	gatewayDisconnect(req: Request) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		this.instanceAiService.clearDisconnectTimer(userId);
-		this.instanceAiService.disconnectGateway(userId);
-		this.instanceAiService.clearActiveSessionKey(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
@@ -779,7 +781,7 @@ export class InstanceAiController {
 	) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		const resolved = this.instanceAiService.resolveGatewayRequest(
+		const resolved = this.gatewayService.resolveGatewayRequest(
 			userId,
 			requestId,
 			payload.result,
@@ -807,7 +809,7 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
-		return this.instanceAiService.getGatewayStatus(req.user.id);
+		return this.gatewayService.getGatewayStatus(req.user.id);
 	}
 
 	/**
@@ -819,9 +821,9 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayDisconnectSession(req: AuthenticatedRequest) {
 		const userId = req.user.id;
-		this.instanceAiService.clearDisconnectTimer(userId);
-		this.instanceAiService.disconnectGateway(userId);
-		this.instanceAiService.clearActiveSessionKey(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
@@ -891,7 +893,7 @@ export class InstanceAiController {
 		}
 
 		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.instanceAiService.getUserIdForApiKey(key);
+		const userId = this.gatewayService.getUserIdForApiKey(key);
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
