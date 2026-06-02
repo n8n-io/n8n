@@ -17,11 +17,18 @@ jest.mock('@daytonaio/sdk', () => {
 	}
 	class Image {
 		dockerfile: string;
+		contextList: Array<{ sourcePath: string; archivePath: string }>;
 		constructor(base = 'node:20') {
 			this.dockerfile = `FROM ${base}`;
+			this.contextList = [];
 		}
 		static base(base: string) {
 			return new Image(base);
+		}
+		addLocalDir(localPath: string, remotePath: string) {
+			this.contextList.push({ sourcePath: localPath, archivePath: localPath });
+			this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
+			return this;
 		}
 		runCommands(...commands: string[]) {
 			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
@@ -37,6 +44,8 @@ import {
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
@@ -119,26 +128,45 @@ async function knowledgeBaseHash(): Promise<string> {
 }
 
 describe('SnapshotManager.ensureImage', () => {
-	it('bakes runtime skill files and manifest into the Daytona image descriptor', async () => {
+	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 
 		const image = await manager.ensureImage();
 
+		expect(image.dockerfile).toContain('COPY');
+		expect(image.dockerfile).toContain('/tmp/n8n-workspace-bake');
+		expect(image.dockerfile).toContain('cp -a /tmp/n8n-workspace-bake/. /home/daytona/workspace/');
 		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/skills/data-table-manager/SKILL.md',
+			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
 		);
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/skills/data-table-manager/references/data-table-playbook.md',
-		);
-		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/registry.json');
-		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/.manifest.json');
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/knowledge-base/best-practices/scheduling.md',
-		);
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/knowledge-base/best-practices/index.json',
-		);
-		expect(image.dockerfile).toContain('/home/daytona/workspace/knowledge-base/.manifest.json');
+		expect(image.dockerfile).toContain('npm install --ignore-scripts');
+
+		const stagingDir = image.contextList[0]?.sourcePath;
+		expect(stagingDir).toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/data-table-manager/SKILL.md'), 'utf-8'),
+		).resolves.toContain('data-table');
+		await expect(
+			readFile(
+				join(stagingDir, 'skills/data-table-manager/references/data-table-playbook.md'),
+				'utf-8',
+			),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/registry.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/.manifest.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/best-practices/scheduling.md'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/best-practices/index.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/.manifest.json'), 'utf-8'),
+		).resolves.toBeDefined();
 	});
 
 	it('changes the snapshot suffix when the runtime skills hash changes', async () => {
