@@ -58,6 +58,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 	{
 		title: i18n.baseText('settings.api.columns.owner'),
 		key: 'owner',
+		width: 280,
 		disableSort: true,
 		resize: false,
 	},
