@@ -186,4 +186,20 @@ describe('InstanceAiMcpConnectionController', () => {
 			expect(service.deleteConnection).toHaveBeenCalledWith(user, 'conn-1');
 		});
 	});
+
+	describe('listTools', () => {
+		it('delegates to the service and returns the live tools', async () => {
+			const { controller, service } = createController();
+			const tools = [
+				{ name: 'list-issues', description: 'List Linear issues' },
+				{ name: 'create-issue' },
+			];
+			service.listToolsForConnection.mockResolvedValue(tools);
+
+			const result = await controller.listTools(authedRequest(), {} as never, 'conn-1');
+
+			expect(service.listToolsForConnection).toHaveBeenCalledWith(user, 'conn-1');
+			expect(result).toBe(tools);
+		});
+	});
 });

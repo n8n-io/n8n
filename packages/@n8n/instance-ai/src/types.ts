@@ -952,6 +952,17 @@ export interface McpServerConfig {
 	cacheKey?: string;
 }
 
+/**
+ * Minimal descriptor for an MCP tool returned by a one-off `listToolsForConfig`
+ * call on `McpClientManager`. Only the fields surfaced by `@n8n/agents`'
+ * `BuiltTool` are exposed; richer metadata (e.g. MCP annotations) is not
+ * preserved by the agents SDK.
+ */
+export interface McpToolDescriptor {
+	name: string;
+	description?: string;
+}
+
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
