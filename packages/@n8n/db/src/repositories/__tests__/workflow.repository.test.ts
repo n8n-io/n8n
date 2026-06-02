@@ -196,8 +196,8 @@ describe('WorkflowRepository', () => {
 			);
 
 			expect(andWhereCall).toBeDefined();
-			expect(andWhereCall[0]).toContain('workflow.name');
-			expect(andWhereCall[0]).toContain('workflow.description');
+			expect(andWhereCall![0]).toContain('workflow.name');
+			expect(andWhereCall![0]).toContain('workflow.description');
 		});
 
 		it('should handle special characters in search query', async () => {

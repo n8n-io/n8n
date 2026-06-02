@@ -1,7 +1,7 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'vitest-mock-extended';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { postgresMigrations } from '../../migrations/postgresdb';
 import { sqliteMigrations } from '../../migrations/sqlite';

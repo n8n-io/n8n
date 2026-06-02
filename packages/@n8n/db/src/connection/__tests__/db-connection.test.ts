@@ -2,10 +2,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
-import type { Mock } from 'vitest';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
@@ -13,11 +13,11 @@ import { DbConnection } from '../db-connection';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 import type { DbConnectionOptions } from '../db-connection-options';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 vi.mock('@n8n/typeorm', async () => ({
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	...(await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm')),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	DataSource: vi.fn(),
-	...(await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm')),
 }));
 
 jest.mock('../db-connection-monitor');
@@ -46,8 +46,10 @@ describe('DbConnection', () => {
 		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
-		(DataSource as unknown as Mock) = vi.fn().mockImplementation(() => dataSource);
 		vi.mocked(DbConnectionMonitor).mockImplementation(() => monitor);
+		(DataSource as unknown as Mock) = vi.fn(function () {
+			return dataSource;
+		});
 
 		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
 	});
@@ -102,7 +104,9 @@ describe('DbConnection', () => {
 		it('should wrap migrations and run them', async () => {
 			dataSource.runMigrations.mockResolvedValue([]);
 
-			const wrapMigrationSpy = vi.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+			const wrapMigrationSpy = vi
+				.spyOn(migrationHelper, 'wrapMigration')
+				.mockImplementation(() => {});
 
 			expect(dataSource.runMigrations).not.toHaveBeenCalled();
 			expect(dbConnection.connectionState.migrated).toBe(false);
