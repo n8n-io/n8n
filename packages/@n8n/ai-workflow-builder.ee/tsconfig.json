@@ -12,7 +12,7 @@
 			"@/*": ["./src/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"types": ["node", "jest"]
+		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts", "scripts/**/*.ts"]
 }

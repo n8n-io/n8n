@@ -6,6 +6,8 @@ export interface AgentExecutionThread {
 	agentId: string;
 	agentName: string;
 	projectId: string;
+	/** Set when the session was invoked by a scheduled task; null for agent runs. */
+	taskId: string | null;
 	sessionNumber: number;
 	title: string | null;
 	emoji: string | null;

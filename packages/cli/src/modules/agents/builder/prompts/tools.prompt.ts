@@ -11,7 +11,6 @@ nodes, custom code tools, or provider tools.
 Use this guidance before calling \`search_nodes\`, \`get_node_types\`, \`build_custom_tool\`,
 or adding, changing, or removing entries in \`tools[]\` / \`providerTools\`.
 
-Prefer existing workflow tools and node tools over custom tools for real-world actions.
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
 

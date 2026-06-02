@@ -72,6 +72,8 @@ describe('AgentSkillViewer', () => {
 					N8nFormInput: N8nFormInputStub,
 					N8nIcon: { template: '<i />' },
 					N8nText: { template: '<span><slot /></span>' },
+					// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
+					MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
 				},
 			},
 		});
