@@ -1,14 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { MqttClient } from 'mqtt';
 import type { ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { createClient } from '../GenericFunctions';
 import { Mqtt } from '../Mqtt.node';
 
-jest.mock('../GenericFunctions', () => {
+vi.mock('../GenericFunctions', () => {
 	const mockMqttClient = mock<MqttClient>();
 	return {
-		createClient: jest.fn().mockResolvedValue(mockMqttClient),
+		createClient: vi.fn().mockResolvedValue(mockMqttClient),
 	};
 });
 
@@ -17,7 +17,7 @@ describe('MQTT Node', () => {
 	const executeFunctions = mock<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeFunctions.getCredentials.calledWith('mqtt').mockResolvedValue(credentials);
 		executeFunctions.getInputData.mockReturnValue([{ json: { testing: true } }]);

@@ -1,14 +1,15 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../v2/transport', () => ({
+vi.mock('../../v2/transport', () => ({
 	microsoftApiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 	microsoftApiRequestAllItems: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
@@ -17,13 +18,13 @@ describe('Microsoft Teams Trigger Node', () => {
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('webhookMethods', () => {
 		describe('checkExists', () => {
 			it('should return true if the subscription exists', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					{
 						id: 'sub1',
 						notificationUrl: 'https://webhook.url',
@@ -50,7 +51,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(result).toBe(true);
 			});
 			it('should return false if the subscription does not exist', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 
@@ -65,7 +66,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should throw an error if the API request fails', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockRejectedValue(
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(
 					new Error('API request failed'),
 				);
 
@@ -83,7 +84,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 		describe('create', () => {
 			it('should create a subscription successfully', async () => {
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
 
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
@@ -93,7 +94,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					},
 				});
 
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+				(microsoftApiRequest.call as Mock).mockResolvedValue({
 					value: [{ id: 'team1', displayName: 'Team 1' }],
 				});
 
@@ -119,7 +120,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should persist a clientState secret on the workflow static data', async () => {
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
 
 				const staticData: { subscriptionIds?: string[]; webhookSecret?: string } = {};
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
@@ -131,7 +132,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(typeof staticData.webhookSecret).toBe('string');
 				expect((staticData.webhookSecret as string).length).toBeGreaterThan(0);
 
-				const requestBody = (microsoftApiRequest.call as jest.Mock).mock.calls[0][3] as Record<
+				const requestBody = (microsoftApiRequest.call as Mock).mock.calls[0][3] as Record<
 					string,
 					unknown
 				>;
@@ -158,7 +159,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
 
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({});
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
 
 				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
 					mockWebhookFunctions,
@@ -174,7 +175,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should return false if no subscription matches', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
 					node: {
@@ -189,10 +190,10 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should throw an error if the API request fails', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
 				]);
-				(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('API request failed'));
+				(microsoftApiRequest.call as Mock).mockRejectedValue(new Error('API request failed'));
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
 					node: {
@@ -216,9 +217,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				type: jest.fn().mockReturnThis(),
-				send: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				type: vi.fn().mockReturnThis(),
+				send: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -239,8 +240,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				query: {},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -271,9 +272,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				query: {},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
+				end: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -302,9 +303,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				query: {},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn().mockReturnThis(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn().mockReturnThis(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -329,9 +330,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				query: {},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
+				end: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);

@@ -1,19 +1,20 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getSubfolders } from '../../../v2/transport';
+import type { Mock, Mocked } from 'vitest';
 
 describe('MicrosoftOutlookV2 - getSubfolders', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		mockLoadOptionsFunctions.getCredentials.mockResolvedValue({});
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should not request childFolders when childFolderCount is 0', async () => {
@@ -25,7 +26,7 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 		const result = await getSubfolders.call(mockLoadOptionsFunctions, folders);
 
 		expect(
-			mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock,
+			mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock,
 		).not.toHaveBeenCalled();
 		expect(result).toEqual(folders);
 	});
@@ -33,7 +34,7 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	it('should paginate child folder requests using nextLink', async () => {
 		const folders = [{ id: 'inbox', displayName: 'Inbox', childFolderCount: 2 }];
 
-		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce({
 				value: [{ id: 'sub1', displayName: 'Work', childFolderCount: 0 }],
 				'@odata.nextLink':
@@ -46,7 +47,7 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 		const result = await getSubfolders.call(mockLoadOptionsFunctions, folders);
 
 		expect(
-			mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock,
+			mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock,
 		).toHaveBeenCalledTimes(2);
 		expect(result).toEqual([
 			{ id: 'inbox', displayName: 'Inbox', childFolderCount: 2 },
@@ -58,7 +59,7 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	it('should prefix nested subfolder displayNames with full parent path', async () => {
 		const folders = [{ id: 'inbox', displayName: 'Inbox', childFolderCount: 1 }];
 
-		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock)
+		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock)
 			.mockResolvedValueOnce({
 				value: [{ id: 'work', displayName: 'Work', childFolderCount: 1 }],
 			})
@@ -78,11 +79,9 @@ describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	it('should return bare subfolder displayNames when addPathToDisplayName is false', async () => {
 		const folders = [{ id: 'inbox', displayName: 'Inbox', childFolderCount: 1 }];
 
-		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce(
-			{
-				value: [{ id: 'work', displayName: 'Work', childFolderCount: 0 }],
-			},
-		);
+		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce({
+			value: [{ id: 'work', displayName: 'Work', childFolderCount: 0 }],
+		});
 
 		const result = await getSubfolders.call(mockLoadOptionsFunctions, folders);
 

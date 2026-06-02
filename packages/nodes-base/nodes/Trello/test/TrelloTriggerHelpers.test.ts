@@ -12,21 +12,21 @@ describe('TrelloTriggerHelpers', () => {
 		.digest('base64');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				oauthSecret: testSecret,
 			}),
-			getRequestObject: jest.fn().mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+			getRequestObject: vi.fn().mockReturnValue({
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'x-trello-webhook') return testSignature;
 					return null;
 				}),
 				rawBody: testBody,
 			}),
-			getNodeWebhookUrl: jest.fn().mockReturnValue(testCallbackUrl),
-			getNode: jest.fn().mockReturnValue({ name: 'Trello Trigger' }),
+			getNodeWebhookUrl: vi.fn().mockReturnValue(testCallbackUrl),
+			getNode: vi.fn().mockReturnValue({ name: 'Trello Trigger' }),
 		};
 	});
 
@@ -60,7 +60,7 @@ describe('TrelloTriggerHelpers', () => {
 
 		it('should return false when signature is invalid', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'x-trello-webhook') return 'invalidsignature';
 					return null;
 				}),
@@ -74,7 +74,7 @@ describe('TrelloTriggerHelpers', () => {
 
 		it('should return false when signature header is missing', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testBody,
 			});
 
@@ -90,7 +90,7 @@ describe('TrelloTriggerHelpers', () => {
 				.digest('base64');
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'x-trello-webhook') return bufferSignature;
 					return null;
 				}),

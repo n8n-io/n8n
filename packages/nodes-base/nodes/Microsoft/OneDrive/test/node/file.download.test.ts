@@ -1,14 +1,15 @@
 import type { IncomingMessage } from 'http';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type IHttpRequestMethods, type IExecuteFunctions, ApplicationError } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => ({
-	...jest.requireActual('../../GenericFunctions'),
-	microsoftApiRequest: jest.fn(async function (_: IHttpRequestMethods, resource: string) {
+vi.mock('../../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
+	microsoftApiRequest: vi.fn(async function (_: IHttpRequestMethods, resource: string) {
 		if (resource === '/drive/items/fileID') {
 			return {
 				name: 'MyFile',
@@ -27,8 +28,8 @@ jest.mock('../../GenericFunctions', () => ({
 describe('Test MicrosoftOneDrive, file > download', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	let microsoftOneDrive: MicrosoftOneDrive;
-	const httpRequest = jest.fn(async () => ({ body: mock<IncomingMessage>() }));
-	const prepareBinaryData = jest.fn(async () => ({ data: 'testBinary' }));
+	const httpRequest = vi.fn(async () => ({ body: mock<IncomingMessage>() }));
+	const prepareBinaryData = vi.fn(async () => ({ data: 'testBinary' }));
 
 	const mockNode = {
 		id: 'test-node-id',
@@ -46,15 +47,15 @@ describe('Test MicrosoftOneDrive, file > download', () => {
 		mockExecuteFunctions.helpers = {
 			httpRequest,
 			prepareBinaryData,
-			returnJsonArray: jest.fn((data) => [data]),
-			constructExecutionMetaData: jest.fn((data) => data),
+			returnJsonArray: vi.fn((data) => [data]),
+			constructExecutionMetaData: vi.fn((data) => data),
 		} as any;
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should call helpers.httpRequest when request to /drive/items/{fileId}/content fails', async () => {

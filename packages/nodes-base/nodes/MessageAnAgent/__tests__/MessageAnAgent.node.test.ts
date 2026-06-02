@@ -1,12 +1,13 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ExecuteAgentData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { MessageAnAgent } from '../MessageAnAgent.node';
+import type { Mocked } from 'vitest';
 
 describe('MessageAnAgent Node', () => {
 	let node: MessageAnAgent;
-	let executeFunctions: jest.Mocked<IExecuteFunctions>;
+	let executeFunctions: Mocked<IExecuteFunctions>;
 
 	const mockSession = {
 		agentId: 'agent-1',
@@ -30,7 +31,7 @@ describe('MessageAnAgent Node', () => {
 	beforeEach(() => {
 		node = new MessageAnAgent();
 		executeFunctions = mockDeep<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeFunctions.getNode.mockReturnValue({
 			id: 'test-node-id',

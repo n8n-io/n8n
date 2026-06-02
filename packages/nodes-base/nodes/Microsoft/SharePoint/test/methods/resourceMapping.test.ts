@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getMappingColumns } from '../../methods/resourceMapping';
@@ -13,7 +13,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should map columns', async () => {
@@ -673,7 +673,7 @@ describe('Microsoft SharePoint Node', () => {
 					},
 				],
 			};
-			loadOptionsFunctions.helpers.httpRequestWithAuthentication = jest
+			loadOptionsFunctions.helpers.httpRequestWithAuthentication = vi
 				.fn()
 				.mockReturnValue(mockResponse);
 
@@ -861,7 +861,7 @@ describe('Microsoft SharePoint Node', () => {
 					},
 				],
 			};
-			loadOptionsFunctions.helpers.httpRequestWithAuthentication = jest
+			loadOptionsFunctions.helpers.httpRequestWithAuthentication = vi
 				.fn()
 				.mockReturnValue(mockResponse);
 

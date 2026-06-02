@@ -14,9 +14,10 @@
     "lint": "eslint nodes credentials utils test --quiet && node ./scripts/validate-load-options-methods.js && node ./scripts/validate-schema-versions.js",
     "lint:fix": "eslint nodes credentials utils test --fix",
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
-    "test": "jest",
-    "test:changed": "janitor test-scoped --runner=jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:dev": "vitest --silent=false",
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
   "files": [
@@ -872,6 +873,7 @@
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "catalog:",
@@ -899,7 +901,8 @@
     "eslint-plugin-n8n-nodes-base": "^1.16.5",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",

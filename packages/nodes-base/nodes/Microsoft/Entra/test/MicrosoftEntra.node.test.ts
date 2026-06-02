@@ -104,12 +104,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load group properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.groups),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -125,12 +125,12 @@ describe('Microsoft Entra Node', () => {
 		it('should load user properties', async () => {
 			const mockContext = {
 				helpers: {
-					requestWithAuthentication: jest
+					requestWithAuthentication: vi
 						.fn()
 						.mockReturnValue(microsoftEntraApiResponse.metadata.users),
 				},
-				getCurrentNodeParameter: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getCurrentNodeParameter: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -153,12 +153,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},
@@ -192,12 +192,12 @@ describe('Microsoft Entra Node', () => {
 				})),
 				'@odata.nextLink': '',
 			};
-			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockRequestWithAuthentication = vi.fn().mockReturnValue(mockResponse);
 			const mockContext = {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					oauthTokenData: {
 						access_token: 'test-access-token',
 					},

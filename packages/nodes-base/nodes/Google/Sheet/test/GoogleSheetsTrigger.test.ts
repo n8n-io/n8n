@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';

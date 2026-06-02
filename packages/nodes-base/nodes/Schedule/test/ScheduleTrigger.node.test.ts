@@ -12,9 +12,9 @@ describe('ScheduleTrigger', () => {
 	const timezone = 'Europe/Berlin';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
-		jest.setSystemTime(mockDate);
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+		vi.setSystemTime(mockDate);
 	});
 
 	describe('trigger', () => {
@@ -27,10 +27,10 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
 			// Filler second/minute are derived deterministically from
@@ -52,12 +52,12 @@ describe('ScheduleTrigger', () => {
 				timestamp: '2023-12-28T15:52:34.000+01:00',
 			});
 
-			jest.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
+			vi.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -70,19 +70,19 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(3);
 		});
 
@@ -99,13 +99,13 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(17 * HOUR);
+			vi.advanceTimersByTime(17 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(HOUR);
+			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -129,10 +129,10 @@ describe('ScheduleTrigger', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(2 * HOUR);
+			vi.advanceTimersByTime(2 * HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
@@ -249,7 +249,7 @@ describe('ScheduleTrigger', () => {
 					workflow: { id: workflowId, active: true },
 				});
 
-				jest.advanceTimersByTime(2 * HOUR);
+				vi.advanceTimersByTime(2 * HOUR);
 
 				expect(emit).toHaveBeenCalledTimes(1);
 				const fourthArg = emit.mock.calls[0][3];

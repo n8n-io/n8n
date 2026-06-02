@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
@@ -12,23 +12,24 @@ import {
 } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
 import * as utils from '../../../v2/helpers/utils';
+import type { Mocked } from 'vitest';
 
-jest.mock('../../../v2/transport');
-jest.mock('../../../v2/helpers/utils');
+vi.mock('../../../v2/transport');
+vi.mock('../../../v2/helpers/utils');
 
-const mockTransport = transport as jest.Mocked<typeof transport>;
-const mockUtils = utils as jest.Mocked<typeof utils>;
+const mockTransport = transport as Mocked<typeof transport>;
+const mockUtils = utils as Mocked<typeof utils>;
 
 describe('MicrosoftOutlookV2 - listSearch methods', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('searchContacts', () => {

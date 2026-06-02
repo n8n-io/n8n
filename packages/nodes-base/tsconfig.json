@@ -9,6 +9,8 @@
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 
+		"types": ["node", "vitest/globals"],
+
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 
@@ -39,8 +41,7 @@
 		"types/**/*.ts",
 		"utils/**/*.ts",
 		"types/**/*.ts",
-		"../core/nodes-testing/**/*.ts",
-		"../../node_modules/jest-expect-message/types/index.d.ts"
+		"../core/nodes-testing/**/*.ts"
 	],
 	"exclude": [],
 	"references": [

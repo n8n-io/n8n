@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -7,15 +7,16 @@ import {
 	tolerateDoubleQuotes,
 	throwOnEmptyUpdate,
 } from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft GraphSecurity GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequest: jest.Mock;
+	let mockRequest: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequest = jest.fn();
+		mockRequest = vi.fn();
 		mockExecuteFunctions.helpers.request = mockRequest;
 
 		mockNode = {
@@ -27,11 +28,11 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('msGraphSecurityApiRequest', () => {

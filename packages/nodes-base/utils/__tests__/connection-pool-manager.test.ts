@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { OperationalError, type Logger } from 'n8n-workflow';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
@@ -11,7 +11,7 @@ const logger = mock<Logger>();
 let cpm: ConnectionPoolManager;
 
 beforeAll(() => {
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 	cpm = ConnectionPoolManager.getInstance(logger);
 });
 
@@ -34,7 +34,7 @@ describe('getConnection', () => {
 	test('calls fallBackHandler only once and returns the first value', async () => {
 		// ARRANGE
 		const connectionType = {};
-		const fallBackHandler = jest.fn(async () => {
+		const fallBackHandler = vi.fn(async () => {
 			return connectionType;
 		});
 
@@ -43,7 +43,7 @@ describe('getConnection', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		};
 
 		// ACT 1
@@ -63,12 +63,12 @@ describe('getConnection', () => {
 	test('creates different pools for different poolKeyExtras', async () => {
 		// ARRANGE
 		const connectionType1 = {};
-		const fallBackHandler1 = jest.fn(async () => {
+		const fallBackHandler1 = vi.fn(async () => {
 			return connectionType1;
 		});
 
 		const connectionType2 = {};
-		const fallBackHandler2 = jest.fn(async () => {
+		const fallBackHandler2 = vi.fn(async () => {
 			return connectionType2;
 		});
 
@@ -79,7 +79,7 @@ describe('getConnection', () => {
 			nodeVersion: '1',
 			poolKeyExtras: { largeNumbersOutput: 'text' },
 			fallBackHandler: fallBackHandler1,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 		const connection2 = await cpm.getConnection({
 			credentials: {},
@@ -87,7 +87,7 @@ describe('getConnection', () => {
 			nodeVersion: '1',
 			poolKeyExtras: { largeNumbersOutput: 'numbers' },
 			fallBackHandler: fallBackHandler2,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ASSERT
@@ -103,7 +103,7 @@ describe('getConnection', () => {
 	test('reuses pool when poolKeyExtras are identical', async () => {
 		// ARRANGE
 		const connectionType = {};
-		const fallBackHandler = jest.fn(async () => {
+		const fallBackHandler = vi.fn(async () => {
 			return connectionType;
 		});
 
@@ -113,7 +113,7 @@ describe('getConnection', () => {
 			nodeVersion: '1',
 			poolKeyExtras: { largeNumbersOutput: 'numbers' },
 			fallBackHandler,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		};
 
 		// ACT
@@ -129,12 +129,12 @@ describe('getConnection', () => {
 	test('creates different pools for different node versions', async () => {
 		// ARRANGE
 		const connectionType1 = {};
-		const fallBackHandler1 = jest.fn(async () => {
+		const fallBackHandler1 = vi.fn(async () => {
 			return connectionType1;
 		});
 
 		const connectionType2 = {};
-		const fallBackHandler2 = jest.fn(async () => {
+		const fallBackHandler2 = vi.fn(async () => {
 			return connectionType2;
 		});
 
@@ -144,14 +144,14 @@ describe('getConnection', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler: fallBackHandler1,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 		const connection2 = await cpm.getConnection({
 			credentials: {},
 			nodeType: 'example',
 			nodeVersion: '2',
 			fallBackHandler: fallBackHandler2,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ASSERT
@@ -168,7 +168,7 @@ describe('getConnection', () => {
 		// ARRANGE
 		const connectionType = {};
 		let abortController: AbortController | undefined;
-		const fallBackHandler = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler = vi.fn(async (ac: AbortController) => {
 			abortController = ac;
 			return connectionType;
 		});
@@ -177,15 +177,15 @@ describe('getConnection', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ACT
-		jest.advanceTimersByTime(ttl + cleanUpInterval * 2);
+		vi.advanceTimersByTime(ttl + cleanUpInterval * 2);
 
 		// ASSERT
 		if (abortController === undefined) {
-			fail("abortController haven't been initialized");
+			expect.fail("abortController haven't been initialized");
 		}
 		expect(abortController.signal.aborted).toBe(true);
 	});
@@ -193,7 +193,7 @@ describe('getConnection', () => {
 	test('throws OperationsError if the fallBackHandler aborts during connection initialization', async () => {
 		// ARRANGE
 		const connectionType = {};
-		const fallBackHandler = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler = vi.fn(async (ac: AbortController) => {
 			ac.abort();
 			return connectionType;
 		});
@@ -204,7 +204,7 @@ describe('getConnection', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ASSERT
@@ -221,7 +221,7 @@ describe('onShutdown', () => {
 		// ARRANGE
 		const connectionType1 = {};
 		let abortController1: AbortController | undefined;
-		const fallBackHandler1 = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler1 = vi.fn(async (ac: AbortController) => {
 			abortController1 = ac;
 			return connectionType1;
 		});
@@ -230,12 +230,12 @@ describe('onShutdown', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler: fallBackHandler1,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		const connectionType2 = {};
 		let abortController2: AbortController | undefined;
-		const fallBackHandler2 = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler2 = vi.fn(async (ac: AbortController) => {
 			abortController2 = ac;
 			return connectionType2;
 		});
@@ -244,7 +244,7 @@ describe('onShutdown', () => {
 			nodeType: 'example',
 			nodeVersion: '2',
 			fallBackHandler: fallBackHandler2,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ACT
@@ -252,7 +252,7 @@ describe('onShutdown', () => {
 
 		// ASSERT
 		if (abortController1 === undefined || abortController2 === undefined) {
-			fail("abortController haven't been initialized");
+			expect.fail("abortController haven't been initialized");
 		}
 		expect(abortController1.signal.aborted).toBe(true);
 		expect(abortController2.signal.aborted).toBe(true);
@@ -262,7 +262,7 @@ describe('onShutdown', () => {
 		// ARRANGE
 		const connectionType1 = {};
 		let abortController1: AbortController | undefined;
-		const fallBackHandler1 = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler1 = vi.fn(async (ac: AbortController) => {
 			abortController1 = ac;
 			return connectionType1;
 		});
@@ -271,12 +271,12 @@ describe('onShutdown', () => {
 			nodeType: 'example',
 			nodeVersion: '1',
 			fallBackHandler: fallBackHandler1,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		const connectionType2 = {};
 		let abortController2: AbortController | undefined;
-		const fallBackHandler2 = jest.fn(async (ac: AbortController) => {
+		const fallBackHandler2 = vi.fn(async (ac: AbortController) => {
 			abortController2 = ac;
 			return connectionType2;
 		});
@@ -285,7 +285,7 @@ describe('onShutdown', () => {
 			nodeType: 'example',
 			nodeVersion: '2',
 			fallBackHandler: fallBackHandler2,
-			wasUsed: jest.fn(),
+			wasUsed: vi.fn(),
 		});
 
 		// ACT
@@ -295,7 +295,7 @@ describe('onShutdown', () => {
 
 		// ASSERT
 		if (abortController1 === undefined || abortController2 === undefined) {
-			fail("abortController haven't been initialized");
+			expect.fail("abortController haven't been initialized");
 		}
 		expect(abortController1.signal.aborted).toBe(true);
 		expect(abortController2.signal.aborted).toBe(true);
@@ -306,11 +306,11 @@ describe('wasUsed', () => {
 	test('is called for every successive `getConnection` call', async () => {
 		// ARRANGE
 		const connectionType = {};
-		const fallBackHandler = jest.fn(async () => {
+		const fallBackHandler = vi.fn(async () => {
 			return connectionType;
 		});
 
-		const wasUsed = jest.fn();
+		const wasUsed = vi.fn();
 		const options = {
 			credentials: {},
 			nodeType: 'example',

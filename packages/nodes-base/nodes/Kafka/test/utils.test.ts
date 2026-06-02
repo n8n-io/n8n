@@ -1,18 +1,19 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ITriggerFunctions, IRun, INode, Logger, IDeferredPromise } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import { getAutoCommitSettings, configureDataEmitter, type KafkaTriggerOptions } from '../utils';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
+		sleep: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
-const mockedSleep = jest.mocked(sleep);
+const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
 	describe('getAutoCommitSettings', () => {
@@ -167,7 +168,7 @@ describe('Kafka Utils', () => {
 			if (deferredPromise) {
 				ctx.helpers = {
 					...ctx.helpers,
-					createDeferredPromise: jest.fn().mockReturnValue(deferredPromise),
+					createDeferredPromise: vi.fn().mockReturnValue(deferredPromise),
 				} as unknown as ITriggerFunctions['helpers'];
 			}
 
@@ -175,12 +176,12 @@ describe('Kafka Utils', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
-			jest.useFakeTimers();
+			vi.clearAllMocks();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		describe('immediate emit mode', () => {
@@ -429,7 +430,7 @@ describe('Kafka Utils', () => {
 				const resultPromise = emitter(testData);
 
 				// Advance timers past the timeout
-				jest.advanceTimersByTime(1001);
+				vi.advanceTimersByTime(1001);
 
 				const result = await resultPromise;
 
@@ -482,7 +483,7 @@ describe('Kafka Utils', () => {
 				const result = await resultPromise;
 
 				// Advance timers past what would have been the timeout
-				jest.advanceTimersByTime(15000);
+				vi.advanceTimersByTime(15000);
 
 				// Should not have logged any timeout error
 				expect(result).toEqual({ success: true });

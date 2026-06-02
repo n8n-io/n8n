@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
@@ -122,22 +122,19 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		);
 	});
 
+	// The two code paths can't be distinguished by spying on the (sibling, ESM-bound)
+	// prepareQueryLegacy call under Vitest, so assert the observable behaviour instead:
+	// legacy processing does not validate referenced parameters, new processing does.
 	it('should use legacy processing for versions < 2.5', () => {
-		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
-
-		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.4, ['users', 123]);
-
-		expect(legacySpy).toHaveBeenCalledWith('SELECT * FROM $1:name WHERE id = $2', ['users', 123]);
-
-		legacySpy.mockRestore();
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM users WHERE id = $4', 2.4, ['value1', 'value2']),
+		).not.toThrow();
 	});
 
 	it('should use new processing for versions >= 2.5', () => {
-		const legacySpy = jest.spyOn(utils, 'prepareQueryLegacy');
-
-		prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.5, ['users', 123]);
-
-		expect(legacySpy).not.toHaveBeenCalled();
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM users WHERE id = $4', 2.5, ['value1', 'value2']),
+		).toThrow('Parameter $4 referenced in query but no replacement value provided at index 4');
 	});
 
 	it('should throw error when parameter is referenced but no replacement value provided', () => {
@@ -391,7 +388,7 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 		test.each(invalidOperations)(
 			'getWhereClauses throws an exception for "%s" operation',
 			(operation) => {
-				const getNodeParameterMock = jest.fn().mockReturnValue({
+				const getNodeParameterMock = vi.fn().mockReturnValue({
 					values: [
 						{
 							column: 'test',
@@ -430,7 +427,7 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 						value: 'angry',
 					},
 				];
-				const getNodeParameterMock = jest.fn().mockReturnValue({
+				const getNodeParameterMock = vi.fn().mockReturnValue({
 					values: clauses,
 				});
 				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });

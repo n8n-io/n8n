@@ -1,5 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	Kafka,
 	logLevel,
@@ -16,38 +16,40 @@ import { NodeOperationError, type IRun } from 'n8n-workflow';
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from '../KafkaTrigger.node';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('kafkajs');
-jest.mock('@kafkajs/confluent-schema-registry');
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('kafkajs');
+vi.mock('@kafkajs/confluent-schema-registry');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
 	return {
 		...actual,
-		sleep: jest.fn().mockResolvedValue(undefined),
+		sleep: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
 describe('KafkaTrigger Node', () => {
-	let mockKafka: jest.Mocked<Kafka>;
-	let mockRegistry: jest.Mocked<SchemaRegistry>;
-	let mockConsumerConnect: jest.Mock;
-	let mockConsumerSubscribe: jest.Mock;
-	let mockConsumerRun: jest.Mock;
-	let mockConsumerDisconnect: jest.Mock;
-	let mockConsumerCreate: jest.Mock;
-	let mockRegistryDecode: jest.Mock;
+	let mockKafka: Mocked<Kafka>;
+	let mockRegistry: Mocked<SchemaRegistry>;
+	let mockConsumerConnect: Mock;
+	let mockConsumerSubscribe: Mock;
+	let mockConsumerRun: Mock;
+	let mockConsumerDisconnect: Mock;
+	let mockConsumerCreate: Mock;
+	let mockRegistryDecode: Mock;
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
 
 	beforeEach(() => {
 		const mockEachMessageHolder = {
-			handler: jest.fn(async () => {}) as jest.Mocked<EachMessageHandler>,
+			handler: vi.fn(async () => {}) as Mocked<EachMessageHandler>,
 		};
 		const mockEachBatchHolder = {
-			handler: jest.fn(async () => {}) as jest.Mocked<EachBatchHandler>,
+			handler: vi.fn(async () => {}) as Mocked<EachBatchHandler>,
 		};
-		mockConsumerConnect = jest.fn();
-		mockConsumerSubscribe = jest.fn();
-		mockConsumerRun = jest.fn(({ eachMessage, eachBatch }: ConsumerRunConfig) => {
+		mockConsumerConnect = vi.fn();
+		mockConsumerSubscribe = vi.fn();
+		mockConsumerRun = vi.fn(({ eachMessage, eachBatch }: ConsumerRunConfig) => {
 			if (eachMessage) {
 				mockEachMessageHolder.handler = eachMessage;
 			}
@@ -55,14 +57,14 @@ describe('KafkaTrigger Node', () => {
 				mockEachBatchHolder.handler = eachBatch;
 			}
 		});
-		mockConsumerDisconnect = jest.fn();
-		mockConsumerCreate = jest.fn(() =>
+		mockConsumerDisconnect = vi.fn();
+		mockConsumerCreate = vi.fn(() =>
 			mock<Consumer>({
 				connect: mockConsumerConnect,
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
-				on: jest.fn(() => jest.fn()),
+				on: vi.fn(() => vi.fn()),
 				events: {
 					CONNECT: 'consumer.connect',
 					GROUP_JOIN: 'consumer.group_join',
@@ -101,13 +103,13 @@ describe('KafkaTrigger Node', () => {
 					offsetLag: () => '0',
 					offsetLagLow: () => '0',
 				},
-				resolveOffset: jest.fn(),
-				heartbeat: jest.fn(),
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				resolveOffset: vi.fn(),
+				heartbeat: vi.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 		};
 
@@ -132,13 +134,13 @@ describe('KafkaTrigger Node', () => {
 					offsetLag: () => '0',
 					offsetLagLow: () => '0',
 				},
-				resolveOffset: jest.fn(),
-				heartbeat: jest.fn(),
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				resolveOffset: vi.fn(),
+				heartbeat: vi.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 		};
 
@@ -149,13 +151,17 @@ describe('KafkaTrigger Node', () => {
 			consumer: mockConsumerCreate,
 		});
 
-		mockRegistryDecode = jest.fn().mockResolvedValue({ data: 'decoded-data' });
+		mockRegistryDecode = vi.fn().mockResolvedValue({ data: 'decoded-data' });
 		mockRegistry = mock<SchemaRegistry>({
 			decode: mockRegistryDecode,
 		});
 
-		(Kafka as jest.Mock).mockReturnValue(mockKafka);
-		(SchemaRegistry as jest.Mock).mockReturnValue(mockRegistry);
+		(Kafka as Mock).mockImplementation(function () {
+			return mockKafka;
+		});
+		(SchemaRegistry as Mock).mockImplementation(function () {
+			return mockRegistry;
+		});
 	});
 
 	it('should connect to Kafka and subscribe to topic', async () => {
@@ -855,7 +861,7 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should register event listeners on consumer', async () => {
-		const mockOn = jest.fn(() => jest.fn());
+		const mockOn = vi.fn(() => vi.fn());
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
 				connect: mockConsumerConnect,
@@ -911,17 +917,17 @@ describe('KafkaTrigger Node', () => {
 	});
 
 	it('should clean up event listeners on close', async () => {
-		const mockRemoveListener1 = jest.fn();
-		const mockRemoveListener2 = jest.fn();
-		const mockRemoveListener3 = jest.fn();
-		const mockRemoveListener4 = jest.fn();
-		const mockRemoveListener5 = jest.fn();
-		const mockRemoveListener6 = jest.fn();
-		const mockRemoveListener7 = jest.fn();
-		const mockRemoveListener8 = jest.fn();
-		const mockRemoveListener9 = jest.fn();
+		const mockRemoveListener1 = vi.fn();
+		const mockRemoveListener2 = vi.fn();
+		const mockRemoveListener3 = vi.fn();
+		const mockRemoveListener4 = vi.fn();
+		const mockRemoveListener5 = vi.fn();
+		const mockRemoveListener6 = vi.fn();
+		const mockRemoveListener7 = vi.fn();
+		const mockRemoveListener8 = vi.fn();
+		const mockRemoveListener9 = vi.fn();
 
-		const mockOn = jest
+		const mockOn = vi
 			.fn()
 			.mockReturnValueOnce(mockRemoveListener1)
 			.mockReturnValueOnce(mockRemoveListener2)
@@ -933,7 +939,7 @@ describe('KafkaTrigger Node', () => {
 			.mockReturnValueOnce(mockRemoveListener8)
 			.mockReturnValueOnce(mockRemoveListener9);
 
-		const mockConsumerStop = jest.fn();
+		const mockConsumerStop = vi.fn();
 
 		mockConsumerCreate.mockReturnValueOnce(
 			mock<Consumer>({
@@ -1656,12 +1662,12 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			// Simulate consumer stopping after first message
 			let messageCount = 0;
-			const mockIsRunning = jest.fn(() => {
+			const mockIsRunning = vi.fn(() => {
 				messageCount++;
 				return messageCount <= 1; // Returns true for first message, false after
 			});
@@ -1705,11 +1711,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
 				isRunning: mockIsRunning,
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 
 			// Should only process first message before isRunning returns false
@@ -1748,12 +1754,12 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			// Simulate partition becoming stale after first message (rebalance occurred)
 			let messageCount = 0;
-			const mockIsStale = jest.fn(() => {
+			const mockIsStale = vi.fn(() => {
 				messageCount++;
 				return messageCount > 1; // Returns false for first message, true after
 			});
@@ -1797,11 +1803,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
 				isStale: mockIsStale,
-				pause: jest.fn(),
+				pause: vi.fn(),
 			});
 
 			// Should only process first message before isStale returns true
@@ -1956,8 +1962,8 @@ describe('KafkaTrigger Node', () => {
 				},
 			});
 
-			const mockResolveOffset = jest.fn();
-			const mockHeartbeat = jest.fn();
+			const mockResolveOffset = vi.fn();
+			const mockHeartbeat = vi.fn();
 
 			await eachBatchHandler!({
 				batch: {
@@ -1998,11 +2004,11 @@ describe('KafkaTrigger Node', () => {
 				},
 				resolveOffset: mockResolveOffset,
 				heartbeat: mockHeartbeat,
-				commitOffsetsIfNecessary: jest.fn(),
-				uncommittedOffsets: jest.fn(),
-				isRunning: jest.fn(() => true),
-				isStale: jest.fn(() => false),
-				pause: jest.fn(),
+				commitOffsetsIfNecessary: vi.fn(),
+				uncommittedOffsets: vi.fn(),
+				isRunning: vi.fn(() => true),
+				isStale: vi.fn(() => false),
+				pause: vi.fn(),
 			});
 
 			// Should process all 3 messages

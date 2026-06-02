@@ -1,12 +1,12 @@
 import { TrelloTrigger } from '../TrelloTrigger.node';
 
-jest.mock('../TrelloTriggerHelpers', () => ({
-	verifySignature: jest.fn(),
+vi.mock('../TrelloTriggerHelpers', () => ({
+	verifySignature: vi.fn(),
 }));
 
 import { verifySignature } from '../TrelloTriggerHelpers';
 
-const mockedVerifySignature = jest.mocked(verifySignature);
+const mockedVerifySignature = vi.mocked(verifySignature);
 
 describe('TrelloTrigger', () => {
 	let trelloTrigger: TrelloTrigger;
@@ -14,21 +14,21 @@ describe('TrelloTrigger', () => {
 	let mockRes: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trelloTrigger = new TrelloTrigger();
 
 		mockRes = {
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			end: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn().mockReturnThis(),
 		};
 
 		mockWebhookFunctions = {
-			getWebhookName: jest.fn().mockReturnValue('default'),
-			getBodyData: jest.fn().mockReturnValue({ action: { type: 'createCard' } }),
-			getResponseObject: jest.fn().mockReturnValue(mockRes),
+			getWebhookName: vi.fn().mockReturnValue('default'),
+			getBodyData: vi.fn().mockReturnValue({ action: { type: 'createCard' } }),
+			getResponseObject: vi.fn().mockReturnValue(mockRes),
 			helpers: {
-				returnJsonArray: jest.fn().mockImplementation((data) => [{ json: data }]),
+				returnJsonArray: vi.fn().mockImplementation((data) => [{ json: data }]),
 			},
 		};
 	});

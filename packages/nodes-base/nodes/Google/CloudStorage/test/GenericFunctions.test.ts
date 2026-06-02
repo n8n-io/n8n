@@ -1,10 +1,10 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchProjects } from '../GenericFunctions';
 
-const requestOAuth2 = jest.fn();
+const requestOAuth2 = vi.fn();
 
 describe('Google Cloud Storage GenericFunctions', () => {
 	let mockContext: MockProxy<ILoadOptionsFunctions>;
@@ -12,7 +12,7 @@ describe('Google Cloud Storage GenericFunctions', () => {
 	beforeEach(() => {
 		mockContext = mock<ILoadOptionsFunctions>();
 		mockContext.helpers = { requestOAuth2 } as unknown as typeof mockContext.helpers;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('searchProjects', () => {

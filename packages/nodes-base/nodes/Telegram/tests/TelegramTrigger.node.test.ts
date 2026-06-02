@@ -1,16 +1,17 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IHookFunctions, INode, Workflow } from 'n8n-workflow';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { apiRequest } from '../GenericFunctions';
 import { TelegramTrigger } from '../TelegramTrigger.node';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../GenericFunctions');
+vi.mock('../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../GenericFunctions');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string, query: string) {
+		apiRequest: vi.fn(async function (method: string, query: string) {
 			if (method === 'GET' && query.startsWith('getFile')) {
 				return { result: { file_path: 'path/to/file' } };
 			}
@@ -51,7 +52,7 @@ describe('TelegramTrigger', () => {
 
 		return {
 			helpers: {
-				prepareBinaryData: jest.fn().mockResolvedValue(binaryData),
+				prepareBinaryData: vi.fn().mockResolvedValue(binaryData),
 			},
 			credential: {
 				accessToken: '999999',
@@ -86,7 +87,7 @@ describe('TelegramTrigger', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Webhook', () => {
@@ -179,15 +180,15 @@ describe('TelegramTrigger', () => {
 		test('should set drop_pending_updates for version 1.3', async () => {
 			const telegramTrigger = new TelegramTrigger();
 			const mockHookFunctions = mock<IHookFunctions>({
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook'),
-				getNodeParameter: jest.fn().mockReturnValue(['message']),
-				getNode: jest.fn().mockReturnValue({ id: '2', typeVersion: 1.3 }),
-				getWorkflow: jest.fn().mockReturnValue({ id: '1' }),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook'),
+				getNodeParameter: vi.fn().mockReturnValue(['message']),
+				getNode: vi.fn().mockReturnValue({ id: '2', typeVersion: 1.3 }),
+				getWorkflow: vi.fn().mockReturnValue({ id: '1' }),
 			});
 
 			await telegramTrigger.webhookMethods.default.create.call(mockHookFunctions);
 
-			expect(jest.mocked(apiRequest)).toHaveBeenCalledWith(
+			expect(vi.mocked(apiRequest)).toHaveBeenCalledWith(
 				'POST',
 				'setWebhook',
 				expect.objectContaining({
@@ -199,15 +200,15 @@ describe('TelegramTrigger', () => {
 		test('should not set drop_pending_updates for version 1.2', async () => {
 			const telegramTrigger = new TelegramTrigger();
 			const mockHookFunctions = mock<IHookFunctions>({
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook'),
-				getNodeParameter: jest.fn().mockReturnValue(['*']),
-				getNode: jest.fn().mockReturnValue({ id: '2', typeVersion: 1.2 }),
-				getWorkflow: jest.fn().mockReturnValue({ id: '1' }),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook'),
+				getNodeParameter: vi.fn().mockReturnValue(['*']),
+				getNode: vi.fn().mockReturnValue({ id: '2', typeVersion: 1.2 }),
+				getWorkflow: vi.fn().mockReturnValue({ id: '1' }),
 			});
 
 			await telegramTrigger.webhookMethods.default.create.call(mockHookFunctions);
 
-			expect(jest.mocked(apiRequest)).toHaveBeenCalledWith(
+			expect(vi.mocked(apiRequest)).toHaveBeenCalledWith(
 				'POST',
 				'setWebhook',
 				expect.objectContaining({

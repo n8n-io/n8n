@@ -1,13 +1,14 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => ({
-	...jest.requireActual('../../GenericFunctions'),
-	microsoftApiRequest: jest.fn(async function () {
+vi.mock('../../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
+	microsoftApiRequest: vi.fn(async function () {
 		return JSON.stringify({
 			id: 'uploadedFileId',
 			name: 'uploadedFile.txt',
@@ -18,7 +19,7 @@ jest.mock('../../GenericFunctions', () => ({
 describe('Test MicrosoftOneDrive, file > upload', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 	let microsoftOneDrive: MicrosoftOneDrive;
-	const getBinaryDataBuffer = jest.fn(async () => Buffer.from('test content'));
+	const getBinaryDataBuffer = vi.fn(async () => Buffer.from('test content'));
 
 	const mockNode = {
 		id: 'test-node-id',
@@ -34,7 +35,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		microsoftOneDrive = new MicrosoftOneDrive();
 
 		mockExecuteFunctions.helpers = {
-			assertBinaryData: jest.fn(() => {
+			assertBinaryData: vi.fn(() => {
 				return {
 					data: 'base64data',
 					mimeType: 'text/plain',
@@ -42,15 +43,15 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 				} as IBinaryData;
 			}),
 			getBinaryDataBuffer,
-			returnJsonArray: jest.fn((data) => [data]),
-			constructExecutionMetaData: jest.fn((data) => data),
+			returnJsonArray: vi.fn((data) => [data]),
+			constructExecutionMetaData: vi.fn((data) => data),
 		} as any;
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should use filename from node parameters even when binary has a filename (version 1.1+)', async () => {

@@ -1,33 +1,34 @@
 import { ApplicationError } from 'n8n-workflow';
 import type { AwsAssumeRoleCredentialsType, AWSRegion } from './types';
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
-jest.mock('xml2js', () => ({
-	parseString: jest.fn(),
+vi.mock('xml2js', () => ({
+	parseString: vi.fn(),
 }));
 
 import { sign } from 'aws4';
 import { parseString } from 'xml2js';
 import { assumeRole } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
+import type { MockedFunction, MockInstance } from 'vitest';
 
 describe('assumeRole', () => {
-	let mockFetch: jest.MockedFunction<typeof fetch>;
-	let mockSign: jest.MockedFunction<typeof sign>;
-	let mockParseString: jest.MockedFunction<typeof parseString>;
-	let consoleErrorSpy: jest.SpyInstance;
+	let mockFetch: MockedFunction<typeof fetch>;
+	let mockSign: MockedFunction<typeof sign>;
+	let mockParseString: MockedFunction<typeof parseString>;
+	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-		mockSign = sign as jest.MockedFunction<typeof sign>;
-		mockParseString = parseString as jest.MockedFunction<typeof parseString>;
-		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+		vi.clearAllMocks();
+		mockFetch = global.fetch as MockedFunction<typeof fetch>;
+		mockSign = sign as MockedFunction<typeof sign>;
+		mockParseString = parseString as MockedFunction<typeof parseString>;
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		mockSign.mockImplementation((request: any) => request as any);
 	});
@@ -53,13 +54,13 @@ describe('assumeRole', () => {
 				source: 'environment' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
 					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
 						<AssumeRoleResult>
 							<Credentials>
@@ -129,13 +130,13 @@ describe('assumeRole', () => {
 				source: 'instanceMetadata' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
 					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
 						<AssumeRoleResult>
 							<Credentials>
@@ -197,7 +198,7 @@ describe('assumeRole', () => {
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
 			};
 
-			jest.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
 
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
@@ -221,13 +222,13 @@ describe('assumeRole', () => {
 				source: 'environment' as const,
 			};
 
-			jest
-				.spyOn(systemCredentialsUtils, 'getSystemCredentials')
-				.mockResolvedValue(mockSystemCredentials);
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
+				mockSystemCredentials,
+			);
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -272,7 +273,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -325,7 +326,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -428,7 +429,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -470,7 +471,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -509,7 +510,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -572,7 +573,7 @@ describe('assumeRole', () => {
 				ok: false,
 				status: 403,
 				statusText: 'Forbidden',
-				text: jest.fn().mockResolvedValue('Access denied'),
+				text: vi.fn().mockResolvedValue('Access denied'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -595,7 +596,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('invalid xml'),
+				text: vi.fn().mockResolvedValue('invalid xml'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -619,7 +620,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -650,7 +651,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -681,7 +682,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);
@@ -721,7 +722,7 @@ describe('assumeRole', () => {
 
 			const mockResponse = {
 				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
+				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
 			};
 
 			mockFetch.mockResolvedValue(mockResponse as any);

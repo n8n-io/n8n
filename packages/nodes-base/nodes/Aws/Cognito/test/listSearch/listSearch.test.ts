@@ -12,10 +12,11 @@ import {
 	searchGroupsForUser,
 } from '../../methods/listSearch';
 import { awsApiRequest, awsApiRequestAllItems } from '../../transport/index';
+import type { Mock } from 'vitest';
 
-jest.mock('../../transport/index', () => ({
-	awsApiRequest: jest.fn(),
-	awsApiRequestAllItems: jest.fn(),
+vi.mock('../../transport/index', () => ({
+	awsApiRequest: vi.fn(),
+	awsApiRequestAllItems: vi.fn(),
 }));
 
 describe('AWS Cognito Functions', () => {
@@ -49,12 +50,12 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(awsApiRequest as jest.Mock)
+			(awsApiRequest as Mock)
 				.mockResolvedValueOnce(mockDescribeUserPoolResponse)
 				.mockResolvedValueOnce(mockResponse);
 
 			const mockContext = {
-				getNodeParameter: jest.fn((param) => {
+				getNodeParameter: vi.fn((param) => {
 					if (param === 'userPool') {
 						return 'user-pool-id';
 					}
@@ -82,8 +83,8 @@ describe('AWS Cognito Functions', () => {
 
 		it('should throw an error if UserPoolId is missing', async () => {
 			const mockContext = {
-				getNodeParameter: jest.fn().mockReturnValue(''),
-				getNode: jest.fn(),
+				getNodeParameter: vi.fn().mockReturnValue(''),
+				getNode: vi.fn(),
 			} as unknown as ILoadOptionsFunctions;
 
 			await expect(searchUsers.call(mockContext)).rejects.toThrow(
@@ -102,10 +103,10 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			const mockContext = {
-				getNodeParameter: jest.fn((param) => {
+				getNodeParameter: vi.fn((param) => {
 					if (param === 'userPool') {
 						return { value: 'user-pool-id' };
 					}
@@ -133,8 +134,8 @@ describe('AWS Cognito Functions', () => {
 
 		it('should throw an error if UserPoolId is missing', async () => {
 			const mockContext = {
-				getNodeParameter: jest.fn().mockReturnValue(null),
-				getNode: jest.fn(),
+				getNodeParameter: vi.fn().mockReturnValue(null),
+				getNode: vi.fn(),
 			} as unknown as ILoadOptionsFunctions;
 
 			await expect(searchGroups.call(mockContext)).rejects.toThrow(ApplicationError);
@@ -151,10 +152,10 @@ describe('AWS Cognito Functions', () => {
 				NextToken: 'next-token',
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			const mockContext = {
-				getNodeParameter: jest.fn((param) => {
+				getNodeParameter: vi.fn((param) => {
 					if (param === 'userPool') {
 						return { value: 'user-pool-id' };
 					}
@@ -186,18 +187,18 @@ describe('AWS Cognito Functions', () => {
 		const userPoolId = 'eu-central-1_KkXQgdCJv';
 
 		const mockContext = {
-			getNodeParameter: jest.fn((param) => {
+			getNodeParameter: vi.fn((param) => {
 				if (param === 'user') return userName;
 				if (param === 'userPool') return userPoolId;
 				return null;
 			}),
-			getNode: jest.fn(() => ({
+			getNode: vi.fn(() => ({
 				name: 'mockNode',
 			})),
 		} as unknown as ILoadOptionsFunctions;
 
 		beforeEach(() => {
-			(awsApiRequest as jest.Mock).mockResolvedValueOnce({
+			(awsApiRequest as Mock).mockResolvedValueOnce({
 				UserPool: {
 					Id: userPoolId,
 					UsernameAttributes: ['email', 'phone_number'],
@@ -206,7 +207,7 @@ describe('AWS Cognito Functions', () => {
 		});
 
 		it('should handle empty groups response', async () => {
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce([]);
+			(awsApiRequestAllItems as Mock).mockResolvedValueOnce([]);
 
 			const result = await searchGroupsForUser.call(mockContext, '');
 
@@ -224,7 +225,7 @@ describe('AWS Cognito Functions', () => {
 				{ GroupName: 'Guests' },
 			];
 
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce(mockGroups);
+			(awsApiRequestAllItems as Mock).mockResolvedValueOnce(mockGroups);
 
 			const result = await searchGroupsForUser.call(mockContext, 'dev');
 
@@ -236,7 +237,7 @@ describe('AWS Cognito Functions', () => {
 		it('should return all groups when no filter is passed', async () => {
 			const mockGroups = [{ GroupName: 'Zeta' }, { GroupName: 'Alpha' }, { GroupName: 'Beta' }];
 
-			(awsApiRequestAllItems as jest.Mock).mockResolvedValueOnce(mockGroups);
+			(awsApiRequestAllItems as Mock).mockResolvedValueOnce(mockGroups);
 
 			const result = await searchGroupsForUser.call(mockContext);
 
