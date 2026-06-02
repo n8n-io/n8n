@@ -1,3 +1,5 @@
+import * as aiModule from 'ai';
+import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
 import { isLlmMessage } from '../../sdk/message';
@@ -12,20 +14,21 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
 import { AgentEventBus } from '../event-bus';
 import { InMemoryMemory } from '../memory-store';
+import { toAiSdkTools } from '../tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
 
 // Mock provider packages so createModel() doesn't fail when no API key is set
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
 		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
 			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
 		}),
 }));
 
-jest.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: () => () => ({
 		provider: 'anthropic',
 		modelId: 'mock',
@@ -37,17 +40,17 @@ jest.mock('@ai-sdk/anthropic', () => ({
 type AiImport = typeof import('ai');
 
 // Mock generateText and streamText from the 'ai' package
-jest.mock('ai', () => {
-	const actual = jest.requireActual<AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<AiImport>('ai');
 	return {
 		...actual,
-		embed: jest.fn(),
-		embedMany: jest.fn(),
-		generateText: jest.fn(),
-		streamText: jest.fn(),
-		tool: jest.fn((config: unknown) => config),
+		embed: vi.fn(),
+		embedMany: vi.fn(),
+		generateText: vi.fn(),
+		streamText: vi.fn(),
+		tool: vi.fn((config: unknown) => config),
 		Output: {
-			object: jest.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
+			object: vi.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
 		},
 	};
 });
@@ -56,12 +59,11 @@ jest.mock('ai', () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { embed, embedMany, generateText, streamText } = require('ai') as {
-	embed: jest.Mock;
-	embedMany: jest.Mock;
-	generateText: jest.Mock;
-	streamText: jest.Mock;
+const { embed, embedMany, generateText, streamText } = aiModule as unknown as {
+	embed: Mock;
+	embedMany: Mock;
+	generateText: Mock;
+	streamText: Mock;
 };
 
 /** Minimal successful generateText response. */
@@ -111,9 +113,9 @@ function makeErrorStream(error: Error) {
 
 function makeExecutionCounter() {
 	return {
-		incrementMessageCount: jest.fn(),
-		incrementToolCallCount: jest.fn(),
-		incrementTokenCount: jest.fn(),
+		incrementMessageCount: vi.fn(),
+		incrementToolCallCount: vi.fn(),
+		incrementTokenCount: vi.fn(),
 	};
 }
 
@@ -305,7 +307,7 @@ describe('AgentRuntime — execution counters', () => {
 
 describe('AgentRuntime.generate() — graceful error contract', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('resolves (never rejects) when the LLM call throws', async () => {
@@ -432,7 +434,7 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 
 describe('AgentRuntime.stream() — graceful error contract', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('resolves (never rejects) when the LLM stream throws', async () => {
@@ -574,7 +576,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 
 describe('AgentRuntime.resume() — graceful error contract', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('rejects with an error when the runId is not found', async () => {
@@ -596,7 +598,7 @@ describe('AgentRuntime.resume() — graceful error contract', () => {
 
 describe('AgentRuntime — state transitions on error', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('starts idle, then reflects running→failed after a generate error', async () => {
@@ -1440,7 +1442,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 
 describe('AgentRuntime.generate() — structured output', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns structuredOutput when schema is configured', async () => {
@@ -1522,7 +1524,7 @@ describe('AgentRuntime.generate() — structured output', () => {
 
 describe('AgentRuntime.stream() — structured output', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('includes structuredOutput in the finish chunk when schema is configured', async () => {
@@ -1636,7 +1638,7 @@ describe('AgentRuntime.stream() — structured output', () => {
 
 describe('AgentRuntime.resume() — structured output', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns structuredOutput after resume in generate mode', async () => {
@@ -1704,16 +1706,12 @@ describe('AgentRuntime.resume() — structured output', () => {
 /* eslint-disable @typescript-eslint/require-await */
 describe('providerOptions — tool adapter', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('forwards providerOptions to the AI SDK tool when set', () => {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const ai = require('ai') as { tool: jest.Mock };
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../tool-adapter') as {
-			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
-		};
+		const ai = aiModule as unknown as { tool: Mock };
+		const adapter = { toAiSdkTools };
 
 		const builtTool: BuiltTool = {
 			name: 'set_code',
@@ -1736,12 +1734,8 @@ describe('providerOptions — tool adapter', () => {
 	});
 
 	it('forwards arbitrary provider options (not just Anthropic)', () => {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const ai = require('ai') as { tool: jest.Mock };
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../tool-adapter') as {
-			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
-		};
+		const ai = aiModule as unknown as { tool: Mock };
+		const adapter = { toAiSdkTools };
 
 		const builtTool: BuiltTool = {
 			name: 'draw',
@@ -1761,12 +1755,8 @@ describe('providerOptions — tool adapter', () => {
 	});
 
 	it('does not pass providerOptions when not set', () => {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const ai = require('ai') as { tool: jest.Mock };
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../tool-adapter') as {
-			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
-		};
+		const ai = aiModule as unknown as { tool: Mock };
+		const adapter = { toAiSdkTools };
 
 		const builtTool: BuiltTool = {
 			name: 'search',
@@ -1831,7 +1821,7 @@ describe('Tool builder — providerOptions', () => {
 
 describe('AgentRuntime — runtime input schema validation', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('surfaces a ZodError as a tool error outcome when LLM provides invalid input', async () => {
@@ -1878,7 +1868,7 @@ describe('AgentRuntime — runtime input schema validation', () => {
 
 describe('AgentRuntime — runtime JSON Schema input validation', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('passes valid input through without error', async () => {
@@ -1994,7 +1984,7 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 	});
 
 	it('does not invoke the handler when JSON Schema validation fails', async () => {
-		const handlerFn = jest.fn().mockResolvedValue({ ok: true });
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
 		const tool: BuiltTool = {
 			name: 'json_tool',
 			description: 'json tool',
@@ -2032,11 +2022,11 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 
 describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('passes valid input to the handler when built via Tool builder', async () => {
-		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+		const handlerFn = vi.fn().mockResolvedValue({ found: true });
 
 		const tool = new Tool('lookup')
 			.description('Look up a record by id')
@@ -2076,7 +2066,7 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 	});
 
 	it('produces a tool error when the LLM sends input that fails JSON Schema validation', async () => {
-		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+		const handlerFn = vi.fn().mockResolvedValue({ found: true });
 
 		const tool = new Tool('lookup')
 			.description('Look up a record by id')
@@ -2119,7 +2109,7 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 	});
 
 	it('validates enum and pattern constraints defined in JSON Schema', async () => {
-		const handlerFn = jest.fn().mockResolvedValue({ ok: true });
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
 
 		const tool = new Tool('set_status')
 			.description('Set the status of a record')
@@ -2165,7 +2155,7 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 
 describe('AgentRuntime — runtime resume data schema validation', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('surfaces a ZodError as a top-level error when consumer provides invalid resume data', async () => {
@@ -2203,7 +2193,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 
 describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('suspends when a tool has .requireApproval() set', async () => {
@@ -2316,7 +2306,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 
 describe('external abort signal', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should cancel run when external signal fires', async () => {
@@ -2359,7 +2349,7 @@ describe('external abort signal', () => {
 
 describe('provider options merging', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should deep-merge thinking config with call-level providerOptions', async () => {
@@ -2379,7 +2369,6 @@ describe('provider options merging', () => {
 			},
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect((callArgs.providerOptions as Record<string, Record<string, unknown>>).anthropic).toEqual(
 			{
@@ -2396,11 +2385,10 @@ describe('provider options merging', () => {
 
 describe('tool systemInstruction merging', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getSystemMessageText(): string {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const messages = callArgs.messages as Array<Record<string, unknown>>;
 		const systemMsg = messages[0];
@@ -2504,7 +2492,7 @@ describe('tool systemInstruction merging', () => {
 
 describe('instruction providerOptions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should attach providerOptions to system message', async () => {
@@ -2523,7 +2511,6 @@ describe('instruction providerOptions', () => {
 			persistence: { resourceId: 'user1', threadId: 'thread1' },
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const messages = callArgs.messages as Array<Record<string, unknown>>;
 		const systemMsg = messages[0];
@@ -2540,7 +2527,7 @@ describe('instruction providerOptions', () => {
 
 describe('AgentRuntime — observation log jobs', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('schedules observation after a persisted stream turn', async () => {
@@ -2628,8 +2615,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		const memory = new InMemoryMemory() as InMemoryMemory &
 			Required<Pick<BuiltMemory, 'saveEmbeddings' | 'queryEmbeddings'>>;
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
-		const observationLockSpy = jest.spyOn(memory, 'acquireObservationLogTaskLock');
-		const episodicLockSpy = jest.spyOn(memory.episodic.taskLock!, 'acquire');
+		const observationLockSpy = vi.spyOn(memory, 'acquireObservationLogTaskLock');
+		const episodicLockSpy = vi.spyOn(memory.episodic.taskLock!, 'acquire');
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -2701,7 +2688,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				createdAt: new Date('2026-05-20T12:00:00Z'),
 			},
 		]);
-		const extract = jest.fn(async () => {
+		const extract = vi.fn(async () => {
 			await Promise.resolve();
 
 			return {
@@ -2713,7 +2700,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				],
 			};
 		});
-		jest.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
+		vi.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -2951,7 +2938,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'shared-thread', resourceId: 'resource-2' },
 		});
 
-		const generateTextMock = generateText as jest.MockedFunction<
+		const generateTextMock = generateText as MockedFunction<
 			(input: {
 				messages: Array<{
 					role: string;
@@ -3021,7 +3008,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 
-		const generateTextMock = generateText as jest.MockedFunction<
+		const generateTextMock = generateText as MockedFunction<
 			(input: { messages: unknown[] }) => unknown
 		>;
 		const [{ messages }] = generateTextMock.mock.calls[0];
@@ -3143,7 +3130,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 describe('AgentRuntime — telemetry propagation', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const baseTelemetry: BuiltTelemetry = {
@@ -3153,7 +3140,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		recordInputs: true,
 		recordOutputs: false,
 		integrations: [],
-		tracer: { startSpan: jest.fn() },
+		tracer: { startSpan: vi.fn() },
 	};
 
 	it('passes telemetry config into generateText as experimental_telemetry', async () => {
@@ -3169,7 +3156,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 		await runtime.generate('hello');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
 		expect(expTelemetry).toBeDefined();
@@ -3199,7 +3185,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 		runtime.setTelemetry(updatedTelemetry);
 		await runtime.generate('hello');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
 		expect(expTelemetry.functionId).toBe('updated-agent');
@@ -3209,12 +3194,12 @@ describe('AgentRuntime — telemetry propagation', () => {
 	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const span = {
-			end: jest.fn(),
-			recordException: jest.fn(),
-			setStatus: jest.fn(),
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
 		};
 		const tracer = {
-			startActiveSpan: jest.fn(async (_name: string, _options: unknown, fn: unknown) => {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
 				if (typeof fn !== 'function') {
 					throw new Error('Expected span callback');
 				}
@@ -3254,7 +3239,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 	it('can suppress the generic runtime root span while keeping native telemetry enabled', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const tracer = {
-			startActiveSpan: jest.fn(),
+			startActiveSpan: vi.fn(),
 		};
 		const telemetry: BuiltTelemetry = {
 			...baseTelemetry,
@@ -3273,7 +3258,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toEqual(
 			expect.objectContaining({
@@ -3287,12 +3272,12 @@ describe('AgentRuntime — telemetry propagation', () => {
 	it('adds a LangSmith tool catalog to telemetry root spans', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const span = {
-			end: jest.fn(),
-			recordException: jest.fn(),
-			setStatus: jest.fn(),
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
 		};
 		const tracer = {
-			startActiveSpan: jest.fn(async (_name: string, _options: unknown, fn: unknown) => {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
 				if (typeof fn !== 'function') {
 					throw new Error('Expected span callback');
 				}
@@ -3358,7 +3343,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 		const { stream } = await runtime.stream('hello');
 		await collectChunks(stream);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
 		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
 		expect(expTelemetry).toBeDefined();
@@ -3383,7 +3367,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 			telemetry: baseTelemetry,
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
 		expect(expTelemetry).toBeDefined();
@@ -3431,22 +3414,22 @@ describe('AgentRuntime — telemetry propagation', () => {
 		const spans: Array<{
 			name: string;
 			span: {
-				end: jest.Mock;
-				recordException: jest.Mock;
-				setAttributes: jest.Mock;
-				setStatus: jest.Mock;
+				end: Mock;
+				recordException: Mock;
+				setAttributes: Mock;
+				setStatus: Mock;
 			};
 		}> = [];
 		const tracer = {
-			startActiveSpan: jest.fn(async (name: string, _options: unknown, fn: unknown) => {
+			startActiveSpan: vi.fn(async (name: string, _options: unknown, fn: unknown) => {
 				if (typeof fn !== 'function') {
 					throw new Error('Expected span callback');
 				}
 				const span = {
-					end: jest.fn(),
-					recordException: jest.fn(),
-					setAttributes: jest.fn(),
-					setStatus: jest.fn(),
+					end: vi.fn(),
+					recordException: vi.fn(),
+					setAttributes: vi.fn(),
+					setStatus: vi.fn(),
 				};
 				spans.push({ name, span });
 				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
@@ -3552,7 +3535,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 		await runtime.generate('hello');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
 	});

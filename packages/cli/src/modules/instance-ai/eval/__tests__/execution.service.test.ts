@@ -1,8 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IWorkflowBase,
@@ -37,6 +39,7 @@ jest.mock('../workflow-analysis', () => ({
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
+	detectBinaryDependencies: jest.fn(),
 }));
 const mockWireServerStart = jest.fn();
 const mockWireServerStop = jest.fn();
@@ -96,8 +99,16 @@ jest.mock('n8n-workflow', () => {
 // Import SUT and mocked modules (after jest.mock calls)
 // ---------------------------------------------------------------------------
 
+import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
+import { Workflow } from 'n8n-workflow';
+import { normalizePinData } from '@n8n/workflow-sdk';
+
+import { getBase } from '@/workflow-execute-additional-data';
+
 import { EvalExecutionService } from '../execution.service';
+import { LlmWireServer } from '../llm-wire-server';
 import { createLlmMockHandler } from '../mock-handler';
+import { patchNoProxyForLoopback } from '../proxy-loopback';
 import {
 	generateMockHints,
 	identifyNodesForHints,
@@ -115,6 +126,42 @@ const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
 const partitionAiRootsMock = jest.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
+
+// `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
+// inside jest.mock factories before every test, so re-apply the class-style
+// mock implementations here. Keep in sync with the factory bodies above.
+function reapplyConstructorMockImplementations() {
+	jest.mocked(Workflow).mockImplementation(
+		() =>
+			({
+				getStartNode: mockGetStartNode,
+				nodes: {},
+			}) as unknown as Workflow,
+	);
+	jest.mocked(WorkflowExecute).mockImplementation(
+		() =>
+			({
+				processRunExecutionData: mockProcessRunExecutionData,
+			}) as unknown as WorkflowExecute,
+	);
+	jest
+		.mocked(ExecutionLifecycleHooks)
+		.mockImplementation(() => ({}) as unknown as ExecutionLifecycleHooks);
+	jest.mocked(LlmWireServer).mockImplementation((options: unknown) => {
+		capturedWireServerOptions.last = options;
+		return {
+			start: mockWireServerStart,
+			stop: mockWireServerStop,
+			url: 'http://127.0.0.1:54321',
+		} as unknown as LlmWireServer;
+	});
+	jest.mocked(patchNoProxyForLoopback).mockImplementation(() => mockRestoreNoProxy);
+	jest.mocked(normalizePinData).mockImplementation((pd: unknown) => pd as IPinData);
+	jest.mocked(getBase).mockResolvedValue({
+		hooks: undefined,
+		evalLlmMockHandler: undefined,
+	} as unknown as Awaited<ReturnType<typeof getBase>>);
+}
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
 	return {
@@ -195,11 +242,19 @@ describe('EvalExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const logger = mock<Logger>();
 	const postHogClient = mock<PostHogClient>();
+	const binaryDataService = mock<BinaryDataService>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		reapplyConstructorMockImplementations();
 
-		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger, postHogClient);
+		service = new EvalExecutionService(
+			workflowFinderService,
+			nodeTypes,
+			logger,
+			postHogClient,
+			binaryDataService,
+		);
 
 		// Default mock returns — happy path. partitionAiRoots returns an empty
 		// partition (no AI roots in the test workflow) so the kill-switch
@@ -819,7 +874,7 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['HTTP Request'].startTime).toBe(1710000000);
 		});
 
-		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
+		it('truncates per-branch items to MAX_OUTPUT_ITEMS_PER_BRANCH and reports full outputCount', async () => {
 			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
 			mockProcessRunExecutionData.mockResolvedValue(
 				makeIRun({
@@ -843,8 +898,121 @@ describe('EvalExecutionService', () => {
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect(result.nodeResults['HTTP Request'].output).toHaveLength(10);
-			expect(result.nodeResults['HTTP Request'].outputCount).toBe(15);
+			const entry = result.nodeResults['HTTP Request'];
+			expect(entry.outputs.main[0]).toHaveLength(10);
+			expect(entry.outputCount).toBe(15);
+			expect(entry.truncated).toBe(true);
+			expect(entry.iterationCount).toBe(1);
+		});
+
+		it('preserves per-branch structure for Filter/IF/Switch nodes', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								Filter: [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											main: [
+												[{ json: { id: 1, kept: true } }, { json: { id: 2, kept: true } }],
+												[{ json: { id: 3, dropped: true } }],
+											],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Filter'];
+			expect(entry.outputs.main).toHaveLength(2);
+			expect(entry.outputs.main[0]).toHaveLength(2);
+			expect(entry.outputs.main[1]).toHaveLength(1);
+			expect(entry.outputCount).toBe(3);
+		});
+
+		it('captures non-main connection outputs (AI sub-nodes)', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'OpenAI Chat Model': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											ai_languageModel: [[{ json: { response: 'hi' } }]],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['OpenAI Chat Model'];
+			expect(entry.outputs.ai_languageModel).toBeDefined();
+			expect(entry.outputs.ai_languageModel[0]).toHaveLength(1);
+			expect(entry.outputs.main).toBeUndefined();
+			expect(entry.outputCount).toBe(1);
+		});
+
+		it('records iterationCount and firstErrorIteration for nodes that ran multiple times', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'Code (in loop)': [
+									{
+										startTime: 1000,
+										executionTime: 50,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { iter: 0 } }]] },
+									},
+									{
+										startTime: 1100,
+										executionTime: 50,
+										executionIndex: 1,
+										source: [],
+										data: { main: [[{ json: { iter: 1 } }]] },
+										error: { message: 'boom' } as unknown as Error,
+									},
+									{
+										startTime: 1200,
+										executionTime: 50,
+										executionIndex: 2,
+										source: [],
+										data: { main: [[{ json: { iter: 2 } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Code (in loop)'];
+			expect(entry.iterationCount).toBe(3);
+			expect(entry.firstErrorIteration).toBe(1);
 		});
 	});
 

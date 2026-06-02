@@ -21,6 +21,7 @@ import {
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import type { ChatMessageStatus, ToolCallState } from '../constants';
+import { summariseToolCall } from '../utils/interactive-summary';
 export { type ChatMessageStatus, type ToolCallState };
 
 // ---------------------------------------------------------------------------
@@ -301,6 +302,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					input: part.input,
 					...(output !== undefined && { output }),
 					state,
+					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
 			}
 		}

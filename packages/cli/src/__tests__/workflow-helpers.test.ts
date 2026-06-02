@@ -16,7 +16,10 @@ import {
 	shouldRestartParentExecution,
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
+	validateWorkflowStructure,
+	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mock } from 'jest-mock-extended';
 
 describe('workflow-helpers', () => {
@@ -381,6 +384,57 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+});
+
+describe('validateWorkflowStructure', () => {
+	it('returns silently when the workflow is structurally valid', () => {
+		expect(() =>
+			validateWorkflowStructure({
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Manual',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0],
+						parameters: {},
+					} as never,
+				],
+				connections: {},
+			}),
+		).not.toThrow();
+	});
+
+	it('throws WorkflowStructureBadRequestError carrying the Zod issues', () => {
+		let caught: unknown;
+		try {
+			validateWorkflowStructure({
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Bad',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0],
+						parameters: null,
+					} as never,
+				],
+				connections: {},
+			});
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(WorkflowStructureBadRequestError);
+		// Subclass of BadRequestError so existing HTTP handlers still see a 400.
+		expect(caught).toBeInstanceOf(BadRequestError);
+		const structured = caught as WorkflowStructureBadRequestError;
+		expect(structured.message).toContain('Workflow structure is invalid.');
+		expect(structured.message).toContain('nodes[0].parameters');
+		expect(structured.issues.length).toBeGreaterThan(0);
+		expect(structured.issues[0]).toMatchObject({
+			path: ['nodes', 0, 'parameters'],
+			code: 'invalid_type',
+		});
 	});
 });
 

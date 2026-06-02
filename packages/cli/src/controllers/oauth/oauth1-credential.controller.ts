@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { OAuthRequest } from '@/requests';
 
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
@@ -13,14 +14,15 @@ export class OAuth1CredentialController {
 	constructor(
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
-	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
+	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
 		const credential = await this.oauthService.getCredentialForUpdate(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
@@ -89,6 +91,15 @@ export class OAuth1CredentialController {
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},
 				);
+
+				if (typeof state.userId === 'string') {
+					this.eventService.emit('private-credential-user-connected', {
+						user: { id: state.userId },
+						credentialType: credential.type,
+						credentialId: credential.id,
+					});
+				}
+
 				return res.render('oauth-callback');
 			}
 		} catch (e) {

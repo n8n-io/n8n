@@ -345,7 +345,6 @@ export interface ObservationalMemoryConfig {
 }
 
 interface MemoryConfigBase {
-	lastMessages: number;
 	observationLog?: ObservationLogMemoryConfig;
 	semanticRecall?: SemanticRecallConfig;
 	episodicMemory?: EpisodicMemoryConfig;

@@ -6,13 +6,12 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nCollapsiblePanel, N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -65,7 +64,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const settingsStore = useSettingsStore();
 const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
@@ -136,6 +134,10 @@ const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ se
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
+const isConnectedSectionExpanded = ref(true);
+const isAvailableMcpSectionExpanded = ref(true);
+const isAvailableToolsSectionExpanded = ref(true);
+const isAvailableWorkflowsSectionExpanded = ref(true);
 const setDebouncedSearch = useDebounceFn((value: string) => {
 	debouncedSearchQuery.value = value;
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
@@ -215,9 +217,7 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 });
 
 const availableMcpToolTypes = computed(() =>
-	settingsStore.isAgentsMcpFeatureEnabled
-		? availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name))
-		: [],
+	availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name)),
 );
 
 const availableStandardToolTypes = computed(() =>
@@ -666,99 +666,134 @@ function commit() {
 					"
 					:class="$style.section"
 				>
-					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
-						<AgentToolItem
-							v-for="server in filteredConfiguredMcpServers"
-							:key="server.localId"
-							:node-type="server.nodeType"
-							:configured-node="server.node"
-							:missing-credentials="server.missingCredentials"
-							mode="configured"
-							:class="$style.toolsListItem"
-							@configure="handleConfigureMcpServer(server)"
-						/>
-						<AgentToolItem
-							v-for="tool in filteredConfiguredTools"
-							:key="tool.localId"
-							:node-type="tool.nodeType"
-							:configured-node="tool.node"
-							:missing-credentials="tool.missingCredentials"
-							mode="configured"
-							:class="$style.toolsListItem"
-							@configure="handleConfigureTool(tool)"
-						/>
-						<WorkflowToolRow
-							v-for="wf in filteredConfiguredWorkflows"
-							:key="wf.localId"
-							mode="configured"
-							:name="wf.name"
-							:description="wf.description"
-							row-test-id="agent-tools-connected-workflow-row"
-							configure-test-id="agent-tools-connected-workflow-configure"
-							@configure="handleConfigureTool(wf)"
-						/>
-					</div>
+					<N8nCollapsiblePanel
+						v-model="isConnectedSectionExpanded"
+						:class="$style.sectionPanel"
+						:disable-animation="true"
+					>
+						<template #title>
+							<N8nHeading size="small" color="text-light" tag="h3">
+								{{ i18n.baseText('agents.tools.connected') }}
+							</N8nHeading>
+						</template>
+						<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
+							<AgentToolItem
+								v-for="server in filteredConfiguredMcpServers"
+								:key="server.localId"
+								:node-type="server.nodeType"
+								:configured-node="server.node"
+								:missing-credentials="server.missingCredentials"
+								mode="configured"
+								:class="$style.toolsListItem"
+								@configure="handleConfigureMcpServer(server)"
+							/>
+							<AgentToolItem
+								v-for="tool in filteredConfiguredTools"
+								:key="tool.localId"
+								:node-type="tool.nodeType"
+								:configured-node="tool.node"
+								:missing-credentials="tool.missingCredentials"
+								mode="configured"
+								:class="$style.toolsListItem"
+								@configure="handleConfigureTool(tool)"
+							/>
+							<WorkflowToolRow
+								v-for="wf in filteredConfiguredWorkflows"
+								:key="wf.localId"
+								mode="configured"
+								:name="wf.name"
+								:description="wf.description"
+								row-test-id="agent-tools-connected-workflow-row"
+								configure-test-id="agent-tools-connected-workflow-configure"
+								@configure="handleConfigureTool(wf)"
+							/>
+						</div>
+					</N8nCollapsiblePanel>
 				</div>
 
 				<div v-if="filteredAvailableMcpTools.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('agents.tools.availableMcpServers', {
-								interpolate: { count: filteredAvailableMcpTools.length },
-							})
-						}}
-					</N8nHeading>
-					<div :class="$style.toolsList" data-test-id="agent-tools-available-mcp-list">
-						<AgentToolItem
-							v-for="nodeType in filteredAvailableMcpTools"
-							:key="nodeType.name"
-							:node-type="nodeType"
-							mode="available"
-							@add="handleAddTool(nodeType)"
-							:class="$style.toolsListItem"
-						/>
-					</div>
+					<N8nCollapsiblePanel
+						v-model="isAvailableMcpSectionExpanded"
+						:class="$style.sectionPanel"
+						:disable-animation="true"
+					>
+						<template #title>
+							<N8nHeading size="small" color="text-light" tag="h3">
+								{{
+									i18n.baseText('agents.tools.availableMcpServers', {
+										interpolate: { count: filteredAvailableMcpTools.length },
+									})
+								}}
+							</N8nHeading>
+						</template>
+						<div :class="$style.toolsList" data-test-id="agent-tools-available-mcp-list">
+							<AgentToolItem
+								v-for="nodeType in filteredAvailableMcpTools"
+								:key="nodeType.name"
+								:node-type="nodeType"
+								mode="available"
+								:class="$style.toolsListItem"
+								@add="handleAddTool(nodeType)"
+							/>
+						</div>
+					</N8nCollapsiblePanel>
 				</div>
 
 				<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('agents.tools.availableTools', {
-								interpolate: { count: filteredAvailableTools.length },
-							})
-						}}
-					</N8nHeading>
-					<div :class="$style.toolsList" data-test-id="agent-tools-available-list">
-						<AgentToolItem
-							v-for="nodeType in filteredAvailableTools"
-							:key="nodeType.name"
-							:node-type="nodeType"
-							mode="available"
-							@add="handleAddTool(nodeType)"
-							:class="$style.toolsListItem"
-						/>
-					</div>
+					<N8nCollapsiblePanel
+						v-model="isAvailableToolsSectionExpanded"
+						:class="$style.sectionPanel"
+						:disable-animation="true"
+					>
+						<template #title>
+							<N8nHeading size="small" color="text-light" tag="h3">
+								{{
+									i18n.baseText('agents.tools.availableTools', {
+										interpolate: { count: filteredAvailableTools.length },
+									})
+								}}
+							</N8nHeading>
+						</template>
+						<div :class="$style.toolsList" data-test-id="agent-tools-available-list">
+							<AgentToolItem
+								v-for="nodeType in filteredAvailableTools"
+								:key="nodeType.name"
+								:node-type="nodeType"
+								mode="available"
+								:class="$style.toolsListItem"
+								@add="handleAddTool(nodeType)"
+							/>
+						</div>
+					</N8nCollapsiblePanel>
 				</div>
 
 				<div v-if="filteredAvailableWorkflows.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('agents.tools.availableWorkflows', {
-								interpolate: { count: filteredAvailableWorkflows.length },
-							})
-						}}
-					</N8nHeading>
-					<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
-						<WorkflowToolRow
-							v-for="workflow in filteredAvailableWorkflows"
-							:key="workflow.id"
-							mode="available"
-							:name="workflow.name"
-							:description="workflow.description"
-							row-test-id="agent-tools-available-workflow-row"
-							@add="handleAddWorkflow(workflow)"
-						/>
-					</div>
+					<N8nCollapsiblePanel
+						v-model="isAvailableWorkflowsSectionExpanded"
+						:class="$style.sectionPanel"
+						:disable-animation="true"
+					>
+						<template #title>
+							<N8nHeading size="small" color="text-light" tag="h3">
+								{{
+									i18n.baseText('agents.tools.availableWorkflows', {
+										interpolate: { count: filteredAvailableWorkflows.length },
+									})
+								}}
+							</N8nHeading>
+						</template>
+						<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
+							<WorkflowToolRow
+								v-for="workflow in filteredAvailableWorkflows"
+								:key="workflow.id"
+								mode="available"
+								:name="workflow.name"
+								:description="workflow.description"
+								row-test-id="agent-tools-available-workflow-row"
+								@add="handleAddWorkflow(workflow)"
+							/>
+						</div>
+					</N8nCollapsiblePanel>
 				</div>
 
 				<div
@@ -816,7 +851,12 @@ function commit() {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+}
+
+.sectionPanel.sectionPanel {
+	border: 0;
+	border-radius: 0;
+	background-color: transparent;
 }
 
 .toolsList {
