@@ -9,7 +9,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { Channel, Thread, UserInfo } from 'chat';
+import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -199,57 +199,70 @@ export class ChatIntegrationService {
 		const { Chat } = await loadChatSdk();
 		const { createMemoryState } = await loadMemoryState();
 
-		// Use the platform type as the adapter key (e.g. 'slack') so that
-		// bot.webhooks.slack maps correctly to the handler.
-		const state = this.chatSubscriptionStateService.createStateAdapter({
-			agentId,
-			integration,
-			delegate: createMemoryState(),
-		});
-
-		const chat = new Chat({
-			userName: `n8n-agent-${agentId}`,
-			adapters: { [integration.type]: adapter } as Record<string, never>,
-			state,
-		});
-
-		// Create supporting infrastructure
-		const componentMapper = new ComponentMapper();
-
-		// Lazy-import AgentsService to avoid circular DI dependency
-		// eslint-disable-next-line import-x/no-cycle
-		const { AgentsService } = await import('../agents.service');
-		const agentService = Container.get(AgentsService);
-
-		const bridge = AgentChatBridge.create(
-			chat,
-			agentId,
-			agentService,
-			componentMapper,
-			this.logger,
-			projectId,
-			integration,
-		);
+		let state: StateAdapter | undefined;
+		let chat!: ChatSdk;
+		let bridge!: AgentChatBridge;
+		let initializeStarted = false;
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
 		// run post-initialize hooks (e.g. Telegram setWebhook) once it is live.
-		// If either step throws we must tear the chat down, otherwise adapters,
-		// timers, and the registered subscription state adapter leak — chat.shutdown()
-		// drives the state adapter's disconnect(), which unregisters it from the
-		// AgentChatSubscriptionStateService.
+		// If setup throws after registering subscription state but before
+		// initialization starts, disconnect the state directly. Once initialize()
+		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
 		try {
+			// Use the platform type as the adapter key (e.g. 'slack') so that
+			// bot.webhooks.slack maps correctly to the handler.
+			state = this.chatSubscriptionStateService.createStateAdapter({
+				agentId,
+				integration,
+				delegate: createMemoryState(),
+			});
+
+			chat = new Chat({
+				userName: `n8n-agent-${agentId}`,
+				adapters: { [integration.type]: adapter } as Record<string, never>,
+				state,
+			});
+
+			// Create supporting infrastructure
+			const componentMapper = new ComponentMapper();
+
+			// Lazy-import AgentsService to avoid circular DI dependency
+			// eslint-disable-next-line import-x/no-cycle
+			const { AgentsService } = await import('../agents.service');
+			const agentService = Container.get(AgentsService);
+
+			bridge = AgentChatBridge.create(
+				chat,
+				agentId,
+				agentService,
+				componentMapper,
+				this.logger,
+				projectId,
+				integration,
+			);
+
+			initializeStarted = true;
 			await chat.initialize();
 
 			if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 				await integrationImpl.onAfterConnect(ctx);
 			}
 		} catch (error) {
-			await chat.shutdown().catch((shutdownError: unknown) => {
-				this.logger.warn(
-					`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
-				);
-			});
-			bridge.dispose();
+			if (initializeStarted) {
+				await chat.shutdown().catch((shutdownError: unknown) => {
+					this.logger.warn(
+						`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+					);
+				});
+			} else {
+				await state?.disconnect().catch((disconnectError: unknown) => {
+					this.logger.warn(
+						`[ChatIntegrationService] State cleanup after failed setup threw: ${disconnectError instanceof Error ? disconnectError.message : String(disconnectError)}`,
+					);
+				});
+			}
+			bridge?.dispose();
 			throw error;
 		}
 

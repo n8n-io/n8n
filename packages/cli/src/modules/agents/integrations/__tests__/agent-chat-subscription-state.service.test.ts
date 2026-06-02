@@ -154,6 +154,36 @@ describe('AgentChatSubscriptionStateService', () => {
 		}
 	});
 
+	it('prunes expired negative-cache entries when recording a new miss', async () => {
+		const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+		try {
+			const { service, repository } = makeService();
+			repository.isSubscribed.mockResolvedValue(false);
+			const state = service.createStateAdapter({
+				agentId: 'agent-1',
+				integration: slackIntegration,
+				delegate: makeDelegate(),
+			});
+			await state.connect();
+
+			await expect(state.isSubscribed('stale-thread-1')).resolves.toBe(false);
+			await expect(state.isSubscribed('stale-thread-2')).resolves.toBe(false);
+
+			const negativeSubscriptionCache = (
+				state as unknown as { negativeSubscriptionCache: Map<string, number> }
+			).negativeSubscriptionCache;
+			expect([...negativeSubscriptionCache.keys()]).toEqual(['stale-thread-1', 'stale-thread-2']);
+
+			dateNowSpy.mockReturnValue(31_001);
+
+			await expect(state.isSubscribed('fresh-thread')).resolves.toBe(false);
+
+			expect([...negativeSubscriptionCache.keys()]).toEqual(['fresh-thread']);
+		} finally {
+			dateNowSpy.mockRestore();
+		}
+	});
+
 	it('persists and broadcasts subscriptions in multi-main mode', async () => {
 		const { service, repository, publisher } = makeService(true);
 		const delegate = makeDelegate();

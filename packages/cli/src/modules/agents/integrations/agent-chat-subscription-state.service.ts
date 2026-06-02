@@ -125,7 +125,15 @@ class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	}
 
 	private rememberNegativeSubscription(threadId: string): void {
-		this.negativeSubscriptionCache.set(threadId, Date.now() + NEGATIVE_SUBSCRIPTION_CACHE_TTL_MS);
+		const now = Date.now();
+		this.pruneExpiredNegativeSubscriptions(now);
+		this.negativeSubscriptionCache.set(threadId, now + NEGATIVE_SUBSCRIPTION_CACHE_TTL_MS);
+	}
+
+	private pruneExpiredNegativeSubscriptions(now: number): void {
+		for (const [threadId, expiresAt] of this.negativeSubscriptionCache) {
+			if (expiresAt <= now) this.negativeSubscriptionCache.delete(threadId);
+		}
 	}
 
 	async acquireLock(threadId: string, ttlMs: number): Promise<Lock | null> {
