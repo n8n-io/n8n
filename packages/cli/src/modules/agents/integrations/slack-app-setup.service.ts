@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type {
-	AgentCredentialIntegrationConfig,
+	AgentIntegrationConfig,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifest,
 	SlackAgentAppManifestResponse,
@@ -254,7 +254,7 @@ export class SlackAppSetupService {
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
-		} satisfies AgentCredentialIntegrationConfig;
+		} satisfies AgentIntegrationConfig;
 
 		await this.chatIntegrationService.connect(
 			session.agentId,

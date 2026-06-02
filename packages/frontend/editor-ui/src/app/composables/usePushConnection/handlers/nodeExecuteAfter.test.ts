@@ -7,10 +7,8 @@ import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
@@ -31,7 +29,7 @@ import { openFormPopupWindow } from '@/features/execution/executions/executions.
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
 	beforeEach(() => {
@@ -41,7 +39,9 @@ describe('nodeExecuteAfter', () => {
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId('test-wf');
 
-		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('test-wf'),
+		);
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -53,7 +53,7 @@ describe('nodeExecuteAfter', () => {
 			}),
 		);
 
-		stateStore.setActiveExecutionId('exec-1');
+		workflowExecutionStateStore.setActiveExecutionId('exec-1');
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({

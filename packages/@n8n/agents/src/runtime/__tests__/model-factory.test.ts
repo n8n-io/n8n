@@ -9,9 +9,9 @@ type ProviderOpts = {
 	headers?: Record<string, string>;
 };
 
-// All providers are mocked via jest.mock so require() inside the registry entries
+// All providers are mocked via vi.mock so require() inside the registry entries
 // returns these stubs instead of the real packages.
-jest.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'anthropic',
 		modelId: model,
@@ -23,7 +23,7 @@ jest.mock('@ai-sdk/anthropic', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: (opts?: ProviderOpts) =>
 		Object.assign(
 			(model: string) => ({
@@ -47,7 +47,7 @@ jest.mock('@ai-sdk/openai', () => ({
 		),
 }));
 
-jest.mock('@ai-sdk/google', () => ({
+vi.mock('@ai-sdk/google', () => ({
 	createGoogleGenerativeAI: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'google',
 		modelId: model,
@@ -57,7 +57,7 @@ jest.mock('@ai-sdk/google', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/xai', () => ({
+vi.mock('@ai-sdk/xai', () => ({
 	createXai: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'xai',
 		modelId: model,
@@ -67,7 +67,7 @@ jest.mock('@ai-sdk/xai', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/groq', () => ({
+vi.mock('@ai-sdk/groq', () => ({
 	createGroq: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'groq',
 		modelId: model,
@@ -77,7 +77,7 @@ jest.mock('@ai-sdk/groq', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/deepseek', () => ({
+vi.mock('@ai-sdk/deepseek', () => ({
 	createDeepSeek: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'deepseek',
 		modelId: model,
@@ -87,7 +87,7 @@ jest.mock('@ai-sdk/deepseek', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/cohere', () => ({
+vi.mock('@ai-sdk/cohere', () => ({
 	createCohere: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'cohere',
 		modelId: model,
@@ -97,7 +97,7 @@ jest.mock('@ai-sdk/cohere', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/mistral', () => ({
+vi.mock('@ai-sdk/mistral', () => ({
 	createMistral: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'mistral',
 		modelId: model,
@@ -107,7 +107,7 @@ jest.mock('@ai-sdk/mistral', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/gateway', () => ({
+vi.mock('@ai-sdk/gateway', () => ({
 	createGateway: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'vercel',
 		modelId: model,
@@ -118,7 +118,7 @@ jest.mock('@ai-sdk/gateway', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/azure', () => ({
+vi.mock('@ai-sdk/azure', () => ({
 	createAzure:
 		(opts?: { apiKey?: string; resourceName?: string; apiVersion?: string; baseURL?: string }) =>
 		(model: string) => ({
@@ -131,7 +131,7 @@ jest.mock('@ai-sdk/azure', () => ({
 		}),
 }));
 
-jest.mock('@openrouter/ai-sdk-provider', () => ({
+vi.mock('@openrouter/ai-sdk-provider', () => ({
 	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
@@ -142,7 +142,7 @@ jest.mock('@openrouter/ai-sdk-provider', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/amazon-bedrock', () => ({
+vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
 			region?: string;
@@ -160,8 +160,8 @@ jest.mock('@ai-sdk/amazon-bedrock', () => ({
 		}),
 }));
 
-const mockProxyAgent = jest.fn();
-jest.mock('undici', () => ({
+const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
+vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
 }));
 
@@ -197,8 +197,8 @@ describe('createModel', () => {
 
 	it('should pass through a prebuilt LanguageModel', () => {
 		const prebuilt = {
-			doGenerate: jest.fn(),
-			doStream: jest.fn(),
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
 			specificationVersion: 'v2' as const,
 			modelId: 'custom-model',
 			provider: 'custom',
