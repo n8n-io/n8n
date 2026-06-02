@@ -643,7 +643,7 @@ describe('ExecutionPersistence', () => {
 				mockEntity('fs');
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(0);
+				mockTx.findOne.mockResolvedValue(null);
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -653,12 +653,52 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(false);
-				expect(mockTx.count).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { id: executionId, finished: false },
-				});
 				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.read).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should take a pessimistic row lock to re-verify conditions on the data-only path (postgres)', async () => {
+				const executionPersistence = createPersistenceService('fs', 'postgresdb');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+					lock: { mode: 'pessimistic_write' },
+				});
+			});
+
+			it('should not take a lock on the data-only path under sqlite', async () => {
+				const executionPersistence = createPersistenceService('fs', 'sqlite');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+				});
 			});
 
 			it('should perform the fs write on a data-only update when conditions match', async () => {
@@ -667,7 +707,7 @@ describe('ExecutionPersistence', () => {
 				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(1);
+				mockTx.findOne.mockResolvedValue({ id: executionId });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -677,7 +717,7 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(true);
-				expect(mockTx.count).toHaveBeenCalled();
+				expect(mockTx.findOne).toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
 			});
 
