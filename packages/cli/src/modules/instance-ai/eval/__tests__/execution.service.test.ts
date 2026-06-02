@@ -232,6 +232,20 @@ function makeStartNode(): INode {
 	} as INode;
 }
 
+function mockWorkflowConstructorWithEntityNodes() {
+	jest.mocked(Workflow).mockImplementation((options: ConstructorParameters<typeof Workflow>[0]) => {
+		const nodes = Object.fromEntries(options.nodes.map((node) => [node.name, node]));
+		return {
+			getStartNode: mockGetStartNode,
+			nodes,
+		} as unknown as Workflow;
+	});
+}
+
+function placeholderValue(hint: string): string {
+	return `<__PLACEHOLDER_VALUE__${hint}__>`;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -737,6 +751,107 @@ describe('EvalExecutionService', () => {
 		});
 	});
 
+	// ── Parameter issue patching ─────────────────────────────────────
+
+	describe('parameter issue patching', () => {
+		beforeEach(() => {
+			mockWorkflowConstructorWithEntityNodes();
+		});
+
+		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+				if (nodeType !== 'n8n-nodes-base.httpRequest') {
+					return {
+						description: { properties: [] } as unknown as INodeTypeDescription,
+					} as never;
+				}
+
+				return {
+					description: {
+						properties: [
+							{
+								name: 'requiredField',
+								type: 'string',
+								required: true,
+								default: '',
+								displayName: 'Required Field',
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				} as never;
+			});
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'HTTP Request': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { ok: true } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			const workflowArg = mockProcessRunExecutionData.mock.calls[0][0] as Workflow;
+
+			expect(workflowArg.nodes['HTTP Request'].parameters).toMatchObject({
+				requiredField: '__evalMockValue',
+			});
+			expect(result.nodeResults['HTTP Request'].configIssues).toBeDefined();
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual(
+				expect.arrayContaining([expect.stringContaining('HTTP Request')]),
+			);
+		});
+
+		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Resource Node',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								calendarId: placeholderValue('Select a calendar'),
+								documentId: placeholderValue('Select spreadsheet'),
+								folderId: placeholderValue('Select folder'),
+								sheetName: placeholderValue('Select sheet'),
+								fileId: placeholderValue('Select file'),
+								driveId: placeholderValue('Select drive'),
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const workflowArg = mockProcessRunExecutionData.mock.calls[0][0] as Workflow;
+
+			expect(workflowArg.nodes['Resource Node'].parameters).toMatchObject({
+				calendarId: 'eval-calendar-id',
+				documentId: 'eval-spreadsheet-id',
+				folderId: 'eval-folder-id',
+				sheetName: '0',
+				fileId: 'eval-file-id',
+				driveId: 'eval-drive-id',
+			});
+		});
+	});
+
 	// ── buildResult behavior ─────────────────────────────────────────
 
 	describe('buildResult (via execution)', () => {
@@ -874,7 +989,7 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['HTTP Request'].startTime).toBe(1710000000);
 		});
 
-		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
+		it('truncates per-branch items to MAX_OUTPUT_ITEMS_PER_BRANCH and reports full outputCount', async () => {
 			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
 			mockProcessRunExecutionData.mockResolvedValue(
 				makeIRun({
@@ -898,8 +1013,121 @@ describe('EvalExecutionService', () => {
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect(result.nodeResults['HTTP Request'].output).toHaveLength(10);
-			expect(result.nodeResults['HTTP Request'].outputCount).toBe(15);
+			const entry = result.nodeResults['HTTP Request'];
+			expect(entry.outputs.main[0]).toHaveLength(10);
+			expect(entry.outputCount).toBe(15);
+			expect(entry.truncated).toBe(true);
+			expect(entry.iterationCount).toBe(1);
+		});
+
+		it('preserves per-branch structure for Filter/IF/Switch nodes', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								Filter: [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											main: [
+												[{ json: { id: 1, kept: true } }, { json: { id: 2, kept: true } }],
+												[{ json: { id: 3, dropped: true } }],
+											],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Filter'];
+			expect(entry.outputs.main).toHaveLength(2);
+			expect(entry.outputs.main[0]).toHaveLength(2);
+			expect(entry.outputs.main[1]).toHaveLength(1);
+			expect(entry.outputCount).toBe(3);
+		});
+
+		it('captures non-main connection outputs (AI sub-nodes)', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'OpenAI Chat Model': [
+									{
+										startTime: 1000,
+										executionTime: 200,
+										executionIndex: 0,
+										source: [],
+										data: {
+											ai_languageModel: [[{ json: { response: 'hi' } }]],
+										},
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['OpenAI Chat Model'];
+			expect(entry.outputs.ai_languageModel).toBeDefined();
+			expect(entry.outputs.ai_languageModel[0]).toHaveLength(1);
+			expect(entry.outputs.main).toBeUndefined();
+			expect(entry.outputCount).toBe(1);
+		});
+
+		it('records iterationCount and firstErrorIteration for nodes that ran multiple times', async () => {
+			mockProcessRunExecutionData.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: {
+							runData: {
+								'Code (in loop)': [
+									{
+										startTime: 1000,
+										executionTime: 50,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[{ json: { iter: 0 } }]] },
+									},
+									{
+										startTime: 1100,
+										executionTime: 50,
+										executionIndex: 1,
+										source: [],
+										data: { main: [[{ json: { iter: 1 } }]] },
+										error: { message: 'boom' } as unknown as Error,
+									},
+									{
+										startTime: 1200,
+										executionTime: 50,
+										executionIndex: 2,
+										source: [],
+										data: { main: [[{ json: { iter: 2 } }]] },
+									},
+								],
+							},
+						},
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			const entry = result.nodeResults['Code (in loop)'];
+			expect(entry.iterationCount).toBe(3);
+			expect(entry.firstErrorIteration).toBe(1);
 		});
 	});
 
