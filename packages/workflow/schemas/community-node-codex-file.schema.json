@@ -1,0 +1,86 @@
+{
+	"$ref": "#/definitions/CommunityNodeCodexFile",
+	"definitions": {
+		"CommunityNodeCodexFile": {
+			"type": "object",
+			"properties": {
+				"categories": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Top-level editor categories this node belongs to (e.g. 'Development', 'Communication')."
+				},
+				"resources": {
+					"type": "object",
+					"properties": {
+						"credentialDocumentation": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"url": {
+										"type": "string",
+										"format": "uri",
+										"description": "Absolute URL of the documentation page."
+									}
+								},
+								"required": ["url"],
+								"additionalProperties": false
+							},
+							"description": "Links to credential setup documentation for this node."
+						},
+						"primaryDocumentation": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"url": {
+										"type": "string",
+										"format": "uri",
+										"description": "Absolute URL of the documentation page."
+									}
+								},
+								"required": ["url"],
+								"additionalProperties": false
+							},
+							"description": "Links to the node's main documentation."
+						}
+					},
+					"additionalProperties": false,
+					"description": "External resources linked from the node's editor entry."
+				},
+				"alias": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Search aliases that surface this node when users type related terms (e.g. 'pause' for the Wait node)."
+				},
+				"$schema": {
+					"type": "string",
+					"format": "uri",
+					"description": "URL of the JSON Schema this codex file conforms to. Drives IDE autocompletion and validation; safe to omit."
+				},
+				"node": {
+					"type": "string",
+					"pattern": "^(@[a-z0-9-]+\\/)?[a-z0-9-]+\\.[a-zA-Z][a-zA-Z0-9]*$",
+					"description": "Fully-qualified node identifier of the form `<package-name>.<nodeType>` (e.g. `n8n-nodes-base.httpRequest`, `@n8n/n8n-nodes-langchain.lmChatOpenAi`)."
+				},
+				"nodeVersion": {
+					"type": "string",
+					"description": "Version of the node this codex describes, expressed as a string (e.g. '1.0', '2.1'). Distinct from the package's npm version."
+				},
+				"codexVersion": {
+					"type": "string",
+					"description": "Version of the codex format this file targets (e.g. '1.0'). Bumped only when the codex contract itself changes."
+				}
+			},
+			"required": ["node", "nodeVersion", "codexVersion"],
+			"additionalProperties": false
+		}
+	},
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://cdn.jsdelivr.net/npm/n8n-workflow@latest/schemas/community-node-codex-file.schema.json",
+	"description": "Canonical schema for `.node.json` (codex) files of community nodes. Generated from `communityNodeCodexFileSchema` in `n8n-workflow`."
+}
