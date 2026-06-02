@@ -27,6 +27,16 @@ Extract the PR number and repository from the URL and use the `gh` CLI to fetch 
 5. Review the diff thoroughly with a critical, code-review mindset.
 6. Produce a new `.md` file named `review-<repo>-<number>.md` inside the repo's gitignored `tmp/` folder, so it is never committed (the `tmp` folder is listed in `.gitignore`). Create the folder if needed (`mkdir -p tmp`) and write to `tmp/review-<repo>-<number>.md`. Print the path to the file when done so the user can open it.
 7. If a point was already raised in existing PR comments, check whether it's still valid - if resolved, confirm it's fixed; if still open, expand on it or add context instead of repeating it.
+8. Before finishing, clean up any scratch files created during review. The only
+   file that should remain in `tmp/` from this skill run is the final
+   `tmp/review-<repo>-<number>.md` review file.
+
+## Temporary file hygiene
+
+Prefer reading `gh` output directly instead of writing extra files. If you need
+scratch files for a complex review (for example, a saved diff or extracted file
+contents), remove them before you finish. Do not leave `tmp/pr-*.diff`,
+extracted source files, or empty temporary files behind.
 
 ## What to prioritize
 
