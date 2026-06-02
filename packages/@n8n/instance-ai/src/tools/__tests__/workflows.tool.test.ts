@@ -876,6 +876,73 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('validates and attaches setup guidance to matching setup requests', async () => {
+			(analyzeWorkflow as jest.Mock).mockResolvedValue([
+				{
+					node: {
+						name: 'Google Sheets',
+						type: 'n8n-nodes-base.googleSheets',
+					},
+					credentialType: 'googleSheetsOAuth2Api',
+					editableParameters: [{ name: 'documentId', displayName: 'Document', type: 'string' }],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = jest.fn();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{
+					action: 'setup',
+					workflowId: 'wf1',
+					setupGuidance: {
+						'Google Sheets': {
+							credentialReason: 'Lets n8n read purchase order rows.',
+							credentialHowTo: 'Use the Google account that owns the spreadsheet.',
+							parameters: {
+								documentId: {
+									reason: 'This identifies the purchase order spreadsheet.',
+									howTo: 'Choose the spreadsheet from your Google Drive.',
+									contextLabel: 'Purchase order spreadsheet',
+									sharedValueKey: 'purchase-order-spreadsheet',
+									sharedValueLabel: 'Purchase order spreadsheet',
+								},
+								sheetName: {
+									reason: 'This parameter is not editable in this setup request.',
+								},
+							},
+						},
+					},
+				} as never,
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
+
+			expect(suspend.mock.calls[0][0].setupRequests[0]).toMatchObject({
+				setupGuidance: {
+					credentialReason: 'Lets n8n read purchase order rows.',
+					credentialHowTo: 'Use the Google account that owns the spreadsheet.',
+					parameters: {
+						documentId: {
+							reason: 'This identifies the purchase order spreadsheet.',
+							howTo: 'Choose the spreadsheet from your Google Drive.',
+							contextLabel: 'Purchase order spreadsheet',
+							sharedValueKey: 'purchase-order-spreadsheet',
+							sharedValueLabel: 'Purchase order spreadsheet',
+						},
+					},
+				},
+			});
+			expect(
+				suspend.mock.calls[0][0].setupRequests[0].setupGuidance.parameters.sheetName,
+			).toBeUndefined();
+		});
+
 		it('should return success when no nodes need setup', async () => {
 			(analyzeWorkflow as jest.Mock).mockResolvedValue([]);
 

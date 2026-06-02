@@ -26,6 +26,7 @@ const nodeTypesStore = vi.hoisted(() => ({
 
 const renderedCredentials = vi.hoisted(() => [] as unknown[]);
 const renderedOptionsOverrides = vi.hoisted(() => [] as Array<Record<string, boolean> | undefined>);
+const renderedParameters = vi.hoisted(() => [] as unknown[][]);
 const workflowDocumentStoreRef = vi.hoisted(() => ({
 	current: null as WorkflowDocumentStore | null,
 }));
@@ -61,7 +62,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 	return {
 		default: defineComponent({
-			props: ['node', 'optionsOverrides'],
+			props: ['node', 'optionsOverrides', 'parameters'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
 				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
@@ -72,6 +73,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 					renderedOptionsOverrides.push(
 						props.optionsOverrides as Record<string, boolean> | undefined,
 					);
+					renderedParameters.push((props.parameters ?? []) as unknown[]);
 
 					return h(
 						'button',
@@ -141,6 +143,7 @@ describe('WorkflowSetupSectionBody', () => {
 		vi.clearAllMocks();
 		renderedCredentials.length = 0;
 		renderedOptionsOverrides.length = 0;
+		renderedParameters.length = 0;
 		workflowDocumentStoreRef.current = null;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		credentialsStore.getCredentialTypeByName.mockReturnValue({ displayName: 'Typeform API' });
@@ -310,5 +313,65 @@ describe('WorkflowSetupSectionBody', () => {
 
 		expect(context.setParameterValue).toHaveBeenCalledWith(section, 'formId', 'form-1');
 		expect(context.setParameterValue).toHaveBeenCalledWith(siblingSection, 'formId', 'form-1');
+	});
+
+	it('applies setup guidance to parameter labels and hints', () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			setupGuidance: {
+				parameters: {
+					formId: {
+						contextLabel: 'Lead capture form',
+						reason: 'This tells the trigger which Typeform form starts the workflow.',
+						howTo: 'Choose the form that collects new leads.',
+					},
+				},
+			},
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+
+		expect(renderedParameters.at(-1)).toEqual([
+			expect.objectContaining({
+				displayName: 'Lead capture form',
+				hint: 'This tells the trigger which Typeform form starts the workflow. Choose the form that collects new leads.',
+			}),
+		]);
+	});
+
+	it('uses placeholder labels as fallback parameter hints when setup guidance is missing', () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '<__PLACEHOLDER_VALUE__Lead form ID__>' },
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+
+		expect(renderedParameters.at(-1)).toEqual([
+			expect.objectContaining({
+				hint: 'Enter Lead form ID',
+			}),
+		]);
 	});
 });

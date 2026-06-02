@@ -1,6 +1,5 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { computed, type ComputedRef, type Ref } from 'vue';
-import { isExpression } from '@/app/utils/expressions';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
@@ -44,6 +43,10 @@ export function useWorkflowSetupSections(
 			const section: WorkflowSetupSection = {
 				id: buildSectionId(req.node.name, credentialType),
 				...(credentialType ? { credentialType } : {}),
+				...(req.credentialSelectionMode
+					? { credentialSelectionMode: req.credentialSelectionMode }
+					: {}),
+				...(req.setupGuidance ? { setupGuidance: req.setupGuidance } : {}),
 				targetNodeName: req.node.name,
 				node,
 				currentCredentialId,
@@ -81,23 +84,17 @@ export function useWorkflowSetupSections(
  * When the request is a sub-node (has `subnodeRootNode`), the root node's name is
  * prepended so credential sections never merge across different root nodes —
  * sub-nodes of two different agents stay separate even when they share a
- * credential type. Standalone nodes (no subnode root) keep the original
- * credentialType+URL merging behaviour to preserve the existing UX
- * optimisation of configuring a shared credential once.
+ * credential type. HTTP Request nodes and explicit credential sections never
+ * merge, because each request can target a different API.
  */
 function buildGroupKey(
 	req: InstanceAiWorkflowSetupNode,
 	credentialType: string | undefined,
 ): string | null {
 	if (!credentialType) return null;
+	if (req.credentialSelectionMode === 'explicit') return null;
+	if (isHttpRequestNodeType(req.node.type)) return null;
 
 	const rootPrefix = req.subnodeRootNode?.name ? `${req.subnodeRootNode.name}|` : '';
-	const baseKey = `${rootPrefix}${credentialType}`;
-
-	if (!isHttpRequestNodeType(req.node.type)) return baseKey;
-
-	const url = req.node.parameters?.url;
-	if (typeof url !== 'string') return `${baseKey}|http|none`;
-	if (isExpression(url)) return `${baseKey}|http|expr|${req.node.name}`;
-	return `${baseKey}|http|${url}`;
+	return `${rootPrefix}${credentialType}`;
 }

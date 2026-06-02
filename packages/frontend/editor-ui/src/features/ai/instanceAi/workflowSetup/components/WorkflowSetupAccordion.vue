@@ -3,13 +3,14 @@ import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { TextColor } from '@n8n/design-system/types/text';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import ConfirmationFooter from '../../components/ConfirmationFooter.vue';
+import AnimatedCollapsibleContent from '../../components/AnimatedCollapsibleContent.vue';
 import type { WorkflowSetupGroup, WorkflowSetupSection } from '../workflowSetup.types';
 import { getGroupSections } from '../workflowSetup.helpers';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
@@ -34,6 +35,7 @@ interface WorkflowSetupParameterGroup {
 	section: WorkflowSetupSection;
 	sections: WorkflowSetupSection[];
 	isShared: boolean;
+	sharedValueLabel?: string;
 }
 
 type SectionStatus = 'complete' | 'testing' | 'error' | 'todo';
@@ -43,7 +45,7 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 
-const openSectionId = ref<string | null>(null);
+const openSectionIds = ref<string[]>([]);
 const isApplying = ref(false);
 
 const accordionItems = computed<WorkflowSetupAccordionItem[]>(() => {
@@ -120,13 +122,23 @@ const isApplyDisabled = computed(
 		hasCredentialTestFailed.value,
 );
 
+const shouldShowApplyButton = computed(
+	() =>
+		allSectionsComplete.value && !hasPendingCredentialTest.value && !hasCredentialTestFailed.value,
+);
+
 watch(
 	accordionItems,
 	(items) => {
-		const openItemExists = items.some((item) => item.id === openSectionId.value);
-		if (openItemExists) return;
+		const itemIds = new Set(items.map((item) => item.id));
+		const nextOpenSectionIds = openSectionIds.value.filter((id) => itemIds.has(id));
 
-		openSectionId.value = getFirstIncompleteItem(items)?.id ?? items[0]?.id ?? null;
+		if (nextOpenSectionIds.length === 0) {
+			const defaultOpenItem = getFirstIncompleteItem(items) ?? items[0];
+			if (defaultOpenItem) nextOpenSectionIds.push(defaultOpenItem.id);
+		}
+
+		openSectionIds.value = nextOpenSectionIds;
 	},
 	{ immediate: true },
 );
@@ -168,6 +180,7 @@ function getCredentialGroupCounts(entries: WorkflowSetupAccordionEntry[]): Map<s
 function getCredentialGroupKey(entry: WorkflowSetupAccordionEntry): string | null {
 	const { credentialType } = entry.section;
 	if (!credentialType) return null;
+	if (entry.section.credentialSelectionMode === 'explicit') return null;
 	if (isHttpRequestNodeType(entry.section.node.type)) return null;
 
 	return `${entry.group?.id ?? 'standalone'}|${credentialType}`;
@@ -198,11 +211,23 @@ function createCredentialGroupSection(
 	const [primarySection] = sections;
 	const currentCredentialId =
 		sections.find((section) => !!section.currentCredentialId)?.currentCredentialId ?? null;
+	const credentialSelectionMode = sections.some(
+		(section) => section.credentialSelectionMode === 'explicit',
+	)
+		? 'explicit'
+		: primarySection?.credentialSelectionMode;
+	const setupGuidance =
+		sections.find(
+			(section) =>
+				section.setupGuidance?.credentialReason || section.setupGuidance?.credentialHowTo,
+		)?.setupGuidance ?? primarySection?.setupGuidance;
 
 	return {
 		...primarySection,
 		id: getCredentialGroupId(credentialGroupKey),
 		currentCredentialId,
+		...(credentialSelectionMode ? { credentialSelectionMode } : {}),
+		...(setupGuidance ? { setupGuidance } : {}),
 		parameterNames: [],
 		credentialTargetNodes: getUniqueCredentialTargetNodes(sections),
 	};
@@ -239,6 +264,7 @@ function getCredentialAppName(credentialType: string): string {
 }
 
 function getSectionTitle(section: WorkflowSetupSection): string {
+	if (isHttpRequestNodeType(section.node.type)) return getHttpRequestTitle(section);
 	if (!section.credentialType) return section.node.name;
 	return getCredentialAppName(section.credentialType);
 }
@@ -249,6 +275,155 @@ function getItemTitle(item: WorkflowSetupAccordionItem): string {
 	}
 
 	return getSectionTitle(item.section);
+}
+
+function getItemDescription(item: WorkflowSetupAccordionItem): string {
+	return (
+		formatGuidanceText(getGuidanceDescription(item), getHttpCredentialSecurityNote(item)) ||
+		getFallbackActionDescription(item)
+	);
+}
+
+function getHttpRequestTitle(section: WorkflowSetupSection): string {
+	const url = section.node.parameters.url;
+	if (typeof url !== 'string') return section.node.name;
+
+	try {
+		return new URL(url).host || section.node.name;
+	} catch {
+		return section.node.name;
+	}
+}
+
+function getHttpRequestOrigin(section: WorkflowSetupSection): string | undefined {
+	const url = section.node.parameters.url;
+	if (typeof url !== 'string') return undefined;
+
+	try {
+		return new URL(url).origin;
+	} catch {
+		return undefined;
+	}
+}
+
+function getHttpCredentialSecurityNote(item: WorkflowSetupAccordionItem): string {
+	if (!item.section.credentialType || !isHttpRequestNodeType(item.section.node.type)) return '';
+
+	const origin = getHttpRequestOrigin(item.section);
+	if (!origin) {
+		return i18n.baseText(
+			'instanceAi.workflowSetup.httpCredentialSecurityNoteFallback' as BaseTextKey,
+		);
+	}
+
+	return i18n.baseText('instanceAi.workflowSetup.httpCredentialSecurityNote' as BaseTextKey, {
+		interpolate: { origin },
+	});
+}
+
+function getGuidanceDescription(item: WorkflowSetupAccordionItem): string {
+	for (const section of item.sections) {
+		const reason = section.setupGuidance?.credentialReason;
+		if (isUsefulDescription(reason)) return normalizeDescription(reason);
+	}
+
+	for (const section of item.sections) {
+		for (const parameterName of section.parameterNames) {
+			const reason = section.setupGuidance?.parameters?.[parameterName]?.reason;
+			if (isUsefulDescription(reason)) return normalizeDescription(reason);
+		}
+	}
+
+	return '';
+}
+
+function isUsefulDescription(value: string | undefined): value is string {
+	const description = value?.trim();
+	if (!description) return false;
+	return !/^connect .+ so n8n can use it in this workflow\.?$/i.test(description);
+}
+
+function normalizeDescription(value: string): string {
+	return value.trim().replace(/\.$/, '');
+}
+
+function getFallbackActionDescription(item: WorkflowSetupAccordionItem): string {
+	const action = getFallbackAction(item);
+	if (!action) return '';
+
+	return i18n.baseText('instanceAi.workflowSetup.cardDescriptionAction' as BaseTextKey, {
+		interpolate: { action },
+	});
+}
+
+function getFallbackAction(item: WorkflowSetupAccordionItem): string {
+	const title = getItemTitle(item);
+	for (const section of item.sections) {
+		const action = getNodeAction(section, title);
+		if (action) return action;
+	}
+
+	return '';
+}
+
+function getNodeAction(section: WorkflowSetupSection, title: string): string {
+	const rawName = section.node.name || section.targetNodeName;
+	const serviceNameVariants = getServiceNameVariants(title);
+	const action = toActionPhrase(stripServiceReferences(rawName, serviceNameVariants));
+	const normalizedTitle = title.toLowerCase();
+
+	if (!action || action.toLowerCase() === normalizedTitle) return '';
+	return action;
+}
+
+function getServiceNameVariants(title: string): string[] {
+	const variants = new Set([title]);
+	if (title.endsWith('s')) variants.add(title.slice(0, -1));
+	return [...variants].filter((variant) => variant.length > 0);
+}
+
+function stripServiceReferences(value: string, serviceNameVariants: string[]): string {
+	let action = value.trim().replace(/^set up\s+/i, '');
+
+	for (const serviceName of serviceNameVariants) {
+		const escapedServiceName = escapeRegExp(serviceName);
+		action = action
+			.replace(
+				new RegExp(
+					`\\s+(from|to|with|using|in|into|on)\\s+(your\\s+)?${escapedServiceName}\\b.*$`,
+					'i',
+				),
+				'',
+			)
+			.replace(new RegExp(`^${escapedServiceName}\\s+`, 'i'), '')
+			.replace(new RegExp(`\\s+${escapedServiceName}$`, 'i'), '');
+	}
+
+	return action.replace(/\s+(from|to|with|using|in|into|on)$/i, '').trim();
+}
+
+function toActionPhrase(value: string): string {
+	const trimmedValue = value.trim();
+	if (!trimmedValue) return '';
+
+	const [firstWord = '', ...restWords] = trimmedValue.split(/\s+/);
+	const rest = restWords.join(' ');
+	const normalizedFirstWord =
+		firstWord.toLowerCase() === 'lookup' ? 'look up' : firstWord.toLowerCase();
+	const phrase = [normalizedFirstWord, rest].filter(Boolean).join(' ');
+
+	return phrase.replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatGuidanceText(...parts: string[]): string {
+	const cleanedParts = parts.map((part) => part.trim()).filter(Boolean);
+	if (cleanedParts.length <= 1) return cleanedParts[0] ?? '';
+
+	return cleanedParts.map((part) => (/[.!?]$/.test(part) ? part : `${part}.`)).join(' ');
 }
 
 function getGroupContext(item: WorkflowSetupAccordionItem): string | undefined {
@@ -313,11 +488,19 @@ function getItemStatusColor(item: WorkflowSetupAccordionItem): TextColor {
 }
 
 function isSectionOpen(item: WorkflowSetupAccordionItem): boolean {
-	return openSectionId.value === item.id;
+	return openSectionIds.value.includes(item.id);
 }
 
-function openSection(item: WorkflowSetupAccordionItem): void {
-	openSectionId.value = item.id;
+function setSectionOpen(item: WorkflowSetupAccordionItem, isOpen: boolean): void {
+	const currentOpenSectionIds = openSectionIds.value;
+
+	if (isOpen) {
+		if (currentOpenSectionIds.includes(item.id)) return;
+		openSectionIds.value = [...currentOpenSectionIds, item.id];
+		return;
+	}
+
+	openSectionIds.value = currentOpenSectionIds.filter((id) => id !== item.id);
 }
 
 function getParameterSections(item: WorkflowSetupAccordionItem): WorkflowSetupSection[] {
@@ -334,29 +517,44 @@ function getParameterGroups(item: WorkflowSetupAccordionItem): WorkflowSetupPara
 		groupsBySignature.set(signature, [...sections, section]);
 	}
 
-	return [...groupsBySignature.entries()].map(([signature, sections]) => ({
-		id: signature,
-		section: sections[0],
-		sections,
-		isShared: sections.length > 1,
-	}));
+	return [...groupsBySignature.entries()].flatMap(([signature, sections]) => {
+		const [section] = sections;
+		if (!section) return [];
+
+		const sharedValueLabel = getParameterGroupSharedValueLabel(sections);
+		return [
+			{
+				id: signature,
+				section,
+				sections,
+				isShared: sections.length > 1,
+				...(sharedValueLabel ? { sharedValueLabel } : {}),
+			},
+		];
+	});
 }
 
 function getParameterGroupSignature(section: WorkflowSetupSection): string {
-	const nodeType = getNodeType(section);
-	const parameterSignature = section.parameterNames
-		.map((name) => {
-			const definition = nodeType?.properties.find((property) => property.name === name);
-			return [
-				name,
-				definition?.displayName ?? '',
-				definition?.type ?? '',
-				definition?.placeholder ?? '',
-			].join(':');
-		})
-		.join('|');
+	const sharedValueKeys = section.parameterNames.map(
+		(name) => section.setupGuidance?.parameters?.[name]?.sharedValueKey,
+	);
 
-	return `${section.node.type}|${parameterSignature}`;
+	if (sharedValueKeys.every((key): key is string => typeof key === 'string' && key.length > 0)) {
+		return `shared:${sharedValueKeys.join('|')}`;
+	}
+
+	return `section:${section.id}`;
+}
+
+function getParameterGroupSharedValueLabel(sections: WorkflowSetupSection[]): string | undefined {
+	for (const section of sections) {
+		for (const parameterName of section.parameterNames) {
+			const label = section.setupGuidance?.parameters?.[parameterName]?.sharedValueLabel;
+			if (label) return label;
+		}
+	}
+
+	return undefined;
 }
 
 async function onApply(): Promise<void> {
@@ -373,123 +571,152 @@ async function onApply(): Promise<void> {
 
 <template>
 	<section :class="$style.accordion" data-test-id="instance-ai-workflow-setup-accordion">
-		<div :class="$style.items">
-			<article
-				v-for="item in accordionItems"
-				:key="item.id"
-				:class="$style.item"
-				data-test-id="instance-ai-workflow-setup-accordion-item"
-			>
-				<button
-					type="button"
-					:class="$style.itemHeader"
-					:aria-expanded="isSectionOpen(item)"
-					:aria-controls="`workflow-setup-accordion-section-${item.id}`"
-					data-test-id="instance-ai-workflow-setup-accordion-header"
-					@click="openSection(item)"
-				>
-					<span :class="$style.itemIcon">
-						<N8nIcon
-							v-if="getItemStatus(item) === 'complete'"
-							icon="check"
-							size="medium"
-							:color="getItemStatusColor(item)"
-						/>
-						<N8nIcon
-							v-else-if="getItemStatus(item) === 'testing'"
-							icon="spinner"
-							spin
-							size="medium"
-							:color="getItemStatusColor(item)"
-						/>
-						<N8nIcon
-							v-else-if="getItemStatus(item) === 'error'"
-							icon="triangle-alert"
-							size="medium"
-							:color="getItemStatusColor(item)"
-						/>
-						<CredentialIcon
-							v-else-if="item.kind === 'credentialGroup' || isCredentialOnlySection(item.section)"
-							:credential-type-name="item.section.credentialType ?? null"
-							:size="16"
-						/>
-						<NodeIcon v-else :node-type="getNodeType(item.section)" :size="16" />
-					</span>
-
-					<span :class="$style.itemText">
-						<N8nText :class="$style.itemTitle" size="medium" color="text-dark" bold>
-							{{ getItemTitle(item) }}
-						</N8nText>
-						<N8nText v-if="getGroupContext(item)" size="small" color="text-light">
-							{{ getGroupContext(item) }}
-						</N8nText>
-					</span>
-
-					<span
-						:class="[$style.statusPill, { [$style.statusPillDone]: isItemComplete(item) }]"
-						data-test-id="instance-ai-workflow-setup-status-pill"
+		<CollapsibleRoot
+			v-for="item in accordionItems"
+			:key="item.id"
+			:open="isSectionOpen(item)"
+			:unmount-on-hide="false"
+			:class="$style.item"
+			data-test-id="instance-ai-workflow-setup-accordion-item"
+			@update:open="setSectionOpen(item, $event)"
+		>
+			<div :class="$style.itemHeader">
+				<CollapsibleTrigger as-child>
+					<button
+						type="button"
+						:class="$style.itemTrigger"
+						:aria-controls="`workflow-setup-accordion-section-${item.id}`"
+						data-test-id="instance-ai-workflow-setup-accordion-header"
 					>
-						{{ getItemStatusLabel(item) }}
-					</span>
-				</button>
-
-				<div
-					v-if="isSectionOpen(item)"
-					:id="`workflow-setup-accordion-section-${item.id}`"
-					:class="$style.itemBody"
-					data-test-id="instance-ai-workflow-setup-accordion-body"
-				>
-					<WorkflowSetupSectionBody
-						v-if="item.kind === 'credentialGroup'"
-						:section="item.section"
-						:credential-sections="item.sections"
-						hide-helper
-					/>
-					<div
-						v-if="item.kind === 'credentialGroup' && getParameterSections(item).length > 0"
-						:class="$style.groupValues"
-					>
-						<section
-							v-for="parameterGroup in getParameterGroups(item)"
-							:key="parameterGroup.id"
-							:class="$style.groupValue"
-						>
-							<N8nText v-if="!parameterGroup.isShared" size="small" color="text-dark" bold>
-								{{ parameterGroup.section.node.name }}
-							</N8nText>
-							<WorkflowSetupSectionBody
-								:section="parameterGroup.section"
-								:parameter-sections="parameterGroup.sections"
-								hide-credential
-								hide-helper
+						<span :class="$style.itemIcon">
+							<N8nIcon
+								v-if="getItemStatus(item) === 'complete'"
+								icon="check"
+								size="medium"
+								:color="getItemStatusColor(item)"
 							/>
-						</section>
-					</div>
-					<WorkflowSetupSectionBody
-						v-else-if="item.kind === 'section'"
-						:section="item.section"
-						hide-helper
-					/>
-				</div>
-			</article>
-		</div>
+							<N8nIcon
+								v-else-if="getItemStatus(item) === 'testing'"
+								icon="spinner"
+								spin
+								size="medium"
+								:color="getItemStatusColor(item)"
+							/>
+							<N8nIcon
+								v-else-if="getItemStatus(item) === 'error'"
+								icon="triangle-alert"
+								size="medium"
+								:color="getItemStatusColor(item)"
+							/>
+							<CredentialIcon
+								v-else-if="item.kind === 'credentialGroup' || isCredentialOnlySection(item.section)"
+								:credential-type-name="item.section.credentialType ?? null"
+								:size="20"
+							/>
+							<NodeIcon v-else :node-type="getNodeType(item.section)" :size="20" />
+						</span>
 
-		<ConfirmationFooter bordered>
-			<N8nTooltip :disabled="!applyTooltip" :content="applyTooltip">
-				<N8nButton
-					size="medium"
-					:label="i18n.baseText('instanceAi.workflowSetup.applySetup' as BaseTextKey)"
-					:disabled="isApplyDisabled"
-					data-test-id="instance-ai-workflow-setup-apply"
-					@click="onApply"
-				/>
-			</N8nTooltip>
-		</ConfirmationFooter>
+						<span :class="$style.itemText">
+							<span :class="$style.itemTitleRow">
+								<N8nText :class="$style.itemTitle" size="medium" color="text-dark" bold>
+									{{ getItemTitle(item) }}
+								</N8nText>
+								<N8nIcon
+									icon="chevron-down"
+									size="xsmall"
+									:class="[$style.chevron, { [$style.chevronOpen]: isSectionOpen(item) }]"
+								/>
+							</span>
+							<N8nText
+								v-if="getItemDescription(item)"
+								:class="$style.itemDescription"
+								size="small"
+								data-test-id="instance-ai-workflow-setup-card-description"
+							>
+								{{ getItemDescription(item) }}
+							</N8nText>
+							<N8nText v-if="getGroupContext(item)" size="small" color="text-light">
+								{{ getGroupContext(item) }}
+							</N8nText>
+						</span>
+					</button>
+				</CollapsibleTrigger>
+
+				<N8nTooltip
+					v-if="isSectionOpen(item) && shouldShowApplyButton"
+					:disabled="!applyTooltip"
+					:content="applyTooltip"
+				>
+					<N8nButton
+						:class="$style.applyButton"
+						size="medium"
+						:label="i18n.baseText('instanceAi.workflowSetup.applySetup' as BaseTextKey)"
+						:disabled="isApplyDisabled"
+						data-test-id="instance-ai-workflow-setup-apply"
+						@click="onApply"
+					/>
+				</N8nTooltip>
+				<span
+					v-else
+					:class="[$style.statusPill, { [$style.statusPillDone]: isItemComplete(item) }]"
+					data-test-id="instance-ai-workflow-setup-status-pill"
+				>
+					{{ getItemStatusLabel(item) }}
+				</span>
+			</div>
+
+			<AnimatedCollapsibleContent mode="measured" :open="isSectionOpen(item)">
+				<div :id="`workflow-setup-accordion-section-${item.id}`" :class="$style.itemContent">
+					<div :class="$style.itemBody" data-test-id="instance-ai-workflow-setup-accordion-body">
+						<WorkflowSetupSectionBody
+							v-if="item.kind === 'credentialGroup'"
+							:section="item.section"
+							:credential-sections="item.sections"
+							hide-helper
+						/>
+						<div
+							v-if="item.kind === 'credentialGroup' && getParameterSections(item).length > 0"
+							:class="$style.groupValues"
+						>
+							<section
+								v-for="parameterGroup in getParameterGroups(item)"
+								:key="parameterGroup.id"
+								:class="$style.groupValue"
+							>
+								<N8nText v-if="parameterGroup.sharedValueLabel" size="small" color="text-dark" bold>
+									{{ parameterGroup.sharedValueLabel }}
+								</N8nText>
+								<N8nText v-else-if="!parameterGroup.isShared" size="small" color="text-dark" bold>
+									{{ parameterGroup.section.node.name }}
+								</N8nText>
+								<WorkflowSetupSectionBody
+									:section="parameterGroup.section"
+									:parameter-sections="parameterGroup.sections"
+									hide-credential
+									hide-helper
+								/>
+							</section>
+						</div>
+						<WorkflowSetupSectionBody
+							v-else-if="item.kind === 'section'"
+							:section="item.section"
+							hide-helper
+						/>
+					</div>
+				</div>
+			</AnimatedCollapsibleContent>
+		</CollapsibleRoot>
 	</section>
 </template>
 
 <style lang="scss" module>
 .accordion {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.item {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -498,25 +725,9 @@ async function onApply(): Promise<void> {
 	background-color: var(--color--background--light-3);
 }
 
-.items {
+.itemContent {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--sm);
-}
-
-.item {
-	display: flex;
-	flex-direction: column;
-	background-color: transparent;
-
-	&:not(:last-child) {
-		padding-bottom: var(--spacing--xs);
-	}
-
-	& + & {
-		border-top: var(--border);
-		padding-top: var(--spacing--xs);
-	}
 }
 
 .itemHeader {
@@ -524,7 +735,16 @@ async function onApply(): Promise<void> {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	padding: var(--spacing--xs) 0;
+	padding: var(--spacing--sm);
+}
+
+.itemTrigger {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	flex: 1;
+	padding: 0;
 	border: none;
 	background: transparent;
 	color: inherit;
@@ -534,11 +754,15 @@ async function onApply(): Promise<void> {
 	user-select: none;
 }
 
+.applyButton {
+	flex-shrink: 0;
+}
+
 .itemIcon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing--sm);
+	width: var(--spacing--md);
 	flex-shrink: 0;
 }
 
@@ -550,11 +774,40 @@ async function onApply(): Promise<void> {
 	gap: var(--spacing--5xs);
 }
 
+.itemTitleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
 .itemTitle {
+	min-width: 0;
 	overflow: hidden;
 	font-size: var(--font-size--md);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.itemDescription {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text-color--subtle);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	transform: rotate(-90deg);
+	transition:
+		color var(--animation--duration) var(--animation--easing),
+		transform var(--animation--duration) var(--animation--easing);
+}
+
+.chevronOpen {
+	transform: rotate(0deg);
 }
 
 .statusPill {
@@ -580,7 +833,7 @@ async function onApply(): Promise<void> {
 }
 
 .itemBody {
-	padding: 0 0 var(--spacing--xs);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .groupValues {

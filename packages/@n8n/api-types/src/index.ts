@@ -305,6 +305,7 @@ export {
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	workflowSetupGuidanceSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,

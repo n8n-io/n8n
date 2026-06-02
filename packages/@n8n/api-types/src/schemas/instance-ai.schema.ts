@@ -196,6 +196,20 @@ export const credentialFlowSchema = z.object({
 });
 export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
 
+export const workflowSetupParameterGuidanceSchema = z.object({
+	reason: z.string().max(240).optional(),
+	howTo: z.string().max(320).optional(),
+	contextLabel: z.string().max(120).optional(),
+	sharedValueKey: z.string().max(120).optional(),
+	sharedValueLabel: z.string().max(120).optional(),
+});
+
+export const workflowSetupGuidanceSchema = z.object({
+	credentialReason: z.string().max(240).optional(),
+	credentialHowTo: z.string().max(320).optional(),
+	parameters: z.record(workflowSetupParameterGuidanceSchema).optional(),
+});
+
 export const workflowSetupNodeSchema = z.object({
 	node: z.object({
 		name: z.string(),
@@ -207,7 +221,9 @@ export const workflowSetupNodeSchema = z.object({
 		id: z.string(),
 	}),
 	credentialType: z.string().optional(),
+	credentialSelectionMode: z.enum(['auto', 'explicit']).optional(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	setupGuidance: workflowSetupGuidanceSchema.optional(),
 	isTrigger: z.boolean(),
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),

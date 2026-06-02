@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
@@ -428,7 +429,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(queryByTestId('instance-ai-credential-continue-button')).not.toBeInTheDocument();
 		});
 
-		it('keeps one credential setup item open at a time', async () => {
+		it('lets users independently expand and collapse credential setup cards', async () => {
 			experimentState.isFeatureEnabled.value = true;
 			const requests = makeCredentialRequestsWithExisting(2);
 			const { getAllByTestId } = renderComponent({
@@ -439,11 +440,41 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			expect(getAllByTestId('instance-ai-credential-setup-list-body')).toHaveLength(1);
+			expect(
+				getAllByTestId('instance-ai-credential-setup-list-item').map((item) =>
+					item.getAttribute('data-state'),
+				),
+			).toEqual(['open', 'closed']);
 
 			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[1]);
 
-			expect(getAllByTestId('instance-ai-credential-setup-list-body')).toHaveLength(1);
+			await waitFor(() => {
+				expect(
+					getAllByTestId('instance-ai-credential-setup-list-item').map((item) =>
+						item.getAttribute('data-state'),
+					),
+				).toEqual(['open', 'open']);
+			});
+
+			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[0]);
+
+			await waitFor(() => {
+				expect(
+					getAllByTestId('instance-ai-credential-setup-list-item').map((item) =>
+						item.getAttribute('data-state'),
+					),
+				).toEqual(['closed', 'open']);
+			});
+
+			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[1]);
+
+			await waitFor(() => {
+				expect(
+					getAllByTestId('instance-ai-credential-setup-list-item').map((item) =>
+						item.getAttribute('data-state'),
+					),
+				).toEqual(['closed', 'closed']);
+			});
 		});
 
 		it('applies selected credentials only from the final apply action', async () => {
@@ -452,7 +483,7 @@ describe('InstanceAiCredentialSetup', () => {
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
-			const { getAllByTestId, getByTestId } = renderComponent({
+			const { getAllByTestId, queryAllByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -460,16 +491,16 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			const applyButton = getByTestId('instance-ai-credential-setup-apply');
-			expect(applyButton).toBeDisabled();
+			expect(queryAllByTestId('instance-ai-credential-setup-apply')).toHaveLength(0);
 
-			await userEvent.click(getByTestId('credential-picker'));
+			await userEvent.click(getAllByTestId('credential-picker')[0]);
 			expect(confirmSpy).not.toHaveBeenCalled();
-			expect(applyButton).toBeDisabled();
+			expect(queryAllByTestId('instance-ai-credential-setup-apply')).toHaveLength(0);
 
 			await userEvent.click(getAllByTestId('instance-ai-credential-setup-list-header')[1]);
-			await userEvent.click(getByTestId('credential-picker'));
+			await userEvent.click(getAllByTestId('credential-picker')[1]);
 
+			const applyButton = getAllByTestId('instance-ai-credential-setup-apply')[1];
 			expect(applyButton).not.toBeDisabled();
 			expect(confirmSpy).not.toHaveBeenCalled();
 

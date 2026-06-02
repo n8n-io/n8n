@@ -1,6 +1,11 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeParameters } from 'n8n-workflow';
 
+export type WorkflowSetupGuidance = NonNullable<InstanceAiWorkflowSetupNode['setupGuidance']>;
+export type WorkflowSetupParameterGuidance = NonNullable<
+	WorkflowSetupGuidance['parameters']
+>[string];
+
 /**
  * One form unit (per `node × credential-or-parameters`).
  * Backs all input/skip/payload state.
@@ -8,6 +13,8 @@ import type { INodeParameters } from 'n8n-workflow';
 export interface WorkflowSetupSection {
 	id: string;
 	credentialType?: string;
+	credentialSelectionMode?: 'auto' | 'explicit';
+	setupGuidance?: WorkflowSetupGuidance;
 	targetNodeName: string;
 	node: InstanceAiWorkflowSetupNode['node'];
 	currentCredentialId: string | null;

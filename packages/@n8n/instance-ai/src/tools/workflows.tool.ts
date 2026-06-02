@@ -4,6 +4,7 @@
  * restore-version, update-version.
  */
 import { Tool } from '@n8n/agents';
+import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -65,6 +66,20 @@ const unarchiveAction = z.object({
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
+const workflowSetupParameterGuidanceInput = z.object({
+	reason: z.string().max(240).optional(),
+	howTo: z.string().max(320).optional(),
+	contextLabel: z.string().max(120).optional(),
+	sharedValueKey: z.string().max(120).optional(),
+	sharedValueLabel: z.string().max(120).optional(),
+});
+
+const workflowSetupGuidanceInput = z.object({
+	credentialReason: z.string().max(240).optional(),
+	credentialHowTo: z.string().max(320).optional(),
+	parameters: z.record(workflowSetupParameterGuidanceInput).optional(),
+});
+
 const setupAction = z.object({
 	action: z
 		.literal('setup')
@@ -73,6 +88,12 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	setupGuidance: z
+		.record(workflowSetupGuidanceInput)
+		.optional()
+		.describe(
+			'Concise setup guidance keyed by node name. Generate this once before opening setup. Make credentialReason a short card subtitle that explains the purpose, for example "To read content ideas". Include how to find parameter values when useful, and sharedValueKey only when the same value should be reused across nodes.',
+		),
 });
 
 const validateAction = z.object({
@@ -189,6 +210,9 @@ type Input =
 	| z.infer<typeof updateVersionAction>;
 
 type PublishInput = z.infer<typeof publishExtendedAction>;
+type SetupGuidanceInput = z.infer<typeof setupAction>['setupGuidance'];
+type SetupGuidance = NonNullable<InstanceAiWorkflowSetupNode['setupGuidance']>;
+type SetupParameterGuidance = NonNullable<SetupGuidance['parameters']>[string];
 type PublishRollbackResult = {
 	rolledBackWorkflowIds: string[];
 	rollbackErrors: Array<{ workflowId: string; error: string }>;
@@ -486,7 +510,10 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const setupRequests = attachSetupGuidance(
+			await analyzeWorkflow(context, input.workflowId),
+			input.setupGuidance,
+		);
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };
@@ -575,6 +602,7 @@ async function handleSetup(
 		const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 			[resumeData.testTriggerNode]: triggerTestResult,
 		});
+		const guidedRequests = attachSetupGuidance(refreshedRequests, input.setupGuidance);
 
 		// Generate a new requestId so the frontend doesn't filter it
 		// as already-resolved from the previous suspend cycle
@@ -584,7 +612,7 @@ async function handleSetup(
 			requestId: state.currentRequestId,
 			message: 'Configure credentials for your workflow',
 			severity: 'info' as const,
-			setupRequests: refreshedRequests,
+			setupRequests: guidedRequests,
 			workflowId: input.workflowId,
 			...(input.projectId ? { projectId: input.projectId } : {}),
 		});
@@ -677,6 +705,42 @@ async function handleSetup(
 			error: `Workflow apply failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 		};
 	}
+}
+
+function attachSetupGuidance(
+	setupRequests: InstanceAiWorkflowSetupNode[],
+	setupGuidance: SetupGuidanceInput,
+): InstanceAiWorkflowSetupNode[] {
+	if (!setupGuidance) return setupRequests;
+
+	return setupRequests.map((request) => {
+		const guidance = setupGuidance[request.node.name];
+		if (!guidance) return request;
+
+		const parameterNames = new Set(
+			request.editableParameters?.map((parameter) => parameter.name) ?? [],
+		);
+		const parameters: Record<string, SetupParameterGuidance> = {};
+		if (guidance.parameters && parameterNames.size > 0) {
+			for (const [parameterName, parameterGuidance] of Object.entries(guidance.parameters)) {
+				if (parameterNames.has(parameterName)) parameters[parameterName] = parameterGuidance;
+			}
+		}
+
+		const setupRequestGuidance = {
+			...(request.credentialType && guidance.credentialReason
+				? { credentialReason: guidance.credentialReason }
+				: {}),
+			...(request.credentialType && guidance.credentialHowTo
+				? { credentialHowTo: guidance.credentialHowTo }
+				: {}),
+			...(Object.keys(parameters).length > 0 ? { parameters } : {}),
+		};
+
+		return Object.keys(setupRequestGuidance).length > 0
+			? { ...request, setupGuidance: setupRequestGuidance }
+			: request;
+	});
 }
 
 async function handleValidate(

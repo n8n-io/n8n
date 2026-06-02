@@ -16,7 +16,7 @@ import { findPlaceholderDetails } from '@n8n/utils';
 import type { INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
-import type { WorkflowSetupSection } from '../workflowSetup.types';
+import type { WorkflowSetupParameterGuidance, WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 
 const props = withDefaults(
@@ -124,7 +124,19 @@ const nodeType = computed(() =>
 const parameterDefinitions = computed<INodeProperties[]>(() => {
 	if (!nodeType.value || props.section.parameterNames.length === 0) return [];
 	const names = new Set(props.section.parameterNames);
-	return nodeType.value.properties.filter((property) => names.has(property.name));
+	return nodeType.value.properties
+		.filter((property) => names.has(property.name))
+		.map((property) => {
+			const guidance = getParameterGuidance(property.name);
+			const guidanceText = getParameterGuidanceText(property.name, guidance);
+			if (!guidance?.contextLabel && !guidanceText) return property;
+
+			return {
+				...property,
+				...(guidance?.contextLabel ? { displayName: guidance.contextLabel } : {}),
+				...(guidanceText ? { hint: guidanceText } : {}),
+			};
+		});
 });
 
 const revealedIssues = ref(new Set<string>());
@@ -148,6 +160,46 @@ function revealParameterIssues(parameterName: string) {
 
 function getRootParameterName(parameterName: string) {
 	return parameterName.split(/[.[\]]/)[0] ?? parameterName;
+}
+
+function getParameterGuidance(parameterName: string): WorkflowSetupParameterGuidance | undefined {
+	for (const section of parameterOwnerSections.value) {
+		const guidance = section.setupGuidance?.parameters?.[parameterName];
+		if (guidance) return guidance;
+	}
+
+	return undefined;
+}
+
+function getParameterGuidanceText(
+	parameterName: string,
+	guidance?: WorkflowSetupParameterGuidance,
+): string {
+	const guidanceText = formatGuidanceText(guidance?.reason, guidance?.howTo);
+	if (guidanceText) return guidanceText;
+
+	const placeholderLabel = getPlaceholderLabel(parameterName);
+	if (!placeholderLabel) return '';
+
+	return i18n.baseText('instanceAi.workflowSetup.parameterPlaceholderHint' as BaseTextKey, {
+		interpolate: { label: placeholderLabel },
+	});
+}
+
+function getPlaceholderLabel(parameterName: string): string {
+	for (const section of parameterOwnerSections.value) {
+		const placeholderDetail = findPlaceholderDetails(section.node.parameters[parameterName])[0];
+		if (placeholderDetail?.label) return placeholderDetail.label;
+	}
+
+	return '';
+}
+
+function formatGuidanceText(...parts: Array<string | undefined>): string {
+	return parts
+		.map((part) => part?.trim())
+		.filter((part): part is string => !!part)
+		.join(' ');
 }
 
 const displayNode = computed<INodeUi>(() => {

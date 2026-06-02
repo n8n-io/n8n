@@ -53,6 +53,10 @@ export function makeWorkflowSetupSection(
 	return {
 		id: overrides.id ?? buildSectionId(targetNodeName, credentialType),
 		...(credentialType ? { credentialType } : {}),
+		...(overrides.credentialSelectionMode
+			? { credentialSelectionMode: overrides.credentialSelectionMode }
+			: {}),
+		...(overrides.setupGuidance ? { setupGuidance: overrides.setupGuidance } : {}),
 		targetNodeName,
 		node: finalNode,
 		currentCredentialId: overrides.currentCredentialId ?? null,

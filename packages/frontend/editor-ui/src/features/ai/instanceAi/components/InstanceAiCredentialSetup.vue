@@ -11,9 +11,11 @@ import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSetupListExperiment } from '@/experiments/instanceAiSetupList';
 import { useThread } from '../instanceAi.store';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
@@ -77,15 +79,26 @@ const credentialItems = computed<CredentialSetupItem[]>(() => {
 	}));
 });
 
-const openCredentialType = ref<string | null>(null);
+const openCredentialTypes = ref<string[]>([]);
+const activeCredentialType = ref<string | null>(null);
 
 watch(
 	credentialItems,
 	(items) => {
-		const openItemExists = items.some((item) => item.credentialType === openCredentialType.value);
-		if (openItemExists) return;
+		const credentialTypes = new Set(items.map((item) => item.credentialType));
+		const nextOpenCredentialTypes = openCredentialTypes.value.filter((credentialType) =>
+			credentialTypes.has(credentialType),
+		);
 
-		openCredentialType.value = getFirstIncompleteCredentialItem(items)?.credentialType ?? null;
+		if (nextOpenCredentialTypes.length === 0) {
+			const defaultOpenItem = getFirstIncompleteCredentialItem(items);
+			if (defaultOpenItem) nextOpenCredentialTypes.push(defaultOpenItem.credentialType);
+		}
+
+		openCredentialTypes.value = nextOpenCredentialTypes;
+		if (!activeCredentialType.value || !credentialTypes.has(activeCredentialType.value)) {
+			activeCredentialType.value = nextOpenCredentialTypes[0] ?? null;
+		}
 	},
 	{ immediate: true },
 );
@@ -170,6 +183,7 @@ const applyTooltip = computed(() =>
 );
 
 const isApplyDisabled = computed(() => isSubmitted.value || !allCredentialItemsSelected.value);
+const shouldShowApplyButton = computed(() => allCredentialItemsSelected.value);
 
 // ---------------------------------------------------------------------------
 // Auto-advance
@@ -261,7 +275,7 @@ const hasExistingCredentials = computed(() => {
 const activeCredentialRequest = computed(() => {
 	if (isSetupListEnabled.value) {
 		return (
-			credentialItems.value.find((item) => item.credentialType === openCredentialType.value)
+			credentialItems.value.find((item) => item.credentialType === activeCredentialType.value)
 				?.request ?? credentialItems.value[0]?.request
 		);
 	}
@@ -328,11 +342,26 @@ function getFirstIncompleteCredentialItem(
 }
 
 function isCredentialItemOpen(item: CredentialSetupItem): boolean {
-	return openCredentialType.value === item.credentialType;
+	return openCredentialTypes.value.includes(item.credentialType);
 }
 
-function openCredentialItem(item: CredentialSetupItem) {
-	openCredentialType.value = item.credentialType;
+function setActiveCredentialItem(item: CredentialSetupItem) {
+	activeCredentialType.value = item.credentialType;
+}
+
+function setCredentialItemOpen(item: CredentialSetupItem, isOpen: boolean) {
+	setActiveCredentialItem(item);
+	const currentOpenCredentialTypes = openCredentialTypes.value;
+
+	if (isOpen) {
+		if (currentOpenCredentialTypes.includes(item.credentialType)) return;
+		openCredentialTypes.value = [...currentOpenCredentialTypes, item.credentialType];
+		return;
+	}
+
+	openCredentialTypes.value = currentOpenCredentialTypes.filter(
+		(credentialType) => credentialType !== item.credentialType,
+	);
 }
 
 function getCredentialStatusLabel(item: CredentialSetupItem): string {
@@ -426,83 +455,103 @@ async function handleLater() {
 				:class="$style.accordion"
 				data-test-id="instance-ai-credential-setup-list"
 			>
-				<div :class="$style.items">
-					<article
-						v-for="item in credentialItems"
-						:key="item.id"
-						:class="$style.item"
-						data-test-id="instance-ai-credential-setup-list-item"
-					>
-						<button
-							type="button"
-							:class="$style.itemHeader"
-							:aria-expanded="isCredentialItemOpen(item)"
-							:aria-controls="`credential-setup-section-${item.id}`"
-							data-test-id="instance-ai-credential-setup-list-header"
-							@click="openCredentialItem(item)"
-						>
-							<span :class="$style.itemIcon">
-								<N8nIcon
-									v-if="isStepComplete(item.credentialType)"
-									icon="check"
-									size="medium"
-									color="success"
-								/>
-								<CredentialIcon v-else :credential-type-name="item.credentialType" :size="16" />
-							</span>
-
-							<span :class="$style.itemText">
-								<N8nText :class="$style.itemTitle" size="medium" color="text-dark" bold>
-									{{ getCredentialAppName(item.credentialType) }}
-								</N8nText>
-							</span>
-
-							<span
-								:class="[
-									$style.statusPill,
-									{ [$style.statusPillDone]: isStepComplete(item.credentialType) },
-								]"
-								data-test-id="instance-ai-credential-setup-status-pill"
+				<CollapsibleRoot
+					v-for="item in credentialItems"
+					:key="item.id"
+					:open="isCredentialItemOpen(item)"
+					:unmount-on-hide="false"
+					:class="$style.item"
+					data-test-id="instance-ai-credential-setup-list-item"
+					@update:open="setCredentialItemOpen(item, $event)"
+				>
+					<div :class="$style.itemHeader">
+						<CollapsibleTrigger as-child>
+							<button
+								type="button"
+								:class="$style.itemTrigger"
+								:aria-controls="`credential-setup-section-${item.id}`"
+								data-test-id="instance-ai-credential-setup-list-header"
 							>
-								{{ getCredentialStatusLabel(item) }}
-							</span>
-						</button>
+								<span :class="$style.itemIcon">
+									<N8nIcon
+										v-if="isStepComplete(item.credentialType)"
+										icon="check"
+										size="medium"
+										color="success"
+									/>
+									<CredentialIcon v-else :credential-type-name="item.credentialType" :size="16" />
+								</span>
 
-						<div
-							v-if="isCredentialItemOpen(item)"
-							:id="`credential-setup-section-${item.id}`"
-							:class="$style.itemBody"
-							data-test-id="instance-ai-credential-setup-list-body"
+								<span :class="$style.itemText">
+									<span :class="$style.itemTitleRow">
+										<N8nText :class="$style.itemTitle" size="medium" color="text-dark" bold>
+											{{ getCredentialAppName(item.credentialType) }}
+										</N8nText>
+										<N8nIcon
+											icon="chevron-down"
+											size="xsmall"
+											:class="[
+												$style.chevron,
+												{ [$style.chevronOpen]: isCredentialItemOpen(item) },
+											]"
+										/>
+									</span>
+								</span>
+							</button>
+						</CollapsibleTrigger>
+
+						<N8nTooltip
+							v-if="isCredentialItemOpen(item) && shouldShowApplyButton"
+							:disabled="!applyTooltip"
+							:content="applyTooltip"
 						>
-							<div :class="$style.credentialBody">
-								<NodeCredentials
-									:node="syntheticNodeUi(item.request)"
-									:override-cred-type="item.credentialType"
-									:project-id="projectId"
-									:suggested-credential-name="item.request.suggestedName"
-									standalone
-									hide-issues
-									hide-ask-assistant
-									:hide-credential-service-name-in-label="true"
-									:hide-empty-credential-select="true"
-									@credential-selected="onCredentialSelected(item.credentialType, $event)"
-								/>
+							<N8nButton
+								:class="$style.applyButton"
+								size="medium"
+								:label="i18n.baseText('instanceAi.workflowSetup.applySetup' as BaseTextKey)"
+								:disabled="isApplyDisabled"
+								data-test-id="instance-ai-credential-setup-apply"
+								@click="handleContinue"
+							/>
+						</N8nTooltip>
+						<span
+							v-else
+							:class="[
+								$style.statusPill,
+								{ [$style.statusPillDone]: isStepComplete(item.credentialType) },
+							]"
+							data-test-id="instance-ai-credential-setup-status-pill"
+						>
+							{{ getCredentialStatusLabel(item) }}
+						</span>
+					</div>
+
+					<AnimatedCollapsibleContent mode="measured" :open="isCredentialItemOpen(item)">
+						<div
+							:id="`credential-setup-section-${item.id}`"
+							:class="$style.itemContent"
+							@focusin.capture="setActiveCredentialItem(item)"
+							@pointerdown.capture="setActiveCredentialItem(item)"
+						>
+							<div :class="$style.itemBody" data-test-id="instance-ai-credential-setup-list-body">
+								<div :class="$style.credentialBody">
+									<NodeCredentials
+										:node="syntheticNodeUi(item.request)"
+										:override-cred-type="item.credentialType"
+										:project-id="projectId"
+										:suggested-credential-name="item.request.suggestedName"
+										standalone
+										hide-issues
+										hide-ask-assistant
+										:hide-credential-service-name-in-label="true"
+										:hide-empty-credential-select="true"
+										@credential-selected="onCredentialSelected(item.credentialType, $event)"
+									/>
+								</div>
 							</div>
 						</div>
-					</article>
-				</div>
-
-				<ConfirmationFooter bordered>
-					<N8nTooltip :disabled="!applyTooltip" :content="applyTooltip">
-						<N8nButton
-							size="medium"
-							:label="i18n.baseText('instanceAi.workflowSetup.applySetup' as BaseTextKey)"
-							:disabled="isApplyDisabled"
-							data-test-id="instance-ai-credential-setup-apply"
-							@click="handleContinue"
-						/>
-					</N8nTooltip>
-				</ConfirmationFooter>
+					</AnimatedCollapsibleContent>
+				</CollapsibleRoot>
 			</section>
 
 			<div
@@ -639,31 +688,21 @@ async function handleLater() {
 .accordion {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.item {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 }
 
-.items {
+.itemContent {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--sm);
-}
-
-.item {
-	display: flex;
-	flex-direction: column;
-	background-color: transparent;
-
-	&:not(:last-child) {
-		padding-bottom: var(--spacing--xs);
-	}
-
-	& + & {
-		border-top: var(--border);
-		padding-top: var(--spacing--xs);
-	}
 }
 
 .itemHeader {
@@ -671,7 +710,16 @@ async function handleLater() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-	padding: var(--spacing--xs) 0;
+	padding: var(--spacing--sm);
+}
+
+.itemTrigger {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	flex: 1;
+	padding: 0;
 	border: none;
 	background: transparent;
 	color: inherit;
@@ -679,6 +727,10 @@ async function handleLater() {
 	text-align: left;
 	cursor: pointer;
 	user-select: none;
+}
+
+.applyButton {
+	flex-shrink: 0;
 }
 
 .itemIcon {
@@ -697,11 +749,32 @@ async function handleLater() {
 	gap: var(--spacing--5xs);
 }
 
+.itemTitleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
 .itemTitle {
+	min-width: 0;
 	overflow: hidden;
 	font-size: var(--font-size--md);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	transform: rotate(-90deg);
+	transition:
+		color var(--animation--duration) var(--animation--easing),
+		transform var(--animation--duration) var(--animation--easing);
+}
+
+.chevronOpen {
+	transform: rotate(0deg);
 }
 
 .statusPill {
@@ -727,7 +800,7 @@ async function handleLater() {
 }
 
 .itemBody {
-	padding: 0 0 var(--spacing--xs);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .credentialBody {

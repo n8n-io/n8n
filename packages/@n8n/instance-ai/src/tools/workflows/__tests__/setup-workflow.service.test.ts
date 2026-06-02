@@ -329,6 +329,37 @@ describe('buildSetupRequests', () => {
 
 		expect(result[0].isAutoApplied).toBe(true);
 		expect(result[0].existingCredentials?.[0].id).toBe('cred-1');
+		expect(result[0].credentialSelectionMode).toBe('auto');
+	});
+
+	it('does not auto-apply the only credential for HTTP Request nodes', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue(['httpHeaderAuth']);
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'Header auth', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			name: 'Call vendor API',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+				url: 'https://api.vendor.example/orders',
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].credentialType).toBe('httpHeaderAuth');
+		expect(result[0].credentialSelectionMode).toBe('explicit');
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.httpHeaderAuth).toBeUndefined();
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-1', name: 'Header auth' }]);
+		expect(result[0].needsAction).toBe(true);
+		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-apply when multiple credentials of the same type exist', async () => {
@@ -595,6 +626,53 @@ describe('analyzeWorkflow', () => {
 		const result = await analyzeWorkflow(context, 'wf-1');
 		expect(result).toHaveLength(1);
 		expect(result[0].credentialType).toBe('slackApi');
+	});
+
+	it('keeps multiple HTTP Request setup requests separate and explicit', async () => {
+		const firstHttpNode = makeNode({
+			name: 'Call vendor A',
+			id: 'http-a',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+				url: 'https://api.vendor-a.example',
+			},
+		});
+		const secondHttpNode = makeNode({
+			name: 'Call vendor B',
+			id: 'http-b',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+				url: 'https://api.vendor-b.example',
+			},
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([firstHttpNode, secondHttpNode]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue(['httpHeaderAuth']);
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'Header auth', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result.map((request) => request.node.name)).toEqual(['Call vendor A', 'Call vendor B']);
+		expect(result.map((request) => request.credentialSelectionMode)).toEqual([
+			'explicit',
+			'explicit',
+		]);
+		expect(result.every((request) => !request.isAutoApplied)).toBe(true);
 	});
 
 	it('hides credential-only requests whose credential is already set and tests OK', async () => {

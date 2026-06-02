@@ -36,6 +36,16 @@ function listCacheKey(workflowId: string | undefined, credentialType: string): s
 	return `${workflowId ?? ''}|${credentialType}`;
 }
 
+const HTTP_REQUEST_NODE_TYPES = new Set([
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+]);
+
+function isHttpRequestNodeType(nodeType: string): boolean {
+	return HTTP_REQUEST_NODE_TYPES.has(nodeType);
+}
+
 // ── Node analysis ───────────────────────────────────────────────────────────
 
 /**
@@ -283,6 +293,7 @@ export async function buildSetupRequests(
 	const nodeId = node.id ?? nanoid();
 	const nodePosition: [number, number] = node.position ?? [0, 0];
 	const hasParamIssues = Object.keys(parameterIssues).length > 0;
+	const shouldRequireExplicitCredentialSelection = isHttpRequestNodeType(node.type);
 
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
@@ -319,7 +330,11 @@ export async function buildSetupRequests(
 			// Only auto-apply when there is exactly one candidate. With multiple
 			// candidates, picking the first is a silent guess — surface the list
 			// so the setup wizard can prompt the user to choose.
-			if (!existingOnNode?.id && existingCredentials.length === 1) {
+			if (
+				!shouldRequireExplicitCredentialSelection &&
+				!existingOnNode?.id &&
+				existingCredentials.length === 1
+			) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
@@ -407,6 +422,11 @@ export async function buildSetupRequests(
 						: {}),
 			},
 			...(credentialType ? { credentialType } : {}),
+			...(credentialType
+				? {
+						credentialSelectionMode: shouldRequireExplicitCredentialSelection ? 'explicit' : 'auto',
+					}
+				: {}),
 			...(existingCredentials.length > 0 ? { existingCredentials } : {}),
 			isTrigger,
 			...(isTestable ? { isTestable } : {}),

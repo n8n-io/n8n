@@ -1,5 +1,5 @@
 import { computed, nextTick, ref, type Ref } from 'vue';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi } from '@/Interface';
@@ -51,6 +51,15 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 			if (key === 'instanceAi.workflowSetup.statusNeedsAttention') return 'Needs attention';
 			if (key === 'instanceAi.workflowSetup.statusTodo') return 'To do';
 			if (key === 'instanceAi.workflowSetup.statusDone') return 'Done';
+			if (key === 'instanceAi.workflowSetup.cardDescriptionAction') {
+				return `To ${opts?.interpolate?.action}`;
+			}
+			if (key === 'instanceAi.workflowSetup.httpCredentialSecurityNote') {
+				return `Use a credential that belongs to ${opts?.interpolate?.origin}. n8n will send it with this HTTP request.`;
+			}
+			if (key === 'instanceAi.workflowSetup.httpCredentialSecurityNoteFallback') {
+				return 'Use a credential that belongs to this API. n8n will send it with this HTTP request.';
+			}
 			return key;
 		},
 	}),
@@ -203,9 +212,11 @@ describe('WorkflowSetupAccordion', () => {
 			displayName:
 				name === 'slackApi'
 					? 'Slack API'
-					: name === 'googleCalendarOAuth2Api'
-						? 'Google Calendar OAuth2 API'
-						: 'HTTP Basic Auth',
+					: name === 'googleSheetsOAuth2Api'
+						? 'Google Sheets OAuth2 API'
+						: name === 'googleCalendarOAuth2Api'
+							? 'Google Calendar OAuth2 API'
+							: 'HTTP Basic Auth',
 		}));
 		nodeTypesStore.getNodeType.mockReturnValue({
 			name: 'n8n-nodes-base.httpRequest',
@@ -218,11 +229,14 @@ describe('WorkflowSetupAccordion', () => {
 			completedIds: ref(new Set([sectionA.id])),
 		});
 
-		const { getAllByTestId, getByText, queryByTestId } = renderComponent();
+		const { getAllByTestId, getByText } = renderComponent();
+		const items = getAllByTestId('instance-ai-workflow-setup-accordion-item');
 
-		expect(getAllByTestId('instance-ai-workflow-setup-accordion-item')).toHaveLength(2);
+		expect(items).toHaveLength(2);
 		expect(getByText('Slack')).toBeInTheDocument();
-		expect(queryByTestId('workflow-setup-section-body')).toHaveAttribute(
+		expect(items[0]).toHaveAttribute('data-state', 'closed');
+		expect(items[1]).toHaveAttribute('data-state', 'open');
+		expect(items[1].querySelector('[data-test-id="workflow-setup-section-body"]')).toHaveAttribute(
 			'data-section-id',
 			sectionB.id,
 		);
@@ -233,24 +247,57 @@ describe('WorkflowSetupAccordion', () => {
 				'[data-icon="chevrons-down-up"], [data-icon="chevrons-up-down"]',
 			),
 		).not.toBeInTheDocument();
+		expect(
+			getAllByTestId('instance-ai-workflow-setup-accordion-header')[0].querySelector(
+				'[data-icon="chevron-down"]',
+			),
+		).toBeInTheDocument();
 	});
 
-	it('keeps one setup item open and lets users switch rows', async () => {
+	it('lets users independently expand and collapse setup cards', async () => {
 		workflowSetupContext.current = makeContext();
 
 		const { getAllByTestId } = renderComponent();
 
-		expect(getAllByTestId('workflow-setup-section-body')).toHaveLength(1);
-		expect(getAllByTestId('workflow-setup-section-body')[0]).toHaveAttribute(
-			'data-section-id',
-			sectionA.id,
+		expect(getAllByTestId('instance-ai-workflow-setup-accordion-item')[0]).toHaveAttribute(
+			'data-state',
+			'open',
 		);
+		expect(
+			getAllByTestId('instance-ai-workflow-setup-accordion-item')[0].querySelector(
+				'[data-test-id="workflow-setup-section-body"]',
+			),
+		).toHaveAttribute('data-section-id', sectionA.id);
 
 		await fireEvent.click(getAllByTestId('instance-ai-workflow-setup-accordion-header')[1]);
 
-		const bodies = getAllByTestId('workflow-setup-section-body');
-		expect(bodies).toHaveLength(1);
-		expect(bodies[0]).toHaveAttribute('data-section-id', sectionB.id);
+		await waitFor(() => {
+			expect(
+				getAllByTestId('instance-ai-workflow-setup-accordion-item').map((item) =>
+					item.getAttribute('data-state'),
+				),
+			).toEqual(['open', 'open']);
+		});
+
+		await fireEvent.click(getAllByTestId('instance-ai-workflow-setup-accordion-header')[0]);
+
+		await waitFor(() => {
+			expect(
+				getAllByTestId('instance-ai-workflow-setup-accordion-item').map((item) =>
+					item.getAttribute('data-state'),
+				),
+			).toEqual(['closed', 'open']);
+		});
+
+		await fireEvent.click(getAllByTestId('instance-ai-workflow-setup-accordion-header')[1]);
+
+		await waitFor(() => {
+			expect(
+				getAllByTestId('instance-ai-workflow-setup-accordion-item').map((item) =>
+					item.getAttribute('data-state'),
+				),
+			).toEqual(['closed', 'closed']);
+		});
 	});
 
 	it('flattens grouped setup steps and preserves group context', () => {
@@ -281,7 +328,7 @@ describe('WorkflowSetupAccordion', () => {
 		expect(getByText('Part of Agent')).toBeInTheDocument();
 	});
 
-	it('groups repeated credential types into one service setup item', () => {
+	it('groups repeated credential types into one service setup item without sharing parameters by default', () => {
 		const calendarNoPoSection = makeWorkflowSetupSection({
 			id: 'Create Payment Reminder (No PO):googleCalendarOAuth2Api',
 			targetNodeName: 'Create Payment Reminder (No PO)',
@@ -319,7 +366,7 @@ describe('WorkflowSetupAccordion', () => {
 		expect(getByText('Google Calendar')).toBeInTheDocument();
 
 		const bodies = getAllByTestId('workflow-setup-section-body');
-		expect(bodies).toHaveLength(2);
+		expect(bodies).toHaveLength(3);
 		expect(bodies[0]).toHaveAttribute('data-hide-credential', 'false');
 		expect(bodies[0]).toHaveAttribute('data-hide-helper', 'true');
 		expect(bodies[0]).toHaveAttribute('data-helper-text-override', '');
@@ -327,7 +374,161 @@ describe('WorkflowSetupAccordion', () => {
 		expect(bodies[1]).toHaveAttribute('data-section-id', calendarNoPoSection.id);
 		expect(bodies[1]).toHaveAttribute('data-hide-credential', 'true');
 		expect(bodies[1]).toHaveAttribute('data-hide-helper', 'true');
+		expect(bodies[1]).toHaveAttribute('data-parameter-sections-count', '1');
+		expect(bodies[2]).toHaveAttribute('data-section-id', calendarMatchSection.id);
+		expect(bodies[2]).toHaveAttribute('data-hide-credential', 'true');
+		expect(bodies[2]).toHaveAttribute('data-parameter-sections-count', '1');
+	});
+
+	it('shares repeated parameter controls only when setup guidance provides a shared value key', () => {
+		const calendarNoPoSection = makeWorkflowSetupSection({
+			id: 'Create Payment Reminder (No PO):googleCalendarOAuth2Api',
+			targetNodeName: 'Create Payment Reminder (No PO)',
+			credentialType: 'googleCalendarOAuth2Api',
+			parameterNames: ['calendar'],
+			setupGuidance: {
+				parameters: {
+					calendar: {
+						sharedValueKey: 'payment-reminder-calendar',
+						sharedValueLabel: 'Payment reminder calendar',
+					},
+				},
+			},
+			node: {
+				id: 'calendar-no-po',
+				name: 'Create Payment Reminder (No PO)',
+				type: 'n8n-nodes-base.googleCalendar',
+				parameters: { calendar: '' },
+			},
+		});
+		const calendarMatchSection = makeWorkflowSetupSection({
+			id: 'Create Payment Reminder (Match):googleCalendarOAuth2Api',
+			targetNodeName: 'Create Payment Reminder (Match)',
+			credentialType: 'googleCalendarOAuth2Api',
+			parameterNames: ['calendar'],
+			setupGuidance: {
+				parameters: {
+					calendar: {
+						sharedValueKey: 'payment-reminder-calendar',
+						sharedValueLabel: 'Payment reminder calendar',
+					},
+				},
+			},
+			node: {
+				id: 'calendar-match',
+				name: 'Create Payment Reminder (Match)',
+				type: 'n8n-nodes-base.googleCalendar',
+				parameters: { calendar: '' },
+			},
+		});
+		workflowSetupContext.current = makeContext({
+			steps: ref([
+				{ kind: 'section', section: calendarNoPoSection },
+				{ kind: 'section', section: calendarMatchSection },
+			]),
+		});
+
+		const { getAllByTestId, getByText } = renderComponent();
+
+		expect(getByText('Payment reminder calendar')).toBeInTheDocument();
+		const bodies = getAllByTestId('workflow-setup-section-body');
+		expect(bodies).toHaveLength(2);
+		expect(bodies[1]).toHaveAttribute('data-section-id', calendarNoPoSection.id);
 		expect(bodies[1]).toHaveAttribute('data-parameter-sections-count', '2');
+	});
+
+	it('uses the HTTP request host as the card title when the URL is safe to read', () => {
+		const httpSection = makeWorkflowSetupSection({
+			id: 'HTTP Request:httpHeaderAuth',
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpHeaderAuth',
+			node: {
+				id: 'http-request',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.4,
+				parameters: { url: 'https://api.example.com/v1/invoices' },
+			},
+		});
+		workflowSetupContext.current = makeContext({
+			steps: ref([{ kind: 'section', section: httpSection }]),
+		});
+
+		const { getByText } = renderComponent();
+
+		expect(getByText('api.example.com')).toBeInTheDocument();
+	});
+
+	it('shows one purpose-led description below the card title from setup guidance', () => {
+		const sheetsSection = makeWorkflowSetupSection({
+			id: 'Read Content Ideas:googleSheetsOAuth2Api',
+			targetNodeName: 'Read Content Ideas',
+			credentialType: 'googleSheetsOAuth2Api',
+			setupGuidance: {
+				credentialReason: 'To read content ideas',
+			},
+			node: {
+				id: 'sheets',
+				name: 'Read Content Ideas',
+				type: 'n8n-nodes-base.googleSheets',
+			},
+		});
+		workflowSetupContext.current = makeContext({
+			steps: ref([{ kind: 'section', section: sheetsSection }]),
+		});
+
+		const { getByTestId, queryByTestId } = renderComponent();
+
+		expect(getByTestId('instance-ai-workflow-setup-card-description')).toHaveTextContent(
+			'To read content ideas',
+		);
+		expect(queryByTestId('instance-ai-workflow-setup-credential-guidance')).not.toBeInTheDocument();
+	});
+
+	it('falls back to an action description from the setup node name', () => {
+		const sheetsSection = makeWorkflowSetupSection({
+			id: 'Read content ideas from your Google Sheet:googleSheetsOAuth2Api',
+			targetNodeName: 'Read content ideas from your Google Sheet',
+			credentialType: 'googleSheetsOAuth2Api',
+			node: {
+				id: 'sheets',
+				name: 'Read content ideas from your Google Sheet',
+				type: 'n8n-nodes-base.googleSheets',
+			},
+		});
+		workflowSetupContext.current = makeContext({
+			steps: ref([{ kind: 'section', section: sheetsSection }]),
+		});
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('instance-ai-workflow-setup-card-description')).toHaveTextContent(
+			'To read content ideas',
+		);
+	});
+
+	it('shows the HTTP security note as the card description', () => {
+		const httpSection = makeWorkflowSetupSection({
+			id: 'Call Invoice API:httpHeaderAuth',
+			targetNodeName: 'Call Invoice API',
+			credentialType: 'httpHeaderAuth',
+			node: {
+				id: 'http-request',
+				name: 'Call Invoice API',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.4,
+				parameters: { url: 'https://api.example.com/v1/invoices' },
+			},
+		});
+		workflowSetupContext.current = makeContext({
+			steps: ref([{ kind: 'section', section: httpSection }]),
+		});
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('instance-ai-workflow-setup-card-description')).toHaveTextContent(
+			'Use a credential that belongs to https://api.example.com.',
+		);
 	});
 
 	it('enables apply only after every setup item is complete', async () => {
@@ -335,9 +536,9 @@ describe('WorkflowSetupAccordion', () => {
 		const apply = vi.fn(async () => {});
 		workflowSetupContext.current = makeContext({ completedIds, apply });
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 
-		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAttribute('disabled');
+		expect(queryByTestId('instance-ai-workflow-setup-apply')).not.toBeInTheDocument();
 
 		completedIds.value = new Set([sectionA.id, sectionB.id]);
 		await nextTick();
@@ -359,9 +560,9 @@ describe('WorkflowSetupAccordion', () => {
 			failedIds,
 		});
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 
-		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAttribute('disabled');
+		expect(queryByTestId('instance-ai-workflow-setup-apply')).not.toBeInTheDocument();
 
 		pendingCredentialIds.value = new Set();
 		await nextTick();
@@ -371,7 +572,7 @@ describe('WorkflowSetupAccordion', () => {
 		failedIds.value = new Set([sectionB.id]);
 		await nextTick();
 
-		expect(getByTestId('instance-ai-workflow-setup-apply')).toHaveAttribute('disabled');
+		expect(queryByTestId('instance-ai-workflow-setup-apply')).not.toBeInTheDocument();
 	});
 
 	it('does not render wizard navigation or skip actions', () => {

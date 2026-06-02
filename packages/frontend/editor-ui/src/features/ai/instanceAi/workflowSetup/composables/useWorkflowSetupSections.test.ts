@@ -169,32 +169,47 @@ describe('useWorkflowSetupSections', () => {
 
 	it('groups cred-only requests with the same credential type into one primary section', () => {
 		const setupRequests = ref([
-			makeSetupRequest({ node: { id: 'first', name: 'First' } }),
-			makeSetupRequest({ node: { id: 'second', name: 'Second' } }),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: { id: 'first', name: 'First', type: 'n8n-nodes-base.slack' },
+			}),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: { id: 'second', name: 'Second', type: 'n8n-nodes-base.slack' },
+			}),
 		]);
 
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value).toHaveLength(1);
-		expect(sections.value[0]).toMatchObject({ id: 'First:httpBasicAuth', targetNodeName: 'First' });
+		expect(sections.value[0]).toMatchObject({ id: 'First:slackApi', targetNodeName: 'First' });
 		expect(sections.value[0].credentialTargetNodes).toEqual([
-			{ id: 'first', name: 'First', type: 'n8n-nodes-base.httpRequest' },
-			{ id: 'second', name: 'Second', type: 'n8n-nodes-base.httpRequest' },
+			{ id: 'first', name: 'First', type: 'n8n-nodes-base.slack' },
+			{ id: 'second', name: 'Second', type: 'n8n-nodes-base.slack' },
 		]);
 	});
 
 	it('creates one primary per credential type', () => {
 		const setupRequests = ref([
-			makeSetupRequest({ credentialType: 'httpBasicAuth', node: { id: 'first', name: 'First' } }),
-			makeSetupRequest({ credentialType: 'slackApi', node: { id: 'second', name: 'Second' } }),
-			makeSetupRequest({ credentialType: 'httpBasicAuth', node: { id: 'third', name: 'Third' } }),
+			makeSetupRequest({
+				credentialType: 'typeformApi',
+				node: { id: 'first', name: 'First', type: 'n8n-nodes-base.typeformTrigger' },
+			}),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: { id: 'second', name: 'Second', type: 'n8n-nodes-base.slack' },
+			}),
+			makeSetupRequest({
+				credentialType: 'typeformApi',
+				node: { id: 'third', name: 'Third', type: 'n8n-nodes-base.typeformTrigger' },
+			}),
 		]);
 
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value).toHaveLength(2);
 		expect(sections.value.map((section) => section.credentialType)).toEqual([
-			'httpBasicAuth',
+			'typeformApi',
 			'slackApi',
 		]);
 		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
@@ -209,16 +224,20 @@ describe('useWorkflowSetupSections', () => {
 	it('groups a cred-only follower into a primary section that has parameters', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
-				node: { id: 'primary', name: 'Primary' },
-				editableParameters: [{ name: 'url', displayName: 'URL', type: 'string' }],
+				credentialType: 'slackApi',
+				node: { id: 'primary', name: 'Primary', type: 'n8n-nodes-base.slack' },
+				editableParameters: [{ name: 'channel', displayName: 'Channel', type: 'string' }],
 			}),
-			makeSetupRequest({ node: { id: 'follower', name: 'Follower' } }),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: { id: 'follower', name: 'Follower', type: 'n8n-nodes-base.slack' },
+			}),
 		]);
 
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value).toHaveLength(1);
-		expect(sections.value[0].parameterNames).toEqual(['url']);
+		expect(sections.value[0].parameterNames).toEqual(['channel']);
 		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Primary',
 			'Follower',
@@ -227,10 +246,14 @@ describe('useWorkflowSetupSections', () => {
 
 	it('keeps a params-bearing follower independent from a cred-only primary', () => {
 		const setupRequests = ref([
-			makeSetupRequest({ node: { id: 'primary', name: 'Primary' } }),
 			makeSetupRequest({
-				node: { id: 'follower', name: 'Follower' },
-				editableParameters: [{ name: 'url', displayName: 'URL', type: 'string' }],
+				credentialType: 'slackApi',
+				node: { id: 'primary', name: 'Primary', type: 'n8n-nodes-base.slack' },
+			}),
+			makeSetupRequest({
+				credentialType: 'slackApi',
+				node: { id: 'follower', name: 'Follower', type: 'n8n-nodes-base.slack' },
+				editableParameters: [{ name: 'channel', displayName: 'Channel', type: 'string' }],
 			}),
 		]);
 
@@ -240,7 +263,7 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Primary',
 		]);
-		expect(sections.value[1].parameterNames).toEqual(['url']);
+		expect(sections.value[1].parameterNames).toEqual(['channel']);
 		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Follower',
 		]);
@@ -249,11 +272,13 @@ describe('useWorkflowSetupSections', () => {
 	it('keeps params-bearing requests with the same credential type independent', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
-				node: { id: 'primary', name: 'Primary' },
-				editableParameters: [{ name: 'url', displayName: 'URL', type: 'string' }],
+				credentialType: 'slackApi',
+				node: { id: 'primary', name: 'Primary', type: 'n8n-nodes-base.slack' },
+				editableParameters: [{ name: 'channel', displayName: 'Channel', type: 'string' }],
 			}),
 			makeSetupRequest({
-				node: { id: 'follower', name: 'Follower' },
+				credentialType: 'slackApi',
+				node: { id: 'follower', name: 'Follower', type: 'n8n-nodes-base.slack' },
 				editableParameters: [{ name: 'path', displayName: 'Path', type: 'string' }],
 			}),
 		]);
@@ -269,7 +294,7 @@ describe('useWorkflowSetupSections', () => {
 		]);
 	});
 
-	it('groups HTTP requests by the same literal URL and splits different URLs', () => {
+	it('keeps HTTP requests separate even when the literal URL matches', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
 				node: { id: 'first', name: 'First', parameters: { url: 'https://a.test' } },
@@ -284,12 +309,12 @@ describe('useWorkflowSetupSections', () => {
 
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(sections.value).toHaveLength(2);
-		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
-			'First',
+		expect(sections.value).toHaveLength(3);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['First']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Second',
 		]);
-		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Third']);
+		expect(sections.value[2].credentialTargetNodes.map((target) => target.name)).toEqual(['Third']);
 	});
 
 	it('splits HTTP expression URLs per node even when the expression string matches', () => {
@@ -311,7 +336,7 @@ describe('useWorkflowSetupSections', () => {
 		]);
 	});
 
-	it('groups HTTP requests with missing or non-string URLs', () => {
+	it('keeps HTTP requests with missing or non-string URLs separate', () => {
 		const setupRequests = ref([
 			makeSetupRequest({ node: { id: 'first', name: 'First', parameters: {} } }),
 			makeSetupRequest({ node: { id: 'second', name: 'Second', parameters: { url: 123 } } }),
@@ -319,9 +344,9 @@ describe('useWorkflowSetupSections', () => {
 
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(sections.value).toHaveLength(1);
-		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
-			'First',
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['First']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Second',
 		]);
 	});
@@ -343,6 +368,29 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value).toHaveLength(1);
 		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'First',
+			'Second',
+		]);
+	});
+
+	it('keeps explicit credential sections separate even when they share a credential type', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialSelectionMode: 'explicit',
+				node: { id: 'first', name: 'First', type: 'n8n-nodes-base.slack' },
+				credentialType: 'slackApi',
+			}),
+			makeSetupRequest({
+				credentialSelectionMode: 'explicit',
+				node: { id: 'second', name: 'Second', type: 'n8n-nodes-base.slack' },
+				credentialType: 'slackApi',
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialSelectionMode).toBe('explicit');
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Second',
 		]);
 	});
