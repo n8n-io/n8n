@@ -306,7 +306,7 @@ export class Telemetry {
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
-			if (properties.used_dynamic_credentials) {
+			if (properties.used_private_credentials) {
 				this.track('Workflow execution with private credentials', properties);
 			}
 
