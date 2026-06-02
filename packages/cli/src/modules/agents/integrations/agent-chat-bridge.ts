@@ -309,7 +309,7 @@ export class AgentChatBridge {
 		// `message.subject` fetch are both remote round-trips on independent
 		// resources — run them concurrently.
 		const [statusHandle, subject] = await Promise.all([
-			this.startThinkingStatus(thread, slackThreadContext, statusRetry.signal),
+			this.startThinkingStatus(thread, slackThreadContext, statusRetry),
 			this.resolveMessageSubject(message),
 		]);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
@@ -964,16 +964,21 @@ export class AgentChatBridge {
 	private async startThinkingStatus(
 		thread: Thread<unknown, unknown>,
 		slackThreadContext?: SlackThreadContext,
-		statusRetrySignal?: AbortSignal,
+		statusRetry?: AbortController,
 	): Promise<SlackAssistantStatusHandle | undefined> {
 		if (this.integration.type !== 'slack') return;
 
 		if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
-			this.setSlackAssistantStatus(slackThreadContext, statusRetrySignal);
+			this.setSlackAssistantStatus(slackThreadContext, statusRetry?.signal);
 			return slackThreadContext.isDm
 				? {
-						clearBeforeResponse: async () =>
-							await this.clearSlackAssistantStatus(slackThreadContext),
+						clearBeforeResponse: async () => {
+							// Cancel any pending status retry first: the retry waits out a
+							// delay before re-setting "Thinking...", and without this it could
+							// fire *after* we clear and leave a stale status behind.
+							statusRetry?.abort();
+							await this.clearSlackAssistantStatus(slackThreadContext);
+						},
 					}
 				: undefined;
 		}
@@ -1039,6 +1044,9 @@ export class AgentChatBridge {
 		}
 
 		if (!(await sleep(SLACK_STATUS_RETRY_DELAY_MS, statusRetrySignal))) return;
+		// The status may have been cleared while we were sleeping. Bail out so the
+		// retry doesn't re-set "Thinking..." over an already-cleared status.
+		if (statusRetrySignal?.aborted) return;
 
 		try {
 			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [

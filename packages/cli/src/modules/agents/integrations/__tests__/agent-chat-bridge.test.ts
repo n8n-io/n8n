@@ -543,6 +543,66 @@ describe('AgentChatBridge — consumeStream', () => {
 			await run;
 		});
 
+		it('does not re-set Slack DM status with a stale retry after it has been cleared', async () => {
+			jest.useFakeTimers();
+			const { bot, handlers } = makeBot();
+			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
+				data: { error: 'invalid_thread_ts' },
+			});
+			const setAssistantStatus = jest
+				.fn()
+				.mockRejectedValueOnce(invalidThreadError)
+				.mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				// Respond (which clears the status) while the initial "Thinking..."
+				// set is still waiting out its retry delay, then keep the stream open
+				// past that delay so the retry would otherwise fire after the clear.
+				executeForChatPublished: jest.fn(async function* (): AsyncGenerator<StreamChunk> {
+					yield { type: 'text-delta', id: 't1', delta: 'Hello' };
+					yield { type: 'message', message: { role: 'assistant', content: [] } };
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+					yield { type: 'finish', finishReason: 'stop' };
+				}),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Let the response flush and clear the status, then run past the retry
+			// delay and finish the stream.
+			await jest.advanceTimersByTimeAsync(2000);
+			await run;
+
+			const thinkingCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...');
+			const clearCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === '');
+			// The cleared retry must not re-set "Thinking..." — only the initial set.
+			expect(thinkingCalls).toHaveLength(1);
+			expect(clearCalls).toHaveLength(1);
+			// The last status written must be the clear, never a stale "Thinking...".
+			expect(setAssistantStatus.mock.calls.at(-1)?.[2]).toBe('');
+		});
+
 		it('sets a thinking status before resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
