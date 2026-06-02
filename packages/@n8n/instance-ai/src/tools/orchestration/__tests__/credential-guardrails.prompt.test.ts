@@ -1,4 +1,3 @@
-import { buildBrowserAgentPrompt } from '../browser-credential-setup.prompt';
 import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
@@ -11,15 +10,6 @@ describe('credential guardrail prompts', () => {
 		expect(createSandboxBuilderAgentPrompt('/tmp/workspace')).not.toContain(
 			'a chat ID, API key, external resource name',
 		);
-	});
-
-	it('directs browser credential setup toward private credential entry', () => {
-		const prompt = buildBrowserAgentPrompt('gateway');
-
-		expect(prompt).toContain('enter the required values in the dedicated n8n credential form');
-		expect(prompt).toContain('Never ask the user to paste secret values into chat');
-		expect(prompt).not.toContain('ready to copy');
-		expect(prompt).not.toContain('copied and ready to paste into n8n');
 	});
 
 	it('keeps inbound trigger authentication disabled unless explicitly requested', () => {
@@ -104,5 +94,32 @@ describe('credential guardrail prompts', () => {
 
 		expect(prompt).not.toContain('workflows(action="publish")');
 		expect(prompt).not.toContain('Do NOT publish');
+	});
+
+	it('points sandbox builders at the task-specific workflow and chunks paths', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/workspace', {
+			mainWorkflowPath: '/tmp/workspace/builder-work-items/wi-one/src/workflow.ts',
+			sourceDir: '/tmp/workspace/builder-work-items/wi-one/src',
+			chunksDir: '/tmp/workspace/builder-work-items/wi-one/chunks',
+			tsconfigPath: '/tmp/workspace/builder-work-items/wi-one/tsconfig.json',
+		});
+
+		expect(prompt).toContain(
+			'Your active main workflow file is `/tmp/workspace/builder-work-items/wi-one/src/workflow.ts`',
+		);
+		expect(prompt).toContain(
+			'Use `/tmp/workspace/builder-work-items/wi-one/chunks/` for supporting chunk files',
+		);
+		expect(prompt).toContain(
+			'execute_command: cd /tmp/workspace && npx tsc --noEmit --project /tmp/workspace/builder-work-items/wi-one/tsconfig.json 2>&1',
+		);
+		expect(prompt).not.toContain('Write workflow code to `/tmp/workspace/src/workflow.ts`');
+	});
+
+	it('uses the provided workspace root for fallback tsc validation', () => {
+		const prompt = createSandboxBuilderAgentPrompt('/tmp/custom-workspace');
+
+		expect(prompt).toContain('execute_command: cd /tmp/custom-workspace && npx tsc --noEmit 2>&1');
+		expect(prompt).not.toContain('execute_command: cd ~/workspace && npx tsc --noEmit 2>&1');
 	});
 });

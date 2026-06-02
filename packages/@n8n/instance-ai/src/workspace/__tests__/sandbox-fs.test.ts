@@ -173,6 +173,26 @@ describe('writeFileViaSandbox', () => {
 		expect(commands.every((command) => command.length < 40_000)).toBe(true);
 		expect(commands.some((command) => command.includes('| base64 -d >'))).toBe(false);
 	});
+
+	it('does not assign to the read-only zsh builtin `status` when capturing exit code', async () => {
+		const executeCommand = jest.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+		});
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, '/home/user/test.ts', 'hello');
+
+		const commands = (executeCommand.mock.calls as Array<[string, ...unknown[]]>).map(
+			([command]) => command,
+		);
+		// `status` is read-only in zsh; assigning to it silently drops the
+		// captured exit code. Confirm the decode command uses a different name.
+		const decodeCommands = commands.filter((command) => command.includes('base64 -d'));
+		expect(decodeCommands.length).toBeGreaterThan(0);
+		expect(decodeCommands.every((command) => !/\bstatus=\$\?/.test(command))).toBe(true);
+	});
 });
 
 describe('readFileViaSandbox', () => {

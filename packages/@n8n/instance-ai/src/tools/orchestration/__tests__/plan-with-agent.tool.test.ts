@@ -1,4 +1,10 @@
-import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
+import type {
+	OrchestrationContext,
+	PlannedTaskGraph,
+	PlannedTaskRecord,
+	PlannedTaskService,
+} from '../../../types';
+import { BlueprintAccumulator } from '../blueprint-accumulator';
 
 const {
 	__testBuildPlannerBriefingContext,
@@ -6,6 +12,7 @@ const {
 	__testFormatMessagesForBriefing,
 	__testGetRecentMessages,
 	__testGetPriorToolObservations,
+	__testRehydrateAccumulatorFromGraph,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
@@ -100,6 +107,87 @@ describe('clearPlannedTaskGraph', () => {
 		getGraph.mockRejectedValueOnce(new Error('db down'));
 
 		await expect(__testClearPlannedTaskGraph(context)).resolves.toBeUndefined();
+	});
+});
+
+describe('rehydrateAccumulatorFromGraph (resume revision flow)', () => {
+	const persistedTasks: PlannedTaskRecord[] = [
+		{
+			id: 'wf-1',
+			title: "Build 'A' workflow",
+			kind: 'build-workflow',
+			spec: 'A',
+			deps: [],
+			status: 'planned',
+		},
+		{
+			id: 'wf-2',
+			title: "Build 'B' workflow",
+			kind: 'build-workflow',
+			spec: 'B',
+			deps: [],
+			status: 'planned',
+		},
+	];
+
+	it('seeds the accumulator from an awaiting-approval graph so a revision keeps originals', async () => {
+		// Reproduces "ask for edits -> revise existing plan -> submit again":
+		// on resume the parent rebuilt a fresh accumulator; without rehydration
+		// the planner's remove/add would operate on an empty plan and the
+		// re-submit would drop every original item.
+		const { context } = makeContext({
+			graph: { planRunId: 'run-current', status: 'awaiting_approval', tasks: persistedTasks },
+		});
+		const accumulator = new BlueprintAccumulator();
+
+		await __testRehydrateAccumulatorFromGraph(context, accumulator);
+
+		// Planner revises: drop one original, add a new one, then resubmits.
+		expect(accumulator.removeItem('wf-2')).toBe(true);
+		accumulator.addItem({
+			kind: 'workflow',
+			id: 'wf-3',
+			name: 'C',
+			purpose: 'C',
+			integrations: [],
+			dependsOn: [],
+		});
+
+		expect(accumulator.getTaskList().map((t) => t.id)).toEqual(['wf-1', 'wf-3']);
+	});
+
+	it('does not reopen an already-approved/active graph', async () => {
+		const { context } = makeContext({
+			graph: { planRunId: 'run-current', status: 'active', tasks: persistedTasks },
+		});
+		const accumulator = new BlueprintAccumulator();
+
+		await __testRehydrateAccumulatorFromGraph(context, accumulator);
+
+		expect(accumulator.isEmpty()).toBe(true);
+	});
+
+	it('is a no-op when no graph exists', async () => {
+		const { context, getGraph } = makeContext({ graph: null });
+		const accumulator = new BlueprintAccumulator();
+
+		await __testRehydrateAccumulatorFromGraph(context, accumulator);
+
+		expect(getGraph).toHaveBeenCalledWith('t-1');
+		expect(accumulator.isEmpty()).toBe(true);
+	});
+
+	it('leaves the accumulator empty when getGraph throws', async () => {
+		const { context, getGraph } = makeContext({
+			graph: { planRunId: 'run-current', status: 'awaiting_approval', tasks: persistedTasks },
+		});
+		getGraph.mockRejectedValueOnce(new Error('db down'));
+		const accumulator = new BlueprintAccumulator();
+
+		await expect(
+			__testRehydrateAccumulatorFromGraph(context, accumulator),
+		).resolves.toBeUndefined();
+		expect(accumulator.isEmpty()).toBe(true);
 	});
 });
 

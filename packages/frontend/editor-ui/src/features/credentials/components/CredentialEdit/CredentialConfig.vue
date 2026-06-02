@@ -23,7 +23,7 @@ import {
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
@@ -35,6 +35,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nInfoTip,
@@ -67,6 +68,7 @@ type Props = {
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
@@ -88,13 +90,14 @@ const emit = defineEmits<{
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
+	disconnect: [];
 	quickConnect: [];
 	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -140,7 +143,7 @@ const credentialOwnerName = computed(() =>
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.value.activeNode;
 	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 	const docUrl = type?.documentationUrl;
@@ -190,6 +193,20 @@ const showOAuthSuccessBanner = computed(() => {
 	);
 });
 
+const showOAuthNotConnectedBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.isResolvable &&
+		props.requiredPropertiesFilled &&
+		!props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
+const showDisconnectButton = computed(
+	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+);
+
 const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
@@ -219,7 +236,7 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const quickConnectOption = computed(() => {
 	if (!activeNode.value) return undefined;
@@ -360,6 +377,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				/>
 
 				<Banner
+					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
+					theme="warning"
+					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
+					data-test-id="oauth-not-connected-banner"
+					@click="$emit('oauth')"
+				>
+					<template v-if="isGoogleOAuthType" #button>
+						<GoogleAuthButton @click="$emit('oauth')" />
+					</template>
+					<template v-else #button>
+						<QuickConnectButton
+							size="small"
+							:service-name="serviceName"
+							:credential-type-name="credentialType.name"
+							:label="i18n.baseText('credentialEdit.credentialConfig.connect')"
+							data-test-id="quick-connect-not-connected-button"
+							@click="$emit('oauth')"
+						/>
+					</template>
+				</Banner>
+
+				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"
 					theme="success"
 					:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
@@ -368,22 +409,33 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="oauth-connect-success-banner"
 					@click="$emit('oauth')"
 				>
-					<template v-if="isGoogleOAuthType" #button>
-						<p
-							:class="$style.googleReconnectLabel"
-							v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-						/>
-						<GoogleAuthButton @click="$emit('oauth')" />
-					</template>
-					<template v-else #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="serviceName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-							data-test-id="quick-connect-reconnect-button"
-							@click="$emit('oauth')"
-						/>
+					<template #button>
+						<div :class="$style.bannerActions">
+							<template v-if="isGoogleOAuthType">
+								<p
+									:class="$style.googleReconnectLabel"
+									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+								/>
+								<GoogleAuthButton @click="$emit('oauth')" />
+							</template>
+							<QuickConnectButton
+								v-else
+								size="small"
+								:service-name="serviceName"
+								:credential-type-name="credentialType.name"
+								:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+								data-test-id="quick-connect-reconnect-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								v-if="showDisconnectButton"
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
 					</template>
 				</Banner>
 
@@ -520,6 +572,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .googleReconnectLabel {
 	margin-right: var(--spacing--3xs);
+}
+
+.bannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .askAssistantButton {
