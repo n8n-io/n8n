@@ -1,28 +1,22 @@
-import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import { WorkflowStateKey } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
 } from '@/features/execution/executions/executions.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import type { INewWorkflowData } from '@/Interface';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { hasInjectionContext, inject, toValue, type MaybeRefOrGetter } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
@@ -40,7 +34,6 @@ export interface UseWorkflowStateOptions {
 
 export function useWorkflowState(options: UseWorkflowStateOptions = {}) {
 	const ws = useWorkflowsStore();
-	const rootStore = useRootStore();
 
 	// Resolve the scoped workflow id once at setup time — `inject` must run in an
 	// injection context. An explicit `documentId` always wins; otherwise prefer
@@ -92,34 +85,6 @@ export function useWorkflowState(options: UseWorkflowStateOptions = {}) {
 
 	function setActiveExecutionId(id: string | null | undefined) {
 		useWorkflowExecutionStateStore(resolveDocumentId()).setActiveExecutionId(id);
-	}
-
-	async function getNewWorkflowData(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		let workflowData: { name: string; settings: IWorkflowSettings } = {
-			name: '',
-			settings: { ...DEFAULT_SETTINGS },
-		};
-		try {
-			const data: IDataObject = {
-				name,
-				projectId,
-				parentFolderId,
-			};
-
-			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.restApiContext,
-				isEmpty(data) ? undefined : data,
-			);
-		} catch (e) {
-			// in case of error, default to original name
-			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-		}
-
-		return workflowData;
 	}
 
 	////
@@ -194,7 +159,6 @@ export function useWorkflowState(options: UseWorkflowStateOptions = {}) {
 		resetState,
 		setWorkflowExecutionData,
 		setActiveExecutionId,
-		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,

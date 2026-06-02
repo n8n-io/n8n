@@ -79,6 +79,8 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 							'projectId',
 							'agentId',
 							'isPublished',
+							'taskRefs',
+							'reloadKey',
 						],
 					},
 					AgentJsonEditor: {

@@ -107,6 +107,44 @@ describe('CreateWorkflowDto', () => {
 			expect(result.success).toBe(true);
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
 		});
+
+		test('should preserve workflow custom telemetry tag settings', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
+				],
+			};
+
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom telemetry tag settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
+			};
+
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
 	});
 
 	describe('Invalid requests', () => {
@@ -145,6 +183,86 @@ describe('CreateWorkflowDto', () => {
 				name: 'settings as array',
 				request: { name: 'Test', nodes: [], connections: {}, settings: [] },
 				expectedErrorPath: ['settings'],
+			},
+			{
+				name: 'workflow custom telemetry tags as fixed collection object',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom telemetry tag with extra field',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
+				name: 'duplicate workflow custom telemetry tag keys',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom telemetry tag keys after trim',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom telemetry tag key',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom telemetry tag key',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
 				name: 'staticData as array',
