@@ -5,6 +5,7 @@ import {
 	agentTaskSchema,
 	formatZodErrors,
 	RunnableAgentJsonConfigSchema,
+	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
 	type ConfigValidationError,
@@ -267,7 +268,9 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 					}
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(parsed.data);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(parsed.data),
+					);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -373,7 +376,9 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(patched);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(patched),
+					);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}

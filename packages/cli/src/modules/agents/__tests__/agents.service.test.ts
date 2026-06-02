@@ -251,6 +251,23 @@ describe('AgentsService', () => {
 
 			expect(result.valid).toBe(true);
 		});
+
+		it('strips legacy schedule integrations before validating the remaining config', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				integrations: [
+					{ type: 'schedule', active: false, cronExpression: '0 8 * * 1' },
+					{ type: 'slack', credentialId: 'cred-slack' },
+				],
+			});
+
+			expect(result.valid).toBe(true);
+			if (!result.valid) return;
+
+			expect(result.config.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack' }]);
+		});
 	});
 
 	describe('create', () => {
@@ -435,6 +452,26 @@ describe('AgentsService', () => {
 
 			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
 			expect(savedEntity.integrations).toEqual([]);
+		});
+
+		it('persists sanitized integrations when legacy schedule entries are present', async () => {
+			jest.spyOn(service, 'validateConfig').mockRestore();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			const configWithLegacySchedule = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				integrations: [
+					{ type: 'schedule', active: false, cronExpression: '0 8 * * 1' },
+					{ type: 'slack', credentialId: 'cred-slack' },
+				],
+			};
+
+			await service.updateConfig(agentId, projectId, configWithLegacySchedule);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack' }]);
 		});
 
 		it('preserves stored tool bodies when the inbound config omits the tools field', async () => {

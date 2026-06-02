@@ -12,6 +12,7 @@ import {
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
 	isNodeToolsEnabled,
+	sanitizeAgentJsonConfig,
 	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -1714,7 +1715,7 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
-		const parsed = AgentJsonConfigSchema.safeParse(raw);
+		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
 		}

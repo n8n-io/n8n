@@ -1,6 +1,7 @@
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
+export * from './sanitize-agent-json-config';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
