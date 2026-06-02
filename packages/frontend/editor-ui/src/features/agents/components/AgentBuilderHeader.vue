@@ -134,7 +134,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						<template #trigger>
 							<N8nButton
 								variant="ghost"
-								size="xsmall"
+								size="small"
 								:class="$style.switcherButton"
 								:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 							>
@@ -247,20 +247,23 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	min-width: 0;
 }
 
-.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
-	line-height: var(--line-height--lg);
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	display: flex;
+	align-items: center;
+	height: var(--height--md);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .crumbSeparator {
 	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
+	margin-inline: var(--spacing--4xs);
 	user-select: none;
+	font-size: var(--font-size--xl);
 }
 
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	line-height: var(--line-height--lg);
 }
 
 .switcherLabel {
@@ -268,7 +271,6 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	line-height: var(--line-height--lg);
 }
 
 .agentSwitcherLabel {

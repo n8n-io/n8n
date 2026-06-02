@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon } from '@n8n/design-system';
+import {
+	N8nBreadcrumbs,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 
@@ -12,6 +20,7 @@ const props = defineProps<{
 	breadcrumbItems: PathItem[];
 	sessionTitle: string;
 	sessionId?: string;
+	hasSession: boolean;
 	sessionOptions: Array<DropdownMenuItemProps<string>>;
 }>();
 
@@ -48,8 +57,13 @@ function createNewChat() {
 	emit('new-chat');
 }
 
+function closePreview() {
+	emit('close-preview');
+}
+
 useKeybindings({
 	'ctrl+shift+;': createNewChat,
+	esc: closePreview,
 });
 </script>
 
@@ -88,35 +102,49 @@ useKeybindings({
 			</N8nBreadcrumbs>
 		</div>
 		<div :class="$style.right">
-			<N8nButton
-				variant="ghost"
-				size="medium"
-				icon="list-tree"
-				:disabled="!sessionRoute"
-				data-testid="agent-preview-view-session-btn"
-				@click="openSession"
+			<N8nTooltip v-if="props.hasSession" placement="bottom" :show-after="500">
+				<template #content> View session </template>
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon-size="large"
+					icon="list-tree"
+					label="View session"
+					data-testid="agent-preview-view-session-btn"
+					@click="openSession"
+				/>
+			</N8nTooltip>
+			<KeyboardShortcutTooltip
+				placement="bottom"
+				:label="i18n.baseText('agents.builder.chat.newChat.label')"
+				:shortcut="{ metaKey: true, shiftKey: true, keys: [';'] }"
 			>
-				View session
-			</N8nButton>
-			<N8nButton
-				variant="subtle"
-				size="medium"
-				icon="plus"
-				data-testid="agent-preview-new-chat-btn"
-				@click="createNewChat"
+				<N8nButton
+					variant="subtle"
+					size="medium"
+					icon-size="large"
+					icon="message-circle-plus"
+					:label="i18n.baseText('agents.builder.chat.newChat.label')"
+					data-testid="agent-preview-new-chat-btn"
+					@click="createNewChat"
+				/>
+			</KeyboardShortcutTooltip>
+
+			<KeyboardShortcutTooltip
+				placement="bottom"
+				:label="i18n.baseText('generic.close')"
+				:shortcut="{ keys: ['Esc'] }"
 			>
-				{{ i18n.baseText('agents.builder.chat.newChat.label') }}
-			</N8nButton>
-			<N8nButton
-				variant="ghost"
-				icon-only
-				size="medium"
-				:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)"
-				data-testid="agent-preview-close-btn"
-				@click="emit('close-preview')"
-			>
-				<N8nIcon icon="x" :size="16" />
-			</N8nButton>
+				<N8nIconButton
+					variant="ghost"
+					icon="x"
+					size="medium"
+					icon-size="large"
+					:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)"
+					data-testid="agent-preview-close-btn"
+					@click="closePreview"
+				/>
+			</KeyboardShortcutTooltip>
 		</div>
 	</header>
 </template>
@@ -144,20 +172,23 @@ useKeybindings({
 	min-width: 0;
 }
 
-.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
-	line-height: var(--line-height--lg);
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	display: flex;
+	align-items: center;
+	height: var(--height--md);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .crumbSeparator {
 	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
+	margin-inline: var(--spacing--4xs);
 	user-select: none;
+	font-size: var(--font-size--xl);
 }
 
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	line-height: var(--line-height--lg);
 }
 
 .switcherLabel {
@@ -165,7 +196,6 @@ useKeybindings({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	line-height: var(--line-height--lg);
 }
 
 .previewSessionLabel {
@@ -176,7 +206,7 @@ useKeybindings({
 	margin-left: auto;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--5xs);
 	flex-shrink: 0;
 }
 

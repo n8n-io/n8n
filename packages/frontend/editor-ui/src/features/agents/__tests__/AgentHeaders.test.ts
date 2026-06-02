@@ -24,6 +24,21 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
 		emits: ['click'],
 	},
+	N8nIconButton: {
+		name: 'N8nIconButton',
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" data-icon-only="true" @click="$emit(\'click\')"><i :data-icon="icon"></i></button>',
+		props: ['variant', 'size', 'icon'],
+		emits: ['click'],
+	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template: '<div><slot /><slot name="content" /></div>',
+	},
+	N8nKeyboardShortcut: {
+		name: 'N8nKeyboardShortcut',
+		template: '<span />',
+	},
 	N8nBreadcrumbs: {
 		name: 'N8nBreadcrumbs',
 		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
@@ -63,6 +78,7 @@ describe('AgentBuilderPreviewHeader', () => {
 				breadcrumbItems,
 				sessionTitle: 'Support session',
 				sessionId: 'thread-1',
+				hasSession: true,
 				sessionOptions,
 			},
 		});
@@ -106,6 +122,20 @@ describe('AgentBuilderPreviewHeader', () => {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		});
+	});
+
+	it('hides the view session button when the current chat has no persisted session', () => {
+		const wrapper = mount(AgentBuilderPreviewHeader, {
+			props: {
+				breadcrumbItems,
+				sessionTitle: 'New chat',
+				sessionId: 'empty-thread-id',
+				hasSession: false,
+				sessionOptions,
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
 	});
 
 	it('uses the preview close button style', () => {

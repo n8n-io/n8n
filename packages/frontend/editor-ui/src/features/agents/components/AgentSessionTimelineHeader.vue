@@ -56,7 +56,7 @@ const i18n = useI18n();
 								:aria-label="i18n.baseText('agentSessions.sessionName')"
 							>
 								<span :class="$style.switcherLabel">{{ props.sessionTitle }}</span>
-								<N8nIcon icon="chevron-down" :size="14" />
+								<N8nIcon icon="chevron-down" :size="12" />
 							</N8nButton>
 						</template>
 						<template #item-label="{ item }">
@@ -118,8 +118,19 @@ const i18n = useI18n();
 .topBarLeft {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	flex: 1 1 auto;
 	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs) {
+	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	display: flex;
+	align-items: center;
+	height: var(--height--md);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .topBarRight {
@@ -146,17 +157,18 @@ const i18n = useI18n();
 
 .crumbSeparator {
 	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
+	margin-inline: var(--spacing--4xs);
 	user-select: none;
+	font-size: var(--font-size--xl);
 }
 
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--5xs);
 }
 
 .switcherLabel {
+	display: block;
 	max-width: 200px;
 	overflow: hidden;
 	text-overflow: ellipsis;

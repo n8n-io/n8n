@@ -129,6 +129,7 @@ const {
 	activeChatSessionId,
 	continueSessionId,
 	effectiveSessionId,
+	currentSessionHasMessages,
 	currentSessionTitle,
 	sessionMenu,
 	setSessionInUrl,
@@ -1116,6 +1117,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:breadcrumb-items="previewBreadcrumbItems"
 			:session-title="currentSessionTitle"
 			:session-id="effectiveSessionId"
+			:has-session="currentSessionHasMessages"
 			:session-options="sessionOptions"
 			@breadcrumb-select="onPreviewBreadcrumbSelect"
 			@session-select="onSessionPick"
