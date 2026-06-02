@@ -66,6 +66,12 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function originLabel(taskId: string | null): string {
+	return taskId
+		? i18n.baseText('agentSessions.origin.task')
+		: i18n.baseText('agentSessions.origin.agent');
+}
+
 const deleteActions = [
 	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash-2' as const },
 ];
@@ -122,7 +128,7 @@ async function loadMore() {
 						<th>{{ i18n.baseText('agentSessions.lastMessage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
-						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
+						<th>{{ i18n.baseText('agentSessions.origin') }}</th>
 						<th style="width: 50px"></th>
 					</tr>
 				</thead>
@@ -138,7 +144,7 @@ async function loadMore() {
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
-						<td>{{ thread.sessionNumber }}</td>
+						<td>{{ originLabel(thread.taskId) }}</td>
 						<td @click.stop>
 							<N8nActionDropdown
 								:items="deleteActions"

@@ -17,7 +17,7 @@ import {
 	type IntegrationMessageSubject,
 } from './integration-tools';
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 interface PlatformAgentContext {
 	agentUserId?: string;
@@ -159,7 +159,7 @@ export class AgentChatBridge {
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
-		private readonly integration: AgentCredentialIntegrationConfig,
+		private readonly integration: AgentIntegrationConfig,
 		private readonly messageContextStore?: IntegrationMessageContextService,
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
@@ -181,7 +181,7 @@ export class AgentChatBridge {
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
