@@ -20,14 +20,30 @@ const COLUMNS_TO_WIDEN: Array<{ table: string; column: string }> = [
 	{ table: 'agent_execution', column: 'threadId' },
 ];
 
+const SQLITE_DECLARED_TYPE_REPLACEMENTS: Array<{ table: string; from: string; to: string }> = [
+	{ table: 'agents_threads', from: '"id" varchar(36)', to: '"id" varchar(128)' },
+	{
+		table: 'agent_execution_threads',
+		from: '"id" varchar(36)',
+		to: '"id" varchar(128)',
+	},
+	{
+		table: 'agent_execution',
+		from: '"threadId" varchar(36)',
+		to: '"threadId" varchar(128)',
+	},
+];
+
 export class AddSubAgentLinkageToAgentExecutionThreads1784000000022
 	implements IrreversibleMigration
 {
 	async up({
 		schemaBuilder: { addColumns, column },
 		isPostgres,
+		isSqlite,
 		runQuery,
 		escape,
+		tablePrefix,
 	}: MigrationContext) {
 		await addColumns('agent_execution_threads', [
 			column('parentThreadId')
@@ -38,12 +54,32 @@ export class AddSubAgentLinkageToAgentExecutionThreads1784000000022
 				.comment('Saved agent id of the parent that delegated this subagent run.'),
 		]);
 
-		if (!isPostgres) return;
+		if (isPostgres) {
+			for (const { table, column: columnName } of COLUMNS_TO_WIDEN) {
+				await runQuery(
+					`ALTER TABLE ${escape.tableName(table)} ALTER COLUMN ${escape.columnName(columnName)} TYPE VARCHAR(128);`,
+				);
+			}
+		} else if (isSqlite) {
+			await this.widenSqliteDeclaredColumnTypes({ runQuery, tablePrefix });
+		}
+	}
 
-		for (const { table, column: columnName } of COLUMNS_TO_WIDEN) {
-			await runQuery(
-				`ALTER TABLE ${escape.tableName(table)} ALTER COLUMN ${escape.columnName(columnName)} TYPE VARCHAR(128);`,
-			);
+	private async widenSqliteDeclaredColumnTypes({
+		runQuery,
+		tablePrefix,
+	}: Pick<MigrationContext, 'runQuery' | 'tablePrefix'>) {
+		await runQuery('PRAGMA writable_schema = 1;');
+
+		try {
+			for (const { table, from, to } of SQLITE_DECLARED_TYPE_REPLACEMENTS) {
+				await runQuery(
+					"UPDATE sqlite_master SET sql = replace(sql, :from, :to) WHERE type = 'table' AND name = :tableName",
+					{ from, to, tableName: `${tablePrefix}${table}` },
+				);
+			}
+		} finally {
+			await runQuery('PRAGMA writable_schema = 0;');
 		}
 	}
 }
