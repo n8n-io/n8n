@@ -26,6 +26,7 @@
     "test:evals": "playwright test --project=eval",
     "test:evals:smoke": "playwright test --project=eval:smoke",
     "test:unit": "vitest run",
+    "coverage:shard": "node scripts/run-coverage-shard.mjs",
     "coverage:emit-shard": "tsx scripts/emit-shard-coverage.ts",
     "coverage:emit-spec-lcovs": "tsx scripts/emit-spec-lcovs.ts",
     "coverage:clean": "rm -rf coverage coverage-by-spec .v8-coverage .nyc_output",
