@@ -68,6 +68,20 @@ export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nSettingsLayout } from './N8nSettingsLayout';
+export type { SettingsLayoutProps } from './N8nSettingsLayout';
+export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
+export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
+export { default as N8nSettingsRow } from './N8nSettingsRow';
+export type {
+	SettingsRowProps,
+	SettingsRowLayout,
+	SettingsRowAlign,
+} from './N8nSettingsRow';
+export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
+export type { SettingsRowGroupProps } from './N8nSettingsRowGroup';
+export { default as N8nSettingsSection } from './N8nSettingsSection';
+export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
 export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
