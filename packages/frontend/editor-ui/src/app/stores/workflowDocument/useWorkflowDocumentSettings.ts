@@ -6,8 +6,6 @@ import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
 
-export { DEFAULT_SETTINGS };
-
 export type SettingsPayload = {
 	settings: IWorkflowSettings;
 };
