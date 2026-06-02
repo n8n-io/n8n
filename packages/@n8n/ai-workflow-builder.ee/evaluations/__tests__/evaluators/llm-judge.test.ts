@@ -6,16 +6,16 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store original module
-const mockEvaluateWorkflow = jest.fn();
+const mockEvaluateWorkflow = vi.fn();
 
 // Mock the evaluateWorkflow function
-jest.mock('../../evaluators/llm-judge/workflow-evaluator', () => ({
+vi.mock('../../evaluators/llm-judge/workflow-evaluator', () => ({
 	evaluateWorkflow: (...args: unknown[]): unknown => mockEvaluateWorkflow(...args),
 }));
 
@@ -58,7 +58,7 @@ describe('LLM-Judge Evaluator', () => {
 	let mockNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockLlm = mock<BaseChatModel>();
 		mockNodeTypes = [];
 	});
