@@ -28,6 +28,7 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+build-*.log
 *.junit.xml
 junit.xml
 test-results.json
