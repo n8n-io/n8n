@@ -565,12 +565,12 @@ describe('DbConnectionMonitor', () => {
 			);
 		});
 
-		it('should log a debug message when driver.master is unavailable on a Postgres datasource', () => {
+		it('should log a warning when driver.master is unavailable on a Postgres datasource', () => {
 			setDriver({});
 
 			monitor.start();
 
-			expect(logger.debug).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('driver.master is unavailable'),
 			);
 		});
