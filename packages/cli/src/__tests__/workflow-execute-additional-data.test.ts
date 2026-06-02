@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity, User, Project } from '@n8n/db';
 import {
 	ExecutionRepository,
@@ -339,6 +339,141 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				expect(result.executionId).toBe(EXECUTION_ID);
 				expect(result.data).toBeDefined();
+			});
+		});
+
+		describe('sub-workflow execution timeouts', () => {
+			const now: number = +new Date();
+			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;
+			const WorkflowExecuteMock: jest.Mock = jest.requireMock('n8n-core').WorkflowExecute;
+
+			let dateSpy: jest.SpyInstance;
+			beforeEach(() => {
+				dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+				WorkflowExecuteMock.mockClear();
+			});
+			afterEach(() => {
+				dateSpy.mockRestore();
+			});
+
+			const getSubWorkflowDeadline = () =>
+				(WorkflowExecuteMock.mock.calls[0][0] as IWorkflowExecuteAdditionalData)
+					.executionTimeoutTimestamp;
+
+			const executeWorkflowWithTimeout = async (opts: {
+				doNotWaitToFinish: boolean;
+				subTimeout?: number;
+				parentDeadline?: number;
+				globalTimeout?: number;
+				globalMaxTimeout?: number;
+			}) => {
+				Container.set(ExecutionsConfig, {
+					timeout: opts.globalTimeout ?? -1,
+					maxTimeout: opts.globalMaxTimeout ?? 3600,
+				} as ExecutionsConfig);
+
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>({ executionTimeoutTimestamp: opts.parentDeadline }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mock<IWorkflowBase>({
+							id: 'sub-id',
+							name: 'Sub Workflow',
+							nodes: [],
+							connections: {},
+							settings: opts.subTimeout !== undefined ? { executionTimeout: opts.subTimeout } : {},
+						}),
+						doNotWaitToFinish: opts.doNotWaitToFinish,
+					}),
+				);
+
+				if (opts.doNotWaitToFinish) {
+					await new Promise((resolve) => setImmediate(resolve));
+				}
+			};
+
+			describe('doNotWaitToFinish: false (parent waits for sub-workflow result)', () => {
+				it('should use parent deadline when sub-workflow timeout exceeds it', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(10));
+				});
+
+				it('should use sub-workflow timeout when shorter than parent deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 5,
+						parentDeadline: getDeadlineFromNow(60),
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(5));
+				});
+
+				it('should use sub-workflow timeout when parent has no deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(120));
+				});
+
+				it('should cap sub-workflow timeout at global max timeout', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 7200,
+						parentDeadline: getDeadlineFromNow(7200),
+						doNotWaitToFinish: false,
+						globalMaxTimeout: 3600,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(3600));
+				});
+
+				it('should fall back to global default when sub-workflow has no timeout', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(60),
+						doNotWaitToFinish: false,
+						globalTimeout: 30,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(30));
+				});
+
+				it('should use parent deadline when sub-workflow has no timeout, and global is unlimited', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: false,
+						globalTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(10));
+				});
+
+				it('should set no timeout when neither sub-workflow nor global timeout is set and parent has no deadline', async () => {
+					await executeWorkflowWithTimeout({
+						globalTimeout: -1,
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
+			});
+
+			describe('doNotWaitToFinish: true (sub-workflow timeout independent of parent)', () => {
+				it('should use sub-workflow own timeout regardless of parent deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: true,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(120));
+				});
+
+				it('should set no timeout when sub-workflow has no timeout and global timeout is unlimited', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: true,
+						globalTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
 			});
 		});
 	});

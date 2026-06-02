@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -439,15 +439,32 @@ async function startExecution(
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+		const executionsConfig = Container.get(ExecutionsConfig);
+
+		// Compute a sub-workflow's own deadline independent of its parent
+		let ownDeadline: number | undefined;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				startTime + workflowSettings.executionTimeout * 1000,
-			);
+			ownDeadline =
+				startTime + Math.min(workflowSettings.executionTimeout, executionsConfig.maxTimeout) * 1000;
+		} else if (executionsConfig.timeout > 0) {
+			ownDeadline =
+				startTime + Math.min(executionsConfig.timeout, executionsConfig.maxTimeout) * 1000;
+		}
+
+		let subworkflowTimeout: number | undefined;
+		if (options.doNotWaitToFinish) {
+			// Parent workflow will not receive the result, so sub-workflow is independent of it
+			// use its own deadline instead
+			subworkflowTimeout = ownDeadline;
+		} else {
+			// If the parent times out, its result is discarded
+			// use the earlier of the parent's deadline and the sub's own deadline
+			const parentDeadline = additionalData.executionTimeoutTimestamp;
+			if (parentDeadline !== undefined && ownDeadline !== undefined) {
+				subworkflowTimeout = Math.min(parentDeadline, ownDeadline);
+			} else {
+				subworkflowTimeout = parentDeadline ?? ownDeadline;
+			}
 		}
 
 		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
