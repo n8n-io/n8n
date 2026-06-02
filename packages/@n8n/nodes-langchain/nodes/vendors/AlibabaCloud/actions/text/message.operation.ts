@@ -12,68 +12,6 @@ import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'options',
-		options: [
-			{
-				name: 'Qwen3 Max',
-				value: 'qwen3-max',
-				description: 'Most capable model with best performance',
-			},
-			{
-				name: 'Qwen3 Max (2026-01-23)',
-				value: 'qwen3-max-2026-01-23',
-				description: 'Qwen Max snapshot from 2026-01-23',
-			},
-			{
-				name: 'Qwen3.5 122B-A10B',
-				value: 'qwen3.5-122b-a10b',
-				description: 'MoE model with 122B total / 10B active parameters',
-			},
-			{
-				name: 'Qwen3.5 27B',
-				value: 'qwen3.5-27b',
-				description: 'Dense 27B parameter model',
-			},
-			{
-				name: 'Qwen3.5 35B-A3B',
-				value: 'qwen3.5-35b-a3b',
-				description: 'Small MoE model with 35B total / 3B active parameters',
-			},
-			{
-				name: 'Qwen3.5 397B-A17B',
-				value: 'qwen3.5-397b-a17b',
-				description: 'Large MoE model with 397B total / 17B active parameters',
-			},
-			{
-				name: 'Qwen3.5 Flash',
-				value: 'qwen3.5-flash',
-				description: 'Faster, more cost-effective model',
-			},
-			{
-				name: 'Qwen3.5 Flash (2026-02-23)',
-				value: 'qwen3.5-flash-2026-02-23',
-				description: 'Qwen Flash snapshot from 2026-02-23',
-			},
-			{
-				name: 'Qwen3.5 Plus',
-				value: 'qwen3.5-plus',
-				description: 'Balanced model with good performance and cost',
-			},
-			{
-				name: 'Qwen3.5 Plus (2026-02-15)',
-				value: 'qwen3.5-plus-2026-02-15',
-				description: 'Qwen Plus snapshot from 2026-02-15',
-			},
-		],
-		default: 'qwen3.5-flash',
-		description: 'The model to use for generation',
-		displayOptions: {
-			show: { '@version': [1] },
-		},
-	},
-	{
 		...modelRLC('textModelSearch'),
 		displayOptions: {
 			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
