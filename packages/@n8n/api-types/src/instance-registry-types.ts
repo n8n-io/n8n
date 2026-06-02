@@ -72,3 +72,9 @@ const ClusterInfoResponseSchema = z.object({
 
 // REST API response type
 export type ClusterInfoResponse = z.infer<typeof ClusterInfoResponseSchema>;
+
+export {
+	isKnowledgeBaseWorkspaceToolCall,
+	SANDBOX_KNOWLEDGE_BASE_INDEX_PATH,
+	SANDBOX_WORKSPACE_ROOT,
+} from './schemas/instance-ai-knowledge-base';

@@ -6,13 +6,14 @@ import {
 } from '@n8n/workflow-sdk/prompts/node-selection';
 
 import { SANDBOX_WORKSPACE_SECTION, SUBAGENT_OUTPUT_CONTRACT } from '../../agent/shared-prompts';
+import { SANDBOX_KNOWLEDGE_BASE_PATH } from '@n8n/api-types/dist/schemas/instance-ai-knowledge-base';
 
 interface PlannerAgentPromptOptions {
 	sandboxWorkspaceAvailable?: boolean;
 }
 
 const PLANNER_DISCOVER_WITH_SANDBOX = `2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
-   - Read \`knowledge-base/best-practices/index.json\`, then grep/read the linked \`.md\` guides for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app")
+   - Read \`${SANDBOX_KNOWLEDGE_BASE_PATH}/best-practices/index.json\`, then grep/read the linked \`.md\` guides for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app")
    - \`nodes(action="suggested")\` for the relevant categories
    - \`data-tables(action="list")\` to check for existing tables
    - \`credentials(action="list")\` if the request involves external services
