@@ -288,7 +288,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
-				const canceled = (part as typeof part & { canceled?: boolean }).canceled === true;
+				const canceled = part.canceled === true;
 				if (part.state === 'resolved') {
 					output = part.output;
 					state = canceled ? TOOL_CALL_STATE.CANCELLED : TOOL_CALL_STATE.DONE;
