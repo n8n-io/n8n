@@ -51,8 +51,23 @@ describe('clampPolicyToFloor', () => {
 			clampPolicyToFloor(undefined, { enforced: true, production: false, manual: false }),
 		).toBeUndefined();
 		expect(
+			clampPolicyToFloor('non-manual', { enforced: true, production: false, manual: false }),
+		).toBe('non-manual');
+	});
+
+	it("collapses 'manual-only' input to 'all' (manual implies production)", () => {
+		expect(
 			clampPolicyToFloor('manual-only', { enforced: true, production: false, manual: false }),
-		).toBe('manual-only');
+		).toBe('all');
+	});
+
+	it("normalizes an impossible manual-without-production floor to 'all'", () => {
+		expect(clampPolicyToFloor(undefined, { enforced: true, production: false, manual: true })).toBe(
+			'all',
+		);
+		expect(clampPolicyToFloor('none', { enforced: true, production: false, manual: true })).toBe(
+			'all',
+		);
 	});
 });
 

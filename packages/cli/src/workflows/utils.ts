@@ -49,9 +49,8 @@ export function clampPolicyToFloor(
 	const redactsProduction = policy === 'non-manual' || policy === 'all' || floor.production;
 	const redactsManual = policy === 'manual-only' || policy === 'all' || floor.manual;
 
-	if (redactsProduction && redactsManual) return 'all';
+	if (redactsManual) return 'all';
 	if (redactsProduction) return 'non-manual';
-	if (redactsManual) return 'manual-only';
 	return policy;
 }
 
