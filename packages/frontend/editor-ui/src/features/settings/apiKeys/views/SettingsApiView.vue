@@ -364,6 +364,7 @@ function onOpenScopes(apiKey: ApiKey) {
 	align-items: center;
 	justify-content: flex-end;
 	margin-top: var(--spacing--sm);
+	margin-bottom: var(--spacing--lg);
 }
 
 .tabs {
