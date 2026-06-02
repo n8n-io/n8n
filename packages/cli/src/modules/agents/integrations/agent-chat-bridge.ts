@@ -969,7 +969,7 @@ export class AgentChatBridge {
 		if (this.integration.type !== 'slack') return;
 
 		if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
-			this.setSlackAssistantStatus(slackThreadContext, statusRetry?.signal);
+			const setStatus = this.setSlackAssistantStatus(slackThreadContext, statusRetry?.signal);
 			return slackThreadContext.isDm
 				? {
 						clearBeforeResponse: async () => {
@@ -977,6 +977,12 @@ export class AgentChatBridge {
 							// delay before re-setting "Thinking...", and without this it could
 							// fire *after* we clear and leave a stale status behind.
 							statusRetry?.abort();
+							// Then wait for the set to settle. Aborting only cancels the
+							// retry's local wait — an *in-flight* "Thinking..." write can't
+							// be recalled, so we must let it land before we clear, otherwise
+							// its remote write could overwrite the clear and restore the
+							// stale status. (setStatus never rejects — it logs internally.)
+							await setStatus;
 							await this.clearSlackAssistantStatus(slackThreadContext);
 						},
 					}
@@ -995,14 +1001,20 @@ export class AgentChatBridge {
 		return undefined;
 	}
 
-	private setSlackAssistantStatus(
+	/**
+	 * Kick off the "Thinking..." status set (with retry). Returns the in-flight
+	 * promise so callers can await it before clearing — see `clearBeforeResponse`
+	 * in `startThinkingStatus`. The returned promise never rejects; failures are
+	 * logged inside the retry helper.
+	 */
+	private async setSlackAssistantStatus(
 		context: SlackThreadContext,
 		statusRetrySignal?: AbortSignal,
-	): void {
+	): Promise<void> {
 		const adapter = this.getSlackAssistantStatusAdapter();
 		if (!adapter) return;
 
-		void this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
+		await this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
 	}
 
 	private async clearSlackAssistantStatus(context: SlackThreadContext): Promise<void> {

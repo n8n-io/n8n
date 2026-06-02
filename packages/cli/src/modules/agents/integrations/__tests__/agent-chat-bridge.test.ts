@@ -603,6 +603,71 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus.mock.calls.at(-1)?.[2]).toBe('');
 		});
 
+		it('waits for an in-flight Slack DM status set to settle before clearing', async () => {
+			const { bot, handlers } = makeBot();
+			// Keep the initial "Thinking..." set in flight; the empty-status clear
+			// resolves immediately. Aborting can't recall an in-flight remote write,
+			// so the clear must wait for the set to land before overwriting it.
+			let resolveSet!: () => void;
+			const setInFlight = new Promise<void>((resolve) => {
+				resolveSet = resolve;
+			});
+			const setAssistantStatus = jest.fn(async (_channel: string, _ts: string, status: string) => {
+				if (status === 'Thinking...') await setInFlight;
+			});
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Drain everything that can proceed. The clear is blocked on the
+			// in-flight set, so the empty-status write must not have happened yet.
+			for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+
+			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(
+				'D123',
+				'1779466577.518139',
+				'Thinking...',
+				['Thinking...'],
+			);
+
+			// Let the in-flight set land; only now may the clear overwrite it.
+			resolveSet();
+			await run;
+
+			expect(setAssistantStatus).toHaveBeenCalledTimes(2);
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+		});
+
 		it('sets a thinking status before resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
