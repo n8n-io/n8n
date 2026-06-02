@@ -87,9 +87,9 @@ const agent = new Agent('parent')
   .tool(createDelegateSubAgentTool());
 ```
 
-The model selects the default inline path by omitting `subAgentId`. If a host
-supplies `availableSubAgents` and a `runSubAgent` callback, passing `subAgentId`
-routes to that configured host runner instead. Both paths return the same
+The model selects the default inline path by passing `subAgentId: "inline"`.
+If a host supplies `availableSubAgents` and a `runSubAgent` callback, passing a
+configured `subAgentId` routes to that host runner instead. Both paths return the same
 `DelegateSubAgentToolOutput` shape and emit the same sub-agent lifecycle events.
 
 Inline children:

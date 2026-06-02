@@ -9,6 +9,7 @@ import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
@@ -878,16 +879,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
 				runSubAgent: async (request) => {
-					if (request.subAgentId) {
-						if (hostRunner) return await hostRunner(request);
-						return {
-							status: 'failed',
-							taskPath: request.taskPath,
-							answer: '',
-							error: `No configured subagent matched "${request.subAgentId}"`,
-						};
+					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+						return await runInlineSubAgent(request);
 					}
-					return await runInlineSubAgent(request);
+					if (hostRunner) return await hostRunner(request);
+					return {
+						status: 'failed',
+						taskPath: request.taskPath,
+						answer: '',
+						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+					};
 				},
 			});
 

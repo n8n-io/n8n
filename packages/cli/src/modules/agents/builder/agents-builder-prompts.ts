@@ -148,9 +148,9 @@ Delegation is controlled by top-level \`subAgents.enabled\`:
 - \`subAgents.enabled: true\` means delegation is enabled.
 - Only \`subAgents.enabled: false\` disables delegation.
 
-When delegation is enabled, the target agent can use inline subagents without
-any saved-agent refs. Inline subagents are ad-hoc child agents for one-off
-focused tasks.
+When delegation is enabled, the target agent can call \`delegate_subagent\` with
+\`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
+ad-hoc child agents for one-off focused tasks.
 
 \`subAgents.agents\` is only for optional saved/published n8n Agent specialists
 that the target agent may select by id when they are a better fit than an inline

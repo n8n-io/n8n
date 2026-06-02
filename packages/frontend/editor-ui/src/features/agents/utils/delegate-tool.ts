@@ -8,13 +8,14 @@ import { z } from 'zod';
  * tool step.
  */
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+export const INLINE_SUB_AGENT_ID = 'inline';
 
 // FE-local parsers for the fields the chat reads off a delegate_subagent call.
 // The full input/output shapes live in `@n8n/agents` (not exported as
 // api-types); we only parse what the tool step renders — the sub-agent it ran
 // (input) and its answer (output). Extra keys are stripped.
 const delegateInputSchema = z.object({
-	subAgentId: z.string().optional(),
+	subAgentId: z.string().min(1),
 	taskName: z.string().optional(),
 });
 
@@ -76,7 +77,10 @@ export function resolveSubAgentName(input: unknown, nameById: Map<string, string
 	const parsed = parseDelegateInput(input);
 	// A blank/empty resolved name must fall through to the task name, so this is a
 	// truthiness check (not nullish) on purpose.
-	const resolved = parsed?.subAgentId ? nameById.get(parsed.subAgentId)?.trim() : undefined;
+	const resolved =
+		parsed?.subAgentId && parsed.subAgentId !== INLINE_SUB_AGENT_ID
+			? nameById.get(parsed.subAgentId)?.trim()
+			: undefined;
 	if (resolved) return resolved;
 	return humanizeTaskName(parsed?.taskName);
 }

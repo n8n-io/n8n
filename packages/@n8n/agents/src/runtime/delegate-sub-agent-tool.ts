@@ -15,6 +15,7 @@ import type { AgentMessage } from '../types/sdk/message';
 import type { BuiltTool, ToolContext } from '../types/sdk/tool';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+export const INLINE_SUB_AGENT_ID = 'inline';
 export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAgent';
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
@@ -23,8 +24,9 @@ const delegateSubAgentInputSchema = z.object({
 	subAgentId: z
 		.string()
 		.min(1)
-		.optional()
-		.describe('Configured sub-agent ID to run. Use when multiple sub-agents are available.'),
+		.describe(
+			'Required. Use "inline" for a one-off inline sub-agent. Use an exact configured sub-agent ID only when one is listed and fits the task.',
+		),
 	taskName: z
 		.string()
 		.min(1)
@@ -184,20 +186,18 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 
 	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
-			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context (it sees only what you pass in) and returns a concise result. ' +
-				'Reach for it when a subtask needs substantial search/research/review/reasoning whose intermediate output would clutter your context, or clearly benefits from a fresh perspective. ' +
-				'Do not use it for trivial work, for steps that depend on this conversation you cannot restate, or to forward the user request wholesale instead of decomposing it.',
+			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. ' +
+				'Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. ' +
+				'Do not use it for trivial work, single tool calls, mechanical steps, tasks that need hidden conversation context, or pass-through delegation of the entire user request.',
 		)
 		.systemInstruction(
 			[
-				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. By default, omit subAgentId to run an inline child that inherits your available tools after safety filtering. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
-				'Use subAgentId only when a configured subagent is listed and its name/description fits the subtask better than a generic inline child.',
-				'Delegate only when all of these hold: the work is a concrete, self-contained subtask; it can be fully specified without unstated context from this conversation; and it is heavy enough (substantial search/research/review/reasoning) that doing it inline would clutter your context, or a fresh perspective clearly helps.',
-				'Do not delegate when: the task is trivial or is one or two tool calls you can make directly; it is the core reasoning you are responsible for (never delegate the understanding); it depends on context you cannot restate; or you would just forward the user request without decomposing it. Wanting more depth, thoroughness, or research is not by itself a reason to delegate.',
-				'Write the handoff for a smart colleague who just walked in and has seen none of this conversation: put the concrete outcome in goal; put every detail the child needs in context (constraints, paths, data, prior decisions, acceptance criteria, what you have already tried or ruled out); state exactly what you need back, and how concise, in expectedOutput; and give it a short descriptive taskName.',
-				'If you pass allowedTools, use it only to narrow the inline child to relevant tools. It cannot grant tools you do not already have.',
+				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your available tools after safety filtering. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
+				'Use a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.',
 				...formatAvailableSubAgents(options.availableSubAgents),
-				'When the child returns: inspect the answer before relying on it, do not blindly trust self-reported success, synthesize it into your own response instead of copying it verbatim, and if it is incomplete or failed either retry with a sharper handoff or do the task yourself.',
+				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
+				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
+				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- If multiple independent workstreams exist, delegate them separately.\n- Use allowedTools only to narrow the inline child to relevant tools; it cannot grant tools you do not already have.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
 			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)
@@ -235,7 +235,7 @@ function formatAvailableSubAgents(
 	if (!availableSubAgents?.length) return [];
 
 	return [
-		'Configured subagents are available as specialist options. Omit subAgentId for the default inline child; pass subAgentId only when one of these is a better fit:',
+		'Configured subagents are available as specialist options. Use subAgentId: "inline" for the default inline child; pass one of these exact IDs only when that specialist is a better fit:',
 		...availableSubAgents.map((subAgent) => {
 			const description = subAgent.description ? ` - ${subAgent.description}` : '';
 			return `- ${subAgent.id}: ${subAgent.name}${description}`;

@@ -4,6 +4,7 @@ import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	renderDelegateSubAgentPrompt,
@@ -12,6 +13,7 @@ import {
 } from '../delegate-sub-agent-tool';
 
 const input = {
+	subAgentId: INLINE_SUB_AGENT_ID,
 	taskName: 'Research API',
 	goal: 'Find the API behavior.',
 	context: 'Focus on auth endpoints.',
@@ -32,6 +34,13 @@ describe('createDelegateSubAgentTool', () => {
 
 		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(tool.description).toContain('focused child agent');
+		expect(tool.description).toContain('independent workstreams');
+		expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent');
+		expect(tool.systemInstruction).toContain(
+			'2+ independent workstreams that can be handled separately',
+		);
+		expect(tool.systemInstruction).toContain('HOW TO DELEGATE');
+		expect(tool.systemInstruction).toContain('pass-through with no value added');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
 	});

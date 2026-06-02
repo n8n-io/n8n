@@ -22,6 +22,7 @@ describe('delegate_subagent integration', () => {
 				[
 					'You are a parent test agent.',
 					'You must call delegate_subagent exactly once before answering.',
+					'Set subAgentId to "inline" in that tool call.',
 					'The child result will contain a sentinel token.',
 					'After the tool returns, answer with exactly: PARENT_SAW_ followed by the child answer, with no extra text.',
 				].join(' '),

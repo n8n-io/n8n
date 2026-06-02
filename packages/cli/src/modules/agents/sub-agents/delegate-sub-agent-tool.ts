@@ -1,6 +1,7 @@
 import {
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
+	INLINE_SUB_AGENT_ID,
 	type DelegateSubAgentToolOutput,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
@@ -35,9 +36,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			});
 			if (!selectedSource) {
 				const error =
-					request.subAgentId === undefined
+					request.subAgentId === INLINE_SUB_AGENT_ID
 						? 'Inline sub-agent execution is available only after the delegate tool is registered on an Agent.'
-						: `No configured subagent matched "${request.subAgentId}". Omit subAgentId for an inline sub-agent, or pass one of the configured subagent IDs.`;
+						: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`;
 				return {
 					status: 'failed',
 					answer: '',
@@ -78,10 +79,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 function selectSubAgentSource(options: {
 	sourcesById: Record<string, SubAgentSource>;
-	subAgentId?: string;
+	subAgentId: string;
 }): SubAgentSource | undefined {
 	const { sourcesById, subAgentId } = options;
-	if (!subAgentId) return undefined;
+	if (subAgentId === INLINE_SUB_AGENT_ID) return undefined;
 	return sourcesById?.[subAgentId];
 }
 

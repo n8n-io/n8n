@@ -209,6 +209,7 @@ export {
 export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
 export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	renderDelegateSubAgentPrompt,

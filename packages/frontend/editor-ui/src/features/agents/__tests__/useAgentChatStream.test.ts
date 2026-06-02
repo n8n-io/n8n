@@ -406,7 +406,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 	it('flips a ToolCall to done on tool-execution-end before the batched tool-result arrives', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-call', toolCallId: 'tc-11', toolName: 'delegate_subagent', input: {} },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-11',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline' },
+			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-execution-start',
@@ -440,7 +445,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				type: 'tool-call',
 				toolCallId: 'tc-d1',
 				toolName: 'delegate_subagent',
-				input: { taskName: 'research' },
+				input: { subAgentId: 'inline', taskName: 'research' },
 			},
 			{ type: 'finish-step' },
 			{
@@ -464,7 +469,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 	it('renders a completed delegate_subagent result as a done step', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-call', toolCallId: 'tc-d2', toolName: 'delegate_subagent', input: {} },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-d2',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline' },
+			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-result',
@@ -490,7 +500,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		// persisted/reloaded one exactly.
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-call', toolCallId: 'tc-12', toolName: 'delegate_subagent', input: {} },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-12',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline' },
+			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-execution-start',

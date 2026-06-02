@@ -81,7 +81,7 @@ const researcher = new Agent('researcher')
 	.tool(searchTool)
 	// No runSubAgent callback: the SDK creates an inline child that reuses this
 	// agent's model and filtered tools whenever the model calls delegate_subagent
-	// without subAgentId.
+	// with subAgentId: "inline".
 	.tool(createDelegateSubAgentTool({ policy: { maxChildren: 2 } }))
 	.memory(memory)
 	.inputGuardrail(

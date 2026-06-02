@@ -1,4 +1,4 @@
-import type { CredentialProvider, GenerateResult } from '@n8n/agents';
+import { INLINE_SUB_AGENT_ID, type CredentialProvider, type GenerateResult } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
@@ -194,7 +194,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('does not implicitly select a saved agent when subAgentId is omitted', async () => {
+	it('does not select a saved agent for the inline subAgentId', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
@@ -206,7 +206,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 
 		await expect(
 			tool.handler?.(
-				{ taskName: 'Research API', goal: 'Find behavior.' },
+				{ subAgentId: INLINE_SUB_AGENT_ID, taskName: 'Research API', goal: 'Find behavior.' },
 				{ runId: 'parent-run-1' },
 			),
 		).resolves.toMatchObject({

@@ -80,8 +80,9 @@ Use \`patch_config\` with:
 - Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
 - Preserve \`subAgents.enabled\` unless the user explicitly asks to enable or
   disable delegation. To explicitly enable delegation without saved agents, write
-  \`subAgents: { "enabled": true }\`. Inline delegation does not require
-  saved-agent refs.
+  \`subAgents: { "enabled": true }\`. Inline delegation uses
+  \`subAgentId: "inline"\` at tool-call time and does not require saved-agent
+  refs.
 - If an \`ask_question\` resume value is not one of the listed agent IDs, do not
   write it into config.
 
