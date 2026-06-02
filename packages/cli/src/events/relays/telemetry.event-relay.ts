@@ -43,6 +43,14 @@ import { Telemetry } from '../../telemetry';
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
 
+function countWorkflowCustomTelemetryTags(workflow: IWorkflowDb): number {
+	return workflow.settings?.customTelemetryTags?.length ?? 0;
+}
+
+function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
+	return nodes.filter((node) => (node.customTelemetryTags?.tag?.length ?? 0) > 0).length;
+}
+
 function limitNodeGraphStringSize(nodeGraphString: string): string {
 	if (Buffer.byteLength(nodeGraphString, 'utf8') > MAX_NODE_GRAPH_STRING_SIZE) return '{}';
 
@@ -984,6 +992,8 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
 			redaction_policy: redactionPolicy,
+			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
+			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
 			source,
 		});
 	}
