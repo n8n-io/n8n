@@ -10,8 +10,6 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -168,20 +166,6 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
-	}
-
-	/**
-	 * Run an isolated sub-agent on the instance and return its result.
-	 * POST /rest/instance-ai/eval/run-sub-agent
-	 */
-	async runSubAgentEval(
-		request: InstanceAiEvalSubAgentRequest,
-	): Promise<InstanceAiEvalSubAgentResponse> {
-		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
-			method: 'POST',
-			body: request,
-		})) as { data: InstanceAiEvalSubAgentResponse };
-		return result.data;
 	}
 
 	/**

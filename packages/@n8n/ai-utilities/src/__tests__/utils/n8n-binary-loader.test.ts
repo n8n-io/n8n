@@ -3,55 +3,70 @@ import type { TextSplitter } from '@langchain/textsplitters';
 import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
+import type { Mock } from 'vitest';
+import type { DeepMockProxy } from 'vitest-mock-extended';
 
+import * as helpers from 'src/utils/helpers';
 import { N8nBinaryLoader } from 'src/utils/n8n-binary-loader';
 
 // Mock the helpers module
-jest.mock('src/utils/helpers', () => ({
-	getMetadataFiltersValues: jest.fn(),
+vi.mock('src/utils/helpers', () => ({
+	getMetadataFiltersValues: vi.fn(),
 }));
 
 // Mock LangChain loaders
-jest.mock('@langchain/classic/document_loaders/fs/json', () => ({
-	JSONLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'json content', metadata: {} }]),
-	})),
+vi.mock('@langchain/classic/document_loaders/fs/json', () => ({
+	JSONLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'json content', metadata: {} }]),
+		};
+	}),
 }));
 
-jest.mock('@langchain/classic/document_loaders/fs/text', () => ({
-	TextLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'text content', metadata: {} }]),
-	})),
+vi.mock('@langchain/classic/document_loaders/fs/text', () => ({
+	TextLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'text content', metadata: {} }]),
+		};
+	}),
 }));
 
-jest.mock('@langchain/community/document_loaders/fs/csv', () => ({
-	CSVLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'csv content', metadata: {} }]),
-	})),
+vi.mock('@langchain/community/document_loaders/fs/csv', () => ({
+	CSVLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'csv content', metadata: {} }]),
+		};
+	}),
 }));
 
-jest.mock('@langchain/community/document_loaders/fs/docx', () => ({
-	DocxLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'docx content', metadata: {} }]),
-	})),
+vi.mock('@langchain/community/document_loaders/fs/docx', () => ({
+	DocxLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'docx content', metadata: {} }]),
+		};
+	}),
 }));
 
-jest.mock('@langchain/community/document_loaders/fs/epub', () => ({
-	EPubLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'epub content', metadata: {} }]),
-	})),
+vi.mock('@langchain/community/document_loaders/fs/epub', () => ({
+	EPubLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'epub content', metadata: {} }]),
+		};
+	}),
 }));
 
-jest.mock('src/utils/loaders/n8n-pdf-loader', () => ({
-	N8nPdfLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn().mockResolvedValue([{ pageContent: 'pdf content', metadata: {} }]),
-	})),
+vi.mock('src/utils/loaders/n8n-pdf-loader', () => ({
+	N8nPdfLoader: vi.fn(function () {
+		return {
+			load: vi.fn().mockResolvedValue([{ pageContent: 'pdf content', metadata: {} }]),
+		};
+	}),
 }));
 
-const { getMetadataFiltersValues } = jest.requireMock('src/utils/helpers');
+const getMetadataFiltersValues = helpers.getMetadataFiltersValues as unknown as Mock;
 
 describe('N8nBinaryLoader', () => {
-	let mockContext: jest.MockedObjectDeep<IExecuteFunctions>;
+	let mockContext: DeepMockProxy<IExecuteFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -65,21 +80,21 @@ describe('N8nBinaryLoader', () => {
 		};
 
 		mockContext = {
-			getNode: jest.fn().mockReturnValue(mockNode),
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn().mockReturnValue([]),
+			getNode: vi.fn().mockReturnValue(mockNode),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn().mockReturnValue([]),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				binaryToBuffer: jest.fn(),
-				getBinaryStream: jest.fn(),
+				assertBinaryData: vi.fn(),
+				binaryToBuffer: vi.fn(),
+				getBinaryStream: vi.fn(),
 			},
-		} as unknown as jest.MockedObjectDeep<IExecuteFunctions>;
+		} as unknown as DeepMockProxy<IExecuteFunctions>;
 
 		getMetadataFiltersValues.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -457,7 +472,7 @@ describe('N8nBinaryLoader', () => {
 			];
 
 			const mockSplitter = {
-				splitDocuments: jest.fn().mockResolvedValue(mockDocuments),
+				splitDocuments: vi.fn().mockResolvedValue(mockDocuments),
 			} as unknown as TextSplitter;
 
 			mockContext.getNodeParameter.mockImplementation((param: string) => {
