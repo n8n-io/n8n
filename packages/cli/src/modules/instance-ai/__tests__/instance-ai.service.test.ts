@@ -686,7 +686,7 @@ type TerminalGuardOrderServiceInternals = {
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
 	reapAiTemporaryFromRun: jest.Mock;
-	countCreditsIfFirst: jest.Mock;
+	modelService: { countCreditsIfFirst: jest.Mock };
 	maybeFinalizeRunTraceRoot: jest.Mock;
 	schedulePlannedTasks: jest.Mock;
 	drainPendingCheckpointReentries: jest.Mock;
@@ -760,7 +760,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
 	service.reapAiTemporaryFromRun = jest.fn(async () => []);
-	service.countCreditsIfFirst = jest.fn(async () => {});
+	service.modelService = { countCreditsIfFirst: jest.fn(async () => {}) };
 	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
 	service.schedulePlannedTasks = jest.fn(async () => {});
 	service.drainPendingCheckpointReentries = jest.fn(async () => {});
@@ -1042,7 +1042,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				getNodeDefinitionDirs: jest.Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: jest.Mock };
-			resolveAgentModelConfig: jest.Mock;
+			modelService: { resolveAgentModelConfig: jest.Mock; resolveProxyModel: jest.Mock };
 			ensureThreadExists: jest.Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -1081,7 +1081,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sourceControlPreferencesService = {
 			getPreferences: jest.fn(() => ({ branchReadOnly: false })),
 		};
-		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
+		service.modelService = {
+			resolveAgentModelConfig: jest.fn(async () => 'model-1'),
+			resolveProxyModel: jest.fn(async () => 'model-1'),
+		};
 		service.ensureThreadExists = jest.fn(async () => {});
 		service.agentMemory = {};
 		service.dbIterationLogStorage = {};
@@ -2278,7 +2281,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		expect(service.countCreditsIfFirst).toHaveBeenCalledWith(fakeUser, 'thread-a', 'run-1');
+		expect(service.modelService.countCreditsIfFirst).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+		);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
 		});
