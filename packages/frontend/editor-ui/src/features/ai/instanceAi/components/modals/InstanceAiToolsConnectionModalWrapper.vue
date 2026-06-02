@@ -245,12 +245,25 @@ async function openCredentialEditModal(server: McpRegistryServerResponse): Promi
  * Shared by both entry points: the catalog-row Connect button (handleConnect)
  * and the picker's "+ New credential" action (credentialAdapter).
  */
+/**
+ * After a successful connect or swap, leave the user on the new connection's
+ * settings view (instead of closing the modal). `detailMode` is computed from
+ * `detailItem.isConnected`, so swapping `detailItem` to the now-connected
+ * item flips the view to `ToolSettingsView` (tabbed Settings / Details).
+ */
+function showSettingsForServer(serverSlug: string): void {
+	const connection = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+	if (!connection) return;
+	const next = items.value.find((i) => i.id === connection.id);
+	if (next) detailItem.value = next;
+}
+
 async function createCredentialAndConnect(server: McpRegistryServerResponse): Promise<void> {
 	if (canOAuthCredentialQuickConnect(server.credentialType)) {
 		const credential = await createAndAuthorize(server.credentialType);
 		if (!credential) return;
 		const ok = await swapOrConnect(server.slug, credential.id);
-		if (ok) uiStore.closeModal(props.modalName);
+		if (ok) showSettingsForServer(server.slug);
 		return;
 	}
 	await openCredentialEditModal(server);
@@ -310,7 +323,7 @@ watch(
 		}
 
 		const ok = await swapOrConnect(ctx.serverSlug, newCreds[0].id);
-		if (ok) uiStore.closeModal(props.modalName);
+		if (ok) showSettingsForServer(ctx.serverSlug);
 	},
 );
 
@@ -331,7 +344,7 @@ async function handleSelectCredential(
 	const server = findServerForItem(item);
 	if (!server) return;
 	const ok = await swapOrConnect(server.slug, credentialId);
-	if (ok) uiStore.closeModal(props.modalName);
+	if (ok) showSettingsForServer(server.slug);
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
