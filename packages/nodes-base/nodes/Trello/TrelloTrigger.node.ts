@@ -89,8 +89,23 @@ export class TrelloTrigger implements INodeType {
 						return false;
 					}
 					try {
-						await apiRequest.call(this, 'GET', `webhooks/${webhookData.webhookId}`, {});
-						return true;
+						const webhook = await apiRequest.call(
+							this,
+							'GET',
+							`webhooks/${webhookData.webhookId}`,
+							{},
+						);
+
+						if (webhook.idModel === idModel && webhook.callbackURL === webhookUrl) {
+							return true;
+						}
+
+						// The stored webhook no longer matches the current configuration, so
+						// remove the stale registration and report it as missing to trigger
+						// a fresh creation.
+						await apiRequest.call(this, 'DELETE', `webhooks/${webhookData.webhookId}`, {});
+						delete webhookData.webhookId;
+						return false;
 					} catch (error) {
 						delete webhookData.webhookId;
 						return false;
