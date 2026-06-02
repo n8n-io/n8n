@@ -13,13 +13,12 @@ import { join } from 'node:path';
 
 import { CoverageReport } from 'monocart-coverage-reports';
 
-import { coverageOptions } from '../coverage-options';
+import { BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
 const BASE = coverageOptions.outputDir ?? './coverage';
-// Sibling of BASE (matches the fixture) — the shard report's generate() cleans
-// BASE, so the per-spec raw must live outside it. Output lcovs go under BASE,
-// written after that generate has already run.
-const BY_SPEC_RAW = `${BASE.replace(/\/+$/, '')}-by-spec`;
+// Raw lives in the sibling dir (shared source of truth with the fixture). Output
+// lcovs go under BASE, written after the shard report's generate() has run.
+const BY_SPEC_RAW = BY_SPEC_DIR;
 const OUT_DIR = join(BASE, 'by-spec');
 
 async function main() {

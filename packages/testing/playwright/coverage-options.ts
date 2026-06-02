@@ -50,3 +50,18 @@ export const coverageOptions: CoverageReportOptions = {
 		return norm.startsWith('src/') ? `packages/frontend/editor-ui/${norm}` : `packages/${norm}`;
 	},
 };
+
+/**
+ * Directory for per-test (per-spec) raw coverage, used to build the impact map.
+ *
+ * It MUST be a sibling of `outputDir`, never inside it: the shard report's
+ * `CoverageReport.generate()` cleans its own `outputDir` (deleting every child
+ * except `.cache`/the V8 dir), so per-spec raw kept under `outputDir` is wiped
+ * before the emitter reads it. Single source of truth for the fixture (writes),
+ * the emitter (reads), and the drift guard test. See coverage-pipeline.test.ts.
+ */
+export function bySpecDir(outputDir: string = coverageOptions.outputDir ?? './coverage'): string {
+	return `${outputDir.replace(/\/+$/, '')}-by-spec`;
+}
+
+export const BY_SPEC_DIR = bySpecDir();

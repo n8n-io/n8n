@@ -3,14 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { CoverageReport } from 'monocart-coverage-reports';
 
-import { coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
-
-/** Per-spec raw lives in a SIBLING of the coverage outputDir — NOT under it.
- *  The shard report's MCR generate() cleans its own outputDir (deleting any
- *  siblings except .cache), so per-spec raw kept inside would be wiped before
- *  the emitter reads it. The shard emitter resolves each dir to a per-spec lcov
- *  so the impact map can attribute coverage to the spec that produced it. */
-const BY_SPEC_DIR = `${(coverageOptions.outputDir ?? './coverage').replace(/\/+$/, '')}-by-spec`;
+import { BY_SPEC_DIR, coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
 
 /** Spec id = project-relative path (e.g. tests/e2e/nodes/if-node.spec.ts) — the
  *  same id the runner uses, so the impact map keys match runnable specs. */
