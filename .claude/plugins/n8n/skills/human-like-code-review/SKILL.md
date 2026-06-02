@@ -40,11 +40,22 @@ Findings must be the primary focus, ordered by severity (most severe first):
 
 Style, naming, and minor nits come last, and only if they genuinely matter.
 
+## Backward compatibility
+
+Especially when nodes are changed, check that the change does not break backward
+compatibility for existing users' workflows (renamed/removed parameters, changed
+defaults, altered output shape, different behavior for the same input).
+
+If there's a risk of broken backward compatibility, consider node versioning and
+leave this inside the comments - point out the risk and suggest a new node version
+(or a versioned default) rather than changing existing behavior in place.
+
 ## Output format
 
 The markdown file must contain:
 
 - A header with the PR title, URL, and date of review.
+- A `## Hints for a reviewer` section (see below).
 - A `## General` section (see below).
 - A `## Comments` section with a list of review comments in this format:
 
@@ -52,7 +63,24 @@ The markdown file must contain:
 
 Comments should be easy to copy/paste. Do not quote comments using `>` - just write them directly.
 
+It's totally okay to have no line comments. Do not force findings or point out
+minor things just to have something to say. In those cases, prefer an empty
+comments list and a short positive `## General` comment.
+
 When a comment suggests something different, be precise about it. Either propose the actual code change (a short snippet or `suggestion` block the author can apply directly) or, if a full snippet isn't practical, state the concrete direction (which function/value/approach to use) rather than a vague hint. Avoid comments like "this could be cleaner" with no actionable next step.
+
+### Hints for a reviewer
+
+Right after the header, include a `## Hints for a reviewer` section to orient the
+human reviewer before they read the diff:
+
+- A short reason why the PR was created (the problem it solves or the goal).
+- A few basic words explaining the solution, without overcomplication.
+- If it's a community PR, mention it briefly. You can usually spot this from
+  `authorAssociation` or a fork-prefixed branch like `random-fork-owner:fix-node-option`.
+
+Keep it to a couple of sentences. It's about saving the reviewer time, not a
+detailed write-up.
 
 ### General summary comment
 
@@ -101,3 +129,7 @@ Keep comments friendly, short, and collaborative. Avoid judgmental wording like 
 ## Important
 
 Do not make code changes unless the user explicitly asks for them. This skill produces a review, not a patch.
+
+The very last sentence of your reply must be the link/path to the review file
+(e.g. `tmp/review-<repo>-<number>.md`), so the user can open it immediately.
+Nothing should come after it.
