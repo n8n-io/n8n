@@ -35,6 +35,33 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimedAgain).toBeNull();
 	});
 
+	it('supersedes an existing pending record when re-enqueued for the same workflow', async () => {
+		const first = await repository.enqueue('wf-1', 'v-1');
+		const second = await repository.enqueue('wf-1', 'v-2');
+
+		expect(second.id).toBe(first.id);
+		expect(second.publishedVersionId).toBe('v-2');
+
+		const claimed = await repository.claimNextPendingRecord();
+		expect(claimed?.id).toBe(first.id);
+		expect(claimed?.publishedVersionId).toBe('v-2');
+
+		const claimedAgain = await repository.claimNextPendingRecord();
+		expect(claimedAgain).toBeNull();
+	});
+
+	it('enqueues a fresh pending record once the previous one is no longer pending', async () => {
+		const first = await repository.enqueue('wf-1', 'v-1');
+		await repository.claimNextPendingRecord();
+		await repository.markCompleted(first.id);
+
+		const next = await repository.enqueue('wf-1', 'v-2');
+
+		expect(next.id).not.toBe(first.id);
+		expect(next.status).toBe('pending');
+		expect(next.publishedVersionId).toBe('v-2');
+	});
+
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
 });

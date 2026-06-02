@@ -13,16 +13,56 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		super(WorkflowPublicationOutbox, dataSource.manager);
 	}
 
-	/** Enqueue a new pending publication record. */
+	/**
+	 * Enqueue a publication for `workflowId`. If a pending record already exists
+	 * for the same workflow, its `publishedVersionId` is updated in place (the
+	 * partial unique index `(workflowId) WHERE status = 'pending'` enforces this
+	 * one-pending-per-workflow invariant). Re-enqueueing a newer version while a
+	 * publication is still pending supersedes the older `publishedVersionId`
+	 * rather than queueing redundant work.
+	 */
 	async enqueue(
 		workflowId: string,
 		publishedVersionId: string,
 	): Promise<WorkflowPublicationOutbox> {
-		return await this.save({
-			workflowId,
-			publishedVersionId,
-			status: 'pending',
-		});
+		if (this.globalConfig.database.type === 'postgresdb') {
+			return await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
+		}
+
+		return await this.enqueueWithSimpleUpsert(workflowId, publishedVersionId);
+	}
+
+	private async enqueueWithPostgresUpsert(
+		workflowId: string,
+		publishedVersionId: string,
+	): Promise<WorkflowPublicationOutbox> {
+		const tableName = this.metadata.tableName;
+
+		const result: WorkflowPublicationOutbox[] = await this.query(
+			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status", "createdAt", "updatedAt")
+			 VALUES ($1, $2, 'pending', NOW(), NOW())
+			 ON CONFLICT ("workflowId") WHERE "status" = 'pending'
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = NOW()
+			 RETURNING *`,
+			[workflowId, publishedVersionId],
+		);
+
+		return result[0];
+	}
+
+	private async enqueueWithSimpleUpsert(
+		workflowId: string,
+		publishedVersionId: string,
+	): Promise<WorkflowPublicationOutbox> {
+		const existing = await this.findOne({ where: { workflowId, status: 'pending' } });
+
+		if (existing) {
+			await this.update(existing.id, { publishedVersionId });
+			existing.publishedVersionId = publishedVersionId;
+			return existing;
+		}
+
+		return await this.save({ workflowId, publishedVersionId, status: 'pending' });
 	}
 
 	/**

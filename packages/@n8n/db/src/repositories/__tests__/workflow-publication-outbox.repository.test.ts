@@ -32,21 +32,78 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	describe('enqueue', () => {
-		it('saves a new record with status pending', async () => {
-			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
+		describe('on sqlite', () => {
+			beforeEach(() => {
+				globalConfig.database.type = 'sqlite';
+			});
 
-			const result = await repository.enqueue('wf-1', 'v-1');
+			it('inserts a new pending record when none exists for the workflow', async () => {
+				entityManager.findOne.mockResolvedValueOnce(null);
+				entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			expect(entityManager.save).toHaveBeenCalledWith(
-				WorkflowPublicationOutbox,
-				expect.objectContaining({
+				const result = await repository.enqueue('wf-1', 'v-1');
+
+				expect(entityManager.save).toHaveBeenCalledWith(
+					WorkflowPublicationOutbox,
+					expect.objectContaining({
+						workflowId: 'wf-1',
+						publishedVersionId: 'v-1',
+						status: 'pending',
+					}),
+					undefined,
+				);
+				expect(entityManager.update).not.toHaveBeenCalled();
+				expect(result.status).toBe('pending');
+			});
+
+			it('supersedes the publishedVersionId on an existing pending record', async () => {
+				const existing = Object.assign(new WorkflowPublicationOutbox(), {
+					id: 9,
+					workflowId: 'wf-1',
+					publishedVersionId: 'v-old',
+					status: 'pending',
+					errorMessage: null,
+				});
+				entityManager.findOne.mockResolvedValueOnce(existing);
+
+				const result = await repository.enqueue('wf-1', 'v-new');
+
+				expect(entityManager.update).toHaveBeenCalledWith(WorkflowPublicationOutbox, 9, {
+					publishedVersionId: 'v-new',
+				});
+				expect(entityManager.save).not.toHaveBeenCalled();
+				expect(result.publishedVersionId).toBe('v-new');
+				expect(result.id).toBe(9);
+			});
+		});
+
+		describe('on postgres', () => {
+			beforeEach(() => {
+				globalConfig.database.type = 'postgresdb';
+			});
+
+			it('issues a single ON CONFLICT upsert and returns the resulting row', async () => {
+				const row = Object.assign(new WorkflowPublicationOutbox(), {
+					id: 4,
 					workflowId: 'wf-1',
 					publishedVersionId: 'v-1',
 					status: 'pending',
-				}),
-				undefined,
-			);
-			expect(result.status).toBe('pending');
+					errorMessage: null,
+				});
+				entityManager.query.mockResolvedValueOnce([row]);
+
+				const result = await repository.enqueue('wf-1', 'v-1');
+
+				expect(entityManager.query).toHaveBeenCalledTimes(1);
+				const [sql, params] = entityManager.query.mock.calls[0]!;
+				expect(sql).toContain('"workflow_publication_outbox"');
+				expect(sql).toContain('ON CONFLICT ("workflowId") WHERE "status" = \'pending\'');
+				expect(sql).toContain('DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId"');
+				expect(sql).toContain('RETURNING *');
+				expect(params).toEqual(['wf-1', 'v-1']);
+				expect(entityManager.findOne).not.toHaveBeenCalled();
+				expect(result).toBe(row);
+			});
 		});
 	});
 
