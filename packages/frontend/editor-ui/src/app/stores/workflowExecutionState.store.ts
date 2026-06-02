@@ -7,6 +7,7 @@ import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
+import { useExecutingNode } from '@/app/composables/useExecutingNode';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createExecutionDataId,
@@ -96,6 +97,14 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * the slot-only collection would otherwise miss.
 		 */
 		const trackedExecutionIds = ref<Set<string>>(new Set());
+
+		/**
+		 * Queue of currently-executing node names driving per-node loading
+		 * spinners. Owned by the per-document store so spinner state stays
+		 * isolated per workflow document. Read purely via Vue reactivity; it is
+		 * intentionally not wired into the change-event mechanism below.
+		 */
+		const executingNode = useExecutingNode();
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -587,6 +596,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName.value = undefined;
 			currentWorkflowExecutions.value = [];
 			lastSuccessfulExecutionId.value = null;
+			executingNode.clearNodeExecutionQueue();
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
@@ -605,6 +615,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName: readonly(selectedTriggerNodeName),
 			currentWorkflowExecutions: readonly(currentWorkflowExecutions),
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
+			executingNode,
 			activeExecution,
 			activeExecutionRunData,
 			activeExecutionExecutedNode,

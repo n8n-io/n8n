@@ -16,7 +16,6 @@ import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
@@ -258,8 +257,8 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
-		const workflowStateStore = useWorkflowStateStore();
-		workflowStateStore.executingNode.lastAddedExecutingNode = 'test-node';
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		workflowExecutionStateStore.executingNode.lastAddedExecutingNode = 'test-node';
 
 		await executionFinished(
 			{
@@ -273,7 +272,7 @@ describe('executionFinished', () => {
 			opts,
 		);
 
-		expect(workflowStateStore.executingNode.lastAddedExecutingNode).toBeNull();
+		expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBeNull();
 	});
 
 	describe('ready-to-run AI workflow tracking', () => {
@@ -506,17 +505,13 @@ describe('executionFinished', () => {
 		setActivePinia(createTestingPinia());
 
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
-		const workflowStateStore = useWorkflowStateStore();
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 		const clearNodeExecutionQueue = vi.spyOn(
-			workflowStateStore.executingNode,
+			workflowExecutionStateStore.executingNode,
 			'clearNodeExecutionQueue',
 		);
 
-		vi.spyOn(
-			useWorkflowExecutionStateStore(documentId),
-			'activeExecutionId',
-			'get',
-		).mockReturnValue('123');
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('123');
 
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
@@ -550,9 +545,9 @@ describe('executionFinished', () => {
 	it('should clear executing node queue when activeExecutionId is undefined (iframe preview)', async () => {
 		setActivePinia(createTestingPinia());
 
-		const workflowStateStore = useWorkflowStateStore();
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 		const clearNodeExecutionQueue = vi.spyOn(
-			workflowStateStore.executingNode,
+			workflowExecutionStateStore.executingNode,
 			'clearNodeExecutionQueue',
 		);
 		// In iframe preview after resetWorkspace, activeExecutionId is undefined by default.

@@ -198,7 +198,7 @@ Notes:
 
 - **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
 - **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
-- **`workflowState.executingNode`** and other execution-state properties — these are not node document state
+- **`workflowExecutionStateStore.executingNode`** and other execution-state properties — these are not node document state (they live in `useWorkflowExecutionStateStore`)
 
 ## Maintaining this recipe
 

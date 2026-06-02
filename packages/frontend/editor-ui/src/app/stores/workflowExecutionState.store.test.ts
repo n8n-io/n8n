@@ -1057,6 +1057,7 @@ describe('workflowExecutionState.store', () => {
 			workflowExecutionStateStore.setSelectedTriggerNodeName('Trigger');
 			workflowExecutionStateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			workflowExecutionStateStore.setLastSuccessfulExecutionId('last-1');
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node');
 
 			workflowExecutionStateStore.resetExecutionState();
 
@@ -1071,6 +1072,8 @@ describe('workflowExecutionState.store', () => {
 			expect(workflowExecutionStateStore.selectedTriggerNodeName).toBeUndefined();
 			expect(workflowExecutionStateStore.currentWorkflowExecutions).toEqual([]);
 			expect(workflowExecutionStateStore.lastSuccessfulExecutionId).toBeNull();
+			expect(workflowExecutionStateStore.executingNode.executingNode).toEqual([]);
+			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBeNull();
 		});
 
 		it('disposes per-execution data stores for every tracked id', () => {
@@ -1116,6 +1119,30 @@ describe('workflowExecutionState.store', () => {
 			expect(
 				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution,
 			).toBeNull();
+		});
+	});
+
+	describe('executingNode', () => {
+		it('tracks the executing-node queue', () => {
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('wf-1'),
+			);
+
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node A');
+
+			expect(workflowExecutionStateStore.executingNode.isNodeExecuting('Node A')).toBe(true);
+			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('Node A');
+		});
+
+		it('isolates the executing-node queue per document id', () => {
+			const a = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-a'));
+			const b = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-b'));
+
+			a.executingNode.addExecutingNode('Node A');
+
+			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
+			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
+			expect(b.executingNode.executingNode).toEqual([]);
 		});
 	});
 

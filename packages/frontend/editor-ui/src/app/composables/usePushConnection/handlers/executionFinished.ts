@@ -15,7 +15,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -66,12 +65,11 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunStore = useReadyToRunStore();
-	const workflowStateStore = useWorkflowStateStore();
-
-	workflowStateStore.executingNode.lastAddedExecutingNode = null;
-	workflowStateStore.executingNode.clearNodeExecutionQueue();
 
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+
+	workflowExecutionStateStore.executingNode.lastAddedExecutingNode = null;
+	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
 
 	// No workflow is actively running, therefore we ignore this event
 	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
@@ -473,7 +471,7 @@ export function setRunExecutionData(
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution, documentId);
 
-	useWorkflowStateStore().executingNode.clearNodeExecutionQueue();
+	workflowExecutionStateStore.executingNode.clearNodeExecutionQueue();
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(execution.id));
 	const workflowExecution = executionDataStore.getExecutionSnapshot();

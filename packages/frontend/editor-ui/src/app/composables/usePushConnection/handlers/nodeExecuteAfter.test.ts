@@ -9,7 +9,6 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import type { PushHandlerOptions } from './types';
 
 vi.mock('@/features/ai/assistant/assistant.store', () => ({
@@ -29,7 +28,6 @@ import { openFormPopupWindow } from '@/features/execution/executions/executions.
 describe('nodeExecuteAfter', () => {
 	const documentId = createWorkflowDocumentId('test-wf');
 	let options: PushHandlerOptions;
-	let workflowStateStore: ReturnType<typeof useWorkflowStateStore>;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 
@@ -39,10 +37,8 @@ describe('nodeExecuteAfter', () => {
 
 		options = { router: mock<Router>(), documentId };
 
-		workflowStateStore = useWorkflowStateStore();
-		vi.spyOn(workflowStateStore.executingNode, 'removeExecutingNode');
-
 		workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+		vi.spyOn(workflowExecutionStateStore.executingNode, 'removeExecutingNode');
 
 		executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		executionDataStore.setExecution(
@@ -77,8 +73,10 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, options);
 
-		expect(workflowStateStore.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
-		expect(workflowStateStore.executingNode.removeExecutingNode).toHaveBeenCalledWith('Test Node');
+		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
+		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).toHaveBeenCalledWith(
+			'Test Node',
+		);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 

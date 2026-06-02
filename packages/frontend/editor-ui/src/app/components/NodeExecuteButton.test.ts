@@ -129,6 +129,7 @@ let externalHooks: ReturnType<typeof useExternalHooks>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let workflowState: WorkflowState;
+let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 let nodeViewEventBusEmitSpy: ReturnType<typeof vi.spyOn>;
 
 describe('NodeExecuteButton', () => {
@@ -148,6 +149,9 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.workflowId = 'abc123';
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('abc123'));
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
+		workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId('abc123'),
+		);
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
@@ -238,7 +242,7 @@ describe('NodeExecuteButton', () => {
 	it('displays "Stop Listening" when node is running and is a trigger node', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowExecutionStateStore.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		vi.spyOn(
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
@@ -253,7 +257,7 @@ describe('NodeExecuteButton', () => {
 	it('sets button to loading state when node is executing', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowExecutionStateStore.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		vi.spyOn(
 			useWorkflowExecutionStateStore(createWorkflowDocumentId('abc123')),
 			'isWorkflowRunning',
@@ -288,7 +292,7 @@ describe('NodeExecuteButton', () => {
 			'isWorkflowRunning',
 			'get',
 		).mockReturnValue(true);
-		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
+		workflowExecutionStateStore.executingNode.isNodeExecuting = vi.fn().mockReturnValue(false);
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
@@ -349,7 +353,7 @@ describe('NodeExecuteButton', () => {
 		).mockReturnValue(true);
 		nodeTypesStore.isTriggerNode = () => true;
 		useWorkflowState().setActiveExecutionId('test-execution-id');
-		workflowState.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
+		workflowExecutionStateStore.executingNode.isNodeExecuting = vi.fn().mockReturnValue(true);
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);

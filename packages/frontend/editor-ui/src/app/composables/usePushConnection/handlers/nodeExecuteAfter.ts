@@ -8,7 +8,6 @@ import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 import { trackNodeExecution } from './trackNodeExecution';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import type { PushHandlerOptions } from './types';
 
 /**
@@ -68,7 +67,7 @@ export async function nodeExecuteAfter(
 		}
 	}
 
-	useWorkflowStateStore().executingNode.removeExecutingNode(pushData.nodeName);
+	workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
 
 	// Side effects
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {

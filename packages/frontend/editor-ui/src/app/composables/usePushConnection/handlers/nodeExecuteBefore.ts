@@ -1,7 +1,6 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import type { PushHandlerOptions } from './types';
 
 /**
@@ -13,7 +12,7 @@ export async function nodeExecuteBefore(
 ) {
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	useWorkflowStateStore().executingNode.addExecutingNode(data.nodeName);
+	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName);
 
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
 	if (typeof activeExecutionId === 'string') {
