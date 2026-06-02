@@ -240,7 +240,16 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
-	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	tools: z
+		.array(AgentJsonToolConfigSchema)
+		.refine(
+			(tools) => {
+				const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
+				return new Set(customIds).size === customIds.length;
+			},
+			{ message: 'Custom tool ids must be unique within an agent' },
+		)
+		.optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),

@@ -5,6 +5,7 @@ import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-type
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
@@ -2542,6 +2543,87 @@ describe('AgentsService', () => {
 					type: 'slack',
 				} as never),
 			).rejects.toThrow(/Invalid credential integration/);
+		});
+	});
+
+	describe('buildCustomTool', () => {
+		const code =
+			"export default new Tool('my_tool').description('desc').handler(async () => 'ok');";
+		const descriptor = {
+			name: 'my_tool',
+			description: 'desc',
+			systemInstruction: null,
+			inputSchema: { type: 'object' as const, properties: {}, required: [] },
+			outputSchema: null,
+			hasSuspend: false,
+			hasResume: false,
+			hasToMessage: false,
+			requireApproval: false,
+			providerOptions: null,
+		};
+
+		it('stores tool under descriptor.name and returns that name as id', async () => {
+			const agent = makeAgent({ tools: {} });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			const result = await service.buildCustomTool(agentId, projectId, code, descriptor);
+
+			expect(result).toEqual({ ok: true, id: 'my_tool', descriptor });
+			expect(agent.tools).toEqual({ my_tool: { code, descriptor } });
+			expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		});
+
+		it('overwrites an existing tool with the same name (update semantics)', async () => {
+			const existingCode = "export default new Tool('my_tool').handler(async () => 'old');";
+			const existingDescriptor = { ...descriptor, description: 'old' };
+			const agent = makeAgent({
+				tools: { my_tool: { code: existingCode, descriptor: existingDescriptor } },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			const newDescriptor = { ...descriptor, description: 'updated' };
+			await service.buildCustomTool(agentId, projectId, code, newDescriptor);
+
+			expect(agent.tools).toEqual({ my_tool: { code, descriptor: newDescriptor } });
+		});
+
+		it('preserves other tools when adding a new one', async () => {
+			const other = { code: 'other_code', descriptor: { ...descriptor, name: 'other' } };
+			const agent = makeAgent({ tools: { other } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+
+			await service.buildCustomTool(agentId, projectId, code, descriptor);
+
+			expect(agent.tools).toEqual({ other, my_tool: { code, descriptor } });
+		});
+
+		it('throws UserError when tool name contains spaces', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await expect(
+				service.buildCustomTool(agentId, projectId, code, { ...descriptor, name: 'my tool' }),
+			).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when tool name contains special characters', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await expect(
+				service.buildCustomTool(agentId, projectId, code, { ...descriptor, name: 'tool!' }),
+			).rejects.toThrow(UserError);
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.buildCustomTool(agentId, projectId, code, descriptor)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 

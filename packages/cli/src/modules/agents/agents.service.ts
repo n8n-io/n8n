@@ -67,7 +67,7 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { generateAgentResourceId } from './utils/agent-resource-id';
+import { CUSTOM_TOOL_ID_REGEX } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
@@ -1981,7 +1981,13 @@ export class AgentsService {
 	/**
 	 * Validate and persist a custom tool for an agent.
 	 * The tool code is described in an isolate, and the descriptor + code
-	 * are stored in the agent's `tools` column.
+	 * are stored in the agent's `tools` column, keyed by the tool's name.
+	 *
+	 * The tool name becomes the stable id used in the agent's JSON config.
+	 * Legacy tools stored with a random `tool_XXXX` id continue to work.
+	 *
+	 * Registering the tool in the agent config (adding `{ type: "custom", id }`
+	 * to `schema.tools`) is the caller's responsibility.
 	 */
 	async buildCustomTool(
 		agentId: string,
@@ -1992,24 +1998,28 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const toolId = generateAgentResourceId('tool', Object.keys(entity.tools ?? {}));
+		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
+			throw new UserError(
+				'Tool name "' +
+					descriptor.name +
+					'" is not a valid id. Use only letters, digits, underscores, and hyphens (e.g. "my_tool").',
+			);
+		}
 
-		// Store tool code + descriptor. Registering the tool in the agent config
-		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
-		// responsibility — typically via a follow-up patch_config / write_config —
-		// so this method does not touch `entity.schema`.
+		// Use the tool name as the storage key so the config id equals the name.
+		// If a tool with the same name already exists it is overwritten (update semantics).
 		entity.tools = {
 			...entity.tools,
-			[toolId]: { code, descriptor },
+			[descriptor.name]: { code, descriptor },
 		};
 
 		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
-		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
+		this.logger.debug('Built custom tool', { agentId, projectId, toolId: descriptor.name });
 
-		return { ok: true, id: toolId, descriptor };
+		return { ok: true, id: descriptor.name, descriptor };
 	}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
