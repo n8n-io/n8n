@@ -210,6 +210,32 @@ function openCredentialEditForAuthType(authType: string): void {
 	);
 }
 
+/**
+ * Snapshot the existing credentials of the server's auth type, then open the
+ * credential-edit modal in "new" mode. Shared by:
+ *   - The credential adapter (user clicked "+ New credential" from the picker
+ *     inside the detail view).
+ *   - `handleConnect` (user clicked the Connect button on a catalog row and
+ *     skipped the detail view entirely).
+ * After the credential modal closes, the auto-connect watcher diffs against
+ * the snapshot and connects (or swaps).
+ */
+async function startCredentialCreation(server: McpRegistryServerResponse): Promise<void> {
+	// Make sure the snapshot reflects what's actually in the store. If the
+	// initial credentials fetch hasn't resolved yet, an empty snapshot can
+	// later look like the credential is "new" even though it pre-existed.
+	if (credentialsPromise.value) await credentialsPromise.value;
+
+	pendingCredentialContext.value = {
+		serverSlug: server.slug,
+		credentialType: server.credentialType,
+		snapshotIds: new Set(
+			credentialsStore.getCredentialsByType(server.credentialType).map((c) => c.id),
+		),
+	};
+	openCredentialEditForAuthType(server.credentialType);
+}
+
 const credentialAdapter: ToolConnectionCredentialAdapter = {
 	getCredentialsByType: (authType: string): readonly PickableCredential[] => {
 		const creds = credentialsStore.getCredentialsByType(authType);
@@ -217,20 +243,14 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 	},
 	openNewCredential: (authType: string) => {
 		void (async () => {
-			// Make sure the snapshot reflects what's actually in the store. If the
-			// initial credentials fetch hasn't resolved yet, an empty snapshot can
-			// later look like the credential is "new" even though it pre-existed.
-			if (credentialsPromise.value) await credentialsPromise.value;
-
 			const server = detailItem.value ? findServerForItem(detailItem.value) : undefined;
-			if (server) {
-				pendingCredentialContext.value = {
-					serverSlug: server.slug,
-					credentialType: authType,
-					snapshotIds: new Set(credentialsStore.getCredentialsByType(authType).map((c) => c.id)),
-				};
+			if (!server) {
+				// Detail view isn't open or the item isn't an MCP server — fall back
+				// to the bare modal so the user can still create a credential.
+				openCredentialEditForAuthType(authType);
+				return;
 			}
-			openCredentialEditForAuthType(authType);
+			await startCredentialCreation(server);
 		})();
 	},
 };
@@ -310,6 +330,13 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	await mcpStore.disconnect(item.id);
 	detailItem.value = null;
 }
+
+async function handleConnect(item: ToolConnectionItem) {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	await startCredentialCreation(server);
+}
 </script>
 
 <template>
@@ -321,6 +348,7 @@ async function handleDisconnect(item: ToolConnectionItem) {
 		:detail-mode="detailMode"
 		@update:detail-item="(item) => (detailItem = item)"
 		@select-credential="handleSelectCredential"
+		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"
 	>

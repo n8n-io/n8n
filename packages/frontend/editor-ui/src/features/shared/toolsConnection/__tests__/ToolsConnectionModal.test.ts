@@ -244,6 +244,17 @@ describe('ToolsConnectionModal', () => {
 		expect(emitted()['update:detailItem']).toBeTruthy();
 	});
 
+	it('forwards the connect event from a row Connect button without navigating to detail', async () => {
+		const { getAllByTestId, emitted } = renderWith({ sections: ['nodes'] });
+
+		const connectButtons = getAllByTestId('tools-connection-row-connect');
+		await fireEvent.click(connectButtons[0]);
+
+		expect(emitted().connect).toBeTruthy();
+		expect(emitted()['open-detail']).toBeUndefined();
+		expect(emitted()['update:detailItem']).toBeUndefined();
+	});
+
 	it('debounces the search query before filtering rows', async () => {
 		const { getByPlaceholderText, queryByText } = renderWith({ sections: ['nodes'] });
 
