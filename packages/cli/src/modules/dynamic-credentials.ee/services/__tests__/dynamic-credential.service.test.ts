@@ -28,6 +28,7 @@ import { IdentifierValidationError } from '../../credential-resolvers/identifier
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
+import { SYSTEM_RESOLVER_TYPE } from '../../constants';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -101,10 +102,12 @@ describe('DynamicCredentialService', () => {
 		credentials,
 	});
 
-	const createMockCredentialContext = (): ICredentialContext => ({
+	const createMockCredentialContext = (
+		metadata: Record<string, unknown> = {},
+	): ICredentialContext => ({
 		version: 1,
 		identity: 'user-123',
-		metadata: {},
+		metadata,
 	});
 
 	const createMockAdditionalData = (
@@ -426,8 +429,9 @@ describe('DynamicCredentialService', () => {
 				);
 			});
 
-			it('resolver throws CredentialResolverDataNotFoundError', async () => {
+			it('external-identity resolver throws CredentialResolverDataNotFoundError keeps the generic message', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
+				// Default resolver type is an external (non-n8n) resolver
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver(false, true); // Throws CredentialResolverDataNotFoundError
 				const executionContext = createMockExecutionContext('encrypted-credentials');
@@ -449,6 +453,59 @@ describe('DynamicCredentialService', () => {
 					),
 				).rejects.toThrow(
 					'Failed to resolve dynamic credentials for "Test Credential": No data found available for the requested credential and context combination.',
+				);
+			});
+
+			it('n8n private-credential resolver throws CredentialResolverDataNotFoundError surfaces the not-connected message', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
+				const mockResolver = createMockResolver(false, true);
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext({ source: 'manual-execution' });
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2
+					.mockResolvedValueOnce(JSON.stringify(credentialContext))
+					.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(
+					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
+				);
+			});
+
+			it('n8n private-credential resolver surfaces the not-connected message regardless of trigger source', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
+				const mockResolver = createMockResolver(false, true);
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				// Chat-hub triggered run still resolves to an n8n user, so the message applies
+				const credentialContext = createMockCredentialContext({ source: 'chat-hub-injected' });
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2
+					.mockResolvedValueOnce(JSON.stringify(credentialContext))
+					.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(
+					"'Test Credential' private credential is not connected for you. Connect yours to execute this workflow manually.",
 				);
 			});
 

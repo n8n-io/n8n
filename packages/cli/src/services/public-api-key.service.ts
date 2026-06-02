@@ -45,19 +45,24 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Retrieves and redacts API keys for a given user.
-	 * @param user - The user for whom to retrieve and redact API keys.
+	 * Retrieves a page of redacted API keys for a given user, ordered by
+	 * `createdAt` descending. `count` is the total across all pages.
 	 */
-	async getRedactedApiKeysForUser(user: User) {
-		const apiKeys = await this.apiKeyRepository.findBy({
-			userId: user.id,
-			audience: API_KEY_AUDIENCE,
+	async getRedactedApiKeysForUser(user: User, options: { take?: number; skip?: number } = {}) {
+		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({
+			where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			order: { createdAt: 'DESC' },
+			take: options.take,
+			skip: options.skip,
 		});
-		return apiKeys.map((apiKeyRecord) => ({
-			...apiKeyRecord,
-			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
-			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-		}));
+		return {
+			items: apiKeys.map((apiKeyRecord) => ({
+				...apiKeyRecord,
+				apiKey: this.redactApiKey(apiKeyRecord.apiKey),
+				expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
+			})),
+			count,
+		};
 	}
 
 	async deleteApiKeyForUser(user: User, apiKeyId: string) {

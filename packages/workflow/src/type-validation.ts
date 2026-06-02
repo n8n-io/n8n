@@ -1,7 +1,7 @@
 import isObject from 'lodash/isObject';
 import { DateTime } from 'luxon';
 
-import { ApplicationError } from './errors';
+import { ApplicationError, BaseError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,
@@ -262,7 +262,7 @@ export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter 
 			fields.push(field as FormFieldsParameter[number]);
 		}
 	} catch (error) {
-		if (error instanceof ApplicationError) throw error;
+		if (error instanceof ApplicationError || error instanceof BaseError) throw error;
 
 		throw new ApplicationError('Value is not valid JSON');
 	}
@@ -295,7 +295,7 @@ export const tryToParseUrl = (value: unknown): string => {
 		}
 		return String(value);
 	} catch (e) {
-		if (e instanceof ApplicationError) throw e;
+		if (e instanceof ApplicationError || e instanceof BaseError) throw e;
 		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
 			extra: { value },
 		});
