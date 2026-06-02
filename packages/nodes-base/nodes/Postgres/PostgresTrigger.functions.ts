@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -6,9 +5,43 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { configurePostgres } from './transport';
 import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';
+
+const postgresIdentifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const triggerEvents = ['INSERT', 'UPDATE', 'DELETE'] as const;
+
+type TriggerEvent = (typeof triggerEvents)[number];
+
+export function validatePostgresIdentifier(
+	name: unknown,
+	parameterName: string,
+): asserts name is string {
+	if (typeof name !== 'string' || !postgresIdentifierRegex.test(name)) {
+		throw new UserError(
+			`${parameterName} must start with a letter or underscore and contain only letters, digits, and underscores`,
+			{ level: 'warning' },
+		);
+	}
+}
+
+function getFunctionName(functionName: string) {
+	if (functionName.endsWith('()')) {
+		return functionName.slice(0, -2);
+	}
+
+	return functionName;
+}
+
+function getTriggerEvent(firesOn: string): TriggerEvent {
+	if (triggerEvents.includes(firesOn as TriggerEvent)) {
+		return firesOn as TriggerEvent;
+	}
+
+	throw new UserError('Event must be Insert, Update, or Delete', { level: 'warning' });
+}
 
 export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
 	let suffix = id.replace(/-/g, '_');
@@ -17,19 +50,16 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 		suffix = `${suffix}_manual`;
 	}
 
-	let functionName =
-		(additionalFields.functionName as string) || `n8n_trigger_function_${suffix}()`;
-
-	if (!(functionName.includes('(') && functionName.includes(')'))) {
-		functionName = `${functionName}()`;
-	}
+	const functionName = getFunctionName(
+		(additionalFields.functionName as string) || `n8n_trigger_function_${suffix}`,
+	);
 
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${suffix}`;
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
 
-	if (channelName.includes('-')) {
-		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
-	}
+	validatePostgresIdentifier(functionName, 'Function name');
+	validatePostgresIdentifier(triggerName, 'Trigger name');
+	validatePostgresIdentifier(channelName, 'Channel name');
 
 	return { functionName, triggerName, channelName };
 }
@@ -47,43 +77,26 @@ export async function pgTriggerFunction(
 		extractValue: true,
 	}) as string;
 
-	const target = `${schema}."${tableName}"`;
+	const firesOn = getTriggerEvent(this.getNodeParameter('firesOn', 0) as string);
+	const rowRecord = firesOn === 'DELETE' ? 'OLD' : 'NEW';
 
-	const firesOn = this.getNodeParameter('firesOn', 0) as string;
+	const functionReplace = `CREATE OR REPLACE FUNCTION $1:name() RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify($2, row_to_json(${rowRecord})::text); return null; end; $BODY$;`;
 
-	const functionReplace =
-		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
+	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name';
 
-	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:raw ON $2:raw';
+	const functionExists = `CREATE FUNCTION $1:name() RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify($2, row_to_json(${rowRecord})::text); return null; end; $BODY$`;
 
-	const functionExists =
-		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$";
-
-	const trigger =
-		'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw';
-
-	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
-
-	if (channelName.includes('-')) {
-		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
-	}
+	const trigger = `CREATE TRIGGER $3:name AFTER ${firesOn} ON $1:name.$2:name FOR EACH ROW EXECUTE FUNCTION $4:name()`;
 
 	const replaceIfExists = additionalFields.replaceIfExists ?? false;
 
-	try {
-		if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
-			await db.any(functionReplace, [functionName, channelName, whichData]);
-			await db.any(dropIfExist, [triggerName, target, whichData]);
-		} else {
-			await db.any(functionExists, [functionName, channelName, whichData]);
-		}
-		await db.any(trigger, [target, functionName, firesOn, triggerName]);
-	} catch (error) {
-		if ((error as Error).message.includes('near "-"')) {
-			throw new ApplicationError('Names cannot contain hyphens (-)', { level: 'warning' });
-		}
-		throw error;
+	if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
+		await db.any(functionReplace, [functionName, channelName]);
+		await db.any(dropIfExist, [triggerName, schema, tableName]);
+	} else {
+		await db.any(functionExists, [functionName, channelName]);
 	}
+	await db.any(trigger, [schema, tableName, triggerName, functionName]);
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
@@ -115,7 +128,8 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 			[schema.value],
 		);
 	} catch (error) {
-		throw new ApplicationError(error as string);
+		const message = error instanceof Error ? error.message : String(error);
+		throw new UserError(message);
 	}
 	const results: INodeListSearchItems[] = (tableList as IDataObject[]).map((s) => ({
 		name: s.table_name as string,

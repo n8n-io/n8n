@@ -14,6 +14,7 @@ import {
 	searchSchema,
 	searchTables,
 	prepareNames,
+	validatePostgresIdentifier,
 } from './PostgresTrigger.functions';
 
 export class PostgresTrigger implements INodeType {
@@ -279,10 +280,11 @@ export class PostgresTrigger implements INodeType {
 			);
 		} else {
 			pgNames.channelName = this.getNodeParameter('channelName', '') as string;
+			validatePostgresIdentifier(pgNames.channelName, 'Channel name');
 		}
 
 		// listen to channel
-		await connection.none(`LISTEN ${pgNames.channelName}`);
+		await connection.none('LISTEN $1:name', [pgNames.channelName]);
 
 		const cleanUpDb = async () => {
 			try {
