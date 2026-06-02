@@ -115,6 +115,11 @@ import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.re
 import { TraceReplayState } from './trace-replay-state';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import {
+	SuspendedThreadPersistenceService,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-thread-persistence.service';
+import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from './run-trace-metadata';
@@ -434,26 +439,6 @@ type OrchestratorResumeReason =
 	| 'planned_checkpoint'
 	| 'replan';
 
-/** A pending-confirmation orphan that's already passed the `canResumeOrphan`
- *  predicate — i.e. has the SDK-side pointers (`toolCallId`, `checkpointKey`)
- *  needed to rebuild a suspended run from the checkpoint blob. */
-type ResumableOrphan = NonNullable<
-	Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>
-> & {
-	toolCallId: string;
-	checkpointKey: string;
-};
-
-/** Result of `rebuildSuspendedRunFromCheckpoint`. Each failure variant
- *  corresponds to one rebuild step the caller can log distinctly; `ready`
- *  carries the fully-assembled state for `runState.suspendRun`. */
-type RebuildSuspendedRunOutcome =
-	| { kind: 'ready'; state: SuspendedRunState<User> }
-	| { kind: 'no-user' }
-	| { kind: 'no-checkpoint'; error?: unknown }
-	| { kind: 'env-failure'; error: unknown }
-	| { kind: 'agent-failure'; error: unknown };
-
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
@@ -569,6 +554,9 @@ export class InstanceAiService {
 
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
+	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
+	private readonly suspendedThreads: SuspendedThreadPersistenceService;
+
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
 
@@ -648,6 +636,19 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.suspendedThreads = new SuspendedThreadPersistenceService({
+			logger: this.logger,
+			config: this.instanceAiConfig,
+			pendingConfirmationRepo: this.pendingConfirmationRepo,
+			agentMemory: this.agentMemory,
+			dbSnapshotStorage: this.dbSnapshotStorage,
+			runState: this.runState,
+			host: {
+				rebuildSuspendedRun: this.rebuildSuspendedRunFromCheckpoint.bind(this),
+				resumeSuspendedRun: this.resumeSuspendedRun.bind(this),
+				publishRunFinish: this.publishRunFinish.bind(this),
+			},
+		});
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
 		});
@@ -662,7 +663,7 @@ export class InstanceAiService {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			},
 			onPendingConfirmationRejected: (requestId) => {
-				void this.dropPendingConfirmation(requestId);
+				void this.suspendedThreads.dropPendingConfirmation(requestId);
 			},
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -1651,7 +1652,7 @@ export class InstanceAiService {
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
 			// resolver) get cleaned up here so the index never outlives the run.
-			void this.dropPendingConfirmationsForThread(threadId);
+			void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 			return;
 		}
 
@@ -1661,7 +1662,7 @@ export class InstanceAiService {
 			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
 
-		void this.dropPendingConfirmationsForThread(threadId);
+		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 	}
 
 	/** Send a correction message to a running background task. */
@@ -1986,7 +1987,7 @@ export class InstanceAiService {
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
-		await this.dropPendingConfirmationsForThread(threadId);
+		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
 	}
 
@@ -2163,7 +2164,11 @@ export class InstanceAiService {
 	private async persistUserMessageOnFirstSuspend(threadId: string, runId: string): Promise<void> {
 		const entry = this.userMessagePersistenceByRun.get(runId);
 		if (!entry) return;
-		const ok = await this.persistUserMessageOnSuspend(threadId, entry.userId, entry.message);
+		const ok = await this.suspendedThreads.persistUserMessageOnSuspend(
+			threadId,
+			entry.userId,
+			entry.message,
+		);
 		if (ok) this.userMessagePersistenceByRun.delete(runId);
 	}
 
@@ -2194,134 +2199,13 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
-			await this.pruneStalePendingConfirmations(now);
+			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			this.scheduleCheckpointPrune();
 		} catch (error: unknown) {
 			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
-		}
-	}
-
-	private async pruneStalePendingConfirmations(now: number): Promise<void> {
-		try {
-			const count = await this.pendingConfirmationRepo.deleteExpired(new Date(now));
-			if (count === 0) {
-				this.logger.debug('No stale Instance AI pending confirmations to drop');
-				return;
-			}
-			this.logger.info('Dropped stale Instance AI pending confirmations', { count });
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop stale Instance AI pending confirmations', {
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private computePendingConfirmationExpiresAt(): Date | null {
-		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
-		return timeoutMs > 0 ? new Date(Date.now() + timeoutMs) : null;
-	}
-
-	/**
-	 * Persist the index for a HITL confirmation so a fresh process can find it
-	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
-	 * Fire-and-forget: a DB write failure must not block the agent flow, which
-	 * still operates correctly via the in-memory state on this main.
-	 */
-	private async persistPendingConfirmation(params: {
-		requestId: string;
-		threadId: string;
-		userId: string;
-		runId: string;
-		messageGroupId?: string;
-		kind: 'inline' | 'suspended';
-		toolCallId?: string;
-		checkpointKey?: string;
-		checkpointTaskId?: string;
-	}): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.save(
-				this.pendingConfirmationRepo.create({
-					requestId: params.requestId,
-					threadId: params.threadId,
-					userId: params.userId,
-					kind: params.kind,
-					runId: params.runId,
-					messageGroupId: params.messageGroupId ?? null,
-					toolCallId: params.toolCallId ?? null,
-					checkpointKey: params.checkpointKey ?? null,
-					checkpointTaskId: params.checkpointTaskId ?? null,
-					expiresAt: this.computePendingConfirmationExpiresAt(),
-				}),
-			);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist pending confirmation', {
-				requestId: params.requestId,
-				threadId: params.threadId,
-				kind: params.kind,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async dropPendingConfirmation(requestId: string): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.deleteByRequestId(requestId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop pending confirmation', {
-				requestId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async dropPendingConfirmationsForThread(threadId: string): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.deleteByThreadId(threadId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop pending confirmations for thread', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	/**
-	 * Persist the original user-typed message to thread memory the first time
-	 * a run hits an inline HITL confirmation, so the message bubble survives
-	 * a restart that happens while the run is suspended. The `id` matches the
-	 * one we pass to the SDK's streamInput, so the SDK's eventual end-of-turn
-	 * save (if the run does resume and complete) upserts the same row instead
-	 * of creating a duplicate.
-	 */
-	private async persistUserMessageOnSuspend(
-		threadId: string,
-		userId: string,
-		message: { id: string; text: string },
-	): Promise<boolean> {
-		try {
-			await this.agentMemory.saveMessages({
-				threadId,
-				resourceId: userId,
-				messages: [
-					{
-						id: message.id,
-						role: 'user',
-						content: [{ type: 'text', text: message.text }],
-						createdAt: new Date(),
-					},
-				],
-			});
-			return true;
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist user message on HITL suspend', {
-				threadId,
-				userId,
-				error: getErrorMessage(error),
-			});
-			return false;
 		}
 	}
 
@@ -2563,7 +2447,7 @@ export class InstanceAiService {
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
 		this.runState.cancelThread(args.threadId);
-		void this.dropPendingConfirmationsForThread(args.threadId);
+		void this.suspendedThreads.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
 		await this.finalizeRunTracing(args.runId, args.tracing, {
 			status: 'error',
@@ -3043,7 +2927,7 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 					});
 
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId,
 						threadId,
 						userId: user.id,
@@ -3788,7 +3672,7 @@ export class InstanceAiService {
 						modelId,
 						checkpoint,
 					});
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId,
 						userId: user.id,
@@ -4272,7 +4156,7 @@ export class InstanceAiService {
 		}
 
 		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
-			void this.dropPendingConfirmation(requestId);
+			void this.suspendedThreads.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
@@ -4296,136 +4180,11 @@ export class InstanceAiService {
 		// that died with the previous process) or any rebuild failure we
 		// publish a terminal `run-finish` and surface a clear UserError so the
 		// client doesn't sit on a stale confirmation card.
-		return await this.resolveOrphanedConfirmation(requestingUserId, requestId, data);
-	}
-
-	private async resolveOrphanedConfirmation(
-		userId: string,
-		requestId: string,
-		data: ConfirmationData,
-	): Promise<boolean> {
-		let orphan: Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>;
-		try {
-			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to claim orphaned pending confirmation', {
-				requestId,
-				error: getErrorMessage(error),
-			});
-			return false;
-		}
-		if (!orphan) return false;
-
-		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
+		return await this.suspendedThreads.resolveOrphanedConfirmation(
+			requestingUserId,
 			requestId,
-			threadId: orphan.threadId,
-			runId: orphan.runId,
-			kind: orphan.kind,
-			hasCheckpoint: Boolean(orphan.checkpointKey),
-		});
-
-		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
-			const resumed = await this.tryResumeFromOrphan(orphan, data);
-			if (resumed) return true;
-		}
-
-		this.finalizeUnresumableOrphan(orphan);
-		throw new UserError(
-			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
+			data,
 		);
-	}
-
-	private canResumeOrphan(
-		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
-	): orphan is ResumableOrphan {
-		return Boolean(orphan.toolCallId && orphan.checkpointKey);
-	}
-
-	private finalizeUnresumableOrphan(
-		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
-	): void {
-		try {
-			// Live SSE clients use this to drop their interactive card.
-			this.publishRunFinish(
-				orphan.threadId,
-				orphan.runId,
-				'cancelled',
-				'restart_lost_confirmation',
-			);
-			// Terminalise the existing snapshot in place instead of rebuilding
-			// the tree from the in-memory event bus. After a restart the bus
-			// only carries the run-finish we just emitted, so a rebuild would
-			// replace the saved plan/ask card with an empty cancelled tree;
-			// `markRunCancelled` keeps the plan content intact while flipping
-			// all in-flight nodes and confirmation buttons off.
-			void this.dbSnapshotStorage
-				.markRunCancelled(orphan.threadId, orphan.runId)
-				.catch((error: unknown) => {
-					this.logger.warn('Failed to mark orphan snapshot as cancelled', {
-						requestId: orphan.requestId,
-						threadId: orphan.threadId,
-						runId: orphan.runId,
-						error: getErrorMessage(error),
-					});
-				});
-		} catch (error: unknown) {
-			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
-				requestId: orphan.requestId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	/**
-	 * Rebuild the orchestration environment + agent for a checkpoint-backed
-	 * suspended run that survived a process restart, register it as a
-	 * `SuspendedRunState` in the in-memory registry, and hand off to the
-	 * existing `resumeSuspendedRun` path. The original `runId` /
-	 * `messageGroupId` are reused so the frontend's SSE correlation
-	 * (`groupIdByRunId`) keeps working.
-	 */
-	private async tryResumeFromOrphan(
-		orphan: ResumableOrphan,
-		data: ConfirmationData,
-	): Promise<boolean> {
-		const outcome = await this.rebuildSuspendedRunFromCheckpoint(orphan);
-		switch (outcome.kind) {
-			case 'ready':
-				// Re-seed the in-memory runState so `resumeSuspendedRun` can find
-				// this confirmation by requestId and the rest of the cancel /
-				// liveness / shutdown paths see the run as live. We deliberately
-				// do NOT call `persistPendingConfirmation` again — the DB row
-				// was already consumed by `claim()` above.
-				this.runState.suspendRun(orphan.threadId, outcome.state);
-				return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
-			case 'no-user':
-				this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
-					requestId: orphan.requestId,
-					userId: orphan.userId,
-				});
-				return false;
-			case 'no-checkpoint':
-				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
-					requestId: orphan.requestId,
-					checkpointKey: orphan.checkpointKey,
-					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
-				});
-				return false;
-			case 'env-failure':
-				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
-					requestId: orphan.requestId,
-					threadId: orphan.threadId,
-					error: getErrorMessage(outcome.error),
-				});
-				return false;
-			case 'agent-failure':
-				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
-					requestId: orphan.requestId,
-					threadId: orphan.threadId,
-					error: getErrorMessage(outcome.error),
-				});
-				return false;
-		}
 	}
 
 	/**
@@ -4578,7 +4337,7 @@ export class InstanceAiService {
 		// inline-kind drop is wired into the Promise resolver in
 		// `waitForConfirmation` and fires whether the resolution came from the
 		// user, from `cancelThread`, or from a liveness timeout.
-		void this.dropPendingConfirmation(requestId);
+		void this.suspendedThreads.dropPendingConfirmation(requestId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
 		// other tools use the flat credentials map. Prefer nodeCredentials when present.
@@ -4741,7 +4500,7 @@ export class InstanceAiService {
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
 					});
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId: opts.threadId,
 						userId: opts.user.id,
@@ -5353,7 +5112,7 @@ export class InstanceAiService {
 			}),
 		});
 
-		void this.dropPendingConfirmation(suspended.requestId);
+		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
 	}
 
 	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
