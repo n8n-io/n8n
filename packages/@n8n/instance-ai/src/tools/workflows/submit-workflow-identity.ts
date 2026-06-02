@@ -198,7 +198,7 @@ export function wrapSubmitExecuteWithIdentity(
 			lastFailedDiagnostic?.errors !== undefined && lastFailedDiagnostic.errors.length > 0;
 		return {
 			success: false,
-			errors: hasRealErrors ? lastFailedDiagnostic!.errors : [terminalRemediation.guidance],
+			errors: hasRealErrors ? lastFailedDiagnostic.errors : [terminalRemediation.guidance],
 			errorDetails: lastFailedDiagnostic?.errorDetails,
 			nodeIndex: lastFailedDiagnostic?.nodeIndex,
 			remediation: terminalRemediation,
