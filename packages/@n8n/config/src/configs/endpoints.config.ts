@@ -79,6 +79,18 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update workflow statistics metrics. */
 	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
 	workflowStatisticsInterval: number = 300;
+
+	/** Whether to enable HTTP basic auth for the `/metrics` endpoint. */
+	@Env('N8N_METRICS_HTTP_AUTH_ACTIVE')
+	httpAuthActive: boolean = false;
+
+	/** Username for HTTP basic auth on the `/metrics` endpoint. */
+	@Env('N8N_METRICS_HTTP_AUTH_USER')
+	httpAuthUser: string = '';
+
+	/** Password for HTTP basic auth on the `/metrics` endpoint. */
+	@Env('N8N_METRICS_HTTP_AUTH_PASSWORD')
+	httpAuthPassword: string = '';
 }
 
 @Config

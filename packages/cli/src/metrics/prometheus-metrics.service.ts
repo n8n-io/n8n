@@ -239,7 +239,18 @@ export class PrometheusMetricsService {
 	}
 
 	private mountMetricsEndpoint(app: express.Application) {
-		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
+		app.get('/metrics', async (req: express.Request, res: express.Response) => {
+			const { httpAuthActive, httpAuthUser, httpAuthPassword } =
+				this.globalConfig.endpoints.metrics;
+			if (httpAuthActive) {
+				const authHeader = req.headers.authorization ?? '';
+				const encoded = authHeader.startsWith('Basic ') ? authHeader.slice(6) : '';
+				const [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
+				if (user !== httpAuthUser || pass !== httpAuthPassword) {
+					res.setHeader('WWW-Authenticate', 'Basic realm="n8n metrics"');
+					return res.status(401).end();
+				}
+			}
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();
