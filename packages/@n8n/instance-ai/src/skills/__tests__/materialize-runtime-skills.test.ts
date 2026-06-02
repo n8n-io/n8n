@@ -136,12 +136,13 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const registry = jsonParse<{
 			skills: Array<{ name: string; path: string; directory: string }>;
 		}>(bundle.files.get(registryPath) ?? '{}');
-		expect(registry.skills[0]).toMatchObject({
+		const dataTableSkill = registry.skills.find((skill) => skill.name === 'data-table-manager');
+		expect(dataTableSkill).toMatchObject({
 			name: 'data-table-manager',
 			path: skillPath,
 			directory: skillDir,
 		});
-		expect(registry.skills[0]).not.toHaveProperty('sourcePath');
+		expect(dataTableSkill).not.toHaveProperty('sourcePath');
 
 		const manifest = jsonParse<{ schemaVersion: number; skillsHash: string }>(
 			bundle.files.get(manifestPath) ?? '{}',
@@ -175,12 +176,13 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const registry = jsonParse<{
 			skills: Array<{ name: string; path: string; directory: string }>;
 		}>(writes.get(registryPath) ?? '{}');
-		expect(registry.skills[0]).toMatchObject({
+		const dataTableSkill = registry.skills.find((skill) => skill.name === 'data-table-manager');
+		expect(dataTableSkill).toMatchObject({
 			name: 'data-table-manager',
 			path: skillPath,
 			directory: skillDir,
 		});
-		expect(registry.skills[0]).not.toHaveProperty('sourcePath');
+		expect(dataTableSkill).not.toHaveProperty('sourcePath');
 		const manifestContent = writes.get(manifestPath);
 		if (!manifestContent) throw new Error('Expected runtime skill manifest to be written');
 		const manifest = jsonParse<{ schemaVersion: number; skillsHash: string }>(manifestContent);
@@ -264,7 +266,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
 		if (!bundle) throw new Error('Expected runtime skill bundle');
-		writes.set(bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? '');
+		for (const [path, content] of bundle.files) {
+			writes.set(path, content);
+		}
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
 			source,
@@ -277,7 +281,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const skillPath = `${skillDir}/SKILL.md`;
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(writes.get(skillPath)).toBeUndefined();
+		expect(writes.get(skillPath)).toContain('data-tables');
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'data-table-manager',
@@ -379,12 +383,17 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 			logger,
 		});
 
-		const [[message, meta]] = logger.warn.mock.calls as [
-			[string, { skill?: unknown; bytes?: unknown; maxBytes?: unknown }],
-		];
+		const warnMock = logger.warn as jest.Mock<
+			void,
+			[string, { skill?: unknown; bytes?: unknown; maxBytes?: unknown }?]
+		>;
+		const limitWarnCall = warnMock.mock.calls.find(
+			(call) => call[0] === 'Runtime skill file exceeds load_skill output limit',
+		);
+		expect(limitWarnCall).toBeDefined();
+		const [message, meta] = limitWarnCall!;
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
-		expect(meta.skill).toBe('large-skill');
-		expect(typeof meta.bytes).toBe('number');
-		expect(meta.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+		expect(meta?.skill).toBe('large-skill');
+		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
 	});
 });

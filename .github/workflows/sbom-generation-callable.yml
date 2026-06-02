@@ -36,7 +36,10 @@ jobs:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
+    # No continue-on-error: SBOM is now the source of truth for
+    # THIRD_PARTY_LICENSES.md (served by the /third-party-licenses endpoint
+    # and attached to the GitHub release). A generation failure must block
+    # the release rather than silently shipping a stale or missing manifest.
     steps:
       - name: Checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,13 +50,11 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: 'pnpm build:deploy'
-
-      - name: Install isolated SBOM tooling
-        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
-
-      - name: Generate CycloneDX SBOM from shipped artifact
-        working-directory: ./.github/scripts
-        run: pnpm generate-sbom
+        env:
+          # Opt in to SBOM + THIRD_PARTY_LICENSES.md generation. Regular CI Docker
+          # builds skip it; only this release SBOM job and explicit local opt-ins
+          # produce sbom-source.cdx.json + packages/cli/THIRD_PARTY_LICENSES.md.
+          N8N_GENERATE_LICENSES: 'true'
 
       - name: Attest SBOM for release
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -66,11 +67,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
         run: |
-          cp compiled/THIRD_PARTY_LICENSES.md THIRD_PARTY_LICENSES.md
           gh release upload "$RELEASE_TAG_REF" \
             sbom-source.cdx.json \
             security/vex.openvex.json \
-            THIRD_PARTY_LICENSES.md \
+            packages/cli/THIRD_PARTY_LICENSES.md \
             --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
@@ -80,7 +80,7 @@ jobs:
           echo "  - SBOM: $COMPONENT_COUNT components from shipped artifact (no devDeps, no optional deps)"
           echo "  - SBOM: $MISSING_LICENSES components missing license metadata"
           echo "  - VEX: $VEX_STATEMENTS CVE statements"
-          echo "  - THIRD_PARTY_LICENSES.md: human-readable license breakdown"
+          echo "  - THIRD_PARTY_LICENSES.md: rendered from SBOM (same artefact served by /third-party-licenses endpoint)"
 
       - name: Notify Slack on failure
         if: failure()

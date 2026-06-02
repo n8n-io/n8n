@@ -32,14 +32,6 @@ jest.mock('../nodes.tool', () => ({
 	})),
 }));
 
-jest.mock('../orchestration/browser-credential-setup.tool', () => ({
-	createBrowserCredentialSetupTool: jest.fn(() => ({ id: 'browser-credential-setup' })),
-}));
-
-jest.mock('../orchestration/build-workflow-agent.tool', () => ({
-	createBuildWorkflowAgentTool: jest.fn(() => ({ id: 'build-workflow-with-agent' })),
-}));
-
 jest.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: jest.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -153,20 +145,23 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows-filtered' },
+			workflows: { id: 'workflows' },
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
-			nodes: { id: 'nodes-orchestrator' },
+			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
+			'build-workflow': { id: 'build-workflow' },
 		});
 
 		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
+		const { createNodesTool } = jest.requireMock('../nodes.tool');
 		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
+		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
 
