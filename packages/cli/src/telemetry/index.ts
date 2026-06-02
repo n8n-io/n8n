@@ -307,7 +307,7 @@ export class Telemetry {
 			}
 
 			if (properties.used_dynamic_credentials) {
-				this.track('Workflow execution with dynamic credentials', properties);
+				this.track('Workflow execution with private credentials', properties);
 			}
 
 			if (
