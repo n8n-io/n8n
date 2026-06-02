@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
+import { computed, onMounted } from 'vue';
+import {
+	N8nCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nRadioButtons,
+	N8nScrollArea,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -59,6 +71,82 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
+const uiStore = useUIStore();
+const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
+	computed(() => props.projectId),
+);
+
+onMounted(() => {
+	void ensureProjectAgentsLoaded().catch(() => {});
+});
+
+const selectedSubAgentRefs = computed(() => props.localConfig?.subAgents?.agents ?? []);
+const selectedSubAgentIds = computed(() =>
+	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
+);
+const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
+const availableSubAgents = computed(() =>
+	(projectAgents.value ?? []).filter(
+		(agent) =>
+			agent.id !== props.agentId &&
+			Boolean(agent.activeVersionId) &&
+			!selectedSubAgentIdSet.value.has(agent.id),
+	),
+);
+const selectedSubAgents = computed(() =>
+	selectedSubAgentIds.value.map((agentId) => {
+		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
+		return {
+			id: agentId,
+			name: agent?.name ?? agentId,
+			description: agent?.description ?? null,
+		};
+	}),
+);
+
+async function onOpenAddSubAgentsModal() {
+	if (childrenDisabled.value) return;
+
+	try {
+		await ensureProjectAgentsLoaded();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_SUB_AGENTS_MODAL_KEY,
+		data: {
+			agents: availableSubAgents.value.map(({ id, name, description }) => ({
+				id,
+				name,
+				description,
+			})),
+			onConfirm: (agentIds: string[]) => {
+				const newAgentRefs = agentIds
+					.filter((agentId) => !selectedSubAgentIdSet.value.has(agentId))
+					.map((agentId) => ({ agentId }));
+
+				if (newAgentRefs.length === 0) return;
+
+				emit('update:config', {
+					subAgents: {
+						agents: [...selectedSubAgentRefs.value, ...newAgentRefs],
+					},
+				});
+			},
+		},
+	});
+}
+
+function onRemoveSubAgent(agentId: string) {
+	emit('update:config', {
+		subAgents: {
+			agents: selectedSubAgentRefs.value.filter((subAgent) => subAgent.agentId !== agentId),
+		},
+	});
+}
 </script>
 
 <template>
@@ -135,13 +223,94 @@ const i18n = useI18n();
 					</N8nCard>
 
 					<N8nCard variant="outlined" :class="$style.card">
-						<AgentMemoryPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							embedded
-							data-testid="agent-memory-panel"
-							@update:config="emit('update:config', $event)"
-						/>
+						<div :class="[$style.subAgentsPanel, childrenDisabled && $style.disabled]">
+							<div :class="$style.subAgentsHeader">
+								<div :class="$style.subAgentsText">
+									<N8nText tag="h3" :bold="true">
+										{{ i18n.baseText('agents.builder.subAgents.title') }}
+									</N8nText>
+									<N8nText size="small" color="text-light">
+										{{ i18n.baseText('agents.builder.subAgents.description') }}
+									</N8nText>
+								</div>
+								<div :class="$style.subAgentsHeaderActions">
+									<N8nTooltip
+										:content="i18n.baseText('agents.builder.subAgents.add')"
+										placement="top"
+									>
+										<N8nIconButton
+											icon="plus"
+											variant="ghost"
+											size="small"
+											icon-size="medium"
+											:disabled="childrenDisabled"
+											:aria-label="i18n.baseText('agents.builder.subAgents.add')"
+											data-testid="agent-sub-agents-open-add-modal"
+											@click="onOpenAddSubAgentsModal"
+										/>
+									</N8nTooltip>
+								</div>
+							</div>
+
+							<div v-if="selectedSubAgents.length > 0" :class="$style.subAgentsContent">
+								<N8nScrollArea
+									max-height="calc((var(--spacing--2xl) + var(--spacing--sm)) * 5)"
+									type="auto"
+									:class="$style.rows"
+								>
+									<div :class="$style.rowList">
+										<N8nCard
+											v-for="subAgent in selectedSubAgents"
+											:key="subAgent.id"
+											:class="$style.row"
+											data-testid="agent-sub-agent-row"
+										>
+											<template #prepend>
+												<N8nIcon icon="bot" size="medium" :class="$style.itemIcon" />
+											</template>
+
+											<N8nText size="xsmall" color="text-dark" :bold="true" :class="$style.name">
+												{{ subAgent.name }}
+											</N8nText>
+											<N8nText
+												v-if="subAgent.description"
+												size="xsmall"
+												color="text-light"
+												:class="$style.metadata"
+											>
+												{{ subAgent.description }}
+											</N8nText>
+
+											<template #append>
+												<N8nTooltip
+													:content="
+														i18n.baseText('agents.builder.subAgents.remove', {
+															interpolate: { name: subAgent.name },
+														})
+													"
+													placement="top"
+												>
+													<N8nIconButton
+														icon="trash-2"
+														variant="ghost"
+														size="mini"
+														icon-size="small"
+														:disabled="childrenDisabled"
+														:aria-label="
+															i18n.baseText('agents.builder.subAgents.remove', {
+																interpolate: { name: subAgent.name },
+															})
+														"
+														data-testid="agent-sub-agent-remove"
+														@click="onRemoveSubAgent(subAgent.id)"
+													/>
+												</N8nTooltip>
+											</template>
+										</N8nCard>
+									</div>
+								</N8nScrollArea>
+							</div>
+						</div>
 					</N8nCard>
 
 					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
@@ -154,6 +323,16 @@ const i18n = useI18n();
 							data-testid="agent-files-card"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentMemoryPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							embedded
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
 
@@ -264,5 +443,75 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+}
+
+.subAgentsPanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.subAgentsPanel.disabled > :not(.subAgentsHeader) {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.subAgentsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.subAgentsText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.subAgentsHeaderActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+}
+
+.subAgentsContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.rowList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-right: var(--spacing--xs);
+}
+
+.rows {
+	scrollbar-gutter: stable;
+}
+
+.row {
+	--card--append--width: auto;
+	flex-shrink: 0;
+}
+
+.itemIcon {
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+}
+
+.name,
+.metadata {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
 }
 </style>
