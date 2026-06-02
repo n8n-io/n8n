@@ -20,7 +20,6 @@
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
-import { dirname as posixDirname } from 'node:path/posix';
 
 import { loadDaytona } from './lazy-daytona';
 import {
@@ -29,6 +28,7 @@ import {
 } from '../knowledge-base/materialize-knowledge-base';
 import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
+import { disposeSnapshotImageContext, stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 
@@ -40,23 +40,10 @@ export interface CreateSnapshotOptions {
 }
 
 const DAYTONA_WORKSPACE_ROOT = '/home/daytona/workspace';
+const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-workspace-bake';
+const SNAPSHOT_WORKSPACE_LAYOUT_DIRS = ['src', 'chunks', 'node-types'] as const;
 const EMPTY_RUNTIME_SKILLS_HASH = '000000000000';
 const EMPTY_KNOWLEDGE_BASE_HASH = '000000000000';
-
-/** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
-function b64(s: string): string {
-	return Buffer.from(s, 'utf-8').toString('base64');
-}
-
-function shellQuote(value: string): string {
-	return `'${value.replaceAll("'", "'\"'\"'")}'`;
-}
-
-function workspaceFilesToImageRunCommands(files: Map<string, string>): string[] {
-	return Array.from(files, ([filePath, content]) => {
-		return `mkdir -p ${shellQuote(posixDirname(filePath))} && echo '${b64(content)}' | base64 -d > ${shellQuote(filePath)}`;
-	});
-}
 
 function isAlreadyExistsError(error: unknown): error is TDaytonaError {
 	const { DaytonaError } = loadDaytona();
@@ -77,6 +64,8 @@ export class SnapshotManager {
 
 	private knowledgeBaseBundleCache: KnowledgeBaseWorkspaceBundle | null = null;
 
+	private stagingDir: string | null = null;
+
 	constructor(
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
@@ -95,27 +84,32 @@ export class SnapshotManager {
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
 		const runtimeSkillBundle = await this.runtimeSkillBundle();
 		const knowledgeBaseBundle = this.knowledgeBaseBundle();
-		const bakedWorkspaceCommands = [
-			...(runtimeSkillBundle ? workspaceFilesToImageRunCommands(runtimeSkillBundle.files) : []),
-			...workspaceFilesToImageRunCommands(knowledgeBaseBundle.files),
-		];
+		const cacheKey = await this.snapshotSuffix();
+
+		const workspaceFiles = new Map<string, string>([
+			...(runtimeSkillBundle?.files ?? []),
+			...(knowledgeBaseBundle?.files ?? []),
+		]);
+		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
+		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
+		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
+
+		const { stagingDir } = await stageWorkspaceFilesForImage(
+			workspaceFiles,
+			DAYTONA_WORKSPACE_ROOT,
+			cacheKey,
+		);
+		this.stagingDir = stagingDir;
 
 		const { Image } = loadDaytona();
-		let image = Image.base(base)
+		const layoutDirs = SNAPSHOT_WORKSPACE_LAYOUT_DIRS.map(
+			(dir) => `${DAYTONA_WORKSPACE_ROOT}/${dir}`,
+		).join(' ');
+		const image = Image.base(base)
+			.addLocalDir(stagingDir, DAYTONA_WORKSPACE_BAKE_ROOT)
 			.runCommands(
-				`mkdir -p ${DAYTONA_WORKSPACE_ROOT}/src ${DAYTONA_WORKSPACE_ROOT}/chunks ${DAYTONA_WORKSPACE_ROOT}/node-types ${DAYTONA_WORKSPACE_ROOT}/knowledge-base/best-practices`,
-			)
-			.runCommands(
-				`echo '${b64(PACKAGE_JSON)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/package.json`,
-				`echo '${b64(TSCONFIG_JSON)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`,
-				`echo '${b64(BUILD_MJS)}' | base64 -d > ${DAYTONA_WORKSPACE_ROOT}/build.mjs`,
+				`cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${DAYTONA_WORKSPACE_ROOT}/ && mkdir -p ${layoutDirs} && cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`,
 			);
-
-		if (bakedWorkspaceCommands.length > 0) {
-			image = image.runCommands(...bakedWorkspaceCommands);
-		}
-
-		image = image.runCommands(`cd ${DAYTONA_WORKSPACE_ROOT} && npm install --ignore-scripts`);
 
 		this.logger.info('Builder image descriptor prepared', {
 			base,
@@ -124,6 +118,7 @@ export class SnapshotManager {
 			runtimeSkillFiles: runtimeSkillBundle?.files.size ?? 0,
 			knowledgeBaseHash: knowledgeBaseBundle.contentHash,
 			knowledgeBaseFiles: knowledgeBaseBundle.files.size,
+			stagingDir,
 		});
 
 		return image;
@@ -141,6 +136,7 @@ export class SnapshotManager {
 	 */
 	async createSnapshot(daytona: Daytona, options?: CreateSnapshotOptions): Promise<string> {
 		const name = await this.snapshotName();
+
 		try {
 			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
 			this.logger.info('Created versioned Daytona snapshot', { name });
@@ -232,10 +228,15 @@ export class SnapshotManager {
 
 	/** Invalidate cached image (e.g., when base image changes). */
 	invalidate(): void {
+		const stagingDir = this.stagingDir;
 		this.cachedImage = null;
 		this.snapshotPromise = null;
 		this.snapshotSuffixPromise = null;
 		this.runtimeSkillBundlePromise = null;
 		this.knowledgeBaseBundleCache = null;
+		this.stagingDir = null;
+		if (stagingDir) {
+			void disposeSnapshotImageContext(stagingDir);
+		}
 	}
 }

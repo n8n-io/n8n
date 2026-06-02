@@ -202,6 +202,16 @@ const ExecutionContextSchemaV1 = z.object({
 	 * regardless of any subsequent changes to the workflow setting.
 	 */
 	redaction: RedactionSettingSchema.optional(),
+
+	/**
+	 * The n8n user the execution ran as. Set during dynamic credential
+	 * resolution to the n8n user a private credential resolved to (covers manual
+	 * and chat-hub runs alike). Used by the redaction layer to grant that user
+	 * access to their own data. Absent when the resolved identity is not an n8n
+	 * user (external Slack/OAuth resolvers) or when no dynamic credential
+	 * resolved, so those executions stay redacted for everyone.
+	 */
+	executedByUserId: z.string().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
