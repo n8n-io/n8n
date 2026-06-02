@@ -43,7 +43,11 @@ const inclusionOptions: Array<{ value: McpToolInclusionMode; label: string }> = 
 ];
 
 const toolOptions = computed(() =>
-	props.item.availableTools.map((tool) => ({ value: tool.id, label: tool.name })),
+	props.item.availableTools.map((tool) => ({
+		value: tool.id,
+		label: tool.name,
+		description: tool.description,
+	})),
 );
 
 const showIncludeList = computed(() => inclusionMode.value === 'selected');
@@ -97,7 +101,14 @@ function handleSave() {
 						:key="opt.value"
 						:value="opt.value"
 						:label="opt.label"
-					/>
+					>
+						<div :class="$style.option">
+							<span :class="$style.optionLabel">{{ opt.label }}</span>
+							<span v-if="opt.description" :class="$style.optionDescription">{{
+								opt.description
+							}}</span>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 
@@ -119,7 +130,14 @@ function handleSave() {
 						:key="opt.value"
 						:value="opt.value"
 						:label="opt.label"
-					/>
+					>
+						<div :class="$style.option">
+							<span :class="$style.optionLabel">{{ opt.label }}</span>
+							<span v-if="opt.description" :class="$style.optionDescription">{{
+								opt.description
+							}}</span>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -178,6 +196,25 @@ function handleSave() {
 
 .fieldLabel {
 	color: var(--color--text);
+}
+
+.option {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--6xs);
+	padding: var(--spacing--5xs) 0;
+	line-height: 1.3;
+}
+
+.optionLabel {
+	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
+}
+
+.optionDescription {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	white-space: normal;
 }
 
 .footer {

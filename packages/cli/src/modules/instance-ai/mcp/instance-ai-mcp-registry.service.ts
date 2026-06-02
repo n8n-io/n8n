@@ -220,6 +220,11 @@ export class InstanceAiMcpRegistryService {
 	 * Resolves the same `McpServerConfig` we'd hand to the agent at runtime
 	 * (so auth + transport + OAuth refresh match), then asks the manager for
 	 * an ephemeral client to list tools.
+	 *
+	 * The agents SDK's `McpClient` namespaces every tool with the server name
+	 * (e.g. `mcp_notion_notion-search`) to avoid collisions across multiple
+	 * servers. The runtime needs that prefix, but the user-facing picker
+	 * doesn't. Strip it before returning so the UI sees clean tool names.
 	 */
 	async listToolsForConnection(user: User, connectionId: string): Promise<McpToolDescriptor[]> {
 		const connection = await this.connectionRepository.findOneBy({
@@ -234,7 +239,12 @@ export class InstanceAiMcpRegistryService {
 		const config = await this.buildServerConfigForConnection(user, connection, server, 1);
 		if (!config) return [];
 
-		return await this.mcpClientManager.listToolsForConfig(config);
+		const tools = await this.mcpClientManager.listToolsForConfig(config);
+		const prefix = `${config.name}_`;
+		return tools.map((tool) => ({
+			name: tool.name.startsWith(prefix) ? tool.name.slice(prefix.length) : tool.name,
+			description: tool.description,
+		}));
 	}
 
 	private async buildServerConfigForConnection(

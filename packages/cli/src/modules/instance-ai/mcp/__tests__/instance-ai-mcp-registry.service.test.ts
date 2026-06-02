@@ -486,10 +486,14 @@ describe('InstanceAiMcpRegistryService', () => {
 			// `McpClientManager` is exported as a lazy wrapper, so spying on its
 			// prototype doesn't reach the real class. Pre-populate the service's
 			// private lazy slot with a mock so the getter returns it as-is.
+			//
+			// The agents SDK returns tools with names prefixed by the server name
+			// (e.g. `mcp_linear_list-issues`); the service strips that prefix
+			// before returning so the FE picker sees clean labels.
 			const mockManager = mock<McpClientManager>();
 			mockManager.listToolsForConfig.mockResolvedValue([
-				{ name: 'list-issues', description: 'List Linear issues' },
-				{ name: 'create-issue', description: 'Create a Linear issue' },
+				{ name: 'mcp_linear_list-issues', description: 'List Linear issues' },
+				{ name: 'mcp_linear_create-issue', description: 'Create a Linear issue' },
 			]);
 			(service as unknown as { _mcpClientManager: McpClientManager })._mcpClientManager =
 				mockManager;
