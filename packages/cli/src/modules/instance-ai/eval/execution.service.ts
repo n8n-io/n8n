@@ -747,12 +747,14 @@ export class EvalExecutionService {
 		if (executionError) {
 			errors.push(`Workflow error: ${executionError.message}`);
 		}
+		const configIssueErrors = collectConfigIssueErrors(nodeResults);
+		const allErrors = [...errors, ...configIssueErrors];
 
 		return {
 			executionId,
-			success: executionError === undefined && errors.length === 0,
+			success: allErrors.length === 0,
 			nodeResults,
-			errors,
+			errors: allErrors,
 			hints,
 			mockedCredentials: credentialsHelper.mockedCredentials,
 			rewrittenCredentials: credentialsHelper.rewrittenCredentials,
@@ -791,7 +793,20 @@ function synthesizePlaceholderValue(hint: string): string {
 	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
 	if (h.includes('chat') && h.includes('id')) return '100000000';
 	if (h.includes('telegram')) return '100000000';
+	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
+	if (selectedResourceValue) return selectedResourceValue;
 	return '__evalMockValue';
+}
+
+function synthesizeSelectedResourcePlaceholderValue(hint: string): string | undefined {
+	if (!hint.includes('select')) return undefined;
+	if (hint.includes('spreadsheet') || hint.includes('document')) return 'eval-spreadsheet-id';
+	if (hint.includes('sheet')) return '0';
+	if (hint.includes('calendar')) return 'eval-calendar-id';
+	if (hint.includes('folder')) return 'eval-folder-id';
+	if (hint.includes('file')) return 'eval-file-id';
+	if (hint.includes('drive')) return 'eval-drive-id';
+	return undefined;
 }
 
 function scrubPlaceholderValues(value: unknown): unknown {
@@ -837,4 +852,18 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (current === null || current === undefined) return '__evalMockValue';
 
 	return current;
+}
+
+function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {
+	const errors: string[] = [];
+	for (const [nodeName, result] of Object.entries(nodeResults)) {
+		const issues = result.configIssues;
+		if (!issues || Object.keys(issues).length === 0) continue;
+		const issueMessages = Object.values(issues).flat();
+		if (issueMessages.length === 0) continue;
+		errors.push(
+			`Node "${nodeName}" has missing or invalid configuration: ${issueMessages.join('; ')}`,
+		);
+	}
+	return errors;
 }

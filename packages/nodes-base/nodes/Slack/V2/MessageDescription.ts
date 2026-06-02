@@ -99,7 +99,7 @@ export const channelRLC: INodeProperties = {
 					type: 'regex',
 					// chat.postMessage accepts public channel names as well as IDs.
 					properties: {
-						regex: '#?[A-Za-z0-9_\\-]{2,}',
+						regex: '^(?:[CGD][A-Z0-9]{2,}|#?[a-z0-9_\\-]{2,})$',
 						errorMessage: 'Not a valid Slack Channel ID or name',
 					},
 				},
