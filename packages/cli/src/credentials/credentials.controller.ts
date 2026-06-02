@@ -179,6 +179,16 @@ export class CredentialsController {
 			jweEnabled: payload.data.jweEnabled === true,
 		});
 
+		if (newCredential.isResolvable) {
+			this.eventService.emit('private-credential-created', {
+				user: req.user,
+				credentialType: newCredential.type,
+				credentialId: newCredential.id,
+				projectId: project?.id,
+				projectType: project?.type,
+			});
+		}
+
 		return newCredential;
 	}
 
@@ -280,6 +290,22 @@ export class CredentialsController {
 				true,
 		});
 
+		const wasResolvable = Boolean(credential.isResolvable);
+		const willBeResolvable = Boolean(newCredentialData.isResolvable);
+		if (!wasResolvable && willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-private', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (wasResolvable && !willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
+
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
 
 		return { ...rest, scopes };
@@ -313,6 +339,14 @@ export class CredentialsController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
+
+		if (credential.isResolvable) {
+			this.eventService.emit('private-credential-deleted', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
 
 		return true;
 	}

@@ -1240,6 +1240,107 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('isCredentialUsableByNode', () => {
+		const buildHelper = (credentialTypes: CredentialTypes) =>
+			new CredentialsHelper(
+				credentialTypes,
+				mock<CredentialsOverwrites>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				mock<SecretsProviderConnectionRepository>(),
+				mock<LicenseState>(),
+				mock<ExternalSecretsConfig>(),
+				mock<AiGatewayService>(),
+			);
+
+		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
+		// the FQ list (matching `nodeType`) comes from `credentialTypes.getSupportedNodes`.
+		// Mocks split the two so the FQ-vs-short bug stays caught.
+		const mockType = (overrides: Partial<ICredentialType>): ICredentialType =>
+			({ name: 'restrictedApi', ...overrides }) as ICredentialType;
+
+		const buildCredentialTypes = (typeDef: ICredentialType, supportedNodes: string[] = []) => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockReturnValue(typeDef);
+			credentialTypes.getSupportedNodes.mockReturnValue(supportedNodes);
+			return credentialTypes;
+		};
+
+		it('returns true when the credential type does not opt into restriction', () => {
+			// no restrictToSupportedNodes — FQ list shouldn't even be consulted
+			const credentialTypes = buildCredentialTypes(
+				mockType({ supportedNodes: ['restrictedConsumer'] }),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(true);
+		});
+
+		it('returns true when restricted and the node is in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(true);
+		});
+
+		it('returns false when restricted and the node is NOT in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(false);
+		});
+
+		it('returns false when restricted and the FQ supportedNodes list is empty (fail-safe)', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({ restrictToSupportedNodes: true }), // no supportedNodes
+				[],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(false);
+		});
+
+		it('returns true when the credential type is unknown (caller surfaces the real error)', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockImplementation(() => {
+				throw new Error('Unknown credential type');
+			});
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode('missing', 'n8n-nodes-base.anything'),
+			).toBe(true);
+		});
+	});
+
 	describe('credential isolation per workflow (GHC-7550)', () => {
 		const credentialType = 'communityApi';
 
