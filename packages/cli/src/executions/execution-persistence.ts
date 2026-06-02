@@ -12,6 +12,7 @@ import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, StorageConfig } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DbStore } from './execution-data/db-store';
 import { FsStore } from './execution-data/fs-store';
@@ -246,16 +247,16 @@ export class ExecutionPersistence {
 		executionId: string,
 		conditions?: UpdateExecutionConditions,
 	): FindOptionsWhere<ExecutionEntity> {
+		if (conditions?.requireStatus && conditions?.requireNotCanceled) {
+			throw new UnexpectedError('`requireStatus` and `requireNotCanceled` cannot be combined');
+		}
+
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
 		if (conditions?.requireNotFinished) where.finished = false;
-		// TODO(CAT-3215): `requireStatus` and `requireNotCanceled` both write to `where.status`,
-		// so if both are supplied the `Not('canceled')` clause silently overwrites the specific
-		// status check. In practice callers never combine them, so once we drop strict parity with
-		// ExecutionRepository we should assert their mutual exclusivity (or combine them somehow).
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
 	}
