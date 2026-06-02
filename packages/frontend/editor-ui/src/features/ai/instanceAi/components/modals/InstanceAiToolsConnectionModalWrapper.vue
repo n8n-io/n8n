@@ -5,6 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
@@ -31,6 +32,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const toast = useToast();
+const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 
 function readConnectionIdPayload(data: unknown): string | undefined {
 	if (data === null || typeof data !== 'object') return undefined;
@@ -211,16 +213,12 @@ function openCredentialEditForAuthType(authType: string): void {
 }
 
 /**
- * Snapshot the existing credentials of the server's auth type, then open the
- * credential-edit modal in "new" mode. Shared by:
- *   - The credential adapter (user clicked "+ New credential" from the picker
- *     inside the detail view).
- *   - `handleConnect` (user clicked the Connect button on a catalog row and
- *     skipped the detail view entirely).
- * After the credential modal closes, the auto-connect watcher diffs against
- * the snapshot and connects (or swaps).
+ * Open the credential-edit modal in "new" mode for this server's auth type.
+ * Slow path: the user goes through the credential modal manually. After the
+ * modal closes, the auto-connect watcher diffs the credentials store against
+ * the snapshot we capture here and connects (or swaps).
  */
-async function startCredentialCreation(server: McpRegistryServerResponse): Promise<void> {
+async function openCredentialEditModal(server: McpRegistryServerResponse): Promise<void> {
 	// Make sure the snapshot reflects what's actually in the store. If the
 	// initial credentials fetch hasn't resolved yet, an empty snapshot can
 	// later look like the credential is "new" even though it pre-existed.
@@ -234,6 +232,28 @@ async function startCredentialCreation(server: McpRegistryServerResponse): Promi
 		),
 	};
 	openCredentialEditForAuthType(server.credentialType);
+}
+
+/**
+ * Connect flow for a chosen MCP server. If the server's credential type
+ * qualifies for Quick Connect (OAuth with all config pre-filled, like the
+ * registry-generated `notionMcpOAuth2Api`), skip the credential-edit modal
+ * entirely — create the credential server-side and run OAuth in one step,
+ * then connect. Otherwise fall back to the modal-based path so the user can
+ * fill in whatever the credential type needs.
+ *
+ * Shared by both entry points: the catalog-row Connect button (handleConnect)
+ * and the picker's "+ New credential" action (credentialAdapter).
+ */
+async function createCredentialAndConnect(server: McpRegistryServerResponse): Promise<void> {
+	if (canOAuthCredentialQuickConnect(server.credentialType)) {
+		const credential = await createAndAuthorize(server.credentialType);
+		if (!credential) return;
+		const ok = await swapOrConnect(server.slug, credential.id);
+		if (ok) uiStore.closeModal(props.modalName);
+		return;
+	}
+	await openCredentialEditModal(server);
 }
 
 const credentialAdapter: ToolConnectionCredentialAdapter = {
@@ -250,7 +270,7 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 				openCredentialEditForAuthType(authType);
 				return;
 			}
-			await startCredentialCreation(server);
+			await createCredentialAndConnect(server);
 		})();
 	},
 };
@@ -335,7 +355,7 @@ async function handleConnect(item: ToolConnectionItem) {
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
-	await startCredentialCreation(server);
+	await createCredentialAndConnect(server);
 }
 </script>
 
