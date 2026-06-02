@@ -17,11 +17,11 @@ function makeGroupGraphNode(id: string, x: number, y: number): GraphNode {
 	} as unknown as GraphNode;
 }
 
-function makeRegularGraphNode(id: string): GraphNode {
+function makeRegularGraphNode(id: string, x = 0, y = 0): GraphNode {
 	return {
 		id,
 		type: 'canvas-node',
-		position: { x: 0, y: 0 },
+		position: { x, y },
 	} as unknown as GraphNode;
 }
 
@@ -52,27 +52,24 @@ describe('useCanvasNodeGroupDrag', () => {
 			['a', makeStoredNode('a', 100, 200)],
 			['b', makeStoredNode('b', 300, 200)],
 		]);
-		const onMoveMembers = vi.fn();
 		const drag = useCanvasNodeGroupDrag({
 			getNodeById: (id) => store.get(id),
-			getGroupMembers: (groupId) => (groupId === 'group:g1' ? ['a', 'b'] : []),
-			onMoveMembers,
+			getGroupById: (id) => (id === 'g1' ? { nodeIds: ['a', 'b'] } : undefined),
 		});
-		return { drag, onMoveMembers };
+		return { drag };
 	}
 
 	it('ignores drag events on non-group nodes', () => {
-		const { drag, onMoveMembers } = setup();
+		const { drag } = setup();
 		const regular = makeRegularGraphNode('a');
 		drag.onNodeDragStart(makeEvent(regular));
 		drag.onNodeDrag(makeEvent(regular));
-		drag.onNodeDragStop(makeEvent(regular));
+		drag.processNodeDragStop(makeEvent(regular));
 		expect(updateNodeMock).not.toHaveBeenCalled();
-		expect(onMoveMembers).not.toHaveBeenCalled();
 	});
 
 	it('snapshots member store positions on drag start', () => {
-		const { drag, onMoveMembers } = setup();
+		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
 		// Move group bar by (50, -20)
@@ -81,8 +78,8 @@ describe('useCanvasNodeGroupDrag', () => {
 		// Each member updated by the same delta from their STORED position.
 		expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 150, y: 180 } });
 		expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 350, y: 180 } });
-		drag.onNodeDragStop(makeEvent(groupNode));
-		expect(onMoveMembers).toHaveBeenCalledWith([
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves).toEqual([
 			{ id: 'a', position: { x: 150, y: 180 } },
 			{ id: 'b', position: { x: 350, y: 180 } },
 		]);
@@ -92,63 +89,62 @@ describe('useCanvasNodeGroupDrag', () => {
 		// Members may be hidden (collapsed); positions must still come from
 		// the workflow document store. setup() injects only the store; no
 		// findNode is mocked. The drag still works.
-		const { drag, onMoveMembers } = setup();
+		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
 		groupNode.position = { x: 10, y: 10 };
-		drag.onNodeDragStop(makeEvent(groupNode));
-		expect(onMoveMembers).toHaveBeenCalledWith([
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves).toEqual([
 			{ id: 'a', position: { x: 110, y: 210 } },
 			{ id: 'b', position: { x: 310, y: 210 } },
 		]);
 	});
 
-	it('reports handled + member ids from onNodeDragStop so Canvas.vue can dedupe and skip default handling', () => {
+	it('processNodeDragStop strips group title bars from the move list', () => {
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
-		const result = drag.onNodeDragStop(makeEvent(groupNode));
-		expect(result.handled).toBe(true);
-		expect([...result.memberIdsMoved].sort()).toEqual(['a', 'b']);
+		// Title bar nodes must never appear in the returned moves —
+		// they have no INodeUi-backed position to persist.
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves.find((m) => m.id === 'group:g1')).toBeUndefined();
 	});
 
-	it('reports handled: false when the drag did not involve a group title bar', () => {
+	it('processNodeDragStop returns ordinary-node moves when no group is involved', () => {
 		const { drag } = setup();
-		const regular = makeRegularGraphNode('a');
-		const result = drag.onNodeDragStop(makeEvent(regular));
-		expect(result.handled).toBe(false);
-		expect(result.memberIdsMoved.size).toBe(0);
+		const regular = makeRegularGraphNode('a', 42, 84);
+		const moves = drag.processNodeDragStop(makeEvent(regular));
+		expect(moves).toEqual([{ id: 'a', position: { x: 42, y: 84 } }]);
 	});
 
 	it('clears its snapshot between drags so a fresh drag starts clean', () => {
-		const { drag, onMoveMembers } = setup();
+		const { drag } = setup();
 		const g1 = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(g1));
 		g1.position = { x: 100, y: 0 };
-		drag.onNodeDragStop(makeEvent(g1));
-		onMoveMembers.mockClear();
+		drag.processNodeDragStop(makeEvent(g1));
 		// Second drag from a fresh snapshot
 		const g2 = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(g2));
 		g2.position = { x: 5, y: 0 };
-		drag.onNodeDragStop(makeEvent(g2));
-		expect(onMoveMembers).toHaveBeenCalledWith([
+		const moves = drag.processNodeDragStop(makeEvent(g2));
+		expect(moves).toEqual([
 			{ id: 'a', position: { x: 105, y: 200 } },
 			{ id: 'b', position: { x: 305, y: 200 } },
 		]);
 	});
 
-	it('emits no move-members when drag has zero delta', () => {
-		// VueFlow still fires onNodeDragStop for click-without-drag — the
-		// emit set still contains the (unchanged) member positions today.
-		// We always emit for consistency with single-node behaviour; this
+	it('emits moves when drag has zero delta', () => {
+		// VueFlow still fires drag-stop for click-without-drag — the emit
+		// set still contains the (unchanged) member positions today. We
+		// always emit for consistency with single-node behaviour; this
 		// test pins the current contract so a future change is intentional.
-		const { drag, onMoveMembers } = setup();
+		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
-		drag.onNodeDragStop(makeEvent(groupNode));
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
 		// Zero delta; positions are unchanged.
-		expect(onMoveMembers).toHaveBeenCalledWith([
+		expect(moves).toEqual([
 			{ id: 'a', position: { x: 100, y: 200 } },
 			{ id: 'b', position: { x: 300, y: 200 } },
 		]);
@@ -156,7 +152,7 @@ describe('useCanvasNodeGroupDrag', () => {
 
 	describe('multi-select drag (AC #11)', () => {
 		it('propagates Δ to members when the title bar is part of a multi-select drag', () => {
-			const { drag, onMoveMembers } = setup();
+			const { drag } = setup();
 			const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 			const otherNode = makeRegularGraphNode('c');
 			drag.onSelectionDragStart(makeSelectionEvent(groupNode, otherNode));
@@ -168,23 +164,41 @@ describe('useCanvasNodeGroupDrag', () => {
 			// to their stored positions.
 			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 140, y: 260 } });
 			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 340, y: 260 } });
-			const result = drag.onSelectionDragStop(makeSelectionEvent(groupNode, otherNode));
-			expect(onMoveMembers).toHaveBeenCalledWith([
+			const moves = drag.processSelectionDragStop(makeSelectionEvent(groupNode, otherNode));
+			// Member moves come from the group's delta; the ordinary node
+			// 'c' comes from event.nodes; the title bar is filtered out.
+			expect(moves).toEqual([
 				{ id: 'a', position: { x: 140, y: 260 } },
 				{ id: 'b', position: { x: 340, y: 260 } },
+				{ id: 'c', position: { x: 40, y: 60 } },
 			]);
-			// memberIdsMoved lets the caller dedupe against per-node emits.
-			expect([...result.memberIdsMoved].sort()).toEqual(['a', 'b']);
 		});
 
-		it('reports empty memberIdsMoved when no group title bar is in the selection', () => {
-			const { drag, onMoveMembers } = setup();
-			const r1 = makeRegularGraphNode('c');
-			const r2 = makeRegularGraphNode('d');
+		it('dedupes members that also appear directly in event.nodes', () => {
+			// If a member is in event.nodes (e.g. selected) and was already
+			// moved via the group's delta, it should appear once — using the
+			// group-derived position, not the event.nodes position.
+			const { drag } = setup();
+			const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+			const memberDirect = makeRegularGraphNode('a', 999, 999);
+			drag.onSelectionDragStart(makeSelectionEvent(groupNode, memberDirect));
+			groupNode.position = { x: 10, y: 10 };
+			const moves = drag.processSelectionDragStop(makeSelectionEvent(groupNode, memberDirect));
+			const aMoves = moves.filter((m) => m.id === 'a');
+			expect(aMoves).toHaveLength(1);
+			expect(aMoves[0].position).toEqual({ x: 110, y: 210 });
+		});
+
+		it('returns only ordinary-node moves when no group title bar is in the selection', () => {
+			const { drag } = setup();
+			const r1 = makeRegularGraphNode('c', 1, 2);
+			const r2 = makeRegularGraphNode('d', 3, 4);
 			drag.onSelectionDragStart(makeSelectionEvent(r1, r2));
-			const result = drag.onSelectionDragStop(makeSelectionEvent(r1, r2));
-			expect(result.memberIdsMoved.size).toBe(0);
-			expect(onMoveMembers).not.toHaveBeenCalled();
+			const moves = drag.processSelectionDragStop(makeSelectionEvent(r1, r2));
+			expect(moves).toEqual([
+				{ id: 'c', position: { x: 1, y: 2 } },
+				{ id: 'd', position: { x: 3, y: 4 } },
+			]);
 		});
 	});
 });

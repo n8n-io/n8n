@@ -1,18 +1,13 @@
 import type { NodeDragEvent, GraphNode } from '@vue-flow/core';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
-import { isCanvasNodeGroup } from '../canvas.types';
-
-export interface GroupMoveEvent {
-	id: string;
-	position: { x: number; y: number };
-}
+import type { CanvasNodeMoveEvent } from '../canvas.types';
+import { CANVAS_NODE_GROUP_ID_PREFIX, isCanvasNodeGroup } from '../canvas.types';
 
 export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
 	getNodeById: (id: string) => INodeUi | undefined;
-	getGroupMembers: (groupVueFlowNodeId: string) => string[];
-	onMoveMembers: (moves: GroupMoveEvent[]) => void;
+	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
 }
 
 interface GroupDragSnapshot {
@@ -22,9 +17,11 @@ interface GroupDragSnapshot {
 
 /**
  * Drag behaviour for group title bars: dragging one (alone or in a selection)
- * moves every member by the same delta. On drop, new member positions are
- * emitted via `onMoveMembers`, and `memberIdsMoved` is returned so the caller
- * can skip per-node emits for those same members.
+ * moves every member by the same delta. `processNodeDragStop` and
+ * `processSelectionDragStop` return the consolidated move list Canvas.vue
+ * should persist — member moves merged with ordinary-node moves, title-bar
+ * nodes (which have no INodeUi) filtered out, and members deduped against
+ * any ordinary-node entries that point at the same id.
  */
 export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	const { updateNode } = useVueFlow(deps.canvasId);
@@ -32,9 +29,16 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	// Pre-drag positions, one snapshot per group being dragged. Used at drop time
 	// to compute final member positions from a single source of truth.
 	let snapshots = new Map<string, GroupDragSnapshot>();
+	const finalGroupPositions = new Map<string, { x: number; y: number }>();
+
+	function getGroupMembers(groupVfId: string): string[] {
+		if (!groupVfId.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)) return [];
+		const groupId = groupVfId.slice(CANVAS_NODE_GROUP_ID_PREFIX.length);
+		return deps.getGroupById(groupId)?.nodeIds ?? [];
+	}
 
 	function snapshotGroup(groupVfNode: GraphNode) {
-		const memberIds = deps.getGroupMembers(groupVfNode.id);
+		const memberIds = getGroupMembers(groupVfNode.id);
 		if (memberIds.length === 0) return;
 		const initialMemberPositions = new Map<string, { x: number; y: number }>();
 		for (const id of memberIds) {
@@ -59,8 +63,11 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 	}
 
-	function collectMoves(): { moves: GroupMoveEvent[]; memberIdsMoved: Set<string> } {
-		const moves: GroupMoveEvent[] = [];
+	function collectMemberMoves(): {
+		moves: CanvasNodeMoveEvent[];
+		memberIdsMoved: Set<string>;
+	} {
+		const moves: CanvasNodeMoveEvent[] = [];
 		const memberIdsMoved = new Set<string>();
 		for (const [groupVfId, snap] of snapshots) {
 			const finalPos = finalGroupPositions.get(groupVfId);
@@ -75,8 +82,6 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		return { moves, memberIdsMoved };
 	}
 
-	const finalGroupPositions = new Map<string, { x: number; y: number }>();
-
 	function recordFinalPosition(node: GraphNode) {
 		if (!isCanvasNodeGroup(node)) return;
 		finalGroupPositions.set(node.id, { x: node.position.x, y: node.position.y });
@@ -85,6 +90,15 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function reset() {
 		snapshots = new Map();
 		finalGroupPositions.clear();
+	}
+
+	function nonGroupMoves(eventNodes: GraphNode[], skip: Set<string>): CanvasNodeMoveEvent[] {
+		const out: CanvasNodeMoveEvent[] = [];
+		for (const node of eventNodes) {
+			if (isCanvasNodeGroup(node) || skip.has(node.id)) continue;
+			out.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
+		}
+		return out;
 	}
 
 	function onNodeDragStart(event: NodeDragEvent) {
@@ -100,23 +114,15 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		applyDelta(node);
 	}
 
-	/**
-	 * `handled` is true when the title bar's drag was processed here — the caller
-	 * should not persist its position separately (the title bar isn't INodeUi-backed).
-	 */
-	function onNodeDragStop(event: NodeDragEvent): {
-		handled: boolean;
-		memberIdsMoved: Set<string>;
-	} {
+	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
 		if (!isCanvasNodeGroup(event.node) || !snapshots.has(event.node.id)) {
 			reset();
-			return { handled: false, memberIdsMoved: new Set() };
+			return nonGroupMoves(event.nodes ?? [], new Set());
 		}
 		recordFinalPosition(event.node);
-		const { moves, memberIdsMoved } = collectMoves();
+		const { moves: memberMoves, memberIdsMoved } = collectMemberMoves();
 		reset();
-		if (moves.length > 0) deps.onMoveMembers(moves);
-		return { handled: true, memberIdsMoved };
+		return [...memberMoves, ...nonGroupMoves(event.nodes ?? [], memberIdsMoved)];
 	}
 
 	function onSelectionDragStart(event: NodeDragEvent) {
@@ -132,27 +138,25 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 	}
 
-	function onSelectionDragStop(event: NodeDragEvent): { memberIdsMoved: Set<string> } {
+	function processSelectionDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
 		if (snapshots.size === 0) {
 			reset();
-			return { memberIdsMoved: new Set() };
+			return nonGroupMoves(event.nodes ?? [], new Set());
 		}
 		for (const node of event.nodes ?? []) {
 			if (isCanvasNodeGroup(node)) recordFinalPosition(node);
 		}
-		const { moves, memberIdsMoved } = collectMoves();
+		const { moves: memberMoves, memberIdsMoved } = collectMemberMoves();
 		reset();
-		if (moves.length > 0) deps.onMoveMembers(moves);
-		return { memberIdsMoved };
+		return [...memberMoves, ...nonGroupMoves(event.nodes ?? [], memberIdsMoved)];
 	}
 
 	return {
-		isGroupNode: isCanvasNodeGroup,
 		onNodeDragStart,
 		onNodeDrag,
-		onNodeDragStop,
+		processNodeDragStop,
 		onSelectionDragStart,
 		onSelectionDrag,
-		onSelectionDragStop,
+		processSelectionDragStop,
 	};
 }

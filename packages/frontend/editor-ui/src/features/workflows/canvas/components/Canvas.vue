@@ -24,11 +24,7 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import {
-	CANVAS_NODE_GROUP_ID_PREFIX,
-	CanvasNodeRenderType,
-	isCanvasNodeGroup,
-} from '../canvas.types';
+import { CanvasNodeRenderType, isCanvasNodeGroup } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -542,12 +538,7 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 const groupDrag = useCanvasNodeGroupDrag({
 	canvasId: props.id,
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-	getGroupMembers: (groupVueFlowNodeId) => {
-		if (!groupVueFlowNodeId.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)) return [];
-		const groupId = groupVueFlowNodeId.slice(CANVAS_NODE_GROUP_ID_PREFIX.length);
-		return workflowDocumentStore.value.getGroupById(groupId)?.nodeIds ?? [];
-	},
-	onMoveMembers: (moves) => emit('update:nodes:position', moves),
+	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 });
 
 function onNodeDragStart(event: NodeDragEvent) {
@@ -559,12 +550,7 @@ function onNodeDrag(event: NodeDragEvent) {
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
-	const { handled, memberIdsMoved } = groupDrag.onNodeDragStop(event);
-	if (handled) return;
-	// Skip group title bars (no INodeUi) and members the group drag already emitted.
-	const moves = event.nodes
-		.filter((node) => !isCanvasNodeGroup(node) && !memberIdsMoved.has(node.id))
-		.map(({ id, position }) => ({ id, position }));
+	const moves = groupDrag.processNodeDragStop(event);
 	if (moves.length > 0) onUpdateNodesPosition(moves);
 }
 
@@ -602,10 +588,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 }
 
 function onSelectionDragStop(event: NodeDragEvent) {
-	const { memberIdsMoved } = groupDrag.onSelectionDragStop(event);
-	const moves = event.nodes
-		.filter((node) => !isCanvasNodeGroup(node) && !memberIdsMoved.has(node.id))
-		.map(({ id, position }) => ({ id, position }));
+	const moves = groupDrag.processSelectionDragStop(event);
 	if (moves.length > 0) onUpdateNodesPosition(moves);
 }
 
