@@ -1212,6 +1212,52 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(chunks.some((chunk) => chunk.type === 'tool-call-cancelled')).toBe(false);
 	});
 
+	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
+		const handler = jest.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop this action'), {
+			runId,
+			toolCallId: 'tc-1',
+		});
+		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(handler).toHaveBeenCalledTimes(2);
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'suspend_tool',
+					output: '[Tool call cancelled. User said: "Stop this action"]',
+					canceled: true,
+				}),
+				expect.objectContaining({
+					type: 'tool-result',
+					toolCallId: 'tc-2',
+					toolName: 'suspend_tool',
+					output: '[Skipped: a sibling tool call was cancelled]',
+					canceled: true,
+				}),
+			]),
+		);
+	});
+
 	it('bounded concurrency (2) batches respects the limit', async () => {
 		const batchSizes: number[] = [];
 		let activeConcurrency = 0;

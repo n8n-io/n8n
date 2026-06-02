@@ -2127,8 +2127,23 @@ export class AgentRuntime {
 
 			for (const id of Object.keys(pendingResume.pendingToolCalls)) {
 				if (id !== resumedId) {
-					list.setToolCallResult(id, '[Skipped: a sibling tool call was cancelled]', {
+					const siblingEntry = pendingResume.pendingToolCalls[id];
+					const modelOutput = '[Skipped: a sibling tool call was cancelled]';
+					list.setToolCallResult(id, modelOutput, {
 						canceled: true,
+					});
+					results.push({
+						toolCallId: siblingEntry.toolCallId,
+						toolName: siblingEntry.toolName,
+						input: siblingEntry.input,
+						toolEntry: {
+							tool: siblingEntry.toolName,
+							input: siblingEntry.input,
+							output: modelOutput,
+							transformed: false,
+							canceled: true,
+						},
+						modelOutput,
 					});
 				}
 			}
