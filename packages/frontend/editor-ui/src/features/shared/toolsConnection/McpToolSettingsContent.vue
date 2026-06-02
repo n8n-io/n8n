@@ -205,7 +205,6 @@ function handleSave() {
 	margin: var(--spacing--5xs) 0;
 	padding-right: var(--spacing--md);
 	white-space: normal;
-	max-width: 360px;
 }
 
 .optionLabel {
