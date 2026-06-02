@@ -1126,7 +1126,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	});
 
 	it('cancels a suspended tool before resume validation and adds the user message', async () => {
-		const handler = jest.fn(async (_input, ctx: InterruptibleToolContext) => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
@@ -1176,7 +1176,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	});
 
 	it('streams cancellation as a normal tool result on resume', async () => {
-		const handler = jest.fn(async (_input, ctx: InterruptibleToolContext) => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
@@ -1214,7 +1214,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	});
 
 	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
-		const handler = jest.fn(async (_input, ctx: InterruptibleToolContext) => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };
 			return await ctx.suspend({ reason: 'needs approval' });
 		});
@@ -3681,7 +3681,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	/** A tool that suspends on first call and returns on resume. */
@@ -3703,7 +3703,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 	}
 
 	it('auto-bypass: does NOT call the tool handler on cancellation', async () => {
-		const handlerSpy = jest.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
+		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
 			const { suspend, resumeData } = ctx as InterruptibleToolContext;
 			if (!resumeData) {
 				return await suspend({ prompt: 'What should I do?' });
@@ -3852,11 +3852,11 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 
 describe('AgentRuntime.resume() with createCancellation() — manual handling (handleCancellation)', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('calls the tool handler with ctx.cancellation set', async () => {
-		const handlerSpy = jest.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
+		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
 			const { suspend, resumeData, cancellation } = ctx as InterruptibleToolContext;
 			if (cancellation) {
 				// Manual cleanup path — return a note for the LLM
