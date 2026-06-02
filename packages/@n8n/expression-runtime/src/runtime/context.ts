@@ -212,17 +212,58 @@ export function buildContext(
 				return result;
 			};
 		};
+		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
+		// `.item`. Each surface form has its own typed-RPC discriminator
+		// (`getNodePairedItem` / `getNodeItemMatching` / `getNodeItem`)
+		// because the host's resolver closes over the literal property
+		// name to pick error messages and getter-vs-method semantics.
+		// The bridge handler for each reads the matching property name.
+		const sendPairedRpc = (
+			type: 'getNodePairedItem' | 'getNodeItemMatching',
+			itemIndex?: number,
+		) => {
+			const result = callbacks.callHost.applySync(null, [{ type, nodeName, itemIndex }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
+		const sendGetNodeItem = () => {
+			const result = callbacks.callHost.applySync(null, [{ type: 'getNodeItem', nodeName }], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+			throwIfErrorSentinel(result);
+			return result;
+		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
 				if (isKeyOf(NODE_RPC_TYPES, prop)) {
 					return sendNodeMethod(NODE_RPC_TYPES[prop]);
+				}
+				if (prop === 'pairedItem') {
+					return (itemIndex?: number) => sendPairedRpc('getNodePairedItem', itemIndex);
+				}
+				if (prop === 'itemMatching') {
+					return (itemIndex?: number) => sendPairedRpc('getNodeItemMatching', itemIndex);
+				}
+				if (prop === 'item') {
+					// Getter form: invoke immediately, return the value.
+					return sendGetNodeItem();
 				}
 				// Everything else: delegate to the lazy proxy. The lazy proxy's
 				// own `get` trap handles caching, host fetching, and metadata.
 				return lazyProxy[prop];
 			},
 			has(_emptyTarget, prop) {
-				return isKeyOf(NODE_RPC_TYPES, prop) || prop in lazyProxy;
+				return (
+					isKeyOf(NODE_RPC_TYPES, prop) ||
+					prop === 'pairedItem' ||
+					prop === 'itemMatching' ||
+					prop === 'item' ||
+					prop in lazyProxy
+				);
 			},
 		});
 	};
