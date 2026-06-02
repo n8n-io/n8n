@@ -44,6 +44,11 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ params: {} }),
+}));
+
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
 		ensureLoaded,
