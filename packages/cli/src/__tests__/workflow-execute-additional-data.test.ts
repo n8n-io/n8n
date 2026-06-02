@@ -343,7 +343,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		describe('sub-workflow execution timeouts', () => {
-			const now: number = +new Date();
+			const now = Date.now();
 			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;
 			const WorkflowExecuteMock: jest.Mock = jest.requireMock('n8n-core').WorkflowExecute;
 
@@ -388,7 +388,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 
 				if (opts.doNotWaitToFinish) {
-					await new Promise((resolve) => setImmediate(resolve));
+					await new Promise(setImmediate);
 				}
 			};
 

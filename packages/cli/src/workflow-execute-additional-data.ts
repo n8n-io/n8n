@@ -448,7 +448,7 @@ async function startExecution(
 		let ownDeadline: number | undefined;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			ownDeadline =
-				startTime + Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * 1000;
+				startTime + Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds;
 		} else if (executionsConfig.timeout > 0) {
 			ownDeadline = startTime + Math.min(executionsConfig.timeout, effectiveMaxTimeout) * 1000;
 		}
