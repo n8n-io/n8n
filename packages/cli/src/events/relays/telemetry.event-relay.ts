@@ -16,6 +16,7 @@ import type {
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
+	IWorkflowBase,
 	JsonValue,
 } from 'n8n-workflow';
 import {
@@ -43,7 +44,7 @@ import { Telemetry } from '../../telemetry';
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
 
-function countWorkflowCustomTelemetryTags(workflow: IWorkflowDb): number {
+function countWorkflowCustomTelemetryTags(workflow: IWorkflowDb | IWorkflowBase): number {
 	return workflow.settings?.customTelemetryTags?.length ?? 0;
 }
 
@@ -825,6 +826,8 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			project_type: projectType,
 			meta: JSON.stringify(workflow.meta),
+			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
+			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
 			uiContext,
 			source,
 		});
