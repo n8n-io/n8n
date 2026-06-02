@@ -1209,7 +1209,6 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				}),
 			]),
 		);
-		expect(chunks.some((chunk) => chunk.type === 'tool-call-cancelled')).toBe(false);
 	});
 
 	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
@@ -3852,7 +3851,6 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 				canceled: true,
 			}),
 		);
-		expect(resumedChunks.some((c) => c.type === 'tool-call-cancelled')).toBe(false);
 
 		// Generation should continue after the cancellation result
 		const textChunks = resumedChunks.filter((c) => c.type === 'text-delta');

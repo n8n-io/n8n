@@ -114,8 +114,7 @@ function emitToolChunk(
 				| 'tool-call'
 				| 'tool-execution-start'
 				| 'tool-result'
-				| 'tool-call-suspended'
-				| 'tool-call-cancelled';
+				| 'tool-call-suspended';
 		}
 	>,
 	ctx: ChunkHandlerCtx,
@@ -175,15 +174,6 @@ function emitToolChunk(
 			send({ type: 'tool-call-suspended', payload });
 			return { suspended: true };
 		}
-		case 'tool-call-cancelled': {
-			send({
-				type: 'tool-call-cancelled',
-				toolCallId: chunk.toolCallId,
-				toolName: chunk.toolName,
-				userMessage: chunk.userMessage,
-			});
-			return { suspended: false };
-		}
 	}
 	return { suspended: false };
 }
@@ -217,7 +207,6 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-execution-start':
 		case 'tool-result':
 		case 'tool-call-suspended':
-		case 'tool-call-cancelled':
 			return emitToolChunk(chunk, ctx);
 		case 'message': {
 			const sseMessage = toAgentSseMessage(chunk.message);

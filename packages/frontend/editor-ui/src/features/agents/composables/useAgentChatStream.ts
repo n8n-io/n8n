@@ -352,24 +352,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 				break;
 			}
-			case 'tool-call-cancelled': {
-				const found = findToolCallById(event.toolCallId);
-				if (found) {
-					found.tc.state = TOOL_CALL_STATE.CANCELLED;
-					found.tc.canceled = true;
-					if (found.msg.interactive) {
-						found.msg.interactive = {
-							...found.msg.interactive,
-							resolvedAt: Date.now(),
-							cancelled: true,
-						};
-					}
-					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
-						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
-					}
-				}
-				break;
-			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.

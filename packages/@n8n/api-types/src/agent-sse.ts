@@ -79,7 +79,6 @@ export type AgentSseEvent =
 			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
-	| { type: 'tool-call-cancelled'; toolCallId: string; toolName: string; userMessage: string }
 	| { type: 'message'; message: AgentSseMessage }
 	| { type: 'code-delta'; delta: string }
 	| { type: 'config-updated' }
