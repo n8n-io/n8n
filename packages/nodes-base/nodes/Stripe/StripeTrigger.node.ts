@@ -645,7 +645,7 @@ export class StripeTrigger implements INodeType {
 					{
 						name: 'Reporting Report_run.succeeded',
 						value: 'reporting.report_run.succeeded',
-						description: 'Occurs whenever a requested **ReportRun** completed succesfully.',
+						description: 'Occurs whenever a requested **ReportRun** completed successfully.',
 					},
 					{
 						name: 'Reporting Report_type.updated',
