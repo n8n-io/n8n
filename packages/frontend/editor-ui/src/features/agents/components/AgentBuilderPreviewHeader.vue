@@ -63,7 +63,7 @@ function closePreview() {
 
 useKeybindings({
 	'ctrl+shift+;': createNewChat,
-	esc: closePreview,
+	Escape: closePreview,
 });
 </script>
 
@@ -103,13 +103,15 @@ useKeybindings({
 		</div>
 		<div :class="$style.right">
 			<N8nTooltip v-if="props.hasSession" placement="bottom" :show-after="500">
-				<template #content> View session </template>
+				<template #content>
+					{{ i18n.baseText('agents.builder.preview.viewSession' as BaseTextKey) }}
+				</template>
 				<N8nButton
 					variant="ghost"
 					size="medium"
 					icon-size="large"
 					icon="list-tree"
-					label="View session"
+					:label="i18n.baseText('agents.builder.preview.viewSession' as BaseTextKey)"
 					data-testid="agent-preview-view-session-btn"
 					@click="openSession"
 				/>
