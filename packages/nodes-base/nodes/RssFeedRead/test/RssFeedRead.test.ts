@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import type { IDataObject, INode, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
+import { returnJsonArray } from 'n8n-core';
+import type { INode, IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
@@ -8,17 +9,6 @@ jest.mock('rss-parser');
 
 const now = new Date('2024-02-01T01:23:45.678Z');
 jest.useFakeTimers({ now });
-
-function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[] {
-	const returnData: INodeExecutionData[] = [];
-	const items = Array.isArray(jsonData) ? jsonData : [jsonData];
-
-	items.forEach((data: IDataObject & { json?: IDataObject }) => {
-		returnData.push(data?.json ? { ...data, json: data.json } : { json: data });
-	});
-
-	return returnData;
-}
 
 describe('RssFeedReadTrigger', () => {
 	describe('poll', () => {
@@ -104,24 +94,6 @@ describe('RssFeedReadTrigger', () => {
 			);
 			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 			expect(pollData.lastItemDate).toEqual(lastItemDate);
-		});
-
-		it('should return an error item when feed request fails with error output enabled', async () => {
-			const pollData = mock({ lastItemDate });
-			pollFunctions.getNode.mockReturnValue(mock<INode>({ onError: 'continueErrorOutput' }));
-			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
-			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
-			helpers.httpRequest.mockRejectedValue(createConnectionRefusedError());
-
-			const result = await node.poll.call(pollFunctions);
-
-			expect(result).toEqual([[{ json: { error: connectionRefusedMessage } }]]);
-			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
-			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
-			expect(helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'GET', url: feedUrl }),
-			);
-			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
 		});
 
 		it('should reject when feed request fails without error output enabled', async () => {

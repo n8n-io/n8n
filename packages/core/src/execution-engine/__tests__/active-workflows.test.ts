@@ -1,5 +1,6 @@
 import type {
 	INode,
+	INodeExecutionData,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -357,6 +358,28 @@ describe('ActiveWorkflows', () => {
 				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(2);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			});
+
+			it('should emit poll error output data when the poller returns it', async () => {
+				const errorOutputData: INodeExecutionData[][] = [
+					[],
+					[{ json: { error: 'Poll function failed' } }],
+				];
+				triggersAndPollers.runPoll
+					.mockResolvedValueOnce(null) // Succeed on first call (testing)
+					.mockResolvedValueOnce(errorOutputData); // Regular polling routes error output
+
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+				const executeTrigger = registerCronCall[1] as () => Promise<void>;
+
+				await executeTrigger();
+				await flushPromises();
+
+				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(2);
+				expect(pollFunctions.__emit).toHaveBeenCalledWith(errorOutputData);
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			});
 		});
 	});

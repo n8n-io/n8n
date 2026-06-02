@@ -100,13 +100,15 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	let mockNode: INode;
 	let mockNodeType: Mocked<INodeType>;
 	let mockExecutionData: IExecuteData;
+	let mockTriggersAndPollersInstance: { runTrigger: Mock; runPoll: Mock };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		// Setup Container mock for different dependencies
-		const mockTriggersAndPollersInstance = {
+		mockTriggersAndPollersInstance = {
 			runTrigger: vi.fn(),
+			runPoll: vi.fn(),
 		};
 		const mockGlobalConfigInstance = {
 			sentry: { backendDsn: '' },
@@ -876,8 +878,9 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 	describe('poll node type handling', () => {
 		it('should execute poll function in manual mode', async () => {
 			const mockData = [[{ json: { polled: 'data' } }]];
-			mockNodeType.poll = vi.fn().mockResolvedValue(mockData);
+			mockNodeType.poll = vi.fn();
 			mockNodeType.execute = undefined;
+			mockTriggersAndPollersInstance.runPoll.mockResolvedValue(mockData);
 
 			const mockContextInstance = {};
 			mockPollContext.mockImplementation(function () {
@@ -900,7 +903,29 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 				'manual',
 			);
-			expect(mockNodeType.poll).toHaveBeenCalledWith();
+			expect(mockTriggersAndPollersInstance.runPoll).toHaveBeenCalledWith(
+				mockWorkflow,
+				mockNode,
+				mockContextInstance,
+			);
+			expect(result).toEqual({ data: mockData });
+		});
+
+		it('should pass through poll error output data in manual mode', async () => {
+			const mockData = [[], [{ json: { error: 'Poll function failed' } }]];
+			mockNodeType.poll = vi.fn();
+			mockNodeType.execute = undefined;
+			mockTriggersAndPollersInstance.runPoll.mockResolvedValue(mockData);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
 			expect(result).toEqual({ data: mockData });
 		});
 

@@ -1165,7 +1165,6 @@ export class WorkflowExecute {
 	private async executePollNode(
 		workflow: Workflow,
 		node: INode,
-		nodeType: INodeType,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		inputData: ITaskDataConnections,
@@ -1173,7 +1172,7 @@ export class WorkflowExecute {
 		if (mode === 'manual') {
 			// In manual mode run the poll function
 			const context = new PollContext(workflow, node, additionalData, mode, 'manual');
-			return { data: await nodeType.poll!.call(context) };
+			return { data: await Container.get(TriggersAndPollers).runPoll(workflow, node, context) };
 		}
 		// In any other mode pass data through as it already contains the result of the poll
 		return { data: inputData.main as INodeExecutionData[][] };
@@ -1342,7 +1341,7 @@ export class WorkflowExecute {
 		}
 
 		if (nodeType.poll) {
-			return await this.executePollNode(workflow, node, nodeType, additionalData, mode, inputData);
+			return await this.executePollNode(workflow, node, additionalData, mode, inputData);
 		}
 
 		if (nodeType.trigger) {
@@ -2598,7 +2597,8 @@ export class WorkflowExecute {
 		const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 		const mainOutputTypes = outputTypes.filter((output) => output === NodeConnectionTypes.Main);
 
-		const errorItems: INodeExecutionData[] = [];
+		const errorOutputIndex = mainOutputTypes.length - 1;
+		const errorItems: INodeExecutionData[] = [...(nodeSuccessData[errorOutputIndex] ?? [])];
 		const closeFunctions: CloseFunction[] = [];
 		// Create a WorkflowDataProxy instance that we can get the data of the
 		// item which did error
@@ -2680,7 +2680,7 @@ export class WorkflowExecute {
 			nodeSuccessData[outputIndex] = successItems;
 		}
 
-		nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
+		nodeSuccessData[errorOutputIndex] = errorItems;
 	}
 
 	/**
