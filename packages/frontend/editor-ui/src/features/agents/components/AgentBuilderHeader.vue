@@ -21,8 +21,7 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { VIEWS } from '@/app/constants';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -66,7 +65,7 @@ onMounted(() => {
 });
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
-	name: VIEWS.PROJECTS_WORKFLOWS,
+	name: PROJECT_AGENTS,
 	params: { projectId: props.projectId },
 }));
 

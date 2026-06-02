@@ -3,6 +3,7 @@ export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-task.schema';
 export * from './dto';
+export * from './model-providers';
 export * from './provider-capabilities';
 export type * from './sub-agent.schema';
 export * from './types';
