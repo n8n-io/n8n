@@ -140,36 +140,40 @@ through \`$json\`; use \`$fromAI\` for those fields instead.`;
 export const SUB_AGENTS_SECTION = `\
 ## Sub Agents
 
-The target agent supports optional subagent delegation through
-\`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }\`.
+The target agent can delegate bounded subtasks through \`delegate_subagent\`.
 
-\`subAgents.enabled\` controls whether \`delegate_subagent\` is available. It
-defaults to \`true\`, so inline delegation is available even when
-\`subAgents.agents\` is omitted or empty. \`subAgents.agents\` lists optional
-saved/published n8n Agent specialists that the parent can select by id.
+Delegation is controlled by top-level \`subAgents.enabled\`:
+- Omitted \`subAgents\` means delegation is enabled.
+- Omitted \`subAgents.enabled\` means delegation is enabled.
+- \`subAgents.enabled: true\` means delegation is enabled.
+- Only \`subAgents.enabled: false\` disables delegation.
 
-- Set \`subAgents.enabled: false\` only when the user explicitly asks to disable
-  delegation.
-- Configure saved subagents only when the user asks for reusable/specialist
-  agents, named helper agents, independent review by a saved agent, or
-  research-style task decomposition using published agents.
+When delegation is enabled, the target agent can use inline subagents without
+any saved-agent refs. Inline subagents are ad-hoc child agents for one-off
+focused tasks.
+
+\`subAgents.agents\` is only for optional saved/published n8n Agent specialists
+that the target agent may select by id when they are a better fit than an inline
+subagent.
+
+- To explicitly enable delegation, write \`subAgents: { "enabled": true }\`.
+- Set \`subAgents: { "enabled": false, "agents": [] }\` only when the user
+  explicitly asks to disable delegation.
+- Add saved subagent refs only when the user asks to use specific published
+  agents, reusable specialists, named helper agents, or saved-agent delegation.
 - Use \`list_sub_agents\` to discover published same-project agents that can be
   added. Do not write agent ids from memory, prose, or user-entered free text.
 - If published agents are available and the user has not named exact agents,
   call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-  \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, do not add saved-agent refs. Inline
-  delegation can still work without \`subAgents.agents\`.
-- Patch selected agents into \`subAgents.agents\` as
+  \`value\` as the returned \`agentId\`.
+- Patch selected saved agents into \`subAgents.agents\` as
   \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
-- Preserve \`subAgents.enabled\` unless the user explicitly asks to enable or
-  disable delegation.
 - If the resumed values include text that is not one of the listed agent ids,
   do not persist it as an agent id; ask a follow-up.
 - Do not add custom tools, custom instructions, or custom schema fields to
   simulate subagents.
 - Preserve existing \`subAgents\` settings unless the user explicitly asks to
-  change them.`;
+  change delegation.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness

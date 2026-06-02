@@ -62,13 +62,13 @@ export function getConfigRulesSection(): string {
   \`credentialType: "openAiApi"\`.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
-- Subagent delegation lives at top level as
-  \`subAgents: { "enabled": true, "agents": [{ "agentId": "<published-agent-id>" }] }\`.
-  \`subAgents.enabled\` defaults to true and controls whether delegation is available.
+- Subagent delegation lives at top level under \`subAgents\`.
+  \`subAgents.enabled\` controls whether delegation is available and defaults to
+  true when omitted. Only \`enabled: false\` disables delegation.
+  To explicitly enable delegation, write \`subAgents: { "enabled": true }\`.
   \`subAgents.agents\` is only for optional saved/published n8n Agent specialists;
   inline delegation does not require saved-agent refs. Only use \`agentId\` values
-  returned by \`list_sub_agents\`. Set \`enabled: false\` only when the user
-  explicitly asks to disable delegation.
+  returned by \`list_sub_agents\`.
 - Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
   support native web search; for those providers, use
   \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every

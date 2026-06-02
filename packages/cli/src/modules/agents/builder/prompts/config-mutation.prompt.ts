@@ -73,13 +73,15 @@ Use \`patch_config\` with:
 - Call \`list_sub_agents\` before asking or writing. Only persist agent IDs
   returned by that tool.
 - If \`subAgents\` is missing, add it as
-  \`{ "enabled": true, "agents": [{ "agentId": "<selected-agent-id>" }] }\`.
+  \`{ "agents": [{ "agentId": "<selected-agent-id>" }] }\`.
 - If \`subAgents\` exists without \`agents\`, add \`/subAgents/agents\` with the
   selected refs.
 - If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
 - Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
 - Preserve \`subAgents.enabled\` unless the user explicitly asks to enable or
-  disable delegation. Inline delegation does not require saved-agent refs.
+  disable delegation. To explicitly enable delegation without saved agents, write
+  \`subAgents: { "enabled": true }\`. Inline delegation does not require
+  saved-agent refs.
 - If an \`ask_question\` resume value is not one of the listed agent IDs, do not
   write it into config.
 
