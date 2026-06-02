@@ -109,8 +109,6 @@ export default mergeConfig(
 		restoreMocks: true,
 	}),
 	{
-		// Disable Vite's built-in (oxc) transform so the tsc plugin owns decorator metadata.
-		esbuild: false,
 		plugins: [tscDecoratorTransform()],
 	},
 );
