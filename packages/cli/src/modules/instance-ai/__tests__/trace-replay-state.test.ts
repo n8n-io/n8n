@@ -184,6 +184,20 @@ describe('TraceReplayState', () => {
 
 			expect(result).toEqual([{ kind: 'header' }]);
 		});
+
+		it('should include active writer events without a stored slug', () => {
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }]);
+			const writerEvents = [{ kind: 'tool-call', stepId: 1 }];
+			const entries = [{ tracing: { traceWriter: { getEvents: () => writerEvents } } }];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual(writerEvents);
+		});
 	});
 
 	describe('configureReplayMode', () => {
@@ -222,10 +236,22 @@ describe('TraceReplayState', () => {
 			expect(tracing.traceWriter).toBeDefined();
 		});
 
-		it('should reuse shared TraceIndex/IdRemapper for same slug', async () => {
+		it('should keep recording when only trace headers are loaded', async () => {
 			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.loadEvents('test', [{ kind: 'header' }]);
+			const tracing = {} as Record<string, unknown>;
+
+			await state.configureReplayMode(tracing as unknown as InstanceAiTraceContext);
+
+			expect(tracing.replayMode).toBe('record');
+			expect(tracing.traceWriter).toBeDefined();
+		});
+
+		it('should reuse shared TraceIndex/IdRemapper for same slug', async () => {
+			process.env.E2E_TESTS = 'true';
+			const state = new TraceReplayState();
+			state.loadEvents('test', [{ kind: 'header' }, { kind: 'tool-call' }]);
 
 			const tracing1 = {} as Record<string, unknown>;
 			const tracing2 = {} as Record<string, unknown>;
@@ -240,14 +266,14 @@ describe('TraceReplayState', () => {
 		it('should clear shared state when slug changes via clearEvents', async () => {
 			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
-			state.loadEvents('test-a', [{ kind: 'header' }]);
+			state.loadEvents('test-a', [{ kind: 'header' }, { kind: 'tool-call' }]);
 
 			const tracing1 = {} as Record<string, unknown>;
 			await state.configureReplayMode(tracing1 as unknown as InstanceAiTraceContext);
 			const firstIndex = tracing1.traceIndex;
 
 			state.clearEvents('test-a');
-			state.loadEvents('test-b', [{ kind: 'header' }]);
+			state.loadEvents('test-b', [{ kind: 'header' }, { kind: 'tool-call' }]);
 
 			const tracing2 = {} as Record<string, unknown>;
 			await state.configureReplayMode(tracing2 as unknown as InstanceAiTraceContext);

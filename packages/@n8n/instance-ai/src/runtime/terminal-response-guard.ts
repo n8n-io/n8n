@@ -34,6 +34,7 @@ export interface TerminalResponseDecision {
 		| 'errored-silent'
 		| 'errored-after-text'
 		| 'completed-after-error'
+		| 'completed-silent-suppressed'
 		| 'confirmation-visible'
 		| 'confirmation-invalid';
 	event?: InstanceAiEvent;
@@ -67,7 +68,11 @@ export class InstanceAiTerminalResponseGuard {
 	evaluateTerminal(
 		events: InstanceAiEvent[],
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
-		options: { workSummary?: WorkSummary; errorMessage?: string } = {},
+		options: {
+			workSummary?: WorkSummary;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		} = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
 		if (visibility.hasCurrentRunFallback) {
@@ -94,6 +99,22 @@ export class InstanceAiTerminalResponseGuard {
 					visibilitySource: 'root-text',
 					action: 'none',
 					reason: 'already-visible',
+				};
+			}
+			if (visibility.hasMessageGroupRootText) {
+				return {
+					status,
+					visibilitySource: 'root-text',
+					action: 'none',
+					reason: 'already-visible',
+				};
+			}
+			if (options.suppressCompletedFallback) {
+				return {
+					status,
+					visibilitySource: 'none',
+					action: 'none',
+					reason: 'completed-silent-suppressed',
 				};
 			}
 			return this.emitText(
@@ -183,6 +204,7 @@ export class InstanceAiTerminalResponseGuard {
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
 		hasRootError: boolean;
+		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
@@ -193,6 +215,14 @@ export class InstanceAiTerminalResponseGuard {
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),
+			hasMessageGroupRootText:
+				this.options.messageGroupId !== undefined &&
+				events.some(
+					(event) =>
+						event.runId !== this.options.runId &&
+						event.agentId === this.options.rootAgentId &&
+						hasText(event),
+				),
 			hasCurrentRunFallback: currentRunEvents.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),
 			),
