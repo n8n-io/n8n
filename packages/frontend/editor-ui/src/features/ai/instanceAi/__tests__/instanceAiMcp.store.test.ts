@@ -25,6 +25,7 @@ const mockFetchMcpConnections = vi.fn();
 const mockCreateMcpConnection = vi.fn();
 const mockUpdateMcpConnection = vi.fn();
 const mockDeleteMcpConnection = vi.fn();
+const mockFetchMcpConnectionTools = vi.fn();
 
 vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
@@ -32,6 +33,7 @@ vi.mock('../instanceAi.mcp.api', () => ({
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),
+	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
 }));
 
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
@@ -156,6 +158,39 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(ok).toBe(true);
 			expect(store.connections).toEqual([]);
+		});
+	});
+
+	describe('fetchToolsForConnection', () => {
+		it('fetches tools and caches them per connection', async () => {
+			const tools = [
+				{ name: 'list-issues', description: 'List Linear issues' },
+				{ name: 'create-issue' },
+			];
+			mockFetchMcpConnectionTools.mockResolvedValue(tools);
+
+			const first = await store.fetchToolsForConnection('conn-1');
+			expect(first).toEqual(tools);
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
+			expect(store.toolsByConnectionId.get('conn-1')).toEqual(tools);
+
+			// Second call returns cached value without hitting the API.
+			const second = await store.fetchToolsForConnection('conn-1');
+			expect(second).toEqual(tools);
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
+		});
+
+		it('invalidates the cache on disconnect', async () => {
+			mockFetchMcpConnectionTools.mockResolvedValue([{ name: 'list-issues' }]);
+			mockFetchMcpConnections.mockResolvedValue([makeConnection({ id: 'conn-1' })]);
+			mockDeleteMcpConnection.mockResolvedValue(undefined);
+
+			await store.fetchConnections();
+			await store.fetchToolsForConnection('conn-1');
+			expect(store.toolsByConnectionId.has('conn-1')).toBe(true);
+
+			await store.disconnect('conn-1');
+			expect(store.toolsByConnectionId.has('conn-1')).toBe(false);
 		});
 	});
 

@@ -1,13 +1,18 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { InstanceAiMcpConnectionResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolResponse,
+	McpRegistryServerResponse,
+} from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import {
 	createMcpConnection,
 	deleteMcpConnection,
 	fetchMcpConnections,
+	fetchMcpConnectionTools,
 	fetchMcpRegistryServers,
 	updateMcpConnection,
 	type CreateMcpConnectionBody,
@@ -22,6 +27,9 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	const catalog = ref<McpRegistryServerResponse[] | null>(null);
 	const isLoadingConnections = ref(false);
 	const isLoadingCatalog = ref(false);
+	// Live `tools/list` cache keyed by connection id. Filled lazily by
+	// `fetchToolsForConnection`; invalidated on disconnect.
+	const toolsByConnectionId = ref<Map<string, InstanceAiMcpConnectionToolResponse[]>>(new Map());
 
 	const connectionsByServerSlug = computed(() => {
 		const map = new Map<string, InstanceAiMcpConnectionResponse[]>();
@@ -87,6 +95,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		try {
 			await deleteMcpConnection(rootStore.restApiContext, id);
 			connections.value = connections.value.filter((c) => c.id !== id);
+			toolsByConnectionId.value.delete(id);
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.disconnect'));
@@ -94,9 +103,25 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		}
 	}
 
+	async function fetchToolsForConnection(
+		id: string,
+	): Promise<InstanceAiMcpConnectionToolResponse[] | null> {
+		const cached = toolsByConnectionId.value.get(id);
+		if (cached) return cached;
+		try {
+			const tools = await fetchMcpConnectionTools(rootStore.restApiContext, id);
+			toolsByConnectionId.value.set(id, tools);
+			return tools;
+		} catch (error) {
+			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchTools'));
+			return null;
+		}
+	}
+
 	function reset(): void {
 		connections.value = [];
 		catalog.value = null;
+		toolsByConnectionId.value = new Map();
 	}
 
 	return {
@@ -104,12 +129,14 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		catalog,
 		isLoadingConnections,
 		isLoadingCatalog,
+		toolsByConnectionId,
 		connectionsByServerSlug,
 		fetchConnections,
 		fetchCatalogLazy,
 		connect,
 		updateSettings,
 		disconnect,
+		fetchToolsForConnection,
 		reset,
 	};
 });

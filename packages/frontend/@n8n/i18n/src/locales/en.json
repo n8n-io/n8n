@@ -5560,6 +5560,7 @@
 	"instanceAi.mcp.error.connect": "Failed to connect MCP server",
 	"instanceAi.mcp.error.updateSettings": "Failed to update MCP server settings",
 	"instanceAi.mcp.error.disconnect": "Failed to disconnect MCP server",
+	"instanceAi.mcp.error.fetchTools": "Failed to load MCP tools",
 	"instanceAi.mcp.error.autoConnectAmbiguous.title": "Credential created",
 	"instanceAi.mcp.error.autoConnectAmbiguous.message": "Multiple new credentials appeared. Please pick the one you just created from the credential picker.",
 	"instanceAi.browserUse.step.extension.title": "Install the Chrome extension",

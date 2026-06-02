@@ -132,6 +132,14 @@ onBeforeUnmount(() => {
 	}
 });
 
+// Lazy-fetch the live MCP tools for a connected item the moment the user
+// lands on its detail/settings view. The store caches per connection id so
+// subsequent views of the same connection don't re-hit the server.
+watch(detailItem, (item) => {
+	if (!item || item.kind !== 'mcp-server' || !item.isConnected) return;
+	void mcpStore.fetchToolsForConnection(item.id);
+});
+
 watch(isOpen, (open) => {
 	if (!open) {
 		detailItem.value = null;
@@ -149,6 +157,18 @@ function buildItem(
 	server: McpRegistryServerResponse,
 	connection: InstanceAiMcpConnectionResponse | undefined,
 ): McpServerConnectionItem {
+	// For connected items, prefer the cached live `tools/list` from the MCP
+	// server. Falls back to the catalog tools as a preview before the live
+	// fetch resolves (and for unconnected items).
+	const liveTools = connection ? mcpStore.toolsByConnectionId.get(connection.id) : undefined;
+	const availableTools = liveTools
+		? liveTools.map((tool) => ({ id: tool.name, name: tool.name, description: tool.description }))
+		: server.tools.map((tool) => ({
+				id: tool.name,
+				name: tool.title ?? tool.name,
+				category: categoryForTool(tool),
+			}));
+
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
@@ -164,11 +184,7 @@ function buildItem(
 				required: true,
 			},
 		],
-		availableTools: server.tools.map((tool) => ({
-			id: tool.name,
-			name: tool.title ?? tool.name,
-			category: categoryForTool(tool),
-		})),
+		availableTools,
 		publisher:
 			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
