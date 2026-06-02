@@ -202,6 +202,12 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 );
 
+const vueFlowNodes = computed(() =>
+	props.showNodeGroups && isCanvasNodeGroupingEnabled.value
+		? props.nodes
+		: props.nodes.filter((node) => !isCanvasNodeGroup(node)),
+);
+
 const vueFlow = useVueFlow(props.id);
 const {
 	getSelectedNodes: selectedNodesAndGroups,
@@ -1226,7 +1232,7 @@ defineExpose({
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="nodes"
+		:nodes="vueFlowNodes"
 		:edges="connections"
 		:class="classes"
 		:apply-changes="false"
