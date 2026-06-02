@@ -894,16 +894,7 @@ export class AgentsService {
 		let agentData: Agent = agentEntity;
 
 		if (usePublishedVersion) {
-			const activeVersionSchema = agentEntity.activeVersion?.schema;
-			if (!activeVersionSchema) {
-				throw new NotFoundError(`Agent ${agentId} is not published`);
-			}
-			agentData = {
-				...agentEntity,
-				schema: activeVersionSchema,
-				tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
-				skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
-			} as Agent;
+			agentData = this.getPublishedAgent(agentEntity);
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
@@ -1562,6 +1553,22 @@ export class AgentsService {
 		}
 	}
 
+	private getPublishedAgent(agentEntity: Agent): Agent {
+		const activeVersionSchema = agentEntity.activeVersion?.schema;
+		if (!activeVersionSchema) {
+			throw new OperationalError(
+				'Agent is not published. Publish the agent before using it in a workflow.',
+			);
+		}
+
+		return {
+			...agentEntity,
+			schema: activeVersionSchema,
+			tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
+			skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
+		} as Agent;
+	}
+
 	async executeForWorkflow(
 		agentId: string,
 		message: string,
@@ -1585,19 +1592,7 @@ export class AgentsService {
 		let agentData: Agent = agentEntity;
 
 		if (!useDraftVersion) {
-			const activeVersionSchema = agentEntity.activeVersion?.schema;
-			if (!activeVersionSchema) {
-				throw new OperationalError(
-					'Agent is not published. Publish the agent before using it in a workflow.',
-				);
-			}
-
-			agentData = {
-				...agentEntity,
-				schema: activeVersionSchema,
-				tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
-				skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
-			} as Agent;
+			agentData = this.getPublishedAgent(agentEntity);
 		}
 
 		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
