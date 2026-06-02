@@ -131,19 +131,9 @@ export class McpOAuthAuthorizationCodeService {
 		return authRecord;
 	}
 
-	/**
-	 * Atomically marks an authorization code as consumed.
-	 *
-	 * SECURITY: This method uses a single `UPDATE ... WHERE used = false` database query
-	 * (rather than a read-then-write pattern) to prevent race conditions during concurrent
-	 * token exchanges. If two simultaneous token requests are made with the same code,
-	 * exactly one query will affect a row and succeed; the other will affect 0 rows
-	 * and fail with an 'invalid_grant' OAuth error.
-	 *
-	 * @see findAuthorizationCode For validating the authorization code before consumption.
-	 */
+	// Single `UPDATE ... WHERE used = false` (no read-then-write) so that concurrent token
+	// exchanges with the same code can't both succeed — one wins, the other gets invalid_grant.
 	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
-		// Atomic: UPDATE sets used=true only if used=false; checks affected rows.
 		const result = await this.authorizationCodeRepository.update(
 			{ code: authorizationCode, used: false },
 			{ used: true },
@@ -155,14 +145,8 @@ export class McpOAuthAuthorizationCodeService {
 		}
 	}
 
-	/**
-	 * Get PKCE code challenge for authorization code.
-	 * Used by the MCP SDK before token exchange to verify PKCE.
-	 *
-	 * SECURITY: We route this through `findAuthorizationCode` (which filters `used: false`)
-	 * rather than `findAndValidateAuthorizationCode` so that a consumed code does not leak
-	 * its PKCE challenge to a replay attempt.
-	 */
+	// Routed through findAuthorizationCode (filters `used: false`) so a consumed code's PKCE
+	// challenge is never returned — preventing replay-probe oracles against used codes.
 	async getCodeChallenge(authorizationCode: string, clientId: string): Promise<string> {
 		const authRecord = await this.findAuthorizationCode(authorizationCode, clientId);
 		if (!authRecord) {

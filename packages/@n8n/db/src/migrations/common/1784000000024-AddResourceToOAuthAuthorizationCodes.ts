@@ -3,14 +3,8 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const TABLE_NAME = 'oauth_authorization_codes';
 const COLUMN_NAME = 'resource';
 
-/**
- * Migration adding the 'resource' column to 'oauth_authorization_codes'
- * to support RFC 8707 resource indicators.
- *
- * NULL values inside this column signify legacy flows initiated before resource indicator support
- * was added. These legacy flows default back to the instance's canonical MCP resource URL.
- * This migration is fully reversible; down() will drop the column for safe rollback.
- */
+// NULL in `resource` = legacy flow predating RFC 8707 support; the runtime falls back to the
+// instance's canonical MCP resource URL when consuming the code.
 export class AddResourceToOAuthAuthorizationCodes1784000000024 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(TABLE_NAME, [

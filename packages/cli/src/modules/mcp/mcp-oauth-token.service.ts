@@ -24,13 +24,8 @@ import { UrlService } from '@/services/url.service';
  */
 @Service()
 export class McpOAuthTokenService {
-	/**
-	 * Legacy fallback audience used before n8n adopted RFC 8707 resource indicators.
-	 *
-	 * Note: Avoid modifying this string. Active client sessions that were established
-	 * before the migration rely on this exact audience value. Changing it will immediately
-	 * invalidate those tokens and force users to re-authenticate.
-	 */
+	// Pre-RFC-8707 audience value. Do not modify — existing tokens were signed with this string
+	// and changing it would force all active clients to re-authenticate.
 	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
@@ -282,27 +277,15 @@ export class McpOAuthTokenService {
 		return [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
 	}
 
-	/**
-	 * Verifies the JWT token against the list of allowed audiences.
-	 *
-	 * BACKWARD COMPATIBILITY: We accept both the canonical resource URL and the legacy
-	 * 'mcp-server-api' audience during this transition period.
-	 *
-	 * TODO: Remove the fallback loop once all legacy tokens in the wild expire
-	 * (based on refresh token lifespan). Legacy tokens minted prior to n8n v2.19
-	 * had a hardcoded 'mcp-server-api' audience.
-	 */
+	// TODO: drop the legacy 'mcp-server-api' audience and the per-audience fallback once
+	// all legacy tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		try {
 			return this.jwtService.verify(token, {
 				audience: audiences as [string, ...string[]],
 			});
 		} catch (error) {
-			// Fallback: try each audience individually.
-			// This handles legacy tokens signed with a single-string audience
-			// (e.g. 'mcp-server-api') that were issued before resource indicators
-			// were introduced, where the array check above may reject them on some
-			// jsonwebtoken builds.
+			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
 					return this.jwtService.verify(token, { audience });
