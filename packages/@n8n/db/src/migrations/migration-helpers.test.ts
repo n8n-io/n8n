@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';
 
 import { DbConnection } from '../index';
 import { copyTable } from './migration-helpers';
