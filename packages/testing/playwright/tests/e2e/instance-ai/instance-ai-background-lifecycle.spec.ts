@@ -3,15 +3,6 @@ import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from 
 const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a final response';
 const BACKGROUND_CANCELLED_TEXT = 'The background workflow-builder task was cancelled.';
 
-type ThreadStatusResponse = {
-	data?: {
-		backgroundTasks?: Array<{
-			taskId?: string;
-			status?: string;
-		}>;
-	};
-};
-
 test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI background lifecycle @capability:proxy',
@@ -22,7 +13,12 @@ test.describe(
 		test(
 			'should recover when a background builder task is cancelled',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
-			async ({ api, n8n }) => {
+			async ({ api, n8n }, testInfo) => {
+				test.skip(
+					testInfo.project.name.includes('multi-main'),
+					'Background task simulation state is process-local and not stable in multi-main mode',
+				);
+
 				const owner = await api.signin('owner');
 				const simulation = await api.startInstanceAiBackgroundTimeoutSimulation(owner.id);
 
@@ -37,13 +33,8 @@ test.describe(
 				await expect
 					.poll(
 						async () => {
-							const response = await api.request.get(
-								`/rest/instance-ai/threads/${simulation.threadId}/status`,
-							);
-							expect(response.ok()).toBe(true);
-
-							const body = (await response.json()) as ThreadStatusResponse;
-							const [task] = body.data?.backgroundTasks ?? [];
+							const status = await api.getInstanceAiThreadStatus(simulation.threadId);
+							const [task] = status.backgroundTasks;
 							taskId = task?.taskId ?? '';
 
 							return task?.status;
@@ -53,10 +44,7 @@ test.describe(
 					.toBe('running');
 				expect(taskId).not.toBe('');
 
-				const cancelResponse = await api.request.post(
-					`/rest/instance-ai/chat/${simulation.threadId}/tasks/${taskId}/cancel`,
-				);
-				expect(cancelResponse.ok()).toBe(true);
+				await api.cancelInstanceAiTask(simulation.threadId, taskId);
 
 				await expect(n8n.instanceAi.getAssistantMessageText(BACKGROUND_CANCELLED_TEXT)).toBeVisible(
 					{

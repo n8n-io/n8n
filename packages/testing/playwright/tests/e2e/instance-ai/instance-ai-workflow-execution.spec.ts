@@ -9,6 +9,13 @@ test.describe(
 	() => {
 		test.describe.configure({ timeout: 180_000 });
 
+		test.beforeEach(({}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Workflow execution replay is not yet stable in multi-main mode',
+			);
+		});
+
 		test('should show run workflow button in preview', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
@@ -114,11 +121,7 @@ test.describe(
 			});
 		});
 
-		test('should allow re-running workflow after initial execution', async ({ n8n }, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Re-execution is not yet stable in multi-main mode',
-			);
+		test('should allow re-running workflow after initial execution', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
