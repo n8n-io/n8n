@@ -47,6 +47,7 @@ describe('Tool builder — .requireApproval()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(true);
 	});
 
 	it('build() throws when .requireApproval() is combined with .suspend()/.resume()', () => {
@@ -84,6 +85,7 @@ describe('Tool builder — .needsApprovalFn()', () => {
 
 		expect(tool.suspendSchema).toBeDefined();
 		expect(tool.resumeSchema).toBeDefined();
+		expect(tool.approval?.required).toBe(false);
 	});
 
 	it('build() throws when .needsApprovalFn() is combined with .suspend()/.resume()', () => {

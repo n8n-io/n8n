@@ -490,8 +490,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended build interaction. Posts to the build/resume endpoint
-	 * and re-enters the same SSE handler. The `runId` is required — it comes
+	 * Resume a suspended interaction. Build-mode interactions post to
+	 * build/resume; preview chat approval prompts post to chat/resume. Both
+	 * paths re-enter the same SSE handler. The `runId` is required — it comes
 	 * from the original `tool-call-suspended` chunk (live) or from the
 	 * `openSuspensions` sidecar applied during history reload.
 	 */
@@ -537,7 +538,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
+		const resumeEndpoint = params.endpoint.value === 'chat' ? 'chat/resume' : 'build/resume';
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${resumeEndpoint}`;
 		const { ok } = await postAndConsume(url, payload);
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;

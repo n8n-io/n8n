@@ -427,7 +427,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('wraps node tool with approval when requireApproval is true', async () => {
@@ -463,7 +463,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
@@ -491,7 +491,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBeUndefined();
+		expect(tool!.approval).toBeUndefined();
 	});
 
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {

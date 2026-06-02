@@ -51,6 +51,12 @@ export class AgentBuildResumeDto extends Z.class({
 	resumeData: interactiveResumeDataSchema,
 }) {}
 
+export class AgentChatResumeDto extends Z.class({
+	runId: z.string().min(1),
+	toolCallId: z.string().min(1),
+	resumeData: z.unknown(),
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	credentialId: z.string().min(1),

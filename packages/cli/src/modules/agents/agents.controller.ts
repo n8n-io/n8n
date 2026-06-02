@@ -2,6 +2,7 @@ import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
+	AgentChatResumeDto,
 	AgentCredentialIntegrationSchema,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
@@ -603,7 +604,7 @@ export class AgentsController {
 		}
 
 		try {
-			await pumpChunks(
+			const suspended = await pumpChunks(
 				this.agentsService.executeForChat({
 					agentId,
 					projectId,
@@ -616,9 +617,47 @@ export class AgentsController {
 				}),
 				send,
 			);
-			send({ type: 'done', sessionId: threadId });
+			if (!suspended) {
+				send({ type: 'done', sessionId: threadId });
+			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+			send({ type: 'error', message: errorMessage });
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/chat/resume', { usesTemplates: true })
+	@ProjectScope('agent:execute')
+	async chatResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentChatResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+		const { send } = initSseStream(res);
+
+		try {
+			const suspended = await pumpChunks(
+				this.agentsService.resumeForChat({
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					userId: req.user.id,
+					usePublishedVersion: false,
+				}),
+				send,
+			);
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
 			send({ type: 'error', message: errorMessage });
 		}
 

@@ -127,6 +127,7 @@ describe('AgentsController route access scopes', () => {
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
 		['listVersions', 'agent:read'],
+		['chatResume', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});

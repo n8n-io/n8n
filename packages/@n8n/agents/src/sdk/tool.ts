@@ -10,6 +10,7 @@ import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
+	displayName: z.string().optional(),
 	args: z.unknown(),
 });
 
@@ -24,6 +25,12 @@ type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknow
 export interface ApprovalConfig {
 	requireApproval?: boolean;
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
+}
+
+function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
+	const metadata = tool.metadata;
+	const displayName = metadata?.displayName ?? metadata?.workflowName;
+	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
 }
 
 /**
@@ -41,7 +48,9 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 
 	return {
 		...tool,
-		withDefaultApproval: true,
+		approval: {
+			required: config.requireApproval === true,
+		},
 		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
 		resumeSchema: APPROVAL_RESUME_SCHEMA,
 		handler: async (input, ctx) => {
@@ -54,7 +63,13 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 					needs = await config.needsApprovalFn(input);
 				}
 				if (needs) {
-					return await interruptCtx.suspend({ type: 'approval', toolName: tool.name, args: input });
+					const displayName = getToolApprovalDisplayName(tool);
+					return await interruptCtx.suspend({
+						type: 'approval',
+						toolName: tool.name,
+						...(displayName ? { displayName } : {}),
+						args: input,
+					});
 				}
 				return await originalHandler(input, {
 					parentTelemetry: interruptCtx.parentTelemetry,

@@ -8,6 +8,7 @@ import {
 
 import {
 	applyOpenSuspensions,
+	APPROVAL_TOOL_NAME,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	isGroupable,
@@ -75,6 +76,49 @@ describe('rebuildInteractiveFromHistory', () => {
 			state: 'done',
 		});
 		expect(result).toBeUndefined();
+	});
+
+	it('rebuilds an OPEN approval card from an approval suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-1',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				displayName: 'Calculator',
+				args: { input: '2 + 2' },
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.input).toEqual({
+			type: 'approval',
+			toolName: 'calculator',
+			displayName: 'Calculator',
+			args: { input: '2 + 2' },
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+		expect(result?.resolvedValue).toBeUndefined();
+	});
+
+	it('rebuilds a rejected approval card from a declined tool result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-2',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				args: { input: '2 + 2' },
+			},
+			output: { declined: true, message: 'Tool "calculator" was not approved' },
+			state: 'done',
+		});
+
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.resolvedAt).toBeDefined();
+		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
 });
 

@@ -61,12 +61,29 @@ interface InteractivePayloadBase {
 	resolvedAt?: number;
 }
 
+export const APPROVAL_TOOL_NAME = '__approval__' as const;
+
+export interface ApprovalInput {
+	type: 'approval';
+	toolName: string;
+	displayName?: string;
+	args: unknown;
+}
+
+export interface ApprovalResume {
+	approved: boolean;
+}
+
 /**
- * Discriminated union describing the interactive card that a suspended builder
- * tool call renders in the chat. `toolName` is the discriminant (one of the
- * three canonical interactive tool names from `@n8n/api-types`).
+ * Discriminated union describing the interactive card that a suspended tool call
+ * renders in the chat. `toolName` is the discriminant.
  */
 export type InteractivePayload =
+	| (InteractivePayloadBase & {
+			toolName: typeof APPROVAL_TOOL_NAME;
+			input: ApprovalInput;
+			resolvedValue?: ApprovalResume;
+	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
 			input: AskCredentialInput;
@@ -91,6 +108,27 @@ const INTERACTIVE_TOOL_NAMES = [
 
 export function isInteractiveToolName(v: unknown): v is InteractiveToolName {
 	return typeof v === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(v);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseApprovalInput(value: unknown): ApprovalInput | undefined {
+	if (!isRecord(value)) return undefined;
+	if (value.type !== 'approval') return undefined;
+	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	return {
+		type: 'approval',
+		toolName: value.toolName,
+		...(typeof value.displayName === 'string' &&
+			value.displayName.length > 0 && { displayName: value.displayName }),
+		args: value.args,
+	};
+}
+
+function isDeclinedToolOutput(value: unknown): boolean {
+	return isRecord(value) && value.declined === true;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +244,19 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
+	const approvalInput = parseApprovalInput(tc.input);
+	if (approvalInput) {
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			toolName: APPROVAL_TOOL_NAME,
+			input: approvalInput,
+			...(tc.output !== undefined && {
+				resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
+			}),
+		};
+	}
+
 	if (!isInteractiveToolName(tc.tool)) return undefined;
 
 	const base: InteractivePayloadBase = {
@@ -259,9 +310,9 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
  *
- * Whenever a tool call is interactive (one of the ask_* tools), we attach a
- * reconstructed `InteractivePayload` so the UI re-renders the card in either
- * its open (awaiting user) or resolved (disabled) state.
+ * Whenever a tool call is interactive, we attach a reconstructed
+ * `InteractivePayload` so the UI re-renders the card in either its open
+ * (awaiting user) or resolved (disabled) state.
  */
 export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];

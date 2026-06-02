@@ -16,6 +16,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { APPROVAL_TOOL_NAME } from '../composables/agentChatMessages';
 
 /** Build a `Response` whose body streams the given events as SSE `data:` lines. */
 function makeSseResponse(events: AgentSseEvent[]): Response {
@@ -34,11 +35,11 @@ function makeSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
-function buildHook() {
+function buildHook(endpoint: 'build' | 'chat' = 'build') {
 	return useAgentChatStream({
 		projectId: ref('p1'),
 		agentId: ref('a1'),
-		endpoint: ref<'build' | 'chat'>('build'),
+		endpoint: ref<'build' | 'chat'>(endpoint),
 	});
 }
 
@@ -158,6 +159,113 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
 		expect(assistant.interactive?.runId).toBe('run-7');
 		expect(assistant.status).toBe('awaitingUser');
+	});
+
+	it('renders an approval card when preview chat suspends for tool approval', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-approval',
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-approval',
+					runId: 'run-approval',
+					toolName: 'calculator',
+					input: {
+						type: 'approval',
+						toolName: 'calculator',
+						args: { input: '2 + 2' },
+					},
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook('chat');
+		await hook.sendMessage('calculate 2 + 2');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.toolCalls?.[0].state).toBe('suspended');
+		expect(assistant.interactive?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(assistant.interactive?.runId).toBe('run-approval');
+		expect(assistant.interactive?.input).toEqual({
+			type: 'approval',
+			toolName: 'calculator',
+			args: { input: '2 + 2' },
+		});
+	});
+
+	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					{
+						type: 'tool-call-suspended',
+						payload: {
+							toolCallId: 'tc-approval',
+							runId: 'run-approval',
+							toolName: 'calculator',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					},
+					{ type: 'done' },
+				]),
+			)
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-result',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						output: { result: 4 },
+					},
+					{ type: 'done' },
+				]),
+			);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook('chat');
+		await hook.sendMessage('calculate 2 + 2');
+		await nextTick();
+
+		await hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			resumeData: { approved: true },
+		});
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: JSON.stringify({
+					runId: 'run-approval',
+					toolCallId: 'tc-approval',
+					resumeData: { approved: true },
+				}),
+			}),
+		);
+		const assistant = hook.messages.value[1];
+		expect(assistant.interactive?.resolvedValue).toEqual({ approved: true });
+		expect(assistant.status).toBe('success');
 	});
 
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {

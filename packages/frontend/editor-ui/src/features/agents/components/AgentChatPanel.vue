@@ -9,6 +9,7 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { APPROVAL_TOOL_NAME } from '../composables/agentChatMessages';
 
 const props = withDefaults(
 	defineProps<{
@@ -109,18 +110,23 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const hasOpenInteractiveQuestion = computed(() =>
-	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
+const openInteractive = computed(
+	() =>
+		messages.value.find((message) => message.interactive && !message.interactive.resolvedAt)
+			?.interactive,
 );
+const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
 
 const chatPlaceholder = computed(() =>
 	isBuilderReadOnly.value
 		? locale.baseText('agents.builder.readonly.placeholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
+		: openInteractive.value?.toolName === APPROVAL_TOOL_NAME
+			? locale.baseText('agents.chat.approval.inputPlaceholder')
+			: hasOpenInteraction.value
+				? locale.baseText('agents.chat.answerQuestionPlaceholder')
+				: locale.baseText('agents.chat.input.placeholder'),
 );
 
 function onOpenBuild() {
@@ -137,7 +143,7 @@ async function onSubmit() {
 		isStreaming.value ||
 		isPreparingToSend.value ||
 		isBuilderReadOnly.value ||
-		hasOpenInteractiveQuestion.value
+		hasOpenInteraction.value
 	)
 		return;
 
@@ -171,7 +177,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenInteractiveQuestion.value) return;
+	if (hasOpenInteraction.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -286,7 +292,7 @@ onBeforeUnmount(() => {
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
 				:can-submit="
-					!hasOpenInteractiveQuestion &&
+					!hasOpenInteraction &&
 					!isStreaming &&
 					!isPreparingToSend &&
 					!isBuilderReadOnly &&
@@ -294,7 +300,7 @@ onBeforeUnmount(() => {
 				"
 				:disabled="
 					isBuilderReadOnly ||
-					hasOpenInteractiveQuestion ||
+					hasOpenInteraction ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
 				"
