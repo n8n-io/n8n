@@ -727,6 +727,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
@@ -994,7 +995,6 @@ export function applyBranchReadOnlyOverrides(
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	lastMessages: number;
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
@@ -1010,7 +1010,6 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	lastMessages: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
@@ -1077,9 +1076,16 @@ export interface InstanceAiEvalInterceptedRequest {
 }
 
 export interface InstanceAiEvalNodeResult {
-	output: unknown;
-	/** Full count of output items (`output` is truncated for artifact size) */
-	outputCount?: number;
+	/** Outputs by connection type → per-branch items. Empty when pinned, errored, or didn't run. */
+	outputs: Record<string, unknown[][]>;
+	/** Total items across all branches (full untruncated count). */
+	outputCount: number;
+	/** True when any branch in `outputs` was truncated for size. */
+	truncated?: boolean;
+	/** Number of times this node ran (>1 inside loops). `outputs` captures the LAST iteration. */
+	iterationCount: number;
+	/** 0-based index of the first iteration that errored, if any. */
+	firstErrorIteration?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */

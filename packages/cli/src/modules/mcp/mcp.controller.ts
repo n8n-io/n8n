@@ -87,7 +87,8 @@ export class McpController {
 		}
 
 		try {
-			await this.handleTransportRequest(req, res);
+			const { enabled: mcpAppsEnabled } = await this.mcpService.resolveMcpAppsVariant(req.user);
+			await this.handleTransportRequest(req, res, mcpAppsEnabled);
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (!res.headersSent) {
@@ -119,7 +120,7 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
-		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
@@ -128,13 +129,12 @@ export class McpController {
 			).mcpAuthType,
 		};
 
-		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
-					...telemetryPayload,
+					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
@@ -143,11 +143,20 @@ export class McpController {
 			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
 			return;
 		}
+
+		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
+
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+			...baseTelemetryPayload,
+			mcp_apps_enabled: mcpAppsResolution.enabled,
+			mcp_apps_variant: mcpAppsResolution.variant,
+		};
+
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, req.body);
+			await this.handleTransportRequest(req, res, mcpAppsResolution.enabled, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -182,12 +191,13 @@ export class McpController {
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
+		mcpAppsEnabled: boolean,
 		body?: unknown,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
 		);
-		const server = await this.mcpService.getServer(req.user);
+		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled);
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});

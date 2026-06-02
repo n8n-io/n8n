@@ -11,7 +11,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
+import { CredentialMissingIdError } from '@/errors/credential-missing-id.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
@@ -85,6 +87,20 @@ describe('EvalMockedCredentialsHelper', () => {
 			await expect(
 				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
 			).rejects.toThrow('database is down');
+			expect(helper.mockedCredentials).toEqual([]);
+		});
+
+		it('rethrows generic no-id UnexpectedError errors', async () => {
+			const inner = makeInner({
+				getDecrypted: jest
+					.fn()
+					.mockRejectedValue(new UnexpectedError('Found credential with no ID.')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			await expect(
+				helper.getDecrypted(fakeAdditionalData, fakeNodeCreds, 'telegramApi', 'manual'),
+			).rejects.toThrow('Found credential with no ID.');
 			expect(helper.mockedCredentials).toEqual([]);
 		});
 
@@ -414,12 +430,8 @@ describe('EvalMockedCredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted — schema synthesis when id is null', () => {
-		// Core's eval-mode bypass passes `{ id: null, name: type }` when a node
-		// has no credentials configured at all. The inner helper throws
-		// CredentialNotFoundError on a null id; the catch below schema-synthesizes
-		// (and applies the URL rewrite) so vendor SDK traffic stays inside the
-		// wire server instead of escaping to the real provider with 401.
+	describe('getDecrypted — schema synthesis when id is falsy', () => {
+		// Falsy credential ids short-circuit to schema synthesis without delegating to the inner helper.
 		const propsSchema = [
 			{
 				name: 'apiKey',
@@ -437,12 +449,23 @@ describe('EvalMockedCredentialsHelper', () => {
 		];
 
 		const nullNodeCreds: INodeCredentialsDetails = { id: null, name: 'openAiApi' };
+		const emptyIdNodeCreds: INodeCredentialsDetails = { id: '', name: 'openAiApi' };
+		const noIdNodeCreds = { name: 'openAiApi' } as unknown as INodeCredentialsDetails;
 
 		function makeSynthesizingInner(): ICredentialsHelper {
 			return makeInner({
 				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
-				// Inner throws on a null-id lookup → catch fires → schema synthesis.
+				// Not reached for a null id (short-circuits first); left rejecting so a regression fails loudly.
 				getDecrypted: jest.fn().mockRejectedValue(new CredentialNotFoundError('null', 'openAiApi')),
+			});
+		}
+
+		function makeNoIdInner(): ICredentialsHelper {
+			return makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				getDecrypted: jest
+					.fn()
+					.mockRejectedValue(new CredentialMissingIdError('openAiApi', 'openAiApi')),
 			});
 		}
 
@@ -566,6 +589,111 @@ describe('EvalMockedCredentialsHelper', () => {
 
 			expect(result.url).toBe('https://api.openai.com/v1');
 			expect(helper.rewrittenCredentials).toEqual([]);
+		});
+
+		it('synthesizes a credential when the inner helper reports a missing id', async () => {
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				noIdNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(typeof result.apiKey).toBe('string');
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+
+		it('synthesizes a credential when the credential id is empty', async () => {
+			const helper = new EvalMockedCredentialsHelper(makeNoIdInner());
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				emptyIdNodeCreds,
+				'openAiApi',
+				'manual',
+				{ node: { name: 'OpenAI' } as INode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(typeof result.apiKey).toBe('string');
+			expect(result.url).toBe('https://api.openai.com/v1');
+			expect(helper.mockedCredentials).toEqual([
+				{
+					nodeName: 'OpenAI',
+					credentialType: 'openAiApi',
+					credentialId: undefined,
+				},
+			]);
+		});
+	});
+
+	describe('no-id credential references — regression for "Found credential with no ID."', () => {
+		// Id-less refs (builder "set up later" placeholders, core's `{ id: null }`) make the real
+		// inner throw UnexpectedError, not CredentialNotFoundError — so the helper must synthesize, not delegate.
+		const propsSchema = [
+			{
+				name: 'apiKey',
+				displayName: 'API Key',
+				type: 'string' as const,
+				default: '',
+				typeOptions: { password: true },
+			},
+		];
+
+		it.each([
+			['null id (fully-unconfigured bypass)', { id: null, name: 'telegramApi' }],
+			['empty-string id (placeholder)', { id: '', name: 'Telegram cred' }],
+			['missing id (placeholder)', { name: 'Telegram cred' }],
+		])('synthesizes without delegating to inner — %s', async (_label, creds) => {
+			const inner = makeInner({
+				getCredentialsProperties: jest.fn().mockReturnValue(propsSchema),
+				// Stands in for core's UnexpectedError on a falsy id — fails loudly if the short-circuit regresses.
+				getDecrypted: jest.fn().mockRejectedValue(new Error('Found credential with no ID.')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			const result = await helper.getDecrypted(
+				fakeAdditionalData,
+				creds as INodeCredentialsDetails,
+				'telegramApi',
+				'manual',
+				{ node: fakeNode } as IExecuteData,
+			);
+
+			expect(result.__evalMockedCredential).toBe(true);
+			expect(inner.getDecrypted).not.toHaveBeenCalled();
+			expect(helper.mockedCredentials).toEqual([
+				{ nodeName: 'Telegram', credentialType: 'telegramApi', credentialId: undefined },
+			]);
+		});
+
+		it('still delegates (and surfaces the throw) when an id IS present', async () => {
+			// A present id whose lookup fails with a non-CredentialNotFoundError must still propagate.
+			const inner = makeInner({
+				getDecrypted: jest.fn().mockRejectedValue(new Error('database is down')),
+			});
+			const helper = new EvalMockedCredentialsHelper(inner);
+
+			await expect(
+				helper.getDecrypted(
+					fakeAdditionalData,
+					{ id: 'real-id', name: 'Telegram cred' },
+					'telegramApi',
+					'manual',
+				),
+			).rejects.toThrow('database is down');
+			expect(inner.getDecrypted).toHaveBeenCalled();
 		});
 	});
 

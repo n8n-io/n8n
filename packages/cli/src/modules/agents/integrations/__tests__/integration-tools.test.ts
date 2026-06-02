@@ -10,19 +10,19 @@ import {
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-const slackA: AgentCredentialIntegrationConfig = {
+const slackA: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-a',
 };
 
-const slackB: AgentCredentialIntegrationConfig = {
+const slackB: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-b',
 };
 
-const linear: AgentCredentialIntegrationConfig = {
+const linear: AgentIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-c',
 };
