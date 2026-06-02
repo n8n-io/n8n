@@ -442,13 +442,15 @@ async function startExecution(
 		const executionsConfig = Container.get(ExecutionsConfig);
 
 		// Compute a sub-workflow's own deadline independent of its parent
+		const effectiveMaxTimeout =
+			executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
 		let ownDeadline: number | undefined;
 		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
 			ownDeadline =
-				startTime + Math.min(workflowSettings.executionTimeout, executionsConfig.maxTimeout) * 1000;
+				startTime + Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * 1000;
 		} else if (executionsConfig.timeout > 0) {
-			ownDeadline =
-				startTime + Math.min(executionsConfig.timeout, executionsConfig.maxTimeout) * 1000;
+			ownDeadline = startTime + Math.min(executionsConfig.timeout, effectiveMaxTimeout) * 1000;
 		}
 
 		let subworkflowTimeout: number | undefined;
