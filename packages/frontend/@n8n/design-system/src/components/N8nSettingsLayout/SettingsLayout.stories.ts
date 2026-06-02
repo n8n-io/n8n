@@ -90,7 +90,38 @@ export const WithBackButton: Story = {
 	}),
 	args: {
 		showBack: true,
-		backLabel: 'Back',
+		backLabel: 'Back to app',
+	},
+};
+
+export const NestedBackLabel: Story = {
+	render: (args) => ({
+		components: {
+			N8nSettingsLayout,
+			N8nSettingsPageHeader,
+			N8nSettingsSection,
+			N8nSettingsRowGroup,
+			N8nSettingsRow,
+			N8nSwitch,
+		},
+		setup() {
+			const enabled = ref(true);
+			const onBack = () => alert('back');
+			return { args, enabled, onBack };
+		},
+		template: `<N8nSettingsLayout v-bind="args" @back="onBack">${page}</N8nSettingsLayout>`,
+	}),
+	args: {
+		showBack: true,
+		backLabel: 'Back to Security settings',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'On a nested sub-page, set `back-label` to express where back goes (e.g. "Back to Security settings"). The label is also the back button’s accessible name.',
+			},
+		},
 	},
 };
 

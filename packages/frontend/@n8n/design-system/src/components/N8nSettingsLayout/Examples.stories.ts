@@ -8,6 +8,7 @@ import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
 import N8nSettingsPageHeader from '../N8nSettingsPageHeader';
 import N8nSettingsRow from '../N8nSettingsRow';
+import N8nSettingsRowConfigure from '../N8nSettingsRowConfigure';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsSection from '../N8nSettingsSection';
 import N8nSwitch from '../N8nSwitch';
@@ -35,6 +36,7 @@ const components = {
 	N8nSettingsSection,
 	N8nSettingsRowGroup,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSwitch,
 	N8nButton,
 	N8nInput,
@@ -50,7 +52,10 @@ export const SecurityAndLogin: Story = {
 		components,
 		setup() {
 			const onBack = () => alert('Back to app');
-			return { onBack };
+			const onConfigurePasskey = () => alert('Configure passkeys');
+			const onLogOut = () => alert('Log out');
+			const onRevoke = () => alert('Revoke');
+			return { onBack, onConfigurePasskey, onLogOut, onRevoke };
 		},
 		template: `
 			<N8nSettingsLayout show-back back-label="Back to app" @back="onBack">
@@ -61,35 +66,79 @@ export const SecurityAndLogin: Story = {
 
 				<N8nSettingsSection title="Sign-in" description="How you sign in to n8n.">
 					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Username" description="Used in audit trails and @-mentions. Set by your admin via SSO." layout="vertical">
-							<template #action><N8nInput placeholder="jan.ostrowka" /></template>
+						<N8nSettingsRow title="Username" description="Used in audit trails and @-mentions. Set by your admin via SSO.">
+							<template #action><N8nInput size="medium" placeholder="jan.ostrowka" /></template>
 						</N8nSettingsRow>
 						<N8nSettingsRow title="Password" description="Last changed 4 months ago.">
-							<template #action><N8nButton variant="outline" size="small" label="Change password" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Change password" /></template>
 						</N8nSettingsRow>
-						<N8nSettingsRow title="Passkey" description="Sign in with your face, fingerprint, or device PIN.">
-							<template #action><N8nButton variant="ghost" size="small" label="Configure" /></template>
+						<N8nSettingsRow title="Passkey" description="Sign in with your face, fingerprint, or device PIN." clickable @click="onConfigurePasskey">
+							<template #action><N8nSettingsRowConfigure value="2 of 3 devices" /></template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
 
 				<N8nSettingsSection title="Active sessions" description="Devices currently signed in to your account.">
 					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Chrome 138 on macOS" description="Gdynia, Poland · active now" show-visual>
+						<N8nSettingsRow title="Chrome 138 on macOS" description="Gdynia, Poland · active now" show-visual hoverable reveal-actions-on-hover>
 							<template #visual><N8nIcon icon="hard-drive" /></template>
-							<template #action><N8nButton variant="outline" size="small" label="Log out" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Log out" @click="onLogOut" /></template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow title="2 other active sessions" :show-divider="false">
-							<template #action><N8nButton variant="outline" size="small" label="Revoke all" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Revoke all" /></template>
 						</N8nSettingsRow>
-						<N8nSettingsRow title="Safari on iPhone" description="Gdynia, Poland · last seen 4 hours ago" show-visual :show-divider="false">
+						<N8nSettingsRow title="Safari on iPhone" description="Gdynia, Poland · last seen 4 hours ago" show-visual hoverable reveal-actions-on-hover :show-divider="false">
 							<template #visual><N8nIcon icon="globe" /></template>
-							<template #action><N8nButton variant="outline" size="small" label="Revoke" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Revoke" @click="onRevoke" /></template>
 						</N8nSettingsRow>
-						<N8nSettingsRow title="n8n CLI" description="headless · last seen 3 days ago" show-visual>
+						<N8nSettingsRow title="n8n CLI" description="headless · last seen 3 days ago" show-visual hoverable reveal-actions-on-hover>
 							<template #visual><N8nIcon icon="terminal" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Revoke" @click="onRevoke" /></template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+			</N8nSettingsLayout>
+		`,
+	}),
+};
+
+export const PasskeysSubPage: Story = {
+	render: () => ({
+		components,
+		setup() {
+			// Nested sub-page: the back label names the parent page it returns to.
+			const onBack = () => alert('Back to Security settings');
+			const onAdd = () => alert('Add passkey');
+			const onRemove = () => alert('Remove passkey');
+			return { onBack, onAdd, onRemove };
+		},
+		template: `
+			<N8nSettingsLayout show-back back-label="Back to Security settings" @back="onBack">
+				<N8nSettingsPageHeader
+					title="Passkeys"
+					description="Manage the passkeys you use to sign in with your face, fingerprint, or device PIN."
+				/>
+
+				<N8nSettingsSection>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow title="Add a passkey" description="Register this device or a hardware security key." hoverable>
+							<template #action><N8nButton variant="outline" size="medium" label="Add passkey" @click="onAdd" /></template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow title="MacBook Pro" description="Added 3 months ago · last used 3 min ago" show-visual hoverable reveal-actions-on-hover>
+							<template #visual><N8nIcon icon="hard-drive" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Remove" @click="onRemove" /></template>
+						</N8nSettingsRow>
+						<N8nSettingsRow title="iPhone" description="Added 5 months ago · last used yesterday" show-visual hoverable reveal-actions-on-hover>
+							<template #visual><N8nIcon icon="fingerprint" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Remove" @click="onRemove" /></template>
+						</N8nSettingsRow>
+						<N8nSettingsRow title="YubiKey 5C" description="Added 1 year ago · last used last week" show-visual hoverable reveal-actions-on-hover>
+							<template #visual><N8nIcon icon="key-round" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Remove" @click="onRemove" /></template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
@@ -138,7 +187,7 @@ export const ThisInstance: Story = {
 						</N8nSettingsRow>
 						<N8nSettingsRow title="Plan" description="Enterprise" />
 						<N8nSettingsRow title="Billing">
-							<template #action><N8nButton variant="outline" size="small" label="Manage plan" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Manage plan" /></template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
@@ -147,7 +196,7 @@ export const ThisInstance: Story = {
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow title="Current version" description="2.9.4" />
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
-							<template #action><N8nButton variant="outline" size="small" label="Update" /></template>
+							<template #action><N8nButton variant="outline" size="medium" label="Update" /></template>
 						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>

@@ -17,16 +17,29 @@ describe('N8nSettingsLayout', () => {
 		expect(screen.queryByTestId('settings-back-button')).not.toBeInTheDocument();
 	});
 
+	it('defaults the back action label to "Back"', () => {
+		render(N8nSettingsLayout, {
+			props: { showBack: true },
+			slots: { default: 'content' },
+		});
+
+		const button = screen.getByTestId('settings-back-button');
+		expect(button).toHaveTextContent('Back');
+		expect(button).toHaveAccessibleName('Back');
+	});
+
 	it('shows a ghost back action with the given label when show-back is set', () => {
 		render(N8nSettingsLayout, {
-			props: { showBack: true, backLabel: 'Back to app' },
+			props: { showBack: true, backLabel: 'Back to Security settings' },
 			slots: { default: 'content' },
 		});
 
 		const button = screen.getByTestId('settings-back-button');
 		expect(button).toBeInTheDocument();
 		expect(button.className).toContain('ghost');
-		expect(button).toHaveTextContent('Back to app');
+		expect(button).toHaveTextContent('Back to Security settings');
+		// The arrow icon is aria-hidden, so the label is the button's accessible name.
+		expect(button).toHaveAccessibleName('Back to Security settings');
 	});
 
 	it('emits back when the back action is clicked', async () => {

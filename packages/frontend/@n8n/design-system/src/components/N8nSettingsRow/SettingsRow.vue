@@ -29,8 +29,20 @@ export interface SettingsRowProps {
 	expandable?: boolean;
 	/** PR2 placeholder: pairs with `@update:expanded` (`v-model:expanded`). Inert in PR1. */
 	expanded?: boolean;
-	/** PR2 placeholder: opt-in hover affordance for actionable rows. Inert in PR1. */
+	/** Shows a subtle hover background on the row. Implied by `clickable`. */
 	hoverable?: boolean;
+	/**
+	 * Turns the whole row into a single clickable control: pointer cursor, hover and
+	 * active states, `role="button"` + keyboard (Enter/Space), and emits `@click`. Pair it
+	 * with a `N8nSettingsRowConfigure` affordance in the `#action` slot.
+	 */
+	clickable?: boolean;
+	/**
+	 * Hides the `#action` slot until the row is hovered or contains keyboard focus. Use for
+	 * secondary actions (e.g. "Log out"/"Revoke"). Revealed action clicks never bubble to a
+	 * `clickable` row.
+	 */
+	revealActionsOnHover?: boolean;
 }
 
 defineOptions({ name: 'N8nSettingsRow' });
@@ -48,11 +60,16 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	expandable: false,
 	expanded: false,
 	hoverable: false,
+	clickable: false,
+	revealActionsOnHover: false,
 });
 
-// PR2 placeholder: declared so consumers can wire `v-model:expanded` without a breaking
-// change later. PR1 never emits it internally (state stays consumer-owned).
-defineEmits<{ 'update:expanded': [value: boolean] }>();
+const emit = defineEmits<{
+	// PR2 placeholder: declared so consumers can wire `v-model:expanded` without a breaking
+	// change later. PR1 never emits it internally (state stays consumer-owned).
+	'update:expanded': [value: boolean];
+	click: [event: MouseEvent | KeyboardEvent];
+}>();
 
 const slots = useSlots();
 
@@ -66,12 +83,43 @@ const actionStyle = computed(() => {
 	}
 	return { maxWidth: props.actionMaxWidth };
 });
+
+const interactiveAttrs = computed(() =>
+	props.clickable ? { role: 'button', tabindex: 0, 'aria-label': props.title || undefined } : {},
+);
+
+function onActivate(event: MouseEvent) {
+	if (props.clickable) {
+		emit('click', event);
+	}
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (!props.clickable) {
+		return;
+	}
+	if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+		event.preventDefault();
+		emit('click', event);
+	}
+}
 </script>
 
 <template>
 	<div
-		:class="[$style.row, $style[layout], { [$style.alignStart]: align === 'start' }]"
+		:class="[
+			$style.row,
+			$style[layout],
+			{
+				[$style.alignStart]: align === 'start',
+				[$style.hoverable]: hoverable,
+				[$style.clickable]: clickable,
+			},
+		]"
 		:data-layout="layout"
+		v-bind="interactiveAttrs"
+		@click="onActivate"
+		@keydown="onKeydown"
 	>
 		<template v-if="layout === 'custom'">
 			<slot />
@@ -104,7 +152,12 @@ const actionStyle = computed(() => {
 					</slot>
 				</div>
 			</div>
-			<div v-if="slots.action" :class="$style.action" :style="actionStyle">
+			<div
+				v-if="slots.action"
+				:class="[$style.action, { [$style.revealActions]: revealActionsOnHover }]"
+				:style="actionStyle"
+				@click="revealActionsOnHover ? $event.stopPropagation() : undefined"
+			>
 				<slot name="action" />
 			</div>
 		</template>
@@ -128,6 +181,29 @@ const actionStyle = computed(() => {
 	display: flex;
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.hoverable,
+.clickable {
+	transition: background-color 0.1s ease-in-out;
+}
+
+.hoverable:hover,
+.clickable:hover {
+	background-color: var(--background--hover);
+}
+
+.clickable {
+	cursor: pointer;
+}
+
+.clickable:active {
+	background-color: var(--background--active);
+}
+
+.clickable:focus-visible {
+	outline: var(--focus--border-width, 2px) solid var(--focus--border-color);
+	outline-offset: calc(-1 * var(--focus--border-width, 2px));
 }
 
 .horizontal {
@@ -171,7 +247,8 @@ const actionStyle = computed(() => {
 	justify-content: center;
 	width: var(--spacing--xl);
 	height: var(--spacing--xl);
-	border-radius: var(--radius--3xs);
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
+	border-radius: var(--radius--2xs);
 	overflow: clip;
 	color: var(--text-color--subtle);
 }
@@ -212,6 +289,16 @@ const actionStyle = computed(() => {
 .vertical .action {
 	width: 100%;
 	justify-content: flex-start;
+}
+
+.revealActions {
+	opacity: 0;
+	transition: opacity 0.1s ease-in-out;
+}
+
+.row:hover .revealActions,
+.row:focus-within .revealActions {
+	opacity: 1;
 }
 
 .revealed {

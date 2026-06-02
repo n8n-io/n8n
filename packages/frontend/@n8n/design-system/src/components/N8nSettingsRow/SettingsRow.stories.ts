@@ -5,6 +5,7 @@ import N8nSettingsRow from './SettingsRow.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
+import N8nSettingsRowConfigure from '../N8nSettingsRowConfigure';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
@@ -19,12 +20,15 @@ const meta = {
 		truncateTitle: { control: 'boolean' },
 		showDivider: { control: 'boolean' },
 		showVisual: { control: 'boolean' },
+		hoverable: { control: 'boolean' },
+		clickable: { control: 'boolean' },
+		revealActionsOnHover: { control: 'boolean' },
 	},
 	parameters: {
 		docs: {
 			description: {
 				component:
-					'The core description-list row: left info (title/description + optional leading visual) and an action slot, arranged horizontally, vertically, or as a fully custom full-width slot.',
+					'The core description-list row: left info (title/description + optional leading visual) and an action slot, arranged horizontally, vertically, or as a fully custom full-width slot. In horizontal rows, action controls should use the medium size (`size="medium"`) so their height matches input fields and stays consistent across rows.',
 			},
 		},
 	},
@@ -257,5 +261,84 @@ export const Expandable: Story = {
 		title: 'Authenticator app',
 		description:
 			'Disclosure pattern reserved for PR2 (control owns the toggle via v-model:expanded).',
+	},
+};
+
+export const Hoverable: Story = {
+	render: (args) => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton },
+		setup: () => ({ args }),
+		template: card(`
+			<N8nSettingsRow v-bind="args" hoverable>
+				<template #action><N8nButton variant="outline" size="small" label="Manage" /></template>
+			</N8nSettingsRow>
+		`),
+	}),
+	args: {
+		title: 'Hover me',
+		description: 'A subtle hover background highlights the row.',
+	},
+};
+
+export const Clickable: Story = {
+	render: (args) => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nSettingsRowConfigure },
+		setup() {
+			const onRowClick = () => alert('Row clicked');
+			return { args, onRowClick };
+		},
+		template: card(`
+			<N8nSettingsRow v-bind="args" clickable @click="onRowClick">
+				<template #action><N8nSettingsRowConfigure /></template>
+			</N8nSettingsRow>
+		`),
+	}),
+	args: {
+		title: 'Passkey',
+		description: 'Whole-row clickable with a text + chevron configure affordance.',
+	},
+};
+
+export const ConfigureWithStatus: Story = {
+	render: (args) => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nSettingsRowConfigure },
+		setup() {
+			const onRowClick = () => alert('Configure');
+			return { args, onRowClick };
+		},
+		template: card(`
+			<N8nSettingsRow v-bind="args" clickable @click="onRowClick">
+				<template #action><N8nSettingsRowConfigure value="2 of 3 devices" /></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow title="OAuth applications" description="Apps authorized to access your account." clickable @click="onRowClick">
+				<template #action><N8nSettingsRowConfigure /></template>
+			</N8nSettingsRow>
+		`),
+	}),
+	args: {
+		title: 'Two-factor authentication',
+		description:
+			'The affordance shows "Configure" when unset, or the configured-state text once set up.',
+	},
+};
+
+export const RevealActionsOnHover: Story = {
+	render: (args) => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton, N8nIcon },
+		setup: () => ({ args }),
+		template: card(`
+			<N8nSettingsRow v-bind="args" hoverable reveal-actions-on-hover show-visual>
+				<template #visual><N8nIcon icon="hard-drive" /></template>
+				<template #action><N8nButton variant="outline" size="small" label="Log out" /></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow title="Safari on iPhone" description="Gdynia, Poland · last seen 4 hours ago" hoverable reveal-actions-on-hover show-visual>
+				<template #visual><N8nIcon icon="globe" /></template>
+				<template #action><N8nButton variant="outline" size="small" label="Revoke" /></template>
+			</N8nSettingsRow>
+		`),
+	}),
+	args: {
+		title: 'Chrome 138 on macOS',
+		description: 'Gdynia, Poland · active now. Hover (or focus) to reveal the action.',
 	},
 };

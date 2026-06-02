@@ -78,6 +78,8 @@ export type {
 	SettingsRowLayout,
 	SettingsRowAlign,
 } from './N8nSettingsRow';
+export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
+export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
 export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
 export type { SettingsRowGroupProps } from './N8nSettingsRowGroup';
 export { default as N8nSettingsSection } from './N8nSettingsSection';

@@ -56,6 +56,15 @@ const hasHeader = computed(() =>
 	width: 100%;
 }
 
+/*
+ * Sections own the vertical separation from a preceding sibling section (32px).
+ * Higher specificity than the layout's generic inter-child spacing, so adjacent
+ * sections sit 32px apart while the header→content gap stays untouched.
+ */
+.section + .section {
+	margin-block-start: var(--spacing--xl);
+}
+
 .header {
 	display: flex;
 	flex-direction: column;

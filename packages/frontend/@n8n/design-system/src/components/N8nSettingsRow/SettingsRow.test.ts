@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/vue';
+import { fireEvent, render, screen } from '@testing-library/vue';
 
 import N8nSettingsRow from './SettingsRow.vue';
 
@@ -149,5 +149,95 @@ describe('N8nSettingsRow', () => {
 
 		expect(screen.getByTestId('custom-info')).toBeInTheDocument();
 		expect(screen.queryByText('Default title')).not.toBeInTheDocument();
+	});
+
+	it('applies the hoverable class when hoverable is set', () => {
+		const { container } = render(N8nSettingsRow, {
+			props: { title: 'Title', hoverable: true },
+		});
+
+		const row = container.querySelector('[data-layout]') as HTMLElement;
+		expect(row.className).toContain('hoverable');
+	});
+
+	it('does not apply the hoverable class by default', () => {
+		const { container } = render(N8nSettingsRow, { props: { title: 'Title' } });
+
+		const row = container.querySelector('[data-layout]') as HTMLElement;
+		expect(row.className).not.toContain('hoverable');
+	});
+
+	describe('clickable', () => {
+		it('exposes button semantics and an accessible name from the title', () => {
+			render(N8nSettingsRow, { props: { title: 'Passkey', clickable: true } });
+
+			const row = screen.getByRole('button', { name: 'Passkey' });
+			expect(row).toHaveAttribute('tabindex', '0');
+		});
+
+		it('emits click when the row is clicked', async () => {
+			const { container, emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', clickable: true },
+			});
+
+			await fireEvent.click(container.querySelector('[data-layout]') as HTMLElement);
+
+			expect(emitted().click).toHaveLength(1);
+		});
+
+		it.each(['Enter', ' '])('activates with the %s key', async (key) => {
+			const { container, emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', clickable: true },
+			});
+
+			await fireEvent.keyDown(container.querySelector('[data-layout]') as HTMLElement, { key });
+
+			expect(emitted().click).toHaveLength(1);
+		});
+
+		it('does not emit click for non-activation keys', async () => {
+			const { container, emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', clickable: true },
+			});
+
+			await fireEvent.keyDown(container.querySelector('[data-layout]') as HTMLElement, {
+				key: 'Tab',
+			});
+
+			expect(emitted().click).toBeUndefined();
+		});
+
+		it('does not emit click or expose button semantics when not clickable', async () => {
+			const { container, emitted } = render(N8nSettingsRow, { props: { title: 'Passkey' } });
+
+			const row = container.querySelector('[data-layout]') as HTMLElement;
+			expect(row).not.toHaveAttribute('role', 'button');
+			await fireEvent.click(row);
+
+			expect(emitted().click).toBeUndefined();
+		});
+	});
+
+	describe('revealActionsOnHover', () => {
+		it('marks the action region as reveal-on-hover', () => {
+			const { container } = render(N8nSettingsRow, {
+				props: { title: 'Title', revealActionsOnHover: true },
+				slots: { action: '<button>Log out</button>' },
+			});
+
+			const action = container.querySelector('[class*="action"]') as HTMLElement;
+			expect(action.className).toContain('revealActions');
+		});
+
+		it('does not bubble a revealed action click to a clickable row', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Title', clickable: true, revealActionsOnHover: true },
+				slots: { action: '<button data-test-id="reveal-action">Log out</button>' },
+			});
+
+			await fireEvent.click(screen.getByTestId('reveal-action'));
+
+			expect(emitted().click).toBeUndefined();
+		});
 	});
 });
