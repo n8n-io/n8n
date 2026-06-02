@@ -21,7 +21,22 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
+import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+
+type ImportPackageParams = Omit<
+	ImportPackageRequest,
+	'credentialMatchingMode' | 'credentialMissingMode'
+> &
+	Partial<Pick<ImportPackageRequest, 'credentialMatchingMode' | 'credentialMissingMode'>>;
+
+async function importPackage(params: ImportPackageParams) {
+	return await Container.get(N8nPackagesService).importPackage({
+		credentialMatchingMode: 'id-only',
+		credentialMissingMode: 'must-preexist',
+		...params,
+	});
+}
 
 /**
  * Workflow with a structurally invalid connection: the source node referenced
@@ -88,7 +103,7 @@ describe('ImportPipeline batch validation', () => {
 		const sharedBefore = await sharedRepo.count({ where: { projectId: personalProject.id } });
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				packageBuffer: tarBuffer,
 			}),
@@ -112,7 +127,7 @@ describe('ImportPipeline batch validation', () => {
 			serializedWorkflow({ id: 'wf-source-2', name: 'Second' }),
 		]);
 
-		const result = await Container.get(N8nPackagesService).importPackage({
+		const result = await importPackage({
 			user: owner,
 			packageBuffer: tarBuffer,
 		});
@@ -147,7 +162,7 @@ describe('ImportPipeline routing matrix', () => {
 			owner.id,
 		);
 
-		await Container.get(N8nPackagesService).importPackage({
+		await importPackage({
 			user: owner,
 			packageBuffer: await singleWorkflowPackage(),
 		});
@@ -171,7 +186,7 @@ describe('ImportPipeline routing matrix', () => {
 		);
 		const folder = await createFolder(personalProject, { name: 'Imports' });
 
-		await Container.get(N8nPackagesService).importPackage({
+		await importPackage({
 			user: owner,
 			folderId: folder.id,
 			packageBuffer: await singleWorkflowPackage(),
@@ -188,7 +203,7 @@ describe('ImportPipeline routing matrix', () => {
 		const owner = await createOwner();
 		const teamProject = await createTeamProject('Team Project', owner);
 
-		await Container.get(N8nPackagesService).importPackage({
+		await importPackage({
 			user: owner,
 			projectId: teamProject.id,
 			packageBuffer: await singleWorkflowPackage(),
@@ -211,7 +226,7 @@ describe('ImportPipeline routing matrix', () => {
 		const teamProject = await createTeamProject('Team Project', owner);
 		const folder = await createFolder(teamProject, { name: 'Team Imports' });
 
-		await Container.get(N8nPackagesService).importPackage({
+		await importPackage({
 			user: owner,
 			projectId: teamProject.id,
 			folderId: folder.id,
@@ -246,7 +261,7 @@ describe('ImportPipeline rejection cases', () => {
 		const tarBuffer = await streamToBuffer(writer.finalize());
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				packageBuffer: tarBuffer,
 			}),
@@ -257,7 +272,7 @@ describe('ImportPipeline rejection cases', () => {
 		const owner = await createOwner();
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				projectId: 'does-not-exist',
 				packageBuffer: await singleWorkflowPackage(),
@@ -271,7 +286,7 @@ describe('ImportPipeline rejection cases', () => {
 		const outsider = await createMember();
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: outsider,
 				projectId: teamProject.id,
 				packageBuffer: await singleWorkflowPackage(),
@@ -287,7 +302,7 @@ describe('ImportPipeline rejection cases', () => {
 		const strayFolder = await createFolder(otherProject, { name: 'Wrong Place' });
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				projectId: teamProject.id,
 				folderId: strayFolder.id,
@@ -316,7 +331,7 @@ describe('ImportPipeline rejection cases', () => {
 		);
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				packageBuffer: await streamToBuffer(writer.finalize()),
 			}),
@@ -339,7 +354,7 @@ describe('ImportPipeline rejection cases', () => {
 		// Intentionally NOT writing workflows/nowhere-to-be-found/workflow.json
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				packageBuffer: await streamToBuffer(writer.finalize()),
 			}),
@@ -354,7 +369,7 @@ describe('ImportPipeline event emission', () => {
 		const emitSpy = jest.spyOn(eventService, 'emit');
 
 		try {
-			await Container.get(N8nPackagesService).importPackage({
+			await importPackage({
 				user: owner,
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-event-1', name: 'Event One' }),
@@ -389,7 +404,7 @@ describe('ImportPipeline event emission', () => {
 
 		try {
 			await expect(
-				Container.get(N8nPackagesService).importPackage({
+				importPackage({
 					user: owner,
 					packageBuffer: await buildImportPackageBuffer([
 						serializedWorkflow({ id: 'wf-good', name: 'Good' }),
@@ -429,7 +444,7 @@ describe('ImportPipeline credential resolution', () => {
 			{ user: owner, role: 'credential:owner' },
 		);
 
-		const result = await Container.get(N8nPackagesService).importPackage({
+		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer(
 				[
@@ -464,7 +479,7 @@ describe('ImportPipeline credential resolution', () => {
 		const owner = await createOwner();
 
 		await expect(
-			Container.get(N8nPackagesService).importPackage({
+			importPackage({
 				user: owner,
 				packageBuffer: await buildImportPackageBuffer(
 					[

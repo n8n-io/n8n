@@ -20,8 +20,8 @@ export interface ImportPackageRequest {
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
-	credentialMatchingMode?: CredentialMatchingMode;
-	credentialMissingMode?: CredentialMissingMode;
+	credentialMatchingMode: CredentialMatchingMode;
+	credentialMissingMode: CredentialMissingMode;
 }
 
 export interface ImportedWorkflowSummary {

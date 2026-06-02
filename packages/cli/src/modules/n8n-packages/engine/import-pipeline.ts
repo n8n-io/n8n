@@ -62,8 +62,8 @@ export class ImportPipeline {
 
 		const credentialResolution = await this.credentialImporter.resolveForImport({
 			requirements: manifest.requirements?.credentials,
-			matchingMode: request.credentialMatchingMode ?? 'id-only',
-			missingMode: request.credentialMissingMode ?? 'must-preexist',
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
 			targetProject: project,
 			user: request.user,
 		});
